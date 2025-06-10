@@ -1,11 +1,11 @@
 <script setup>
 
 const headers = [
-  { title: 'Producto', key: 'name' }, // 'name' es la columna en tu BD
-  { title: 'Categoría', key: 'category.name' }, // Accede a la relación
-  { title: 'Laboratorio', key: 'laboratory.name' }, // Accede a la relación
+  { title: 'Producto', key: 'name' },
+  { title: 'Categoría', key: 'category.name' },
+  { title: 'Laboratorio', key: 'laboratory.name' },
   { title: 'Precio Venta', key: 'sale_price' },
-  { title: 'Código de Barras', key: 'barcode' }, // 'barcode' en lugar de SKU
+  { title: 'Código de Barras', key: 'barcode' },
   { title: 'Acciones', key: 'actions', sortable: false },
 ]
 
@@ -150,26 +150,22 @@ const totalProduct = computed(() => productsData.value?.total || 0)
 const deleteProduct = async id => {
   await $api(`apps/ecommerce/products/${ id }`, { method: 'DELETE' })
 
-  // Delete from selectedRows
   const index = selectedRows.value.findIndex(row => row === id)
   if (index !== -1)
     selectedRows.value.splice(index, 1)
 
-  // Refetch products
   fetchProducts()
 }
 </script>
 
 <template>
   <div>
-    <!-- 👉 products -->
     <VCard
       title="Filters"
       class="mb-6"
     >
       <VCardText>
         <VRow>
-          <!-- 👉 Select Status -->
           <VCol
             cols="12"
             sm="4"
@@ -183,7 +179,6 @@ const deleteProduct = async id => {
             />
           </VCol>
 
-          <!-- 👉 Select Category -->
           <VCol
             cols="12"
             sm="4"
@@ -197,7 +192,6 @@ const deleteProduct = async id => {
             />
           </VCol>
 
-          <!-- 👉 Select Stock Status -->
           <VCol
             cols="12"
             sm="4"
@@ -217,7 +211,6 @@ const deleteProduct = async id => {
 
       <div class="d-flex flex-wrap gap-4 ma-6">
         <div class="d-flex align-center">
-          <!-- 👉 Search  -->
           <AppTextField
             v-model="searchQuery"
             placeholder="Search Product"
@@ -232,7 +225,6 @@ const deleteProduct = async id => {
             v-model="itemsPerPage"
             :items="[5, 10, 20, 25, 50]"
           />
-          <!-- 👉 Export button -->
           <VBtn
             variant="tonal"
             color="secondary"
@@ -253,7 +245,6 @@ const deleteProduct = async id => {
 
       <VDivider class="mt-4" />
 
-      <!-- 👉 Datatable  -->
       <VDataTableServer
         v-model:items-per-page="itemsPerPage"
         v-model:model-value="selectedRows"
@@ -265,8 +256,7 @@ const deleteProduct = async id => {
         class="text-no-wrap"
         @update:options="updateOptions"
       >
-        <!-- product  -->
-        <template #item.name="{ item }"> <!-- usa key: 'name' -->
+        <template #item.name="{ item }">
   <div class="d-flex align-center gap-x-4">
     <VAvatar
       v-if="item.photo_url"
@@ -277,34 +267,28 @@ const deleteProduct = async id => {
     />
     <div class="d-flex flex-column">
       <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.name }}</span>
-      <!-- Puedes usar el campo 'active_ingredient' aquí -->
       <span class="text-body-2">{{ item.active_ingredient }}</span> 
     </div>
   </div>
         </template>
 
-        <!-- Categoría -->
-        <template #item.category.name="{ item }"> <!-- usa key: 'category.name' -->
-          <!-- Puedes mantener la lógica del avatar o simplificarla -->
+        <template #item.category.name="{ item }">
+
           <span v-if="item.category" class="text-body-1 text-high-emphasis">{{ item.category.name }}</span>
         </template>
 
-        <!-- Laboratorio -->
         <template #item.laboratory.name="{ item }">
           <span v-if="item.laboratory" class="text-body-1 text-high-emphasis">{{ item.laboratory.name }}</span>
         </template>
 
-        <!-- Precio Venta -->
         <template #item.sale_price="{ item }">
           <span class="font-weight-medium">${{ item.sale_price }}</span>
         </template>
 
-        <!-- Código de Barras -->
         <template #item.barcode="{ item }">
           <span>{{ item.barcode }}</span>
         </template>
 
-        <!-- Acciones (esto puede quedar igual por ahora) -->
         <template #item.actions="{ item }">
           <IconBtn>
             <VIcon icon="tabler-edit" />
@@ -314,7 +298,6 @@ const deleteProduct = async id => {
           </IconBtn>
         </template>
 
-        <!-- pagination -->
         <template #bottom>
           <TablePagination
             v-model:page="page"
