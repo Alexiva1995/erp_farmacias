@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Models\Category;
 use App\Models\Laboratory;
 use App\Models\Origin;
 use App\Models\Product;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,7 +61,15 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'laboratory', 'origin', 'lots']);
+        $query = Product::with([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => function ($query) {
+                $query->with(['laboratory', 'lots']);
+            }
+        ]);
 
         $this->applyFilters($query, $request);
 
@@ -74,6 +86,35 @@ class ProductController extends Controller
             'data' => $paginatedResult->items(),
             'total' => $paginatedResult->total(),
         ]);
+    }
+    public function store(StoreProductRequest $request)
+    {
+        $validatedData = $request->validated();
+
+        $relatedProductIds = $validatedData['related_product_ids'] ?? [];
+        unset($validatedData['related_product_ids']);
+
+        $product = Product::create($validatedData);
+
+        if (!empty($relatedProductIds)) {
+            $product->relatedProducts()->sync($relatedProductIds);
+        }
+
+        $createdProduct = $product->fresh([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => fn($q) => $q->with(['laboratory', 'lots'])
+        ]);
+
+        $createdProduct->related_products = $createdProduct->relatedProducts;
+        unset($createdProduct->relatedProducts);
+
+        return response()->json([
+            'message' => 'Producto creado con éxito.',
+            'product' => $createdProduct
+        ], 201);
     }
 
     public function export(Request $request)
@@ -98,5 +139,49 @@ class ProductController extends Controller
     {
         $origins = Origin::orderBy('name')->get(['id', 'name']);
         return response()->json($origins);
+    }
+    public function getSuppliers()
+    {
+        $origins = Supplier::orderBy('supplier_name')->get(['id', 'supplier_name']);
+        return response()->json($origins);
+    }
+    public function getCategories()
+    {
+        $category = Category::orderBy('name')->get(['id', 'name']);
+        return response()->json($category);
+    }
+    public function updateProducts(UpdateProductRequest $request, Product $product)
+    {
+        $validatedData = $request->validated();
+        $product->update($validatedData);
+
+        if ($request->has('related_product_ids')) {
+            $product->relatedProducts()->sync($validatedData['related_product_ids']);
+        }
+        $updatedProduct = $product->fresh([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => fn($q) => $q->with(['laboratory', 'lots'])
+        ]);
+
+        $updatedProduct->related_products = $updatedProduct->relatedProducts;
+        unset($updatedProduct->relatedProducts);
+
+        return response()->json([
+            'message' => 'Producto actualizado con éxito.',
+            'product' => $updatedProduct
+        ], 200);
+    }
+    public function removeRelatedProduct(Product $product, Product $related_product)
+    {
+        $product->relatedProducts()->detach($related_product->id);
+        return response()->noContent();
+    }
+    public function destroy(Product $product)
+    {
+        $product->delete();
+        return response()->noContent();
     }
 }
