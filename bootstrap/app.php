@@ -11,7 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->validateCsrfTokens([
+            'api/product-lots/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

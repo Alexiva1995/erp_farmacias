@@ -44,11 +44,67 @@ const fetchProductLots = async () => {
 
 watchEffect(fetchProductLots);
 onMounted(fetchProductLots);
+
+const isEditModalOpen = ref(false);
+const editedLot = ref({});
+const snackbar = ref(false);
+const snackbarMessage = ref("");
+const snackbarColor = ref("success");
+
+const showSnackbar = (message, color = "success") => {
+  snackbarMessage.value = message;
+  snackbarColor.value = color;
+  snackbar.value = true;
+};
+
+const openEditModal = (lot) => {
+  editedLot.value = { ...lot }; // Copia los datos para edición
+  isEditModalOpen.value = true;
+};
+
+const updateLot = async () => {
+  try {
+    const updatedData = {
+      lot_number: editedLot.value.lot_number,
+      expiration_date: editedLot.value.expiration_date,
+      quantity: editedLot.value.quantity,
+      cost_price: editedLot.value.cost_price,
+    };
+
+    const response = await fetch(`/api/product-lots/${editedLot.value.id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw result; // Capturar error del servidor
+    }
+
+    showSnackbar(result.message, "success"); // Mostrar mensaje de éxito
+    isEditModalOpen.value = false;
+    fetchProductLots(); // Recargar datos después de la actualización
+  } catch (error) {
+    console.error('Error al actualizar el lote:', error);
+    const errorMessage = error.message || "Error desconocido";
+    showSnackbar(errorMessage, "error"); // Mostrar mensaje de error
+  }
+};
+
 </script>
 
 <template>
   <div>
-    <VCard title="Listado de Lotes" class="mb-6">
+    <VSnackbar v-model="snackbar" :color="snackbarColor">
+        {{ snackbarMessage }}
+    </VSnackbar>
+
+    <VCard title="Listado de lotes" class="mb-6">
         <VDivider />
 
         <div class="d-flex flex-wrap gap-4 ma-6">
@@ -132,5 +188,22 @@ onMounted(fetchProductLots);
             </template>
         </VDataTableServer>
     </VCard>
+
+    <VDialog v-model="isEditModalOpen" width="500">
+        <VCard>
+            <VCardTitle>Editar Lote</VCardTitle>
+            <VCardText>
+                <VTextField v-model="editedLot.lot_number" label="Número de Lote" class="mb-4" />
+                <VTextField v-model="editedLot.expiration_date" label="Fecha de Expiración" type="date" class="mb-4" />
+                <VTextField v-model="editedLot.quantity" label="Cantidad" type="number" class="mb-4" />
+                <VTextField v-model="editedLot.cost_price" label="Costo" type="number" />
+            </VCardText>
+            <VCardActions>
+                <VSpacer />
+                <VBtn @click="isEditModalOpen = false">Cancelar</VBtn>
+                <VBtn color="primary" @click="updateLot()">Guardar Cambios</VBtn>
+            </VCardActions>
+        </VCard>
+    </VDialog>
   </div>
 </template>
