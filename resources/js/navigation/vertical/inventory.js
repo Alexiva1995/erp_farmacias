@@ -13,6 +13,11 @@ export default [
         title: 'Productos',
         to: 'inventory-products',
       },
+      {
+        title: 'Caducidad',
+        to: 'inventory-expirations',
+      },
     ],
   },
+  
 ]
