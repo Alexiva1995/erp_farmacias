@@ -3,17 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\ProductLot;
+use DB;
 use Illuminate\Http\Request;
 
 class LotController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ProductLot::with('product', 'supplier');
-            // ->whereHas('product', function ($q) {
-            //     $q->whereColumn('stock', '=', 'quantity');
-            // });
+        $query = ProductLot::with('product', 'supplier')
+            ->whereHas('product', function ($q) {
+                $q->whereColumn('stock', '=', 'quantity');
+            });
 
         if ($request->has('search')) {
             $query->where('lot_number', 'like', "%{$request->search}%");
@@ -45,11 +47,45 @@ class LotController extends Controller
             'cost_price' => 'required|numeric|min:0',
         ]);
 
+        if ($request->has('stock')) {
+            $productLot->product->update([
+                'stock' => $request->stock,
+            ]);
+        }
+
         $productLot->update($validatedData);
 
         return response()->json([
             'message' => 'Lote actualizado correctamente',
             'data' => $productLot,
+        ]);
+    }
+
+    public function productsWithInconsistentStock(Request $request)
+    {
+        $query = ProductLot::with('product', 'supplier')
+            ->whereHas('product', function ($q) {
+                $q->whereColumn('stock', '!=', 'quantity');
+            });
+
+        if ($request->has('search')) {
+            $query->where('lot_number', 'like', "%{$request->search}%");
+        }  
+        
+        if ($request->has('sortBy') && $request->has('orderBy')) {
+            if ($request->sortBy === 'product.name') {
+                $query->join('products', 'product_lots.product_id', '=', 'products.id')
+                    ->orderBy('products.name', $request->orderBy);
+            } elseif ($request->sortBy === 'product.stock') {
+                $query->join('products', 'product_lots.product_id', '=', 'product_id.id')
+                    ->orderBy('products.stock', $request->orderBy);
+            } else {
+                $query->orderBy($request->sortBy, $request->orderBy);
+            }
+        }
+
+        return response()->json([
+            'data' => $query->paginate(10),
         ]);
     }
 }

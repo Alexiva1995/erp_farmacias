@@ -15,7 +15,7 @@ export default [
       },
       {
         title: 'Productos sin lote',
-        to: 'inventory-products',
+        to: 'lot-products',
       }
     ],
   },

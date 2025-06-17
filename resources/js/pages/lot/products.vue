@@ -2,13 +2,12 @@
 
 const headers = [
   { title: 'ID', key: 'id' },
-  { title: 'Producto', key: 'product.name' },
-  { title: 'Proveedor', key: 'supplier.supplier_name' },
-  { title: 'Costo', key: 'cost_price' },
-  { title: 'Unds', key: 'quantity' },
+  { title: 'Nombre', key: 'product.name' },
+  { title: 'Stock Producto', key: 'product.stock' },
+  { title: 'Cantidad Lote', key: 'quantity' },
   { title: 'Exp', key: 'expiration_date' },
   { title: 'Acciones', key: 'actions', sortable: false },
-]
+];
 
 const searchQuery = ref('')
 const selectedRows = ref([])
@@ -29,7 +28,7 @@ const totalProductLots = ref(0);
 
 const fetchProductLots = async () => {
   try {
-    const url = `/api/product-lots?q=${searchQuery.value}&page=${page.value}&itemsPerPage=${itemsPerPage.value}&sortBy=${sortBy.value}&orderBy=${orderBy.value}`;
+    const url = `/api/product-without-lots?q=${searchQuery.value}&page=${page.value}&itemsPerPage=${itemsPerPage.value}&sortBy=${sortBy.value}&orderBy=${orderBy.value}`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -42,42 +41,30 @@ const fetchProductLots = async () => {
   }
 };
 
-watchEffect(fetchProductLots);
 onMounted(fetchProductLots);
 
 const isEditModalOpen = ref(false);
-const editedLot = ref({});
-const snackbar = ref(false);
-const snackbarMessage = ref("");
-const snackbarColor = ref("success");
-
-const showSnackbar = (message, color = "success") => {
-  snackbarMessage.value = message;
-  snackbarColor.value = color;
-  snackbar.value = true;
-};
+const editedLot = ref({ stock: 0, quantity: 0 });
 
 const openEditModal = (lot) => {
-  editedLot.value = { ...lot }; // Copia los datos para edición
-  isEditModalOpen.value = true;
+  editedLot.value = { ...lot }; // Cargar datos del lote seleccionado
+  isEditModalOpen.value = true; // Abrir modal
 };
 
 const updateLot = async () => {
   try {
     const updatedData = {
-      lot_number: editedLot.value.lot_number,
-      expiration_date: editedLot.value.expiration_date,
       quantity: editedLot.value.quantity,
-      cost_price: editedLot.value.cost_price,
+      stock: editedLot.value.quantity, // Actualizar stock con el mismo valor de quantity
     };
 
     const response = await fetch(`/api/product-lots/${editedLot.value.id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify(updatedData),
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(updatedData),
     });
 
     const result = await response.json();
@@ -88,14 +75,13 @@ const updateLot = async () => {
 
     showSnackbar(result.message, "success"); // Mostrar mensaje de éxito
     isEditModalOpen.value = false;
-    fetchProductLots(); // Recargar datos después de la actualización
+    fetchProductLots(); // Recargar la lista después de la actualización
   } catch (error) {
-    console.error('Error al actualizar el lote:', error);
+    console.error("Error al actualizar el lote:", error);
     const errorMessage = error.message || "Error desconocido";
     showSnackbar(errorMessage, "error"); // Mostrar mensaje de error
   }
 };
-
 </script>
 
 <template>
@@ -190,12 +176,10 @@ const updateLot = async () => {
 
     <VDialog v-model="isEditModalOpen" width="500">
         <VCard>
-            <VCardTitle>Editar Lote</VCardTitle>
+            <VCardTitle>Ajustar Stock</VCardTitle>
             <VCardText>
-                <VTextField v-model="editedLot.lot_number" label="Número de Lote" class="mb-4" />
-                <VTextField v-model="editedLot.expiration_date" label="Fecha de Expiración" type="date" class="mb-4" />
-                <VTextField v-model="editedLot.quantity" label="Cantidad" type="number" class="mb-4" />
-                <VTextField v-model="editedLot.cost_price" label="Costo" type="number" />
+                <VTextField v-model="editedLot.stock" label="Stock Producto" type="number" disabled class="mb-4" />
+                <VTextField v-model="editedLot.quantity" label="Cantidad Lote" type="number" class="mb-4" />
             </VCardText>
             <VCardActions>
                 <VSpacer />
