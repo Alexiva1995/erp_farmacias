@@ -1,6 +1,5 @@
 import laravel from 'laravel-vite-plugin'
 import { fileURLToPath } from 'node:url'
-import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import AutoImport from 'unplugin-auto-import/vite'
@@ -23,11 +22,6 @@ export default defineConfig({
         return getPascalCaseRouteName(routeNode)
           .replace(/([a-z\d])([A-Z])/g, '$1-$2')
           .toLowerCase()
-      },
-
-      beforeWriteFiles: root => {
-        root.insert('/apps/email/:filter', '/resources/js/pages/apps/email/index.vue')
-        root.insert('/apps/email/:label', '/resources/js/pages/apps/email/index.vue')
       },
 
       routesFolder: 'resources/js/pages',
@@ -86,13 +80,6 @@ export default defineConfig({
         enabled: true,
         filepath: './.eslintrc-auto-import.json',
       },
-    }), // Docs: https://github.com/intlify/bundle-tools/tree/main/packages/unplugin-vue-i18n#intlifyunplugin-vue-i18n
-    VueI18nPlugin({
-      runtimeOnly: true,
-      compositionOnly: true,
-      include: [
-        fileURLToPath(new URL('./resources/js/plugins/i18n/locales/**', import.meta.url)),
-      ],
     }),
     svgLoader(),
   ],
