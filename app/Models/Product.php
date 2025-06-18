@@ -92,10 +92,14 @@ class Product extends Model
     /**
      * Un producto pertenece a un grupo de productos.
      */
-    public function group(): BelongsTo
+    public function relatedProducts()
     {
-        // Asegúrate de que el modelo para 'groups_products' se llame 'ProductGroup' o ajústalo.
-        return $this->belongsTo(GroupsProduct::class, 'group_id');
+        return $this->belongsToMany(
+            Product::class,
+            'groups_products',
+            'product_id',
+            'related_product_id'
+        )->withTimestamps();
     }
 
     /**

@@ -31,7 +31,9 @@ class ProductLot extends Model
         'location',
         'cost_price',
     ];
-
+    protected $casts = [
+        'expiration_date' => 'datetime',
+    ];
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      *

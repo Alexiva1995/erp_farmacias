@@ -18,7 +18,8 @@ class GroupsProduct extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'product_id',
+        'related_product_id',
     ];
 
     /**

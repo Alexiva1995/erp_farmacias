@@ -2,34 +2,186 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Models\Category;
+use App\Models\Laboratory;
+use App\Models\Origin;
 use App\Models\Product;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductController extends Controller
 {
+    private function applyFilters(Builder $query, Request $request): Builder
+    {
+        if ($request->filled('q')) {
+            $searchTerm = "%{$request->q}%";
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('name', 'like', $searchTerm)
+                    ->orWhere('active_ingredient', 'like', $searchTerm) // CORREGIDO
+                    ->orWhere('barcode', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('laboratoryId')) {
+            $query->where('laboratory_id', $request->laboratoryId);
+        }
+
+        if ($request->filled('originId')) {
+            $query->where('origin_id', $request->originId);
+        }
+
+        if ($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === false) {
+            $query->whereDoesntHave('lots', function ($lotQuery) {
+                $lotQuery->where('expiration_date', '>=', now()->startOfDay());
+            });
+        } else {
+            if (($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === true) || $request->filled('startDate') || $request->filled('endDate')) {
+                $query->whereHas('lots', function ($lotQuery) use ($request) {
+                    if ($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === true) {
+                        $lotQuery->where('expiration_date', '>=', now()->startOfDay());
+                    }
+                    if ($request->filled('startDate')) {
+                        $lotQuery->where('expiration_date', '>=', $request->startDate);
+                    }
+                    if ($request->filled('endDate')) {
+                        $lotQuery->where('expiration_date', '<=', $request->endDate);
+                    }
+                });
+            }
+        }
+
+        return $query;
+    }
 
     public function index(Request $request)
     {
-        return 'test';
-        $query = Product::with(['category', 'laboratory', 'origin']);
+        $query = Product::with([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => function ($query) {
+                $query->with(['laboratory', 'lots']);
+            }
+        ]);
 
-        // Filtrado por búsqueda (q)
-        if ($request->has('q') && $request->q) {
-            $query->where('name', 'like', "%{$request->q}%");
-        }
+        $this->applyFilters($query, $request);
 
-        // Ordenamiento
-        if ($request->has('sortBy') && $request->has('orderBy')) {
+        if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $query->orderBy($request->sortBy, $request->orderBy);
+        } else {
+            $query->orderBy('name', 'asc');
         }
 
-        // Paginación: VDataTableServer envía 'itemsPerPage' y 'page'
         $perPage = $request->input('itemsPerPage', 10);
-        $products = $query->paginate($perPage);
-        Log::info($products);
-        return response()->json($products);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+    public function store(StoreProductRequest $request)
+    {
+        $validatedData = $request->validated();
+
+        $relatedProductIds = $validatedData['related_product_ids'] ?? [];
+        unset($validatedData['related_product_ids']);
+
+        $product = Product::create($validatedData);
+
+        if (!empty($relatedProductIds)) {
+            $product->relatedProducts()->sync($relatedProductIds);
+        }
+
+        $createdProduct = $product->fresh([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => fn($q) => $q->with(['laboratory', 'lots'])
+        ]);
+
+        $createdProduct->related_products = $createdProduct->relatedProducts;
+        unset($createdProduct->relatedProducts);
+
+        return response()->json([
+            'message' => 'Producto creado con éxito.',
+            'product' => $createdProduct
+        ], 201);
+    }
+
+    public function export(Request $request)
+    {
+        $query = Product::with(['laboratory', 'origin', 'lots']);
+
+        $query = $this->applyFilters($query, $request)->orderBy('name', 'asc');
+
+        $format = $request->input('format', 'xlsx');
+        $fileName = 'productos-' . now()->format('Y-m-d') . '.' . $format;
+
+        return Excel::download(new ProductsExport($query), $fileName);
+    }
+
+    public function getLaboratories()
+    {
+        $laboratories = Laboratory::orderBy('name')->get(['id', 'name']);
+        return response()->json($laboratories);
+    }
+
+    public function getOrigins()
+    {
+        $origins = Origin::orderBy('name')->get(['id', 'name']);
+        return response()->json($origins);
+    }
+    public function getSuppliers()
+    {
+        $origins = Supplier::orderBy('supplier_name')->get(['id', 'supplier_name']);
+        return response()->json($origins);
+    }
+    public function getCategories()
+    {
+        $category = Category::orderBy('name')->get(['id', 'name']);
+        return response()->json($category);
+    }
+    public function updateProducts(UpdateProductRequest $request, Product $product)
+    {
+        $validatedData = $request->validated();
+        $product->update($validatedData);
+
+        if ($request->has('related_product_ids')) {
+            $product->relatedProducts()->sync($validatedData['related_product_ids']);
+        }
+        $updatedProduct = $product->fresh([
+            'category',
+            'laboratory',
+            'origin',
+            'lots',
+            'relatedProducts' => fn($q) => $q->with(['laboratory', 'lots'])
+        ]);
+
+        $updatedProduct->related_products = $updatedProduct->relatedProducts;
+        unset($updatedProduct->relatedProducts);
+
+        return response()->json([
+            'message' => 'Producto actualizado con éxito.',
+            'product' => $updatedProduct
+        ], 200);
+    }
+    public function removeRelatedProduct(Product $product, Product $related_product)
+    {
+        $product->relatedProducts()->detach($related_product->id);
+        return response()->noContent();
+    }
+    public function destroy(Product $product)
+    {
+        $product->delete();
+        return response()->noContent();
     }
 }
