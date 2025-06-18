@@ -12,10 +12,10 @@ const emit = defineEmits(['update:options', 'edit-product', 'delete-product']);
 const headers = [
   { title: 'id', key: 'id'},
   { title: 'Producto', key: 'name' },
-  { title: 'Stock Válido', key: 'valid_stock', sortable: false },
+  { title: 'Unidades', key: 'valid_stock', sortable: false },
   { title: 'Próximo Vencimiento', key: 'next_expiration', sortable: false },
-  { title: 'Laboratorio', key: 'laboratory.name' },
-  { title: 'Origen', key: 'origin.name' },
+  // { title: 'Laboratorio', key: 'laboratory.name' },
+  // { title: 'Origen', key: 'origin.name' },
   { title: 'Precio Venta', key: 'sale_price' },
   { title: 'Acciones', key: 'actions', sortable: false },
 ];
