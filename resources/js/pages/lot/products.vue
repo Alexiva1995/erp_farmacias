@@ -140,6 +140,36 @@ const createLot = async () => {
   }
 };
 
+const isDeleteModalOpen = ref(false);
+const selectedLot = ref(null);
+
+const confirmDelete = (lot) => {
+  selectedLot.value = lot;
+  isDeleteModalOpen.value = true;
+};
+
+const deleteLot = async () => {
+  try {
+    const response = await fetch(`/api/product-lots/${selectedLot.value.id}`, {
+      method: "DELETE",
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw result;
+
+    showSnackbar(result.message, "success"); // Mostrar mensaje de éxito
+    isDeleteModalOpen.value = false;
+    fetchProductLots(); // Recargar lista de lotes
+  } catch (error) {
+    console.error("Error al eliminar el lote:", error);
+    const errorMessage = error.message || "Error desconocido";
+    showSnackbar(errorMessage, "error"); // Mostrar mensaje de error
+  }
+};
+
 </script>
 
 <template>
@@ -229,9 +259,9 @@ const createLot = async () => {
                     <IconBtn @click="openEditModal(item)">
                         <VIcon icon="tabler-edit" />
                     </IconBtn>
-                    <!-- <IconBtn color="error" @click="confirmDelete(item)">
+                    <IconBtn color="error" @click="confirmDelete(item)">
                         <VIcon icon="tabler-trash" />
-                    </IconBtn> -->
+                    </IconBtn>
                 </div>
             </template>
 
@@ -289,6 +319,19 @@ const createLot = async () => {
                 <VSpacer />
                 <VBtn @click="isCreateModalOpen = false">Cancelar</VBtn>
                 <VBtn color="primary" @click="createLot()">Guardar Lote</VBtn>
+            </VCardActions>
+        </VCard>
+    </VDialog>
+    <VDialog v-model="isDeleteModalOpen" width="400">
+        <VCard>
+            <VCardTitle>Eliminar Lote</VCardTitle>
+            <VCardText>
+                <p>¿Estás seguro de que deseas eliminar este lote?</p>
+            </VCardText>
+            <VCardActions>
+                <VSpacer />
+                <VBtn @click="isDeleteModalOpen = false">Cancelar</VBtn>
+                <VBtn color="error" @click="deleteLot()">Eliminar</VBtn>
             </VCardActions>
         </VCard>
     </VDialog>

@@ -13,10 +13,12 @@ class LotController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ProductLot::with('product', 'supplier')
+        $query = ProductLot::query()
+            ->select('product_lots.*')
+            ->with('product', 'supplier')
             ->whereHas('product', function ($q) {
                 $q->whereColumn('stock', '=', 'quantity');
-            });
+            });    
 
         if ($request->has('search')) {
             $query->where('lot_number', 'like', "%{$request->search}%");
@@ -64,7 +66,9 @@ class LotController extends Controller
 
     public function productsWithInconsistentStock(Request $request)
     {
-        $query = ProductLot::with('product', 'supplier')
+        $query = ProductLot::query()
+            ->select('product_lots.*')
+            ->with('product')
             ->whereHas('product', function ($q) {
                 $q->whereColumn('stock', '!=', 'quantity');
             });
@@ -130,6 +134,15 @@ class LotController extends Controller
 
         return response()->json([
             'data' => $suppliers,
+        ]);
+    }
+
+    public function destroy(ProductLot $productLot)
+    {
+        $productLot->delete();
+
+        return response()->json([
+            'message' => 'Lote eliminado correctamente',
         ]);
     }
 }
