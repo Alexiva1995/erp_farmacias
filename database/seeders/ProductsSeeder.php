@@ -18,7 +18,6 @@ class ProductsSeeder extends Seeder
         $products = json_decode($json, true);
 
         $categoryIds = DB::table('categories')->pluck('id')->toArray();
-        $groupIds = DB::table('groups_products')->pluck('id')->toArray();
         $missingCount = 0;
 
         // Recorrer y preparar los datos
@@ -26,7 +25,6 @@ class ProductsSeeder extends Seeder
             $missingCount++;
 
             $product['category_id'] = $categoryIds[array_rand($categoryIds)];
-            $product['group_id'] = $groupIds[array_rand($groupIds)];
             $product['origin_id'] = $product['provenance_id'];
             $product['cost_price'] = $product['cost'];
             $product['sale_price'] = $product['price'] ?? 0;
