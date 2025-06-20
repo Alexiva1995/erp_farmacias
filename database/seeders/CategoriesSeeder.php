@@ -3,23 +3,24 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Category;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class CategoriesSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-
-        Category::truncate();
-
-        $categories = [
-            ['id' => 1, 'name' => 'test', 'created_at' => now(), 'updated_at' => now()],
+        $data = [
+            ['name' => 'Medicamentos', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['name' => 'Cosméticos', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['name' => 'Suplementos', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['name' => 'Dispositivos Médicos', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['name' => 'Farmacia Natural', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
         ];
 
-        Category::insert($categories);
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::table('categories')->insert($data);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InvestmenController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
@@ -45,3 +46,9 @@ Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
 
 Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
 Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+
+//Lotes
+Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
+Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
+Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
+Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);

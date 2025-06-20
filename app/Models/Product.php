@@ -41,7 +41,11 @@ class Product extends Model
         'psychotropic',
         'barcode',
         'photo_url',
+        'stock'
     ];
+
+    protected $appends = ['formatted_details'];
+
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      *
@@ -112,5 +116,10 @@ class Product extends Model
     public function lots(): HasMany
     {
         return $this->hasMany(ProductLot::class);
+    }
+
+    public function getFormattedDetailsAttribute()
+    {
+        return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
     }
 }

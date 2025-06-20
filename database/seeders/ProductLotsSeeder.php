@@ -4,54 +4,30 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\ProductLot;
+use Illuminate\Support\Facades\File;
 
 class ProductLotsSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        ProductLot::truncate();
+        $json = File::get(database_path('data/product_lots.json'));
+        $lots = json_decode($json, true);
 
-        $lots_data = [
-            [1, 5946, NULL, 'LOT-5946', '2026-08-15', 65, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [2, 5948, NULL, 'LOT-5948', '2027-03-20', 82, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [3, 5957, NULL, 'LOT-5957', '2026-11-01', 48, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [4, 5965, NULL, 'LOT-5965', '2027-01-10', 55, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [5, 5966, NULL, 'LOT-5966', '2026-09-05', 73, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [6, 5967, NULL, 'LOT-5967', '2027-04-22', 91, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [7, 5971, NULL, 'LOT-5971', '2026-07-30', 30, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [8, 5972, NULL, 'LOT-5972', '2027-02-18', 68, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [9, 5976, NULL, 'LOT-5976', '2026-10-25', 42, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [10, 5980, NULL, 'LOT-5980', '2027-05-12', 78, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [11, 5981, NULL, 'LOT-5981', '2026-08-20', 53, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [12, 5982, NULL, 'LOT-5982', '2027-03-01', 88, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [13, 5987, NULL, 'LOT-5987', '2026-12-15', 35, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [14, 5992, NULL, 'LOT-5992', '2027-06-03', 60, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [15, 5996, NULL, 'LOT-5996', '2026-09-10', 95, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [16, 6001, NULL, 'LOT-6001', '2027-01-28', 40, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [17, 6003, NULL, 'LOT-6003', '2026-07-07', 70, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [18, 6025, NULL, 'LOT-6025', '2027-04-01', 58, 'Receiving Bay', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [19, 6033, NULL, 'LOT-6033', '2026-11-20', 85, 'Warehouse A', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-            [20, 6034, NULL, 'LOT-6034', '2027-05-08', 32, 'Shelf B', 0.00, '2025-06-13 18:27:55', '2025-06-16 21:18:23'],
-        ];
+        foreach ($lots as &$lot) {
+            $lot['lot_number'] = $lot['lot'];
+            $lot['cost_price'] = $lot['cost'] ?? 0;
+            $lot['quantity'] = $lot['quantity_available'] ?? 0;
+            $lot['expiration_date'] = $lot['expiration_date'] ?? '1900-01-01';
 
-        $lots_to_insert = array_map(function ($lot) {
-            return [
-                'id' => $lot[0],
-                'product_id' => $lot[1],
-                'supplier_id' => $lot[2],
-                'lot_number' => $lot[3],
-                'expiration_date' => $lot[4],
-                'quantity' => $lot[5],
-                'location' => $lot[6],
-                'cost_price' => $lot[7],
-                'created_at' => $lot[8],
-                'updated_at' => $lot[9],
-            ];
-        }, $lots_data);
+            unset($lot['lot'], $lot['cost'], $lot['quantity_available']);
+        }
 
-        ProductLot::insert($lots_to_insert);
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        foreach (array_chunk($lots, 500) as $chunk) {
+            DB::table('product_lots')->insert($chunk);
+        }
+
     }
 }
