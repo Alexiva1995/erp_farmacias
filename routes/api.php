@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\InvestmenController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -10,18 +12,35 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::get('/products', [ProductController::class, 'index']);
-Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
-Route::post('/products', [ProductController::class, 'store']);
-Route::delete('/products/{product}/related/{related_product}', [ProductController::class, 'removeRelatedProduct'])
-    ->name('products.related.destroy');
-Route::delete('/products/{product}', [ProductController::class, 'destroy']);
-Route::get('/products/export', [ProductController::class, 'export']);
-Route::get('/laboratories', [ProductController::class, 'getLaboratories']);
-Route::get('/origins', [ProductController::class, 'getOrigins']);
-Route::get('/categories', [ProductController::class, 'getCategories']);
-Route::get('/suppliers', [ProductController::class, 'getSuppliers']);
+//Productos
 
+Route::get('/products', [InvestmenController::class, 'index']);
+Route::put('/products/{product}', [InvestmenController::class, 'updateProducts']);
+Route::post('/products', [InvestmenController::class, 'store']);
+Route::delete('/products/{product}/related/{related_product}', [InvestmenController::class, 'removeRelatedProduct'])
+    ->name('products.related.destroy');
+Route::delete('/products/{product}', [InvestmenController::class, 'destroy']);
+Route::get('/products/export', [InvestmenController::class, 'export']);
+Route::get('/laboratories', [InvestmenController::class, 'getLaboratories']);
+
+//Origins
+
+Route::get('/origins', [InvestmenController::class, 'getOrigins']);
+
+//Categories
+
+Route::get('/categories', [InvestmenController::class, 'getCategories']);
+
+//Suppliers
+
+Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
+
+//Expirations
+
+Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
+Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+
+//Lotes
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
 Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);

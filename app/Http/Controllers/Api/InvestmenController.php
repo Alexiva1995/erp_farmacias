@@ -7,15 +7,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Category;
+use App\Models\ExpiredLog;
 use App\Models\Laboratory;
 use App\Models\Origin;
 use App\Models\Product;
+use App\Models\ProductLot;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Builder;
 
-class ProductController extends Controller
+class InvestmenController extends Controller
 {
     private function applyFilters(Builder $query, Request $request): Builder
     {
@@ -183,5 +186,96 @@ class ProductController extends Controller
     {
         $product->delete();
         return response()->noContent();
+    }
+    private function applyProductFiltersToLotQuery(Builder $lotQuery, Request $request): Builder
+    {
+        if ($request->filled('q')) {
+            $searchTerm = "%{$request->q}%";
+            $lotQuery->whereHas('product', function ($productQuery) use ($searchTerm) {
+                $productQuery->where('name', 'like', $searchTerm)
+                    ->orWhere('active_ingredient', 'like', value: $searchTerm)
+                    ->orWhere('barcode', 'like', $searchTerm);
+            });
+        }
+
+        return $lotQuery;
+    }
+    public function getExpirations(Request $request)
+    {
+        $today = now()->startOfDay();
+        $expirationCutoffDate = now()->addMonths(6)->endOfDay();
+
+        $query = ProductLot::with([
+            'product' => function ($productQuery) {
+                $productQuery->with(['laboratory', 'origin', 'category']);
+            }
+        ]);
+        $query->where('quantity', '>', 0);
+        $query->whereBetween('expiration_date', [$today, $expirationCutoffDate]);
+
+        $this->applyProductFiltersToLotQuery($query, $request);
+
+        if ($request->filled('sortBy') && $request->sortBy === 'name') {
+            $query->select('lots.*')
+                ->join('products', 'lots.product_id', '=', 'products.id')
+                ->orderBy('products.name', $request->input('orderBy', 'asc'));
+        } elseif ($request->filled('sortBy') && $request->filled('orderBy')) {
+            $query->orderBy($request->sortBy, $request->orderBy);
+        } else {
+            $query->orderBy('expiration_date', 'asc');
+        }
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+    public function expireLot(ProductLot $lot)
+    {
+        if ($lot->quantity <= 0) {
+            return response()->json(['message' => 'Este lote ya no tiene unidades.'], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $quantityToExpire = $lot->quantity;
+            $costPerUnit = $lot->cost_price;
+            $totalLostValue = $quantityToExpire * $costPerUnit;
+
+            $lot->quantity = 0;
+            $lot->save();
+
+            $totalRemainingStock = ProductLot::where('id', '!=', $lot->id)->sum('quantity');
+            if ($totalRemainingStock > 0) {
+                $costAdjustmentPerUnit = $totalLostValue / $totalRemainingStock;
+                ProductLot::where('id', '!=', $lot->id)
+                    ->where('quantity', '>', 0)
+                    ->update([
+                        'cost_price' => $costAdjustmentPerUnit
+                    ]);
+            }
+            ExpiredLog::create([
+                'lot_id' => $lot->id,
+                'product_id' => $lot->product_id,
+                'product_name' => $lot->product->name,
+                'lot_number' => $lot->lot_number,
+                'expired_quantity' => $quantityToExpire,
+                'cost_per_unit' => $costPerUnit,
+                'total_lost_value' => $totalLostValue,
+            ]);
+
+            DB::commit();
+
+            return response()->json(['message' => 'Lote caducado y costo redistribuido con éxito.'], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al caducar lote: ' . $e->getMessage());
+            return response()->json(['message' => 'Error al procesar la caducidad del lote.'], 500);
+        }
     }
 }
