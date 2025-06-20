@@ -1,10 +1,12 @@
-<!-- ProductList.vue -->
 <script setup>
 import ProductEditDialog from '@/components/dialogs/ProductEditDialog.vue';
 import ProductFilters from '@/components/ProductFilters.vue';
 import ProductTable from '@/components/ProductTable.vue';
 import axios from '@/plugins/axios';
 import { onMounted, ref, watch } from 'vue';
+
+import { toast } from '@/plugins/sweetalert';
+import Swal from 'sweetalert2';
 
 const products = ref([])
 const totalProduct = ref(0)
@@ -30,6 +32,7 @@ const categories = ref([]);
 const isEditDialogVisible = ref(false)
 const currentProduct = ref({})
 
+const productFormErrors = ref({})
 
 const fetchSelectOptions = async () => {
   try {
@@ -43,6 +46,7 @@ const fetchSelectOptions = async () => {
     categories.value = categoryResponse.data;
   } catch (error) {
     console.error('Error al cargar opciones de los selects:', error);
+    toast.error('No se pudieron cargar los filtros.');
   }
 }
 
@@ -65,6 +69,7 @@ const fetchProducts = async () => {
     totalProduct.value = response.data.total;
   } catch (error) {
     console.error('Hubo un error al obtener los productos:', error);
+    toast.error('Error al obtener los productos.');
   } finally {
     loading.value = false;
   }
@@ -98,34 +103,60 @@ const updateTableOptions = options => {
 
 const handleEditProduct = (product) => {
   currentProduct.value = { ...product }; 
+  productFormErrors.value = {}; 
   isEditDialogVisible.value = true;
 }
 
 const handleDeleteProduct = async (id) => {
-  if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+  const result = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: "¡No podrás revertir la eliminación de este producto!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, ¡eliminar!',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (result.isConfirmed) {
     try {
       await axios.delete(`/products/${id}`);
+      toast.success('Producto eliminado con éxito.');
       fetchProducts(); 
     } catch (error) {
       console.error(`Error al borrar el producto ${id}:`, error);
+      toast.error('No se pudo eliminar el producto.');
     }
   }
 }
 
-const handleSaveProduct = async (productData) => {
+const handleSaveProduct = async (productFormData) => {
+  const isNewProduct = !currentProduct.value.id;
+  const url = isNewProduct ? '/products' : `/products/${currentProduct.value.id}`;
+
   try {
-    if (productData.id) {
-      await axios.put(`/products/${productData.id}`, productData);
-      console.log('Producto actualizado con éxito:', productData);
-    } else {
-      await axios.post('/products', productData);
-      console.log('Producto creado con éxito:', productData);
+    if (!isNewProduct) {
+      productFormData.append('_method', 'PUT');
     }
+
+    await axios.post(url, productFormData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    toast.success(`Producto ${isNewProduct ? 'creado' : 'actualizado'} con éxito`);
     isEditDialogVisible.value = false;
     await fetchProducts(); 
   } catch (error) {
-    console.error('Error al guardar/crear el producto:', error);
-    alert('Hubo un error al guardar el producto. Por favor, revisa los datos e inténtalo de nuevo.');
+    if (error.response && error.response.status === 422) {
+      productFormErrors.value = error.response.data.errors;
+      toast.error('Por favor, corrige los errores en el formulario.');
+    } else {
+      console.error('Error al guardar/crear el producto:', error);
+      toast.error('Hubo un error al guardar el producto.');
+    }
   }
 }
 
@@ -140,7 +171,12 @@ const handleClearFilters = () => {
 
 const handleAddProduct = () => {
   currentProduct.value = {}; 
+  productFormErrors.value = {};
   isEditDialogVisible.value = true;
+}
+
+const clearFormErrors = () => {
+  productFormErrors.value = {};
 }
 
 const handleExport = async (format) => {
@@ -217,7 +253,6 @@ const handleExport = async (format) => {
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"
     />
-
     <ProductEditDialog
       v-model="isEditDialogVisible"
       :product="currentProduct"
@@ -226,7 +261,9 @@ const handleExport = async (format) => {
       :suppliers="suppliers"
       :categories="categories"
       :all-products="products"  
+      :errors="productFormErrors"
       @save="handleSaveProduct"
+      @clear-errors="clearFormErrors"
     />
   </div>
 </template>
