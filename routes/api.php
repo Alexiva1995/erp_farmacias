@@ -39,6 +39,8 @@ Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
 
 Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
 Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+Route::get('/expired-logs/summary', [InvestmenController::class, 'getSummary']);
+Route::get('/expired-logs', [InvestmenController::class, 'getLotExpired']);
 
 //Lotes
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);

@@ -17,6 +17,10 @@ export default [
         title: 'Caducidad',
         to: 'inventory-expirations',
       },
+      {
+        title: 'Reporte de Caducidad',
+        to: 'inventory-report-expirations',
+      },
     ],
   },
   

@@ -278,4 +278,61 @@ class InvestmenController extends Controller
             return response()->json(['message' => 'Error al procesar la caducidad del lote.'], 500);
         }
     }
+    public function getSummary()
+    {
+        $summary = ExpiredLog::select(
+            DB::raw('MIN(created_at) as oldest_date'),
+            DB::raw('MAX(created_at) as newest_date'),
+            DB::raw('SUM(expired_quantity) as total_quantity'),
+            DB::raw('SUM(total_lost_value) as total_lost_value')
+        )->first();
+
+        // Manejar el caso donde no hay registros para evitar errores.
+        if (!$summary->oldest_date) {
+            return response()->json([
+                'oldest_date' => null,
+                'newest_date' => null,
+                'total_quantity' => 0,
+                'total_lost_value' => 0,
+            ]);
+        }
+
+        return response()->json($summary);
+    }
+
+    public function getLotExpired(Request $request)
+    {
+        $query = ExpiredLog::with('product.laboratory');
+
+        if ($request->filled('q')) {
+            $searchTerm = "%{$request->q}%";
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('product_name', 'like', $searchTerm)
+                    ->orWhere('lot_number', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('sortBy') && $request->filled('orderBy')) {
+            $query->orderBy($request->sortBy, $request->orderBy);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage == -1) {
+            $logs = $query->get();
+            return response()->json([
+                'data' => $logs,
+                'total' => $logs->count(),
+            ]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
 }
