@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\LotController;
+use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
@@ -52,3 +53,8 @@ Route::resource('product-lots', LotController::class)->except(['create', 'edit']
 Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
+
+//Inventory
+Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
+Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
+Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
