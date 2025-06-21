@@ -278,4 +278,25 @@ class InvestmenController extends Controller
             return response()->json(['message' => 'Error al procesar la caducidad del lote.'], 500);
         }
     }
+
+
+    public function getProductAll(Request $request)
+    {
+        $query = Product::query();
+
+        if ($request->filled('sortBy') && $request->filled('orderBy')) {
+            $query->orderBy($request->sortBy, $request->orderBy);
+        } else {
+            $query->orderBy('name', 'asc');
+        }
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+
 }

@@ -17,6 +17,10 @@ export default [
         title: 'Caducidad',
         to: 'inventory-expirations',
       },
+      {
+        title: 'Inventario Ciclicos',
+        to: 'inventory-cyclic',
+      },
     ],
   },
   

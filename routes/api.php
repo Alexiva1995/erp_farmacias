@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
+use App\Http\Controllers\Api\InventoryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,3 +38,8 @@ Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
 
 Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
 Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+
+//Inventory
+Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
+Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
+Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
