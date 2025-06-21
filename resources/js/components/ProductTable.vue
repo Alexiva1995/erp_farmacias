@@ -14,7 +14,7 @@ const headers = [
   { title: 'Producto', key: 'name' },
   { title: 'Laboratorio', key: 'laboratory.name', sortable: true },
   { title: 'Stock', key: 'valid_stock', sortable: false },
-  { title: 'Próximo Vencimiento', key: 'next_expiration', sortable: false },
+  { title: 'Exp.', key: 'next_expiration', sortable: false },
   // { title: 'Laboratorio', key: 'laboratory.name' },
   // { title: 'Origen', key: 'origin.name' },
   { title: 'Precio Compra', key: 'cost_price' },
@@ -56,7 +56,6 @@ const nextExpirationDate = product => {
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
-      show-select
       class="text-no-wrap"
       @update:options="options => emit('update:options', options)"
     >
