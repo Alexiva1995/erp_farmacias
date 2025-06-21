@@ -15,19 +15,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
-            CategoriesSeeder::class,
+            GroupsLaboratoriesSeeder::class,
             LaboratoriesSeeder::class,
             OriginsSeeder::class,
+            CategoriesSeeder::class,
             ProductsSeeder::class,
+            SuppliersSeeder::class,
             ProductLotsSeeder::class,
         ]);
-
-        $this->call(GroupsLaboratoriesSeeder::class);
-        $this->call(LaboratoriesSeeder::class);
-        $this->call(OriginsSeeder::class);
-        $this->call(CategoriesSeeder::class);
-        $this->call(ProductsSeeder::class);
-        $this->call(SuppliersSeeder::class);
-        $this->call(ProductLotsSeeder::class);
     }
 }
