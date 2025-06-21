@@ -15,6 +15,7 @@ use App\Models\ProductLot;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -26,8 +27,9 @@ class InvestmenController extends Controller
             $searchTerm = "%{$request->q}%";
             $query->where(function ($subQuery) use ($searchTerm) {
                 $subQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm) // CORREGIDO
-                    ->orWhere('barcode', 'like', $searchTerm);
+                    ->orWhere('active_ingredient', 'like', $searchTerm)
+                    ->orWhere('barcode', 'like', $searchTerm)
+                    ->orWhere('id', 'like', $searchTerm);
             });
         }
 
@@ -94,6 +96,12 @@ class InvestmenController extends Controller
     {
         $validatedData = $request->validated();
 
+        if ($request->hasFile('photo_url')) {
+            $path = $request->file('photo_url')->store('products', 'public');
+
+            $validatedData['photo_url'] = $path;
+        }
+
         $relatedProductIds = $validatedData['related_product_ids'] ?? [];
         unset($validatedData['related_product_ids']);
 
@@ -156,11 +164,22 @@ class InvestmenController extends Controller
     public function updateProducts(UpdateProductRequest $request, Product $product)
     {
         $validatedData = $request->validated();
+
+        if ($request->hasFile('photo_url')) {
+            if ($product->photo_url) {
+                Storage::disk('public')->delete($product->photo_url);
+            }
+
+            $path = $request->file('photo_url')->store('products', 'public');
+            $validatedData['photo_url'] = $path;
+        }
+
         $product->update($validatedData);
 
         if ($request->has('related_product_ids')) {
             $product->relatedProducts()->sync($validatedData['related_product_ids']);
         }
+
         $updatedProduct = $product->fresh([
             'category',
             'laboratory',

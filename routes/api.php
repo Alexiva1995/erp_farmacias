@@ -1,17 +1,26 @@
 <?php
 
+use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
-use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::post('/login', [LoginController::class, 'login']);
+
+Route::post('/two-factor-challenge', [LoginController::class, 'verify2FA']);
 
 
-//Productos
+// Rutas protegidas que requieren autenticación
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    Route::post('/logout', [LoginController::class, 'logout']);
+});
 
 Route::get('/products', [InvestmenController::class, 'index']);
 Route::put('/products/{product}', [InvestmenController::class, 'updateProducts']);
@@ -38,6 +47,12 @@ Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
 
 Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
 Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+
+//Lotes
+Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
+Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
+Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
+Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 
 //Inventory
 Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);

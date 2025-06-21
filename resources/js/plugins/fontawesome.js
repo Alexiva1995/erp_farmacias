@@ -9,7 +9,8 @@ import {
   faPlus,
   faSave,
   faTrash,
-  faUser
+  faUser,
+  faBarcode
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -20,7 +21,8 @@ library.add(
   faPlus, 
   faPencilAlt,
   faEye,
-  faBoxesStacked
+  faBoxesStacked,
+  faBarcode
 )
 
 export default function (app) {
