@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
+use App\Http\Controllers\Api\TPVController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,3 +59,7 @@ Route::get('/available-suppliers', [LotController::class, 'availableSuppliers'])
 Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
+
+//TPV
+//Quotation
+Route::get('/quotation', [TPVController::class, 'index']);
