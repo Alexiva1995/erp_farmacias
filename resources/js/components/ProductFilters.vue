@@ -1,5 +1,4 @@
 <script setup>
-
 const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
@@ -9,23 +8,24 @@ const props = defineProps({
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
-  'update:searchQuery',
-  'update:selectedLaboratory',
-  'update:selectedOrigin',
-  'update:stockStatusFilter',
-  'update:startDate',
-  'update:endDate',
-  'clear',
-  'export',
-  'add-product',
+  "update:searchQuery",
+  "update:selectedLaboratory",
+  "update:selectedOrigin",
+  "update:stockStatusFilter",
+  "update:startDate",
+  "update:endDate",
+  "clear",
+  "export",
+  "add-product",
 ]);
 
 const stockOptions = [
-  { title: 'Con Stock', value: true },
-  { title: 'Sin Stock', value: false },
+  { title: "Con Stock", value: true },
+  { title: "Sin Stock", value: false },
 ];
 </script>
 
@@ -33,7 +33,7 @@ const stockOptions = [
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="4">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -41,29 +41,34 @@ const stockOptions = [
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
             :model-value="props.selectedLaboratory"
-            label="Laboratorio"
             :items="props.laboratories"
+            :loading="props.loading"
+            label="Laboratorio"
+            placeholder="Escribe para buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
             :model-value="props.selectedOrigin"
-            label="Origen"
             :items="props.origins"
+            :loading="props.loading"
+            label="Origen"
+            placeholder="Escribe para buscar un origen"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:selectedOrigin', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+
+        <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -72,35 +77,41 @@ const stockOptions = [
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.startDate"
-            label="Vencimiento Desde"
+            placeholder="Vencimiento Desde"
             clearable
-            :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.endDate"
-            label="Vencimiento Hasta"
+            placeholder="Vencimiento Hasta"
             clearable
-            :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
       </VRow>
     </VCardText>
-    
+
     <VDivider />
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn
-        color="secondary"
-        variant="outlined"
-        @click="emit('clear')"
-      >
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
       <VSpacer />

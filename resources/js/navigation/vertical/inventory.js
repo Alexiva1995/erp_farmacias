@@ -14,6 +14,10 @@ export default [
         to: 'inventory-products',
       },
       {
+        title: 'Grupos de Productos',
+        to: 'inventory-group-products',
+      },
+      {
         title: 'Caducidad',
         to: 'inventory-expirations',
       },

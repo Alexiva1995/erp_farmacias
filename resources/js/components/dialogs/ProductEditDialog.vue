@@ -1,7 +1,7 @@
 <script setup>
-import axios from '@/plugins/axios';
-import { toast } from '@/plugins/sweetalert';
-import { computed, ref, watch } from 'vue';
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -14,18 +14,54 @@ const props = defineProps({
   errors: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['update:modelValue', 'save', 'clearErrors']);
+const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
 const formData = ref({});
 const imageFile = ref(null);
-
 const formErrors = ref({});
 
-const alternativeProductIdInput = ref(null);
-const alternativeProducts = ref([]);
-const isDeletingAlternative = ref(null);
+// Lógica de Grupos
+const groupInput = ref(null);
 
 const isNewProduct = computed(() => !formData.value.id);
+
+const assignedGroupName = computed(() => {
+  return formData.value.group ? formData.value.group.name : null;
+});
+
+// Muestra otros productos que están en el mismo grupo
+const productsInGroup = computed(() => {
+  if (!formData.value.group_id) return [];
+  return props.allProducts.filter(
+    (p) => p.group_id === formData.value.group_id && p.id !== formData.value.id
+  );
+});
+async function assignGroup() {
+  const input = groupInput.value;
+  if (!input) {
+    toast.warning("Por favor, introduce un nombre o ID de grupo.");
+    return;
+  }
+
+  try {
+    const response = await axios.get("/groups/search", {
+      params: { q: input },
+    });
+
+    const foundGroup = response.data;
+    formData.value.group_id = foundGroup.id;
+    formData.value.group = foundGroup;
+    groupInput.value = null;
+    toast.success(`Producto asignado al grupo "${foundGroup.name}".`);
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      toast.error("Grupo no encontrado. Verifica el nombre o ID.");
+    } else {
+      console.error("Error al buscar el grupo:", error);
+      toast.error("Ocurrió un error al buscar el grupo.");
+    }
+  }
+}
 
 const imagePreviewUrl = computed(() => {
   if (imageFile.value) {
@@ -37,156 +73,106 @@ const imagePreviewUrl = computed(() => {
   return null;
 });
 
-const alternativeProductHeaders = [
-  { title: 'Nombre', key: 'name', sortable: false },
-  { title: 'Laboratorio', key: 'laboratory.name', sortable: false },
-  { title: 'Stock', key: 'lots', sortable: false },
-  { title: 'Acción', key: 'actions', sortable: false, align: 'end' },
+const groupProductsHeaders = [
+  { title: "Nombre", key: "name", sortable: false },
+  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: "Stock", key: "lots", sortable: false },
 ];
 
 const calculateStock = (product) => {
-    if (!product.lots || !Array.isArray(product.lots)) return 0;
-    return product.lots.reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
-}
+  if (!product.lots || !Array.isArray(product.lots)) return 0;
+  return product.lots.reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+};
 
-function addAlternativeProduct() {
-  const id = Number(alternativeProductIdInput.value);
-  if (!id) {
-    toast.warning('Por favor, introduce un ID de producto válido.');
-    return;
-  }
+watch(
+  () => props.errors,
+  (newErrors) => {
+    formErrors.value = newErrors || {};
+  },
+  { deep: true }
+);
 
-  if (id === formData.value.id) {
-    toast.warning('No puedes añadir el producto a sí mismo como alternativo.');
-    return;
-  }
-
-  const isAlreadyAdded = alternativeProducts.value.some(p => p.id === id);
-  if (isAlreadyAdded) {
-    toast.warning('Este producto ya ha sido añadido.');
-    return;
-  }
-
-  const productToAdd = props.allProducts.find(p => p.id === id);
-
-  if (productToAdd) {
-    alternativeProducts.value.push(productToAdd);
-    alternativeProductIdInput.value = null;
-    toast.success('Producto alternativo añadido.');
-  } else {
-    toast.error('Producto no encontrado. Verifica el ID.');
-  }
-}
-
-async function removeAlternativeProduct(alternativeId) {
-  if (isDeletingAlternative.value) return;
-  isDeletingAlternative.value = alternativeId;
-  try {
-    const mainProductId = formData.value.id;
-    if (mainProductId) { 
-        const url = `/products/${mainProductId}/related/${alternativeId}`;
-        await axios.delete(url);
-        alternativeProducts.value = alternativeProducts.value.filter(p => p.id !== alternativeId);
-        toast.success('Relación eliminada correctamente.');
+watch(
+  () => props.product,
+  (newProduct) => {
+    if (newProduct && Object.keys(newProduct).length > 0) {
+      formData.value = JSON.parse(JSON.stringify(newProduct));
     } else {
-        alternativeProducts.value = alternativeProducts.value.filter(p => p.id !== alternativeId);
-        console.warn('Producto principal no guardado aún, eliminando solo de la lista local.');
+      formData.value = {
+        name: "",
+        active_ingredient: "",
+        laboratory_id: null,
+        cost_price: 0,
+        origin_id: null,
+        category_id: null,
+        group_id: null,
+        group: null,
+        barcode: "",
+        iva: 0,
+        psychotropic: 0,
+        from_colombia: 0,
+        lots: [],
+        photo_url: null,
+      };
     }
-  } catch (error) {
-    console.error('Error al eliminar el producto alternativo:', error);
-    toast.error('No se pudo eliminar el producto alternativo.');
-  } finally {
-    isDeletingAlternative.value = null;
-  }
-}
+    imageFile.value = null;
+    formErrors.value = {};
+  },
+  { deep: true, immediate: true }
+);
 
-watch(() => props.errors, (newErrors) => {
-  formErrors.value = newErrors || {};
-}, { deep: true });
-
-
-watch(() => props.product, (newProduct) => {
-  if (newProduct && Object.keys(newProduct).length > 0) {
-    formData.value = JSON.parse(JSON.stringify(newProduct));
-    alternativeProducts.value = newProduct.related_products && Array.isArray(newProduct.related_products) ? [...newProduct.related_products] : [];
-  } else {
-    formData.value = {
-      name: '',
-      active_ingredient: '',
-      laboratory_id: null,
-      cost_price: 0,
-      origin_id: null,
-      category_id: null,
-      barcode: '',
-      iva: 0, 
-      psychotropic: 0, 
-      from_colombia: 0, 
-      lots: [],
-      photo_url: null,
-    };
-    alternativeProducts.value = []; 
-  }
-  imageFile.value = null;
-  formErrors.value = {};
-}, { deep: true, immediate: true });
-
-
-// MODIFICADO: Cambios en los títulos de la tabla de lotes
 const lotHeaders = [
-  { title: 'Stock', key: 'quantity', sortable: false },
-  { title: 'Exp.', key: 'expiration_date', sortable: false },
-  { title: 'Acción', key: 'actions', sortable: false, align: 'end' },
+  { title: "Stock", key: "quantity", sortable: false },
+  { title: "Exp.", key: "expiration_date", sortable: false },
+  { title: "Acción", key: "actions", sortable: false, align: "end" },
 ];
 
-// NUEVO: Función para formatear la fecha
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return "N/A";
   try {
     const date = new Date(dateString);
     const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = date.getUTCDate().toString().padStart(2, '0');
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   } catch (error) {
-    return 'Fecha inválida';
+    return "Fecha inválida";
   }
 };
 
-
 const closeDialog = () => {
-  emit('update:modelValue', false);
-  formErrors.value = {}; 
-  emit('clearErrors');
+  emit("update:modelValue", false);
+  formErrors.value = {};
+  emit("clearErrors");
 };
 
 const submitForm = () => {
   formErrors.value = {};
-  emit('clearErrors');
+  emit("clearErrors");
 
   const payload = new FormData();
 
-  Object.keys(formData.value).forEach(key => {
+  Object.keys(formData.value).forEach((key) => {
     const value = formData.value[key];
-    if (value !== null && value !== undefined && !Array.isArray(value) && typeof value !== 'object') {
-       payload.append(key, value);
+    if (
+      value !== null &&
+      value !== undefined &&
+      !Array.isArray(value) &&
+      typeof value !== "object"
+    ) {
+      payload.append(key, value);
     }
   });
 
-  const relatedIds = alternativeProducts.value.map(p => p.id);
-  relatedIds.forEach(id => {
-    payload.append('related_product_ids[]', id);
-  });
-  
   if (imageFile.value) {
-    payload.append('photo_url', imageFile.value);
+    payload.append("photo_url", imageFile.value);
   }
 
-  payload.append('sale_price', 0);
+  payload.append("sale_price", 0);
 
-  emit('save', payload);
+  emit("save", payload);
 };
 </script>
-
 
 <template>
   <VDialog
@@ -197,7 +183,21 @@ const submitForm = () => {
   >
     <VCard v-if="formData">
       <VCardTitle class="d-flex align-center">
-        <span class="headline">{{ isNewProduct ? 'Añadir Nuevo Producto' : 'Editar Producto' }}</span>
+        <span class="text-h5 font-weight-bold">{{
+          isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
+        }}</span>
+
+        <!-- Chip que muestra el grupo asignado -->
+        <VChip
+          v-if="assignedGroupName"
+          class="ml-4"
+          color="primary"
+          size="small"
+          label
+        >
+          Grupo: {{ assignedGroupName }}
+        </VChip>
+
         <VSpacer />
         <VBtn icon variant="text" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
@@ -205,10 +205,11 @@ const submitForm = () => {
       </VCardTitle>
 
       <VDivider />
-      <p class="font-weight-bold text-h6 px-6 pt-4">Datos Generales</p>
 
       <VCardText>
         <VForm @submit.prevent="submitForm">
+          <!-- === SECCIÓN DE DATOS GENERALES === -->
+          <p class="text-h6 font-weight-medium mb-4">Datos Generales</p>
           <VRow>
             <VCol cols="12" md="8">
               <VFileInput
@@ -221,36 +222,40 @@ const submitForm = () => {
                 :error-messages="formErrors.photo_url"
               />
             </VCol>
-            <VCol v-if="imagePreviewUrl" cols="12" md="4" class="d-flex align-center justify-center">
-                <VImg
-                    :src="imagePreviewUrl"
-                    :width="150"
-                    aspect-ratio="1"
-                    class="border rounded"
-                />
+            <VCol
+              v-if="imagePreviewUrl"
+              cols="12"
+              md="4"
+              class="d-flex align-center justify-center"
+            >
+              <VImg
+                :src="imagePreviewUrl"
+                :width="150"
+                aspect-ratio="1"
+                class="border rounded"
+              />
             </VCol>
           </VRow>
           <VDivider class="my-4" />
           <VRow>
             <VCol cols="12" md="6">
-              <VTextField 
-                v-model="formData.name" 
-                label="Nombre" 
-                variant="outlined" 
+              <VTextField
+                v-model="formData.name"
+                label="Nombre"
+                variant="outlined"
                 :error-messages="formErrors.name"
               />
             </VCol>
             <VCol cols="12" md="6">
-              <VTextField 
-                v-model="formData.active_ingredient" 
-                label="Principio Activo" 
-                variant="outlined" 
+              <VTextField
+                v-model="formData.active_ingredient"
+                label="Principio Activo"
+                variant="outlined"
                 :error-messages="formErrors.active_ingredient"
               />
             </VCol>
           </VRow>
           <VDivider class="my-4" />
-          
           <VRow>
             <VCol cols="12" md="6">
               <VSelect
@@ -264,19 +269,17 @@ const submitForm = () => {
                 :error-messages="formErrors.laboratory_id"
               />
             </VCol>
-            
             <VCol cols="12" md="6">
-              <VTextField 
-                v-model="formData.cost_price" 
-                label="Costo de Compra" 
-                type="number" 
-                prefix="$" 
+              <VTextField
+                v-model="formData.cost_price"
+                label="Costo de Compra"
+                type="number"
+                prefix="$"
                 variant="outlined"
                 :error-messages="formErrors.cost_price"
               />
             </VCol>
           </VRow>
-
           <VRow>
             <VCol cols="12" md="6">
               <VSelect
@@ -305,14 +308,18 @@ const submitForm = () => {
           </VRow>
           <VRow>
             <VCol cols="12" md="6">
-              <VTextField 
-                v-model="formData.barcode" 
-                label="Código de Barra" 
-                variant="outlined" 
+              <VTextField
+                v-model="formData.barcode"
+                label="Código de Barra"
+                variant="outlined"
                 :error-messages="formErrors.barcode"
               />
             </VCol>
-            <VCol cols="12" md="6" class="d-flex align-center flex-wrap gap-x-4">
+            <VCol
+              cols="12"
+              md="6"
+              class="d-flex align-center flex-wrap gap-x-4"
+            >
               <VCheckbox
                 v-model="formData.iva"
                 label="Aplica IVA"
@@ -333,83 +340,80 @@ const submitForm = () => {
               />
             </VCol>
           </VRow>
-        
-          <template v-if="!isNewProduct">
-            <VDivider class="my-4" />
-            <p class="font-weight-medium mb-2">Productos Alternativos</p>
-            <VRow>
-              <VCol cols="12" md="9">
-                <VTextField
-                  v-model="alternativeProductIdInput"
-                  label="ID del Producto Alternativo"
-                  type="number"
-                  variant="outlined"
-                  hide-details
-                  @keydown.enter.prevent="addAlternativeProduct"
-                />
-              </VCol>
-              <VCol cols="12" sm="3">
-                <VBtn
-                  color="primary"
-                  @click="addAlternativeProduct"
-                  block
-                  height="40"
-                >
-                  Añadir
-                </VBtn>
-              </VCol>
-            </VRow>
-            
-            <!-- MODIFICADO: Título de 'lots' cambiado a 'Stock' en los headers -->
-            <VDataTable
-              :headers="alternativeProductHeaders"
-              :items="alternativeProducts"
-              density="compact"
-              class="mt-4 mb-4"
-              no-data-text="No se han añadido productos alternativos."
-            >
-              <template #item.lots="{ item }">
-                <span>{{ calculateStock(item) }}</span>
-              </template>
 
-               <template #item.actions="{ item }">
-                <IconBtn 
-                  @click="removeAlternativeProduct(item.id)"
-                  :disabled="isDeletingAlternative === item.id"
-                >
-                  <VProgressCircular
-                    v-if="isDeletingAlternative === item.id"
-                    indeterminate
-                    size="20"
-                    color="primary"
+          <!-- === SECCIÓN DE GRUPOS === -->
+          <template v-if="!isNewProduct">
+            <VDivider class="my-6" />
+
+            <div>
+              <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
+
+              <!-- Muestra el grupo actual si está asignado -->
+              <div
+                v-if="assignedGroupName"
+                class="d-flex align-center gap-4 mb-4"
+              >
+                <span class="font-weight-medium">Grupo Asignado:</span>
+                <VChip color="primary" label>{{ assignedGroupName }}</VChip>
+                <VSpacer />
+              </div>
+
+              <!-- Input para asignar un nuevo grupo -->
+              <VRow align="center">
+                <VCol cols="12" md="9">
+                  <VTextField
+                    v-model="groupInput"
+                    label="Nombre o ID del Grupo a Asignar"
+                    variant="outlined"
+                    hide-details
+                    @keydown.enter.prevent="assignGroup"
                   />
-                  <VIcon v-else icon="tabler-trash" color="error" />
-                </IconBtn>
-              </template>
-            </VDataTable>
+                </VCol>
+                <VCol cols="12" md="3">
+                  <VBtn color="primary" @click="assignGroup" block
+                    >Asignar</VBtn
+                  >
+                </VCol>
+              </VRow>
+
+              <!-- Tabla de otros productos en el mismo grupo -->
+              <VDataTable
+                v-if="productsInGroup.length > 0"
+                :headers="groupProductsHeaders"
+                :items="productsInGroup"
+                density="compact"
+                class="mt-4 rounded-lg"
+                no-data-text="Ningún otro producto en este grupo."
+              >
+                <template #item.lots="{ item }">
+                  <span>{{ calculateStock(item) }}</span>
+                </template>
+              </VDataTable>
+            </div>
           </template>
 
-          <template v-if="!isNewProduct">
-            <VDivider class="my-4" />
-            <p class="font-weight-medium mb-2">Lotes del Producto</p>
+          <!-- === SECCIÓN DE LOTES === -->
+          <template
+            v-if="!isNewProduct && formData.lots && formData.lots.length > 0"
+          >
+            <VDivider class="my-6" />
+            <p class="text-h6 font-weight-medium mb-4">Lotes del Producto</p>
             <VDataTable
               :headers="lotHeaders"
               :items="formData.lots || []"
               density="compact"
-              class="mb-4"
               no-data-text="Este producto no tiene lotes registrados."
             >
               <template #item.quantity="{ item }">
-                  <span>{{ Number(item.quantity) || 0 }}</span>
+                <span>{{ Number(item.quantity) || 0 }}</span>
               </template>
-              <!-- NUEVO: Slot para formatear la fecha de expiración -->
               <template #item.expiration_date="{ item }">
                 <span>{{ formatDate(item.expiration_date) }}</span>
               </template>
               <template #item.actions>
-                  <IconBtn>
-                      <VIcon icon="tabler-edit" />
-                  </IconBtn>
+                <IconBtn>
+                  <VIcon icon="tabler-edit" />
+                </IconBtn>
               </template>
             </VDataTable>
           </template>
@@ -418,10 +422,24 @@ const submitForm = () => {
 
       <VDivider />
 
+      <!-- === ACCIONES DEL FORMULARIO === -->
       <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="closeDialog">Cancelar</VBtn>
-        <VBtn color="primary" variant="flat" @click="submitForm">Guardar Cambios</VBtn>
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="closeDialog"
+          class="flex-grow-1 w-0 mr-4"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          class="flex-grow-1 w-0"
+        >
+          Guardar
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
