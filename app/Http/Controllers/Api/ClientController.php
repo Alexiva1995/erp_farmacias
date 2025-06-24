@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Contracts\Client;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateClientRequest;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
@@ -14,7 +15,7 @@ class ClientController extends Controller
         protected Client $cliente
     ) {}
 
-    public function create() {}
+    public function create(CreateClientRequest $request) {}
 
     public function edit() {}
 
