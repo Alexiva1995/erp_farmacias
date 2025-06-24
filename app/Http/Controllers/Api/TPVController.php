@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 class TPVController extends Controller
 {
@@ -14,16 +15,14 @@ class TPVController extends Controller
     public function index(Request $request)
     {
          $products = Product::with([
-            'category',
             'laboratory',
             'origin',
-            'lots',
             'relatedProducts' => function ($query) {
                 $query->with(['laboratory']);
             }
         ]);
 
-       // $this->applyFilters($products, $request);
+        $this->applyFilters($products, $request);
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $products->orderBy($request->sortBy, $request->orderBy);
@@ -38,6 +37,43 @@ class TPVController extends Controller
             'data' => $paginatedResult->items(),
             'total' => $paginatedResult->total(),
         ]);
+    }
+
+
+    private function applyFilters(Builder $products, Request $request): Builder
+    {
+        if ($request->filled('q')) {
+            $searchTerm = "%{$request->q}%";
+            $products->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('name', 'like', $searchTerm)
+                    ->orWhere('active_ingredient', 'like', $searchTerm)
+                    ->orWhere('barcode', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('laboratoryId')) {
+            $products->where('laboratory_id', $request->laboratoryId);
+        }
+
+        if ($request->filled('originId')) {
+            $products->where('origin_id', $request->originId);
+        }
+
+        if ($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === false) {
+            $products->whereDoesntHave('lots', function ($lotQuery) {
+                $lotQuery->where('expiration_date', '>=', now()->startOfDay());
+            });
+        } else {
+            if (($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === true) || $request->filled('startDate') || $request->filled('endDate')) {
+                $products->whereHas('lots', function ($lotQuery) use ($request) {
+                    if ($request->has('hasStock') && filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) === true) {
+                        $lotQuery->where('expiration_date', '>=', now()->startOfDay());
+                    }
+                });
+            }
+        }
+
+        return $products;
     }
 
     /**

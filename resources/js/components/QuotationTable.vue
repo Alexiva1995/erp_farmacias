@@ -7,7 +7,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(['update:options', 'edit-product']);
+const emit = defineEmits(['update:options', 'add-product']);
 
 const headers = [
   { title: 'Unidades', key: 'quantity', sortable: true },
@@ -52,7 +52,7 @@ const headers = [
       <template #item.bs_price="{ item }"><span class="font-weight-medium">${{ item.bs_price }}</span></template>
       <template #item.cop_price="{ item }"><span class="font-weight-medium">${{ item.cop_price }}</span></template>
       <template #item.añadir="{ item }">
-        <IconBtn @click="emit('edit-product', item)"><VIcon icon="tabler-edit" /></IconBtn>
+        <IconBtn @click="emit('add-product', item)"><VIcon icon="tabler-edit" /></IconBtn>
       </template>
     </VDataTableServer>
   </VCard>
