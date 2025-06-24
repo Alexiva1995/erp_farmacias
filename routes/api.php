@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
@@ -58,3 +59,16 @@ Route::get('/available-suppliers', [LotController::class, 'availableSuppliers'])
 Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
+
+//CRM
+Route::prefix("crm")->group(function () {
+
+    // Client
+    Route::prefix("clients")->group(function () {
+        Route::post("/",                             [ClientController::class, "create"]);
+        Route::get("/",                              [ClientController::class, "consultAll"]);
+        // Route::get("/client/{id}",                   [ClientController::class, "consultById"]);
+        // Route::delete("/client/{id}",                [ClientController::class, "deleteById"]);
+        // Route::put("/client/{id}",                   [ClientController::class, "edit"]);
+    });
+});
