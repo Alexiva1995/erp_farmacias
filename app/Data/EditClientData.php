@@ -13,7 +13,7 @@ class EditClientData extends Data
 
 
     public function __construct(
-        public string $id,
+        public int $id,
         public string $identification,
         public string $identification_type,
         public string $name,

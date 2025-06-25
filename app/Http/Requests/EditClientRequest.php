@@ -33,7 +33,7 @@ class EditClientRequest extends FormRequest
     {
         return [
             //
-            "id"                     =>    "required|exists:clients,id",
+            "id"                     =>    "required|numeric|exists:clients,id",
             "name"                   =>    "required|string|max:255",
             "last_name"              =>    "required|string|max:255",
             "email"                  =>    "required|string|max:255|email:rfc,dns",
@@ -60,6 +60,7 @@ class EditClientRequest extends FormRequest
     {
         return [
             "id.required"                        => "the field is required",
+            "id.numeric"                         => "the field is type numeric",
             "id.exists"                          => "the client is not found",
 
             "name.required"                      => "the field is required",

@@ -21,25 +21,61 @@ class ClientController extends Controller
     public function create(CreateClientRequest $request): JsonResponse
     {
 
-        $clientDB = $this->client->create($request->client);
+        $respuestaDB = $this->client->create($request->client);
 
-        return ApiResponse::success($clientDB, "client created successfully", 200);
+        return ApiResponse::success($respuestaDB, "client created successfully", 200);
     }
 
+    // TODO validar que la identificación ongresada por el usuario no este en uso por otro usuario si
     public function edit(EditClientRequest $request): JsonResponse
     {
 
-        $clientUpdateDB = $this->client->edit($request->client);
 
-        return ApiResponse::success($clientUpdateDB, "client successfully edited", 200);
+        $buscarPorIdentificaion = $this->client->consultByIdentification($request->client->identification);
+        if ($buscarPorIdentificaion) {
+            if ($request->client->id != $buscarPorIdentificaion->id) {
+                return ApiResponse::error("Cannot update because the ID is already in use", 400);
+            }
+        }
+
+        $respuestaDB = $this->client->edit($request->client);
+
+        return ApiResponse::success($respuestaDB, "client successfully edited", 200);
     }
 
     public function consultAll(Request $request)
     {
-        return $this->client->consultAll();
+        $respuestaDB = $this->client->consultAll();
+        return ApiResponse::success($respuestaDB, "successfully", 200);
     }
 
-    public function consultById() {}
+    public function consultById(Request $request)
+    {
+        $respuestaDB = $this->client->consultById($request->id);
 
-    public function deleteById() {}
+        if (!$respuestaDB) {
+            return ApiResponse::error("the client not found", 404);
+        }
+
+        return ApiResponse::success($respuestaDB, "successfully", 200);
+    }
+
+    public function deleteById(Request $request)
+    {
+        $respuestaDB = $this->client->consultById($request->id);
+
+        if (!$respuestaDB) {
+            return ApiResponse::error("the client not found", 404);
+        }
+
+        $this->client->deleteById($request->id);
+
+        $validarEliminacio = $this->client->consultById($request->id);
+
+        if ($validarEliminacio) {
+            return ApiResponse::error("the client not eliminated", 404);
+        }
+
+        return ApiResponse::success($validarEliminacio, "The client was successfully deleted", 200);
+    }
 }

@@ -22,9 +22,14 @@ class ClientRepository
         return Client::find($data["id"]);
     }
 
-    public function consultById(string $id): Model
+    public function consultById(string $id): ?Model
     {
         return Client::find($id);
+    }
+
+    public function consultByIdentification(string $identification): ?Model
+    {
+        return Client::where("identification", "=", $identification)->first();
     }
 
     public function consultAll(): Collection

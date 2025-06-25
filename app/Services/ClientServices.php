@@ -32,6 +32,11 @@ class ClientServices implements Client
         return $this->clientRepository->consultById($id);
     }
 
+    public function consultByIdentification(string $identification): ?Model
+    {
+        return $this->clientRepository->consultByIdentification($identification);
+    }
+
     public function deleteById(string $id): void
     {
         $this->clientRepository->deleteById($id);

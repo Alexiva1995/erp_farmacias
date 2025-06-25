@@ -18,5 +18,7 @@ interface Client
 
     public function consultById(string $id): Model | null;
 
+    public function consultByIdentification(string $identification): Model | null;
+
     public function deleteById(string $id): void;
 }
