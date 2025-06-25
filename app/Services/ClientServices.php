@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Client;
+use App\Data\CreateClientData;
 use App\Repository\ClientRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +15,10 @@ class ClientServices implements Client
         protected ClientRepository $clientRepository
     ) {}
 
-    public function create(array $data): Model
+    public function create(CreateClientData $data): Model
     {
-        return $this->clientRepository->create($data);
+
+        return $this->clientRepository->create($data->all());
     }
 
     public function edit(array $data): Model

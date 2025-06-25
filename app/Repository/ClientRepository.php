@@ -35,9 +35,6 @@ class ClientRepository
 
     public function deleteById(string $id): void
     {
-        $record = Client::find($id);
-        if ($record) {
-            $record->delete();
-        }
+        Client::where("id", "=", $id)->delete();
     }
 }

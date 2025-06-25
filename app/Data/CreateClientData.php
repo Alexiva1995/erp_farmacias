@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Data;
+
 use Spatie\LaravelData\Data;
 
 class CreateClientData extends Data
