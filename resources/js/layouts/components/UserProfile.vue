@@ -1,5 +1,16 @@
 <script setup>
-import avatar1 from '@images/avatars/avatar-1.png'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+const handleLogout = async () => {
+  await authStore.logout()
+}
+
+// Usamos el nombre del usuario del store, con un valor por defecto
+const userName = computed(() => authStore.user?.name || 'Usuario')
+const userRole = computed(() => (authStore.isAdmin ? 'Admin' : 'Usuario'))
+const userAvatar = computed(() => authStore.user?.photo || '/src/assets/images/avatars/avatar-1.png')
 </script>
 
 <template>
@@ -41,16 +52,16 @@ import avatar1 from '@images/avatars/avatar-1.png'
                     color="primary"
                     variant="tonal"
                   >
-                    <VImg :src="avatar1" />
+                    <VImg :src="userAvatar" />
                   </VAvatar>
                 </VBadge>
               </VListItemAction>
             </template>
 
             <VListItemTitle class="font-weight-semibold">
-              John Doe
+              {{ userName }}
             </VListItemTitle>
-            <VListItemSubtitle>Admin</VListItemSubtitle>
+            <VListItemSubtitle>{{ userRole }}</VListItemSubtitle>
           </VListItem>
 
           <VDivider class="my-2" />
@@ -111,7 +122,7 @@ import avatar1 from '@images/avatars/avatar-1.png'
           <VDivider class="my-2" />
 
           <!-- 👉 Logout -->
-          <VListItem to="/login">
+          <VListItem @click="handleLogout">
             <template #prepend>
               <VIcon
                 class="me-2"
@@ -119,7 +130,6 @@ import avatar1 from '@images/avatars/avatar-1.png'
                 size="22"
               />
             </template>
-
             <VListItemTitle>Logout</VListItemTitle>
           </VListItem>
         </VList>

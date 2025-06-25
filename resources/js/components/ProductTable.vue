@@ -12,10 +12,12 @@ const emit = defineEmits(['update:options', 'edit-product', 'delete-product']);
 const headers = [
   { title: 'id', key: 'id'},
   { title: 'Producto', key: 'name' },
-  { title: 'Unidades', key: 'valid_stock', sortable: false },
-  { title: 'Próximo Vencimiento', key: 'next_expiration', sortable: false },
+  { title: 'Laboratorio', key: 'laboratory.name', sortable: true },
+  { title: 'Stock', key: 'valid_stock', sortable: false },
+  { title: 'Exp.', key: 'next_expiration', sortable: false },
   // { title: 'Laboratorio', key: 'laboratory.name' },
   // { title: 'Origen', key: 'origin.name' },
+  { title: 'Precio Compra', key: 'cost_price' },
   { title: 'Precio Venta', key: 'sale_price' },
   { title: 'Acciones', key: 'actions', sortable: false },
 ];
@@ -54,7 +56,6 @@ const nextExpirationDate = product => {
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
-      show-select
       class="text-no-wrap"
       @update:options="options => emit('update:options', options)"
     >
@@ -68,8 +69,10 @@ const nextExpirationDate = product => {
           </div>
         </div>
       </template>
+      
       <template #item.valid_stock="{ item }"><span class="font-weight-medium">{{ calculateValidStock(item) }}</span></template>
       <template #item.next_expiration="{ item }"><span>{{ nextExpirationDate(item) }}</span></template>
+      <template #item.cost_price="{ item }"><span class="font-weight-medium">${{ item.cost_price }}</span></template>
       <template #item.sale_price="{ item }"><span class="font-weight-medium">${{ item.sale_price }}</span></template>
       <template #item.actions="{ item }">
         <IconBtn @click="emit('edit-product', item)"><VIcon icon="tabler-edit" /></IconBtn>

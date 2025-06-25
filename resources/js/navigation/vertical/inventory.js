@@ -21,6 +21,10 @@ export default [
         title: 'Reporte de Caducidad',
         to: 'inventory-report-expirations',
       },
+      {
+        title: 'Inventario Ciclicos',
+        to: 'inventory-cyclic',
+      }
     ],
   },
   

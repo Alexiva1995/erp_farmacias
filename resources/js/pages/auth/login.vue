@@ -1,16 +1,9 @@
 <script setup>
-import TwoFactorAuthModal from '@/components/TwoFactorAuthModal.vue'
 import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
 import authV1BottomShape from '@images/svg/auth-v1-bottom-shape.svg?raw'
 import authV1TopShape from '@images/svg/auth-v1-top-shape.svg?raw'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
-
-// --- INICIO DE NUESTRAS IMPORTACIONES ---
-import axios from 'axios'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-// --- FIN DE NUESTRAS IMPORTACIONES ---
 
 definePage({
   meta: {
@@ -19,84 +12,25 @@ definePage({
   },
 })
 
-// --- INICIO DE NUESTRO ESTADO REACTIVO ---
 const form = ref({
-  login: '', // Coincide con tu backend, que espera 'login' (para email o usuario)
+  email: '',
   password: '',
   remember: false,
 })
 
 const isPasswordVisible = ref(false)
-
-// Para manejar el router de Vue
-const router = useRouter()
-
-// Para manejar los errores de la API
-const errors = ref({
-  login: '',
-  password: '',
-  general: '',
-})
-
-// Para manejar el modal de 2FA
-const is2FAModalVisible = ref(false)
-const twoFactorData = ref({
-  needsQrSetup: false,
-  qrCodeUrl: null,
-})
-
-// Para manejar el estado de carga del botón
-const isLoading = ref(false)
-// --- FIN DE NUESTRO ESTADO REACTIVO ---
-
-
-// --- INICIO DE LA LÓGICA DE LOGIN ---
-const handleLogin = async () => {
-  // ... (limpiar errores y poner isLoading a true) ...
-  errors.value = { login: '', password: '', general: '' }
-  isLoading.value = true
-
-  try {
-    const formData = {
-      login: form.value.login,
-      password: form.value.password,
-    }
-
-    const response = await axios.post('/api/login', formData)
-    const data = response.data
-
-    // 3. ACTUALIZA la lógica para manejar la nueva respuesta del backend
-    if (data.two_factor) {
-      // Caso 2FA: Guardar los datos y mostrar el modal
-      twoFactorData.value.needsQrSetup = data.needs_qr_setup
-      twoFactorData.value.qrCodeUrl = data.qr_code_url
-      is2FAModalVisible.value = true
-    } else if (data.redirect) {
-      // Caso Login exitoso: Redirigir
-      window.location.href = data.redirect
-    } else {
-      errors.value.general = 'Respuesta inesperada del servidor.'
-    }
-  } catch (error) {
-    // ... (tu lógica de manejo de errores no cambia, está perfecta) ...
-  } finally {
-    isLoading.value = false
-  }
-}
-const on2FAVerified = () => {
-  window.location.href = '/' 
-}
-// --- FIN DE LA LÓGICA DE LOGIN ---
 </script>
 
 <template>
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
     <div class="position-relative my-sm-16">
-      <!-- 👉 Top shape & Bottom shape (sin cambios) -->
+      <!-- 👉 Top shape -->
       <VNodeRenderer
         :nodes="h('div', { innerHTML: authV1TopShape })"
         class="text-primary auth-v1-top-shape d-none d-sm-block"
       />
+
+      <!-- 👉 Bottom shape -->
       <VNodeRenderer
         :nodes="h('div', { innerHTML: authV1BottomShape })"
         class="text-primary auth-v1-bottom-shape d-none d-sm-block"
@@ -123,35 +57,24 @@ const on2FAVerified = () => {
 
         <VCardText>
           <h4 class="text-h4 mb-1">
-            ¡Bienvenido a <span class="text-capitalize">{{ themeConfig.app.title }}</span>! 👋🏻
+            Welcome to <span class="text-capitalize">{{ themeConfig.app.title }}</span>! 👋🏻
           </h4>
           <p class="mb-0">
-            Por favor, inicia sesión en tu cuenta.
+            Please sign-in to your account and start the adventure
           </p>
         </VCardText>
 
         <VCardText>
-          <!-- Mensaje de error general -->
-          <VAlert
-            v-if="errors.general"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-          >
-            {{ errors.general }}
-          </VAlert>
-
-          <VForm @submit.prevent="handleLogin">
+          <VForm @submit.prevent="() => {}">
             <VRow>
-              <!-- email/username -->
+              <!-- email -->
               <VCol cols="12">
                 <AppTextField
-                  v-model="form.login"
+                  v-model="form.email"
                   autofocus
-                  label="Email o Usuario"
-                  type="text"
+                  label="Email or Username"
+                  type="email"
                   placeholder="johndoe@email.com"
-                  :error-messages="errors.login"
                 />
               </VCol>
 
@@ -159,61 +82,64 @@ const on2FAVerified = () => {
               <VCol cols="12">
                 <AppTextField
                   v-model="form.password"
-                  label="Contraseña"
+                  label="Password"
                   placeholder="············"
                   :type="isPasswordVisible ? 'text' : 'password'"
-                  autocomplete="current-password"
+                  autocomplete="password"
                   :append-inner-icon="isPasswordVisible ? 'tabler-eye-off' : 'tabler-eye'"
-                  :error-messages="errors.password"
                   @click:append-inner="isPasswordVisible = !isPasswordVisible"
                 />
 
+                <!-- remember me checkbox -->
                 <div class="d-flex align-center justify-space-between flex-wrap my-6">
                   <VCheckbox
                     v-model="form.remember"
-                    label="Recordarme"
+                    label="Remember me"
                   />
+
                   <RouterLink
                     class="text-primary"
                     :to="{ name: 'login' }"
                   >
-                    ¿Olvidaste tu contraseña?
+                    Forgot Password?
                   </RouterLink>
                 </div>
 
+                <!-- login button -->
                 <VBtn
                   block
                   type="submit"
-                  :loading="isLoading"
-                  :disabled="isLoading"
                 >
-                  Ingresar
+                  Login
                 </VBtn>
               </VCol>
 
-              <!-- El resto del template no cambia -->
+              <!-- create account -->
               <VCol
                 cols="12"
                 class="text-body-1 text-center"
               >
                 <span class="d-inline-block">
-                  ¿Nuevo en nuestra plataforma?
+                  New on our platform?
                 </span>
                 <RouterLink
                   class="text-primary ms-1 d-inline-block text-body-1"
                   :to="{ name: 'login' }"
                 >
-                  Crea una cuenta
+                  Create an account
                 </RouterLink>
               </VCol>
+
               <VCol
                 cols="12"
                 class="d-flex align-center"
               >
                 <VDivider />
-                <span class="mx-4 text-high-emphasis">o</span>
+                <span class="mx-4 text-high-emphasis">or</span>
                 <VDivider />
               </VCol>
+
+              <!-- auth providers -->
               <VCol
                 cols="12"
                 class="text-center"
@@ -225,13 +151,6 @@ const on2FAVerified = () => {
         </VCardText>
       </VCard>
     </div>
-
-    <TwoFactorAuthModal
-      v-model="is2FAModalVisible"
-      :needs-qr-setup="twoFactorData.needsQrSetup"
-      :qr-code-url="twoFactorData.qrCodeUrl"
-      @verified="on2FAVerified"
-    />
   </div>
 </template>
 
