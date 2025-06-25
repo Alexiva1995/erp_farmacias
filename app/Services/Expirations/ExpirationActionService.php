@@ -28,7 +28,6 @@ class ExpirationActionService
             $quantityToExpire = $lot->quantity;
             $costPerUnit = $lot->cost_price;
             $totalLostValue = $quantityToExpire * $costPerUnit;
-
             $lot->quantity = 0;
             $lot->save();
 
@@ -38,7 +37,7 @@ class ExpirationActionService
                 'lot_id' => $lot->id,
                 'product_id' => $lot->product_id,
                 'product_name' => $lot->product->name,
-                'lot_number' => $lot->lot_number,
+                'lot_number' => $lot->lot_number ?? null,
                 'expired_quantity' => $quantityToExpire,
                 'cost_per_unit' => $costPerUnit,
                 'total_lost_value' => $totalLostValue,
@@ -70,4 +69,40 @@ class ExpirationActionService
                 ->increment('cost_price', $costAdjustmentPerUnit);
         }
     }
+    public function expireMultipleLots(array $lotIds): array
+    {
+        $failedLots = [];
+        $successCount = 0;
+
+        $lots = ProductLot::whereIn('id', $lotIds)->get();
+
+        $foundIds = $lots->pluck('id')->all();
+        $notFoundIds = array_diff($lotIds, $foundIds);
+        if (!empty($notFoundIds)) {
+            foreach ($notFoundIds as $id) {
+                $failedLots[] = [
+                    'id' => $id,
+                    'error' => 'Lote no encontrado.',
+                ];
+            }
+        }
+
+        foreach ($lots as $lot) {
+            try {
+                $this->expireLot($lot);
+                $successCount++;
+            } catch (Exception $e) {
+                $failedLots[] = [
+                    'id' => $lot->id,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'success_count' => $successCount,
+            'failed_lots' => $failedLots,
+        ];
+    }
+
 }

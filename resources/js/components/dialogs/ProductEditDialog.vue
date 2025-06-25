@@ -20,7 +20,6 @@ const formData = ref({});
 const imageFile = ref(null);
 const formErrors = ref({});
 
-// Lógica de Grupos
 const groupInput = ref(null);
 
 const isNewProduct = computed(() => !formData.value.id);
@@ -29,7 +28,6 @@ const assignedGroupName = computed(() => {
   return formData.value.group ? formData.value.group.name : null;
 });
 
-// Muestra otros productos que están en el mismo grupo
 const productsInGroup = computed(() => {
   if (!formData.value.group_id) return [];
   return props.allProducts.filter(

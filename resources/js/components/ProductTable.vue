@@ -17,7 +17,6 @@ const headers = [
   { title: "Exp.", key: "next_expiration", sortable: true },
   { title: "Precio Compra", key: "cost_price", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
-  // La columna de acciones no debe ser ordenable
   { title: "Acciones", key: "actions", sortable: false },
 ];
 

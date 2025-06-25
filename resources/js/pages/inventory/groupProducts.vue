@@ -7,29 +7,23 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-// --- Estado para los Grupos ---
 const groups = ref([]);
 const totalGroups = ref(0);
 const loading = ref(false);
 
-// --- Estado de Paginación y Ordenación ---
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-// --- Estado de los Filtros (simplificado) ---
 const searchQuery = ref("");
 
-// --- Estado del Modal de Edición ---
 const isEditDialogVisible = ref(false);
 const currentGroup = ref({});
 const groupFormErrors = ref({});
 
-// --- Lógica de la API ---
 const fetchGroups = async () => {
   loading.value = true;
-  // Parámetros simplificados para la API de grupos
   const params = {
     q: searchQuery.value,
     page: page.value,
@@ -42,25 +36,17 @@ const fetchGroups = async () => {
   );
 
   try {
-    // A futuro, cambiarás "/groups" por tu endpoint real
     const response = await axios.get("/groups", { params });
     groups.value = response.data.data;
     totalGroups.value = response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener los grupos:", error);
     toast.error("Error al obtener los grupos.");
-    // --- Datos de ejemplo si la API falla ---
-    // groups.value = [
-    //   { id: 1, name: "Analgésicos" },
-    //   { id: 2, name: "Antibióticos" },
-    // ];
-    // totalGroups.value = 2;
   } finally {
     loading.value = false;
   }
 };
 
-// --- Watchers para recargar datos ---
 let debounceTimer;
 watch(
   [page, itemsPerPage, sortBy, orderBy, searchQuery],
@@ -86,7 +72,6 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-// --- Manejadores de Eventos (CRUD) ---
 const handleEditGroup = (group) => {
   currentGroup.value = { ...group };
   groupFormErrors.value = {};

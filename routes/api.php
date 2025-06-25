@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
@@ -39,18 +40,23 @@ Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
 
-// Esta ruta se mantiene aquí porque opera sobre un producto
 Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
 
-// Basic Resources (for dropdowns, etc.)
+// Basic Resources
 Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 
-// Expirations (manteniendo rutas originales)
+// Expirations
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
 Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
+Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
+Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
+
+//Donation 
+Route::post('/donations', [DonationController::class, 'create']);
 
 //Lotes
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);

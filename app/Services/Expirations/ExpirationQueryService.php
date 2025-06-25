@@ -2,9 +2,12 @@
 
 namespace App\Services\Expirations;
 
+use App\Models\ExpiredLog;
 use App\Models\ProductLot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ExpirationQueryService
 {
@@ -67,5 +70,59 @@ class ExpirationQueryService
         $this->applySorting($query, $request);
 
         return $query;
+    }
+    public function getExpiredLotsLogQuery(Request $request): Builder
+    {
+        $query = ExpiredLog::with('product.laboratory')->whereDoesntHave('donativeLog');
+
+        if ($request->filled('q')) {
+            $searchTerm = "%{$request->q}%";
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('product_name', 'like', $searchTerm)
+                    ->orWhere('lot_number', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('sortBy') && $request->filled('orderBy')) {
+            $query->orderBy($request->sortBy, $request->orderBy);
+        } else {
+            // Un orden por defecto consistente.
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query;
+    }
+
+    /**
+     * 
+     *
+     * @return object
+     */
+    public function getExpiredLotsSummary(): Collection
+    {
+        $dateFormat = '';
+        $dbDriver = DB::connection()->getDriverName();
+
+        if ($dbDriver === 'mysql') {
+            $dateFormat = "DATE_FORMAT(created_at, '%Y-%m')";
+        } elseif ($dbDriver === 'sqlite') {
+            $dateFormat = "strftime('%Y-%m', created_at)";
+        } elseif ($dbDriver === 'pgsql') {
+            $dateFormat = "TO_CHAR(created_at, 'YYYY-MM')";
+        } else {
+            $dateFormat = "created_at";
+        }
+
+        $summaries = ExpiredLog::whereDoesntHave('donativeLog')
+            ->select(
+                DB::raw("$dateFormat as month"),
+                DB::raw('SUM(expired_quantity) as total_quantity'),
+                DB::raw('SUM(total_lost_value) as total_lost_value')
+            )
+            ->groupBy('month')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        return $summaries;
     }
 }

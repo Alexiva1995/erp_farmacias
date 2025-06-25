@@ -19,4 +19,8 @@ class ExpiredLog extends Model
     {
         return $this->belongsTo(Product::class);
     }
+    public function donativeLog()
+    {
+        return $this->hasOne(DonativeLog::class);
+    }
 }

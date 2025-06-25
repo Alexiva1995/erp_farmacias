@@ -14,15 +14,12 @@ const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 const formData = ref({});
 const formErrors = ref({});
 
-// --- NUEVO ESTADO PARA PRODUCTOS DEL GRUPO ---
 const associatedProducts = ref([]);
 const isLoadingProducts = ref(false);
-const isUnassigningProduct = ref(null); // Para el spinner de carga
+const isUnassigningProduct = ref(null);
 
 const isNewGroup = computed(() => !formData.value.id);
 
-// --- NUEVA LÓGICA ---
-// Obtiene los productos asociados a este grupo desde la API
 async function fetchAssociatedProducts(groupId) {
   if (!groupId) return;
   isLoadingProducts.value = true;
@@ -39,7 +36,6 @@ async function fetchAssociatedProducts(groupId) {
   }
 }
 
-// Desvincula un producto de este grupo
 async function unassignProduct(product) {
   isUnassigningProduct.value = product.id;
   try {
@@ -61,12 +57,9 @@ async function unassignProduct(product) {
 watch(
   () => props.modelValue,
   (isVisible) => {
-    // Si el modal se hace visible Y estamos editando un grupo existente...
     if (isVisible && !isNewGroup.value) {
-      // ...cargamos los productos asociados.
       fetchAssociatedProducts(formData.value.id);
     } else if (!isVisible) {
-      // Limpiamos la lista cuando el modal se cierra
       associatedProducts.value = [];
     }
   }
@@ -99,7 +92,6 @@ const closeDialog = () => {
 
 const submitForm = () => {
   emit("clearErrors");
-  // Solo enviamos los datos del grupo, no la lista de productos
   const payload = {
     id: formData.value.id,
     name: formData.value.name,
