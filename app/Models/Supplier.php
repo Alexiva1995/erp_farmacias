@@ -25,7 +25,7 @@ class Supplier extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'supplier_name',
+        'name',
         'social_reason',
         'sales_phone',
         'collections_phone',
@@ -36,6 +36,7 @@ class Supplier extends Model
         'cash_payment',
         'charges_igtf',
         'rating',
+        'is_deleted'
     ];
 
     /**
@@ -52,5 +53,25 @@ class Supplier extends Model
     public function laboratories(): BelongsToMany
     {
         return $this->belongsToMany(Laboratory::class, 'suppliers_laboratories');
+    }
+
+    public function autoOrders()
+    {
+        return $this->hasMany(AutoOrder::class);
+    }
+
+    public function productSuppliers()
+    {
+        return $this->hasMany(ProductSupplier::class);
+    }
+
+    public function laboratoryLinks()
+    {
+        return $this->hasMany(SupplierLaboratory::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class);
     }
 }

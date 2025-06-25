@@ -29,7 +29,8 @@ class ProductLot extends Model
         'expiration_date',
         'quantity',
         'location',
-        'cost_price',
+        'unit_cost',
+        'amount_usd'
     ];
     protected $casts = [
         'expiration_date' => 'datetime',
@@ -54,5 +55,10 @@ class ProductLot extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class, 'product_lot_id');
     }
 }

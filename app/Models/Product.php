@@ -34,14 +34,17 @@ class Product extends Model
         'origin_id',
         'category_id',
         'group_id',
-        'cost_price',
+        'unit_cost',
         'sale_price',
         'iva',
-        'from_colombia',
+        'is_colombian_origin',
         'psychotropic',
         'barcode',
         'photo_url',
-        'stock'
+        'sales_average',
+        'group_id',
+        'cycle_id',
+        'is_deleted'
     ];
 
     protected $appends = ['formatted_details'];
@@ -116,6 +119,16 @@ class Product extends Model
     public function lots(): HasMany
     {
         return $this->hasMany(ProductLot::class);
+    }
+
+    public function productSuppliers()
+    {
+        return $this->hasMany(ProductSupplier::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class);
     }
 
     public function getFormattedDetailsAttribute()

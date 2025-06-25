@@ -62,4 +62,19 @@ class User extends Authenticatable
             get: fn() => $this->first_name . ' ' . $this->last_name,
         );
     }
+
+    public function cashClosings()
+    {
+        return $this->hasMany(CashClosing::class, 'seller_id');
+    }
+
+    public function ordersSold()
+    {
+        return $this->hasMany(Order::class, 'seller_id');
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
 }
