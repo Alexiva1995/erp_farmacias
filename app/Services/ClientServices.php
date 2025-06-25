@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\Client;
 use App\Data\CreateClientData;
+use App\Data\EditClientData;
 use App\Repository\ClientRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -21,9 +22,9 @@ class ClientServices implements Client
         return $this->clientRepository->create($data->all());
     }
 
-    public function edit(array $data): Model
+    public function edit(EditClientData $data): Model
     {
-        return $this->clientRepository->edit($data);
+        return $this->clientRepository->edit($data->all());
     }
 
     public function consultById(string $id): ?Model

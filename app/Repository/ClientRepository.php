@@ -18,9 +18,8 @@ class ClientRepository
 
     public function edit(array $data): Model
     {
-        $record = $this->consultById($data["id"]);
-        $record->update($data);
-        return $record;
+        Client::where("id", "=", $data["id"])->update($data);
+        return Client::find($data["id"]);
     }
 
     public function consultById(string $id): Model

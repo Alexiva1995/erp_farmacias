@@ -69,6 +69,6 @@ Route::prefix("crm")->group(function () {
         Route::get("/",                              [ClientController::class, "consultAll"]);
         // Route::get("/client/{id}",                   [ClientController::class, "consultById"]);
         // Route::delete("/client/{id}",                [ClientController::class, "deleteById"]);
-        // Route::put("/client/{id}",                   [ClientController::class, "edit"]);
+        Route::put("/{id}",                          [ClientController::class, "edit"]);
     });
 });

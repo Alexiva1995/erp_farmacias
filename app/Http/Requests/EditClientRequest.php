@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Data\CreateClientData;
+use App\Data\EditClientData;
 use App\Helpers\ApiResponse;
 use App\Models\Client;
 use Illuminate\Contracts\Validation\Validator;
@@ -11,13 +11,13 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
-class CreateClientRequest extends FormRequest
+class EditClientRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
 
-    public CreateClientData $client;
+    public EditClientData $client;
 
     public function authorize(): bool
     {
@@ -33,6 +33,7 @@ class CreateClientRequest extends FormRequest
     {
         return [
             //
+            "id"                     =>    "required|exists:clients,id",
             "name"                   =>    "required|string|max:255",
             "last_name"              =>    "required|string|max:255",
             "email"                  =>    "required|string|max:255|email:rfc,dns",
@@ -47,16 +48,20 @@ class CreateClientRequest extends FormRequest
                 ]),
 
             ],
-            "identification"         =>    "required|string|unique:clients,identification",
+            "identification"         =>    "required|string",
             "phone"                  =>    "required|string|max:50",
             "address"                =>    "required|string",
             "company_id"             =>    "required|exists:companies,id",
+            "birthdate"              =>    "nullable|date",
         ];
     }
 
     public function menssages()
     {
         return [
+            "id.required"                        => "the field is required",
+            "id.exists"                          => "the client is not found",
+
             "name.required"                      => "the field is required",
             "name.string"                        => "the field is type string",
             "name.max"                           => "the max of field is 255 characters",
@@ -88,6 +93,8 @@ class CreateClientRequest extends FormRequest
             "company_id.required"                => "the field is required",
             "company_id.exists"                  => "the company is not found",
 
+            "birthdate.data"                     => "the date format is not valid",
+
         ];
     }
 
@@ -100,7 +107,8 @@ class CreateClientRequest extends FormRequest
 
     protected function passedValidation()
     {
-        $this->client = CreateClientData::from([
+        $this->client = EditClientData::from([
+            "id"                      =>    $this->id,
             "name"                    =>    $this->name,
             "last_name"               =>    $this->last_name,
             "identification_type"     =>    $this->identification_type,
@@ -109,6 +117,7 @@ class CreateClientRequest extends FormRequest
             "address"                 =>    $this->address,
             "company_id"              =>    $this->company_id,
             "email"                   =>    $this->email,
+            "birthdate"               =>    $this?->birthdate,
         ]);
     }
 }
