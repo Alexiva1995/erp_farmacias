@@ -24,17 +24,18 @@ class ClientRepository
 
     public function consultById(string $id): ?Model
     {
-        return Client::find($id);
+        $client = Client::query()->with("company")->where("id", "=", $id)->first();
+        return $client;
     }
 
     public function consultByIdentification(string $identification): ?Model
     {
-        return Client::where("identification", "=", $identification)->first();
+        return Client::query()->with("company")->where("identification", "=", $identification)->first();
     }
 
     public function consultAll(): Collection
     {
-        return Client::all();
+        return Client::query()->with("company")->get();
     }
 
     public function deleteById(string $id): void
