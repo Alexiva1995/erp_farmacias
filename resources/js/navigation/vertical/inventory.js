@@ -14,13 +14,21 @@ export default [
         to: 'inventory-products',
       },
       {
+        title: 'Grupos de Productos',
+        to: 'inventory-group-products',
+      },
+      {
         title: 'Caducidad',
         to: 'inventory-expirations',
       },
       {
+        title: 'Reporte de Caducidad',
+        to: 'inventory-report-expirations',
+      },
+      {
         title: 'Inventario Ciclicos',
         to: 'inventory-cyclic',
-      },
+      }
     ],
   },
   
