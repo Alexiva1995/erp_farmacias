@@ -1,0 +1,63 @@
+.swal2-popup {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  border-radius: 6px !important;
+}
+
+.swal2-title,
+.swal2-html-container {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.v-swal-button {
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 6px;
+  
+  // Tipografía de VBtn
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: 0.0269rem;
+  text-transform: none; 
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-style: solid;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none !important;
+
+  &:focus {
+    box-shadow: none !important;
+  }
+}
+
+.swal2-confirm {
+  background-color: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+  border-width: 0 !important;
+
+  &:hover {
+    background-color: rgb(var(--v-theme-primary-darken-1)) !important;
+  }
+}
+
+.swal2-cancel {
+  background-color: transparent !important;
+  color: rgb(var(--v-theme-secondary)) !important;
+  border: 1px solid rgb(var(--v-theme-secondary)) !important;
+
+  &:hover {
+    background-color: rgba(var(--v-theme-secondary), 0.1) !important;
+  }
+}
+
+.swal2-deny {
+  background-color: transparent !important;
+  color: rgb(var(--v-theme-error)) !important;
+  border: 1px solid rgb(var(--v-theme-error)) !important;
+
+  &:hover {
+    background-color: rgba(var(--v-theme-error), 0.1) !important;
+  }
+}

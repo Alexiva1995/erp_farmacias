@@ -41,7 +41,8 @@ class Product extends Model
         'psychotropic',
         'barcode',
         'photo_url',
-        'stock'
+        'stock',
+        'group_id'
     ];
 
     protected $appends = ['formatted_details'];
@@ -96,19 +97,11 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
-
-    /**
-     * Un producto pertenece a un grupo de productos.
-     */
-    public function relatedProducts()
+    public function group(): BelongsTo
     {
-        return $this->belongsToMany(
-            Product::class,
-            'groups_products',
-            'product_id',
-            'related_product_id'
-        )->withTimestamps();
+        return $this->belongsTo(GroupsProduct::class);
     }
+
 
     /**
      * Un producto tiene muchos lotes.

@@ -37,8 +37,7 @@ class UpdateProductRequest extends FormRequest
             'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
             'psychotropic' => 'sometimes|boolean',
             'from_colombia' => 'sometimes|boolean',
-            'related_product_ids' => 'nullable|array',
-            'related_product_ids.*' => 'integer|exists:products,id',
+            'group_id' => 'nullable|integer|exists:groups_products,id',
         ];
     }
 }
