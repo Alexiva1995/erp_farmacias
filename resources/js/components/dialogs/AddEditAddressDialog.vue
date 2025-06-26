@@ -1,22 +1,22 @@
 <script setup>
-import home from '@images/svg/home.svg'
-import office from '@images/svg/office.svg'
+import home from "@images/svg/home.svg";
+import office from "@images/svg/office.svg";
 
 const props = defineProps({
   billingAddress: {
     type: Object,
     required: false,
     default: () => ({
-      firstName: '',
-      lastName: '',
+      firstName: "",
+      lastName: "",
       selectedCountry: null,
-      addressLine1: '',
-      addressLine2: '',
-      landmark: '',
-      contact: '',
+      addressLine1: "",
+      addressLine2: "",
+      landmark: "",
+      contact: "",
       country: null,
-      city: '',
-      state: '',
+      city: "",
+      state: "",
       zipCode: null,
     }),
   },
@@ -24,66 +24,66 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-})
+});
 
-const emit = defineEmits([
-  'update:isDialogVisible',
-  'submit',
-])
+const emit = defineEmits(["update:isDialogVisible", "submit"]);
 
-const billingAddress = ref(structuredClone(toRaw(props.billingAddress)))
+const billingAddress = ref(structuredClone(toRaw(props.billingAddress)));
 
 const resetForm = () => {
-  emit('update:isDialogVisible', false)
-  billingAddress.value = structuredClone(toRaw(props.billingAddress))
-}
+  emit("update:isDialogVisible", false);
+  billingAddress.value = structuredClone(toRaw(props.billingAddress));
+};
 
 const onFormSubmit = () => {
-  emit('update:isDialogVisible', false)
-  emit('submit', billingAddress.value)
-}
+  emit("update:isDialogVisible", false);
+  emit("submit", billingAddress.value);
+};
 
-const selectedAddress = ref('Home')
+const selectedAddress = ref("Home");
 
 const addressTypes = [
   {
     icon: {
       icon: home,
-      size: '28',
+      size: "28",
     },
-    title: 'Home',
-    desc: 'Delivery Time (9am - 9pm)',
-    value: 'Home',
+    title: "Home",
+    desc: "Delivery Time (9am - 9pm)",
+    value: "Home",
   },
   {
     icon: {
       icon: office,
-      size: '28',
+      size: "28",
     },
-    title: 'Office',
-    desc: 'Delivery Time (9am - 5pm)',
-    value: 'Office',
+    title: "Office",
+    desc: "Delivery Time (9am - 5pm)",
+    value: "Office",
   },
-]
+];
 </script>
 
 <template>
   <VDialog
-    :width="$vuetify.display.smAndDown ? 'auto' : 900 "
+    :width="$vuetify.display.smAndDown ? 'auto' : 900"
     :model-value="props.isDialogVisible"
-    @update:model-value="val => $emit('update:isDialogVisible', val)"
+    @update:model-value="(val) => $emit('update:isDialogVisible', val)"
   >
     <!-- 👉 Dialog close btn -->
     <DialogCloseBtn @click="$emit('update:isDialogVisible', false)" />
 
-    <VCard
-      v-if="props.billingAddress"
-      class="pa-sm-10 pa-2"
-    >
+    <VCard v-if="props.billingAddress" class="pa-sm-10 pa-2">
       <VCardText>
         <!-- 👉 Title -->
         <h4 class="text-h4 text-center mb-2">
-          {{ (props.billingAddress.addressLine1 || props.billingAddress.addressLine2) ? 'Edit' : 'Add New' }} Address
+          {{
+            props.billingAddress.addressLine1 ||
+            props.billingAddress.addressLine2
+              ? "Edit"
+              : "Add New"
+          }}
+          Address
         </h4>
         <p class="text-body-1 text-center mb-6">
           Add new address for express delivery
@@ -101,10 +101,7 @@ const addressTypes = [
         <VForm @submit.prevent="onFormSubmit">
           <VRow>
             <!-- 👉 First Name -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.firstName"
                 label="First Name"
@@ -113,10 +110,7 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 Last Name -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.lastName"
                 label="Last Name"
@@ -153,10 +147,7 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 Landmark -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.landmark"
                 label="Landmark"
@@ -165,10 +156,7 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 City -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.city"
                 label="City"
@@ -177,10 +165,7 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 State -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.state"
                 label="State"
@@ -189,10 +174,7 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 Zip Code -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="billingAddress.zipCode"
                 label="Zip Code"
@@ -206,22 +188,10 @@ const addressTypes = [
             </VCol>
 
             <!-- 👉 Submit and Cancel button -->
-            <VCol
-              cols="12"
-              class="text-center"
-            >
-              <VBtn
-                type="submit"
-                class="me-3"
-              >
-                submit
-              </VBtn>
+            <VCol cols="12" class="text-center">
+              <VBtn type="submit" class="me-3"> submit </VBtn>
 
-              <VBtn
-                variant="tonal"
-                color="secondary"
-                @click="resetForm"
-              >
+              <VBtn variant="tonal" color="secondary" @click="resetForm">
                 Cancel
               </VBtn>
             </VCol>

@@ -47,8 +47,7 @@ class StoreProductRequest extends FormRequest
 
             'photo_url' => ['required', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
 
-            'related_product_ids' => ['nullable', 'array'],
-            'related_product_ids.*' => ['exists:products,id'],
+            'group_id' => 'nullable|integer|exists:groups_products,id',
         ];
     }
 
