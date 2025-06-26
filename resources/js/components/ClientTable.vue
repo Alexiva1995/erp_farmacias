@@ -1,11 +1,13 @@
 <script setup lang="js">
 
+
 const props= defineProps({
   clients: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   totalClients: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  // search: { type: String, required: true },
 })
 
 const headers = [
