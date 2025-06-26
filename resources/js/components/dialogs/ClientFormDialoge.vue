@@ -72,12 +72,12 @@ function submitForm(){
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
-            <VTextField
+            <VSelect
               v-model="formData.identification_type"
               :error-messages="formError.identification_type"
-              label="Identificación"
-              type="number"
+              label="Tipo"
               variant="outlined"
+              :items="['V-', 'J-', 'G-', 'E-']"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6" v-if="formData.id != null">
