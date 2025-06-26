@@ -5,12 +5,12 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
-use App\Http\Controllers\Api\TPVController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\QuotationController;
 
 Route::post('/login', [LoginController::class, 'login']);
 
@@ -72,4 +72,5 @@ Route::post('/adjustments/process-count', [InventoryAdjustmentController::class,
 
 //TPV
 //Quotation
-Route::get('/quotation', [TPVController::class, 'index']);
+Route::get('/quotation', [QuotationController::class, 'index']);
+Route::get('/quotation/{product}', [QuotationController::class, 'show']);

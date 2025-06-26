@@ -29,7 +29,7 @@ const stockOptions = [
         <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por Producto, C. Activo..."
+            placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />

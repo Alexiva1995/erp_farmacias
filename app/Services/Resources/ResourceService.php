@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Laboratory;
 use App\Models\Origin;
 use App\Models\Supplier;
+use App\Models\ExchangeRate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -51,6 +52,32 @@ class ResourceService
     {
         return Cache::remember('resources.categories', now()->addDay(), function () {
             return Category::orderBy('name')->get(['id', 'name']);
+        });
+    }
+
+    /**
+     * Obtiene una sola tasa, utilizando caché.
+     */
+ public function getExchangeRate(string $currencyCode): float
+    {
+        $cacheKey = "resources.exchangeRate_{$currencyCode}";
+        $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
+            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+            if ($exchangeRate) {
+                return (float) $exchangeRate->rate;
+            }
+            return 1.0; 
+        });
+        return $cachedRate;
+    }
+
+    /**
+     * Obtiene todas las tasa, utilizando caché.
+     */
+ public function getAllExchangeRate(): Collection
+    {
+        return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
+            return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
         });
     }
 }

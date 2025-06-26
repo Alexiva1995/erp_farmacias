@@ -4,19 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\Products\ProductQueryService;
+use App\Services\Quotation\QuotationActionService;
+use App\Services\Quotation\QuotationQueryService;
+use App\Models\Product;
 
 class QuotationController extends Controller
 {
      public function __construct(
-        private ProductQueryService $productQueryService,
+        private QuotationQueryService $quotationQueryService,
+        private QuotationActionService  $quotationActionService
     ) {
     }
 
    public function index(Request $request)
     {
-        $query = $this->productQueryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+       $query = $this->quotationQueryService->getFilteredQuery($request);
+       $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -37,9 +40,18 @@ class QuotationController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Product $product)
     {
-        //
+        $detailedProduct = $this->quotationActionService->loadProductDetails($product);
+       
+        if (!$detailedProduct) {
+             return response()->json([
+                'status'  => 'error',
+                'message' => "Producto no encontrado.",
+            ]);
+        }
+
+        return response()->json($detailedProduct);
     }
 
     /**

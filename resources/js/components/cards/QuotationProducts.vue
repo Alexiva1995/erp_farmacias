@@ -36,116 +36,56 @@ const props = defineProps({
     type: String,
     default: "",
   },
+    quotationProducts: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const productCost = ref(28);
 
-const emit = defineEmits(["update:searchQuery"]);
+const emit = defineEmits(["update:searchQuery", "remove-quotation-product","remove"]);
 
-const products = ref([
-  {
-    id: 1,
-    title: "Apple iPhone 13",
-    itemCode: "#FXZ-4567",
-    price: 999.29,
-    quantity: 1,
-  },
-  {
-    id: 2,
-    title: "Nike Air Jordan",
-    itemCode: "#FXZ-3456",
-    price: 72.4,
-    quantity: 1,
-  },
-  {
-    id: 3,
-    title: "Beats Studio 2",
-    itemCode: "#FXZ-9485",
-    price: 99.0,
-    quantity: 1,
-  },
-  {
-    id: 4,
-    title: "Apple Watch Series 7",
-    itemCode: "#FXZ-2345",
-    price: 249.99,
-    quantity: 1,
-  },
-  {
-    id: 5,
-    title: "Amazon Echo Dot",
-    itemCode: "#FXZ-8959",
-    price: 79.4,
-    quantity: 1,
-  },
-  {
-    id: 6,
-    title: "Play Station Console",
-    itemCode: "#FXZ-7892",
-    price: 129.48,
-    quantity: 1,
-  },
-  {
-    id: 7,
-    title: "Google Home Mini",
-    itemCode: "#GHM-007",
-    price: 49.99,
-    quantity: 1,
-  },
-  {
-    id: 8,
-    title: "Razer DeathAdder V2",
-    itemCode: "#RDV-008",
-    price: 499.0,
-    quantity: 1,
-  },
-  {
-    id: 10,
-    title: "Logitech Mouse MX Master 3",
-    itemCode: "#LMX-1010",
-    price: 99.0,
-    quantity: 1,
-  },
-  {
-    id: 11,
-    title: "GoPro HERO11",
-    itemCode: "#GPH-011",
-    price: 399.0,
-    quantity: 1,
-  },
-  {
-    id: 12,
-    title: "DJI Mini 3 Pro",
-    itemCode: "#DMI-012",
-    price: 759.0,
-    quantity: 1,
-  },
-]);
-
-const incrementQuantity = (productId) => {
-  const product = products.value.find((p) => p.id === productId);
-  if (product) {
-    product.quantity++;
-  }
+const removeQuotationProduct = (productId) => {
+  emit('remove-quotation-product', productId);
 };
 
-const decrementQuantity = (productId) => {
-  const product = products.value.find((p) => p.id === productId);
-  if (product && product.quantity > 1) {
-    product.quantity--;
-  }
-};
-
-const removeProduct = (productId) => {
-  products.value = products.value.filter((p) => p.id !== productId);
+const remove = () => {
+  emit('remove');
 };
 
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("es-VE", { // Asegúrate que el formato sea el que deseas
     style: "currency",
-    currency: "USD",
+    currency: "USD", // O la moneda principal de tu cotización
   }).format(value);
 };
+
+// Si necesitas los precios en BS y COP aquí, asegúrate de que el `itemToAdd` los tenga.
+const formatCurrencyBs = (value) => {
+  return new Intl.NumberFormat("es-VE", {
+    style: "currency",
+    currency: "VEF", // Moneda para Bolívares
+  }).format(value);
+};
+
+const formatCurrencyCop = (value) => {
+  return new Intl.NumberFormat("es-CO", { // Ajusta el locale si es necesario
+    style: "currency",
+    currency: "COP", // Moneda para Pesos Colombianos
+  }).format(value);
+};
+
+const totalSelectedQuantity = computed(() => {
+  let total = 0;
+  props.quotationProducts.forEach(product => {
+    const quantity = parseInt(product.selectedQuantity);
+    if (!isNaN(quantity) && quantity > 0) {
+      total += quantity;
+    }
+  });
+  return total;
+});
 
 const chipColor = "primary";
 </script>
@@ -173,7 +113,7 @@ const chipColor = "primary";
               draggable="false"
               class="ms-auto"
             >
-              <span class="font-weight-medium">{{ products.length }}</span>
+              <span class="font-weight-medium">{{totalSelectedQuantity}}</span>
             </VChip>
           </div>
         </VCol>
@@ -183,54 +123,45 @@ const chipColor = "primary";
     <VCardText class="d-flex flex-column pb-0">
       <div
         class="scrollable-list-container"
-        :class="{ 'show-scroll': products.length > 2 }"
-      >
+        :class="{ 'show-scroll': props.quotationProducts.length > 2 }" >
         <VList class="card-list" density="compact" nav>
-          <VListItem v-if="products.length === 0">
-            <VListItemTitle class="text-center text-medium-emphasis"
-              >No hay productos en la lista.</VListItemTitle
-            >
+          <VListItem v-if="props.quotationProducts.length === 0"> <VListItemTitle class="text-center text-medium-emphasis">No hay productos en la cotización.</VListItemTitle>
           </VListItem>
 
           <VListItem
-            v-for="product in products"
+            v-for="product in props.quotationProducts"
             :key="product.id"
             class="rounded-0"
           >
             <template #prepend>
-              <VCol cols="6" class="pa-0">
-              <VTextField
-                  v-model.number="product.cost"
-                  type="number"
+               <div class="d-flex align-center">
+                <VTextField
+                  v-model.number="product.selectedQuantity" type="number"
                   variant="outlined"
                   density="compact"
                   hide-details
                   single-line
                   class="cost-input-field text-center"
-                >
+                  min="1"
+                  :max="product.availableQuantity" >
                 </VTextField>
-              </VCol>
+              </div>
             </template>
 
-            <VListItemTitle class="font-weight-medium me-4">{{
-              product.title
-            }}</VListItemTitle>
-            <VListItemSubtitle class="me-4"
-              >Item: {{ product.itemCode }}</VListItemSubtitle
-            >
+            <VListItemTitle class="font-weight-medium me-4 mx-2">{{ product.title }}</VListItemTitle>
+            <VListItemSubtitle class='mx-2'>{{product.active_ingredient}}</VListItemSubtitle>
+            <VListItemSubtitle class='mx-2'>{{product.laboratory}}</VListItemSubtitle>
 
             <template #append>
               <div class="d-flex align-center">
                 <span class="text-body-1 me-2">{{
-                  formatCurrency(product.price * product.quantity)
+                  formatCurrency(product.price * product.selectedQuantity)
                 }}</span>
                 <VBtn
                   icon="tabler-trash"
-                  size="x-small"
                   variant="text"
                   color="error"
-                  @click="removeProduct(product.id)"
-                />
+                  @click="removeQuotationProduct(product.id)" />
               </div>
             </template>
           </VListItem>
@@ -239,7 +170,7 @@ const chipColor = "primary";
     </VCardText>
 
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined"> Cancelar </VBtn>
+      <VBtn color="secondary" variant="outlined"  @click="remove()"> Cancelar </VBtn>
       <VBtn color="primary" variant="flat"> Imprimir </VBtn>
       <VBtn color="success" variant="flat"> Compartir </VBtn>
     </VCardActions>

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Resources\ResourceService;
 
 class Product extends Model
 {
@@ -45,7 +46,7 @@ class Product extends Model
         'group_id'
     ];
 
-    protected $appends = ['formatted_details'];
+    protected $appends = ['formatted_details','price_bs', 'price_cop'];
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
@@ -115,4 +116,28 @@ class Product extends Model
     {
         return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
     }
+
+
+
+    protected function getServiceExchangeRate(string $currencyCode): float
+    {
+        $resourceService = app(ResourceService::class);
+        return $resourceService->getExchangeRate($currencyCode);
+    }
+
+    protected function priceBs(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => round($this->sale_price * $this->getServiceExchangeRate('BS'), 2),
+        );
+    }
+
+    protected function priceCop(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => round($this->sale_price * $this->getServiceExchangeRate('COP'), 2),
+        );
+    }
+
+
 }
