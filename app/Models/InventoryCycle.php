@@ -16,4 +16,14 @@ class InventoryCycle extends Model
     {
         return $this->hasMany(Expiration::class);
     }
+
+    public function closures()
+    {
+        return $this->hasMany(InventoryClosure::class, 'cycle_id');
+    }
+
+    public function productCounts()
+    {
+        return $this->hasMany(ProductCount::class, 'cycle_id');
+    }
 }

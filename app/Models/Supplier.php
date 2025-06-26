@@ -74,4 +74,34 @@ class Supplier extends Model
     {
         return $this->hasMany(Expiration::class);
     }
+
+    public function ratings()
+    {
+        return $this->hasMany(SupplierRating::class);
+    }
+
+    public function configProducts()
+    {
+        return $this->hasMany(SuppliersConfigProduct::class);
+    }
+
+    public function paymentRules()
+    {
+        return $this->hasMany(PaymentRule::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function psychotropicControls()
+    {
+        return $this->hasMany(PsychotropicControl::class);
+    }
 }

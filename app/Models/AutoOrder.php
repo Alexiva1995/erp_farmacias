@@ -26,4 +26,14 @@ class AutoOrder extends Model
     {
         return $this->hasMany(AutoOrderDetail::class, 'order_id');
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'auto_order_id');
+    }
+
+    public function invoiceDetails()
+    {
+        return $this->hasMany(InvoiceDetail::class);
+    }
 }

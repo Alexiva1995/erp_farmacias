@@ -61,4 +61,14 @@ class ProductLot extends Model
     {
         return $this->hasMany(Expiration::class, 'product_lot_id');
     }
+
+    public function productCounts()
+    {
+        return $this->hasMany(ProductCount::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
 }

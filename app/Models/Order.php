@@ -47,4 +47,29 @@ class Order extends Model
     {
         return $this->hasOne(Credit::class);
     }
+
+    public function fiscalHistory()
+    {
+        return $this->hasOne(FiscalHistory::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(ReturnEntry::class);
+    }
+
+    public function details()
+    {
+        return $this->hasMany(OrderDetail::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function psychotropicControls()
+    {
+        return $this->hasMany(PsychotropicControl::class);
+    }
 }

@@ -15,38 +15,26 @@ class UserSeeder extends Seeder
     {
         // Usuario Administrador
         User::create([
-            'first_name' => 'Admin',
-            'last_name' => 'Principal',
+            'username' => 'admin',
             'email' => 'admin@example.com',
-            'password' => Hash::make('12345678'),
-            'is_admin' => true,
-            'is_active' => true,
-            'token_login' => null
+            'password_hash' => Hash::make('12345678'),
+            'is_active' => true
         ]);
 
         // Usuario "User" (rol estándar)
         User::create([
-            'first_name' => 'Usuario',
-            'last_name' => 'Estándar',
+            'username' => 'usuario_estandar',
             'email' => 'user@example.com',
-            'password' => Hash::make('12345678'),
-            'is_admin' => false,
+            'password_hash' => Hash::make('12345678'),
             'is_active' => true,
-            'token_login' => null
         ]);
 
         // Usuario "Empleado"
         User::create([
-            'first_name' => 'Empleado',
-            'last_name' => 'Ejemplo',
-            'cedula' => '12345678',
+            'username' => 'empleado',
             'email' => 'empleado@example.com',
-            'password' => Hash::make('12345678'),
-            'is_admin' => false,
-            'is_active' => true,
-            'salary' => 500.00,
-            'currency_salary' => 'USD',
-            'token_login' => null,
+            'password_hash' => Hash::make('12345678'),
+            'is_active' => true
         ]);
     }
 }

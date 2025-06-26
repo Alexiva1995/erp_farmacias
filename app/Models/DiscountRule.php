@@ -20,4 +20,9 @@ class DiscountRule extends Model
     {
         return $this->belongsTo(SupplierLaboratory::class);
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'discount_rule_id');
+    }
 }
