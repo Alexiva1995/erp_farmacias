@@ -5,6 +5,7 @@ import { VDateInput } from 'vuetify/labs/VDateInput'
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
+  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })
@@ -94,7 +95,9 @@ function submitForm(){
               :error-messages="formError.company_id"
               label="Empresa"
               variant="outlined"
-              :items="[]"
+              :items="props.companies"
+              item-title="name"
+              item-value="id"
             />
           </VCol>
           <VCol cols="12">

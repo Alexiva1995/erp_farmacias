@@ -16,15 +16,15 @@ class ClientServices implements Client
         protected ClientRepository $clientRepository
     ) {}
 
-    public function create(CreateClientData $data): Model
+    public function create(array $data): Model
     {
 
-        return $this->clientRepository->create($data->all());
+        return $this->clientRepository->create($data);
     }
 
-    public function edit(EditClientData $data): Model
+    public function edit(array $data): Model
     {
-        return $this->clientRepository->edit($data->all());
+        return $this->clientRepository->edit($data);
     }
 
     public function consultById(string $id): ?Model

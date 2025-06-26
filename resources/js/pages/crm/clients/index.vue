@@ -2,6 +2,8 @@
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { onMounted, reactive } from 'vue';
+// TODO: la tabla actual usarla para consultar a todos los clientes naturales
+// TODO: crear una tabla donde se pueda lista los clientes juridicos
 
 const statuModule= reactive({
   items:[],
@@ -81,32 +83,42 @@ function limpiarErroresFormulario(){
   formularioError.company_id=""
 }
 
-function consultAll(){
-  loading.value = true;
-  axios.get("/crm/clients")
-  .then(res => {
-    if(res.status==200){
-      statuModule.items=[...res.data.data]
-      totalClients.value=statuModule.items.length
-    }
-    // console.log("res => ",res)
-    loading.value = false;
-  })
-  .catch(error => {
-    loading.value = false;
-    console.error("error => ",error)
+async function consultAll(){
+  let res = await axios.get("/crm/clients")
+  if(res.status!=200){
+    console.error("error => ",res)
+    return []
+  }
+  return [...res.data.data]
 
-  })
+}
+
+async function consultAllComapaies(){
+  let res = await axios.get("/crm/companies")
+  if(res.status!=200){
+    console.error("error => ",res)
+    return []
+  }
+
+  return [...res.data.data]
+
 }
 
 
-onMounted(() => {
-  consultAll()
+onMounted(async () => {
+  loading.value = true;
+  let responseCliest= await consultAll()
+  let responseComponies = await consultAllComapaies()
+  // console.log("companies => ",responseComponies)
+  statuModule.items=[...responseCliest]
+  statuModule.comapaies=[...responseComponies]
+  loading.value = false;
 })
 </script>
 <template>
   <div>
     <ClientFormDialoge
+      :companies="statuModule.comapaies"
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
       :form-data="formulario"
@@ -114,14 +126,6 @@ onMounted(() => {
       @modal-close="cerrarModal"
     />
     <VCard title="Clientes">
-      <!-- <VTextField
-          v-model="search"
-          label="Search"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          hide-details
-          single-line
-        /> -->
       <VDivider />
       <div class="d-flex flex-wrap justify-end gap-4 ma-6">
         <VBtn color="primary" @click="mostarModal()">

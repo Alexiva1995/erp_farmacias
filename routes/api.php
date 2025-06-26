@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
@@ -63,8 +64,20 @@ Route::post('/adjustments/process-count', [InventoryAdjustmentController::class,
 //CRM
 Route::prefix("crm")->group(function () {
 
+    // Company
+    Route::prefix("companies")->group(function () {
+        // Route::post("/",                             [CompanyController::class, "create"]);
+        Route::get("/",                              [CompanyController::class, "consultAll"]);
+        // Route::get("/{id}",                          [CompanyController::class, "consultById"]);
+        // Route::delete("/{id}",                       [CompanyController::class, "deleteById"]);
+        // Route::put("/{id}",                          [CompanyController::class, "edit"]);
+    });
+
     // Client
     Route::prefix("clients")->group(function () {
+        // agregar dos endpoint 
+        // 1 - buscar cliente natural
+        // 1 - buscar cliente juridico
         Route::post("/",                             [ClientController::class, "create"]);
         Route::get("/",                              [ClientController::class, "consultAll"]);
         Route::get("/{id}",                          [ClientController::class, "consultById"]);

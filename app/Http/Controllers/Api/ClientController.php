@@ -21,7 +21,7 @@ class ClientController extends Controller
     public function create(CreateClientRequest $request): JsonResponse
     {
 
-        $respuestaDB = $this->client->create($request->client);
+        $respuestaDB = $this->client->create($request->client->all());
 
         return ApiResponse::success($respuestaDB, "client created successfully", 200);
     }
@@ -38,7 +38,7 @@ class ClientController extends Controller
             }
         }
 
-        $respuestaDB = $this->client->edit($request->client);
+        $respuestaDB = $this->client->edit($request->client->all());
 
         return ApiResponse::success($respuestaDB, "client successfully edited", 200);
     }
