@@ -19,8 +19,6 @@ return new class extends Migration {
             $table->foreignId('laboratory_id')->nullable()->constrained('laboratories')->default(null);
             $table->foreignId('origin_id')->nullable()->constrained('origins')->default(null);
             $table->foreignId('category_id')->nullable()->constrained('categories')->default(null);
-            $table->foreignId('group_id')->nullable()->constrained('groups_products')->default(null);
-
             $table->decimal('cost_price', 10, 2);
             $table->decimal('sale_price', 10, 2);
             $table->boolean('iva')->default(false)->comment('0 = No, 1 = Si');
