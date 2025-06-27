@@ -74,3 +74,4 @@ Route::post('/adjustments/process-count', [InventoryAdjustmentController::class,
 //Quotation
 Route::get('/quotation', [QuotationController::class, 'index']);
 Route::get('/quotation/{product}', [QuotationController::class, 'show']);
+Route::get('/quotation/barcode/{barcode}', [QuotationController::class, 'showByBarcode']);

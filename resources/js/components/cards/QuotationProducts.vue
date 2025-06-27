@@ -46,7 +46,9 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:searchQuery", "remove-quotation-product","remove","print-quotation"]);
+const emit = defineEmits(["update:searchQuery", 
+"remove-quotation-product","remove","print-quotation",
+"add-product-by-barcode"]);
 
 const removeQuotationProduct = (productId) => {
   emit('remove-quotation-product', productId);
@@ -114,7 +116,7 @@ const chipColor = "primary";
 </script>
 
 <template>
-  <VCard>
+  <VCard min-height="280" class="d-flex flex-column">
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
         <VCol cols="12" sm="12" md="12">
@@ -143,7 +145,7 @@ const chipColor = "primary";
       </VRow>
     </VCardText>
 
-    <VCardText class="d-flex flex-column pb-0">
+    <VCardText class="d-flex flex-column pb-0 flex-grow-1">
       <div
         class="scrollable-list-container"
         :class="{ 'show-scroll': props.quotationProducts.length > 2 }" >
@@ -206,7 +208,7 @@ const chipColor = "primary";
 <style scoped>
 /* Contenedor del scroll */
 .scrollable-list-container {
-  max-height: 100px; /* Ajusta esta altura según tus necesidades */
+  max-height: 130px; /* Ajusta esta altura según tus necesidades */
   overflow-y: hidden; /* Oculto por defecto */
   transition: overflow-y 0.3s ease-in-out; /* Transición suave si quieres */
 }

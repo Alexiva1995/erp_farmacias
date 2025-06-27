@@ -61,13 +61,13 @@ class ResourceService
  public function getExchangeRate(string $currencyCode): float
     {
         $cacheKey = "resources.exchangeRate_{$currencyCode}";
-        $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
+       // $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
             $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
             if ($exchangeRate) {
                 return (float) $exchangeRate->rate;
             }
             return 1.0; 
-        });
+       // });
         return $cachedRate;
     }
 

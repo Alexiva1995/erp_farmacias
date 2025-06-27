@@ -85,8 +85,7 @@ const selectCurrency = (currency) => {
 </script>
 
 <template>
-  <VCard>
-    <VCardItem>
+  <VCard min-height="280" class="d-flex flex-column"> <VCardItem>
       <VCardTitle>Cotización</VCardTitle>
 
       <template #append>
@@ -122,8 +121,8 @@ const selectCurrency = (currency) => {
         </VMenu>
       </template>
     </VCardItem>
-    <VCardText>
-      <VList class="card-list" density="compact" nav>
+
+    <VCardText class="flex-grow-1 d-flex flex-column"> <VList class="card-list" density="compact" nav>
         <VListItem
           v-for="item in breakdownItems"
           :key="item.title"
@@ -138,10 +137,8 @@ const selectCurrency = (currency) => {
         </VListItem>
       </VList>
 
-      <VDivider />
-      <div class="d-flex align-center justify-space-between gap-x-2 mt-3">
+      <VDivider class="mt-auto"/> <div class="d-flex align-center justify-space-between gap-x-2 mt-3">
         <h4 class="text-h4 text-center">Total Cotización</h4>
-
         <div class="text-h4 text-success">
           {{ formatCurrency(props.totalQuotationAmount) }}
         </div>

@@ -13,7 +13,7 @@ use App\Services\Resources\ResourceService;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * La tabla asociada con el modelo.

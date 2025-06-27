@@ -34,6 +34,10 @@ const selectedDisplayCurrency = ref('USD');
 const quotationDetails = ref(null);
 const isPrinting = ref(false);
 
+
+let barcodeInputTimer;
+const BARCODE_LENGTH_THRESHOLD = 10;
+
 const getItemPriceByCurrency = (item, currency) => {
   if (currency === 'BS') {
     return item.price_bs || 0;
@@ -142,6 +146,27 @@ watch(
   }
 );
 
+
+watch(searchQuery, (newValue) => {
+  clearTimeout(barcodeInputTimer); // Limpia cualquier temporizador anterior
+
+  // Si el campo se borra, no hacer nada
+  if (!newValue) {
+    return;
+  }
+
+  // Si la longitud es igual o mayor al umbral
+  if (newValue.length >= BARCODE_LENGTH_THRESHOLD) {
+    // Retraso para dar tiempo a que el usuario termine de escribir (opcional, pero buena práctica)
+    barcodeInputTimer = setTimeout(async () => {
+      // Intenta agregar el producto usando el searchQuery como barcode
+      await addProductToQuotationByBarcode(newValue);
+      // Limpia el campo de búsqueda después de intentar agregar
+      searchQuery.value = '';
+    }, 300); // Pequeño retraso de 300ms
+  }
+});
+
 onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
@@ -152,6 +177,22 @@ const updateTableOptions = (options) => {
   itemsPerPage.value = options.itemsPerPage;
   sortBy.value = options.sortBy[0]?.key;
   orderBy.value = options.sortBy[0]?.order;
+};
+
+
+const addProductToQuotationByBarcode = async (barcode) => {
+  try {
+    const response = await axios.get(`/quotation/barcode/${barcode}`); // Asumiendo un endpoint para buscar por código de barras
+    const productDetails = response.data; // Esperamos que la API devuelva los detalles del producto
+
+    // Luego, llamamos a tu función existente para agregar el producto por su ID
+    // con una cantidad de 1 por defecto (puedes ajustar esto)
+    await addProductToQuotation({ productId: productDetails.id, quantity: 1 });
+
+  } catch (error) {
+    console.error('Error al agregar producto por código de barras:', error.response ? error.response.data : error.message);
+    toast.error('Producto no encontrado o error al agregar por código de barras.');
+  }
 };
 
 
@@ -364,6 +405,7 @@ const saveAndPrintQuotation = async () => {
       </VCol>
       <VCol cols="12" sm="12" md="6">
         <QuotationProducts
+           v-model:searchQuery="searchQuery"
           :quotation-products="quotationItems"
           :selected-display-currency="selectedDisplayCurrency"
           @remove-quotation-product="removeQuotationItem"

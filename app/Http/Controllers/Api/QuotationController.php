@@ -54,6 +54,17 @@ class QuotationController extends Controller
         return response()->json($detailedProduct);
     }
 
+    public function showByBarcode(string $barcode)
+    {
+
+        $product = Product::where('barcode', $barcode)->first();
+        if (!$product) {
+            return response()->json(['message' => 'Producto no encontrado.'], 404);
+        }
+        $product->loadMissing('laboratory');
+        return response()->json($product);
+    }
+
     /**
      * Update the specified resource in storage.
      */
