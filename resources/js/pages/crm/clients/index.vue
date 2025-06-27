@@ -1,6 +1,7 @@
 <script setup lang="js">
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { onMounted, reactive } from 'vue';
 // TODO: la tabla actual usarla para consultar a todos los clientes naturales
 // TODO: crear una tabla donde se pueda lista los clientes juridicos
@@ -12,7 +13,7 @@ const statuModule= reactive({
 
 const modal= reactive({
   statu:false,
-  titulo:"Nuevo Cliente"
+  titulo:"Nuevo"
 })
 
 const formulario= reactive({
@@ -28,6 +29,7 @@ const formulario= reactive({
   company_id:"",
 })
 const formularioError= reactive({
+  id:"",
   identification:"",
   identification_type:"",
   name:"",
@@ -51,6 +53,7 @@ const itemsPerPage = ref(10)
 
 function mostarModal(){
   modal.statu=true
+  modal.titulo="Nuevo Cliente"
 }
 
 function cerrarModal(payload){
@@ -69,10 +72,12 @@ function limpiarDatosFormulario(){
   formulario.email=""
   formulario.phone=""
   formulario.address=""
+  formulario.birthdate=""
   formulario.company_id=""
 }
 
 function limpiarErroresFormulario(){
+  formularioError.id=""
   formularioError.identification=""
   formularioError.identification_type=""
   formularioError.name=""
@@ -80,6 +85,7 @@ function limpiarErroresFormulario(){
   formularioError.email=""
   formularioError.phone=""
   formularioError.address=""
+  formularioError.birthdate=""
   formularioError.company_id=""
 }
 
@@ -104,6 +110,59 @@ async function consultAllComapaies(){
 
 }
 
+function enviar(payload){
+  if(formulario.id==null){
+    crear(payload)
+  }
+  else{
+    actualizar(payload)
+  }
+}
+
+async function crear(data){
+  try {
+     let respuesApi=await axios.post("/crm/clients",data)
+    if(respuesApi.status==200){
+        toast.success("El cliente se a guardado correctamente")
+        cerrarModal(false)
+    }
+  } catch (error) {
+    toast.error("Error al crear el cliente")
+    console.log("error en el servidor => ",error)
+    let errores={...error.response.data.data.errors}
+    cargarErrores(errores)
+  }
+}
+
+async function actualizar(data){
+  try {
+    let respuesApi=await axios.put(`/crm/clients/${data.get("id")}`,data)
+    if(respuesApi.status==200){
+        toast.success("Se guardaron los cambios correctamente")
+        cerrarModal(false)
+    }
+  } catch (error) {
+    toast.error("Error al guardar los cambios del cliente")
+    console.log("error en el servidor => ",error)
+    let errores={...error.response.data.data.errors}
+    cargarErrores(errores)
+  }
+}
+
+function cargarErrores(errores){
+  formularioError.id=(errores.id)?errores.id.join(", "):""
+  formularioError.identification=(errores.identification)?errores.identification.join(", "):""
+  formularioError.identification_type=(errores.identification_type)?errores.identification_type.join(", "):""
+  formularioError.name=(errores.name)?errores.name.join(", "):""
+  formularioError.last_name=(errores.last_name)?errores.last_name.join(", "):""
+  formularioError.email=(errores.email)?errores.email.join(", "):""
+  formularioError.phone=(errores.phone)?errores.phone.join(", "):""
+  formularioError.address=(errores.address)?errores.address.join(", "):""
+  formularioError.birthdate=(errores.birthdate)?errores.birthdate.join(", "):""
+  formularioError.company_id=(errores.company_id)?errores.company_id.join(", "):""
+}
+
+
 
 onMounted(async () => {
   loading.value = true;
@@ -124,6 +183,8 @@ onMounted(async () => {
       :form-data="formulario"
       :form-error="formularioError"
       @modal-close="cerrarModal"
+      @clear-error-form="limpiarErroresFormulario"
+      @save="enviar"
     />
     <VCard title="Clientes">
       <VDivider />

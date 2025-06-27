@@ -1,6 +1,6 @@
 <script setup lang="js">
 
-import { VDateInput } from 'vuetify/labs/VDateInput'
+import { VDateInput } from 'vuetify/labs/VDateInput';
 
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
@@ -10,22 +10,41 @@ const props= defineProps({
   formError: {type: Object, default: () => []},
 })
 
-const emit= defineEmits(["modalClose"])
+const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
 
 function close(){
   emit("modalClose",false)
 }
 
+function generarFormData(estado){
+
+  let formData = new FormData();
+
+  Object.entries(estado).forEach(([key, value]) => {
+    if (value instanceof File) {
+      formData.append(key, value); // Archivo (Blob/File)
+    } else if (typeof value === 'object' && value !== null) {
+      formData.append(key, JSON.stringify(value)); // Objetos anidados
+    } else {
+      formData.append(key, value); // Strings/números
+    }
+  });
+
+  return formData
+}
+
 
 function submitForm(){
-  console.log("enviar datos")
+  emit("clearErrorForm")
+  let data=generarFormData(props.formData)
+  emit("save",data)
 }
 </script>
 <template>
   <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
     <VCard>
       <VCardTitle class="d-flex align-center">
-        <span class="headline">{{ props.titulo }} {{ formData.name }}</span>
+        <span class="headline">{{ props.titulo }}</span>
         <VSpacer />
         <VBtn icon variant="text" @click="close">
           <VIcon>tabler-x</VIcon>
@@ -35,6 +54,24 @@ function submitForm(){
       <VDivider />
       <VContainer>
         <VRow>
+          <VCol cols="12" sm="6" md="6" lg="6">
+            <VSelect
+              v-model="formData.identification_type"
+              :error-messages="formError.identification_type"
+              label="Tipo"
+              variant="outlined"
+              :items="['V-', 'J-', 'G-', 'E-']"
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="6" lg="6">
+            <VTextField
+              v-model="formData.identification"
+              :error-messages="formError.identification"
+              label="Identificación"
+              type="text"
+              variant="outlined"
+            />
+          </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
             <VTextField
               v-model="formData.name"
@@ -58,7 +95,7 @@ function submitForm(){
               v-model="formData.email"
               :error-messages="formError.email"
               label="Correo"
-              type="number"
+              type="text"
               variant="outlined"
             />
           </VCol>
@@ -69,15 +106,6 @@ function submitForm(){
               label="Telefono"
               type="number"
               variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
-            <VSelect
-              v-model="formData.identification_type"
-              :error-messages="formError.identification_type"
-              label="Tipo"
-              variant="outlined"
-              :items="['V-', 'J-', 'G-', 'E-']"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6" v-if="formData.id != null">

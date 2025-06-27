@@ -6,6 +6,7 @@ use App\Contracts\Client;
 use App\Data\CreateClientData;
 use App\Data\EditClientData;
 use App\Repository\ClientRepository;
+use App\Repository\CompanyRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,7 +14,7 @@ class ClientServices implements Client
 {
 
     public function __construct(
-        protected ClientRepository $clientRepository
+        protected ClientRepository $clientRepository,
     ) {}
 
     public function create(array $data): Model
@@ -41,7 +42,6 @@ class ClientServices implements Client
     {
         $this->clientRepository->deleteById($id);
     }
-
 
     public function consultAll(): Collection
     {

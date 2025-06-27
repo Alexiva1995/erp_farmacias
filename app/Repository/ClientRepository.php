@@ -38,6 +38,11 @@ class ClientRepository
         return Client::query()->with("company")->get();
     }
 
+    public function consultAllWithoutCompany(): Collection
+    {
+        return Client::query()->get();
+    }
+
     public function deleteById(string $id): void
     {
         Client::where("id", "=", $id)->delete();
