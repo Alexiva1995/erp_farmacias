@@ -171,11 +171,12 @@ const chipColor = "primary";
       </div>
     </VCardText>
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined"  @click="remove()"> Cancelar </VBtn>
-      <VBtn color="primary" variant="flat" @click="handlePrintButtonClick"> Imprimir </VBtn>
-      <VBtn color="success" variant="flat"> Compartir </VBtn>
+    <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
+    <VBtn color="secondary" variant="outlined" @click="remove()" class="flex-grow-1"> Cancelar </VBtn>
+    <VBtn color="primary" variant="flat" @click="handlePrintButtonClick" class="flex-grow-1"> Imprimir </VBtn>
+    <VBtn color="success" variant="flat" class="flex-grow-1"> Compartir </VBtn>
     </VCardActions>
+
   </VCard>
 </template>
 
