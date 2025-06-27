@@ -2,12 +2,13 @@
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from 'sweetalert2';
 import { onMounted, reactive } from 'vue';
-// TODO: la tabla actual usarla para consultar a todos los clientes naturales
-// TODO: crear una tabla donde se pueda lista los clientes juridicos
 
 const statuModule= reactive({
   items:[],
+  itemsClientesNaturales:[],
+  itemsClientesJuridicos:[],
   comapaies:[],
 })
 
@@ -41,10 +42,10 @@ const formularioError= reactive({
   company_id:"",
 })
 
-const totalClients = ref(0)
 const loading = ref(false)
 
 const page = ref(1)
+const pageTablaClientesJuridicos = ref(1)
 const itemsPerPage = ref(10)
 // const sortBy = ref()
 // const orderBy = ref()
@@ -56,11 +57,30 @@ function mostarModal(){
   modal.titulo="Nuevo Cliente"
 }
 
+function mostarModoEdit(payload){
+  let cliente= statuModule.items.find(client => client.id==payload)
+  modal.statu=true
+  modal.titulo=`${cliente.name} ${cliente.last_name}`
+  insertarDatosAlFormulario({...cliente})
+}
+
 function cerrarModal(payload){
-  // console.log("payload => ",payload)
   modal.statu=payload
   limpiarDatosFormulario()
   limpiarErroresFormulario()
+}
+
+function insertarDatosAlFormulario(datos){
+  formulario.id=datos.id
+  formulario.identification=datos.identification
+  formulario.identification_type=datos.identification_type
+  formulario.name=datos.name
+  formulario.last_name=datos.last_name
+  formulario.email=datos.email
+  formulario.phone=datos.phone
+  formulario.address=datos.address
+  formulario.birthdate=datos.birthdate
+  formulario.company_id=datos.company_id
 }
 
 function limpiarDatosFormulario(){
@@ -72,7 +92,7 @@ function limpiarDatosFormulario(){
   formulario.email=""
   formulario.phone=""
   formulario.address=""
-  formulario.birthdate=""
+  formulario.birthdate=null
   formulario.company_id=""
 }
 
@@ -111,6 +131,7 @@ async function consultAllComapaies(){
 }
 
 function enviar(payload){
+  console.log("data id => ",payload.get("id"))
   if(formulario.id==null){
     crear(payload)
   }
@@ -121,10 +142,11 @@ function enviar(payload){
 
 async function crear(data){
   try {
-     let respuesApi=await axios.post("/crm/clients",data)
+    let respuesApi=await axios.post("/crm/clients",data)
     if(respuesApi.status==200){
         toast.success("El cliente se a guardado correctamente")
         cerrarModal(false)
+        await actualizarTabla()
     }
   } catch (error) {
     toast.error("Error al crear el cliente")
@@ -136,10 +158,16 @@ async function crear(data){
 
 async function actualizar(data){
   try {
-    let respuesApi=await axios.put(`/crm/clients/${data.get("id")}`,data)
+    let config={
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+    }
+    let respuesApi=await axios.post(`/crm/clients/edit/${data.get("id")}`,data,config)
     if(respuesApi.status==200){
         toast.success("Se guardaron los cambios correctamente")
         cerrarModal(false)
+        await actualizarTabla()
     }
   } catch (error) {
     toast.error("Error al guardar los cambios del cliente")
@@ -162,16 +190,65 @@ function cargarErrores(errores){
   formularioError.company_id=(errores.company_id)?errores.company_id.join(", "):""
 }
 
+async function actualizarTabla(){
+  loading.value = true;
+  let responseCliest= await consultAll()
+  statuModule.items=[...responseCliest]
+  statuModule.itemsClientesNaturales=filtrarPorTipoDeIdentificacion([...responseCliest],["V-","E-","G-"])
+  statuModule.itemsClientesJuridicos=filtrarPorTipoDeIdentificacion([...responseCliest],["J-"])
+  loading.value = false;
+}
+
+function filtrarPorTipoDeIdentificacion(clients,isFiltro){
+  return clients.filter(item => isFiltro.includes(item.identification_type));
+}
+
+async function confirmarEliminarCliente(payload){
+  // alert(payload)
+
+  const result = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: "¡No podrás revertir la eliminación de este cliente!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
+    cancelButtonText: '<span style="color: white;">Cancelar</span>',
+    // confirmButtonText: 'Sí, ¡eliminar!',
+    // cancelButtonText: 'Cancelar',
+    // color: '#111',
+    // confirmButtonColor: '#7367f0',
+    // cancelButtonColor: '#d33',
+    // background: '#2f3349',
+  });
+
+  if (result.isConfirmed) {
+    await eliminarCliente(payload)
+  }
+}
+
+
+async function eliminarCliente(id){
+  try {
+    let respuesApi=await axios.delete(`/crm/clients/${id}`)
+    if(respuesApi.status==200){
+        toast.success("El cliente se a eliminado correctamente")
+        cerrarModal(false)
+        await actualizarTabla()
+    }
+  } catch (error) {
+    toast.error("Error al eliminar el cliente")
+    console.log("error en el servidor => ",error)
+    let errores={...error.response.data.data.errors}
+    cargarErrores(errores)
+  }
+}
 
 
 onMounted(async () => {
-  loading.value = true;
-  let responseCliest= await consultAll()
+  await actualizarTabla()
+
   let responseComponies = await consultAllComapaies()
-  // console.log("companies => ",responseComponies)
-  statuModule.items=[...responseCliest]
   statuModule.comapaies=[...responseComponies]
-  loading.value = false;
 })
 </script>
 <template>
@@ -196,11 +273,25 @@ onMounted(async () => {
       </div>
       <VDivider />
       <ClientTable
-        :clients="statuModule.items"
-        :total-clients="totalClients"
+        :clients="statuModule.itemsClientesNaturales"
+        :total-clients="statuModule.itemsClientesNaturales.length"
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
+        @edit="mostarModoEdit"
+        @delete="confirmarEliminarCliente"
+      />
+    </VCard>
+    <div class="mb-5"></div>
+    <VCard>
+      <ClientTable
+        :clients="statuModule.itemsClientesJuridicos"
+        :total-clients="statuModule.itemsClientesJuridicos.length"
+        :loading="loading"
+        :items-per-page="itemsPerPage"
+        :page="pageTablaClientesJuridicos"
+        @edit="mostarModoEdit"
+        @delete="confirmarEliminarCliente"
       />
     </VCard>
   </div>

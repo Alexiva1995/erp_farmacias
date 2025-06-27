@@ -75,13 +75,10 @@ Route::prefix("crm")->group(function () {
 
     // Client
     Route::prefix("clients")->group(function () {
-        // agregar dos endpoint 
-        // 1 - buscar cliente natural
-        // 1 - buscar cliente juridico
         Route::post("/",                             [ClientController::class, "create"]);
         Route::get("/",                              [ClientController::class, "consultAll"]);
         Route::get("/{id}",                          [ClientController::class, "consultById"]);
         Route::delete("/{id}",                       [ClientController::class, "deleteById"]);
-        Route::put("/{id}",                          [ClientController::class, "edit"]);
+        Route::post("/edit/{id}",                    [ClientController::class, "edit"]);
     });
 });

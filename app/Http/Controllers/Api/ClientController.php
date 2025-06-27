@@ -34,7 +34,10 @@ class ClientController extends Controller
         $buscarPorIdentificaion = $this->client->consultByIdentification($request->client->identification);
         if ($buscarPorIdentificaion) {
             if ($request->client->id != $buscarPorIdentificaion->id) {
-                return ApiResponse::error("Cannot update because the ID is already in use", 400);
+                $errors = [
+                    "identification" => ["Cannot update because the ID is already in use"]
+                ];
+                return ApiResponse::error("Cannot update because the ID is already in use", 400, $errors);
             }
         }
 

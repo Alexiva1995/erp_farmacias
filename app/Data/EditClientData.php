@@ -23,6 +23,6 @@ class EditClientData extends Data
         public string $address,
         public string $company_id,
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y/m/d')]
-        public DateTime|Optional $birthdate,
+        public DateTime|null $birthdate,
     ) {}
 }

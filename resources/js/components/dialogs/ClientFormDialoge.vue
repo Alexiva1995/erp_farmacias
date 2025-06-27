@@ -10,7 +10,7 @@ const props= defineProps({
   formError: {type: Object, default: () => []},
 })
 
-const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
+const emit= defineEmits(["modalClose", 'save', 'clearErrorForm',"update:busqueda"])
 
 function close(){
   emit("modalClose",false)
@@ -37,6 +37,11 @@ function generarFormData(estado){
 function submitForm(){
   emit("clearErrorForm")
   let data=generarFormData(props.formData)
+  if(props.formData.id!=null){
+    if(props.formData.birthdate=="" || props.formData.birthdate==null){
+      data.delete("birthdate")
+    }
+  }
   emit("save",data)
 }
 </script>
@@ -108,12 +113,17 @@ function submitForm(){
               variant="outlined"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6" v-if="formData.id != null">
+          <VCol
+            cols="12"
+            sm="6"
+            md="6"
+            lg="6"
+            v-if="formData.id != null && formData.identification_type != 'J-'"
+          >
             <VDateInput
               v-model="formData.birthdate"
               :error-messages="formError.birthdate"
               label="Fecha de Nacimiento"
-              type="date"
               variant="outlined"
             />
           </VCol>
