@@ -48,6 +48,7 @@ Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
+Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 
 // Expirations
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
@@ -74,4 +75,3 @@ Route::post('/adjustments/process-count', [InventoryAdjustmentController::class,
 //Quotation
 Route::get('/quotation', [QuotationController::class, 'index']);
 Route::get('/quotation/{product}', [QuotationController::class, 'show']);
-Route::get('/quotation/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);

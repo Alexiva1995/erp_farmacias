@@ -48,6 +48,40 @@ const getItemPriceByCurrency = (item, currency) => {
   }
 };
 
+
+const totalAmountBs = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach(item => {
+    const basePriceBs = item.price_bs || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    total += (basePriceBs * quantity) * (1 + taxRate);
+  });
+  return total;
+});
+
+const totalAmountUsd = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach(item => {
+    const basePriceUsd = item.price || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    total += (basePriceUsd * quantity) * (1 + taxRate);
+  });
+  return total;
+});
+
+const totalAmountCop = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach(item => {
+    const basePriceCop = item.price_cop || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    total += (basePriceCop * quantity) * (1 + taxRate);
+  });
+  return total;
+});
+
 const totalProductsAmount = computed(() => {
   let total = 0;
   quotationItems.value.forEach(item => {
@@ -182,7 +216,7 @@ const updateTableOptions = (options) => {
 
 const addProductToQuotationByBarcode = async (barcode) => {
   try {
-    const response = await axios.get(`/quotation/barcode/${barcode}`); // Asumiendo un endpoint para buscar por código de barras
+    const response = await axios.get(`/barcode/${barcode}`); // Asumiendo un endpoint para buscar por código de barras
     const productDetails = response.data; // Esperamos que la API devuelva los detalles del producto
 
     // Luego, llamamos a tu función existente para agregar el producto por su ID
@@ -248,7 +282,6 @@ const addProductToQuotation = async ({ productId, quantity }) => {
 };
 
 
-// Método para remover un producto de la lista de cotización
 const removeQuotationItem = (productId) => {
   quotationItems.value = quotationItems.value.filter(item => item.id !== productId);
   console.log(`Producto ${productId} removido de la cotización.`);
@@ -392,6 +425,9 @@ const saveAndPrintQuotation = async () => {
            v-model:searchQuery="searchQuery"
           :quotation-products="quotationItems"
           :selected-display-currency="selectedDisplayCurrency"
+          :total-amount-bs="totalAmountBs" 
+          :total-amount-usd="totalAmountUsd"
+          :total-amount-cop="totalAmountCop"
           @remove-quotation-product="removeQuotationItem"
           @remove="removeQuotation"
           @print-quotation="saveAndPrintQuotation"

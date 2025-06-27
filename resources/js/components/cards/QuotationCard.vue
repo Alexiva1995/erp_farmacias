@@ -54,6 +54,8 @@ const selectCurrency = (currency) => {
   emit('currency-changed', currency);
 };
 
+
+
 </script>
 
 <template>
