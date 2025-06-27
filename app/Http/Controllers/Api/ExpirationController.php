@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ExpiredLog;
 use App\Models\ProductLot;
 use App\Services\Expirations\ExpirationActionService;
 use App\Services\Expirations\ExpirationQueryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+
 
 class ExpirationController extends Controller
 {
@@ -52,10 +50,7 @@ class ExpirationController extends Controller
     }
     public function getSummary()
     {
-        // El servicio ahora devuelve una colección (array)
         $summaries = $this->queryService->getExpiredLotsSummary();
-
-        // Devolvemos el array directamente. El frontend se encargará de mostrarlo.
         return response()->json($summaries);
     }
 
