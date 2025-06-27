@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -20,19 +19,15 @@ return new class extends Migration
             $table->renameColumn('from_colombia', 'is_colombian_origin');
             $table->boolean('is_colombian_origin')->nullable()->default(0)->change();
 
-            $table->dropColumn('stock');
+            // $table->dropColumn('stock');
             $table->dropColumn('created_at');
             $table->dropColumn('updated_at');
 
-            if (Schema::hasColumn('products', 'deleted_at')) {
-                $table->dropColumn('deleted_at');
-            }
-
             $table->decimal('sales_average', 10, 2)->default(0)->after('photo_url');
-            $table->foreignId(column: 'group_id')->nullable()->constrained('groups_products')->nullOnDelete()->after('category_id');  
+            $table->foreignId(column: 'group_id')->nullable()->constrained('groups_products')->nullOnDelete()->after('category_id');
             $table->foreignId('cycle_id')->nullable()->constrained('inventory_cycles')->nullOnDelete()->after('category_id');
-            $table->boolean('is_deleted')->nullable()->default(false)->after('photo_url');      
-               
+            $table->boolean('is_deleted')->nullable()->default(false)->after('photo_url');
+
             $table->timestamps();
         });
 

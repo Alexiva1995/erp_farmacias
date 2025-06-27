@@ -26,7 +26,7 @@ class ExpirationActionService
 
         try {
             $quantityToExpire = $lot->quantity;
-            $costPerUnit = $lot->cost_price;
+            $costPerUnit = $lot->unit_cost;
             $totalLostValue = $quantityToExpire * $costPerUnit;
             $lot->quantity = 0;
             $lot->save();
