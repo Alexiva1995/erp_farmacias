@@ -12,6 +12,10 @@ export default [
       {
         title: 'clientes',
         to: 'crm-clients',
+      },
+      {
+        title: 'Empresas',
+        to: 'crm-companies',
       }
     ],
   },

@@ -9,7 +9,7 @@ const statuModule= reactive({
   items:[],
   itemsClientesNaturales:[],
   itemsClientesJuridicos:[],
-  comapaies:[],
+  comapanies:[],
 })
 
 const modal= reactive({
@@ -119,7 +119,7 @@ async function consultAll(){
 
 }
 
-async function consultAllComapaies(){
+async function consultAllcomapanies(){
   let res = await axios.get("/crm/companies")
   if(res.status!=200){
     console.error("error => ",res)
@@ -247,14 +247,14 @@ async function eliminarCliente(id){
 onMounted(async () => {
   await actualizarTabla()
 
-  let responseComponies = await consultAllComapaies()
-  statuModule.comapaies=[...responseComponies]
+  let responseComponies = await consultAllcomapanies()
+  statuModule.comapanies=[...responseComponies]
 })
 </script>
 <template>
   <div>
     <ClientFormDialoge
-      :companies="statuModule.comapaies"
+      :companies="statuModule.comapanies"
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
       :form-data="formulario"

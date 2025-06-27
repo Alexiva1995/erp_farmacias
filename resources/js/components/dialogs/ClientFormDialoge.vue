@@ -1,6 +1,10 @@
 <script setup lang="js">
 
+import dayjs from "dayjs";
+import utc from 'dayjs/plugin/utc';
 import { VDateInput } from 'vuetify/labs/VDateInput';
+
+dayjs.extend(utc);
 
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
@@ -41,8 +45,31 @@ function submitForm(){
     if(props.formData.birthdate=="" || props.formData.birthdate==null){
       data.delete("birthdate")
     }
+    else{
+      console.log(data.get("birthdate"))
+      let fecha=data.get("birthdate")
+      data.delete("birthdate")
+      fecha=formatearFechaCompleta(fecha)
+      console.log(fecha)
+      data.set("birthdate",fecha)
+    }
   }
   emit("save",data)
+}
+
+function formatearFechaCompleta(fechaInput) {
+    const fechaSinComillas = String(fechaInput).replace(/"/g, '');
+    const fecha = new Date(fechaSinComillas);
+
+    if (isNaN(fecha.getTime())) {
+        console.error('Fecha inválida:', fechaInput);
+        return null; // o devuelve el input original
+    }
+
+    const año = fecha.getUTCFullYear();
+    const mes = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getUTCDate()).padStart(2, '0');
+    return `${año}/${mes}/${dia}`;
 }
 </script>
 <template>

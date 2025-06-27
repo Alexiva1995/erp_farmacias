@@ -19,7 +19,7 @@ class CompanyRepository
 
     public function edit(array $data): Model
     {
-        $record = Company::where("id", "=", $data["id"])->update($data);
+        Company::where("id", "=", $data["id"])->update($data);
         return Company::find($data["id"]);
     }
 
