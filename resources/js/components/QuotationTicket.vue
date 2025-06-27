@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue';
+import { formatCurrency } from "@/utils/currencyFormatter";
+
 const props = defineProps({
   quotationDetails: {
     type: Object,
@@ -38,31 +40,6 @@ const getItemPriceByCurrency = (item, currency) => {
   }
 };
 
-const formatCurrency = (value, currency = props.selectedDisplayCurrency) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    value = 0;
-  }
-  let locale = 'en-US';
-  let currencyCode = currency;
-
-  if (currency === 'BS') {
-    locale = 'es-VE';
-    currencyCode = 'VEF'; // Usa VEF o VES dependiendo de tu estándar ISO para el Bolívar
-  } else if (currency === 'COP') {
-    locale = 'es-CO';
-    currencyCode = 'COP';
-  } else if (currency === 'USD') {
-    locale = 'en-US';
-    currencyCode = 'USD';
-  }
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
 
 watch(() => props.totalIVAAmount, (newValue, oldValue) => {
   console.log('QuotationTicket: totalIVAAmount ha cambiado de', oldValue, 'a', newValue);

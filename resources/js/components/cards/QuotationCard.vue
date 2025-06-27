@@ -1,6 +1,6 @@
 <script setup>
 import { ref , computed } from "vue";
-
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   totalProductsAmount: {
@@ -18,10 +18,14 @@ const props = defineProps({
   quotationItems: {
     type: Array,
     default: () => []
-  }
+  },
+  selectedDisplayCurrency: { 
+    type: String,
+    default: "USD",
+  },
 });
 
-const selectedCurrency = ref("USD");
+
 const availableCurrency = ref(["USD", "BS", "COP"]);
 
 
@@ -29,7 +33,6 @@ const emit = defineEmits(['currency-changed']);
 
 const exemptAmount = computed(() => {
   let totalExempt = 0;
-  console.log(props.totalIvaAmount);
   props.quotationItems.forEach(item => {
     if (item.taxRate === 0) {
       const price = item.price || 0;
@@ -40,67 +43,35 @@ const exemptAmount = computed(() => {
   return totalExempt;
 });
 
+
 const breakdownItems = computed(() => [
-  { title: "Exento", amount: props.totalProductsAmount },
+  { title: "Subtotal", amount: props.totalProductsAmount },
   { title: "IVA", amount: props.totalIvaAmount },
 ]);
 
 
-const formatCurrency = (value, currency = selectedCurrency.value) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    value = 0;
-  }
-  let locale = 'en-US';
-  let currencyCode = currency;
-
-  if (currency === 'BS') {
-    locale = 'es-VE';
-    currencyCode = 'VEF'; // Usar VEF o VES según la ISO que manejes para Bolívar
-  } else if (currency === 'COP') {
-    locale = 'es-CO';
-    currencyCode = 'COP';
-  } else if (currency === 'USD') {
-    locale = 'en-US';
-    currencyCode = 'USD';
-  }
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
-
 const selectCurrency = (currency) => {
-  selectedCurrency.value = currency;
   emit('currency-changed', currency);
 };
-
-// watch(selectedCurrency, (newCurrency) => {
-//   console.log('Moneda seleccionada:', newCurrency);
-// });
 
 </script>
 
 <template>
-  <VCard min-height="280" class="d-flex flex-column"> <VCardItem>
+  <VCard min-height="280" class="d-flex flex-column">
+    <VCardItem>
       <VCardTitle>Cotización</VCardTitle>
-
       <template #append>
         <VMenu>
-          <template #activator="{ props: props }">
-            <VBtn
+          <template #activator="{ props: menuProps }"> <VBtn
               type="button"
               color="primary"
               variant="tonal"
               density="default"
               size="small"
               class="mx-auto"
-              v-bind="props"
+              v-bind="menuProps"
             >
-              <span>{{ selectedCurrency }}</span>
+              <span>{{ props.selectedDisplayCurrency }}</span>
 
               <template #append>
                 <VIcon icon="tabler-chevron-down" size="16" />
@@ -122,7 +93,8 @@ const selectCurrency = (currency) => {
       </template>
     </VCardItem>
 
-    <VCardText class="flex-grow-1 d-flex flex-column"> <VList class="card-list" density="compact" nav>
+    <VCardText class="flex-grow-1 d-flex flex-column">
+      <VList class="card-list" density="compact" nav>
         <VListItem
           v-for="item in breakdownItems"
           :key="item.title"
@@ -131,16 +103,17 @@ const selectCurrency = (currency) => {
           <VListItemTitle class="font-weight-medium">{{ item.title}}</VListItemTitle>
           <template #append>
             <div class="d-flex align-center">
-              <span class="me-3 text-medium-emphasis">{{formatCurrency(item.amount)}}</span>
+              <span class="me-3 text-medium-emphasis">{{formatCurrency(item.amount, props.selectedDisplayCurrency)}}</span>
             </div>
           </template>
         </VListItem>
       </VList>
 
-      <VDivider class="mt-auto"/> <div class="d-flex align-center justify-space-between gap-x-2 mt-3">
+      <VDivider class="mt-auto"/>
+      <div class="d-flex align-center justify-space-between gap-x-2 mt-3">
         <h4 class="text-h4 text-center">Total Cotización</h4>
         <div class="text-h4 text-success">
-          {{ formatCurrency(props.totalQuotationAmount) }}
+          {{ formatCurrency(props.totalQuotationAmount, props.selectedDisplayCurrency) }}
         </div>
       </div>
     </VCardText>

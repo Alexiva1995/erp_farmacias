@@ -261,23 +261,6 @@ const removeQuotation = () => {
 };
 
 
-const formatCurrency = (value, currencyCode = 'USD') => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    return 'N/A';
-  }
-  let locale = 'en-US';
-  if (currencyCode === 'BS') {
-    locale = 'es-VE';
-  } else if (currencyCode === 'COP') {
-    locale = 'es-CO';
-  }
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(value);
-};
-
-
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
@@ -400,6 +383,7 @@ const saveAndPrintQuotation = async () => {
           :total-iva-amount="totalIVAAmount"
           :total-quotation-amount="totalQuotationAmount"
           :quotation-items="quotationItems"
+          :selected-display-currency="selectedDisplayCurrency"
           @currency-changed="handleCurrencyChanged"
           />
       </VCol>

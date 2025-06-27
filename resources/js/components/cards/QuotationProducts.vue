@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 // --- PROPS ---
 const props = defineProps({
@@ -68,33 +69,6 @@ const getProductPrice = (product, currency) => {
     return product.price || 0;
   }
 };
-
-const formatCurrency = (value, currency = props.selectedDisplayCurrency) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    value = 0;
-  }
-  let locale = 'en-US';
-  let currencyCode = currency;
-
-  if (currency === 'BS') {
-    locale = 'es-VE';
-    currencyCode = 'VEF'; // Usa VEF o VES dependiendo de tu estándar ISO para el Bolívar
-  } else if (currency === 'COP') {
-    locale = 'es-CO';
-    currencyCode = 'COP';
-  } else if (currency === 'USD') {
-    locale = 'en-US';
-    currencyCode = 'USD';
-  }
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
 
 
 const totalSelectedQuantity = computed(() => {
@@ -181,10 +155,10 @@ const chipColor = "primary";
               <div class="d-flex align-center">
                 <span class="text-body-1 me-2">{{
                     formatCurrency(
-                      getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity,
-                      props.selectedDisplayCurrency
-                    )
-                  }}</span>
+                    getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity,
+                    props.selectedDisplayCurrency
+                  )
+                }}</span>
                 <VBtn
                   icon="tabler-trash"
                   variant="text"

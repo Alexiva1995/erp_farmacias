@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick } from "vue"; 
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -67,17 +68,6 @@ const handleAddProduct = (productId) => {
   emit('add-product', { productId, quantity: quantityToAdd });
 };
 
-const formatCurrencyUsd = (value) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-};
-
-const formatCurrencyBs = (value) => {
-  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VEF' }).format(value);
-};
-
-const formatCurrencyCop = (value) => {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value);
-};
 </script>
 
 <template>
@@ -105,9 +95,9 @@ const formatCurrencyCop = (value) => {
         </div>
       </template>
 
-      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrencyUsd(item.sale_price) }}</span></template>
-      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrencyBs(item.price_bs) }}</span></template>
-      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{ formatCurrencyCop(item.price_cop) }}</span></template>
+      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.sale_price,'USD') }}</span></template>
+      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_bs,'BS') }}</span></template>
+      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_cop,'COP') }}</span></template>
 
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">
