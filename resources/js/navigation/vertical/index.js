@@ -1,9 +1,4 @@
-import appsAndPages from './apps-and-pages'
-import charts from './charts'
-import dashboard from './dashboard'
-import forms from './forms'
 import inventory from './inventory'
-import others from './others'
-import uiElements from './ui-elements'
+import lot from './lot'
 
-export default [...dashboard, ...inventory, ...appsAndPages, ...uiElements, ...forms, ...charts, ...others]
+export default [...inventory, ...lot]

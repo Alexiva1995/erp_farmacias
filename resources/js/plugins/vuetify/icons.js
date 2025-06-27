@@ -45,6 +45,9 @@ const aliases = {
   minus: 'tabler-minus',
   sortAsc: 'tabler-arrow-up',
   sortDesc: 'tabler-arrow-down',
+  checkboxOn: 'mdi-checkbox-marked',
+  checkboxOff: 'mdi-checkbox-blank-outline',
+  checkboxIndeterminate: 'mdi-minus-box',
 }
 
 export const iconify = {
