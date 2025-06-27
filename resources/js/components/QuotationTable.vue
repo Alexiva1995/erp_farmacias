@@ -137,14 +137,6 @@ const formatCurrencyCop = (value) => {
           </IconBtn>
         </div>
       </template>
-
-      <template #no-data>
-        <VRow>
-          <VCol cols="12">
-            <h4 class="text-h4 text-center">No hay productos disponibles para mostrar.</h4>
-          </VCol>
-        </VRow>
-      </template>
     </VDataTableServer>
   </VCard>
 </template>

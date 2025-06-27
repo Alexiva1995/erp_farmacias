@@ -40,11 +40,13 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  selectedDisplayCurrency: {
+    type: String,
+    default: "USD",
+  },
 });
 
-const productCost = ref(28);
-
-const emit = defineEmits(["update:searchQuery", "remove-quotation-product","remove"]);
+const emit = defineEmits(["update:searchQuery", "remove-quotation-product","remove","print-quotation"]);
 
 const removeQuotationProduct = (productId) => {
   emit('remove-quotation-product', productId);
@@ -54,27 +56,44 @@ const remove = () => {
   emit('remove');
 };
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-VE", { // Asegúrate que el formato sea el que deseas
-    style: "currency",
-    currency: "USD", // O la moneda principal de tu cotización
+
+const getProductPrice = (product, currency) => {
+  if (currency === 'BS') {
+    return product.price_bs || 0;
+  } else if (currency === 'COP') {
+    return product.price_cop || 0;
+  } else {
+    return product.price || 0;
+  }
+};
+
+const formatCurrency = (value, currency = props.selectedDisplayCurrency) => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    value = 0;
+  }
+  let locale = 'en-US';
+  let currencyCode = currency;
+
+  if (currency === 'BS') {
+    locale = 'es-VE';
+    currencyCode = 'VEF'; // Usa VEF o VES dependiendo de tu estándar ISO para el Bolívar
+  } else if (currency === 'COP') {
+    locale = 'es-CO';
+    currencyCode = 'COP';
+  } else if (currency === 'USD') {
+    locale = 'en-US';
+    currencyCode = 'USD';
+  }
+
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
-// Si necesitas los precios en BS y COP aquí, asegúrate de que el `itemToAdd` los tenga.
-const formatCurrencyBs = (value) => {
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "VEF", // Moneda para Bolívares
-  }).format(value);
-};
 
-const formatCurrencyCop = (value) => {
-  return new Intl.NumberFormat("es-CO", { // Ajusta el locale si es necesario
-    style: "currency",
-    currency: "COP", // Moneda para Pesos Colombianos
-  }).format(value);
-};
 
 const totalSelectedQuantity = computed(() => {
   let total = 0;
@@ -86,6 +105,10 @@ const totalSelectedQuantity = computed(() => {
   });
   return total;
 });
+
+const handlePrintButtonClick = () => {
+  emit('print-quotation');
+};
 
 const chipColor = "primary";
 </script>
@@ -155,8 +178,11 @@ const chipColor = "primary";
             <template #append>
               <div class="d-flex align-center">
                 <span class="text-body-1 me-2">{{
-                  formatCurrency(product.price * product.selectedQuantity)
-                }}</span>
+                    formatCurrency(
+                      getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity,
+                      props.selectedDisplayCurrency
+                    )
+                  }}</span>
                 <VBtn
                   icon="tabler-trash"
                   variant="text"
@@ -171,7 +197,7 @@ const chipColor = "primary";
 
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined"  @click="remove()"> Cancelar </VBtn>
-      <VBtn color="primary" variant="flat"> Imprimir </VBtn>
+      <VBtn color="primary" variant="flat" @click="handlePrintButtonClick"> Imprimir </VBtn>
       <VBtn color="success" variant="flat"> Compartir </VBtn>
     </VCardActions>
   </VCard>
@@ -188,26 +214,5 @@ const chipColor = "primary";
 /* Mostrar scroll solo cuando la clase 'show-scroll' esté presente */
 .scrollable-list-container.show-scroll {
   overflow-y: auto; /* Muestra el scroll vertical */
-}
-
-/* Estilos de la lista y los botones */
-.card-list .v-list-item {
-  padding-inline: 0px !important;
-}
-
-/* Ajustes específicos para los botones de cantidad dentro del prepend */
-.v-list-item__prepend .v-btn {
-  min-width: unset !important;
-  padding: 0 4px;
-}
-
-/* Ajuste para el texto de cantidad */
-.v-list-item__prepend .text-body-2 {
-  line-height: 1; /* Para que la altura del texto no afecte el espaciado entre botones */
-}
-
-/* Alineación vertical del contenido si es necesario */
-.v-list-item__content {
-  justify-content: center; /* Centra verticalmente el título/subtítulo */
 }
 </style>

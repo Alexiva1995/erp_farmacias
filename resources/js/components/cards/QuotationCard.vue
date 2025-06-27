@@ -1,40 +1,88 @@
 <script setup>
-import { ref } from "vue";
+import { ref , computed } from "vue";
+
+
+const props = defineProps({
+  totalProductsAmount: {
+    type: Number,
+    default: 0,
+  },
+  totalIvaAmount: {
+    type: Number,
+    default: 0,
+  },
+  totalQuotationAmount: {
+    type: Number,
+    default: 0,
+  },
+  quotationItems: {
+    type: Array,
+    default: () => []
+  }
+});
 
 const selectedCurrency = ref("USD");
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const totalQuotation = ref("0.00");
 
-// --- Datos que alimentan el card ---
-const earningsData = ref({
-  amount: 4374.42, // Usar números reales, el formateo será en la función formatCurrency
+
+const emit = defineEmits(['currency-changed']);
+
+const exemptAmount = computed(() => {
+  let totalExempt = 0;
+  console.log(props.totalIvaAmount);
+  props.quotationItems.forEach(item => {
+    if (item.taxRate === 0) {
+      const price = item.price || 0;
+      const quantity = item.selectedQuantity || 0;
+      totalExempt += price * quantity;
+    }
+  });
+  return totalExempt;
 });
 
-const breakdownItems = ref([
-  { title: "Exento", amount: 756.26 },
-  { title: "IVA", amount: 2207.03 },
+const breakdownItems = computed(() => [
+  { title: "Exento", amount: props.totalProductsAmount },
+  { title: "IVA", amount: props.totalIvaAmount },
 ]);
 
-// --- Funciones de Formato ---
-const formatCurrency = (value) => {
-  const formattedNumber = new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2, // Asegura 2 decimales
+
+const formatCurrency = (value, currency = selectedCurrency.value) => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    value = 0;
+  }
+  let locale = 'en-US';
+  let currencyCode = currency;
+
+  if (currency === 'BS') {
+    locale = 'es-VE';
+    currencyCode = 'VEF'; // Usar VEF o VES según la ISO que manejes para Bolívar
+  } else if (currency === 'COP') {
+    locale = 'es-CO';
+    currencyCode = 'COP';
+  } else if (currency === 'USD') {
+    locale = 'en-US';
+    currencyCode = 'USD';
+  }
+
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
-
-  // Luego, añadir el símbolo de moneda manualmente
-  return `${formattedNumber} USD`;
 };
+
 
 const selectCurrency = (currency) => {
   selectedCurrency.value = currency;
+  emit('currency-changed', currency);
 };
+
+// watch(selectedCurrency, (newCurrency) => {
+//   console.log('Moneda seleccionada:', newCurrency);
+// });
+
 </script>
-<style scoped>
-.card-list .v-list-item {
-  padding-inline: 0px !important;
-}
-</style>
 
 <template>
   <VCard>
@@ -43,7 +91,7 @@ const selectCurrency = (currency) => {
 
       <template #append>
         <VMenu>
-          <template #activator="{ props }">
+          <template #activator="{ props: props }">
             <VBtn
               type="button"
               color="primary"
@@ -81,14 +129,10 @@ const selectCurrency = (currency) => {
           :key="item.title"
           class="rounded-0"
         >
-          <VListItemTitle class="font-weight-medium">{{
-            item.title
-          }}</VListItemTitle>
+          <VListItemTitle class="font-weight-medium">{{ item.title}}</VListItemTitle>
           <template #append>
             <div class="d-flex align-center">
-              <span class="me-3 text-medium-emphasis">{{
-                formatCurrency(item.amount)
-              }}</span>
+              <span class="me-3 text-medium-emphasis">{{formatCurrency(item.amount)}}</span>
             </div>
           </template>
         </VListItem>
@@ -99,7 +143,7 @@ const selectCurrency = (currency) => {
         <h4 class="text-h4 text-center">Total Cotización</h4>
 
         <div class="text-h4 text-success">
-          {{ formatCurrency(totalQuotation) }}
+          {{ formatCurrency(props.totalQuotationAmount) }}
         </div>
       </div>
     </VCardText>
