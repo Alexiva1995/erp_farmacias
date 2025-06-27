@@ -17,9 +17,24 @@ class CompanyRepository
         return $record;
     }
 
+    public function edit(array $data): Model
+    {
+        $record = Company::where("id", "=", $data["id"])->update($data);
+        return Company::find($data["id"]);
+    }
 
     public function consultAll(): Collection
     {
         return Company::query()->orderBy("name", "ASC")->get();
+    }
+
+    public function consultById(string $id): ?Model
+    {
+        return Company::find($id);
+    }
+
+    public function deleteById(string $id): void
+    {
+        Company::where("id", "=", $id)->delete();
     }
 }

@@ -15,6 +15,14 @@ class Company extends Model
 
     use SoftDeletes;
 
+    protected $fillable = [
+        "id",
+        "name",
+        "identification",
+        "address",
+        "type_company",
+    ];
+
     public function clients()
     {
         return $this->hasMany(Client::class);

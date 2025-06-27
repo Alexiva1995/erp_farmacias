@@ -26,7 +26,6 @@ class ClientController extends Controller
         return ApiResponse::success($respuestaDB, "client created successfully", 200);
     }
 
-    // TODO validar que la identificación ongresada por el usuario no este en uso por otro usuario si
     public function edit(EditClientRequest $request): JsonResponse
     {
 

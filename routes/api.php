@@ -66,11 +66,11 @@ Route::prefix("crm")->group(function () {
 
     // Company
     Route::prefix("companies")->group(function () {
-        // Route::post("/",                             [CompanyController::class, "create"]);
+        Route::post("/",                             [CompanyController::class, "create"]);
         Route::get("/",                              [CompanyController::class, "consultAll"]);
-        // Route::get("/{id}",                          [CompanyController::class, "consultById"]);
-        // Route::delete("/{id}",                       [CompanyController::class, "deleteById"]);
-        // Route::put("/{id}",                          [CompanyController::class, "edit"]);
+        Route::get("/{id}",                          [CompanyController::class, "consultById"]);
+        Route::delete("/{id}",                       [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}",                    [CompanyController::class, "edit"]);
     });
 
     // Client
