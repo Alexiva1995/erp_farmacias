@@ -17,14 +17,17 @@ class SuppliersSeeder extends Seeder
         $suppliers = json_decode($json, true);
 
         foreach ($suppliers as &$supplier) {
-            $supplier['supplier_name'] = $supplier['name'];
             $supplier['sales_phone'] = $supplier['advisor_phone_number'] ?? null;
             $supplier['collections_phone'] = $supplier['advisor_phone_number_2'] ?? null;
             $supplier['payment_method'] = $supplier['money'] === 'usd' ? 'Divisas' : 'Bs';
             $supplier['charges_igtf'] = $supplier['igtf'] ?? 0;
             $supplier['cash_payment'] = $supplier['cash_payment'] ?? 0;
+            $supplier['dispatch_days'] = json_encode($supplier['dispatch_days']);
+            $supplier['order_days'] = json_encode($supplier['order_days']);
 
-            unset($supplier['name'], $supplier['advisor_phone_number'], $supplier['advisor_phone_number_2'], $supplier['money'], $supplier['igtf']);
+
+
+            unset($supplier['advisor_phone_number'], $supplier['advisor_phone_number_2'], $supplier['money'], $supplier['igtf']);
         }
 
         // Insertar en chunks
