@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Services\Quotation\QuotationActionService;
 use App\Services\Quotation\QuotationQueryService;
 use App\Models\Product;
+use App\Http\Requests\StoreQuotationRequest;
+use Illuminate\Support\Facades\Log;
 
 class QuotationController extends Controller
 {
@@ -32,9 +34,24 @@ class QuotationController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreQuotationRequest $request)
     {
-        //
+        try {
+            $quotation = $this->quotationActionService->createQuotation($request->validated());
+            return response()->json([
+            'message' => 'Cotización guardada exitosamente.',
+            'product' => $quotation
+        ], 201);
+        } catch (\Exception $e) {
+            Log::error('Error al procesar solicitud de creación de cotización en el controlador: ' . $e->getMessage(), [
+                'request_data' => $request->validated(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Ocurrió un error al guardar la cotización. Por favor, inténtalo de nuevo.',
+                'error'   => $e->getMessage()
+            ], 500); 
+        }
     }
 
     /**

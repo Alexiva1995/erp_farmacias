@@ -49,22 +49,16 @@ watch(() => props.totalIVAAmount, (newValue, oldValue) => {
 <template>
 <div class="ticket-container">
     <div class="ticket-header">
-      <h3>Nombre de tu Empresa/Tienda</h3>
-      <p>Dirección: Calle 1, Sector X, Santa Teresa del Tuy</p>
-      <p>Teléfono: (0412) 123-4567</p>
-      <p>RIF: J-12345678-9</p>
-      <hr>
       <h4>COTIZACIÓN #{{ quotationDetails ? quotationDetails.id : 'N/A' }}</h4>
-      <p>Fecha: {{ new Date().toLocaleDateString('es-VE') }}</p>
-      <p>Hora: {{ new Date().toLocaleTimeString('es-VE') }}</p>
-      <hr>
+      <p> Fecha: {{ new Date().toLocaleDateString('es-VE') }}</p>
+      <p> {{ new Date().toLocaleTimeString('es-VE') }}</p>
     </div>
 
     <div class="ticket-body">
       <div class="ticket-item" style="font-weight: bold;">
-          <span class="ticket-item-qty">Cantidad.</span>
+          <span class="ticket-item-qty">#</span>
           <span class="ticket-item-name">Producto</span>
-          <span class="ticket-item-total">Total</span>
+          <span class="ticket-item-total">Precio</span>
       </div>
       <hr>
       <div v-for="item in quotationItems" :key="item.id" class="ticket-item">
@@ -94,7 +88,7 @@ watch(() => props.totalIVAAmount, (newValue, oldValue) => {
     <div class="ticket-footer">
       <hr>
       <p>¡Gracias por su preferencia!</p>
-      <p>Validez de la cotización: XX días.</p>
+      <p>Cotización valida solo por hoy</p>
     </div>
   </div>
 </template>

@@ -182,22 +182,15 @@ watch(
 
 
 watch(searchQuery, (newValue) => {
-  clearTimeout(barcodeInputTimer); // Limpia cualquier temporizador anterior
-
-  // Si el campo se borra, no hacer nada
+  clearTimeout(barcodeInputTimer);
   if (!newValue) {
     return;
   }
-
-  // Si la longitud es igual o mayor al umbral
   if (newValue.length >= BARCODE_LENGTH_THRESHOLD) {
-    // Retraso para dar tiempo a que el usuario termine de escribir (opcional, pero buena práctica)
     barcodeInputTimer = setTimeout(async () => {
-      // Intenta agregar el producto usando el searchQuery como barcode
       await addProductToQuotationByBarcode(newValue);
-      // Limpia el campo de búsqueda después de intentar agregar
       searchQuery.value = '';
-    }, 300); // Pequeño retraso de 300ms
+    }, 300);
   }
 });
 
@@ -216,13 +209,9 @@ const updateTableOptions = (options) => {
 
 const addProductToQuotationByBarcode = async (barcode) => {
   try {
-    const response = await axios.get(`/barcode/${barcode}`); // Asumiendo un endpoint para buscar por código de barras
-    const productDetails = response.data; // Esperamos que la API devuelva los detalles del producto
-
-    // Luego, llamamos a tu función existente para agregar el producto por su ID
-    // con una cantidad de 1 por defecto (puedes ajustar esto)
+    const response = await axios.get(`/barcode/${barcode}`);
+    const productDetails = response.data;
     await addProductToQuotation({ productId: productDetails.id, quantity: 1 });
-
   } catch (error) {
     console.error('Error al agregar producto por código de barras:', error.response ? error.response.data : error.message);
     toast.error('Producto no encontrado o error al agregar por código de barras.');
@@ -284,13 +273,11 @@ const addProductToQuotation = async ({ productId, quantity }) => {
 
 const removeQuotationItem = (productId) => {
   quotationItems.value = quotationItems.value.filter(item => item.id !== productId);
-  console.log(`Producto ${productId} removido de la cotización.`);
   toast.success('Producto eliminado exitosamente');
 };
 
 const removeQuotation = () => {
   quotationItems.value = [];
-  toast.success('Cotización cancelada');
 };
 
 
@@ -303,7 +290,6 @@ const handleClearFilters = () => {
 
 const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
-  console.log('Moneda seleccionada en el padre:', selectedDisplayCurrency.value);
 };
 
 
@@ -340,20 +326,16 @@ const saveAndPrintQuotation = async () => {
       grand_total_usd: totalQuotationAmountUSD.value,
       currency: selectedDisplayCurrency.value,
       products: quotationItems.value.map(item => ({
-        product_id: item.id,
+        id: item.id,
         quantity: item.selectedQuantity,
         tax_rate: item.taxRate,
       })),
     };
-
-   // const response = await axios.post("/quotations", payload);
-   // quotationDetails.value = response.data.quotation;
+    const response = await axios.post("/quotations", payload);
+    quotationDetails.value = response.data.quotation;
     toast.success('Cotización guardada exitosamente. Preparando impresión...');
-
     isPrinting.value = true;
     await nextTick();
-    console.log('QuotationTicket: totalIVAAmount', totalIVAAmount);
-    // La lógica de impresión
     const printContents = document.getElementById('orderInvoicePrintArea');
     if (printContents) {
       const printWindow = window.open('', '', 'height=600,width=800');
@@ -370,7 +352,9 @@ const saveAndPrintQuotation = async () => {
                 font-size: 10px;
                 line-height: 1.2;
             }
-            .ticket-header, .ticket-footer { text-align: center; margin-bottom: 5px; }
+            .ticket-header { text-align: center; margin-bottom: 5px; display: flex; justify-content: flex-start; align-items: flex-start; }
+            .ticket-header h4, .ticket-header p {margin: 0; line-height: 1.2;}
+            .ticket-footer { text-align: center; margin-bottom: 5px; }
             .ticket-line { display: flex; justify-content: space-between; }
             .ticket-item { display: flex; justify-content: space-between; margin-bottom: 2px; }
             .ticket-item-qty { width: 15%; text-align: left; }

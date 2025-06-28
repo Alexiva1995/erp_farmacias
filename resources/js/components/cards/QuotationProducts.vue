@@ -107,7 +107,6 @@ if (props.quotationProducts.length === 0) {
   }
   const fecha = new Date();
   const productos_array = [];
-console.log(props.quotationProducts);
   props.quotationProducts.forEach(product => {
 
     const priceWithIvaUsd = (product.price || 0) * (1 + (product.taxRate || 0));
@@ -124,7 +123,6 @@ console.log(props.quotationProducts);
     productos_array.push(rows);
   });
 
-  // Construir el mensaje completo de WhatsApp
   const whatsappMessage = 'Mensaje de presupuesto\n\n' +
                           'Fecha: ' + fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '\n' +
                           '\nBuenas tardes, Estimado Cliente!\n' +
@@ -243,15 +241,12 @@ const chipColor = "primary";
 </template>
 
 <style scoped>
-/* Contenedor del scroll */
 .scrollable-list-container {
-  max-height: 130px; /* Ajusta esta altura según tus necesidades */
-  overflow-y: hidden; /* Oculto por defecto */
-  transition: overflow-y 0.3s ease-in-out; /* Transición suave si quieres */
+  max-height: 130px;
+  overflow-y: hidden;
+  transition: overflow-y 0.3s ease-in-out;
 }
-
-/* Mostrar scroll solo cuando la clase 'show-scroll' esté presente */
 .scrollable-list-container.show-scroll {
-  overflow-y: auto; /* Muestra el scroll vertical */
+  overflow-y: auto; 
 }
 </style>
