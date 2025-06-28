@@ -40,6 +40,9 @@ const emit= defineEmits(["edit",'delete','verClientes'])
         <IconBtn @click="emit('delete', item.id)"
           ><VIcon icon="tabler-trash"
         /></IconBtn>
+        <IconBtn @click="emit('verClientes', item.id)"
+          ><VIcon icon="tabler-users"
+        /></IconBtn>
       </template>
     </VDataTableServer>
   </VCard>

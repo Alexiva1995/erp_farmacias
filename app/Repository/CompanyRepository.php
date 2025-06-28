@@ -25,7 +25,7 @@ class CompanyRepository
 
     public function consultAll(): Collection
     {
-        return Company::query()->orderBy("name", "ASC")->get();
+        return Company::query()->with("clients")->orderBy("name", "ASC")->get();
     }
 
     public function consultById(string $id): ?Model
