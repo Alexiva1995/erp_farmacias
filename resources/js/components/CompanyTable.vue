@@ -18,7 +18,7 @@ const headers = [
   { title: 'Acciones',        key: 'acciones' },
 ];
 
-const emit= defineEmits(["edit",'delete','verClientes'])
+const emit= defineEmits(["edit",'delete','verClientes',"update:options"])
 </script>
 <template>
   <VCard>
@@ -29,6 +29,7 @@ const emit= defineEmits(["edit",'delete','verClientes'])
       :items-length="props.total"
       :loading="loading"
       :page="props.page"
+      @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }"
         ><span class="font-weight-medium">{{ item.id }}</span></template

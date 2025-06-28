@@ -80,4 +80,24 @@ class ClientController extends Controller
 
         return ApiResponse::success($validarEliminacio, "The client was successfully deleted", 200);
     }
+
+    public function filrar(Request $request)
+    {
+        $filtros = [
+            "itemsPerPage" => $request->itemsPerPage,
+            "page"         => $request->page,
+        ];
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+        if ($request->filled("tipo")) {
+            $filtros["tipo"] = $request->tipo;
+        }
+
+        $repuesta = $this->client->filtrar($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
 }

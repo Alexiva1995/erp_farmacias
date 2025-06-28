@@ -3,8 +3,11 @@
 namespace App\Repository;
 
 use App\Models\Client;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class ClientRepository
 {
@@ -46,5 +49,23 @@ class ClientRepository
     public function deleteById(string $id): void
     {
         Client::where("id", "=", $id)->delete();
+    }
+
+
+    public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
+    {
+        $consulta = Client::query()->with("company");
+
+        $consulta->whereIn("identification_type", $filtros["tipo"]);
+
+        if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
+            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+        } else {
+            $consulta->orderBy("name", "ASC");
+        }
+
+        Log::info($consulta->toSql());
+
+        return $consulta->paginate($perPage);
     }
 }

@@ -79,9 +79,8 @@ const loading = ref(false)
 
 const page = ref(1)
 const itemsPerPage = ref(10)
-// const sortBy = ref()
-// const orderBy = ref()
-// const search = ref()
+const sortBy = ref()
+const orderBy = ref()
 
 
 const loadingTableCliente = ref(false)
@@ -353,6 +352,33 @@ async function crearCliente(data){
     cargarErrores(errores)
   }
 }
+
+// function filtrar(){
+//   let datosFiltros={
+//     loading,
+
+//   }
+// }
+
+// const updateTableOptions = options => {
+//   page.value = options.page
+//   itemsPerPage.value = options.itemsPerPage
+//   sortBy.value = options.sortBy[0]?.key
+//   orderBy.value = options.sortBy[0]?.order
+// }
+
+// watch(
+//     [page,itemsPerPage,orderBy,sortBy],
+//   () =>{
+//     console.log("ula uwu")
+//   },
+//   {deep:true}
+// )
+
+// watch([searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate], () => {
+//   page.value = 1;
+// });
+
 
 onMounted(async () => {
   await actualizarTabla()

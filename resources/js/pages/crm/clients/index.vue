@@ -8,7 +8,9 @@ import { onMounted, reactive } from 'vue';
 const statuModule= reactive({
   items:[],
   itemsClientesNaturales:[],
+  totalClientesNaturales:0,
   itemsClientesJuridicos:[],
+  totalClientesJuridicos:0,
   comapanies:[],
 })
 
@@ -45,11 +47,14 @@ const formularioError= reactive({
 const loading = ref(false)
 
 const page = ref(1)
-const pageTablaClientesJuridicos = ref(1)
 const itemsPerPage = ref(10)
-// const sortBy = ref()
-// const orderBy = ref()
-// const search = ref()
+const sortBy = ref()
+const orderBy = ref()
+
+const pageTablaClientesJuridicos = ref(1)
+const itemsPerPageTablaClientesJuridicos = ref(10)
+const sortByTablaClientesJuridicos = ref()
+const orderByTablaClientesJuridicos = ref()
 
 
 function mostarModal(){
@@ -131,7 +136,7 @@ async function consultAllcomapanies(){
 }
 
 function enviar(payload){
-  console.log("data id => ",payload.get("id"))
+  // console.log("data id => ",payload.get("id"))
   if(formulario.id==null){
     crear(payload)
   }
@@ -192,10 +197,30 @@ function cargarErrores(errores){
 
 async function actualizarTabla(){
   loading.value = true;
-  let responseCliest= await consultAll()
-  statuModule.items=[...responseCliest]
-  statuModule.itemsClientesNaturales=filtrarPorTipoDeIdentificacion([...responseCliest],["V-","E-","G-"])
-  statuModule.itemsClientesJuridicos=filtrarPorTipoDeIdentificacion([...responseCliest],["J-"])
+  // let responseCliest= await consultAll()
+  let filtroNaturales={
+    page:page.value,
+    itemsPerPage:itemsPerPage.value,
+    orderBy:orderBy.value,
+    sortBy:sortBy.value,
+    tipo:["V-","E-","G-"]
+  }
+  let respuestaApiNaturles= await filtrar(filtroNaturales)
+  // let jurudicos= await filtrar(["J-"])
+  // statuModule.items=[...naturales]
+  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
+  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+    let filtroJuridica={
+    page:pageTablaClientesJuridicos.value,
+    itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
+    orderBy:orderByTablaClientesJuridicos.value,
+    sortBy:sortByTablaClientesJuridicos.value,
+    tipo:["J-"]
+  }
+  let respuestaApiJurudicas= await filtrar(filtroJuridica)
+  statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
+  statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
+  // statuModule.itemsClientesJuridicos=jurudicos
   loading.value = false;
 }
 
@@ -243,6 +268,58 @@ async function eliminarCliente(id){
   }
 }
 
+const updateTableOptions = options => {
+  // console.log(options)
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage
+  sortBy.value = options.sortBy[0]?.key
+  orderBy.value = options.sortBy[0]?.order
+}
+
+const updateTableOptionsJuridico = options => {
+  // console.log(options)
+  pageTablaClientesJuridicos.value = options.page
+  itemsPerPageTablaClientesJuridicos.value = options.itemsPerPage
+  sortByTablaClientesJuridicos.value = options.sortBy[0]?.key
+  orderByTablaClientesJuridicos.value = options.sortBy[0]?.order
+}
+
+watch(
+    [page,itemsPerPage,orderBy,sortBy],
+  async () =>{
+    await actualizarTabla()
+  }
+)
+
+watch(
+    [pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
+  async () =>{
+    await actualizarTabla()
+  }
+)
+
+// watch([page,itemsPerPage,orderBy,sortBy], () => {
+//   page.value = 1;
+// });
+
+async function filtrar(dataFiltro){
+  let datosFiltros={
+    page:dataFiltro.page,
+    itemsPerPage:dataFiltro.itemsPerPage,
+    orderBy:dataFiltro.orderBy,
+    sortBy:dataFiltro.sortBy,
+    tipo:dataFiltro.tipo,
+  }
+  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${page.value}`,datosFiltros)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
+
 
 onMounted(async () => {
   await actualizarTabla()
@@ -274,24 +351,26 @@ onMounted(async () => {
       <VDivider />
       <ClientTable
         :clients="statuModule.itemsClientesNaturales"
-        :total-clients="statuModule.itemsClientesNaturales.length"
+        :total-clients="statuModule.totalClientesNaturales"
         :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
+        :items-per-page="itemsPerPageTablaClientesJuridicos"
+        :page="pageTablaClientesJuridicos"
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
+        @update:options="updateTableOptions"
       />
     </VCard>
     <div class="mb-5"></div>
     <VCard>
       <ClientTable
         :clients="statuModule.itemsClientesJuridicos"
-        :total-clients="statuModule.itemsClientesJuridicos.length"
+        :total-clients="statuModule.totalClientesJuridicos"
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="pageTablaClientesJuridicos"
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
+        @update:options="updateTableOptionsJuridico"
       />
     </VCard>
   </div>

@@ -80,5 +80,6 @@ Route::prefix("crm")->group(function () {
         Route::get("/{id}",                          [ClientController::class, "consultById"]);
         Route::delete("/{id}",                       [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}",                    [ClientController::class, "edit"]);
+        Route::post("/filrar",                       [ClientController::class, "filrar"]);
     });
 });
