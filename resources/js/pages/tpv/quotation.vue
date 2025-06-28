@@ -23,6 +23,7 @@ const searchQuery = ref('')
 const selectedLaboratory = ref(null)
 const selectedOrigin = ref(null)
 const stockStatusFilter = ref(null)
+const selectedSortOption = ref(null);
 
 const laboratories = ref([])
 const origins = ref([])
@@ -131,8 +132,9 @@ const fetchProducts = async () => {
   const params = {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
+    originId: selectedOrigin.value, 
     ...(stockStatusFilter.value !== null && { hasStock: stockStatusFilter.value }),
+    ...(selectedSortOption.value && {sortBy: selectedSortOption.value.sortBy, orderBy: selectedSortOption.value.orderBy,}),
     page: page.value, itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value, orderBy: orderBy.value,
   };
@@ -159,7 +161,8 @@ watch(
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
-    stockStatusFilter
+    stockStatusFilter,
+    selectedSortOption
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -174,6 +177,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    selectedSortOption
   ],
   () => {
     page.value = 1;
@@ -193,6 +197,17 @@ watch(searchQuery, (newValue) => {
     }, 300);
   }
 });
+
+
+watch(selectedSortOption, (newOption) => {
+  if (newOption) {
+    sortBy.value = newOption.sortBy;
+    orderBy.value = newOption.orderBy;
+  } else {
+    sortBy.value = 'id';
+    orderBy.value = 'asc';
+  }
+}, { immediate: true });
 
 onMounted(() => {
   fetchSelectOptions();
@@ -286,6 +301,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  selectedSortOption.value = null;
 };
 
 const handleCurrencyChanged = (newCurrency) => {
@@ -420,16 +436,18 @@ const saveAndPrintQuotation = async () => {
       </VCol>
     </VRow>
 
-    <QuotationFilters
+     <QuotationFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:selectedSortOption="selectedSortOption"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
-    />
+    >
+    </QuotationFilters>
 
     <QuotationTable
       :products="products"

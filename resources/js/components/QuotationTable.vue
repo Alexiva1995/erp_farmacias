@@ -14,13 +14,13 @@ const inputQuantities = ref(new Map());
 const emit = defineEmits(['update:options', 'add-product']);
 
 const headers = [
-  { title: 'Unidades', key: 'lots_sum_quantity', sortable: true },
+  { title: 'Unidades', key: 'lots_sum_quantity',sortable: true},
   { title: 'Código', key: 'id', sortable: true },
-  { title: 'Código de Barra', key: 'barcode', sortable: true },
-  { title: 'Producto', key: 'name' },
-  { title: 'Precio en USD', key: 'sale_price', sortable: false },
-  { title: 'Precio en Bs', key: 'price_bs' },
-  { title: 'Precio en COP', key: 'price_cop' },
+  { title: 'Código de Barra', key: 'barcode', sortable: false },
+  { title: 'Producto', key: 'name',  sortable: true },
+  { title: 'Precio en USD', key: 'sale_price', sortable: true },
+  { title: 'Precio en Bs', key: 'price_bs', sortable: true},
+  { title: 'Precio en COP', key: 'price_cop', sortable: true },
   { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'  },
 ];
 

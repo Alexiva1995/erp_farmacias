@@ -78,6 +78,9 @@ class QuotationQueryService
                 $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
                 return $query->orderBy($subQuery, $orderBy);
 
+            case 'lots_sum_quantity':
+                return $query->orderBy('lots_sum_quantity', $orderBy);
+
             case 'id':
             case 'name':
             case 'cost_price':

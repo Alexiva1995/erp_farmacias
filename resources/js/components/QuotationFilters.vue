@@ -3,9 +3,9 @@ const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
   selectedOrigin: [Number, String, null],
-  stockStatusFilter: [Boolean, null],
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
+  selectedSortOption: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -13,12 +13,22 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:stockStatusFilter",
+  "update:selectedSortOption",
   "clear",
 ]);
 
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
+];
+
+const sortOptions = [
+  { title: 'Precio (Menor a Mayor)', value: { sortBy: 'sale_price', orderBy: 'asc' } },
+  { title: 'Precio (Mayor a Menor)', value: { sortBy: 'sale_price', orderBy: 'desc' } },
+  { title: 'Unidades (Menor a Mayor)', value: { sortBy: 'lots_sum_quantity', orderBy: 'asc' } },
+  { title: 'Unidades (Mayor a Menor)', value: { sortBy: 'lots_sum_quantity', orderBy: 'desc' } },
+  { title: 'Más Vendidos', value: { sortBy: 'sales_average', orderBy: 'desc' } },
+  { title: 'Menos Vendidos', value: { sortBy: 'sales_average', orderBy: 'asc' } },
 ];
 </script>
 
@@ -63,6 +73,16 @@ const stockOptions = [
             :items="stockOptions"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
+          />
+        </VCol>
+           <VCol cols="12" sm="6" md="3">
+          <VSelect
+            :model-value="props.selectedSortOption"
+            label="Ordenar por"
+            :items="sortOptions"
+            placeholder="Selecciona una opción de ordenamiento"
+            clearable
+            @update:model-value="emit('update:selectedSortOption', $event)"
           />
         </VCol>
       </VRow>
