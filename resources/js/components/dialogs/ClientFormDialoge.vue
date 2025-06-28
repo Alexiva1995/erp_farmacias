@@ -1,10 +1,6 @@
 <script setup lang="js">
-
-import dayjs from "dayjs";
-import utc from 'dayjs/plugin/utc';
 import { VDateInput } from 'vuetify/labs/VDateInput';
 
-dayjs.extend(utc);
 
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},

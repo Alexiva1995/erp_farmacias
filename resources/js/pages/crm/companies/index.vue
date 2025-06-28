@@ -1,6 +1,7 @@
 <script setup lang="js">
 
 import CompanyTable from "@/components/CompanyTable.vue";
+import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
 import axios from "@/plugins/axios";
 // import { toast } from "@/plugins/sweetalert";
 // import Swal from 'sweetalert2';
@@ -25,6 +26,7 @@ const statuModule= reactive({
 const formulario= reactive({
   id:null,
   identification:"",
+  type_company:"",
   name:"",
   address:"",
 })
@@ -32,6 +34,7 @@ const formulario= reactive({
 const formularioError= reactive({
   id:"",
   identification:"",
+  type_company:"",
   name:"",
   address:"",
 })
@@ -43,9 +46,41 @@ const itemsPerPage = ref(10)
 // const sortBy = ref()
 // const orderBy = ref()
 // const search = ref()
+
+function cerrarModal(payload){
+  modal.statu=payload
+  limpiarDatosFormulario()
+  limpiarErroresFormulario()
+}
+
+function insertarDatosAlFormulario(datos){
+  formulario.id=datos.id
+  formulario.identification=datos.identification
+  formulario.type_company=datos.type_company
+  formulario.name=datos.name
+  formulario.address=datos.address
+}
+
+function limpiarDatosFormulario(){
+  formulario.id=null
+  formulario.identification=""
+  formulario.type_company=""
+  formulario.name=""
+  formulario.address=""
+}
+
+function limpiarErroresFormulario(){
+  formularioError.id=""
+  formularioError.identification=""
+  formularioError.type_company=""
+  formularioError.name=""
+  formularioError.address=""
+}
+
+
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Cliente"
+  modal.titulo="Nueva Empresa"
 }
 
 async function consultAll(){
@@ -73,12 +108,25 @@ function confirmarEliminar(payload){
   alert("modal confirmar")
 }
 
+function enviar(payload){
+
+}
+
 onMounted(async () => {
   await actualizarTabla()
 })
 </script>
 <template>
   <div>
+    <CompanyFormDialoge
+      :modal-formulario="modal.statu"
+      :titulo="modal.titulo"
+      :form-data="formulario"
+      :form-error="formularioError"
+      @modal-close="cerrarModal"
+      @clear-error-form="limpiarErroresFormulario"
+      @save="enviar"
+    />
     <VCard title="Empresas">
       <VDivider />
       <div class="d-flex flex-wrap justify-end gap-4 ma-6">

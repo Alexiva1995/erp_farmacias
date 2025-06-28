@@ -33,6 +33,7 @@ declare module 'vue' {
     CardStatisticsVerticalSimple: typeof import('./resources/js/@core/components/CardStatisticsVerticalSimple.vue')['default']
     ClientFormDialoge: typeof import('./resources/js/components/dialogs/ClientFormDialoge.vue')['default']
     ClientTable: typeof import('./resources/js/components/ClientTable.vue')['default']
+    CompanyFormDialoge: typeof import('./resources/js/components/dialogs/CompanyFormDialoge.vue')['default']
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
