@@ -298,10 +298,6 @@ watch(
   }
 )
 
-// watch([page,itemsPerPage,orderBy,sortBy], () => {
-//   page.value = 1;
-// });
-
 async function filtrar(dataFiltro){
   let datosFiltros={
     page:dataFiltro.page,
@@ -310,7 +306,7 @@ async function filtrar(dataFiltro){
     sortBy:dataFiltro.sortBy,
     tipo:dataFiltro.tipo,
   }
-  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${page.value}`,datosFiltros)
+  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${datosFiltros.page}`,datosFiltros)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }

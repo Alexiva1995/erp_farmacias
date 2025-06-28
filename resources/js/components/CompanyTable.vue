@@ -12,10 +12,10 @@ const props= defineProps({
 const headers = [
   { title: 'id',              key: 'id',},
   { title: 'Nombre',          key: 'name',},
-  { title: 'Tipo',            key: 'type_company'},
+  { title: 'Tipo',            key: 'type_company', sortable: false},
   { title: 'Identificación',  key: 'identification'},
-  { title: 'Dirección',       key: 'address' },
-  { title: 'Acciones',        key: 'acciones' },
+  { title: 'Dirección',       key: 'address', sortable: false },
+  { title: 'Acciones',        key: 'acciones', sortable: false },
 ];
 
 const emit= defineEmits(["edit",'delete','verClientes',"update:options"])

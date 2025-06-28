@@ -56,15 +56,20 @@ class ClientRepository
     {
         $consulta = Client::query()->with("company");
 
-        $consulta->whereIn("identification_type", $filtros["tipo"]);
+
+        if (array_key_exists("tipo", $filtros)) {
+            $consulta->whereIn("identification_type", $filtros["tipo"]);
+        }
+
+        if (array_key_exists("company_id", $filtros)) {
+            $consulta->where("company_id", "=", $filtros["company_id"]);
+        }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
             $consulta->orderBy("name", "ASC");
         }
-
-        Log::info($consulta->toSql());
 
         return $consulta->paginate($perPage);
     }

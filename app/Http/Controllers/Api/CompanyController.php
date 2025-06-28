@@ -69,4 +69,21 @@ class CompanyController extends Controller
 
         return ApiResponse::success($validarEliminacio, "The company was successfully deleted", 200);
     }
+
+    public function filrar(Request $request)
+    {
+        $filtros = [
+            "itemsPerPage" => $request->itemsPerPage,
+            "page"         => $request->page,
+        ];
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $repuesta = $this->company->filtrar($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
 }

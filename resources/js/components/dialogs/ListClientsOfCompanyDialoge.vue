@@ -12,11 +12,11 @@ const props= defineProps({
 })
 
 const headers = [
-  { title: 'Nombre', key: 'fullName', value: item => `${item.name} ${item.last_name}`, sortable: false, },
-  { title: 'Identidad', key: 'identificaction', value: item => `${item.identification_type}${item.identification}`, sortable: false, },
+  { title: 'Nombre', key: 'name', value: item => `${item.name} ${item.last_name}`, sortable: true, },
+  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, },
 ];
 
-const emit= defineEmits(["modalClose", 'mostrarFormulario'])
+const emit= defineEmits(["modalClose", 'mostrarFormulario',"update:options"])
 
 function close(){
   props.status.statu=false
@@ -50,6 +50,7 @@ function mostrarFormulario(){
         :items-length="props.total"
         :loading="loading"
         :page="props.page"
+        @update:options="(options) => emit('update:options', options)"
       />
       <div class="mb-3"></div>
       <VDivider />

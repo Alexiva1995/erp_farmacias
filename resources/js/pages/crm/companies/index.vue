@@ -7,7 +7,7 @@ import ListClientsOfCompanyDialoge from "@/components/dialogs/ListClientsOfCompa
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from 'sweetalert2';
-import { onMounted, reactive } from 'vue';
+import { onMounted, reactive, watch } from 'vue';
 
 const modal= reactive({
   statu:false,
@@ -18,6 +18,7 @@ const statuModalListClients= reactive({
   statu:false,
   titulo:"Nuevo",
   clients:[],
+  totalclients:0,
   company:{},
 })
 
@@ -29,6 +30,7 @@ const statuModalFormularioCliente= reactive({
 
 const statuModule= reactive({
   items:[],
+  total:0,
   comapanies:[],
 })
 
@@ -87,10 +89,8 @@ const loadingTableCliente = ref(false)
 
 const pageTableCliente  = ref(1)
 const itemsPerPageTableCliente  = ref(10)
-
-// const sortByTableCliente  = ref()
-// const orderByTableCliente = ref()
-// const searchTableCliente  = ref()
+const sortByTableCliente  = ref()
+const orderByTableCliente = ref()
 
 
 function cerrarModal(payload){
@@ -190,12 +190,12 @@ function mostarModal(){
   modal.titulo="Nueva Empresa"
 }
 
-function mostarModalListClients(payload){
+async function mostarModalListClients(payload){
 
   let registro= statuModule.items.find(registro => registro.id==payload)
   statuModalListClients.statu=true
   statuModalListClients.company={...registro}
-  statuModalListClients.clients=[...registro.clients]
+  await actualizarTablaCliente()
   statuModalListClients.titulo=`Clientes de la ${registro.type_company} ${registro.name}`
 }
 
@@ -226,10 +226,17 @@ async function consultAll(){
 
 async function actualizarTabla(){
   loading.value = true;
-  let responseApi= await consultAll()
-  statuModule.items=[...responseApi]
+  let filtros={
+    page:page.value,
+    itemsPerPage:itemsPerPage.value,
+    orderBy:orderBy.value,
+    sortBy:sortBy.value
+  }
+  let responseApi= await filtraCompany(filtros)
+  statuModule.items=responseApi.data
+  statuModule.total=responseApi.total
   loading.value = false;
-  return [...responseApi]
+  return {...responseApi}
 }
 
 
@@ -339,8 +346,8 @@ async function crearCliente(data){
       statuModalFormularioCliente.company={}
       statuModalFormularioCliente.titulo=""
       statuModalListClients.statu=true
+      await actualizarTablaCliente()
       await actualizarTabla()
-      loadingTableCliente.value=false
       let registro= statuModule.items.find(registro => registro.id==statuModalListClients.company.id)
       statuModalListClients.company={...registro}
     }
@@ -349,35 +356,93 @@ async function crearCliente(data){
     console.log("error en el servidor => ",error)
     loadingTableCliente.value=false
     let errores={...error.response.data.data.errors}
-    cargarErrores(errores)
+    cargarErroresClient(errores)
   }
 }
 
-// function filtrar(){
-//   let datosFiltros={
-//     loading,
+async function actualizarTablaCliente(){
+  loadingTableCliente.value=true
+  // console.log("actualizar")
 
-//   }
-// }
+  let filtros={
+    page:pageTableCliente.value,
+    itemsPerPage:itemsPerPageTableCliente.value,
+    orderBy:orderByTableCliente.value,
+    sortBy:sortByTableCliente.value,
+    company_id:statuModalListClients.company.id
+  }
 
-// const updateTableOptions = options => {
-//   page.value = options.page
-//   itemsPerPage.value = options.itemsPerPage
-//   sortBy.value = options.sortBy[0]?.key
-//   orderBy.value = options.sortBy[0]?.order
-// }
+  let respuestaApi=await filtrarClientCompany(filtros)
 
-// watch(
-//     [page,itemsPerPage,orderBy,sortBy],
-//   () =>{
-//     console.log("ula uwu")
-//   },
-//   {deep:true}
-// )
+  statuModalListClients.clients=respuestaApi.data
+  statuModalListClients.totalclients=respuestaApi.total
 
-// watch([searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate], () => {
-//   page.value = 1;
-// });
+  loadingTableCliente.value=false
+}
+
+async function filtrarClientCompany(dataFiltro){
+  let datosFiltros={
+    page:dataFiltro.page,
+    itemsPerPage:dataFiltro.itemsPerPage,
+    orderBy:dataFiltro.orderBy,
+    sortBy:dataFiltro.sortBy,
+    company_id:dataFiltro.company_id,
+  }
+  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${datosFiltros.page}`,datosFiltros)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
+async function filtraCompany(dataFiltro){
+  let datosFiltros={
+    page:dataFiltro.page,
+    itemsPerPage:dataFiltro.itemsPerPage,
+    orderBy:dataFiltro.orderBy,
+    sortBy:dataFiltro.sortBy,
+  }
+  let respuestaApi = await axios.post(`/crm/companies/filrar?page=${datosFiltros.page}`,datosFiltros)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
+watch(
+    [pageTableCliente,itemsPerPageTableCliente,orderByTableCliente,sortByTableCliente],
+  async () =>{
+    await actualizarTablaCliente()
+  }
+)
+
+watch(
+    [page,itemsPerPage,orderBy,sortBy],
+  async () =>{
+    await actualizarTabla()
+  }
+)
+
+const updateTableOptionsTableCompany = options => {
+  // console.log(options)
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage
+  sortBy.value = options.sortBy[0]?.key
+  orderBy.value = options.sortBy[0]?.order
+}
+
+const updateTableOptionsTableCliente = options => {
+  // console.log(options)
+  pageTableCliente.value = options.page
+  itemsPerPageTableCliente.value = options.itemsPerPage
+  sortByTableCliente.value = options.sortBy[0]?.key
+  orderByTableCliente.value = options.sortBy[0]?.order
+}
+
 
 
 onMounted(async () => {
@@ -389,12 +454,13 @@ onMounted(async () => {
     <ListClientsOfCompanyDialoge
       :status="statuModalListClients"
       :titulo="statuModalListClients.titulo"
-      :items="statuModalListClients.company.clients"
-      :total="statuModalListClients.clients.length"
+      :items="statuModalListClients.clients"
+      :total="statuModalListClients.totalclients"
       :loading="loadingTableCliente"
       :items-per-page="itemsPerPageTableCliente"
       :page="pageTableCliente"
       @mostrar-formulario="mostarModalFormularioCliente"
+      @update:options="updateTableOptionsTableCliente"
     />
     <ClientFormOfCompanyDialoge
       :status="statuModalFormularioCliente"
@@ -424,13 +490,14 @@ onMounted(async () => {
       <VDivider />
       <CompanyTable
         :items="statuModule.items"
-        :total="statuModule.items.length"
+        :total="statuModule.total"
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
         @edit="mostarModoEdit"
         @delete="confirmarEliminar"
         @ver-clientes="mostarModalListClients"
+        @update:options="updateTableOptionsTableCompany"
       />
     </VCard>
   </div>

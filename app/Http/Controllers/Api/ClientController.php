@@ -92,8 +92,13 @@ class ClientController extends Controller
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
         }
+
         if ($request->filled("tipo")) {
             $filtros["tipo"] = $request->tipo;
+        }
+
+        if ($request->filled("company_id")) {
+            $filtros["company_id"] = $request->company_id;
         }
 
         $repuesta = $this->client->filtrar($filtros);

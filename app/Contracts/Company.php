@@ -5,6 +5,7 @@ namespace App\Contracts;
 use App\Contracts\Methods\ConsultAll;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface Company
 {
@@ -17,4 +18,6 @@ interface Company
     public function consultById(string $id): Model|null;
 
     public function deleteById(string $id): void;
+
+    public function filtrar(array $filtros): LengthAwarePaginator;
 }
