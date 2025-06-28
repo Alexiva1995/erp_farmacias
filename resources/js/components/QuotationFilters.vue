@@ -29,6 +29,7 @@ const sortOptions = [
   { title: 'Unidades (Mayor a Menor)', value: { sortBy: 'lots_sum_quantity', orderBy: 'desc' } },
   { title: 'Más Vendidos', value: { sortBy: 'sales_average', orderBy: 'desc' } },
   { title: 'Menos Vendidos', value: { sortBy: 'sales_average', orderBy: 'asc' } },
+  { title: 'Expiración (Próxima)', value: { sortBy: 'next_expiration', orderBy: 'asc' } },
 ];
 </script>
 
