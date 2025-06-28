@@ -40,7 +40,7 @@ class QuotationController extends Controller
             $quotation = $this->quotationActionService->createQuotation($request->validated());
             return response()->json([
             'message' => 'Cotización guardada exitosamente.',
-            'product' => $quotation
+            'quotation' => $quotation
         ], 201);
         } catch (\Exception $e) {
             Log::error('Error al procesar solicitud de creación de cotización en el controlador: ' . $e->getMessage(), [

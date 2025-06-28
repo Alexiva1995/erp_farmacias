@@ -95,7 +95,7 @@ const handleAddProduct = (productId) => {
         </div>
       </template>
 
-      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.sale_price,'USD') }}</span></template>
+      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(parseFloat(item.sale_price),'USD')}}</span></template>
       <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_bs,'BS') }}</span></template>
       <template #item.price_cop="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_cop,'COP') }}</span></template>
 

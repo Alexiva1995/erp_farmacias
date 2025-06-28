@@ -315,7 +315,8 @@ const saveAndPrintQuotation = async () => {
         });
         return totalIVA;
     });
-
+    console.log(totalIVAAmount.value);
+    console.log(totalIVAAmountUSD.value);
     const totalQuotationAmountUSD = computed(() => {
         return totalProductsAmountUSD.value + totalIVAAmountUSD.value;
     });
@@ -353,7 +354,7 @@ const saveAndPrintQuotation = async () => {
                 line-height: 1.2;
             }
             .ticket-header { text-align: center; margin-bottom: 5px; display: flex; justify-content: flex-start; align-items: flex-start; }
-            .ticket-header h4, .ticket-header p {margin: 0; line-height: 1.2;}
+            .ticket-header h4, .ticket-header p {margin: 2; line-height: 1.2;}
             .ticket-footer { text-align: center; margin-bottom: 5px; }
             .ticket-line { display: flex; justify-content: space-between; }
             .ticket-item { display: flex; justify-content: space-between; margin-bottom: 2px; }
@@ -444,8 +445,6 @@ const saveAndPrintQuotation = async () => {
         :quotation-details="quotationDetails"
         :quotation-items="quotationItems"
         :total-products-amount="totalProductsAmount"
-        :total-iva-amount="totalIVAAmount"
-        :total-quotation-amount="totalQuotationAmount"
         :selected-display-currency="selectedDisplayCurrency"
       />
     </div>

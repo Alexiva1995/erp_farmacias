@@ -15,20 +15,15 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-  totalIVAAmount: {
-    type: Number,
-    default: 0,
-  },
-  totalQuotationAmount: {
-    type: Number,
-    default: 0,
-  },
   selectedDisplayCurrency: {
     type: String,
     default: 'USD',
   },
 });
 
+
+const finalTotalIVAAmount = computed(() => props.quotationDetails?.vat ?? 0);
+const finalTotalQuotationAmount = computed(() => props.quotationDetails?.total ?? 0);
 
 const getItemPriceByCurrency = (item, currency) => {
   if (currency === 'BS') {
@@ -39,11 +34,6 @@ const getItemPriceByCurrency = (item, currency) => {
     return item.price || 0;
   }
 };
-
-
-watch(() => props.totalIVAAmount, (newValue, oldValue) => {
-  console.log('QuotationTicket: totalIVAAmount ha cambiado de', oldValue, 'a', newValue);
-}, { immediate: true });
 
 </script>
 <template>
@@ -76,12 +66,12 @@ watch(() => props.totalIVAAmount, (newValue, oldValue) => {
       </div>
       <div class="ticket-line">
         <span>IVA (16%):</span>
-        <span>{{ totalIVAAmount }}</span>
+        <span>{{ formatCurrency(finalTotalIVAAmount, selectedDisplayCurrency) }}</span>
       </div>
       <hr>
       <div class="ticket-line ticket-total">
         <span>TOTAL:</span>
-        <span>{{ formatCurrency(totalQuotationAmount, selectedDisplayCurrency) }}</span>
+        <span>{{ formatCurrency(finalTotalQuotationAmount, selectedDisplayCurrency) }}</span>
       </div>
     </div>
 
