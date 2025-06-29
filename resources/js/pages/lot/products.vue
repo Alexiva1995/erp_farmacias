@@ -67,11 +67,9 @@ const updateTableOptions = (options) => {
 };
 
 const handleAddLot = async () => {
-  // 1. Muestra un indicador de carga, pero todavía no el modal.
   isLoadingDialogData.value = true;
 
   try {
-    // 2. Espera a que TODOS los datos necesarios se carguen.
     const [productsResponse, suppliersResponse] = await Promise.all([
       axios.get("/products-without-lots"),
       axios.get("/available-suppliers"),
@@ -80,14 +78,11 @@ const handleAddLot = async () => {
     availableProducts.value = productsResponse.data.data;
     availableSuppliers.value = suppliersResponse.data.data;
 
-    // 3. SOLO AHORA, con los datos listos, muestra el modal.
     isCreateDialogVisible.value = true;
   } catch (error) {
     console.error("Error al obtener datos para el modal:", error);
     toast.error("No se pudieron cargar los datos para crear el lote.");
-    // No es necesario cambiar 'isCreateDialogVisible', ya que nunca se puso en 'true'.
   } finally {
-    // 4. Quita el indicador de carga.
     isLoadingDialogData.value = false;
   }
 };
@@ -124,7 +119,7 @@ const handleCreateLot = async (lotData) => {
   try {
     await axios.post("/product-lots", lotData);
     toast.success("Lote creado con éxito.");
-    isCreateDialogVisible.value = false; // Cierra el diálogo de creación
+    isCreateDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
     console.error("Error al crear el lote:", error);
@@ -135,11 +130,10 @@ const handleCreateLot = async (lotData) => {
 };
 const handleUpdateLot = async (lotData) => {
   try {
-    // Asumiendo que la API usa PUT o PATCH para actualizar
     await axios.put(`/product-lots/${lotData.id}`, lotData);
     toast.success("Lote actualizado con éxito.");
-    isEditDialogVisible.value = false; // Cierra el diálogo de edición
-    fetchProductLots(); // Refresca la tabla
+    isEditDialogVisible.value = false;
+    fetchProductLots();
   } catch (error) {
     console.error(`Error al actualizar el lote ${lotData.id}:`, error);
     const errorMessage =
