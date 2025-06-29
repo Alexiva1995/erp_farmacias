@@ -71,6 +71,7 @@ class InvestmenController extends Controller
             'laboratory',
             'origin',
             'lots',
+            'profitability',
             'relatedProducts' => function ($query) {
                 $query->with(['laboratory', 'lots']);
             }
@@ -290,7 +291,6 @@ class InvestmenController extends Controller
             DB::commit();
 
             return response()->json(['message' => 'Lote caducado y costo redistribuido con éxito.'], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error al caducar lote: ' . $e->getMessage());
@@ -317,5 +317,4 @@ class InvestmenController extends Controller
             'total' => $paginatedResult->total(),
         ]);
     }
-
 }

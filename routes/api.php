@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Api\ProfitabilityController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -58,3 +59,20 @@ Route::get('/available-suppliers', [LotController::class, 'availableSuppliers'])
 Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
+
+// Finances
+//Route::get('/profitability', [ProfitabilityController::class, 'getProfitabilityAll']);
+
+Route::prefix("finances")->group(function () {
+
+    // Profitability
+    Route::prefix("profitability")->group(function () {
+
+        Route::get("/", [ProfitabilityController::class, "consultAll"]);
+        Route::post("/{id}", [ProfitabilityController::class, "edit"]);
+
+        Route::prefix("product")->group(function () {
+            Route::post("/store", [ProfitabilityController::class, "store"]);
+        });
+    });
+});

@@ -122,4 +122,9 @@ class Product extends Model
     {
         return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
     }
+
+    public function profitability()
+    {
+        return $this->hasOne(ProductProfitability::class, 'product_id', 'id');
+    }
 }
