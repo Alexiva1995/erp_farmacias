@@ -26,6 +26,10 @@ export default [
         to: 'inventory-report-expirations',
       },
       {
+        title: 'Trazabilidad',
+        to: 'inventory-traceability',
+      },
+      {
         title: 'Inventario Ciclicos',
         to: 'inventory-cyclic',
       }

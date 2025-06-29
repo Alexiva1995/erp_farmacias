@@ -98,9 +98,7 @@ const nextExpirationDate = (product) => {
         ><span>{{ nextExpirationDate(item) }}</span></template
       >
       <template #item.cost_price="{ item }"
-        ><span class="font-weight-medium"
-          >${{ item.cost_price }}</span
-        ></template
+        ><span class="font-weight-medium">${{ item.unit_cost }}</span></template
       >
       <template #item.sale_price="{ item }"
         ><span class="font-weight-medium"

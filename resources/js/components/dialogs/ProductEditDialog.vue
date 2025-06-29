@@ -185,7 +185,6 @@ const submitForm = () => {
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
 
-        <!-- Chip que muestra el grupo asignado -->
         <VChip
           v-if="assignedGroupName"
           class="ml-4"
@@ -206,7 +205,6 @@ const submitForm = () => {
 
       <VCardText>
         <VForm @submit.prevent="submitForm">
-          <!-- === SECCIÓN DE DATOS GENERALES === -->
           <p class="text-h6 font-weight-medium mb-4">Datos Generales</p>
           <VRow>
             <VCol cols="12" md="8">
@@ -339,14 +337,12 @@ const submitForm = () => {
             </VCol>
           </VRow>
 
-          <!-- === SECCIÓN DE GRUPOS === -->
           <template v-if="!isNewProduct">
             <VDivider class="my-6" />
 
             <div>
               <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
 
-              <!-- Muestra el grupo actual si está asignado -->
               <div
                 v-if="assignedGroupName"
                 class="d-flex align-center gap-4 mb-4"
@@ -356,7 +352,6 @@ const submitForm = () => {
                 <VSpacer />
               </div>
 
-              <!-- Input para asignar un nuevo grupo -->
               <VRow align="center">
                 <VCol cols="12" md="9">
                   <VTextField
@@ -374,7 +369,6 @@ const submitForm = () => {
                 </VCol>
               </VRow>
 
-              <!-- Tabla de otros productos en el mismo grupo -->
               <VDataTable
                 v-if="productsInGroup.length > 0"
                 :headers="groupProductsHeaders"
@@ -390,7 +384,6 @@ const submitForm = () => {
             </div>
           </template>
 
-          <!-- === SECCIÓN DE LOTES === -->
           <template
             v-if="!isNewProduct && formData.lots && formData.lots.length > 0"
           >
@@ -420,7 +413,6 @@ const submitForm = () => {
 
       <VDivider />
 
-      <!-- === ACCIONES DEL FORMULARIO === -->
       <VCardActions class="pa-4">
         <VBtn
           color="secondary"

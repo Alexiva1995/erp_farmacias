@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -63,8 +64,15 @@ Route::resource('product-lots', LotController::class)->except(['create', 'edit']
 Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
+Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
 
 //Inventory
 Route::get('/cyclic', [ProductController::class, 'getProductAll']);
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
+
+//Traceability
+Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
+    Route::get('/', 'index')->name('api.sales.report.index');
+    Route::get('/export', 'export')->name('api.sales.report.export');
+});
