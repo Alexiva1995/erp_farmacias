@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -171,5 +172,9 @@ class Product extends Model
     public function psychotropicControls()
     {
         return $this->hasMany(PsychotropicControl::class);
+    }
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = Str::upper($value);
     }
 }

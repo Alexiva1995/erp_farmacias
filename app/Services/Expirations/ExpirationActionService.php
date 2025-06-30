@@ -66,7 +66,7 @@ class ExpirationActionService
             ProductLot::where('product_id', $productId)
                 ->where('id', '!=', $excludedLotId)
                 ->where('quantity', '>', 0)
-                ->increment('cost_price', $costAdjustmentPerUnit);
+                ->increment('unit_cost', $costAdjustmentPerUnit);
         }
     }
     public function expireMultipleLots(array $lotIds): array
