@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Resources\ResourceService;
-
+use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ResourceController extends Controller
 {
@@ -36,5 +37,18 @@ class ResourceController extends Controller
     {
         $categories = $this->resourceService->getCategories();
         return response()->json($categories);
+    }
+
+
+    public function findProductByBarcode(string $barcode): JsonResponse
+    {
+        try {
+            $product = $this->resourceService->getProductByBarcode($barcode);
+           return response()->json($product);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Producto no encontrado.'], 404);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Ocurrió un error inesperado.'], 500);
+        }
     }
 }

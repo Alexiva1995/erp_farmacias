@@ -6,8 +6,11 @@ use App\Models\Category;
 use App\Models\Laboratory;
 use App\Models\Origin;
 use App\Models\Supplier;
+use App\Models\ExchangeRate;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ResourceService
 {
@@ -53,4 +56,50 @@ class ResourceService
             return Category::orderBy('name')->get(['id', 'name']);
         });
     }
+
+    /**
+     * Obtiene una sola tasa, utilizando caché.
+     */
+ public function getExchangeRate(string $currencyCode): float
+    {
+        $cacheKey = "resources.exchangeRate_{$currencyCode}";
+       // $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
+            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+            if ($exchangeRate) {
+                return (float) $exchangeRate->rate;
+            }
+            return 1.0; 
+       // });
+        return $cachedRate;
+    }
+
+    /**
+     * Obtiene todas las tasa, utilizando caché.
+     */
+ public function getAllExchangeRate(): Collection
+    {
+        return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
+            return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
+        });
+    }
+
+
+    /**
+     * Obtiene una lista de todas las categorías, utilizando caché.
+     */
+    public function getProductByBarcode(string $barcode): Product
+    {
+        $cacheKey = "product.barcode.{$barcode}";
+     //   $product = Cache::remember($cacheKey, now()->addDay(), function () use ($barcode) {
+            $foundProduct = Product::where('barcode', $barcode)->first();
+            if (!$foundProduct) {
+                throw new ModelNotFoundException("Producto con código de barras '{$barcode}' no encontrado.");
+            }
+            return $foundProduct;
+       // });
+        $product->loadMissing('laboratory');
+
+        return $product;
+    }
+
 }

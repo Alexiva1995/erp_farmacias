@@ -360,6 +360,7 @@
     "watchTriggerable": true,
     "watchWithFilter": true,
     "whenever": true,
-    "generateDonationPDF": true
+    "generateDonationPDF": true,
+    "formatCurrency": true
   }
 }
