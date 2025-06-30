@@ -50,4 +50,9 @@ class Laboratory extends Model
     {
         return $this->belongsToMany(Supplier::class, 'suppliers_laboratories');
     }
+
+    public function supplierLinks()
+    {
+        return $this->hasMany(SupplierLaboratory::class);
+    }
 }

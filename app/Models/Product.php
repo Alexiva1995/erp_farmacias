@@ -34,14 +34,17 @@ class Product extends Model
         'origin_id',
         'category_id',
         'group_id',
-        'cost_price',
+        'unit_cost',
         'sale_price',
         'iva',
-        'from_colombia',
+        'is_colombian_origin',
         'psychotropic',
         'barcode',
         'photo_url',
-        'stock'
+        'sales_average',
+        'group_id',
+        'cycle_id',
+        'is_deleted'
     ];
 
     protected $appends = ['formatted_details'];
@@ -98,19 +101,6 @@ class Product extends Model
     }
 
     /**
-     * Un producto pertenece a un grupo de productos.
-     */
-    public function relatedProducts()
-    {
-        return $this->belongsToMany(
-            Product::class,
-            'groups_products',
-            'product_id',
-            'related_product_id'
-        )->withTimestamps();
-    }
-
-    /**
      * Un producto tiene muchos lotes.
      */
     public function lots(): HasMany
@@ -118,8 +108,63 @@ class Product extends Model
         return $this->hasMany(ProductLot::class);
     }
 
+    public function productSuppliers()
+    {
+        return $this->hasMany(ProductSupplier::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class);
+    }
+
     public function getFormattedDetailsAttribute()
     {
         return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
+    }
+
+    public function individualOffers()
+    {
+        return $this->hasMany(IndividualOffer::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(ReturnEntry::class);
+    }
+
+    public function quotationLinks()
+    {
+        return $this->hasMany(QuotationProduct::class);
+    }
+
+    public function profitability()
+    {
+        return $this->hasOne(ProductProfitability::class);
+    }
+
+    public function productCounts()
+    {
+        return $this->hasMany(ProductCount::class);
+    }
+
+    public function orderDetails()
+    {
+        return $this->hasMany(OrderDetail::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function invoiceDetails()
+    {
+        return $this->hasMany(InvoiceDetail::class);
+    }
+
+    public function psychotropicControls()
+    {
+        return $this->hasMany(PsychotropicControl::class);
     }
 }
