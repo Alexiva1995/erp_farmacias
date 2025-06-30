@@ -13,6 +13,16 @@ export default [
         title: 'Cotización',
         to: 'tpv-quotation',
       },
+       {
+        title: 'Pedidos',
+        to: 'tpv-order-general',
+       // meta: { roles: ['admin'] }
+      },
+       {
+        title: 'Pedidos Usuario',
+        to: 'tpv-order-user',
+       // meta: { roles: ['user'] }
+      },
     ],
   },
 ]
