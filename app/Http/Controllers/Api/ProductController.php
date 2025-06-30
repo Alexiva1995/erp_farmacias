@@ -35,7 +35,6 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request)
     {
-        // Delegamos la creación al servicio
         $product = $this->productActionService->createProduct($request->validated());
 
         return response()->json([
@@ -46,7 +45,6 @@ class ProductController extends Controller
 
     public function updateProducts(UpdateProductRequest $request, Product $product)
     {
-        // Delegamos la actualización al servicio
         $updatedProduct = $this->productActionService->updateProduct($product, $request->validated());
 
         return response()->json([
@@ -57,14 +55,12 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        // Delegamos la eliminación al servicio
         $this->productActionService->deleteProduct($product);
         return response()->noContent();
     }
 
     public function unassignProductFromGroup(Product $product)
     {
-        // Delegamos la acción al servicio
         $wasUnassigned = $this->productActionService->unassignFromGroup($product);
 
         if (!$wasUnassigned) {

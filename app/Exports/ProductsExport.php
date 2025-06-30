@@ -63,10 +63,12 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping
 
     private function calculateValidStock($product): int
     {
-        return $product->lots
+        $products = $product->lots
             ->where('expiration_date', '>=', now()->startOfDay())
             ->sum('quantity');
+        return $products > 0 ? $products : 0;
     }
+
 
     private function nextExpirationDate($product): string
     {

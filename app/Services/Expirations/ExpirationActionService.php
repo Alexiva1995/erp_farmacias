@@ -26,7 +26,7 @@ class ExpirationActionService
 
         try {
             $quantityToExpire = $lot->quantity;
-            $costPerUnit = $lot->cost_price;
+            $costPerUnit = $lot->unit_cost;
             $totalLostValue = $quantityToExpire * $costPerUnit;
             $lot->quantity = 0;
             $lot->save();
@@ -66,7 +66,7 @@ class ExpirationActionService
             ProductLot::where('product_id', $productId)
                 ->where('id', '!=', $excludedLotId)
                 ->where('quantity', '>', 0)
-                ->increment('cost_price', $costAdjustmentPerUnit);
+                ->increment('unit_cost', $costAdjustmentPerUnit);
         }
     }
     public function expireMultipleLots(array $lotIds): array

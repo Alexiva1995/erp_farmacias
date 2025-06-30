@@ -100,7 +100,7 @@ watch(
         name: "",
         active_ingredient: "",
         laboratory_id: null,
-        cost_price: 0,
+        unit_cost: 0,
         origin_id: null,
         category_id: null,
         group_id: null,
@@ -108,7 +108,7 @@ watch(
         barcode: "",
         iva: 0,
         psychotropic: 0,
-        from_colombia: 0,
+        is_colombian_origin: 0,
         lots: [],
         photo_url: null,
       };
@@ -122,7 +122,6 @@ watch(
 const lotHeaders = [
   { title: "Stock", key: "quantity", sortable: false },
   { title: "Exp.", key: "expiration_date", sortable: false },
-  { title: "Acción", key: "actions", sortable: false, align: "end" },
 ];
 
 const formatDate = (dateString) => {
@@ -178,14 +177,15 @@ const submitForm = () => {
     max-width="800px"
     persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard v-if="formData">
+    <VCard v-if="formData" class="d-flex flex-column">
       <VCardTitle class="d-flex align-center">
         <span class="text-h5 font-weight-bold">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
 
-        <!-- Chip que muestra el grupo asignado -->
         <VChip
           v-if="assignedGroupName"
           class="ml-4"
@@ -204,9 +204,8 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText>
+      <VCardText class="flex-grow-1" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
-          <!-- === SECCIÓN DE DATOS GENERALES === -->
           <p class="text-h6 font-weight-medium mb-4">Datos Generales</p>
           <VRow>
             <VCol cols="12" md="8">
@@ -253,7 +252,6 @@ const submitForm = () => {
               />
             </VCol>
           </VRow>
-          <VDivider class="my-4" />
           <VRow>
             <VCol cols="12" md="6">
               <VSelect
@@ -269,12 +267,12 @@ const submitForm = () => {
             </VCol>
             <VCol cols="12" md="6">
               <VTextField
-                v-model="formData.cost_price"
+                v-model="formData.unit_cost"
                 label="Costo de Compra"
                 type="number"
                 prefix="$"
                 variant="outlined"
-                :error-messages="formErrors.cost_price"
+                :error-messages="formErrors.unit_cost"
               />
             </VCol>
           </VRow>
@@ -331,7 +329,7 @@ const submitForm = () => {
                 :false-value="0"
               />
               <VCheckbox
-                v-model="formData.from_colombia"
+                v-model="formData.is_colombian_origin"
                 label="P.Colombia"
                 :true-value="1"
                 :false-value="0"
@@ -339,14 +337,12 @@ const submitForm = () => {
             </VCol>
           </VRow>
 
-          <!-- === SECCIÓN DE GRUPOS === -->
           <template v-if="!isNewProduct">
             <VDivider class="my-6" />
 
-            <div>
+            <VSheet color="#f5f5f5" variant="tonal" rounded="lg" class="pa-4">
               <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
 
-              <!-- Muestra el grupo actual si está asignado -->
               <div
                 v-if="assignedGroupName"
                 class="d-flex align-center gap-4 mb-4"
@@ -356,7 +352,6 @@ const submitForm = () => {
                 <VSpacer />
               </div>
 
-              <!-- Input para asignar un nuevo grupo -->
               <VRow align="center">
                 <VCol cols="12" md="9">
                   <VTextField
@@ -374,7 +369,6 @@ const submitForm = () => {
                 </VCol>
               </VRow>
 
-              <!-- Tabla de otros productos en el mismo grupo -->
               <VDataTable
                 v-if="productsInGroup.length > 0"
                 :headers="groupProductsHeaders"
@@ -387,15 +381,24 @@ const submitForm = () => {
                   <span>{{ calculateStock(item) }}</span>
                 </template>
               </VDataTable>
-            </div>
+            </VSheet>
           </template>
 
-          <!-- === SECCIÓN DE LOTES === -->
           <template
             v-if="!isNewProduct && formData.lots && formData.lots.length > 0"
           >
             <VDivider class="my-6" />
-            <p class="text-h6 font-weight-medium mb-4">Lotes del Producto</p>
+
+            <!-- 1. Contenedor flexible para el título y el botón -->
+            <div class="d-flex align-center mb-4">
+              <p class="text-h6 font-weight-medium">Lotes del Producto</p>
+              <VSpacer />
+              <!-- 2. Botón de "Editar Lotes" que navega a la nueva ruta -->
+              <VBtn to="/lot/list" color="primary" prepend-icon="tabler-edit">
+                Editar Lotes
+              </VBtn>
+            </div>
+
             <VDataTable
               :headers="lotHeaders"
               :items="formData.lots || []"
@@ -408,11 +411,9 @@ const submitForm = () => {
               <template #item.expiration_date="{ item }">
                 <span>{{ formatDate(item.expiration_date) }}</span>
               </template>
-              <template #item.actions>
-                <IconBtn>
-                  <VIcon icon="tabler-edit" />
-                </IconBtn>
-              </template>
+
+              <!-- 3. Slot de acciones eliminado -->
+              <!-- <template #item.actions> ... </template> -->
             </VDataTable>
           </template>
         </VForm>
@@ -420,7 +421,7 @@ const submitForm = () => {
 
       <VDivider />
 
-      <!-- === ACCIONES DEL FORMULARIO === -->
+      <!-- El VCardActions se mantiene igual, será el pie de página fijo -->
       <VCardActions class="pa-4">
         <VBtn
           color="secondary"
