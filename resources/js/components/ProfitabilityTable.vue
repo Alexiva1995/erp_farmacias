@@ -1,87 +1,104 @@
+<script setup>
+import axios from '@/plugins/axios';
 
+const props = defineProps({
+  products: { type: Array, required: true },
+  profitability: { type: Number, required: true },
+  loading: { type: Boolean, default: false },
+  totalProduct: { type: Number, required: true },
+  itemsPerPage: { type: Number, required: true },
+  page: { type: Number, required: true },
+});
+
+const emit = defineEmits(['refresh']);
+
+const headers = [
+  { title: 'Locked', key: 'products' },
+  { title: 'ID', key: 'id' },
+  { title: 'Monto', key: 'sale_price' },
+  { title: '% Utilidad', key: 'profitability' }, 
+  { title: 'Fecha', key: 'valid_stock' },
+];
+
+function storeProfitability(product_id, profitability, id = null, is_locked = 0){
+
+  let locked = 0
+  if (is_locked == 0) {
+    locked = 1
+  }
+  else {
+    locked = 0
+  }
+
+  let data = {
+    "id": id,
+    "product_id": product_id,
+    "profitability_percentage": profitability,
+    "is_locked" : locked
+  };
+  
+  console.log(data)
+  try {
+    const response = axios.post("/finances/profitability/product/store", data);
+    
+    console.log('Éxito:', response.data);
+    emit("refresh")
+    
+  } catch (error) {
+    console.error('Error en la solicitud:', error);
+    
+    if (error.response) {
+      // El servidor respondió con un código de error
+      console.error('Datos del error:', error.response.data);
+      console.error('Status:', error.response.status);
+      console.error('Headers:', error.response.headers);
+      
+      if (error.response.status === 405) {
+        console.error('Sugerencia: Prueba con PUT/PATCH en lugar de POST');
+      }
+    } else if (error.request) {
+      // La solicitud fue hecha pero no hubo respuesta
+      console.error('No se recibió respuesta del servidor');
+    } else {
+      // Hubo un error al configurar la solicitud
+      console.error('Error al configurar la solicitud:', error.message);
+    }
+  }
+}
+
+</script>
 
 <template>
-<VCard>
-<template>   
-<div class="row" id="basic-table">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body card-dashboard">
-                <!--Pagar rentabilidad boton-->
-                <div class="float-end">
-                    <button class="btn btn-danger" id="btnModalCartera">Pagar Rentabilidad</button>
-                </div>
-                <!--Pagar rentabilidad boton End-->
-                <!--Pagar rentabilidad title-->
-                <div class="card-title">
-                    <h4>Rentabilidad</h4>
-                </div>
-                <!--Pagar rentabilidad title end-->
-                <div class="table-responsive">
-                <table class="table  nowrap scroll-horizontal-vertical myTable table-striped w-100">
-                        <thead class="">
-                            <tr class="text-center">
-                                <th>ID</th>
-                                <th>Monto</th>
-                                <th>% utilidad</th>
-                                <th>Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            
-                            <tr class="text-center">
-                                <td>
-                                    
-                                </td>
 
-                                <td>
-                                    
-                                </td>
-                                <td>
-                                    
-                                </td>
-                                <td>
-                                    
-                                </td>
-                            </tr>
-                            
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+    <VDataTableServer
+      :items-per-page="props.itemsPerPage"
+      :page="props.page"
+      :headers="headers"
+      :items="props.products"
+      :items-length="props.totalProduct"
+      :loading="props.loading"
+      class="text-no-wrap"
+      >
+      <template #item.products="{ item }">
+        <Vbtn color="primary" icon @click="storeProfitability(item.id, profitability, item.profitability?.id, item.profitability?.is_locked)">
+          {{ item.profitability?.is_locked == '1' ? 'lock' : 'unlock' }}
+        </Vbtn>
+      </template>
+      <template #item.id="{ item }">
+        <span class="font-weight-medium">{{ item.id }}</span>
+      </template>    
+      <template #item.sale_price="{ item }">
+        <span class="font-weight-medium">${{ item.cost_price }}</span>
+      </template>
+      <template #item.profitability="{ item }">
+        <span class="font-weight-medium">
+          ${{ item.profitability?.is_locked == '1' ? parseFloat((item.cost_price) + (item.cost_price * (item.profitability.profitability_percentage/100).toFixed(2)))
+          : parseFloat((item.cost_price) + (item.cost_price * (profitability/100).toFixed(2))) }}
+        </span>
+      </template>
+      <template #item.valid_stock="{ item }">
+        <span class="font-weight-medium ">{{ new Date(item.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
+      </template>
+    </VDataTableServer>
 
-<!-- Modal Administrador de cartera-->
-
-<!-- Vertical modal -->
-<div class="vertical-modal-ex">
-    <!-- Modal -->
-    <div class="modal fade" id="ModalCartera" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalCenterTitle">Porcentaje de rentabilidad</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="porcentaje" class="form-label">Porcentaje</label>
-                            <input type="number" class="form-control" id="porcentaje" aria-describedby="porcentaje" name="porcentaje" step="any">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>           
-</template>
-</VCard>
 </template>
