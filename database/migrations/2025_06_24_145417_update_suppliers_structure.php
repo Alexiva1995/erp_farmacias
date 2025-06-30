@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -22,7 +21,7 @@ return new class extends Migration
             $table->tinyInteger('charges_igtf')->nullable()->default(0)->change();
             $table->decimal('rating', 5, 2)->nullable()->default(0.00)->change();
 
-            $table->dropColumn('deleted_at');
+            // $table->dropColumn('deleted_at');
             $table->tinyInteger('is_deleted')->nullable()->default(0)->after('rating');
 
             $table->index('is_deleted', 'idx_supplier_active');

@@ -1,13 +1,18 @@
 <?php
 
+use App\Http\Controllers\Api\DonationController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
-use App\Http\Controllers\Api\InvestmenController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ResourceController;
+use App\Http\Controllers\Api\ExpirationController;
 
 Route::post('/login', [LoginController::class, 'login']);
 
@@ -24,63 +29,75 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout']);
 });
 
-Route::get('/products', [InvestmenController::class, 'index']);
-Route::put('/products/{product}', [InvestmenController::class, 'updateProducts']);
-Route::post('/products', [InvestmenController::class, 'store']);
-Route::delete('/products/{product}/related/{related_product}', [InvestmenController::class, 'removeRelatedProduct'])
-    ->name('products.related.destroy');
-Route::delete('/products/{product}', [InvestmenController::class, 'destroy']);
-Route::get('/products/export', [InvestmenController::class, 'export']);
-Route::get('/laboratories', [InvestmenController::class, 'getLaboratories']);
+// Products
+Route::get('/products', [ProductController::class, 'index']);
+Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+Route::get('/products/export', [ProductController::class, 'export']);
 
-//Origins
+// Group Products
+Route::get('/groups', [GroupController::class, 'index']);
+Route::post('/groups', [GroupController::class, 'store']);
+Route::get('/groups/search', [GroupController::class, 'search']);
+Route::put('/groups/{group}', [GroupController::class, 'update']);
+Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
 
-Route::get('/origins', [InvestmenController::class, 'getOrigins']);
+Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
 
-//Categories
+// Basic Resources
+Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
+Route::get('/origins', [ResourceController::class, 'getOrigins']);
+Route::get('/categories', [ResourceController::class, 'getCategories']);
+Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 
-Route::get('/categories', [InvestmenController::class, 'getCategories']);
+// Expirations
+Route::get('/products/expirations', [ExpirationController::class, 'index']);
+Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
+Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
+Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
 
-//Suppliers
-
-Route::get('/suppliers', [InvestmenController::class, 'getSuppliers']);
-
-//Expirations
-
-Route::get('/products/expirations', [InvestmenController::class, 'getExpirations']);
-Route::put('/lots/{lot}/expire', [InvestmenController::class, 'expireLot']);
+//Donation 
+Route::post('/donations', [DonationController::class, 'create']);
 
 //Lotes
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
 Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
+Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
 
 //Inventory
-Route::get('/cyclic', [InvestmenController::class, 'getProductAll']);
+Route::get('/cyclic', [ProductController::class, 'getProductAll']);
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
 
+//Traceability
+Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
+    Route::get('/', 'index')->name('api.sales.report.index');
+    Route::get('/export', 'export')->name('api.sales.report.export');
+});
 //CRM
 Route::prefix("crm")->group(function () {
 
     // Company
     Route::prefix("companies")->group(function () {
-        Route::post("/",                             [CompanyController::class, "create"]);
-        Route::get("/",                              [CompanyController::class, "consultAll"]);
-        Route::get("/{id}",                          [CompanyController::class, "consultById"]);
-        Route::delete("/{id}",                       [CompanyController::class, "deleteById"]);
-        Route::post("/edit/{id}",                    [CompanyController::class, "edit"]);
-        Route::post("/filrar",                       [CompanyController::class, "filrar"]);
+        Route::post("/", [CompanyController::class, "create"]);
+        Route::get("/", [CompanyController::class, "consultAll"]);
+        Route::get("/{id}", [CompanyController::class, "consultById"]);
+        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}", [CompanyController::class, "edit"]);
+        Route::post("/filrar", [CompanyController::class, "filrar"]);
     });
 
     // Client
     Route::prefix("clients")->group(function () {
-        Route::post("/",                             [ClientController::class, "create"]);
-        Route::get("/",                              [ClientController::class, "consultAll"]);
-        Route::get("/{id}",                          [ClientController::class, "consultById"]);
-        Route::delete("/{id}",                       [ClientController::class, "deleteById"]);
-        Route::post("/edit/{id}",                    [ClientController::class, "edit"]);
-        Route::post("/filrar",                       [ClientController::class, "filrar"]);
+        Route::post("/", [ClientController::class, "create"]);
+        Route::get("/", [ClientController::class, "consultAll"]);
+        Route::get("/{id}", [ClientController::class, "consultById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}", [ClientController::class, "edit"]);
+        Route::post("/filrar", [ClientController::class, "filrar"]);
     });
 });

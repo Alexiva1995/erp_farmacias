@@ -5,53 +5,53 @@ const props = defineProps({
     required: false,
     default: () => ({
       id: 0,
-      fullName: '',
-      company: '',
-      role: '',
-      username: '',
-      country: '',
-      contact: '',
-      email: '',
-      currentPlan: '',
-      status: '',
-      avatar: '',
+      fullName: "",
+      company: "",
+      role: "",
+      username: "",
+      country: "",
+      contact: "",
+      email: "",
+      currentPlan: "",
+      status: "",
+      avatar: "",
       taskDone: null,
       projectDone: null,
-      taxId: '',
-      language: '',
+      taxId: "",
+      language: "",
     }),
   },
   isDialogVisible: {
     type: Boolean,
     required: true,
   },
-})
+});
 
-const emit = defineEmits([
-  'submit',
-  'update:isDialogVisible',
-])
+const emit = defineEmits(["submit", "update:isDialogVisible"]);
 
-const userData = ref(structuredClone(toRaw(props.userData)))
-const isUseAsBillingAddress = ref(false)
+const userData = ref(structuredClone(toRaw(props.userData)));
+const isUseAsBillingAddress = ref(false);
 
-watch(() => props, () => {
-  userData.value = structuredClone(toRaw(props.userData))
-})
+watch(
+  () => props,
+  () => {
+    userData.value = structuredClone(toRaw(props.userData));
+  }
+);
 
 const onFormSubmit = () => {
-  emit('update:isDialogVisible', false)
-  emit('submit', userData.value)
-}
+  emit("update:isDialogVisible", false);
+  emit("submit", userData.value);
+};
 
 const onFormReset = () => {
-  userData.value = structuredClone(toRaw(props.userData))
-  emit('update:isDialogVisible', false)
-}
+  userData.value = structuredClone(toRaw(props.userData));
+  emit("update:isDialogVisible", false);
+};
 
-const dialogModelValueUpdate = val => {
-  emit('update:isDialogVisible', val)
-}
+const dialogModelValueUpdate = (val) => {
+  emit("update:isDialogVisible", val);
+};
 </script>
 
 <template>
@@ -66,24 +66,16 @@ const dialogModelValueUpdate = val => {
     <VCard class="pa-sm-10 pa-2">
       <VCardText>
         <!-- 👉 Title -->
-        <h4 class="text-h4 text-center mb-2">
-          Edit User Information
-        </h4>
+        <h4 class="text-h4 text-center mb-2">Edit User Information</h4>
         <p class="text-body-1 text-center mb-6">
           Updating user details will receive a privacy audit.
         </p>
 
         <!-- 👉 Form -->
-        <VForm
-          class="mt-6"
-          @submit.prevent="onFormSubmit"
-        >
+        <VForm class="mt-6" @submit.prevent="onFormSubmit">
           <VRow>
             <!-- 👉 First Name -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="userData.fullName.split(' ')[0]"
                 label="First Name"
@@ -92,10 +84,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Last Name -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="userData.fullName.split(' ')[1]"
                 label="Last Name"
@@ -113,10 +102,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Billing Email -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="userData.email"
                 label="Email"
@@ -125,10 +111,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Status -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppSelect
                 v-model="userData.status"
                 label="Status"
@@ -138,10 +121,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Tax Id -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="userData.taxId"
                 label="Tax ID"
@@ -150,10 +130,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Contact -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppTextField
                 v-model="userData.contact"
                 label="Phone Number"
@@ -162,10 +139,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Language -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppSelect
                 v-model="userData.language"
                 closable-chips
@@ -178,10 +152,7 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Country -->
-            <VCol
-              cols="12"
-              md="6"
-            >
+            <VCol cols="12" md="6">
               <AppSelect
                 v-model="userData.country"
                 label="Country"
@@ -200,19 +171,10 @@ const dialogModelValueUpdate = val => {
             </VCol>
 
             <!-- 👉 Submit and Cancel -->
-            <VCol
-              cols="12"
-              class="d-flex flex-wrap justify-center gap-4"
-            >
-              <VBtn type="submit">
-                Submit
-              </VBtn>
+            <VCol cols="12" class="d-flex flex-wrap justify-center gap-4">
+              <VBtn type="submit"> Submit </VBtn>
 
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                @click="onFormReset"
-              >
+              <VBtn color="secondary" variant="tonal" @click="onFormReset">
                 Cancel
               </VBtn>
             </VCol>
