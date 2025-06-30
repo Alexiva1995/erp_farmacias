@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -14,9 +13,19 @@ class UpdateProductRequest extends FormRequest
      */
     public function authorize()
     {
-        // Aquí puedes poner lógica de autorización más compleja si es necesario.
-        // Por ahora, solo verificamos que el usuario esté autenticado.
         return true;
+    }
+
+    /**
+     * 
+     *
+     * 
+     */
+    protected function prepareForValidation()
+    {
+        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+            $this->request->remove('photo_url');
+        }
     }
 
     /**
@@ -27,6 +36,7 @@ class UpdateProductRequest extends FormRequest
     public function rules()
     {
         $productId = $this->route('product')->id ?? null;
+
         return [
             'name' => 'sometimes|string|max:255',
             'active_ingredient' => 'nullable|string|max:255',
@@ -36,8 +46,15 @@ class UpdateProductRequest extends FormRequest
             'category_id' => 'nullable|integer|exists:categories,id',
             'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
             'psychotropic' => 'sometimes|boolean',
-            'from_colombia' => 'sometimes|boolean',
+            'iva' => 'sometimes|boolean',
+            'is_colombian_origin' => 'sometimes|boolean',
             'group_id' => 'nullable|integer|exists:groups_products,id',
+            'photo_url' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'max:2048',
+            ],
         ];
     }
 }

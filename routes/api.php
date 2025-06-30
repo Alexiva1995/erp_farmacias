@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
@@ -75,4 +77,27 @@ Route::post('/adjustments/process-count', [InventoryAdjustmentController::class,
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
     Route::get('/', 'index')->name('api.sales.report.index');
     Route::get('/export', 'export')->name('api.sales.report.export');
+});
+//CRM
+Route::prefix("crm")->group(function () {
+
+    // Company
+    Route::prefix("companies")->group(function () {
+        Route::post("/", [CompanyController::class, "create"]);
+        Route::get("/", [CompanyController::class, "consultAll"]);
+        Route::get("/{id}", [CompanyController::class, "consultById"]);
+        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}", [CompanyController::class, "edit"]);
+        Route::post("/filrar", [CompanyController::class, "filrar"]);
+    });
+
+    // Client
+    Route::prefix("clients")->group(function () {
+        Route::post("/", [ClientController::class, "create"]);
+        Route::get("/", [ClientController::class, "consultAll"]);
+        Route::get("/{id}", [ClientController::class, "consultById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}", [ClientController::class, "edit"]);
+        Route::post("/filrar", [ClientController::class, "filrar"]);
+    });
 });

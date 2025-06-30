@@ -203,6 +203,8 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
+  sortBy.value = undefined;
+  orderBy.value = undefined;
 };
 
 const handleAddProduct = () => {
@@ -262,6 +264,10 @@ const handleExport = async (format) => {
     console.error("Error al exportar los datos:", error);
   }
 };
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+};
 </script>
 
 <template>
@@ -279,6 +285,7 @@ const handleExport = async (format) => {
       @clear="handleClearFilters"
       @export="handleExport"
       @add-product="handleAddProduct"
+      @sort="handleSort"
     />
 
     <ProductTable

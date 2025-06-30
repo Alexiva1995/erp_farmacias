@@ -18,8 +18,10 @@ class ProductQueryService
             'category',
             'laboratory',
             'origin',
-            'lots',
-            'group'
+            'group',
+            'lots' => function ($query) {
+                $query->where('quantity', '>', 0);
+            },
         ]);
     }
 
@@ -54,10 +56,13 @@ class ProductQueryService
 
         if ($hasStock === false) {
             $query->whereDoesntHave('lots', function ($lotQuery) {
-                $lotQuery->where('expiration_date', '>=', now()->startOfDay());
+                $lotQuery->where('expiration_date', '>=', now()->startOfDay())
+                    ->where('quantity', '>', 0);
             });
         } elseif ($hasStock === true || !empty($filters['startDate']) || !empty($filters['endDate'])) {
             $query->whereHas('lots', function ($lotQuery) use ($filters, $hasStock) {
+                $lotQuery->where('quantity', '>', 0);
+
                 if ($hasStock === true) {
                     $lotQuery->where('expiration_date', '>=', now()->startOfDay());
                 }
@@ -97,7 +102,7 @@ class ProductQueryService
 
             case 'id':
             case 'name':
-            case 'cost_price':
+            case 'unit_cost':
             case 'sale_price':
                 return $query->orderBy("products.{$sortBy}", $orderBy);
         }
