@@ -340,7 +340,7 @@ const submitForm = () => {
           <template v-if="!isNewProduct">
             <VDivider class="my-6" />
 
-            <VSheet color="#d8d8d8" variant="tonal" rounded="lg" class="pa-4">
+            <VSheet color="#f5f5f5" variant="tonal" rounded="lg" class="pa-4">
               <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
 
               <div
