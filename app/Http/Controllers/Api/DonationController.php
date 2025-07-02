@@ -1,11 +1,12 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Donation\DonationService;
-use App\Models\DonativeLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DonationController extends Controller
 {
@@ -18,7 +19,6 @@ class DonationController extends Controller
         $validated = $request->validate([
             'institution_name' => 'required|string|max:255',
             'expired_log_ids' => 'required|array|min:1',
-
             'expired_log_ids.*' => [
                 'integer',
                 Rule::exists('expired_logs', 'id')->where(function ($query) {
@@ -35,7 +35,22 @@ class DonationController extends Controller
             $this->donationService->recordDonation($validated);
             return response()->json(['message' => 'Donación registrada con éxito.'], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Error al registrar la donación.', 'error' => $e->getMessage()], 500);
+            \Log::error('Error al registrar la donación: ' . $e->getMessage());
+            return response()->json(['message' => 'Error al registrar la donación.'], 500);
         }
+    }
+
+    public function getMonthlyDonationData(string $month)
+    {
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            return response()->json(['message' => 'Formato de mes inválido.'], 400);
+        }
+
+        $donationData = $this->donationService->getMonthlyDonationData($month);
+        if (!$donationData) {
+            return response()->json(['message' => 'No se encontró donación para este mes.'], 404);
+        }
+
+        return response()->json($donationData);
     }
 }
