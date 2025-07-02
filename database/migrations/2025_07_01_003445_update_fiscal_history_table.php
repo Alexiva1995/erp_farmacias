@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('fiscal_history', function (Blueprint $table) {
             $table->dropForeign(['order_id']);
             $table->dropColumn('order_id');
-            $table->unsignedBigInteger('fiscal_id')->after('user_id');
+            $table->unsignedBigInteger('fiscal_id')->after('user_id')->nullable();
         });
     }
 

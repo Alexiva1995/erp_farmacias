@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FiscalHistory extends Model
 {
+    protected $table = 'fiscal_history';
     protected $fillable = [
         'user_id',
         'fiscal_id',

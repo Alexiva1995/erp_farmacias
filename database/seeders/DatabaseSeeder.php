@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             ProductsSeeder::class,
             SuppliersSeeder::class,
             ProductLotsSeeder::class,
+            FiscalHistorySeeder::class,
         ]);
     }
 }
