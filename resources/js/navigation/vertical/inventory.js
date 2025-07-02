@@ -22,10 +22,6 @@ export default [
         to: 'inventory-expirations',
       },
       {
-        title: 'Reporte de Caducidad',
-        to: 'inventory-report-expirations',
-      },
-      {
         title: 'Trazabilidad',
         to: 'inventory-traceability',
       },
