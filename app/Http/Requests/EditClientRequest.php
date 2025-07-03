@@ -35,8 +35,8 @@ class EditClientRequest extends FormRequest
             //
             "id"                     =>    "required|numeric|exists:clients,id",
             "name"                   =>    "required|string|max:255",
-            "last_name"              =>    "required|string|max:255",
-            "email"                  =>    "required|string|max:255|email:rfc,dns",
+            "last_name"              =>    "nullable|string|max:255",
+            "email"                  =>    "nullable|string|max:255|email:rfc,dns",
             "identification_type"    =>    [
                 "required",
                 "string",
@@ -48,10 +48,10 @@ class EditClientRequest extends FormRequest
                 ]),
 
             ],
-            "identification"         =>    "required|string",
+            "identification"         =>    "required|string|min:7|max:9",
             "phone"                  =>    "required|string|max:50",
             "address"                =>    "required|string",
-            "company_id"             =>    "required|exists:companies,id",
+            "company_id"             =>    "nullable|exists:companies,id",
             "birthdate"              =>    "nullable|date",
         ];
     }
@@ -67,14 +67,13 @@ class EditClientRequest extends FormRequest
             "name.string"                        => "the field is type string",
             "name.max"                           => "the max of field is 255 characters",
 
-            "last_name.required"                 => "the field is required",
+            // "last_name.required"                 => "the field is required",
             "last_name.string"                   => "the field is type string",
             "last_name.max"                      => "the max of field is 255 characters",
 
-            "email.required"                     => "the field is required",
+            // "email.required"                     => "the field is required",
             "email.string"                       => "the field is type string",
             "email.max"                          => "the max of field is 255 characters",
-            "email.email"                        => "the format of email is invalid",
 
             "identification_type.required"       => "the field is required",
             "identification_type.string"         => "the field is type string",
@@ -82,7 +81,8 @@ class EditClientRequest extends FormRequest
 
             "identification.required"            => "the field is required",
             "identification.string"              => "the field is type string",
-            "identification.unique"              => "the ID is already in use",
+            "identification.min"                 => "the min of field is 7 characters",
+            "identification.max"                 => "the max of field is 9 characters",
 
             "phone.required"                     => "the field is required",
             "phone.string"                       => "the field is type string",
@@ -91,7 +91,7 @@ class EditClientRequest extends FormRequest
             "address.required"                   => "the field is required",
             "address.string"                     => "the field is type string",
 
-            "company_id.required"                => "the field is required",
+            // "company_id.required"                => "the field is required",
             "company_id.exists"                  => "the company is not found",
 
             "birthdate.data"                     => "the date format is not valid",

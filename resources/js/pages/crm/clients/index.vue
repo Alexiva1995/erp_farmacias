@@ -63,9 +63,15 @@ function mostarModal(){
 }
 
 function mostarModoEdit(payload){
+  // console.log("items => ",statuModule.items)
+  // console.log("payload => ",payload)
   let cliente= statuModule.items.find(client => client.id==payload)
+  // console.log("DATA => ",cliente)
   modal.statu=true
   modal.titulo=`${cliente.name} ${cliente.last_name}`
+
+
+
   insertarDatosAlFormulario({...cliente})
 }
 
@@ -81,7 +87,7 @@ function insertarDatosAlFormulario(datos){
   formulario.identification_type=datos.identification_type
   formulario.name=datos.name
   formulario.last_name=datos.last_name
-  formulario.email=datos.email
+  formulario.email=(datos.email==null)?"":datos.email
   formulario.phone=datos.phone
   formulario.address=datos.address
   formulario.birthdate=datos.birthdate
@@ -197,20 +203,19 @@ function cargarErrores(errores){
 
 async function actualizarTabla(){
   loading.value = true;
-  // let responseCliest= await consultAll()
+
   let filtroNaturales={
     page:page.value,
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    tipo:["V-","E-","G-"]
+    tipo:["V-"]
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  // let jurudicos= await filtrar(["J-"])
-  // statuModule.items=[...naturales]
   statuModule.itemsClientesNaturales=respuestaApiNaturles.data
   statuModule.totalClientesNaturales=respuestaApiNaturles.total
-    let filtroJuridica={
+
+  let filtroJuridica={
     page:pageTablaClientesJuridicos.value,
     itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
     orderBy:orderByTablaClientesJuridicos.value,
@@ -220,7 +225,9 @@ async function actualizarTabla(){
   let respuestaApiJurudicas= await filtrar(filtroJuridica)
   statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
   statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
-  // statuModule.itemsClientesJuridicos=jurudicos
+
+  statuModule.items=[...respuestaApiJurudicas.data,...respuestaApiNaturles.data]
+
   loading.value = false;
 }
 
@@ -295,6 +302,16 @@ watch(
     [pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
   async () =>{
     await actualizarTabla()
+  }
+)
+
+watch(
+  () => formulario.identification_type,
+  (value) => {
+    if(value=="J-"){
+      formulario.last_name=""
+      formulario.company_id=""
+    }
   }
 )
 

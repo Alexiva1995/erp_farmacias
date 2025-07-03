@@ -21,6 +21,21 @@ class ClientController extends Controller
     public function create(CreateClientRequest $request): JsonResponse
     {
 
+        if ($request->client->identification_type == "J-") {
+            if ($request->client->last_name != "" | $request->client->last_name != null) {
+                $errors = [
+                    "last_name" => ["If the user is a legal entity, the last name is not necessary."]
+                ];
+                return ApiResponse::error("If the user is a legal entity, the last name is not necessary.", 400, $errors);
+            }
+            if ($request->client->company_id != "" | $request->client->company_id != null) {
+                $errors = [
+                    "company_id" => ["If the user is a legal entity, the company is not necessary."]
+                ];
+                return ApiResponse::error("If the user is a legal entity, the company is not necessary.", 400, $errors);
+            }
+        }
+
         $respuestaDB = $this->client->create($request->client->all());
 
         return ApiResponse::success($respuestaDB, "client created successfully", 200);
@@ -37,6 +52,21 @@ class ClientController extends Controller
                     "identification" => ["Cannot update because the ID is already in use"]
                 ];
                 return ApiResponse::error("Cannot update because the ID is already in use", 400, $errors);
+            }
+        }
+
+        if ($request->client->identification_type == "J-") {
+            if ($request->client->last_name != "" | $request->client->last_name != null) {
+                $errors = [
+                    "last_name" => ["If the user is a legal entity, the last name is not necessary."]
+                ];
+                return ApiResponse::error("If the user is a legal entity, the last name is not necessary.", 400, $errors);
+            }
+            if ($request->client->company_id != "" | $request->client->company_id != null) {
+                $errors = [
+                    "company_id" => ["If the user is a legal entity, the company is not necessary."]
+                ];
+                return ApiResponse::error("If the user is a legal entity, the company is not necessary.", 400, $errors);
             }
         }
 

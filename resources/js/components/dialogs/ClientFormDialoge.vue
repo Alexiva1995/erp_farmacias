@@ -98,6 +98,12 @@ function formatearFechaCompleta(fechaInput) {
               label="Identificación"
               type="text"
               variant="outlined"
+              :counter="9"
+              :maxlength="9"
+              :rules="[
+                (v) => (v && v.length >= 7) || 'Mínimo 7 caracteres',
+                (v) => (v && v.length <= 9) || 'Máximo 9 caracteres',
+              ]"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -116,6 +122,7 @@ function formatearFechaCompleta(fechaInput) {
               label="Apellido"
               type="text"
               variant="outlined"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -159,6 +166,7 @@ function formatearFechaCompleta(fechaInput) {
               :items="props.companies"
               item-title="name"
               item-value="id"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12">
