@@ -15,7 +15,7 @@ const headers = [
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Stock", key: "valid_stock", sortable: true },
   { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Precio Compra", key: "cost_price", sortable: true },
+  { title: "Costo", key: "cost_price", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -51,6 +51,25 @@ const nextExpirationDate = (product) => {
   );
   const closestDate = new Date(validLots[0].expiration_date);
   return closestDate.toISOString().split("T")[0];
+};
+
+const calculateSalePriceWithIva = (product) => {
+  const basePrice = Number(product.sale_price || 0);
+
+  if (product.iva == 1) {
+    const priceWithIva = basePrice * 1.16;
+    console.log(product);
+    return priceWithIva.toFixed(2);
+  }
+
+  return basePrice.toFixed(2);
+};
+
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("es-CO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
 };
 </script>
 
@@ -107,11 +126,20 @@ const nextExpirationDate = (product) => {
       </template>
 
       <template #item.cost_price="{ item }">
-        <span class="font-weight-medium">{{ item.unit_cost }}</span>
+        <span class="font-weight-medium">{{
+          formatPrice(item.unit_cost)
+        }}</span>
       </template>
 
       <template #item.sale_price="{ item }">
-        <span class="font-weight-medium">{{ item.sale_price }}</span>
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium">
+            ${{ formatPrice(calculateSalePriceWithIva(item)) }}
+          </span>
+          <span v-if="item.iva == 1" class="text-xs text-success">
+            (IVA incluido)
+          </span>
+        </div>
       </template>
 
       <template #item.actions="{ item }">
