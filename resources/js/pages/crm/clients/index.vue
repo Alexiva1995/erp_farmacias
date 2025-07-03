@@ -245,9 +245,14 @@ async function confirmarEliminarCliente(payload){
     showCancelButton: true,
     confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
     cancelButtonText: '<span style="color: white;">Cancelar</span>',
+    // customClass: {
+    //   confirmButton: 'red-accent-3',  // Clase para el botón de confirmar
+    //   cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
+    // },
     // confirmButtonText: 'Sí, ¡eliminar!',
     // cancelButtonText: 'Cancelar',
     // color: '#111',
+    confirmButtonColor: '#d33',
     // confirmButtonColor: '#7367f0',
     // cancelButtonColor: '#d33',
     // background: '#2f3349',
