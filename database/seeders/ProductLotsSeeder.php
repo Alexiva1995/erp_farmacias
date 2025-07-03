@@ -17,8 +17,8 @@ class ProductLotsSeeder extends Seeder
         $lots = json_decode($json, true);
 
         foreach ($lots as &$lot) {
-            $lot['lot_number'] = $lot['lot'];
-            $lot['cost_price'] = $lot['cost'] ?? 0;
+            $lot['lot_number'] = $lot['lot'] ?? '';
+            $lot['unit_cost'] = $lot['cost'] ?? 0;
             $lot['quantity'] = $lot['quantity_available'] ?? 0;
             $lot['expiration_date'] = $lot['expiration_date'] ?? '1900-01-01';
 
