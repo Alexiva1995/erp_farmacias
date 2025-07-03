@@ -3,6 +3,8 @@ import { ref, computed, watch } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { toast } from '@/plugins/sweetalert';
 import Swal from 'sweetalert2';
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
+
 // --- PROPS ---
 const props = defineProps({
   title: {
@@ -99,53 +101,76 @@ const handlePrintButtonClick = () => {
   emit('print-quotation');
 };
 
-const handleShareButtonClick = () => {
 
-if (props.quotationProducts.length === 0) {
-    toast.error('No hay productos en la cotización para compartir.');
-    return;
+
+const generateWhatsappMessage = () => {
+  if (props.quotationProducts.length === 0) {
+    return ''; // Retorna vacío si no hay productos
   }
+
   const fecha = new Date();
   const productos_array = [];
   props.quotationProducts.forEach(product => {
+    let priceWithIvaUsd = (product.price || 0) * (1 + (product.taxRate || 0));
+    let priceWithIvaBs = (product.price_bs || 0) * (1 + (product.taxRate || 0));
+    let  priceWithIvaCop = (product.price_cop || 0) * (1 + (product.taxRate || 0));
 
-    const priceWithIvaUsd = (product.price || 0) * (1 + (product.taxRate || 0));
-    const priceWithIvaBs = (product.price_bs || 0) * (1 + (product.taxRate || 0));
-    const priceWithIvaCop = (product.price_cop || 0) * (1 + (product.taxRate || 0));
-
+    priceWithIvaCop = roundUpToNearestHundred(priceWithIvaCop);
 
     let rows = '💊 ' + product.title + '\n' +
-               'Cantidad: ' + product.selectedQuantity + ' UND(S) \n' +
-               'Precio por unidad: \n' +
-               'Bs.: ' + formatCurrency(priceWithIvaBs, 'BS') + '\n' +
-               '💵 USD: ' + formatCurrency(priceWithIvaUsd, 'USD') + '\n' +
-               '💰 COP: ' + formatCurrency(priceWithIvaCop, 'COP');
+      'Cantidad: ' + product.selectedQuantity + ' UND(S) \n' +
+      'Precio por unidad: \n' +
+      'Bs.: ' + formatCurrency(priceWithIvaBs, 'BS') + '\n' +
+      '💵 USD: ' + formatCurrency(priceWithIvaUsd, 'USD') + '\n' +
+      '💰 COP: ' + formatCurrency(priceWithIvaCop, 'COP');
     productos_array.push(rows);
   });
 
   const whatsappMessage = 'Mensaje de presupuesto\n\n' +
-                          'Fecha: ' + fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '\n' +
-                          '\nBuenas tardes, Estimado Cliente!\n' +
-                          '... le da la Bienvenida!\n' +
-                          'Para nosotros es un gusto servirle.\n\n' +
-                          'A continuación el detalle de su presupuesto: \n' +
-                          productos_array.join('\n\n') + '\n\n' +
-                          
-                          '\n\nTOTAL PRESUPUESTO:\n' +
-                          'Bs.: ' + formatCurrency(props.totalAmountBs, 'BS') + '\n' +
-                          '💵 USD: ' + formatCurrency(props.totalAmountUsd, 'USD') + '\n' +
-                          '💰 COP: ' + formatCurrency(props.totalAmountCop, 'COP') + '\n' +
-                          '\n👉 Condiciones\n' +
-                          '\nPrecios sujetos a cambio sin previo aviso.\n' +
-                          '\nEl Presupuesto es Válido hasta agotarse las existencias.\n' +
-                          '\nPara compras en taquilla debe presentar este presupuesto.\n';
+    'Fecha: ' + fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '\n' +
+    '\nBuenas tardes, Estimado Cliente!\n' +
+    '... le da la Bienvenida!\n' +
+    'Para nosotros es un gusto servirle.\n\n' +
+    'A continuación el detalle de su presupuesto: \n' +
+    productos_array.join('\n\n') + '\n\n' +
+    '\n\nTOTAL PRESUPUESTO:\n' +
+    'Bs.: ' + formatCurrency(props.totalAmountBs, 'BS') + '\n' +
+    '💵 USD: ' + formatCurrency(props.totalAmountUsd, 'USD') + '\n' +
+    '💰 COP: ' + formatCurrency(roundUpToNearestHundred(props.totalAmountCop), 'COP') + '\n' +
+    '\n👉 Condiciones\n' +
+    '\nPrecios sujetos a cambio sin previo aviso.\n' +
+    '\nEl Presupuesto es Válido hasta agotarse las existencias.\n' +
+    '\nPara compras en taquilla debe presentar este presupuesto.\n';
 
+  return whatsappMessage;
+};
+
+
+const handleShareButtonClick = () => {
+  const whatsappMessage = generateWhatsappMessage();
+  if (!whatsappMessage) {
+    toast.error('No hay productos en la cotización para compartir.');
+    return;
+  }
   const encodedMessage = encodeURIComponent(whatsappMessage);
   const whatsappUrl = 'https://api.whatsapp.com/send?text=' + encodedMessage;
   window.open(whatsappUrl, '_blank');
 };
 
-
+const handleCopyWhatsappMessage = async () => {
+  const whatsappMessage = generateWhatsappMessage();
+  if (!whatsappMessage) {
+    toast.error('No hay productos en la cotización para copiar.');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(whatsappMessage);
+    toast.success('Mensaje copiado al portapapeles correctamente.');
+  } catch (err) {
+    console.error('Error al copiar el mensaje:', err);
+    toast.error('Error al copiar el mensaje al portapapeles.');
+  }
+};
 const chipColor = "primary";
 </script>
 
@@ -193,7 +218,7 @@ const chipColor = "primary";
             class="rounded-0"
           >
             <template #prepend>
-               <div class="d-flex align-center">
+               <div class="d-flex align-center" style="width: 60px;">
                 <VTextField
                   v-model.number="product.selectedQuantity" type="number"
                   variant="outlined"
@@ -235,6 +260,7 @@ const chipColor = "primary";
     <VBtn color="secondary" variant="outlined" @click="remove()" class="flex-grow-1"> Cancelar </VBtn>
     <VBtn color="primary" variant="flat" @click="handlePrintButtonClick" class="flex-grow-1"> Imprimir </VBtn>
     <VBtn color="success" variant="flat" @click="handleShareButtonClick" class="flex-grow-1"> Compartir </VBtn>
+    <VBtn color="info" variant="flat" @click="handleCopyWhatsappMessage" class="flex-grow-1"> Copiar </VBtn>
     </VCardActions>
 
   </VCard>

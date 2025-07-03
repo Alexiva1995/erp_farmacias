@@ -14,10 +14,16 @@ class QuotationQueryService
     {
         return Product::query()->select(
             'products.*'
-            )->with([
+        )
+        ->with([
             'laboratory',
             'origin',
-        ])->withSum('lots', 'quantity');
+        ])
+        // --- ¡ESTE ES EL CAMBIO CLAVE! ---
+        // Usamos addSelect con DB::raw para crear la columna 'valid_stock_sum'
+        // y aplicar COALESCE directamente en la subconsulta de la suma.
+        ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
+        // --- FIN CAMBIO CLAVE ---
     }
 
 
@@ -46,20 +52,20 @@ class QuotationQueryService
 
         $hasStock = $filters['hasStock'] ?? null;
 
-        if ($hasStock === false) {
-            $query->whereDoesntHave('lots', function ($lotQuery) {
-                $lotQuery->where('expiration_date', '>=', now()->startOfDay());
-            });
-        } elseif ($hasStock === true) {
-            $query->whereHas('lots', function ($lotQuery){
-               $lotQuery->where('expiration_date', '>=', now()->startOfDay());
-            });
+        // La lógica de HAVING ahora funciona porque 'valid_stock_sum'
+        // es una columna real en el SELECT de la consulta.
+        if ($hasStock === true) {
+            $query->groupBy('products.id')
+                  ->havingRaw('valid_stock_sum > 0');
+        } elseif ($hasStock === false) {
+            $query->groupBy('products.id')
+                  ->havingRaw('valid_stock_sum <= 0');
         }
 
         return $query;
     }
 
-        private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
+    private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         if (empty($sortBy)) {
             return $query->orderBy('products.name', 'asc');
@@ -71,15 +77,16 @@ class QuotationQueryService
                     ->orderBy('laboratories.name', $orderBy);
 
             case 'valid_stock':
-                $subQuery = DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0)');
-                return $query->orderBy($subQuery, $orderBy);
+            case 'lots_sum_quantity':
+            case 'valid_stock_sum': // Aseguramos que se pueda ordenar por el alias correcto
+                return $query->orderBy('valid_stock_sum', $orderBy);
 
             case 'next_expiration':
-                $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
+                $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0)');
                 return $query->orderBy($subQuery, $orderBy);
 
-            case 'lots_sum_quantity':
-                return $query->orderBy('lots_sum_quantity', $orderBy);
+            case 'sales_average':
+            return $query->orderBy('products.sales_average', $orderBy);
 
             case 'id':
             case 'name':
@@ -91,7 +98,7 @@ class QuotationQueryService
         return $query;
     }
 
-       public function getFilteredQuery(Request $request): Builder
+    public function getFilteredQuery(Request $request): Builder
     {
         $query = $this->getBaseQuery();
 
@@ -107,6 +114,4 @@ class QuotationQueryService
 
         return $query;
     }
-
-
 }

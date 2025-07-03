@@ -15,15 +15,19 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  totalQuotationAmount: {
+    type: Number,
+    default: 0,
+  },
+  totalIvaAmount: {
+    type: Number,
+    default: 0,
+  },
   selectedDisplayCurrency: {
     type: String,
     default: 'USD',
   },
 });
-
-
-const finalTotalIVAAmount = computed(() => props.quotationDetails?.vat ?? 0);
-const finalTotalQuotationAmount = computed(() => props.quotationDetails?.total ?? 0);
 
 const getItemPriceByCurrency = (item, currency) => {
   if (currency === 'BS') {
@@ -34,6 +38,16 @@ const getItemPriceByCurrency = (item, currency) => {
     return item.price || 0;
   }
 };
+
+
+const formattedTotalQuotation = computed(() => {
+  let amountToFormat = props.totalQuotationAmount;
+  if (props.selectedDisplayCurrency === 'COP') {
+    amountToFormat = Math.ceil(amountToFormat / 100) * 100;
+  }
+  return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
+});
+
 
 </script>
 <template>
@@ -66,12 +80,12 @@ const getItemPriceByCurrency = (item, currency) => {
       </div>
       <div class="ticket-line">
         <span>IVA (16%):</span>
-        <span>{{ formatCurrency(finalTotalIVAAmount, selectedDisplayCurrency) }}</span>
+        <span>{{ formatCurrency(totalIvaAmount, selectedDisplayCurrency) }}</span>
       </div>
       <hr>
       <div class="ticket-line ticket-total">
         <span>TOTAL:</span>
-        <span>{{ formatCurrency(finalTotalQuotationAmount, selectedDisplayCurrency) }}</span>
+        <span>{{formattedTotalQuotation}}</span>
       </div>
     </div>
 
@@ -82,3 +96,4 @@ const getItemPriceByCurrency = (item, currency) => {
     </div>
   </div>
 </template>
+
