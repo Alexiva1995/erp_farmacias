@@ -11,12 +11,13 @@ const emit = defineEmits(["update:options"]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
-  { title: "Stock", key: "stock_before", sortable: true },
+  { title: "Stock A", key: "stock_before", sortable: true },
   { title: "Cantidad", key: "quantity", sortable: false },
+  { title: "Stock F", key: "stock_after", sortable: true },
   { title: "Fecha", key: "movement_date", sortable: true },
   { title: "Tipo", key: "movement_type", sortable: true },
-  { title: "Provedor", key: "supplier.name", sortable: true },
-  { title: "Cliente", key: "user.email", sortable: true },
+  { title: "Proveedor", key: "supplier.name", sortable: true },
+  { title: "Operador", key: "user.email", sortable: true },
 ];
 </script>
 
@@ -33,7 +34,7 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">#{{ item.id }}</span>
+        <span class="font-weight-medium">#{{ item.product_id }}</span>
       </template>
 
       <template #item.movement_date="{ item }">
@@ -52,7 +53,15 @@ const headers = [
       </template>
 
       <template #item.quantity="{ item }">
-        <span>{{ item.quantity }}</span>
+        <span
+          :class="{
+            'text-success': item.quantity > 0,
+            'text-error': item.quantity < 0,
+          }"
+          class="font-weight-medium"
+        >
+          {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
+        </span>
       </template>
 
       <template #item.movement_type="{ item }">

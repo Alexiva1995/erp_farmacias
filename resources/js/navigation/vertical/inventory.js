@@ -30,6 +30,5 @@ export default [
         to: 'inventory-cyclic',
       }
     ],
-  },
-  
+  }, 
 ]
