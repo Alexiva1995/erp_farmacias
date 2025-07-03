@@ -10,7 +10,8 @@ import {
   faSave,
   faTrash,
   faUser,
-  faBarcode
+  faBarcode,
+  faFileLines
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -22,7 +23,8 @@ library.add(
   faPencilAlt,
   faEye,
   faBoxesStacked,
-  faBarcode
+  faBarcode,
+  faFileLines,
 )
 
 export default function (app) {

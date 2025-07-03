@@ -2,6 +2,7 @@
 
 namespace App\Services\Expirations;
 
+use App\Models\DonativeLog;
 use App\Models\ExpiredLog;
 use App\Models\ProductLot;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,17 +29,38 @@ class ExpirationQueryService
 
     /**
      * Aplica filtros de búsqueda a la consulta.
+     * @param Builder $query
+     * @param Request $request
+     * @return Builder
      */
     private function applyFilters(Builder $query, Request $request): Builder
     {
         if ($request->filled('q')) {
             $searchTerm = "%{$request->q}%";
-            $query->whereHas('product', function ($productQuery) use ($searchTerm) {
-                $productQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm)
-                    ->orWhere('barcode', 'like', $searchTerm);
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('lot_number', 'like', $searchTerm)
+                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
+                        $productQuery->where('name', 'like', $searchTerm)
+                            ->orWhere('active_ingredient', 'like', $searchTerm)
+                            ->orWhere('barcode', 'like', $searchTerm);
+                    });
             });
         }
+
+        if ($request->filled('laboratory_id')) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
+                $productQuery->where('laboratory_id', $request->laboratory_id);
+            });
+        }
+
+        if ($request->filled('start_date')) {
+            $query->where('expiration_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->where('expiration_date', '<=', $request->end_date);
+        }
+
         return $query;
     }
 
@@ -47,7 +69,7 @@ class ExpirationQueryService
      */
     private function applySorting(Builder $query, Request $request): Builder
     {
-        if ($request->filled('sortBy') && $request->sortBy === 'name') {
+        if ($request->filled('sortBy') && $request->sortBy === 'product.name') {
             return $query->join('products', 'product_lots.product_id', '=', 'products.id')
                 ->orderBy('products.name', $request->input('orderBy', 'asc'))
                 ->select('product_lots.*');
@@ -71,37 +93,32 @@ class ExpirationQueryService
 
         return $query;
     }
+
     public function getExpiredLotsLogQuery(Request $request): Builder
     {
-        $query = ExpiredLog::with('product.laboratory')->whereDoesntHave('donativeLog');
+        $query = ExpiredLog::with('product.laboratory', 'donativeLog');
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->q}%";
             $query->where(function ($subQuery) use ($searchTerm) {
                 $subQuery->where('product_name', 'like', $searchTerm)
-                    ->orWhere('lot_number', 'like', $searchTerm);
+                    ->orWhere('lot_number', 'like', 'searchTerm');
             });
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $query->orderBy($request->sortBy, $request->orderBy);
         } else {
-            // Un orden por defecto consistente.
             $query->orderBy('created_at', 'desc');
         }
 
         return $query;
     }
 
-    /**
-     * 
-     *
-     * @return object
-     */
     public function getExpiredLotsSummary(): Collection
     {
-        $dateFormat = '';
         $dbDriver = DB::connection()->getDriverName();
+        $dateFormat = '';
 
         if ($dbDriver === 'mysql') {
             $dateFormat = "DATE_FORMAT(created_at, '%Y-%m')";
@@ -113,12 +130,22 @@ class ExpirationQueryService
             $dateFormat = "created_at";
         }
 
-        $summaries = ExpiredLog::whereDoesntHave('donativeLog')
+        $subqueryDateFormat = str_replace('created_at', 'el_sub.created_at', $dateFormat);
+
+        $subquery = DonativeLog::query()
+            ->selectRaw('count(*)')
+            ->from('donative_logs as dl_sub')
+            ->join('expired_logs as el_sub', 'dl_sub.expired_log_id', '=', 'el_sub.id')
+            ->whereRaw("$subqueryDateFormat = month");
+
+
+        $summaries = ExpiredLog::query()
             ->select(
                 DB::raw("$dateFormat as month"),
-                DB::raw('SUM(expired_quantity) as total_quantity'),
-                DB::raw('SUM(total_lost_value) as total_lost_value')
+                DB::raw('SUM(expired_quantity) as total_products'),
+                DB::raw('SUM(total_lost_value) as total_cost'),
             )
+            ->selectSub($subquery, 'donation_count')
             ->groupBy('month')
             ->orderBy('month', 'desc')
             ->get();

@@ -7,13 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletes; // Se mantiene si se usa en el futuro, aunque no se usa directamente en este snippet
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Services\Resources\ResourceService; // Importado de 4.0-TPV
+use Illuminate\Support\Str; // Importado de develop
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    // Si se necesita SoftDeletes en el futuro, se añadiría aquí:
+    // use SoftDeletes;
 
     /**
      * La tabla asociada con el modelo.
@@ -49,13 +52,22 @@ class Product extends Model
         'stock',
     ];
 
-    protected $appends = ['formatted_details'];
+    // Atributos que se añadirán al array del modelo cuando se serialice a JSON.
+    protected $appends = ['formatted_details', 'price_bs', 'price_cop'];
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      *
      * @var array<string, string>
      */
+    protected $casts = [
+        'is_colombian_origin' => 'boolean',
+        'psychotropic' => 'boolean',
+        'is_deleted' => 'boolean',
+        // Puedes añadir más casts aquí si es necesario, por ejemplo:
+        // 'unit_cost' => 'decimal:2',
+        // 'sale_price' => 'decimal:2',
+    ];
 
 
     /**
@@ -71,6 +83,11 @@ class Product extends Model
     {
         return $this->belongsTo(Laboratory::class);
     }
+
+    /**
+     * Accesor para la URL de la foto.
+     * Si 'photo_url' existe, devuelve la URL accesible públicamente, de lo contrario, null.
+     */
     protected function photoUrl(): Attribute
     {
         return Attribute::make(
@@ -101,6 +118,10 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    /**
+     * Un producto pertenece a un grupo de productos.
+     */
     public function group(): BelongsTo
     {
         return $this->belongsTo(GroupsProduct::class);
@@ -114,66 +135,146 @@ class Product extends Model
         return $this->hasMany(ProductLot::class);
     }
 
-    public function productSuppliers()
+    /**
+     * Un producto puede tener múltiples asociaciones con proveedores (ej. precios específicos por proveedor).
+     */
+    public function productSuppliers(): HasMany
     {
         return $this->hasMany(ProductSupplier::class);
     }
 
-    public function expirations()
+    /**
+     * Un producto tiene muchas fechas de expiración asociadas.
+     */
+    public function expirations(): HasMany
     {
         return $this->hasMany(Expiration::class);
     }
 
-    public function getFormattedDetailsAttribute()
-    {
-        return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
-    }
-
-    public function individualOffers()
+    /**
+     * Un producto puede tener múltiples ofertas individuales.
+     */
+    public function individualOffers(): HasMany
     {
         return $this->hasMany(IndividualOffer::class);
     }
 
-    public function returns()
+    /**
+     * Un producto puede estar asociado a múltiples entradas de devoluciones.
+     */
+    public function returns(): HasMany
     {
         return $this->hasMany(ReturnEntry::class);
     }
 
-    public function quotationLinks()
+    /**
+     * Un producto puede estar en múltiples enlaces de cotización.
+     */
+    public function quotationLinks(): HasMany
     {
         return $this->hasMany(QuotationProduct::class);
     }
 
-    public function profitability()
+    /**
+     * Un producto tiene una rentabilidad asociada.
+     */
+    public function profitability(): \Illuminate\Database\Eloquent\Relations\HasOne // Corregido a HasOne si es una sola rentabilidad
     {
         return $this->hasOne(ProductProfitability::class);
     }
 
-    public function productCounts()
+    /**
+     * Un producto puede tener múltiples conteos de inventario.
+     */
+    public function productCounts(): HasMany
     {
         return $this->hasMany(ProductCount::class);
     }
 
-    public function orderDetails()
+    /**
+     * Un producto puede estar en los detalles de múltiples órdenes.
+     */
+    public function orderDetails(): HasMany
     {
         return $this->hasMany(OrderDetail::class);
     }
 
-    public function inventoryMovements()
+    /**
+     * Un producto puede tener múltiples movimientos de inventario.
+     */
+    public function inventoryMovements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class);
     }
 
-    public function invoiceDetails()
+    /**
+     * Un producto puede estar en los detalles de múltiples facturas.
+     */
+    public function invoiceDetails(): HasMany
     {
         return $this->hasMany(InvoiceDetail::class);
     }
 
-    public function psychotropicControls()
+    /**
+     * Un producto puede tener múltiples controles psicotrópicos.
+     */
+    public function psychotropicControls(): HasMany
     {
         return $this->hasMany(PsychotropicControl::class);
     }
-    public function setNameAttribute($value)
+
+    /**
+     * =================================================================================================
+     * ACCESORES Y MUTADORES
+     * =================================================================================================
+     */
+
+    /**
+     * Accesor para obtener los detalles formateados del producto.
+     * Combina el ingrediente activo y el nombre del laboratorio.
+     */
+    public function getFormattedDetailsAttribute(): string
+    {
+        return $this->active_ingredient . ($this->laboratory ? ' - ' . $this->laboratory->name : '');
+    }
+
+    /**
+     * Método auxiliar para obtener la tasa de cambio de un servicio.
+     * Utiliza el servicio `ResourceService` para obtener la tasa de cambio.
+     */
+    protected function getServiceExchangeRate(string $currencyCode): float
+    {
+        $resourceService = app(ResourceService::class);
+        return $resourceService->getExchangeRate($currencyCode);
+    }
+
+    /**
+     * Accesor para el precio en Bolívares (BS).
+     * Calcula el precio de venta multiplicando por la tasa de cambio de BS.
+     */
+    protected function priceBs(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => round($this->sale_price * $this->getServiceExchangeRate('BS'), 2),
+        );
+    }
+
+    /**
+     * Accesor para el precio en Pesos Colombianos (COP).
+     * Calcula el precio de venta multiplicando por la tasa de cambio de COP.
+     */
+    protected function priceCop(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => round($this->sale_price * $this->getServiceExchangeRate('COP'), 2),
+        );
+    }
+
+    /**
+     * Mutador para el atributo 'name'.
+     * Convierte el nombre a mayúsculas antes de guardarlo en la base de datos.
+     */
+    public function setNameAttribute($value): void
     {
         $this->attributes['name'] = Str::upper($value);
     }

@@ -14,11 +14,16 @@ const institutionName = ref("");
 const donationProducts = ref([]);
 
 watch(
-  () => props.initialProducts,
-  (newVal) => {
-    donationProducts.value = JSON.parse(JSON.stringify(newVal));
-  },
-  { deep: true }
+  () => props.modelValue,
+  (isVisible) => {
+    if (isVisible) {
+      donationProducts.value = JSON.parse(
+        JSON.stringify(props.initialProducts)
+      );
+
+      institutionName.value = "";
+    }
+  }
 );
 
 const donationHeaders = [
@@ -39,6 +44,10 @@ const discardProduct = (productToDiscard) => {
 const handleGenerate = () => {
   if (!institutionName.value.trim()) {
     toast.warning("Por favor, ingrese el nombre de la institución.");
+    return;
+  }
+  if (donationProducts.value.length === 0) {
+    toast.warning("No se puede generar una donación sin productos.");
     return;
   }
   emit("generate", {
@@ -63,9 +72,9 @@ const closeDialog = () => {
       <VCardTitle class="d-flex align-center">
         <span>Generar Carta de Donativo</span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog"
-          ><VIcon>tabler-x</VIcon></VBtn
-        >
+        <VBtn icon variant="text" @click="closeDialog">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
       <VDivider />
       <VCardText class="py-6">
@@ -82,7 +91,7 @@ const closeDialog = () => {
           class="mb-4"
           height="300px"
           fixed-header
-          no-data-text="No hay productos para donar."
+          no-data-text="No hay productos seleccionados para donar."
         >
           <template #item.actions="{ item }">
             <VTooltip text="Descartar de la donación">
@@ -93,6 +102,7 @@ const closeDialog = () => {
               </template>
             </VTooltip>
           </template>
+          <template #bottom></template>
         </VDataTable>
       </VCardText>
       <VDivider />
