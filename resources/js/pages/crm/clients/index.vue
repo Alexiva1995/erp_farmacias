@@ -1,4 +1,5 @@
 <script setup lang="js">
+import ClientsFilters from "@/components/ClientsFilters.vue";
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -55,6 +56,12 @@ const pageTablaClientesJuridicos = ref(1)
 const itemsPerPageTablaClientesJuridicos = ref(10)
 const sortByTablaClientesJuridicos = ref()
 const orderByTablaClientesJuridicos = ref()
+
+const buscardor_filtro= ref("");
+const tipo_identificacion_filtro= ref("");
+const company_id_filtro= ref("");
+const fechaDesde_filtro= ref("");
+const fechaHasta_filtro= ref("");
 
 
 function mostarModal(){
@@ -245,14 +252,25 @@ async function confirmarEliminarCliente(payload){
     showCancelButton: true,
     confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
     cancelButtonText: '<span style="color: white;">Cancelar</span>',
-    // customClass: {
-    //   confirmButton: 'red-accent-3',  // Clase para el botón de confirmar
-    //   cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
-    // },
+    customClass: {
+      confirmButton: 'erro',  // Clase para el botón de confirmar
+      // cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
+    },
+    // confirmButtonColor: '#d33',
+
+    //     title: "¿Estás seguro?",
+    // text: "¡No podrás revertir la eliminación de este producto!",
+    // icon: "warning",
+    // showCancelButton: true,
+    // cancelButtonText: "Cancelar",
+    // confirmButtonText: "Eliminar",
+    // reverseButtons: true,
+
+
+
     // confirmButtonText: 'Sí, ¡eliminar!',
     // cancelButtonText: 'Cancelar',
     // color: '#111',
-    confirmButtonColor: '#d33',
     // confirmButtonColor: '#7367f0',
     // cancelButtonColor: '#d33',
     // background: '#2f3349',
@@ -297,14 +315,14 @@ const updateTableOptionsJuridico = options => {
 }
 
 watch(
-    [page,itemsPerPage,orderBy,sortBy],
+    [buscardor_filtro,page,itemsPerPage,orderBy,sortBy],
   async () =>{
     await actualizarTabla()
   }
 )
 
 watch(
-    [pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
+    [buscardor_filtro,pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
   async () =>{
     await actualizarTabla()
   }
@@ -348,6 +366,15 @@ onMounted(async () => {
 </script>
 <template>
   <div>
+    <ClientsFilters
+      v-model:buscador="buscardor_filtro"
+      v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
+      v-model:company_id_filtro="company_id_filtro"
+      v-model:fechaDesde_filtro="fechaDesde_filtro"
+      v-model:fechaHasta_filtro="fechaHasta_filtro"
+      :companies="statuModule.comapanies"
+      @add-client="mostarModal"
+    />
     <ClientFormDialoge
       :companies="statuModule.comapanies"
       :modal-formulario="modal.statu"
@@ -358,14 +385,14 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Clientes">
+    <VCard title="Clientes Naturales">
       <VDivider />
-      <div class="d-flex flex-wrap justify-end gap-4 ma-6">
+      <!-- <div class="d-flex flex-wrap justify-end gap-4 ma-6">
         <VBtn color="primary" @click="mostarModal()">
           <VIcon icon="tabler-plus" class="mr-2" />
           Agregar
         </VBtn>
-      </div>
+      </div> -->
       <VDivider />
       <ClientTable
         :clients="statuModule.itemsClientesNaturales"
@@ -379,7 +406,7 @@ onMounted(async () => {
       />
     </VCard>
     <div class="mb-5"></div>
-    <VCard>
+    <VCard title="Clientes Juridicos">
       <ClientTable
         :clients="statuModule.itemsClientesJuridicos"
         :total-clients="statuModule.totalClientesJuridicos"

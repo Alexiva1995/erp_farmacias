@@ -1,25 +1,20 @@
 <script setup>
 const props = defineProps({
-  searchQuery: String,
-  selectedLaboratory: [Number, String, null],
-  selectedOrigin: [Number, String, null],
-  stockStatusFilter: [Boolean, null],
-  startDate: [String, null],
-  endDate: [String, null],
-  laboratories: { type: Array, default: () => [] },
-  origins: { type: Array, default: () => [] },
+  buscador: String,
+  tipo_identificacion_filtro: String,
+  company_id_filtro: [String, null],
+  fechaHasta_filtro: [String, null],
+  fechaDesde_filtro: [String, null],
+  companies: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
-  "update:searchQuery",
-  "update:selectedLaboratory",
-  "update:selectedOrigin",
-  "update:stockStatusFilter",
-  "update:startDate",
-  "update:endDate",
-  "clear",
-  "export",
-  "add-product",
+  "update:buscador",
+  "update:tipo_identificacion_filtro",
+  "update:company_id_filtro",
+  "update:fechaHasta_filtro",
+  "update:fechaDesde_filtro",
+  "add-client",
 ]);
 
 const stockOptions = [
@@ -32,69 +27,60 @@ const stockOptions = [
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="6">
           <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
+            :model-value="props.buscador"
+            placeholder="Buscar por nombre, apellido, correo o identificación..."
             clearable
-            @update:model-value="emit('update:searchQuery', $event)"
+            @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
           <VSelect
-            :model-value="props.selectedLaboratory"
-            label="Laboratorio"
-            :items="props.laboratories"
+            :model-value="props.tipo_identificacion_filtro"
+            label="Tipo de identificación"
+            :items="['V-', 'J-', 'G-', 'E-']"
+            clearable
+            @update:model-value="
+              emit('update:tipo_identificacion_filtro', $event)
+            "
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
+            :model-value="props.company_id_filtro"
+            label="Tipo de identificación"
+            :items="props.companies"
             item-title="name"
             item-value="id"
             clearable
-            @update:model-value="emit('update:selectedLaboratory', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.selectedOrigin"
-            label="Origen"
-            :items="props.origins"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedOrigin', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
+            @update:model-value="emit('update:company_id_filtro', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
-            :model-value="props.startDate"
-            label="Vencimiento Desde"
+            :model-value="props.fechaDesde_filtro"
+            label="Desde"
             clearable
             :config="{
               altInput: true,
               altFormat: 'Y-m-d',
               dateFormat: 'Y-m-d',
             }"
-            @update:model-value="emit('update:startDate', $event)"
+            @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
-            :model-value="props.endDate"
-            label="Vencimiento Hasta"
+            :model-value="props.fechaHasta_filtro"
+            label="Hasta"
             clearable
             :config="{
               altInput: true,
               altFormat: 'Y-m-d',
               dateFormat: 'Y-m-d',
             }"
-            @update:model-value="emit('update:endDate', $event)"
+            @update:model-value="emit('update:fechaHasta_filtro', $event)"
           />
         </VCol>
       </VRow>
@@ -136,9 +122,9 @@ const stockOptions = [
       <VBtn
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('add-product')"
+        @click="emit('add-client')"
       >
-        Añadir Producto
+        Agregar Cliente
       </VBtn>
     </VCardActions>
   </VCard>
