@@ -38,6 +38,8 @@
     "dayjs": "^1.11.13",
     "destr": "2.0.5",
     "eslint-plugin-regexp": "2.7.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "jwt-decode": "4.0.0",
     "mapbox-gl": "3.5.2",
     "ofetch": "1.4.1",

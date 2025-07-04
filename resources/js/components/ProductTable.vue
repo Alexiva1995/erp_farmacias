@@ -10,15 +10,13 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "edit-product", "delete-product"]);
 
 const headers = [
-  { title: "id", key: "id" },
-  { title: "Producto", key: "name" },
+  { title: "id", key: "id", sortable: true },
+  { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "valid_stock", sortable: false },
-  { title: "Exp.", key: "next_expiration", sortable: false },
-  // { title: 'Laboratorio', key: 'laboratory.name' },
-  // { title: 'Origen', key: 'origin.name' },
-  { title: "Precio Compra", key: "cost_price" },
-  { title: "Precio Venta", key: "sale_price" },
+  { title: "Stock", key: "valid_stock", sortable: true },
+  { title: "Exp.", key: "next_expiration", sortable: true },
+  { title: "Precio Compra", key: "cost_price", sortable: true },
+  { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -68,9 +66,10 @@ const nextExpirationDate = (product) => {
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.id="{ item }"
-        ><span class="font-weight-medium">{{ item.id }}</span></template
-      >
+      <template #item.id="{ item }">
+        <span class="font-weight-medium">{{ item.id }}</span>
+      </template>
+
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <VAvatar
@@ -81,9 +80,17 @@ const nextExpirationDate = (product) => {
             :image="item.photo_url"
           />
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">{{
-              item.name
-            }}</span>
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+
+              <span v-if="item.iva == 1"> (G)</span>
+
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
+
             <span class="text-sm text-disabled">{{
               item.active_ingredient
             }}</span>
@@ -91,31 +98,29 @@ const nextExpirationDate = (product) => {
         </div>
       </template>
 
-      <template #item.valid_stock="{ item }"
-        ><span class="font-weight-medium">{{
-          calculateValidStock(item)
-        }}</span></template
-      >
-      <template #item.next_expiration="{ item }"
-        ><span>{{ nextExpirationDate(item) }}</span></template
-      >
-      <template #item.cost_price="{ item }"
-        ><span class="font-weight-medium"
-          >${{ item.cost_price }}</span
-        ></template
-      >
-      <template #item.sale_price="{ item }"
-        ><span class="font-weight-medium"
-          >${{ item.sale_price }}</span
-        ></template
-      >
+      <template #item.valid_stock="{ item }">
+        <span class="font-weight-medium">{{ calculateValidStock(item) }}</span>
+      </template>
+
+      <template #item.next_expiration="{ item }">
+        <span>{{ nextExpirationDate(item) }}</span>
+      </template>
+
+      <template #item.cost_price="{ item }">
+        <span class="font-weight-medium">{{ item.unit_cost }}</span>
+      </template>
+
+      <template #item.sale_price="{ item }">
+        <span class="font-weight-medium">{{ item.sale_price }}</span>
+      </template>
+
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-product', item)"
-          ><VIcon icon="tabler-edit"
-        /></IconBtn>
-        <IconBtn @click="emit('delete-product', item.id)"
-          ><VIcon icon="tabler-trash"
-        /></IconBtn>
+        <IconBtn @click="emit('edit-product', item)">
+          <VIcon icon="tabler-edit" />
+        </IconBtn>
+        <IconBtn @click="emit('delete-product', item.id)">
+          <VIcon icon="tabler-trash" />
+        </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>

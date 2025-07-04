@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('companies', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('identification', 100)->unique('uniq_company_identification');
-            $table->string('address')->nullable();
-            $table->timestamps();
+        Schema::table('quotations', function (Blueprint $table) {
+             if (Schema::hasColumn('quotations', 'vat')) {
+                $table->decimal('vat', 12, 2)->change();
+             }
         });
     }
 
@@ -25,6 +23,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('companies');
+        Schema::table('quotations', function (Blueprint $table) {
+                $table->tinyInteger('vat')->change();
+        });
     }
 };
