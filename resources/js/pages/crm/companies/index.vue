@@ -2,6 +2,7 @@
 
 import CompanyTable from "@/components/CompanyTable.vue";
 import ClientFormOfCompanyDialoge from "@/components/dialogs/ClientFormOfCompanyDialoge.vue";
+import CompanyFilters from "@/components/dialogs/CompanyFilters.vue";
 import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
 import ListClientsOfCompanyDialoge from "@/components/dialogs/ListClientsOfCompanyDialoge.vue";
 import axios from "@/plugins/axios";
@@ -83,6 +84,13 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
+
+
+const buscardor_filtro= ref("");// nombre, identificación, direccion
+const tipo_empresa_filtro= ref("");
+const fechaDesde_filtro= ref("");
+const fechaHasta_filtro= ref("");
+
 
 
 const loadingTableCliente = ref(false)
@@ -214,15 +222,15 @@ function cerrarModalFormularioCliente(payload){
 }
 
 
-async function consultAll(){
-  let res = await axios.get("/crm/companies")
-  if(res.status!=200){
-    console.error("error => ",res)
-    return []
-  }
-  return [...res.data.data]
+// async function consultAll(){
+//   let res = await axios.get("/crm/companies")
+//   if(res.status!=200){
+//     console.error("error => ",res)
+//     return []
+//   }
+//   return [...res.data.data]
 
-}
+// }
 
 async function actualizarTabla(){
   loading.value = true;
@@ -230,7 +238,11 @@ async function actualizarTabla(){
     page:page.value,
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
-    sortBy:sortBy.value
+    sortBy:sortBy.value,
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_empresa_filtro:tipo_empresa_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let responseApi= await filtraCompany(filtros)
   statuModule.items=responseApi.data
@@ -397,13 +409,7 @@ async function filtrarClientCompany(dataFiltro){
 }
 
 async function filtraCompany(dataFiltro){
-  let datosFiltros={
-    page:dataFiltro.page,
-    itemsPerPage:dataFiltro.itemsPerPage,
-    orderBy:dataFiltro.orderBy,
-    sortBy:dataFiltro.sortBy,
-  }
-  let respuestaApi = await axios.post(`/crm/companies/filrar?page=${datosFiltros.page}`,datosFiltros)
+  let respuestaApi = await axios.post(`/crm/companies/filrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
@@ -420,8 +426,18 @@ watch(
 )
 
 watch(
-    [page,itemsPerPage,orderBy,sortBy],
+    [
+      buscardor_filtro,
+      tipo_empresa_filtro,
+      fechaDesde_filtro,
+      fechaHasta_filtro,
+      page,
+      itemsPerPage,
+      orderBy,
+      sortBy
+  ],
   async () =>{
+    console.log("uwu")
     await actualizarTabla()
   }
 )
@@ -443,6 +459,13 @@ const updateTableOptionsTableCliente = options => {
 }
 
 
+function limpiarFiltros(){
+  buscardor_filtro.value=""
+  tipo_empresa_filtro.value=""
+  fechaDesde_filtro.value=""
+  fechaHasta_filtro.value=""
+}
+
 
 onMounted(async () => {
   await actualizarTabla()
@@ -450,6 +473,14 @@ onMounted(async () => {
 </script>
 <template>
   <div>
+    <CompanyFilters
+      v-model:buscador="buscardor_filtro"
+      v-model:tipo_empresa_filtro="tipo_empresa_filtro"
+      v-model:fechaDesde_filtro="fechaDesde_filtro"
+      v-model:fechaHasta_filtro="fechaHasta_filtro"
+      @clear="limpiarFiltros"
+      @add-client="mostarModal"
+    />
     <ListClientsOfCompanyDialoge
       :status="statuModalListClients"
       :titulo="statuModalListClients.titulo"
@@ -479,13 +510,13 @@ onMounted(async () => {
       @save="enviar"
     />
     <VCard title="Empresas">
-      <VDivider />
+      <!-- <VDivider />
       <div class="d-flex flex-wrap justify-end gap-4 ma-6">
         <VBtn color="primary" @click="mostarModal">
           <VIcon icon="tabler-plus" class="mr-2" />
           Agregar
         </VBtn>
-      </div>
+      </div> -->
       <VDivider />
       <CompanyTable
         :items="statuModule.items"

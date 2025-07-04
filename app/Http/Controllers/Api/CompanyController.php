@@ -77,6 +77,19 @@ class CompanyController extends Controller
             "page"         => $request->page,
         ];
 
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;

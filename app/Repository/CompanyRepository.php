@@ -44,6 +44,29 @@ class CompanyRepository
     {
         $consulta = Company::query()->with("clients");
 
+        if (array_key_exists("buscardor_filtro", $filtros)) {
+            if ($filtros["buscardor_filtro"] != "") {
+                $consulta->where(function ($query) use ($filtros) {
+                    $query->where("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("address", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
+                });
+            }
+        }
+
+        if (array_key_exists("tipo_empresa_filtro", $filtros)) {
+            if ($filtros["tipo_empresa_filtro"] != "") {
+                $consulta->where("type_company", $filtros["tipo_empresa_filtro"]);
+            }
+        }
+
+
+        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
+            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaDesde_filtro"] != "") {
+                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
+            }
+        }
+
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);

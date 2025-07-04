@@ -2,7 +2,6 @@
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
-  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })

@@ -35,6 +35,7 @@ declare module 'vue' {
     ClientFormOfCompanyDialoge: typeof import('./resources/js/components/dialogs/ClientFormOfCompanyDialoge.vue')['default']
     ClientsFilters: typeof import('./resources/js/components/ClientsFilters.vue')['default']
     ClientTable: typeof import('./resources/js/components/ClientTable.vue')['default']
+    CompanyFilters: typeof import('./resources/js/components/dialogs/CompanyFilters.vue')['default']
     CompanyFormDialoge: typeof import('./resources/js/components/dialogs/CompanyFormDialoge.vue')['default']
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']

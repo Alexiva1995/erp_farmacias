@@ -4,7 +4,6 @@
 const props= defineProps({
   status: {type: Object, required: true},
   titulo: {type: String, required: true},
-  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })
