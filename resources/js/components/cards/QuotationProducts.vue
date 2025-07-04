@@ -76,13 +76,22 @@ const remove = () => {
 
 
 const getProductPrice = (product, currency) => {
+const taxRate = product.taxRate || 0;
+let basePrice = 0;
   if (currency === 'BS') {
-    return product.price_bs || 0;
+    basePrice = product.price_bs || 0;
   } else if (currency === 'COP') {
-    return product.price_cop || 0;
-  } else {
-    return product.price || 0;
+    basePrice = product.price_cop || 0;
+  } else { // Default to USD price
+    basePrice = product.price || 0;
   }
+
+  let priceWithIva = basePrice * (1 + taxRate);
+  if (currency === 'COP') {
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+  }
+  return priceWithIva;
+
 };
 
 

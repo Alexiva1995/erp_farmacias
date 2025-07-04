@@ -193,6 +193,7 @@ watch(barcodeSearchQuery, (newValue) => {
 });
 
 onMounted(() => {
+
   fetchSelectOptions();
   fetchProducts();
 });
@@ -359,8 +360,24 @@ const saveAndPrintQuotation = async () => {
     const printContents = document.getElementById("orderInvoicePrintArea");
     if (printContents) {
       const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Cotización</title>");
-     
+      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+      const styleSheets = document.styleSheets;
+      for (let i = 0; i < styleSheets.length; i++) {
+        const sheet = styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            let cssText = '';
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              cssText += sheet.cssRules[j].cssText;
+            }
+            printWindow.document.write(`<style>${cssText}</style>`);
+          } else if (sheet.href) {
+            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          }
+        } catch (e) {
+          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
+        }
+      }
       printWindow.document.write("</head><body>");
       printWindow.document.write(printContents.innerHTML);
       printWindow.document.write("</body></html>");
@@ -369,9 +386,7 @@ const saveAndPrintQuotation = async () => {
       printWindow.print();
       printWindow.close();
     } else {
-      console.warn(
-        "Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-      );
+      console.warn("Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
       window.print();
     }
 
