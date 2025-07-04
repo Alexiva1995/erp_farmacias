@@ -34,7 +34,7 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">#{{ item.product_id }}</span>
+        <span class="font-weight-medium">{{ item.product_id }}</span>
       </template>
 
       <template #item.movement_date="{ item }">
