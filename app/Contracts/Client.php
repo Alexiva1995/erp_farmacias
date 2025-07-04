@@ -24,4 +24,6 @@ interface Client
     public function deleteById(string $id): void;
 
     public function filtrar(array $filtros): LengthAwarePaginator;
+
+    public function filterWithoutPaginate(array $filtros): Collection;
 }

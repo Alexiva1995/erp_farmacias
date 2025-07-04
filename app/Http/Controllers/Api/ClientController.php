@@ -111,7 +111,48 @@ class ClientController extends Controller
         return ApiResponse::success($validarEliminacio, "The client was successfully deleted", 200);
     }
 
-    public function filrar(Request $request)
+    public function filtrar(Request $request)
+    {
+        $filtros = [
+            "itemsPerPage" => $request->itemsPerPage,
+            "page"         => $request->page,
+        ];
+
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_identificacion_filtro")) {
+            $filtros["tipo_identificacion_filtro"] = $request->tipo_identificacion_filtro;
+        }
+
+        if ($request->filled("tipo") && $request->filled("tipo_identificacion_filtro") == false) {
+            $filtros["tipo"] = $request->tipo;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("company_id")) {
+            $filtros["company_id"] = $request->company_id;
+        }
+
+        // tablas
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+
+        $repuesta = $this->client->filtrar($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
+
+    public function filtrarSinPaginar(Request $request)
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,

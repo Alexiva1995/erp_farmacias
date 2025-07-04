@@ -105,7 +105,7 @@ Route::prefix("crm")->group(function () {
         Route::get("/{id}", [CompanyController::class, "consultById"]);
         Route::delete("/{id}", [CompanyController::class, "deleteById"]);
         Route::post("/edit/{id}", [CompanyController::class, "edit"]);
-        Route::post("/filrar", [CompanyController::class, "filrar"]);
+        Route::post("/filtrar", [CompanyController::class, "filtrar"]);
     });
 
     // Rutas de Clientes
@@ -115,6 +115,7 @@ Route::prefix("crm")->group(function () {
         Route::get("/{id}", [ClientController::class, "consultById"]);
         Route::delete("/{id}", [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
-        Route::post("/filrar", [ClientController::class, "filrar"]);
+        Route::post("/filtrar", [ClientController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
     });
 });

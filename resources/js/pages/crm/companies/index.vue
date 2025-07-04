@@ -399,7 +399,7 @@ async function filtrarClientCompany(dataFiltro){
     sortBy:dataFiltro.sortBy,
     company_id:dataFiltro.company_id,
   }
-  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${datosFiltros.page}`,datosFiltros)
+  let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${datosFiltros.page}`,datosFiltros)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
@@ -409,7 +409,7 @@ async function filtrarClientCompany(dataFiltro){
 }
 
 async function filtraCompany(dataFiltro){
-  let respuestaApi = await axios.post(`/crm/companies/filrar?page=${dataFiltro.page}`,dataFiltro)
+  let respuestaApi = await axios.post(`/crm/companies/filtrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }

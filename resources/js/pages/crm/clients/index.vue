@@ -3,6 +3,7 @@ import ClientsFilters from "@/components/ClientsFilters.vue";
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfClienstGenerator from "@/utils/pdfClienstGenerator";
 import Swal from 'sweetalert2';
 import { onMounted, reactive } from 'vue';
 
@@ -376,7 +377,6 @@ watch(
   ],
   async () =>{
     if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==""){
-      console.log("natural")
       await actualizarTablaTablaNatural()
     }
   }
@@ -396,7 +396,6 @@ watch(
   ],
   async () =>{
     if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==""){
-      console.log("juridico")
       await actualizarTablaTablJuriidica()
     }
   }
@@ -429,13 +428,45 @@ async function filtrar(dataFiltro){
   //   sortBy:dataFiltro.sortBy,
   //   tipo:dataFiltro.tipo,
   // }
-  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${dataFiltro.page}`,dataFiltro)
+  let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
   // console.log("respues api => ",respuestaApi)
 
   return {...respuestaApi.data.data}
+}
+
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/crm/clients/filtrar-sin-paginar`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
+
+async function exportarPdf(){
+    let filtros={
+      // filtros
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+      company_id:company_id_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApi= await filtrarSinPaginar(filtros)
+  console.log("respuesta => ",respuestaApi)
+
+  if(respuestaApi.data.length==0){
+    toast.info("No hay clientes para poder genera un reporte")
+    return null;
+  }
+
+  pdfClienstGenerator(respuestaApi.data)
+
 }
 
 
@@ -458,6 +489,7 @@ onMounted(async () => {
       :companies="statuModule.comapanies"
       @clear="limpiarFiltros"
       @add-client="mostarModal"
+      @export-pdf="exportarPdf"
     />
     <ClientFormDialoge
       :companies="statuModule.comapanies"

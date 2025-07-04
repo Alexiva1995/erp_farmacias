@@ -41,6 +41,52 @@ class ClientRepository
         return Client::query()->with("company")->get();
     }
 
+    public function filterWithoutPaginate($filtros): Collection
+    {
+        $consulta = Client::query()->with("company");
+
+        if (array_key_exists("buscardor_filtro", $filtros)) {
+            if ($filtros["buscardor_filtro"] != "") {
+                $consulta->where(function ($query) use ($filtros) {
+                    $query->whereRaw("CONCAT(name,' ',last_name) LIKE ?", ["%{$filtros["buscardor_filtro"]}%"])
+                        ->orWhereRaw("CONCAT(last_name,' ',name) LIKE ?", ["%{$filtros["buscardor_filtro"]}%"])
+                        ->orWhere("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("last_name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
+                });
+            }
+        }
+
+        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
+            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaDesde_filtro"] != "") {
+                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
+            }
+        }
+
+        if (!array_key_exists("tipo_identificacion_filtro", $filtros)) {
+            if (array_key_exists("tipo", $filtros)) {
+                $consulta->whereIn("identification_type", $filtros["tipo"]);
+            }
+        }
+
+
+        if (array_key_exists("tipo_identificacion_filtro", $filtros)) {
+            if ($filtros["tipo_identificacion_filtro"] != "") {
+                $consulta->where("identification_type", $filtros["tipo_identificacion_filtro"]);
+            } else {
+                $consulta->whereIn("identification_type", $filtros["tipo"]);
+            }
+        }
+
+        if (array_key_exists("company_id", $filtros)) {
+            $consulta->where("company_id", "=", $filtros["company_id"]);
+        }
+
+        $consulta->orderBy("name", "ASC");
+
+        return $consulta->get();
+    }
+
     public function consultAllWithoutCompany(): Collection
     {
         return Client::query()->get();

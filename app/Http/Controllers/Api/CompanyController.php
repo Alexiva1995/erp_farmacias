@@ -70,7 +70,7 @@ class CompanyController extends Controller
         return ApiResponse::success($validarEliminacio, "The company was successfully deleted", 200);
     }
 
-    public function filrar(Request $request)
+    public function filtrar(Request $request)
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,

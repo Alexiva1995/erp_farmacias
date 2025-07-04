@@ -53,4 +53,9 @@ class ClientServices implements Client
     {
         return $this->clientRepository->filtrar($filtros, $filtros["itemsPerPage"]);
     }
+
+    public function filterWithoutPaginate(array $filtros): Collection
+    {
+        return $this->clientRepository->filterWithoutPaginate($filtros);
+    }
 }

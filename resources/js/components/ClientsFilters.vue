@@ -16,6 +16,7 @@ const emit = defineEmits([
   "update:fechaDesde_filtro",
   "clear",
   "add-client",
+  "export-pdf",
 ]);
 </script>
 
@@ -101,13 +102,13 @@ const emit = defineEmits([
           </VBtn>
         </template>
         <VList>
-          <VListItem @click="emit('export', 'xlsx')">
+          <!-- <VListItem @click="emit('export', 'xlsx')">
             <template #prepend>
               <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
             </template>
             <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export', 'pdf')">
+          </VListItem> -->
+          <VListItem @click="emit('export-pdf')">
             <template #prepend>
               <VIcon icon="tabler-file-type-pdf" class="me-2" />
             </template>
