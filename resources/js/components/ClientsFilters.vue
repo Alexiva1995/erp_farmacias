@@ -14,13 +14,9 @@ const emit = defineEmits([
   "update:company_id_filtro",
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
+  "clear",
   "add-client",
 ]);
-
-const stockOptions = [
-  { title: "Con Stock", value: true },
-  { title: "Sin Stock", value: false },
-];
 </script>
 
 <template>
@@ -30,7 +26,7 @@ const stockOptions = [
         <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.buscador"
-            placeholder="Buscar por nombre, apellido, correo o identificación..."
+            placeholder="Buscar por nombre, apellido o identificación..."
             clearable
             @update:model-value="emit('update:buscador', $event)"
           />
@@ -49,7 +45,7 @@ const stockOptions = [
         <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.company_id_filtro"
-            label="Tipo de identificación"
+            label="Empresa"
             :items="props.companies"
             item-title="name"
             item-value="id"

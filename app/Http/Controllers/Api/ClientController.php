@@ -118,18 +118,34 @@ class ClientController extends Controller
             "page"         => $request->page,
         ];
 
-        if ($request->filled("orderBy") && $request->filled("sortBy")) {
-            $filtros["orderBy"] = $request->orderBy;
-            $filtros["sortBy"] = $request->sortBy;
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
         }
 
-        if ($request->filled("tipo")) {
+        if ($request->filled("tipo_identificacion_filtro")) {
+            $filtros["tipo_identificacion_filtro"] = $request->tipo_identificacion_filtro;
+        }
+
+        if ($request->filled("tipo") && $request->filled("tipo_identificacion_filtro") == false) {
             $filtros["tipo"] = $request->tipo;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
         }
 
         if ($request->filled("company_id")) {
             $filtros["company_id"] = $request->company_id;
         }
+
+        // tablas
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
 
         $repuesta = $this->client->filtrar($filtros);
 

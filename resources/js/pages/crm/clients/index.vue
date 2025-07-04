@@ -238,24 +238,81 @@ async function actualizarTabla(){
   loading.value = false;
 }
 
-function filtrarPorTipoDeIdentificacion(clients,isFiltro){
-  return clients.filter(item => isFiltro.includes(item.identification_type));
+async function actualizarTablaTablaNatural(){
+  loading.value = true;
+
+  let filtroNaturales={
+    page:page.value,
+    itemsPerPage:itemsPerPage.value,
+    orderBy:orderBy.value,
+    sortBy:sortBy.value,
+    tipo:["V-","E-"],
+    // filtros
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApiNaturles= await filtrar(filtroNaturales)
+  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
+  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+
+  statuModule.items=[...statuModule.itemsClientesJuridicos,...respuestaApiNaturles.data]
+
+  loading.value = false;
 }
+
+async function actualizarTablaTablJuriidica(){
+  loading.value = true;
+
+  let filtroJuridica={
+    page:pageTablaClientesJuridicos.value,
+    itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
+    orderBy:orderByTablaClientesJuridicos.value,
+    sortBy:sortByTablaClientesJuridicos.value,
+    tipo:["J-","G-"],
+    // filtros
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApiJurudicas= await filtrar(filtroJuridica)
+  statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
+  statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
+
+  statuModule.items=[...respuestaApiJurudicas.data,...statuModule.itemsClientesNaturales]
+
+  loading.value = false;
+}
+
+// function filtrarPorTipoDeIdentificacion(clients,isFiltro){
+//   return clients.filter(item => isFiltro.includes(item.identification_type));
+// }
 
 async function confirmarEliminarCliente(payload){
   // alert(payload)
 
   const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    text: "¡No podrás revertir la eliminación de este cliente!",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
-    cancelButtonText: '<span style="color: white;">Cancelar</span>',
-    customClass: {
-      confirmButton: 'erro',  // Clase para el botón de confirmar
-      // cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
-    },
+      title: '¿Estás seguro?',
+  text: '¡No podrás revertir esta acción!',
+  icon: 'warning',
+  showCancelButton: true,
+  confirmButtonText: 'Sí, ¡Eliminar!',
+  cancelButtonText: 'No, ¡Cancelar!',
+  buttonsStyling: false,
+  customClass: {
+    confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+    cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'}
+
+    // title: '¿Estás seguro?',
+    // text: "¡No podrás revertir la eliminación de este cliente!",
+    // icon: 'warning',
+    // showCancelButton: true,
+    // confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
+    // cancelButtonText: '<span style="color: white;">Cancelar</span>',
     // confirmButtonColor: '#d33',
 
     //     title: "¿Estás seguro?",
@@ -268,6 +325,10 @@ async function confirmarEliminarCliente(payload){
 
 
 
+    // customClass: {
+    //   confirmButton: 'red-accent-3',  // Clase para el botón de confirmar
+    //   cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
+    // },
     // confirmButtonText: 'Sí, ¡eliminar!',
     // cancelButtonText: 'Cancelar',
     // color: '#111',
@@ -315,16 +376,42 @@ const updateTableOptionsJuridico = options => {
 }
 
 watch(
-    [buscardor_filtro,page,itemsPerPage,orderBy,sortBy],
+    [
+      buscardor_filtro,
+      tipo_identificacion_filtro,
+      fechaDesde_filtro,
+      fechaHasta_filtro,
+      company_id_filtro,
+      page,
+      itemsPerPage,
+      orderBy,
+      sortBy
+  ],
   async () =>{
-    await actualizarTabla()
+    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==""){
+      console.log("natural")
+      await actualizarTablaTablaNatural()
+    }
   }
 )
 
 watch(
-    [buscardor_filtro,pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
+    [
+      buscardor_filtro,
+      tipo_identificacion_filtro,
+      fechaDesde_filtro,
+      fechaHasta_filtro,
+      company_id_filtro,
+      pageTablaClientesJuridicos,
+      itemsPerPageTablaClientesJuridicos,
+      orderByTablaClientesJuridicos,
+      sortByTablaClientesJuridicos
+  ],
   async () =>{
-    await actualizarTabla()
+    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==""){
+      console.log("juridico")
+      await actualizarTablaTablJuriidica()
+    }
   }
 )
 
@@ -338,15 +425,24 @@ watch(
   }
 )
 
+
+function limpiarFiltros(){
+  buscardor_filtro.value=""
+  tipo_identificacion_filtro.value=""
+  company_id_filtro.value=""
+  fechaDesde_filtro.value=""
+  fechaHasta_filtro.value=""
+}
+
 async function filtrar(dataFiltro){
-  let datosFiltros={
-    page:dataFiltro.page,
-    itemsPerPage:dataFiltro.itemsPerPage,
-    orderBy:dataFiltro.orderBy,
-    sortBy:dataFiltro.sortBy,
-    tipo:dataFiltro.tipo,
-  }
-  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${datosFiltros.page}`,datosFiltros)
+  // let datosFiltros={
+  //   page:dataFiltro.page,
+  //   itemsPerPage:dataFiltro.itemsPerPage,
+  //   orderBy:dataFiltro.orderBy,
+  //   sortBy:dataFiltro.sortBy,
+  //   tipo:dataFiltro.tipo,
+  // }
+  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
@@ -373,6 +469,7 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       :companies="statuModule.comapanies"
+      @clear="limpiarFiltros"
       @add-client="mostarModal"
     />
     <ClientFormDialoge
