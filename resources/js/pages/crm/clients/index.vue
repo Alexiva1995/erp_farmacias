@@ -288,6 +288,7 @@ async function actualizarTablaTablJuriidica(){
   loading.value = false;
 }
 
+
 // function filtrarPorTipoDeIdentificacion(clients,isFiltro){
 //   return clients.filter(item => isFiltro.includes(item.identification_type));
 // }
@@ -296,41 +297,27 @@ async function confirmarEliminarCliente(payload){
   // alert(payload)
 
   const result = await Swal.fire({
-      title: '¿Estás seguro?',
-  text: '¡No podrás revertir esta acción!',
-  icon: 'warning',
-  showCancelButton: true,
-  confirmButtonText: 'Sí, ¡Eliminar!',
-  cancelButtonText: 'No, ¡Cancelar!',
-  buttonsStyling: false,
-  customClass: {
-    confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
-    cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'}
-
+    title: '¿Estás seguro?',
+    text: '¡No podrás revertir la eliminación de este cliente!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ¡Eliminar!',
+    cancelButtonText: 'No, ¡Cancelar!',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated mr-2',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'
+    }
     // title: '¿Estás seguro?',
     // text: "¡No podrás revertir la eliminación de este cliente!",
     // icon: 'warning',
     // showCancelButton: true,
     // confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
     // cancelButtonText: '<span style="color: white;">Cancelar</span>',
-    // confirmButtonColor: '#d33',
-
-    //     title: "¿Estás seguro?",
-    // text: "¡No podrás revertir la eliminación de este producto!",
-    // icon: "warning",
-    // showCancelButton: true,
-    // cancelButtonText: "Cancelar",
-    // confirmButtonText: "Eliminar",
-    // reverseButtons: true,
-
-
-
     // customClass: {
     //   confirmButton: 'red-accent-3',  // Clase para el botón de confirmar
     //   cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
     // },
-    // confirmButtonText: 'Sí, ¡eliminar!',
-    // cancelButtonText: 'Cancelar',
     // color: '#111',
     // confirmButtonColor: '#7367f0',
     // cancelButtonColor: '#d33',

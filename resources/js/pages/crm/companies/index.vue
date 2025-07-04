@@ -248,14 +248,13 @@ async function confirmarEliminar(payload){
     text: "¡No podrás revertir la eliminación de esta Empresa!",
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
-    cancelButtonText: '<span style="color: white;">Cancelar</span>',
-    // confirmButtonText: 'Sí, ¡eliminar!',
-    // cancelButtonText: 'Cancelar',
-    // color: '#111',
-    // confirmButtonColor: '#7367f0',
-    // cancelButtonColor: '#d33',
-    // background: '#2f3349',
+    confirmButtonText: 'Sí, ¡Eliminar!',
+    cancelButtonText: 'No, ¡Cancelar!',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated mr-2',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'
+    }
   });
 
   if (result.isConfirmed) {
