@@ -1,4 +1,5 @@
 <script setup>
+import Swal from "sweetalert2";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -52,6 +53,22 @@ const selected = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
 });
+
+const handleApplyDiscount = async (item) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `Vas a aplicar un descuento al lote Nº ${item.lot_number} del producto "${item.product.name}".`,
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Confirmar",
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    emit("apply-discount", item);
+  }
+};
 </script>
 
 <template>
@@ -106,10 +123,7 @@ const selected = computed({
       <template #item.actions="{ item }">
         <VTooltip location="top">
           <template #activator="{ props: tooltipProps }">
-            <IconBtn
-              v-bind="tooltipProps"
-              @click="emit('apply-discount', item)"
-            >
+            <IconBtn v-bind="tooltipProps" @click="handleApplyDiscount(item)">
               <VIcon icon="tabler-percentage" />
             </IconBtn>
           </template>
