@@ -60,23 +60,23 @@ class ResourceService
     /**
      * Obtiene una sola tasa, utilizando caché.
      */
- public function getExchangeRate(string $currencyCode): float
+    public function getExchangeRate(string $currencyCode): float
     {
         $cacheKey = "resources.exchangeRate_{$currencyCode}";
-       // $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
-            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
-            if ($exchangeRate) {
-                return (float) $exchangeRate->rate;
-            }
-            return 1.0; 
-       // });
+        // $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
+        $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+        if ($exchangeRate) {
+            return (float) $exchangeRate->rate;
+        }
+        return 1.0;
+        // });
         return $cachedRate;
     }
 
     /**
      * Obtiene todas las tasa, utilizando caché.
      */
- public function getAllExchangeRate(): Collection
+    public function getAllExchangeRate(): Collection
     {
         return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
             return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
@@ -90,13 +90,13 @@ class ResourceService
     public function getProductByBarcode(string $barcode): Product
     {
         $cacheKey = "product.barcode.{$barcode}";
-     //   $product = Cache::remember($cacheKey, now()->addDay(), function () use ($barcode) {
-            $foundProduct = Product::where('barcode', $barcode)->first();
-            if (!$foundProduct) {
-                throw new ModelNotFoundException("Producto con código de barras '{$barcode}' no encontrado.");
-            }
-            return $foundProduct;
-       // });
+        //   $product = Cache::remember($cacheKey, now()->addDay(), function () use ($barcode) {
+        $foundProduct = Product::where('barcode', $barcode)->first();
+        if (!$foundProduct) {
+            throw new ModelNotFoundException("Producto con código de barras '{$barcode}' no encontrado.");
+        }
+        return $foundProduct;
+        // });
         $product->loadMissing('laboratory');
 
         return $product;
