@@ -73,6 +73,7 @@ Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
 
 // Rutas de Donaciones
 Route::post('/donations', [DonationController::class, 'create']);
+Route::get('/donations/month/{month}/data', [DonationController::class, 'getMonthlyDonationData']);
 
 // Rutas de Lotes de Productos
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
