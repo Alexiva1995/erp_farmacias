@@ -18,7 +18,7 @@ class FiscalHistorySeeder extends Seeder
     {
         for ($i = 0; $i < 5; $i++) {
             FiscalHistory::create([
-                'user_id'         => rand(2, 3), // aleatoriamente 2 o 3
+                'user_id'         => rand(2, 3),
                 'fiscal_id'       => null,
                 'invoice_number'  => Str::upper(Str::random(10)),
                 'business_name'   => 'Empresa Ejemplo ' . $i,

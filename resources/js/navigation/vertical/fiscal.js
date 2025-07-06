@@ -11,7 +11,7 @@ export default [
     children: [
       {
         title: 'Listado de Histórico',
-        to: 'lot-list',
+        to: 'fiscal-history',
       },
     ],
   },

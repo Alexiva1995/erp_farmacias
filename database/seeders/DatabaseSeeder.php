@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             SuppliersSeeder::class,
             ProductLotsSeeder::class,
             FiscalHistorySeeder::class,
+            FiscalHistoryDetailSeeder::class,
         ]);
     }
 }
