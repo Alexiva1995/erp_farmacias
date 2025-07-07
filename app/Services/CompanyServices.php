@@ -55,6 +55,7 @@ class CompanyServices implements Company
     public function exportExcel(array $filtros): CompaniesExport
     {
         $query = $this->companyRepository->builerPaginate($filtros);
+
         return new CompaniesExport($query);
     }
 }

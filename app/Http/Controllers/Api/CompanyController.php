@@ -9,6 +9,7 @@ use App\Http\Requests\CreateCompanyRequest;
 use App\Http\Requests\EditCompanyRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CompanyController extends Controller
 {
@@ -150,8 +151,10 @@ class CompanyController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        $repuesta = $this->company->exportExcel($filtros);
+        $excel = $this->company->exportExcel($filtros);
 
-        return ApiResponse::success($repuesta, "ok", 200);
+        $fileName = 'companies-' . now()->format('Y-m-d') . '.' . $request->formato;
+
+        return Excel::download($excel, $fileName);
     }
 }

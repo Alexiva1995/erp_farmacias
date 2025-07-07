@@ -440,7 +440,7 @@ async function filtrarSinPaginar(dataFiltro){
   }
   // console.log("respues api => ",respuestaApi)
 
-  return [respuestaApi.data.data]
+  return [...respuestaApi.data.data]
 }
 
 
@@ -468,7 +468,7 @@ async function exportarPdf(){
 async function exportarExcel(formato){
 
   try{
-      let body={
+      let params={
       buscardor_filtro:buscardor_filtro.value,
       tipo_identificacion_filtro:tipo_identificacion_filtro.value,
       company_id:company_id_filtro.value,
@@ -478,7 +478,7 @@ async function exportarExcel(formato){
     }
 
     let respuestaApi = await axios.get(`/crm/clients/exportar/excel`,{
-      params:body,
+      params,
       responseType: "blob",
     })
 

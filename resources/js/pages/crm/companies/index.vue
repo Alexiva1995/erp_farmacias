@@ -475,13 +475,8 @@ async function filtrarSinPaginar(dataFiltro){
   }
   // console.log("respues api => ",respuestaApi)
 
-  return {...respuestaApi.data.data}
+  return [...respuestaApi.data.data]
 }
-
-async function exportarExcel(formato){
-  alert(formato)
-}
-
 
 async function exportarPdf(){
     let filtros={
@@ -499,9 +494,55 @@ async function exportarPdf(){
     return null;
   }
 
-  pdfCompaniesGenerator(respuestaApi.data)
+  pdfCompaniesGenerator(respuestaApi)
 
 }
+
+async function exportarExcel(formato){
+
+  try{
+      let params={
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_empresa_filtro:tipo_empresa_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      formato,
+    }
+
+    let respuestaApi = await axios.get(`/crm/companies/exportar/excel`,{
+      params,
+      responseType: "blob",
+    })
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `companies.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
+}
+
 
 
 onMounted(async () => {

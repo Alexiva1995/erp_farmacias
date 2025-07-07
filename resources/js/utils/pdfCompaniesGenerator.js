@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function pdfCompaniesGenerator(data) {
     const doc = new jsPDF();
@@ -44,7 +44,7 @@ export default function pdfCompaniesGenerator(data) {
         company.identification,
         company.name,
         { 
-            content: company.type_company === 'company' ? 'Empresa' : 'Clínica',
+            content: company.type_company === 'Empresa' ? 'Empresa' : 'Clínica',
             styles: { halign: 'center' }
         },
         company.address || 'N/A'

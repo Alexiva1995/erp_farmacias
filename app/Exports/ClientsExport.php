@@ -56,7 +56,6 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
             $formato = $fecha->format("d/m/Y");
         }
 
-
         return [
             $client->id, // O usa un contador: $this->row++ si prefieres numeración consecutiva
             $client->identification,
