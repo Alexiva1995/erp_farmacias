@@ -264,9 +264,10 @@ async function confirmarEliminar(payload){
     cancelButtonText: 'No, ¡Cancelar!',
     buttonsStyling: false,
     customClass: {
-      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated mr-2',
-      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'
-    }
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
   });
 
   if (result.isConfirmed) {

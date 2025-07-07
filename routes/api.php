@@ -110,12 +110,13 @@ Route::prefix("crm")->group(function () {
 
     // Rutas de Clientes
     Route::prefix("clients")->group(function () {
-        Route::post("/", [ClientController::class, "create"]);
-        Route::get("/", [ClientController::class, "consultAll"]);
-        Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [ClientController::class, "deleteById"]);
-        Route::post("/edit/{id}", [ClientController::class, "edit"]);
-        Route::post("/filtrar", [ClientController::class, "filtrar"]);
-        Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
+        Route::post("/",                      [ClientController::class, "create"]);
+        Route::get("/",                       [ClientController::class, "consultAll"]);
+        Route::get("/{id}",                   [ClientController::class, "consultById"]);
+        Route::delete("/{id}",                [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}",             [ClientController::class, "edit"]);
+        Route::post("/filtrar",               [ClientController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",        [ClientController::class, "exportarExcel"]);
     });
 });

@@ -17,6 +17,7 @@ const emit = defineEmits([
   "clear",
   "add-client",
   "export-pdf",
+  "export-excel",
 ]);
 </script>
 
@@ -102,12 +103,12 @@ const emit = defineEmits([
           </VBtn>
         </template>
         <VList>
-          <!-- <VListItem @click="emit('export', 'xlsx')">
+          <VListItem @click="emit('export-excel', 'xlsx')">
             <template #prepend>
               <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
             </template>
             <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem> -->
+          </VListItem>
           <VListItem @click="emit('export-pdf')">
             <template #prepend>
               <VIcon icon="tabler-file-type-pdf" class="me-2" />

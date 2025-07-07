@@ -9,6 +9,7 @@ use App\Http\Requests\CreateClientRequest;
 use App\Http\Requests\EditClientRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ClientController extends Controller
 {
@@ -191,5 +192,39 @@ class ClientController extends Controller
         $repuesta = $this->client->filtrar($filtros);
 
         return ApiResponse::success($repuesta, "ok", 200);
+    }
+
+    public function exportarExcel(Request $request)
+    {
+
+        $filtros = [];
+
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_identificacion_filtro")) {
+            $filtros["tipo_identificacion_filtro"] = $request->tipo_identificacion_filtro;
+        }
+
+        if ($request->filled("tipo") && $request->filled("tipo_identificacion_filtro") == false) {
+            $filtros["tipo"] = $request->tipo;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("company_id")) {
+            $filtros["company_id"] = $request->company_id;
+        }
+
+        $excel = $this->client->exportExcel($filtros);
+
+        $fileName = 'clients-' . now()->format('Y-m-d') . '.' . $request->formato;
+
+        return Excel::download($excel, $fileName);
     }
 }

@@ -289,11 +289,6 @@ async function actualizarTablaTablJuriidica(){
   loading.value = false;
 }
 
-
-// function filtrarPorTipoDeIdentificacion(clients,isFiltro){
-//   return clients.filter(item => isFiltro.includes(item.identification_type));
-// }
-
 async function confirmarEliminarCliente(payload){
   // alert(payload)
 
@@ -306,9 +301,10 @@ async function confirmarEliminarCliente(payload){
     cancelButtonText: 'No, ¡Cancelar!',
     buttonsStyling: false,
     customClass: {
-      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated mr-2',
-      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined'
-    }
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
     // title: '¿Estás seguro?',
     // text: "¡No podrás revertir la eliminación de este cliente!",
     // icon: 'warning',
@@ -469,6 +465,52 @@ async function exportarPdf(){
 
 }
 
+async function exportarExcel(formato){
+
+  try{
+      let body={
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+      company_id:company_id_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      formato,
+    }
+
+    let respuestaApi = await axios.get(`/crm/clients/exportar/excel`,{
+      params:body,
+      responseType: "blob",
+    })
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `clients.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
+}
+
 
 
 onMounted(async () => {
@@ -490,6 +532,7 @@ onMounted(async () => {
       @clear="limpiarFiltros"
       @add-client="mostarModal"
       @export-pdf="exportarPdf"
+      @export-excel="exportarExcel"
     />
     <ClientFormDialoge
       :companies="statuModule.comapanies"
