@@ -440,7 +440,7 @@ async function filtrarSinPaginar(dataFiltro){
   }
   // console.log("respues api => ",respuestaApi)
 
-  return {...respuestaApi.data.data}
+  return [respuestaApi.data.data]
 }
 
 
@@ -456,12 +456,12 @@ async function exportarPdf(){
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
 
-  if(respuestaApi.data.length==0){
+  if(respuestaApi.length==0){
     toast.info("No hay clientes para poder genera un reporte")
     return null;
   }
 
-  pdfClienstGenerator(respuestaApi.data)
+  pdfClienstGenerator(respuestaApi)
 
 }
 

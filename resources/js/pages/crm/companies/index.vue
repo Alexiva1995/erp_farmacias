@@ -7,6 +7,7 @@ import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
 import ListClientsOfCompanyDialoge from "@/components/dialogs/ListClientsOfCompanyDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfCompaniesGenerator from "@/utils/pdfCompaniesGenerator";
 import Swal from 'sweetalert2';
 import { onMounted, reactive, watch } from 'vue';
 
@@ -467,6 +468,41 @@ function limpiarFiltros(){
   fechaHasta_filtro.value=""
 }
 
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/crm/companies/filtrar-sin-paginar`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
+async function exportarExcel(formato){
+  alert(formato)
+}
+
+
+async function exportarPdf(){
+    let filtros={
+      // filtros
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_empresa_filtro:tipo_empresa_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApi= await filtrarSinPaginar(filtros)
+  console.log("respuesta => ",respuestaApi)
+
+  if(respuestaApi.length==0){
+    toast.info("No hay empresas para poder genera un reporte")
+    return null;
+  }
+
+  pdfCompaniesGenerator(respuestaApi.data)
+
+}
+
 
 onMounted(async () => {
   await actualizarTabla()
@@ -481,6 +517,8 @@ onMounted(async () => {
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       @clear="limpiarFiltros"
       @add-client="mostarModal"
+      @export-pdf="exportarPdf"
+      @export-excel="exportarExcel"
     />
     <ListClientsOfCompanyDialoge
       :status="statuModalListClients"

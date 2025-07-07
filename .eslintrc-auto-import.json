@@ -362,6 +362,7 @@
     "whenever": true,
     "generateDonationPDF": true,
     "formatCurrency": true,
-    "pdfClienstGenerator": true
+    "pdfClienstGenerator": true,
+    "pdfCompaniesGenerator": true
   }
 }

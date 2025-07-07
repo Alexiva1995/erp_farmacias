@@ -99,4 +99,59 @@ class CompanyController extends Controller
 
         return ApiResponse::success($repuesta, "ok", 200);
     }
+
+    public function filtrarSinPaginar(Request $request)
+    {
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $repuesta = $this->company->filterWithoutPaginate($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
+
+    public function exportarExcel(Request $request)
+    {
+
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $repuesta = $this->company->exportExcel($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
 }

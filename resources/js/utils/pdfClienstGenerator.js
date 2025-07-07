@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function pdfClienstGenerator(data) {
+    console.log("que paso => ",data)
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     

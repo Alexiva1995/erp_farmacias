@@ -189,7 +189,7 @@ class ClientController extends Controller
         }
 
 
-        $repuesta = $this->client->filtrar($filtros);
+        $repuesta = $this->client->filterWithoutPaginate($filtros);
 
         return ApiResponse::success($repuesta, "ok", 200);
     }
