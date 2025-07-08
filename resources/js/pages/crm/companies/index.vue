@@ -1,10 +1,8 @@
 <script setup lang="js">
 
 import CompanyTable from "@/components/CompanyTable.vue";
-import ClientFormOfCompanyDialoge from "@/components/dialogs/ClientFormOfCompanyDialoge.vue";
 import CompanyFilters from "@/components/dialogs/CompanyFilters.vue";
 import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
-import ListClientsOfCompanyDialoge from "@/components/dialogs/ListClientsOfCompanyDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfCompaniesGenerator from "@/utils/pdfCompaniesGenerator";
@@ -17,20 +15,6 @@ const route= useRouter()
 const modal= reactive({
   statu:false,
   titulo:"Nuevo",
-})
-
-const statuModalListClients= reactive({
-  statu:false,
-  titulo:"Nuevo",
-  clients:[],
-  totalclients:0,
-  company:{},
-})
-
-const statuModalFormularioCliente= reactive({
-  statu:false,
-  titulo:"Nuevo",
-  company:{},
 })
 
 const statuModule= reactive({
@@ -55,33 +39,6 @@ const formularioError= reactive({
   address:"",
 })
 
-
-const formularioClient= reactive({
-  id:null,
-  identification:"",
-  identification_type:"",
-  name:"",
-  last_name:"",
-  email:"",
-  phone:"",
-  address:"",
-  birthdate:"",
-  company_id:"",
-})
-
-const formularioClientError= reactive({
-  id:"",
-  identification:"",
-  identification_type:"",
-  name:"",
-  last_name:"",
-  email:"",
-  phone:"",
-  address:"",
-  birthdate:"",
-  company_id:"",
-})
-
 const loading = ref(false)
 
 const page = ref(1)
@@ -94,15 +51,6 @@ const buscardor_filtro= ref("");// nombre, identificación, direccion
 const tipo_empresa_filtro= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
-
-
-
-const loadingTableCliente = ref(false)
-
-const pageTableCliente  = ref(1)
-const itemsPerPageTableCliente  = ref(10)
-const sortByTableCliente  = ref()
-const orderByTableCliente = ref()
 
 
 function cerrarModal(payload){
@@ -143,86 +91,9 @@ function cargarErrores(errores){
   formularioError.address=(errores.address)?errores.address.join(", "):""
 }
 
-function insertarDatosAlFormularioClient(datos){
-  formularioClient.id=datos.id
-  formularioClient.identification=datos.identification
-  formularioClient.identification_type=datos.identification_type
-  formularioClient.name=datos.name
-  formularioClient.last_name=datos.last_name
-  formularioClient.email=datos.email
-  formularioClient.phone=datos.phone
-  formularioClient.address=datos.address
-  formularioClient.birthdate=datos.birthdate
-  formularioClient.company_id=datos.company_id
-}
-
-function limpiarDatosFormularioClient(){
-  formularioClient.id=null
-  formularioClient.identification=""
-  formularioClient.identification_type=""
-  formularioClient.name=""
-  formularioClient.last_name=""
-  formularioClient.email=""
-  formularioClient.phone=""
-  formularioClient.address=""
-  formularioClient.birthdate=null
-  formularioClient.company_id=""
-}
-
-function limpiarErroresFormularioClient(){
-  formularioClientError.id=""
-  formularioClientError.identification=""
-  formularioClientError.identification_type=""
-  formularioClientError.name=""
-  formularioClientError.last_name=""
-  formularioClientError.email=""
-  formularioClientError.phone=""
-  formularioClientError.address=""
-  formularioClientError.birthdate=""
-  formularioClientError.company_id=""
-}
-
-function cargarErroresClient(errores){
-  formularioClientError.id=(errores.id)?errores.id.join(", "):""
-  formularioClientError.identification=(errores.identification)?errores.identification.join(", "):""
-  formularioClientError.identification_type=(errores.identification_type)?errores.identification_type.join(", "):""
-  formularioClientError.name=(errores.name)?errores.name.join(", "):""
-  formularioClientError.last_name=(errores.last_name)?errores.last_name.join(", "):""
-  formularioClientError.email=(errores.email)?errores.email.join(", "):""
-  formularioClientError.phone=(errores.phone)?errores.phone.join(", "):""
-  formularioClientError.address=(errores.address)?errores.address.join(", "):""
-  formularioClientError.birthdate=(errores.birthdate)?errores.birthdate.join(", "):""
-  formularioClientError.company_id=(errores.company_id)?errores.company_id.join(", "):""
-}
-
-
-
 function mostarModal(){
   modal.statu=true
   modal.titulo="Nueva Empresa"
-}
-
-async function mostarModalListClients(payload){
-
-  let registro= statuModule.items.find(registro => registro.id==payload)
-  statuModalListClients.statu=true
-  statuModalListClients.company={...registro}
-  await actualizarTablaCliente()
-  statuModalListClients.titulo=`Clientes de la ${registro.type_company} ${registro.name}`
-}
-
-function mostarModalFormularioCliente(payload){
-  // let registro= statuModule.items.find(registro => registro.id==payload)
-  statuModalFormularioCliente.company={...statuModalListClients.company}
-  statuModalFormularioCliente.statu=true
-  statuModalFormularioCliente.titulo=`${statuModalFormularioCliente.company.name}: Nuevo Cliente`
-  formularioClient.company_id=statuModalFormularioCliente.company.id
-}
-
-function cerrarModalFormularioCliente(payload){
-  statuModalListClients.statu=true
-  limpiarDatosFormulario()
-  limpiarErroresFormularioClient()
 }
 
 async function actualizarTabla(){
@@ -340,68 +211,6 @@ function mostarModoEdit(payload){
   insertarDatosAlFormulario({...registro})
 }
 
-
-async function crearCliente(data){
-  loadingTableCliente.value=true
-  try {
-    let respuesApi=await axios.post("/crm/clients",data)
-    if(respuesApi.status==200){
-      toast.success("El cliente se a guardado correctamente")
-      statuModalFormularioCliente.statu=false
-      statuModalFormularioCliente.company={}
-      statuModalFormularioCliente.titulo=""
-      statuModalListClients.statu=true
-      await actualizarTablaCliente()
-      await actualizarTabla()
-      let registro= statuModule.items.find(registro => registro.id==statuModalListClients.company.id)
-      statuModalListClients.company={...registro}
-    }
-  } catch (error) {
-    toast.error("Error al crear el cliente")
-    console.log("error en el servidor => ",error)
-    loadingTableCliente.value=false
-    let errores={...error.response.data.data.errors}
-    cargarErroresClient(errores)
-  }
-}
-
-async function actualizarTablaCliente(){
-  loadingTableCliente.value=true
-  // console.log("actualizar")
-
-  let filtros={
-    page:pageTableCliente.value,
-    itemsPerPage:itemsPerPageTableCliente.value,
-    orderBy:orderByTableCliente.value,
-    sortBy:sortByTableCliente.value,
-    company_id:statuModalListClients.company.id
-  }
-
-  let respuestaApi=await filtrarClientCompany(filtros)
-
-  statuModalListClients.clients=respuestaApi.data
-  statuModalListClients.totalclients=respuestaApi.total
-
-  loadingTableCliente.value=false
-}
-
-async function filtrarClientCompany(dataFiltro){
-  let datosFiltros={
-    page:dataFiltro.page,
-    itemsPerPage:dataFiltro.itemsPerPage,
-    orderBy:dataFiltro.orderBy,
-    sortBy:dataFiltro.sortBy,
-    company_id:dataFiltro.company_id,
-  }
-  let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${datosFiltros.page}`,datosFiltros)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
-  }
-  // console.log("respues api => ",respuestaApi)
-
-  return {...respuestaApi.data.data}
-}
-
 async function filtraCompany(dataFiltro){
   let respuestaApi = await axios.post(`/crm/companies/filtrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
@@ -411,13 +220,6 @@ async function filtraCompany(dataFiltro){
 
   return {...respuestaApi.data.data}
 }
-
-watch(
-    [pageTableCliente,itemsPerPageTableCliente,orderByTableCliente,sortByTableCliente],
-  async () =>{
-    await actualizarTablaCliente()
-  }
-)
 
 watch(
     [
@@ -443,15 +245,6 @@ const updateTableOptionsTableCompany = options => {
   sortBy.value = options.sortBy[0]?.key
   orderBy.value = options.sortBy[0]?.order
 }
-
-const updateTableOptionsTableCliente = options => {
-  // console.log(options)
-  pageTableCliente.value = options.page
-  itemsPerPageTableCliente.value = options.itemsPerPage
-  sortByTableCliente.value = options.sortBy[0]?.key
-  orderByTableCliente.value = options.sortBy[0]?.order
-}
-
 
 function limpiarFiltros(){
   buscardor_filtro.value=""
@@ -557,25 +350,6 @@ onMounted(async () => {
       @add-client="mostarModal"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
-    />
-    <ListClientsOfCompanyDialoge
-      :status="statuModalListClients"
-      :titulo="statuModalListClients.titulo"
-      :items="statuModalListClients.clients"
-      :total="statuModalListClients.totalclients"
-      :loading="loadingTableCliente"
-      :items-per-page="itemsPerPageTableCliente"
-      :page="pageTableCliente"
-      @mostrar-formulario="mostarModalFormularioCliente"
-      @update:options="updateTableOptionsTableCliente"
-    />
-    <ClientFormOfCompanyDialoge
-      :status="statuModalFormularioCliente"
-      :titulo="statuModalFormularioCliente.titulo"
-      :form-data="formularioClient"
-      :form-error="formularioClientError"
-      @modal-close="cerrarModalFormularioCliente"
-      @save="crearCliente"
     />
     <CompanyFormDialoge
       :modal-formulario="modal.statu"

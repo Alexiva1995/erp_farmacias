@@ -25,6 +25,7 @@ const statuModule= reactive({
   totalClientesNaturales:0,
   itemsClientesJuridicos:[],
   totalClientesJuridicos:0,
+  company:{},
   comapanies:[],
 })
 
@@ -78,7 +79,7 @@ const fechaHasta_filtro= ref("");
 
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Cliente"
+  modal.titulo="Nuevo Cliente de "+statuModule.company.name
 }
 
 function mostarModoEdit(payload){
@@ -484,15 +485,32 @@ async function exportarExcel(formato){
 
 }
 
+async function consultarCompanyById(id){
+
+  let respuestaApi = await axios.get(`/crm/companies/${id}`)
+  if(respuestaApi.status!=200){
+    toast.success("Error al consultar la información de la empresa")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return {...respuestaApi.data.data}
+}
+
 onMounted(async () => {
+  let responseComponies = await consultAllcomapanies()
+  let companyData=await consultarCompanyById(router.params.id)
   await actualizarTabla()
 
-  let responseComponies = await consultAllcomapanies()
+  statuModule.company=companyData
   statuModule.comapanies=[...responseComponies]
 })
 </script>
 <template>
   <div>
+    <VCard
+      :title="'Clientes de la Empresa: ' + statuModule.company.name"
+      class="mb-5"
+    ></VCard>
     <CompaniesClientsFilters
       v-model:buscador="buscardor_filtro"
       v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
