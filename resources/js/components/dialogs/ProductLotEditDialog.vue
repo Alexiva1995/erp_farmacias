@@ -1,17 +1,20 @@
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   productName: { type: String, default: "" },
   lots: { type: Array, default: () => [] },
   productId: { type: Number, required: true },
+  productStock: { type: Number, default: 0 },
+  productBarcode: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "save"]);
 
 const editableLots = ref([]);
 const tempIdCounter = ref(-1);
+const errors = ref({});
 
 watch(
   () => props.lots,
@@ -29,11 +32,137 @@ watch(
         const day = String(date.getDate()).padStart(2, "0");
         formattedDate = `${year}-${month}-${day}`;
       }
-      return { ...lot, expiration_date: formattedDate };
+      return {
+        ...lot,
+        expiration_date: formattedDate,
+        location: lot.location || "",
+      };
     });
   },
   { deep: true, immediate: true }
 );
+
+const currentLotsSum = computed(() => {
+  return editableLots.value.reduce((sum, lot) => {
+    const quantity = parseInt(lot.quantity) || 0;
+    return sum + quantity;
+  }, 0);
+});
+
+const missingStock = computed(() => {
+  const difference = props.productStock - currentLotsSum.value;
+  return difference > 0 ? difference : 0;
+});
+
+const hasStockDiscrepancy = computed(() => {
+  return currentLotsSum.value !== props.productStock;
+});
+
+const availableStock = computed(() => {
+  return Math.max(0, props.productStock - currentLotsSum.value);
+});
+
+const canSave = computed(() => {
+  const allLotsValid = editableLots.value.every((lot) => {
+    return (
+      lot.lot_number &&
+      lot.quantity &&
+      parseInt(lot.quantity) > 0 &&
+      lot.expiration_date &&
+      lot.unit_cost &&
+      parseFloat(lot.unit_cost) >= 0
+    );
+  });
+
+  const stockValid =
+    !hasStockDiscrepancy.value || currentLotsSum.value <= props.productStock;
+
+  return allLotsValid && stockValid && editableLots.value.length > 0;
+});
+
+const validateLotQuantity = (lot, index) => {
+  const quantity = parseInt(lot.quantity) || 0;
+
+  if (quantity <= 0) {
+    errors.value[`quantity_${index}`] = "La cantidad debe ser mayor a 0";
+    return false;
+  }
+
+  if (hasStockDiscrepancy.value) {
+    const otherLotsSum = editableLots.value.reduce(
+      (sum, otherLot, otherIndex) => {
+        if (otherIndex !== index) {
+          return sum + (parseInt(otherLot.quantity) || 0);
+        }
+        return sum;
+      },
+      0
+    );
+
+    const maxAllowed = props.productStock - otherLotsSum;
+
+    if (quantity > maxAllowed) {
+      errors.value[
+        `quantity_${index}`
+      ] = `Máximo ${maxAllowed} unidades disponibles`;
+      return false;
+    }
+  }
+
+  delete errors.value[`quantity_${index}`];
+  return true;
+};
+
+const validateLot = (lot, index) => {
+  let isValid = true;
+
+  if (!lot.lot_number || lot.lot_number.trim() === "") {
+    errors.value[`lot_number_${index}`] = "El número de lote es requerido";
+    isValid = false;
+  } else {
+    delete errors.value[`lot_number_${index}`];
+  }
+
+  if (!validateLotQuantity(lot, index)) {
+    isValid = false;
+  }
+
+  if (!lot.expiration_date) {
+    errors.value[`expiration_date_${index}`] =
+      "La fecha de expiración es requerida";
+    isValid = false;
+  } else {
+    delete errors.value[`expiration_date_${index}`];
+  }
+
+  const cost = parseFloat(lot.unit_cost);
+  if (!lot.unit_cost || isNaN(cost) || cost < 0) {
+    errors.value[`unit_cost_${index}`] =
+      "El costo debe ser un número válido mayor o igual a 0";
+    isValid = false;
+  } else {
+    delete errors.value[`unit_cost_${index}`];
+  }
+
+  if (lot.location && lot.location.trim() !== "") {
+    const locationPattern = /^[A-Za-z0-9\-_\s]+$/;
+    if (!locationPattern.test(lot.location.trim())) {
+      errors.value[`location_${index}`] =
+        "La ubicación solo puede contener letras, números, guiones y espacios";
+      isValid = false;
+    } else {
+      delete errors.value[`location_${index}`];
+    }
+  } else {
+    delete errors.value[`location_${index}`];
+  }
+
+  return isValid;
+};
+
+const onQuantityChange = (lot, index) => {
+  validateLotQuantity(lot, index);
+};
 
 const addNewLotRow = () => {
   editableLots.value.push({
@@ -42,90 +171,235 @@ const addNewLotRow = () => {
     quantity: null,
     expiration_date: "",
     unit_cost: null,
+    location: "",
   });
   tempIdCounter.value--;
 };
 
-const onSave = () => {
-  emit("save", editableLots.value);
+const removeLot = (index) => {
+  editableLots.value.splice(index, 1);
+  Object.keys(errors.value).forEach((key) => {
+    if (key.endsWith(`_${index}`)) {
+      delete errors.value[key];
+    }
+  });
 };
 
-const onCancel = () => {
+const onSave = () => {
+  let allValid = true;
+  errors.value = {};
+
+  editableLots.value.forEach((lot, index) => {
+    if (!validateLot(lot, index)) {
+      allValid = false;
+    }
+  });
+
+  if (hasStockDiscrepancy.value && currentLotsSum.value > props.productStock) {
+    errors.value.total_stock = `La cantidad total (${currentLotsSum.value}) excede el stock del producto (${props.productStock})`;
+    allValid = false;
+  }
+
+  if (allValid) {
+    console.log("Datos de lotes a enviar:", editableLots.value);
+    emit("save", editableLots.value);
+  }
+};
+
+const closeDialog = () => {
+  errors.value = {};
   emit("update:modelValue", false);
+};
+
+const getFieldError = (field, index) => {
+  return errors.value[`${field}_${index}`];
 };
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
-    @update:model-value="onCancel"
+    max-width="1000px"
+    persistent
+    @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle
-        >Editar Lotes del Producto: {{ props.productName }}</VCardTitle
-      >
+    <VCard class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center">
+        <span class="text-h5 font-weight-bold">Editar Lotes</span>
 
-      <VCardText>
-        <VTable density="compact">
-          <thead>
-            <tr>
-              <th class="text-left">Número de Lote</th>
-              <th class="text-left">Cantidad</th>
-              <th class="text-left">Fecha de Expiración</th>
-              <th class="text-left">Costo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="lot in editableLots" :key="lot.id">
-              <td>
-                <VTextField
-                  v-model="lot.lot_number"
-                  variant="underlined"
-                  :readonly="lot.id > 0"
-                />
-              </td>
-              <td>
-                <VTextField
-                  v-model="lot.quantity"
-                  type="number"
-                  variant="underlined"
-                />
-              </td>
-              <td>
-                <VTextField
-                  v-model="lot.expiration_date"
-                  type="date"
-                  variant="underlined"
-                />
-              </td>
-              <td>
-                <VTextField
-                  v-model="lot.unit_cost"
-                  type="number"
-                  prefix="$"
-                  variant="underlined"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
+        <VChip
+          v-if="hasStockDiscrepancy"
+          :color="missingStock > 0 ? 'warning' : 'success'"
+          variant="outlined"
+          size="small"
+          class="ml-4"
+        >
+          {{ missingStock > 0 ? `Faltan: ${missingStock}` : "Stock Completo" }}
+        </VChip>
 
-        <div class="d-flex justify-end mt-4">
-          <VBtn prepend-icon="tabler-plus" variant="text" @click="addNewLotRow">
-            Agregar Lote
-          </VBtn>
-        </div>
+        <VSpacer />
+        <VBtn icon variant="text" @click="closeDialog">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
+      </VCardTitle>
+
+      <VDivider />
+
+      <VCardText class="flex-grow-1" style="overflow-y: auto">
+        <VAlert
+          v-if="hasStockDiscrepancy"
+          :type="missingStock > 0 ? 'warning' : 'info'"
+          variant="tonal"
+          class="mb-4"
+        >
+          <div>
+            <strong>Stock del producto:</strong> {{ props.productStock }} |
+            <strong>Total en lotes:</strong> {{ currentLotsSum }} |
+            <strong>Disponible:</strong> {{ availableStock }}
+          </div>
+          <div v-if="missingStock > 0" class="mt-1">
+            Puedes agregar hasta {{ availableStock }} unidades más en los lotes.
+          </div>
+        </VAlert>
+
+        <VAlert
+          v-if="errors.total_stock"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+        >
+          {{ errors.total_stock }}
+        </VAlert>
+
+        <VSheet color="#f5f5f5" variant="tonal" rounded="lg" class="pa-4">
+          <div class="d-flex align-center mb-4">
+            <p class="text-h6 font-weight-medium">
+              Edicion Lotes del Producto: {{ props.productBarcode }} -
+              {{ props.productName }}
+            </p>
+            <VSpacer />
+            <VBtn
+              prepend-icon="tabler-plus"
+              color="primary"
+              variant="flat"
+              @click="addNewLotRow"
+              :disabled="hasStockDiscrepancy && availableStock <= 0"
+            >
+              Agregar Lote
+            </VBtn>
+          </div>
+
+          <VDataTable
+            :headers="[
+              { title: 'Número de Lote', key: 'lot_number', sortable: false },
+              { title: 'Cantidad', key: 'quantity', sortable: false },
+              {
+                title: 'Fecha de Expiración',
+                key: 'expiration_date',
+                sortable: false,
+              },
+              { title: 'Costo', key: 'unit_cost', sortable: false },
+              { title: 'Ubicación', key: 'location', sortable: false },
+              { title: 'Acciones', key: 'actions', sortable: false },
+            ]"
+            :items="editableLots"
+            density="compact"
+            class="rounded-lg"
+            no-data-text="No hay lotes registrados para este producto."
+          >
+            <template #item.lot_number="{ item, index }">
+              <VTextField
+                v-model="item.lot_number"
+                variant="plane"
+                :error-messages="getFieldError('lot_number', index)"
+                hide-details="auto"
+                density="compact"
+              />
+            </template>
+
+            <template #item.quantity="{ item, index }">
+              <VTextField
+                v-model="item.quantity"
+                type="number"
+                variant="plane"
+                :error-messages="getFieldError('quantity', index)"
+                hide-details="auto"
+                density="compact"
+                @input="onQuantityChange(item, index)"
+              />
+            </template>
+
+            <template #item.expiration_date="{ item, index }">
+              <VTextField
+                v-model="item.expiration_date"
+                type="date"
+                variant="plane"
+                :error-messages="getFieldError('expiration_date', index)"
+                hide-details="auto"
+                density="compact"
+              />
+            </template>
+
+            <template #item.unit_cost="{ item, index }">
+              <VTextField
+                v-model="item.unit_cost"
+                type="number"
+                step="0.01"
+                prefix="$"
+                variant="plane"
+                :error-messages="getFieldError('unit_cost', index)"
+                hide-details="auto"
+                density="compact"
+              />
+            </template>
+
+            <template #item.location="{ item, index }">
+              <VTextField
+                v-model="item.location"
+                variant="plane"
+                :error-messages="getFieldError('location', index)"
+                hide-details="auto"
+                density="compact"
+                placeholder="Ej: A1-B2"
+              />
+            </template>
+
+            <template #item.actions="{ item, index }">
+              <VBtn
+                v-if="item.id < 0"
+                icon="tabler-trash"
+                variant="text"
+                color="error"
+                size="small"
+                @click="removeLot(index)"
+              />
+            </template>
+          </VDataTable>
+        </VSheet>
       </VCardText>
 
-      <VCardActions>
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="onCancel"
-          >Cancelar</VBtn
+      <VDivider />
+
+      <VCardActions class="pa-4">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="closeDialog"
+          class="flex-grow-1 w-0 mr-4"
         >
-        <VBtn color="primary" variant="flat" @click="onSave"
-          >Guardar Cambios</VBtn
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="onSave"
+          :disabled="!canSave"
+          class="flex-grow-1 w-0"
         >
+          Guardar Cambios
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

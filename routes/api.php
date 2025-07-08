@@ -80,6 +80,7 @@ Route::get('/product-without-lots', [LotController::class, 'productsWithInconsis
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
 
 // Rutas de Ajustes de Inventario
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
