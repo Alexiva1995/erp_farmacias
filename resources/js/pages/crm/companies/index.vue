@@ -10,6 +10,9 @@ import { toast } from "@/plugins/sweetalert";
 import pdfCompaniesGenerator from "@/utils/pdfCompaniesGenerator";
 import Swal from 'sweetalert2';
 import { onMounted, reactive, watch } from 'vue';
+import { useRouter } from "vue-router";
+
+const route= useRouter()
 
 const modal= reactive({
   statu:false,
@@ -221,17 +224,6 @@ function cerrarModalFormularioCliente(payload){
   limpiarDatosFormulario()
   limpiarErroresFormularioClient()
 }
-
-
-// async function consultAll(){
-//   let res = await axios.get("/crm/companies")
-//   if(res.status!=200){
-//     console.error("error => ",res)
-//     return []
-//   }
-//   return [...res.data.data]
-
-// }
 
 async function actualizarTabla(){
   loading.value = true;
@@ -543,6 +535,11 @@ async function exportarExcel(formato){
 
 }
 
+function irHaVerClientesEmpresa(payload){
+  // alert(payload)
+  route.push(`/crm/companies/${payload}`)
+}
+
 
 
 onMounted(async () => {
@@ -590,13 +587,6 @@ onMounted(async () => {
       @save="enviar"
     />
     <VCard title="Empresas">
-      <!-- <VDivider />
-      <div class="d-flex flex-wrap justify-end gap-4 ma-6">
-        <VBtn color="primary" @click="mostarModal">
-          <VIcon icon="tabler-plus" class="mr-2" />
-          Agregar
-        </VBtn>
-      </div> -->
       <VDivider />
       <CompanyTable
         :items="statuModule.items"
@@ -606,7 +596,7 @@ onMounted(async () => {
         :page="page"
         @edit="mostarModoEdit"
         @delete="confirmarEliminar"
-        @ver-clientes="mostarModalListClients"
+        @ver-clientes="irHaVerClientesEmpresa"
         @update:options="updateTableOptionsTableCompany"
       />
     </VCard>
