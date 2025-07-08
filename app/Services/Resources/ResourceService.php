@@ -43,7 +43,7 @@ class ResourceService
     public function getSuppliers(): Collection
     {
         return Cache::remember('resources.suppliers', now()->addDay(), function () {
-            return Supplier::orderBy('supplier_name')->get(['id', 'supplier_name']);
+            return Supplier::orderBy('name')->get(['id', 'name']);
         });
     }
 

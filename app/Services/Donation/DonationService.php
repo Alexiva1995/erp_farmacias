@@ -57,7 +57,6 @@ class DonationService
             return null;
         }
 
-        // Obtener la tasa de cambio para bolívares
         $bsRate = $this->resourceService->getExchangeRate('BS');
 
         $products = $donation->donativeLogs->map(function ($donativeLog) use ($bsRate) {
@@ -77,7 +76,7 @@ class DonationService
             'products' => $products,
             'total_cost' => $products->sum('total_lost_value'),
             'total_cost_bs' => $products->sum('total_lost_value_bs'),
-            'exchange_rate_bs' => $bsRate, // Incluir la tasa de cambio
+            'exchange_rate_bs' => $bsRate,
         ];
     }
 }

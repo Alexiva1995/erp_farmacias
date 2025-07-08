@@ -14,11 +14,9 @@ class ProductLotObserver
      */
     public function created(ProductLot $productLot)
     {
-        // 1. Crear movimiento de inventario tipo "purchase"
         $this->createPurchaseMovement($productLot);
 
-        // 2. Actualizar stock del producto
-        $this->updateProductStock($productLot->product);
+        $this->updateProductStockAndPrice($productLot->product);
     }
 
     /**
@@ -26,12 +24,12 @@ class ProductLotObserver
      */
     public function updated(ProductLot $productLot)
     {
-        if ($productLot->isDirty('quantity')) {
-            // 1. Crear movimiento de inventario tipo "adjustment"
-            $this->createAdjustmentMovement($productLot);
+        if ($productLot->isDirty('quantity') || $productLot->isDirty('unit_cost')) {
+            if ($productLot->isDirty('quantity')) {
+                $this->createAdjustmentMovement($productLot);
+            }
 
-            // 2. Actualizar stock del producto
-            $this->updateProductStock($productLot->product);
+            $this->updateProductStockAndPrice($productLot->product);
         }
     }
 
@@ -40,11 +38,9 @@ class ProductLotObserver
      */
     public function deleted(ProductLot $productLot)
     {
-        // 1. Crear movimiento de inventario para la eliminación
         $this->createDeletionMovement($productLot);
 
-        // 2. Actualizar stock del producto
-        $this->updateProductStock($productLot->product);
+        $this->updateProductStockAndPrice($productLot->product);
     }
 
     /**
@@ -52,11 +48,9 @@ class ProductLotObserver
      */
     public function restored(ProductLot $productLot)
     {
-        // 1. Crear movimiento de inventario para la restauración
         $this->createRestorationMovement($productLot);
 
-        // 2. Actualizar stock del producto
-        $this->updateProductStock($productLot->product);
+        $this->updateProductStockAndPrice($productLot->product);
     }
 
     /**
@@ -64,11 +58,9 @@ class ProductLotObserver
      */
     public function forceDeleted(ProductLot $productLot)
     {
-        // 1. Crear movimiento de inventario para la eliminación permanente
         $this->createDeletionMovement($productLot);
 
-        // 2. Actualizar stock del producto
-        $this->updateProductStock($productLot->product);
+        $this->updateProductStockAndPrice($productLot->product);
     }
 
     /**
@@ -172,11 +164,36 @@ class ProductLotObserver
     }
 
     /**
-     * Recalcula y actualiza el stock total del producto asociado.
+     * Recalcula y actualiza el stock total y precio promedio ponderado del producto.
      */
-    protected function updateProductStock(Product $product)
+    protected function updateProductStockAndPrice(Product $product)
     {
         $totalStock = $product->lots()->sum('quantity');
-        $product->updateQuietly(['stock' => $totalStock]);
+
+        $lots = $product->lots()
+            ->where('quantity', '>', 0)
+            ->whereNotNull('unit_cost')
+            ->where('unit_cost', '>', 0)
+            ->get();
+
+        if ($lots->isEmpty()) {
+            $product->updateQuietly(['stock' => $totalStock]);
+            return;
+        }
+
+        $totalValue = 0;
+        $totalQuantityWithCost = 0;
+
+        foreach ($lots as $lot) {
+            $totalValue += ($lot->quantity * $lot->unit_cost);
+            $totalQuantityWithCost += $lot->quantity;
+        }
+
+        $averagePrice = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->sale_price;
+
+        $product->updateQuietly([
+            'stock' => $totalStock,
+            'sale_price' => round($averagePrice, 2) // Redondear a 2 decimales
+        ]);
     }
 }

@@ -10,9 +10,10 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "edit-lot"]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product.name", sortable: true },
   { title: "Proveedor", key: "supplier.name", sortable: true },
+  { title: "Ubicacion", key: "location", sortable: true },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Unds", key: "quantity", sortable: true },
   { title: "Exp", key: "expiration_date", sortable: true },
