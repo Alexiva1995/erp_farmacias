@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\SupplierController;
 
 /*
 |--------------------------------------------------------------------------
@@ -117,4 +118,9 @@ Route::prefix("crm")->group(function () {
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
         Route::post("/filrar", [ClientController::class, "filrar"]);
     });
+});
+
+// Rutas de Proveedores
+Route::prefix('suppliers')->group(function () {
+    Route::get('/', [SupplierController::class, 'index']);
 });

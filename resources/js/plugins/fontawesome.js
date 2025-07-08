@@ -11,7 +11,8 @@ import {
   faTrash,
   faUser,
   faBarcode,
-  faFileLines
+  faFileLines,
+  faAddressBook
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -25,6 +26,7 @@ library.add(
   faBoxesStacked,
   faBarcode,
   faFileLines,
+  faAddressBook
 )
 
 export default function (app) {

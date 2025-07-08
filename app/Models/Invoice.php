@@ -29,6 +29,8 @@ class Invoice extends Model
         'ordered_by',
     ];
 
+    protected $appends = ['outstanding_debt'];
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
@@ -77,5 +79,14 @@ class Invoice extends Model
     public function psychotropicControls()
     {
         return $this->hasMany(PsychotropicControl::class);
+    }
+
+    public function getOutstandingDebtAttribute(): float
+    {
+        // Suma de pagos registrados
+        $paid = $this->payments->sum('amount');
+
+        // Deuda pendiente (nunca menos de cero)
+        return max(0, $this->total_amount - $paid);
     }
 }
