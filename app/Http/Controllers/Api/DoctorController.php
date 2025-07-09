@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\Doctor;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateDoctorRequest;
+use App\Http\Requests\EditDoctorRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -18,19 +20,29 @@ class DoctorController extends Controller
     ) {}
 
 
-    // public function create(CreateCompanyRequest $request): JsonResponse
-    // {
-    //     $companyDb = $this->doctor->create($request->company->all());
+    public function create(CreateDoctorRequest $request): JsonResponse
+    {
+        $record = $this->doctor->create($request->data->all());
 
-    //     return ApiResponse::success($companyDb, "successfully", 200);
-    // }
+        return ApiResponse::success($record, "successfully", 200);
+    }
 
-    // public function edit(EditCompanyRequest $request): JsonResponse
-    // {
-    //     $respuestaDB = $this->doctor->edit($request->company->all());
+    public function edit(EditDoctorRequest $request): JsonResponse
+    {
+        $buscarPorIdentificaion = $this->doctor->consultByIdentification($request->data->identification);
+        if ($buscarPorIdentificaion) {
+            if ($request->client->id != $buscarPorIdentificaion->id) {
+                $errors = [
+                    "identification" => ["Cannot update because the ID is already in use"]
+                ];
+                return ApiResponse::error("Cannot update because the ID is already in use", 400, $errors);
+            }
+        }
 
-    //     return ApiResponse::success($respuestaDB, "company successfully edited", 200);
-    // }
+        $respuestaDB = $this->doctor->edit($request->data->id, $request->data->all());
+
+        return ApiResponse::success($respuestaDB, "company successfully edited", 200);
+    }
 
 
     public function consultAll(): JsonResponse

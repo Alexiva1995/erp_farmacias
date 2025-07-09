@@ -103,11 +103,11 @@ Route::prefix("crm")->group(function () {
 
     // Rutas de Doctores
     Route::prefix("doctors")->group(function () {
-        // Route::post("/",                      [ClientController::class, "create"]);
-        // Route::get("/",                       [ClientController::class, "consultAll"]);
+        Route::post("/",                      [DoctorController::class, "create"]);
+        Route::post("/edit/{id}",             [DoctorController::class, "edit"]);
+        Route::get("/",                       [DoctorController::class, "consultAll"]);
         Route::get("/{id}",                   [DoctorController::class, "consultById"]);
         Route::delete("/{id}",                [DoctorController::class, "deleteById"]);
-        Route::post("/edit/{id}",             [DoctorController::class, "edit"]);
         Route::post("/filtrar",               [DoctorController::class, "filtrar"]);
         Route::post("/filtrar-sin-paginar",   [DoctorController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel",         [DoctorController::class, "exportarExcel"]);
