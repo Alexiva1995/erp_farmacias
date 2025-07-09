@@ -8,11 +8,10 @@ const props = defineProps({
 
 const emit = defineEmits([
   "update:buscador",
-  "update:tipo_empresa_filtro",
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
   "clear",
-  "add-company",
+  "add-doctor",
   "export-pdf",
   "export-excel",
 ]);
@@ -22,21 +21,12 @@ const emit = defineEmits([
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="9" md="9">
+        <VCol cols="12" sm="12" md="12">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, identificación o dirección..."
             clearable
             @update:model-value="emit('update:buscador', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.tipo_empresa_filtro"
-            label="Tipo de Empresa"
-            :items="['Empresa', 'Clinica']"
-            clearable
-            @update:model-value="emit('update:tipo_empresa_filtro', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="6">
@@ -104,9 +94,9 @@ const emit = defineEmits([
       <VBtn
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('add-company')"
+        @click="emit('add-doctor')"
       >
-        Agregar Empresa
+        Agregar Doctor
       </VBtn>
     </VCardActions>
   </VCard>
