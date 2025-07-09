@@ -17,10 +17,13 @@ class TraceabilityQueryService
      */
     public function getFilteredQuery(Request $request): Builder
     {
-        $query = InventoryMovement::query()->with('user', 'order', 'invoice', 'supplier');
+        $query = InventoryMovement::query()->with('user', 'order', 'invoice', 'supplier', 'product');
 
         if ($request->filled('q')) {
-            $query->where('id', $request->input('q'));
+            $searchTerm = "%{$request->input('q')}%";
+            $query->whereHas('product', function ($product) use ($request, $searchTerm) {
+                $product->where('id', 'like', $searchTerm);
+            });
         }
 
         if ($request->filled('startDate')) {

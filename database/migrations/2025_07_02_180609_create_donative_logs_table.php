@@ -1,4 +1,3 @@
-// database/migrations/YYYY_MM_DD_XXXXXX_create_donative_logs_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -10,9 +9,11 @@ return new class extends Migration {
     {
         Schema::create('donative_logs', function (Blueprint $table) {
             $table->id();
-            $table->uuid('donation_batch_uuid');
-            $table->string('institution_name');
-            $table->foreignId('expired_log_id')->constrained('expired_logs')->onDelete('cascade');
+
+            $table->foreignId('donation_id')->constrained()->onDelete('cascade');
+
+            $table->foreignId('expired_log_id')->constrained()->onDelete('cascade');
+
             $table->timestamps();
         });
     }
