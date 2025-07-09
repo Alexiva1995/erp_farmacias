@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -85,10 +86,17 @@ Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate'])
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
 
-// Rutas de TPV / Cotizaciones (provenientes de 4.0-TPV)
-Route::get('/quotation', [QuotationController::class, 'index']);
-Route::get('/quotation/{product}', [QuotationController::class, 'show']);
-Route::post('/quotations', [QuotationController::class, 'store']);
+// Rutas de TPV (provenientes de 4.0-TPV)
+Route::prefix("tpv")->group(function () {
+    // Rutas de Cotizaciones
+    Route::get('/quotation', [QuotationController::class, 'index']);
+    Route::get('/quotation/{product}', [QuotationController::class, 'show']);
+    Route::post('/quotations', [QuotationController::class, 'store']);
+    // Rutas de Pedidos Usuarios
+    Route::get('/order', [OrderController::class, 'index']);
+    // Rutas de Pedidos General
+});
+
 
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {

@@ -1,5 +1,7 @@
 <script setup>
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
+import OrderFilters from "@/components/OrderFilters.vue";
+import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
 
@@ -11,24 +13,21 @@ const loading = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
-const orderBy = ref();
+const orderBy = ref()
 
-const searchQuery = ref("");
+const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
 
 const laboratories = ref([]);
 const origins = ref([]);
-const suppliers = ref([]);
-const categories = ref([]);
+const isLoadingFilters = ref(false);
 
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
+    q: filterSearchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
@@ -38,15 +37,13 @@ const fetchProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
 
   try {
-    const response = await axios.get("/products", { params });
+    const response = await axios.get("/tpv/quotation", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -57,6 +54,24 @@ const fetchProducts = async () => {
   }
 };
 
+
+const fetchSelectOptions = async () => {
+  isLoadingFilters.value = true;
+  try {
+    const [labResponse, originResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+    ]);
+    laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
+  } catch (error) {
+    console.error("Error al cargar opciones de los selects:", error);
+    toast.error("No se pudieron cargar los filtros.");
+  } finally {
+    isLoadingFilters.value = false;
+  }
+};
+
 let debounceTimer;
 watch(
   [
@@ -64,12 +79,10 @@ watch(
     itemsPerPage,
     sortBy,
     orderBy,
-    searchQuery,
+    filterSearchQuery,
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
-    startDate,
-    endDate,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -80,6 +93,7 @@ watch(
 
 
 onMounted(() => {
+  fetchSelectOptions();
   fetchProducts();
 });
 
@@ -90,9 +104,51 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+
+const addProductToQuotation = async ({ productId, quantity }) => {
+};
+
+const handleClearFilters = () => {
+  filterSearchQuery.value = "";
+  selectedLaboratory.value = null;
+  selectedOrigin.value = null;
+  stockStatusFilter.value = null;
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+};
+
+watch(
+  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
+  () => {
+    page.value = 1;
+  }
+);
+
+
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+};
+
 </script>
 <template>
 <div>
+
+  <OrderClienteCard/>
+
+  <OrderFilters
+      v-model:searchQuery="filterSearchQuery"
+      v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedOrigin="selectedOrigin"
+      v-model:stockStatusFilter="stockStatusFilter"
+      :laboratories="laboratories"
+      :origins="origins"
+      :loading="isLoadingFilters"
+      @clear="handleClearFilters"
+      @sort="handleSort"
+    >
+    </OrderFilters>
+
     <OrderProductsTable
       :products="products"
       :loading="loading"
@@ -100,6 +156,7 @@ const updateTableOptions = (options) => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @add-product="addProductToOrder"
     />
 </div>
 </template>

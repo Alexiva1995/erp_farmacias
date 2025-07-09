@@ -342,7 +342,7 @@ onMounted(async () => {
         <VBtn color="primary" @click="mostarModal()">
           <VIcon icon="tabler-plus" class="mr-2" />
           Agregar
-        </VBtn>
+        </VBtn> 
       </div>
       <VDivider />
       <ClientTable

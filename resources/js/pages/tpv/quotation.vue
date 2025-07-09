@@ -142,7 +142,7 @@ const fetchProducts = async () => {
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get("/quotation", { params });
+    const response = await axios.get("/tpv/quotation", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -193,7 +193,6 @@ watch(barcodeSearchQuery, (newValue) => {
 });
 
 onMounted(() => {
-
   fetchSelectOptions();
   fetchProducts();
 });
@@ -228,7 +227,7 @@ const addProductToQuotation = async ({ productId, quantity }) => {
   }
 
   try {
-    const response = await axios.get(`/quotation/${productId}`);
+    const response = await axios.get(`/tpv/quotation/${productId}`);
     const productDetails = response.data;
     const availableQuantity = productDetails.valid_stock_sum;
     if (quantity > availableQuantity) {
@@ -305,6 +304,8 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  sortBy.value = undefined;
+  orderBy.value = undefined;
 };
 
 const handleCurrencyChanged = (newCurrency) => {
@@ -352,7 +353,7 @@ const saveAndPrintQuotation = async () => {
         tax_rate: item.taxRate,
       })),
     };
-    const response = await axios.post("/quotations", payload);
+    const response = await axios.post("/tpv/quotations", payload);
     quotationDetails.value = response.data.quotation;
     toast.success("Cotización guardada exitosamente. Preparando impresión...");
     isPrinting.value = true;

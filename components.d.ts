@@ -63,6 +63,7 @@ declare module 'vue' {
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
     OrderClienteCard: typeof import('./resources/js/components/cards/OrderClienteCard.vue')['default']
+    OrderFilters: typeof import('./resources/js/components/OrderFilters.vue')['default']
     OrderProductsTable: typeof import('./resources/js/components/OrderProductsTable.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PricingPlanDialog: typeof import('./resources/js/components/dialogs/PricingPlanDialog.vue')['default']

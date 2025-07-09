@@ -1,4 +1,7 @@
 <script setup>
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { ref, watch, nextTick } from "vue"; 
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -7,50 +10,67 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options"]);
+const inputQuantities = ref(new Map()); 
+const emit = defineEmits(['update:options', 'add-product']);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
+  { title: "Stock", key: "valid_stock_sum", sortable: true },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "valid_stock", sortable: true },
-  { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Precio Compra", key: "cost_price", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
+  { title: 'Precio en USD', key: 'sale_price', sortable: true },
+  { title: 'Precio en Bs', key: 'price_bs', sortable: true},
+  { title: 'Precio en COP', key: 'price_cop', sortable: true },
+  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'  },
+  { title: 'Acción', key: 'actions', sortable: false},
 ];
 
-const calculateValidStock = (product) => {
-  if (!product.lots || !Array.isArray(product.lots)) return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return product.lots
-    .filter(
-      (lot) => lot.expiration_date && new Date(lot.expiration_date) >= today
-    )
-    .reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+const calculatePriceWithIVA = (basePrice, product) => {
+  const price = parseFloat(basePrice) || 0;
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+  if (taxRate > 0) {
+    return price * (1 + taxRate);
+  }
+  return price;
 };
 
-const nextExpirationDate = (product) => {
-  if (
-    !product.lots ||
-    !Array.isArray(product.lots) ||
-    product.lots.length === 0
-  )
-    return "N/A";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const validLots = product.lots.filter((lot) => {
-    if (!lot.expiration_date) return false;
-    const expirationDate = new Date(lot.expiration_date);
-    return !isNaN(expirationDate.getTime()) && expirationDate >= today;
-  });
-  if (validLots.length === 0) return "Todos expiraron";
-  validLots.sort(
-    (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
-  );
-  const closestDate = new Date(validLots[0].expiration_date);
-  return closestDate.toISOString().split("T")[0];
+const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVA(basePrice, product);
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), 'COP');
 };
+
+
+const handleAddProduct = (productId) => {
+  const quantityToAdd = inputQuantities.value.get(productId);
+  if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) {
+    console.error(`La cantidad para el producto ${productId} no es válida (${quantityToAdd}). Debe ser un número positivo para añadir.`);
+    return;
+  }
+  emit('add-product', { productId, quantity: quantityToAdd });
+};
+
+watch(() => props.products, (newProducts) => {
+  const newOrderMap = new Map();
+  newProducts.forEach(product => {
+    let currentQty;
+    if (product.valid_stock_sum === 0) {
+      currentQty = 0;
+    } else {
+      let previousQty = inputQuantities.value.get(product.id);
+      if (previousQty === undefined || previousQty === null || previousQty < 1) {
+        currentQty = 1;
+      } else {
+        currentQty = previousQty;
+      }
+      if (currentQty > product.valid_stock_sum) {
+        currentQty = product.valid_stock_sum;
+      }
+    }
+    newOrderMap.set(product.id, currentQty);
+  });
+  inputQuantities.value = newOrderMap;
+}, { immediate: true });
+
 </script>
 
 <template>
@@ -68,49 +88,50 @@ const nextExpirationDate = (product) => {
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
-
+      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium">{{ item.valid_stock_sum }}</span></template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
-          <VAvatar
-            v-if="item.photo_url"
-            size="38"
-            variant="tonal"
-            rounded
-            :image="item.photo_url"
-          />
           <div class="d-flex flex-column">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 'text-primary': item.psychotropic == 1 }"
-            >
-              {{ item.name }}
-
-              <span v-if="item.iva == 1"> (G)</span>
-
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
-            </span>
-
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.name }}</span>
+            <span class="text-sm text-disabled">{{ item.active_ingredient }}</span>
           </div>
         </div>
       </template>
-
-      <template #item.valid_stock="{ item }">
-        <span class="font-weight-medium">{{ calculateValidStock(item) }}</span>
+       <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item), 'USD')}}</span></template>
+      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), 'BS') }}</span></template>
+      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}</span></template>
+      <template #item.add_action_with_quantity="{ item }">
+        <div class="d-flex align-center gap-2">
+          <VTextField
+            :model-value="inputQuantities.get(item.id) ?? 0"
+            @update:model-value="val => handleInputQuantityChange(item.id, val)"
+            type="number"
+            min="0"
+            :max="item.valid_stock_sum"
+            density="compact"
+            variant="outlined"
+            hide-details
+            single-line
+            style="max-width: 90px;min-width: 90px;"
+            class="my-2 quantity-input-field"
+            :disabled="item.valid_stock_sum === 0"
+          />
+          <IconBtn
+            @click="handleAddProduct(item.id)"
+            :disabled="
+                (inputQuantities.get(item.id) ?? 0) <= 0 || 
+                (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum || 
+                item.valid_stock_sum === 0
+            "
+          >
+            <VIcon icon="tabler-plus" />
+          </IconBtn>
+        </div>
       </template>
-
-      <template #item.next_expiration="{ item }">
-        <span>{{ nextExpirationDate(item) }}</span>
-      </template>
-
-      <template #item.cost_price="{ item }">
-        <span class="font-weight-medium">{{ item.unit_cost }}</span>
-      </template>
-
-      <template #item.sale_price="{ item }">
-        <span class="font-weight-medium">{{ item.sale_price }}</span>
+       <template #item.actions="{ item }">
+        <IconBtn @click="emit('edit-product', item)">
+          <VIcon icon="tabler-edit" />
+        </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>
