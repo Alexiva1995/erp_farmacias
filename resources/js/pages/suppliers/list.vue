@@ -1,6 +1,7 @@
 <script setup>
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
+import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -13,8 +14,11 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
-
 const searchQuery = ref("");
+
+const currentSupplier = ref({});
+const supplierFormErrors = ref({});
+const isEditDialogVisible = ref(false);
 
 const fetchSuppliers = async () => {
   loading.value = true;
@@ -57,6 +61,45 @@ const handleSort = (sortOptions) => {
   orderBy.value = sortOptions.order;
 };
 
+const handleAddSupplier = () => {
+  currentSupplier.value = {};
+  supplierFormErrors.value = {};
+  isEditDialogVisible.value = true;
+};
+
+const handleSaveSupplier = async (supplierFormData) => {
+    const isNewSupplier = !currentSupplier.value.id;
+    const url = isNewSupplier
+    ? "/suppliers"
+    : `/suppliers/${currentSupplier.value.id}`;
+
+    try {
+        if (!isNewSupplier) {
+            supplierFormData.append("_method", "PUT");
+        }
+
+        await axios.post(url, supplierFormData);
+
+        toast.success(
+            `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
+        );
+        isEditDialogVisible.value = false;
+        await fetchSuppliers();
+    } catch (error) {
+        if (error.response && error.response.status === 422) {
+            supplierFormErrors.value = error.response.data.errors;
+            toast.error("Por favor, corrige los errores en el formulario.");
+        } else {
+            console.error("Error al guardar/crear el proveedor:", error);
+            toast.error("Hubo un error al guardar el proveedor.");
+        }
+    }
+};
+
+const clearFormErrors = () => {
+  supplierFormErrors.value = {};
+};
+
 let debounceTimer;
 watch(
   [page, itemsPerPage, sortBy, orderBy, searchQuery],
@@ -85,6 +128,7 @@ const updateTableOptions = (options) => {
       v-model:searchQuery="searchQuery"
       @clear="handleClearFilters"
       @sort="handleSort"
+      @add-supplier="handleAddSupplier"
     />
 
     <SupplierTable
@@ -94,6 +138,14 @@ const updateTableOptions = (options) => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+    />
+
+    <SupplierEditDialog
+      v-model="isEditDialogVisible"
+      :supplier="currentSupplier"
+      :errors="supplierFormErrors"
+      @save="handleSaveSupplier"
+      @clear-errors="clearFormErrors"
     />
   </div>
 </template>

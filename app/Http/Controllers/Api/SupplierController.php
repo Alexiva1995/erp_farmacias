@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
+use App\Services\Suppliers\SupplierActionService;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
     public function __construct(
-        private SupplierQueryService $supplierQueryService
+        private SupplierQueryService $supplierQueryService,
+        private SupplierActionService $supplierActionService
     ) {
     }
 
@@ -24,5 +27,15 @@ class SupplierController extends Controller
         }
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function store(StoreSupplierRequest $request)
+    {
+        $supplier = $this->supplierActionService->createSupplier($request->validated());
+
+        return response()->json([
+            'message' => 'Proveedor creado con éxito.',
+            'supplier' => $supplier
+        ], 201);
     }
 }

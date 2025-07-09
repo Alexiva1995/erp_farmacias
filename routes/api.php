@@ -121,6 +121,4 @@ Route::prefix("crm")->group(function () {
 });
 
 // Rutas de Proveedores
-Route::prefix('suppliers')->group(function () {
-    Route::get('/', [SupplierController::class, 'index']);
-});
+Route::resource('suppliers', SupplierController::class)->except(['create', 'edit']);

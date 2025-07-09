@@ -3,7 +3,7 @@ const props = defineProps({
   searchQuery: String,
 });
 
-const emit = defineEmits(["update:searchQuery", "clear", "sort"]);
+const emit = defineEmits(["update:searchQuery", "clear", "sort", "add-supplier"]);
 
 const sortOptions = [
   {
@@ -79,6 +79,12 @@ const handleSortClick = (option) => {
           </VListItem>
         </VList>
       </VMenu>
+
+      <VSpacer />
+
+      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add-supplier')">
+        Añadir Proveedor
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>

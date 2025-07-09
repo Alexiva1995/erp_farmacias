@@ -39,6 +39,11 @@ class Supplier extends Model
         'is_deleted'
     ];
 
+    protected $casts = [
+        'dispatch_days' => 'array',
+        'order_days' => 'array',
+    ];
+
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      * Esto es muy útil para manejar JSON, booleanos, fechas, etc.
