@@ -38,10 +38,33 @@
     };
 
     const submitForm = () => {
-        formErrors.value = {};
-        emit("clearErrors");
+        formErrors.value = {}
+        emit("clearErrors")
 
-        emit("save", { ...formData.value })
+        const original = props.supplier || {}
+        const current = formData.value
+
+        const filteredPayload = {}
+
+        Object.entries(current).forEach(([key, value]) => {
+            const originalValue = original[key]
+
+            const changed = Array.isArray(value)
+            ? JSON.stringify(value) !== JSON.stringify(originalValue)
+            : value !== originalValue
+
+            const isFilled = Array.isArray(value)
+            ? value.length > 0
+            : typeof value === 'boolean'
+                ? true
+                : value !== null && value !== '' && value !== undefined
+
+            if (changed && isFilled) {
+            filteredPayload[key] = value
+            }
+        })
+
+        emit('save', filteredPayload)
     };
 
     watch(
@@ -50,6 +73,23 @@
             formErrors.value = newErrors || {};
         },
         { deep: true }
+    );
+
+    watch(
+        () => props.supplier,
+        (newSupplier) => {
+            if (newSupplier && Object.keys(newSupplier).length > 0) {
+                formData.value = JSON.parse(JSON.stringify(newSupplier));
+            } else {
+                formData.value = {
+                    name: "",
+                    dispatch_days: [],
+                    order_days: []
+                };
+            }
+            formErrors.value = {};
+        },
+        { deep: true, immediate: true }
     );
 </script>
 

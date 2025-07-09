@@ -3,14 +3,15 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
-class StoreSupplierRequest extends FormRequest
+class UpdateSupplierRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
+     *
+     * @return bool
      */
-    public function authorize(): bool
+    public function authorize()
     {
         return true;
     }
@@ -18,23 +19,23 @@ class StoreSupplierRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, mixed>
      */
-    public function rules(): array
+    public function rules()
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'social_reason' => ['string', 'max:255'],
-            'sales_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
-            'collections_phone' => ['string', 'max:50',  'regex:/^\+?\d{7,15}$/'],
-            'credit_days' => ['numeric', 'min:0'],
-            'dispatch_days' => ['required','array','min:1'],
-            'dispatch_days.*' => [ 'in:monday,tuesday,wednesday,thursday,friday,saturday'],
-            'order_days' => ['required','array','min:1'],
-            'order_days.*' => [ 'in:monday,tuesday,wednesday,thursday,friday,saturday'],
-            'payment_method' => ['in:Bs,Divisas'],
-            'cash_payment' => ['boolean'],
-            'charges_igtf' => ['boolean']
+            'name' => 'sometimes|string|max:255',
+            'social_reason' => 'sometimes|string|max:255',
+            'sales_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
+            'collections_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
+            'credit_days' => 'sometimes|numeric|min:0',
+            'dispatch_days' => 'sometimes|array|min:1',
+            'dispatch_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
+            'order_days' => 'sometimes|array|min:1',
+            'order_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
+            'payment_method' => 'sometimes|in:Bs,Divisas',
+            'cash_payment' => 'sometimes|boolean',
+            'charges_igtf' => 'sometimes|boolean'
         ];
     }
 
@@ -46,7 +47,6 @@ class StoreSupplierRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'El nombre del proveedor es obligatorio.',
             'name.string' => 'El nombre del proveedor debe ser texto.',
             'name.max' => 'El nombre no puede exceder los 255 caracteres.',
 
@@ -64,11 +64,9 @@ class StoreSupplierRequest extends FormRequest
             'credit_days.numeric' => 'Los días de crédito debe ser un número.',
             'credit_days.min' => 'Los días de crédito no puede ser negativo.',
 
-            'dispatch_days.required' => 'Debes seleccionar al menos un día de despacho.',
             'dispatch_days.min' => 'Debes seleccionar al menos un día de despacho.',
             'dispatch_days.*.in' => 'Uno o más días seleccionados no son válidos.',
 
-            'order_days.required' => 'Debes seleccionar al menos un día de pedido.',
             'order_days.min' => 'Debes seleccionar al menos un día de pedido.',
             'order_days.*.in' => 'Uno o más días seleccionados no son válidos.',
 

@@ -73,12 +73,20 @@ const handleSaveSupplier = async (supplierFormData) => {
     ? "/suppliers"
     : `/suppliers/${currentSupplier.value.id}`;
 
+    const payloadKeys = Object.keys(supplierFormData)
+    if (!isNewSupplier && payloadKeys.length === 0) {
+      toast.info("No se realizaron cambios en el proveedor.")
+      return
+    }
+
     try {
+        const payload = { ...supplierFormData }
+
         if (!isNewSupplier) {
-            supplierFormData.append("_method", "PUT");
+            payload._method = "PUT"
         }
 
-        await axios.post(url, supplierFormData);
+        await axios.post(url, payload);
 
         toast.success(
             `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
@@ -94,6 +102,12 @@ const handleSaveSupplier = async (supplierFormData) => {
             toast.error("Hubo un error al guardar el proveedor.");
         }
     }
+};
+
+const handleEditSupplier = (supplier) => {
+  currentSupplier.value = { ...supplier };
+  supplierFormErrors.value = {};
+  isEditDialogVisible.value = true;
 };
 
 const clearFormErrors = () => {
@@ -138,6 +152,7 @@ const updateTableOptions = (options) => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @edit-supplier="handleEditSupplier"
     />
 
     <SupplierEditDialog

@@ -19,4 +19,18 @@ class SupplierActionService
 
         return $supplier;
     }
+
+    /**
+     * 
+     *
+     * @param Supplier $supplier
+     * @param array $validatedData
+     * @return Supplier
+     */
+    public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
+    {
+        $supplier->update($validatedData);
+
+        return $supplier;
+    }
 }

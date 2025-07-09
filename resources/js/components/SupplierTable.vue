@@ -96,6 +96,12 @@ const headers = [
       <template #item.latestScore.score="{ item }">
         <span class="font-weight-medium">{{ item.latestScore?.score ?? 0 }}%</span>
       </template>
+
+      <template #item.actions="{ item }">
+        <IconBtn @click="emit('edit-supplier', item)">
+          <VIcon icon="tabler-edit" />
+        </IconBtn>
+      </template>  
     </VDataTableServer>
   </VCard>
 </template>

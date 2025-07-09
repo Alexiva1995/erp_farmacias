@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
+use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -37,5 +39,15 @@ class SupplierController extends Controller
             'message' => 'Proveedor creado con éxito.',
             'supplier' => $supplier
         ], 201);
+    }
+
+    public function update(UpdateSupplierRequest $request, Supplier $supplier)
+    {
+        $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
+
+        return response()->json([
+            'message' => 'Proveedor actualizado con éxito.',
+            'supplier' => $updatedSupplier
+        ], 200);
     }
 }
