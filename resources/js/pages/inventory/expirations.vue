@@ -90,30 +90,36 @@ const handleExpireLot = async (lotToExpire) => {
   }
 };
 
-const handleApplyDiscount = async (lot) => {
-  const { value: discount } = await Swal.fire({
-    title: "Aplicar Descuento",
-    input: "number",
-    inputLabel: `Ingrese el porcentaje de descuento para el lote #${lot.lot_number}`,
-    inputPlaceholder: "Ej: 15",
-    inputAttributes: { min: 1, max: 100 },
+const handleApplyDiscount = async (item) => {
+  // Modificado para recibir solo el item ya que la tabla cambió
+  try {
+    // TODO: Implementar lógica de descuento cuando esté lista
+    toast.info("Funcionalidad de descuento en desarrollo...");
+  } catch (error) {
+    console.error("Error al aplicar el descuento:", error);
+    toast.error("No se pudo aplicar el descuento.");
+  }
+};
+
+const handleApplyOfferSelected = async () => {
+  const selectedCount = selectedLots.value.length;
+  if (selectedCount === 0) {
+    toast.info("Por favor, selecciona al menos un lote.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: `¿Estás seguro de aplicar esta oferta?`,
+    text: `Se aplicará la oferta a ${selectedCount} lotes seleccionados.`,
+    icon: "question",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
-    confirmButtonText: "Aplicar",
+    confirmButtonText: "Sí, aplicar oferta",
     reverseButtons: true,
-    inputValidator: (value) => {
-      if (!value || value < 1 || value > 100)
-        return "Debes ingresar un porcentaje válido (1-100)";
-    },
   });
-  if (discount) {
-    try {
-      await axios.post(`/lots/${lot.id}/apply-discount`, { discount });
-      toast.success(`Descuento del ${discount}% aplicado.`);
-    } catch (error) {
-      console.error("Error al aplicar el descuento:", error);
-      toast.error("No se pudo aplicar el descuento.");
-    }
+
+  if (result.isConfirmed) {
+    toast.info("Funcionalidad de ofertas masivas en desarrollo...");
   }
 };
 
@@ -389,12 +395,8 @@ const formatCurrency = (value) => {
 
 <template>
   <div>
+    <!-- Sección de Lotes por Vencer -->
     <div>
-      <h4 class="text-h4 mb-1">Lotes por Vencer</h4>
-      <p class="text-subtitle-1 text-medium-emphasis mb-6">
-        Gestiona los lotes próximos a su fecha de caducidad.
-      </p>
-
       <ExpirationsFilters
         v-model:searchQuery="searchQueryLots"
         v-model:selectedLaboratory="selectedLaboratoryLots"
@@ -402,121 +404,135 @@ const formatCurrency = (value) => {
         v-model:endDate="endDateLots"
         :laboratories="laboratories"
         :loading="loadingLaboratories"
+        :selected-lots="selectedLots"
         @clear="handleClearFiltersLots"
+        @expire-selected="handleExpireSelected"
+        @apply-offer-selected="handleApplyOfferSelected"
       />
 
-      <VCard class="mb-6" v-if="selectedLots.length > 0">
-        <VCardText class="d-flex align-center justify-space-between">
+      <!-- Tabla con título integrado -->
+      <VCard>
+        <VCardTitle class="d-flex align-center justify-space-between">
           <div>
-            <span class="font-weight-medium">{{ selectedLots.length }}</span>
-            lote(s) seleccionado(s)
+            <h4 class="text-h4 mb-1">Lotes por Vencer</h4>
+            <p class="text-subtitle-1 text-medium-emphasis mb-0">
+              Gestiona los lotes próximos a su fecha de caducidad.
+            </p>
           </div>
-          <VBtn
-            color="warning"
-            prepend-icon="tabler-calendar-off"
-            @click="handleExpireSelected"
-          >
-            Caducar Seleccionados
-          </VBtn>
+        </VCardTitle>
+
+        <VCardText class="pa-0">
+          <ExpirationsTable
+            v-model="selectedLots"
+            :lots="lots"
+            :loading="loadingLots"
+            :total-lots="totalLots"
+            :items-per-page="itemsPerPageLots"
+            :page="pageLots"
+            @update:options="updateTableOptionsLots"
+            @apply-discount="handleApplyDiscount"
+            @expire-lot="handleExpireLot"
+          />
         </VCardText>
       </VCard>
-
-      <ExpirationsTable
-        v-model="selectedLots"
-        :lots="lots"
-        :loading="loadingLots"
-        :total-lots="totalLots"
-        :items-per-page="itemsPerPageLots"
-        :page="pageLots"
-        @update:options="updateTableOptionsLots"
-        @apply-discount="handleApplyDiscount"
-        @expire-lot="handleExpireLot"
-      />
     </div>
 
     <VDivider class="my-8" />
 
+    <!-- Sección de Reportes de Caducidad -->
     <div>
-      <div class="d-flex justify-space-between align-center mb-6">
-        <h4 class="text-h4 text-capitalize">
-          {{ viewTitle }}
-        </h4>
-        <VBtn
-          v-if="isDetailViewVisible"
-          variant="outlined"
-          prepend-icon="tabler-arrow-left"
-          @click="showSummaryView"
-        >
-          Volver a Resúmenes
-        </VBtn>
-      </div>
-
-      <div v-if="!isDetailViewVisible">
-        <VCard v-if="monthlySummaries.length > 0">
-          <VDataTable
-            :headers="headersSummaries"
-            :items="monthlySummaries"
-            :loading="loadingReports"
-            item-value="month"
-            class="text-no-wrap"
+      <VCard>
+        <VCardTitle class="d-flex align-center justify-space-between">
+          <h4 class="text-h4 text-capitalize">
+            {{ viewTitle }}
+          </h4>
+          <VBtn
+            v-if="isDetailViewVisible"
+            variant="outlined"
+            prepend-icon="tabler-arrow-left"
+            @click="showSummaryView"
           >
-            <template #item.month="{ item }">
-              <span class="text-capitalize font-weight-medium">{{
-                formatMonth(item.month)
-              }}</span>
-            </template>
-            <template #item.total_cost="{ item }">
-              <span class="font-weight-medium">{{
-                formatCurrency(item.total_cost)
-              }}</span>
-            </template>
-            <template #item.total_products="{ item }">
-              <span class="font-weight-medium">{{ item.total_products }}</span>
-            </template>
-            <template #item.actions="{ item }">
-              <VTooltip text="Ver Productos del Mes">
-                <template #activator="{ props: tooltipProps }">
-                  <IconBtn
-                    v-bind="tooltipProps"
-                    @click="showDetailView(item.month)"
-                  >
-                    <VIcon icon="tabler-eye" />
-                  </IconBtn>
-                </template>
-              </VTooltip>
-              <VTooltip text="Imprimir Carta(s) de Donación">
-                <template #activator="{ props: tooltipProps }">
-                  <div v-bind="tooltipProps" class="d-inline-block">
+            Volver a Resúmenes
+          </VBtn>
+        </VCardTitle>
+
+        <VCardText class="pa-0">
+          <div v-if="!isDetailViewVisible">
+            <VDataTable
+              v-if="monthlySummaries.length > 0"
+              :headers="headersSummaries"
+              :items="monthlySummaries"
+              :loading="loadingReports"
+              item-value="month"
+              class="text-no-wrap"
+            >
+              <template #item.month="{ item }">
+                <span class="text-capitalize font-weight-medium">{{
+                  formatMonth(item.month)
+                }}</span>
+              </template>
+              <template #item.total_cost="{ item }">
+                <span class="font-weight-medium">{{
+                  formatCurrency(item.total_cost)
+                }}</span>
+              </template>
+              <template #item.total_products="{ item }">
+                <span class="font-weight-medium">{{
+                  item.total_products
+                }}</span>
+              </template>
+              <template #item.actions="{ item }">
+                <VTooltip text="Ver Productos del Mes">
+                  <template #activator="{ props: tooltipProps }">
                     <IconBtn
-                      :disabled="item.donation_count === 0"
-                      @click="handlePrintDonation(item.month)"
+                      v-bind="tooltipProps"
+                      @click="showDetailView(item.month)"
                     >
-                      <VIcon icon="tabler-printer" />
+                      <VIcon icon="tabler-eye" />
                     </IconBtn>
-                  </div>
-                </template>
-              </VTooltip>
-            </template>
-          </VDataTable>
-        </VCard>
+                  </template>
+                </VTooltip>
+                <VTooltip text="Imprimir Carta(s) de Donación">
+                  <template #activator="{ props: tooltipProps }">
+                    <div v-bind="tooltipProps" class="d-inline-block">
+                      <IconBtn
+                        :disabled="item.donation_count === 0"
+                        @click="handlePrintDonation(item.month)"
+                      >
+                        <VIcon icon="tabler-printer" />
+                      </IconBtn>
+                    </div>
+                  </template>
+                </VTooltip>
+              </template>
+            </VDataTable>
 
-        <VAlert v-else-if="!loadingReports" type="info" variant="tonal">
-          No se encontraron registros de lotes caducados.
-        </VAlert>
-        <VProgressLinear v-if="loadingReports" indeterminate color="primary" />
-      </div>
+            <div v-else-if="!loadingReports" class="pa-6">
+              <VAlert type="info" variant="tonal">
+                No se encontraron registros de lotes caducados.
+              </VAlert>
+            </div>
 
-      <ExpiredDetailView
-        v-else
-        v-model:selected-logs="selectedLogsInDetail"
-        :logs="expiredLogs"
-        :total-logs="totalExpiredLogs"
-        :loading="loadingReports"
-        :page="pageReports"
-        :items-per-page="itemsPerPageReports"
-        @update:options="updateDetailTableOptions"
-        @generate-donation="handleOpenDonationFromSelection"
-      />
+            <VProgressLinear
+              v-if="loadingReports"
+              indeterminate
+              color="primary"
+            />
+          </div>
+
+          <ExpiredDetailView
+            v-else
+            v-model:selected-logs="selectedLogsInDetail"
+            :logs="expiredLogs"
+            :total-logs="totalExpiredLogs"
+            :loading="loadingReports"
+            :page="pageReports"
+            :items-per-page="itemsPerPageReports"
+            @update:options="updateDetailTableOptions"
+            @generate-donation="handleOpenDonationFromSelection"
+          />
+        </VCardText>
+      </VCard>
     </div>
 
     <DonationLetterDialog
