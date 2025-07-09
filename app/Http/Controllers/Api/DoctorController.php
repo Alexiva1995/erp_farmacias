@@ -31,7 +31,7 @@ class DoctorController extends Controller
     {
         $buscarPorIdentificaion = $this->doctor->consultByIdentification($request->data->identification);
         if ($buscarPorIdentificaion) {
-            if ($request->client->id != $buscarPorIdentificaion->id) {
+            if ($request->data->id != $buscarPorIdentificaion->id) {
                 $errors = [
                     "identification" => ["Cannot update because the ID is already in use"]
                 ];
@@ -41,7 +41,7 @@ class DoctorController extends Controller
 
         $respuestaDB = $this->doctor->edit($request->data->id, $request->data->all());
 
-        return ApiResponse::success($respuestaDB, "company successfully edited", 200);
+        return ApiResponse::success($respuestaDB, "doctor successfully edited", 200);
     }
 
 
@@ -56,7 +56,7 @@ class DoctorController extends Controller
         $respuestaDB = $this->doctor->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the company not found", 404);
+            return ApiResponse::error("the doctor not found", 404);
         }
 
         return ApiResponse::success($respuestaDB, "successfully", 200);
@@ -67,7 +67,7 @@ class DoctorController extends Controller
         $respuestaDB = $this->doctor->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the company not found", 404);
+            return ApiResponse::error("the doctor not found", 404);
         }
 
         $this->doctor->deleteById($request->id);
@@ -75,10 +75,10 @@ class DoctorController extends Controller
         $validarEliminacio = $this->doctor->consultById($request->id);
 
         if ($validarEliminacio) {
-            return ApiResponse::error("the company not eliminated", 404);
+            return ApiResponse::error("the doctor not eliminated", 404);
         }
 
-        return ApiResponse::success($validarEliminacio, "The company was successfully deleted", 200);
+        return ApiResponse::success($validarEliminacio, "The doctor was successfully deleted", 200);
     }
 
     public function filtrar(Request $request)

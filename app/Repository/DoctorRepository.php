@@ -40,7 +40,7 @@ class DoctorRepository
 
     public function builerPaginate($filtros): Builder
     {
-        $consulta = Doctor::query()->with("clients");
+        $consulta = Doctor::query();
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
