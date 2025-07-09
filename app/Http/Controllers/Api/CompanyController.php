@@ -9,6 +9,7 @@ use App\Http\Requests\CreateCompanyRequest;
 use App\Http\Requests\EditCompanyRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CompanyController extends Controller
 {
@@ -70,12 +71,25 @@ class CompanyController extends Controller
         return ApiResponse::success($validarEliminacio, "The company was successfully deleted", 200);
     }
 
-    public function filrar(Request $request)
+    public function filtrar(Request $request)
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
             "page"         => $request->page,
         ];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
@@ -85,5 +99,62 @@ class CompanyController extends Controller
         $repuesta = $this->company->filtrar($filtros);
 
         return ApiResponse::success($repuesta, "ok", 200);
+    }
+
+    public function filtrarSinPaginar(Request $request)
+    {
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $repuesta = $this->company->filterWithoutPaginate($filtros);
+
+        return ApiResponse::success($repuesta, "ok", 200);
+    }
+
+    public function exportarExcel(Request $request)
+    {
+
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("tipo_empresa_filtro")) {
+            $filtros["tipo_empresa_filtro"] = $request->tipo_empresa_filtro;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $excel = $this->company->exportExcel($filtros);
+
+        $fileName = 'companies-' . now()->format('Y-m-d') . '.' . $request->formato;
+
+        return Excel::download($excel, $fileName);
     }
 }

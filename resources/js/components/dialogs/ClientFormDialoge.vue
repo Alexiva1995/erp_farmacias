@@ -98,6 +98,12 @@ function formatearFechaCompleta(fechaInput) {
               label="Identificación"
               type="text"
               variant="outlined"
+              :counter="9"
+              :maxlength="9"
+              :rules="[
+                (v) => (v && v.length >= 7) || 'Mínimo 7 caracteres',
+                (v) => (v && v.length <= 9) || 'Máximo 9 caracteres',
+              ]"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -116,6 +122,7 @@ function formatearFechaCompleta(fechaInput) {
               label="Apellido"
               type="text"
               variant="outlined"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -159,6 +166,7 @@ function formatearFechaCompleta(fechaInput) {
               :items="props.companies"
               item-title="name"
               item-value="id"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12">
@@ -174,12 +182,28 @@ function formatearFechaCompleta(fechaInput) {
 
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="close"
-          >Cancelar</VBtn
-        >
-        <VBtn color="primary" variant="flat" @click="submitForm"
-          >Guardar Cambios</VBtn
-        >
+        <VContainer>
+          <VRow justify="end">
+            <VCol cols="12" sm="4" md="4" lg="4">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                @click="close"
+                width="100%"
+                >Cancelar</VBtn
+              >
+            </VCol>
+            <VCol cols="12" sm="6" md="6" lg="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                @click="submitForm"
+                width="100%"
+                >Guardar Cambios</VBtn
+              >
+            </VCol>
+          </VRow>
+        </VContainer>
       </VCardActions>
     </VCard>
   </VDialog>
