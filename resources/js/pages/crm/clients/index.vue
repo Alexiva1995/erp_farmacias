@@ -1,7 +1,9 @@
 <script setup lang="js">
+import ClientsFilters from "@/components/ClientsFilters.vue";
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfClienstGenerator from "@/utils/pdfClienstGenerator";
 import Swal from 'sweetalert2';
 import { onMounted, reactive } from 'vue';
 
@@ -56,6 +58,12 @@ const itemsPerPageTablaClientesJuridicos = ref(10)
 const sortByTablaClientesJuridicos = ref()
 const orderByTablaClientesJuridicos = ref()
 
+const buscardor_filtro= ref("");
+const tipo_identificacion_filtro= ref("");
+const company_id_filtro= ref("");
+const fechaDesde_filtro= ref("");
+const fechaHasta_filtro= ref("");
+
 
 function mostarModal(){
   modal.statu=true
@@ -63,9 +71,15 @@ function mostarModal(){
 }
 
 function mostarModoEdit(payload){
+  // console.log("items => ",statuModule.items)
+  // console.log("payload => ",payload)
   let cliente= statuModule.items.find(client => client.id==payload)
+  // console.log("DATA => ",cliente)
   modal.statu=true
   modal.titulo=`${cliente.name} ${cliente.last_name}`
+
+
+
   insertarDatosAlFormulario({...cliente})
 }
 
@@ -81,7 +95,7 @@ function insertarDatosAlFormulario(datos){
   formulario.identification_type=datos.identification_type
   formulario.name=datos.name
   formulario.last_name=datos.last_name
-  formulario.email=datos.email
+  formulario.email=(datos.email==null)?"":datos.email
   formulario.phone=datos.phone
   formulario.address=datos.address
   formulario.birthdate=datos.birthdate
@@ -197,35 +211,82 @@ function cargarErrores(errores){
 
 async function actualizarTabla(){
   loading.value = true;
-  // let responseCliest= await consultAll()
+
   let filtroNaturales={
     page:page.value,
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    tipo:["V-","E-","G-"]
+    tipo:["V-","E-"]
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  // let jurudicos= await filtrar(["J-"])
-  // statuModule.items=[...naturales]
   statuModule.itemsClientesNaturales=respuestaApiNaturles.data
   statuModule.totalClientesNaturales=respuestaApiNaturles.total
-    let filtroJuridica={
+
+  let filtroJuridica={
     page:pageTablaClientesJuridicos.value,
     itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
     orderBy:orderByTablaClientesJuridicos.value,
     sortBy:sortByTablaClientesJuridicos.value,
-    tipo:["J-"]
+    tipo:["J-","G-"]
   }
   let respuestaApiJurudicas= await filtrar(filtroJuridica)
   statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
   statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
-  // statuModule.itemsClientesJuridicos=jurudicos
+
+  statuModule.items=[...respuestaApiJurudicas.data,...respuestaApiNaturles.data]
+
   loading.value = false;
 }
 
-function filtrarPorTipoDeIdentificacion(clients,isFiltro){
-  return clients.filter(item => isFiltro.includes(item.identification_type));
+async function actualizarTablaTablaNatural(){
+  loading.value = true;
+
+  let filtroNaturales={
+    page:page.value,
+    itemsPerPage:itemsPerPage.value,
+    orderBy:orderBy.value,
+    sortBy:sortBy.value,
+    tipo:["V-","E-"],
+    // filtros
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApiNaturles= await filtrar(filtroNaturales)
+  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
+  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+
+  statuModule.items=[...statuModule.itemsClientesJuridicos,...respuestaApiNaturles.data]
+
+  loading.value = false;
+}
+
+async function actualizarTablaTablJuridica(){
+  loading.value = true;
+
+  let filtroJuridica={
+    page:pageTablaClientesJuridicos.value,
+    itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
+    orderBy:orderByTablaClientesJuridicos.value,
+    sortBy:sortByTablaClientesJuridicos.value,
+    tipo:["J-","G-"],
+    // filtros
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApiJurudicas= await filtrar(filtroJuridica)
+  statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
+  statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
+
+  statuModule.items=[...respuestaApiJurudicas.data,...statuModule.itemsClientesNaturales]
+
+  loading.value = false;
 }
 
 async function confirmarEliminarCliente(payload){
@@ -233,13 +294,27 @@ async function confirmarEliminarCliente(payload){
 
   const result = await Swal.fire({
     title: '¿Estás seguro?',
-    text: "¡No podrás revertir la eliminación de este cliente!",
+    text: '¡No podrás revertir la eliminación de este cliente!',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
-    cancelButtonText: '<span style="color: white;">Cancelar</span>',
-    // confirmButtonText: 'Sí, ¡eliminar!',
-    // cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Sí, ¡Eliminar!',
+    cancelButtonText: 'No, ¡Cancelar!',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
+    // title: '¿Estás seguro?',
+    // text: "¡No podrás revertir la eliminación de este cliente!",
+    // icon: 'warning',
+    // showCancelButton: true,
+    // confirmButtonText: '<span style="color: white;">Sí, ¡eliminar!</span>',
+    // cancelButtonText: '<span style="color: white;">Cancelar</span>',
+    // customClass: {
+    //   confirmButton: 'red-accent-3',  // Clase para el botón de confirmar
+    //   cancelButton: 'btn-cancel',   // Clase para el botón de cancelar
+    // },
     // color: '#111',
     // confirmButtonColor: '#7367f0',
     // cancelButtonColor: '#d33',
@@ -285,34 +360,155 @@ const updateTableOptionsJuridico = options => {
 }
 
 watch(
-    [page,itemsPerPage,orderBy,sortBy],
+    [
+      buscardor_filtro,
+      tipo_identificacion_filtro,
+      fechaDesde_filtro,
+      fechaHasta_filtro,
+      company_id_filtro,
+      page,
+      itemsPerPage,
+      orderBy,
+      sortBy
+  ],
   async () =>{
-    await actualizarTabla()
+    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==""){
+      await actualizarTablaTablaNatural()
+    }
   }
 )
 
 watch(
-    [pageTablaClientesJuridicos,itemsPerPageTablaClientesJuridicos,orderByTablaClientesJuridicos,sortByTablaClientesJuridicos],
+    [
+      buscardor_filtro,
+      tipo_identificacion_filtro,
+      fechaDesde_filtro,
+      fechaHasta_filtro,
+      company_id_filtro,
+      pageTablaClientesJuridicos,
+      itemsPerPageTablaClientesJuridicos,
+      orderByTablaClientesJuridicos,
+      sortByTablaClientesJuridicos
+  ],
   async () =>{
-    await actualizarTabla()
+    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==""){
+      await actualizarTablaTablJuridica()
+    }
   }
 )
 
-async function filtrar(dataFiltro){
-  let datosFiltros={
-    page:dataFiltro.page,
-    itemsPerPage:dataFiltro.itemsPerPage,
-    orderBy:dataFiltro.orderBy,
-    sortBy:dataFiltro.sortBy,
-    tipo:dataFiltro.tipo,
+watch(
+  () => formulario.identification_type,
+  (value) => {
+    if(value=="J-"){
+      formulario.last_name=""
+      formulario.company_id=""
+    }
   }
-  let respuestaApi = await axios.post(`/crm/clients/filrar?page=${datosFiltros.page}`,datosFiltros)
+)
+
+
+function limpiarFiltros(){
+  buscardor_filtro.value=""
+  tipo_identificacion_filtro.value=""
+  company_id_filtro.value=""
+  fechaDesde_filtro.value=""
+  fechaHasta_filtro.value=""
+}
+
+async function filtrar(dataFiltro){
+  // let datosFiltros={
+  //   page:dataFiltro.page,
+  //   itemsPerPage:dataFiltro.itemsPerPage,
+  //   orderBy:dataFiltro.orderBy,
+  //   sortBy:dataFiltro.sortBy,
+  //   tipo:dataFiltro.tipo,
+  // }
+  let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${dataFiltro.page}`,dataFiltro)
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
   // console.log("respues api => ",respuestaApi)
 
   return {...respuestaApi.data.data}
+}
+
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/crm/clients/filtrar-sin-paginar`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return [...respuestaApi.data.data]
+}
+
+
+async function exportarPdf(){
+    let filtros={
+      // filtros
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+      company_id:company_id_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApi= await filtrarSinPaginar(filtros)
+  console.log("respuesta => ",respuestaApi)
+
+  if(respuestaApi.length==0){
+    toast.info("No hay clientes para poder genera un reporte")
+    return null;
+  }
+
+  pdfClienstGenerator(respuestaApi)
+
+}
+
+async function exportarExcel(formato){
+
+  try{
+      let params={
+      buscardor_filtro:buscardor_filtro.value,
+      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+      company_id:company_id_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      formato,
+    }
+
+    let respuestaApi = await axios.get(`/crm/clients/exportar/excel`,{
+      params,
+      responseType: "blob",
+    })
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `clients.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
 }
 
 
@@ -326,6 +522,18 @@ onMounted(async () => {
 </script>
 <template>
   <div>
+    <ClientsFilters
+      v-model:buscador="buscardor_filtro"
+      v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
+      v-model:company_id_filtro="company_id_filtro"
+      v-model:fechaDesde_filtro="fechaDesde_filtro"
+      v-model:fechaHasta_filtro="fechaHasta_filtro"
+      :companies="statuModule.comapanies"
+      @clear="limpiarFiltros"
+      @add-client="mostarModal"
+      @export-pdf="exportarPdf"
+      @export-excel="exportarExcel"
+    />
     <ClientFormDialoge
       :companies="statuModule.comapanies"
       :modal-formulario="modal.statu"
@@ -336,14 +544,14 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Clientes">
+    <VCard title="Clientes Naturales">
       <VDivider />
-      <div class="d-flex flex-wrap justify-end gap-4 ma-6">
+      <!-- <div class="d-flex flex-wrap justify-end gap-4 ma-6">
         <VBtn color="primary" @click="mostarModal()">
           <VIcon icon="tabler-plus" class="mr-2" />
           Agregar
-        </VBtn> 
-      </div>
+        </VBtn>
+      </div> -->
       <VDivider />
       <ClientTable
         :clients="statuModule.itemsClientesNaturales"
@@ -357,7 +565,7 @@ onMounted(async () => {
       />
     </VCard>
     <div class="mb-5"></div>
-    <VCard>
+    <VCard title="Clientes Juridicos">
       <ClientTable
         :clients="statuModule.itemsClientesJuridicos"
         :total-clients="statuModule.totalClientesJuridicos"

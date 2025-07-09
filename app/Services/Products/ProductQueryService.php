@@ -100,6 +100,10 @@ class ProductQueryService
                 $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
                 return $query->orderBy($subQuery, $orderBy);
 
+            case 'most_sold':
+                $subQuery = DB::raw('COALESCE((SELECT SUM(order_details.quantity) FROM order_details WHERE order_details.product_id = products.id), 0)');
+                return $query->orderBy($subQuery, $orderBy);
+
             case 'id':
             case 'name':
             case 'unit_cost':

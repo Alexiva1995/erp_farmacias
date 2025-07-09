@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     'auth-login': RouteRecordInfo<'auth-login', '/auth/login', Record<never, never>, Record<never, never>>,
     'crm-clients': RouteRecordInfo<'crm-clients', '/crm/clients', Record<never, never>, Record<never, never>>,
     'crm-companies': RouteRecordInfo<'crm-companies', '/crm/companies', Record<never, never>, Record<never, never>>,
+    'crm-companies-id': RouteRecordInfo<'crm-companies-id', '/crm/companies/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'inventory-cyclic': RouteRecordInfo<'inventory-cyclic', '/inventory/cyclic', Record<never, never>, Record<never, never>>,
     'inventory-expirations': RouteRecordInfo<'inventory-expirations', '/inventory/expirations', Record<never, never>, Record<never, never>>,
     'inventory-group-products': RouteRecordInfo<'inventory-group-products', '/inventory/groupProducts', Record<never, never>, Record<never, never>>,

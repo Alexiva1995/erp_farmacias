@@ -107,6 +107,8 @@ declare global {
   const paginationMeta: typeof import('./resources/js/utils/paginationMeta.js')['paginationMeta']
   const passwordValidator: typeof import('./resources/js/@core/utils/validators.js')['passwordValidator']
   const pausableWatch: typeof import('@vueuse/core')['pausableWatch']
+  const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
+  const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
@@ -469,6 +471,8 @@ declare module 'vue' {
     readonly paginationMeta: UnwrapRef<typeof import('./resources/js/utils/paginationMeta.js')['paginationMeta']>
     readonly passwordValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['passwordValidator']>
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
+    readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
+    readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
