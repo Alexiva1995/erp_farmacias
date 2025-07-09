@@ -362,6 +362,8 @@
     "whenever": true,
     "generateDonationPDF": true,
     "formatCurrency": true,
+    "roundUpToNearesHundred": true,
+    "roundUpToNearestHundred": true,
     "pdfClienstGenerator": true,
     "pdfCompaniesGenerator": true
   }

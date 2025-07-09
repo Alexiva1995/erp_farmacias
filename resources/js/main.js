@@ -6,7 +6,7 @@ import { createApp } from 'vue'
 import '@core-scss/template/index.scss'
 import '@styles/styles.scss'
 import '@styles/sweetalert-styles.scss'
-
+import '@styles/print.scss'
 // Create vue app
 const app = createApp(App)
 

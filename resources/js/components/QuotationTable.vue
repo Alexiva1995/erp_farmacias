@@ -14,9 +14,9 @@ const inputQuantities = ref(new Map());
 const emit = defineEmits(['update:options', 'add-product']);
 
 const headers = [
-  { title: 'Unidades', key: 'lots_sum_quantity',sortable: true},
-  { title: 'Código', key: 'id', sortable: true },
-  { title: 'Código de Barra', key: 'barcode', sortable: false },
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Stock', key: 'valid_stock_sum',sortable: true},
+  //{ title: 'Código de Barra', key: 'barcode', sortable: false },
   { title: 'Producto', key: 'name',  sortable: true },
   { title: 'Precio en USD', key: 'sale_price', sortable: true },
   { title: 'Precio en Bs', key: 'price_bs', sortable: true},
@@ -27,17 +27,20 @@ const headers = [
 watch(() => props.products, (newProducts) => {
   const newQuantitiesMap = new Map();
   newProducts.forEach(product => {
-    let currentQty = inputQuantities.value.has(product.id)
-                       ? inputQuantities.value.get(product.id)
-                       : (product.lots_sum_quantity === 0 ? 0 : 1);
-    if (product.lots_sum_quantity === 0) {
+    let currentQty;
+    if (product.valid_stock_sum === 0) {
       currentQty = 0;
-    } else if (currentQty < 1) {
-      currentQty = 1;
-    } else if (currentQty > product.lots_sum_quantity) {
-      currentQty = product.lots_sum_quantity;
+    } else {
+      let previousQty = inputQuantities.value.get(product.id);
+      if (previousQty === undefined || previousQty === null || previousQty < 1) {
+        currentQty = 1;
+      } else {
+        currentQty = previousQty;
+      }
+      if (currentQty > product.valid_stock_sum) {
+        currentQty = product.valid_stock_sum;
+      }
     }
-
     newQuantitiesMap.set(product.id, currentQty);
   });
   inputQuantities.value = newQuantitiesMap;
@@ -46,7 +49,7 @@ watch(() => props.products, (newProducts) => {
 
 const handleInputQuantityChange = (productId, val) => {
   let cleanVal = parseInt(val);
-  const maxQty = props.products.find(p => p.id === productId)?.lots_sum_quantity ?? 0;
+  const maxQty = props.products.find(p => p.id === productId)?.valid_stock_sum ?? 0;
   if (isNaN(cleanVal) || cleanVal < 0) {
     cleanVal = 0;
   }
@@ -68,6 +71,20 @@ const handleAddProduct = (productId) => {
   emit('add-product', { productId, quantity: quantityToAdd });
 };
 
+const calculatePriceWithIVA = (basePrice, product) => {
+  const price = parseFloat(basePrice) || 0;
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+  if (taxRate > 0) {
+    return price * (1 + taxRate);
+  }
+  return price;
+};
+
+const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVA(basePrice, product);
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), 'COP');
+};
+
 </script>
 
 <template>
@@ -83,7 +100,7 @@ const handleAddProduct = (productId) => {
       fixed-header height="auto"
       @update:options="options => emit('update:options', options)"
     >
-      <template #item.lots_sum_quantity="{ item }"><span class="font-weight-medium">{{ item.lots_sum_quantity }}</span></template>
+      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium">{{ item.valid_stock_sum }}</span></template>
       <template #item.id="{ item }"><span class="font-weight-medium">{{ item.id }}</span></template>
       <template #item.barcode="{ item }"><span class="font-weight-medium">{{ item.barcode }}</span></template>
       <template #item.name="{ item }">
@@ -95,9 +112,9 @@ const handleAddProduct = (productId) => {
         </div>
       </template>
 
-      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(parseFloat(item.sale_price),'USD')}}</span></template>
-      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_bs,'BS') }}</span></template>
-      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{ formatCurrency(item.price_cop,'COP') }}</span></template>
+      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item), 'USD')}}</span></template>
+      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), 'BS') }}</span></template>
+      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}</span></template>
 
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">
@@ -106,21 +123,21 @@ const handleAddProduct = (productId) => {
             @update:model-value="val => handleInputQuantityChange(item.id, val)"
             type="number"
             min="0"
-            :max="item.lots_sum_quantity"
+            :max="item.valid_stock_sum"
             density="compact"
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 90px;"
+            style="max-width: 90px;min-width: 90px;"
             class="my-2 quantity-input-field"
-            :disabled="item.lots_sum_quantity === 0"
+            :disabled="item.valid_stock_sum === 0"
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
             :disabled="
                 (inputQuantities.get(item.id) ?? 0) <= 0 || 
-                (inputQuantities.get(item.id) ?? 0) > item.lots_sum_quantity || 
-                item.lots_sum_quantity === 0
+                (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum || 
+                item.valid_stock_sum === 0
             "
           >
             <VIcon icon="tabler-plus" />
