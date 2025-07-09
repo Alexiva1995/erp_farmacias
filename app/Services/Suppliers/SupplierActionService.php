@@ -33,4 +33,14 @@ class SupplierActionService
 
         return $supplier;
     }
+
+    /**
+     * Elimina un proveedor.
+     *
+     * @param Supplier $supplier
+     */
+    public function deleteSupplier(Supplier $supplier): void
+    {
+        $supplier->delete();
+    }
 }

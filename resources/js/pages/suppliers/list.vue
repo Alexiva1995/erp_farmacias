@@ -4,6 +4,7 @@ import SupplierTable from "@/components/SupplierTable.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
 const suppliers = ref([]);
@@ -110,6 +111,29 @@ const handleEditSupplier = (supplier) => {
   isEditDialogVisible.value = true;
 };
 
+const handleDeleteSupplier = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡No podrás revertir la eliminación de este proveedor!",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Eliminar",
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/suppliers/${id}`);
+      toast.success("Proveedor eliminado con éxito.");
+      fetchSuppliers();
+    } catch (error) {
+      console.error(`Error al borrar el proveedor ${id}:`, error);
+      toast.error("No se pudo eliminar el proveedor.");
+    }
+  }
+};
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -153,6 +177,7 @@ const updateTableOptions = (options) => {
       :page="page"
       @update:options="updateTableOptions"
       @edit-supplier="handleEditSupplier"
+      @delete-supplier="handleDeleteSupplier"
     />
 
     <SupplierEditDialog

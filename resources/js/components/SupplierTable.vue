@@ -101,6 +101,9 @@ const headers = [
         <IconBtn @click="emit('edit-supplier', item)">
           <VIcon icon="tabler-edit" />
         </IconBtn>
+        <IconBtn @click="emit('delete-supplier', item.id)">
+          <VIcon icon="tabler-trash" />
+        </IconBtn>
       </template>  
     </VDataTableServer>
   </VCard>

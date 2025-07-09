@@ -50,4 +50,10 @@ class SupplierController extends Controller
             'supplier' => $updatedSupplier
         ], 200);
     }
+
+    public function destroy(Supplier $supplier)
+    {
+        $this->supplierActionService->deleteSupplier($supplier);
+        return response()->noContent();
+    }
 }

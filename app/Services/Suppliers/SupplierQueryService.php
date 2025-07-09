@@ -15,9 +15,10 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
-        return Supplier::query()->select('suppliers.*')->with([
-            'latestScore'
-        ]);
+        return Supplier::query()
+                        ->withoutTrashed()
+                        ->select('suppliers.*')
+                        ->with(['latestScore']);
     }
 
     /**
