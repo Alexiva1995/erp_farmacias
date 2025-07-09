@@ -4,7 +4,7 @@ import DoctorFormDialoge from "@/components/dialogs/DoctorFormDialoge.vue";
 import DoctorTable from "@/components/DoctorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-// import pdfCompaniesGenerator from "@/utils/pdfCompaniesGenerator";
+import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 import Swal from 'sweetalert2';
 import { onMounted, reactive, watch } from 'vue';
 import { useRouter } from "vue-router";
@@ -116,6 +116,17 @@ async function filtraDoctores(dataFiltro){
 
   return {...respuestaApi.data.data}
 }
+
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/crm/doctors/filtrar-sin-paginar`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return [...respuestaApi.data.data]
+}
+
 
 async function confirmarEliminar(payload){
   // alert(payload)
@@ -243,8 +254,22 @@ watch(
   }
 )
 
-function exportarPdf(payload){
-  alert(payload)
+async function exportarPdf(){
+  let filtros={
+      // filtros
+      buscardor_filtro:buscardor_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+  }
+  let respuestaApi= await filtrarSinPaginar(filtros)
+  console.log("respuesta => ",respuestaApi)
+
+  if(respuestaApi.length==0){
+    toast.info("No hay doctores para poder genera un reporte")
+    return null;
+  }
+
+  pdfDoctorsGenerator(respuestaApi)
 }
 
 async function exportarExcel(formato){

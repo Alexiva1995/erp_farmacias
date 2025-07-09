@@ -363,6 +363,7 @@
     "generateDonationPDF": true,
     "formatCurrency": true,
     "pdfClienstGenerator": true,
-    "pdfCompaniesGenerator": true
+    "pdfCompaniesGenerator": true,
+    "pdfDoctorsGenerator": true
   }
 }
