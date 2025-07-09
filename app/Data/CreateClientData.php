@@ -12,10 +12,10 @@ class CreateClientData extends Data
         public string $identification,
         public string $identification_type,
         public string $name,
-        public string $last_name,
-        public string $email,
+        public null|string $last_name,
+        public ?string $email,
         public string $phone,
         public string $address,
-        public string $company_id,
+        public ?string $company_id,
     ) {}
 }

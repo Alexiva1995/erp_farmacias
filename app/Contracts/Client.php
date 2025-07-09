@@ -4,6 +4,7 @@ namespace App\Contracts;
 
 use App\Contracts\Methods\Create;
 use App\Data\CreateClientData;
+use App\Exports\ClientsExport;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -24,4 +25,8 @@ interface Client
     public function deleteById(string $id): void;
 
     public function filtrar(array $filtros): LengthAwarePaginator;
+
+    public function filterWithoutPaginate(array $filtros): Collection;
+
+    public function exportExcel(array $filtros): ClientsExport;
 }

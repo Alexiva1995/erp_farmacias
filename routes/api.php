@@ -72,6 +72,7 @@ Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
 
 // Rutas de Donaciones
 Route::post('/donations', [DonationController::class, 'create']);
+Route::get('/donations/month/{month}/data', [DonationController::class, 'getMonthlyDonationData']);
 
 // Rutas de Lotes de Productos
 Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
@@ -79,6 +80,7 @@ Route::get('/product-without-lots', [LotController::class, 'productsWithInconsis
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
 
 // Rutas de Ajustes de Inventario
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
@@ -99,21 +101,25 @@ Route::prefix('sales/report')->controller(TraceabilityController::class)->group(
 Route::prefix("crm")->group(function () {
     // Rutas de Compañías
     Route::prefix("companies")->group(function () {
-        Route::post("/", [CompanyController::class, "create"]);
-        Route::get("/", [CompanyController::class, "consultAll"]);
-        Route::get("/{id}", [CompanyController::class, "consultById"]);
-        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
-        Route::post("/edit/{id}", [CompanyController::class, "edit"]);
-        Route::post("/filrar", [CompanyController::class, "filrar"]);
+        Route::post("/",                      [CompanyController::class, "create"]);
+        Route::get("/",                       [CompanyController::class, "consultAll"]);
+        Route::get("/{id}",                   [CompanyController::class, "consultById"]);
+        Route::delete("/{id}",                [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}",             [CompanyController::class, "edit"]);
+        Route::post("/filtrar",               [CompanyController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [CompanyController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",         [CompanyController::class, "exportarExcel"]);
     });
 
     // Rutas de Clientes
     Route::prefix("clients")->group(function () {
-        Route::post("/", [ClientController::class, "create"]);
-        Route::get("/", [ClientController::class, "consultAll"]);
-        Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [ClientController::class, "deleteById"]);
-        Route::post("/edit/{id}", [ClientController::class, "edit"]);
-        Route::post("/filrar", [ClientController::class, "filrar"]);
+        Route::post("/",                      [ClientController::class, "create"]);
+        Route::get("/",                       [ClientController::class, "consultAll"]);
+        Route::get("/{id}",                   [ClientController::class, "consultById"]);
+        Route::delete("/{id}",                [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}",             [ClientController::class, "edit"]);
+        Route::post("/filtrar",               [ClientController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
     });
 });

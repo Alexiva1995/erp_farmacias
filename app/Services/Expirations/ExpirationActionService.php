@@ -30,9 +30,7 @@ class ExpirationActionService
             $totalLostValue = $quantityToExpire * $costPerUnit;
             $lot->quantity = 0;
             $lot->save();
-
             $this->redistributeCost($lot->product_id, $lot->id, $totalLostValue);
-
             ExpiredLog::create([
                 'lot_id' => $lot->id,
                 'product_id' => $lot->product_id,

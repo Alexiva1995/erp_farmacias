@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class InventoryMovement extends Model
 {
@@ -20,7 +21,20 @@ class InventoryMovement extends Model
         'stock_after',
         'movement_date',
     ];
-
+    protected function movementType(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => match ($value) {
+                'return' => 'Devolución',
+                'sale' => 'Venta',
+                'purchase' => 'Compra',
+                'adjustment' => 'Ajuste',
+                'loss' => 'Pérdida',
+                'expired' => 'Caducado',
+                default => ucfirst($value),
+            },
+        );
+    }
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
