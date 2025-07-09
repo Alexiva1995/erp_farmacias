@@ -247,8 +247,48 @@ function exportarPdf(payload){
   alert(payload)
 }
 
-function exportarExcel(payload){
-  alert(payload)
+async function exportarExcel(formato){
+
+  try{
+      let params={
+      buscardor_filtro:buscardor_filtro.value,
+      fechaDesde_filtro:fechaDesde_filtro.value,
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      formato,
+    }
+
+    let respuestaApi = await axios.get(`/crm/doctors/exportar/excel`,{
+      params,
+      responseType: "blob",
+    })
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `doctors.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
 }
 
 
