@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\FiscalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -139,3 +140,9 @@ Route::prefix("crm")->group(function () {
         Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
     });
 });
+
+
+// Ruta de fiscal
+// Histori
+Route::get('/history', [FiscalController::class, 'index']);
+Route::get('/history/export', [FiscalController::class, 'export']);
