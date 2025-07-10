@@ -120,6 +120,8 @@ const clearSortFilter = () => {
   } catch (error) {
     console.error("Error al limpiar el filtro:", error);
   }
+
+  emit("sort", { key: undefined, order: undefined });
 };
 
 const getSelectedSortTitle = () => {

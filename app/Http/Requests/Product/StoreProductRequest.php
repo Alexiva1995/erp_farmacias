@@ -45,7 +45,7 @@ class StoreProductRequest extends FormRequest
             'psychotropic' => ['required', 'boolean'],
             'is_colombian_origin' => ['required', 'boolean'],
 
-            'photo_url' => ['required', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
 
             'group_id' => 'nullable|integer|exists:groups_products,id',
         ];
