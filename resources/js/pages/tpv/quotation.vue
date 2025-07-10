@@ -307,6 +307,11 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
 };
 
+const handleClearSortOrder = () => {
+  sortBy.value = undefined; // Reinicia el orden de la tabla
+  orderBy.value = undefined; // Reinicia el orden de la tabla
+};
+
 const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
 };
@@ -451,6 +456,7 @@ const handleSort = (sortOptions) => {
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
+      @clear-sort="handleClearSortOrder"
     >
     </QuotationFilters>
 
