@@ -361,6 +361,9 @@
     "watchWithFilter": true,
     "whenever": true,
     "generateDonationPDF": true,
-    "formatCurrency": true
+    "formatCurrency": true,
+    "pdfClienstGenerator": true,
+    "pdfCompaniesGenerator": true,
+    "roundUpToNearestHundred": true
   }
 }
