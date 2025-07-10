@@ -71,7 +71,7 @@ const sortByTablaClientesJuridicos = ref()
 const orderByTablaClientesJuridicos = ref()
 
 const buscardor_filtro= ref("");
-const tipo_identificacion_filtro= ref("");
+const tipo_identificacion_filtro= ref(null);
 const company_id_filtro= ref(router.params.id);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
@@ -353,7 +353,11 @@ watch(
       sortBy
   ],
   async () =>{
-    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==""){
+    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==null){
+      if(tipo_identificacion_filtro.value!=""){
+        statuModule.itemsClientesJuridicos=[]
+        statuModule.totalClientesJuridicos=0
+      }
       await actualizarTablaTablaNatural()
     }
   }
@@ -372,7 +376,11 @@ watch(
       sortByTablaClientesJuridicos
   ],
   async () =>{
-    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==""){
+    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==null){
+      if(tipo_identificacion_filtro.value!=null){
+        statuModule.itemsClientesNaturales=[]
+        statuModule.totalClientesNaturales=0
+      }
       await actualizarTablaTablJuridica()
     }
   }
