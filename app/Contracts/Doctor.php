@@ -2,17 +2,17 @@
 
 namespace App\Contracts;
 
-use App\Exports\ClientsExport;
+use App\Exports\DoctorsExport;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-interface Client
+interface Doctor
 {
 
     public function create(array $data): Model;
 
-    public function edit(array $data): Model;
+    public function edit(String $id, array $data): Model;
 
     public function consultAll(): Collection;
 
@@ -26,5 +26,5 @@ interface Client
 
     public function filterWithoutPaginate(array $filtros): Collection;
 
-    public function exportExcel(array $filtros): ClientsExport;
+    public function exportExcel(array $filtros): DoctorsExport;
 }

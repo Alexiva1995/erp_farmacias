@@ -27,14 +27,14 @@ return new class extends Migration
 
             // Datos personales
             $table->string('name', 255)->nullable(false); // VARCHAR(255) NOT NULL
-            $table->string('last_name', 255)->nullable(false); // VARCHAR(255) NOT NULL
+            $table->string('last_name', 255)->nullable(); // VARCHAR(255) NOT NULL
             $table->string('email', 255)->nullable(); // VARCHAR(255) NULL
             $table->string('phone', 50)->nullable(); // VARCHAR(50) NULL
             $table->text('address')->nullable(); // TEXT NULL
             $table->date("birthdate")->nullable();
 
             // Relación con companies
-            $table->unsignedBigInteger("company_id");
+            $table->unsignedBigInteger("company_id")->nullable();
             $table->foreign('company_id')->references("id")->on("companies")->onDelete("cascade")->onUpdate("cascade");
 
             // Timestamps

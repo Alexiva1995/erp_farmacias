@@ -4,6 +4,7 @@
 namespace App\Services;
 
 use App\Contracts\Company;
+use App\Exports\CompaniesExport;
 use App\Repository\CompanyRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -44,5 +45,17 @@ class CompanyServices implements Company
     public function filtrar(array $filtros): LengthAwarePaginator
     {
         return $this->companyRepository->filtrar($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function filterWithoutPaginate(array $filtros): Collection
+    {
+        return $this->companyRepository->filterWithoutPaginate($filtros);
+    }
+
+    public function exportExcel(array $filtros): CompaniesExport
+    {
+        $query = $this->companyRepository->builerPaginate($filtros);
+
+        return new CompaniesExport($query);
     }
 }
