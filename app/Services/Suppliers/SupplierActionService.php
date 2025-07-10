@@ -3,7 +3,7 @@
 namespace App\Services\Suppliers;
 
 use App\Models\Supplier;
-use Illuminate\Support\Facades\Storage;
+use App\Models\PaymentRule;
 
 class SupplierActionService
 {
@@ -42,5 +42,10 @@ class SupplierActionService
     public function deleteSupplier(Supplier $supplier): void
     {
         $supplier->delete();
+    }
+
+    public function updatePaymentRule(Supplier $supplier, array $validatedData): PaymentRule
+    {
+        return $supplier->paymentRule()->updateOrCreate([], $validatedData);
     }
 }

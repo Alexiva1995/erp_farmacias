@@ -1,6 +1,7 @@
 <script setup>
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
+import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -20,6 +21,7 @@ const searchQuery = ref("");
 const currentSupplier = ref({});
 const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
+const isPaymentRuleDialogVisible = ref(false);
 
 const fetchSuppliers = async () => {
   loading.value = true;
@@ -155,6 +157,36 @@ const handleCheckSupplierApi = async () => {
   }
 }
 
+const handlePaymentRule = (supplier) => {
+  currentSupplier.value = { ...supplier };
+  supplierFormErrors.value = {};
+  isPaymentRuleDialogVisible.value = true;
+};
+
+const handleSavePaymentRule = async (paymentRuleFormData) => {
+    const isNewSupplier = !currentSupplier.value.id;
+    const url = `/suppliers/${currentSupplier.value.id}/payment-rule`
+    try {
+        const payload = { ...paymentRuleFormData }
+
+        await axios.put(url, payload)
+
+        toast.success(
+            `Regla de pago ${isNewSupplier ? "creada" : "actualizada"} con éxito`
+        );
+        isPaymentRuleDialogVisible.value = false;
+        await fetchSuppliers();
+    } catch (error) {
+        if (error.response && error.response.status === 422) {
+            supplierFormErrors.value = error.response.data.errors;
+            toast.error("Por favor, corrige los errores en el formulario.");
+        } else {
+            console.error("Error al guardar/crear la regla de pago:", error);
+            toast.error("Hubo un error al guardar la regla de pago.");
+        }
+    }
+};
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -200,6 +232,7 @@ const updateTableOptions = (options) => {
       @update:options="updateTableOptions"
       @edit-supplier="handleEditSupplier"
       @delete-supplier="handleDeleteSupplier"
+      @payment-rule="handlePaymentRule"
     />
 
     <SupplierEditDialog
@@ -207,6 +240,14 @@ const updateTableOptions = (options) => {
       :supplier="currentSupplier"
       :errors="supplierFormErrors"
       @save="handleSaveSupplier"
+      @clear-errors="clearFormErrors"
+    />
+
+    <PaymentRuleEditDialog
+      v-model="isPaymentRuleDialogVisible"
+      :supplier="currentSupplier"
+      :errors="supplierFormErrors"
+      @save="handleSavePaymentRule"
       @clear-errors="clearFormErrors"
     />
   </div>

@@ -93,9 +93,9 @@ class Supplier extends Model
         return $this->hasMany(SuppliersConfigProduct::class);
     }
 
-    public function paymentRules()
+    public function paymentRule()
     {
-        return $this->hasMany(PaymentRule::class);
+        return $this->hasOne(PaymentRule::class);
     }
 
     public function invoices()

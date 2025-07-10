@@ -124,4 +124,5 @@ Route::prefix("crm")->group(function () {
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
     Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
 });

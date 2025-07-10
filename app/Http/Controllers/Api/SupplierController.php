@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
 use App\Services\Suppliers\SupplierHealthService;
+use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
@@ -67,5 +68,15 @@ class SupplierController extends Controller
         }
 
         return response()->json(['status' => 'ok', 'results' => $results]);
+    }
+
+    public function updatePaymentRule(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
+    {
+        $rule = $this->supplierActionService->updatePaymentRule($supplier, $request->validated());
+
+        return response()->json([
+            'message' => 'Pronto pago actualizado con éxito.',
+            'rule' => $rule,
+        ]);
     }
 }
