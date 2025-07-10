@@ -1,6 +1,7 @@
 <script setup>
 import { ref , computed } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
 
 const props = defineProps({
   totalProductsAmount: {
@@ -44,17 +45,34 @@ const exemptAmount = computed(() => {
 });
 
 
-const breakdownItems = computed(() => [
-  { title: "Subtotal", amount: props.totalProductsAmount },
-  { title: "IVA", amount: props.totalIvaAmount },
-]);
+const breakdownItems = computed(() => {
+
+  let ivaAmount = props.totalIvaAmount;
+
+  // Aplica el redondeo solo si la moneda es 'COP'
+  if (props.selectedDisplayCurrency === 'COP') {
+    ivaAmount = roundUpToNearestHundred(props.totalIvaAmount);
+  }
+
+   return [
+    { title: "Subtotal", amount: props.totalProductsAmount },
+    { title: "IVA", amount: ivaAmount }, // Usa la cantidad de IVA condicional
+  ];
+  
+});
 
 
 const selectCurrency = (currency) => {
   emit('currency-changed', currency);
 };
 
-
+const formattedTotalQuotation = computed(() => {
+  let amountToFormat = props.totalQuotationAmount;
+  if (props.selectedDisplayCurrency === 'COP') {
+    amountToFormat = Math.ceil(amountToFormat / 100) * 100;
+  }
+  return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
+});
 
 </script>
 
@@ -115,7 +133,7 @@ const selectCurrency = (currency) => {
       <div class="d-flex align-center justify-space-between gap-x-2 mt-3">
         <h4 class="text-h4 text-center">Total Cotización</h4>
         <div class="text-h4 text-success">
-          {{ formatCurrency(props.totalQuotationAmount, props.selectedDisplayCurrency) }}
+           {{ formattedTotalQuotation }}
         </div>
       </div>
     </VCardText>

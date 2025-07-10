@@ -266,7 +266,7 @@ class Product extends Model
     protected function priceCop(): Attribute
     {
         return Attribute::make(
-            get: fn () => round($this->sale_price * $this->getServiceExchangeRate('COP'), 2),
+            get: fn () => ceil($this->sale_price * $this->getServiceExchangeRate('COP') / 100) * 100,
         );
     }
 
