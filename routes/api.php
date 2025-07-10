@@ -121,4 +121,7 @@ Route::prefix("crm")->group(function () {
 });
 
 // Rutas de Proveedores
-Route::resource('suppliers', SupplierController::class)->except(['create', 'edit']);
+Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
+Route::prefix("suppliers")->group(function () {
+    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+});

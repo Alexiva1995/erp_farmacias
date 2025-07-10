@@ -134,6 +134,27 @@ const handleDeleteSupplier = async (id) => {
   }
 };
 
+const handleCheckSupplierApi = async () => {
+  try {
+    const { data } = await axios.get('/suppliers/check-health')
+
+    if (data.status === 'ok') {
+      const fallas = Object.entries(data.results).filter(([verb, status]) => status !== 'OK')
+      if (fallas.length === 0) {
+        toast.success('La API de proveedores está 100% operativa ✅')
+      } else {
+        const fallosList = fallas.map(([verb, status]) => `${verb}: ${status}`).join(', ')
+        toast.warning(`Fallas detectadas en: ${fallosList}`)
+      }
+    } else {
+      toast.error('Respuesta inesperada del backend')
+    }
+  } catch (error) {
+    console.error('Error en verificación de API:', error)
+    toast.error('No se pudo verificar la API')
+  }
+}
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -167,6 +188,7 @@ const updateTableOptions = (options) => {
       @clear="handleClearFilters"
       @sort="handleSort"
       @add-supplier="handleAddSupplier"
+      @check-supplier-api="handleCheckSupplierApi"
     />
 
     <SupplierTable

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
+use App\Services\Suppliers\SupplierHealthService;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
@@ -55,5 +56,16 @@ class SupplierController extends Controller
     {
         $this->supplierActionService->deleteSupplier($supplier);
         return response()->noContent();
+    }
+
+    public function checkApiHealth(SupplierHealthService $healthService)
+    {
+        $results = $healthService->check();
+
+        if (isset($results['error'])) {
+            return response()->json(['status' => 'error', 'results' => $results], 500);
+        }
+
+        return response()->json(['status' => 'ok', 'results' => $results]);
     }
 }

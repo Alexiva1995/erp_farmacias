@@ -82,6 +82,9 @@ const handleSortClick = (option) => {
 
       <VSpacer />
 
+      <VBtn color="info" prepend-icon="tabler-heartbeat" @click="emit('check-supplier-api')">
+        Verificar API
+      </VBtn>
       <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add-supplier')">
         Añadir Proveedor
       </VBtn>
