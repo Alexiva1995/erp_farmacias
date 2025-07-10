@@ -67,15 +67,6 @@ function submitForm(){
               variant="outlined"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
-            <VSelect
-              v-model="formData.type_company"
-              :error-messages="formError.type_company"
-              label="Tipo"
-              variant="outlined"
-              :items="['Empresa', 'Clinica']"
-            />
-          </VCol>
           <VCol cols="12">
             <VTextarea
               v-model="formData.address"

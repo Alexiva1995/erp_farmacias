@@ -5,21 +5,15 @@ namespace App\Exports;
 use App\Models\Client;
 use DateTime;
 use Illuminate\Database\Eloquent\Builder;
-// use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize
+class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
-    // /**
-    // * @return \Illuminate\Support\Collection
-    // */
-    // public function collection()
-    // {
-    //     return Client::all();
-    // }
     protected $query;
 
     public function __construct(Builder $query)
@@ -57,7 +51,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
         }
 
         return [
-            $client->id, // O usa un contador: $this->row++ si prefieres numeración consecutiva
+            $client->id,
             $client->identification,
             $this->formatIdentificationType($client->identification_type),
             $client->last_name
@@ -67,7 +61,6 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
             $client->email ?? 'N/A',
             $client->company->name ?? 'N/A',
             $client->address ?? 'N/A',
-            // $client->birthdate->format("d-m-Y") ?? 'N/A'
             $formato,
         ];
     }
@@ -82,5 +75,35 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
         ];
 
         return $types[$type] ?? $type;
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            // Estilo para el encabezado (fila 1)
+            1 => [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF']
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'color' => ['rgb' => '2979FF'] // Azul corporativo
+                ]
+            ],
+            // Ajustar texto en todas las columnas (A-I)
+            'A:I' => [
+                'alignment' => [
+                    'wrapText' => true,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP
+                ]
+            ],
+            // Opcional: Formato para fechas
+            'I' => [
+                'numberFormat' => [
+                    'formatCode' => 'dd/mm/yyyy'
+                ]
+            ]
+        ];
     }
 }
