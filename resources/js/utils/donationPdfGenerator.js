@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 export function generateDonationPDF(donationData) {
   const doc = new jsPDF();
-  const { institution, products } = donationData;
+  const { institution, products, exchangeRateBs } = donationData;
 
   const logoSrc = '/images/logoDonative.png';
   
@@ -18,7 +18,6 @@ export function generateDonationPDF(donationData) {
     console.error("jsPDF no pudo añadir la imagen del logo.", error);
   }
   
-  
   const dateYPosition = 60; 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -31,7 +30,7 @@ export function generateDonationPDF(donationData) {
   doc.setFontSize(11);
   doc.text('SEÑORES:', 15, señoresYPosition);
   doc.setFont('helvetica', 'bold');
-  doc.text(institution.toUpperCase(), 35, señoresYPosition);
+  doc.text(institution.toUpperCase(), 15, señoresYPosition);
 
   const bodyYPosition = señoresYPosition + 15;
   doc.setFont('helvetica', 'normal');
@@ -40,20 +39,39 @@ export function generateDonationPDF(donationData) {
   doc.text(splitBody, 15, bodyYPosition);
 
   const tableYPosition = bodyYPosition + (splitBody.length * 5) + 5;
-  const tableColumn = ["NOMBRE", "UNIDADES", "Costo Unitario", "TOTAL"];
+  const tableColumn = ["NOMBRE", "UNIDADES", "Costo Unitario (Bs.)", "TOTAL (Bs.)"];
   const tableRows = [];
   let totalValue = 0;
 
+  // Función para formatear números en bolívares
+  const formatBs = (amount) => {
+    return new Intl.NumberFormat('es-VE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount) + ' Bs.';
+  };
+
   products.forEach(prod => {
-    const price = parseFloat(prod.cost_per_unit || 0); 
+    // Usar el precio en bolívares que viene del backend
+    const priceBs = parseFloat(prod.cost_per_unit_bs || 0); 
     const quantity = parseInt(prod.expired_quantity || 0);
-    const total = price * quantity;
+    const total = priceBs * quantity;
     totalValue += total;
-    const productData = [prod.product_name, quantity, price.toFixed(2), total.toFixed(2)];
+    
+    const productData = [
+      prod.product_name || prod.product?.name || 'N/A', 
+      quantity, 
+      formatBs(priceBs),
+      formatBs(total)
+    ];
     tableRows.push(productData);
   });
   
-  tableRows.push([{ content: 'TOTAL', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalValue.toFixed(2), styles: { fontStyle: 'bold' } }]);
+  // Fila del total
+  tableRows.push([
+    { content: 'TOTAL', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, 
+    { content: formatBs(totalValue), styles: { fontStyle: 'bold' } }
+  ]);
 
   autoTable(doc, {
     head: [tableColumn],
@@ -75,6 +93,14 @@ export function generateDonationPDF(donationData) {
 
   finalY += 25;
   doc.line(80, finalY, 130, finalY);
+  
+  // Incluir información de la tasa de cambio en el pie de página (opcional)
+  if (exchangeRateBs) {
+    finalY += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Tasa de cambio aplicada: 1 USD = ${exchangeRateBs} Bs.`, 15, finalY);
+  }
   
   doc.save(`Donativo-${institution.replace(/[\s\W]/g, '_')}-${today.toISOString().split('T')[0]}.pdf`);
 }

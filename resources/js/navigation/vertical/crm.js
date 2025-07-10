@@ -10,7 +10,11 @@ export default [
     },
     children: [
       {
-        title: 'clientes',
+        title: 'Doctores',
+        to: 'crm-doctors',
+      },
+      {
+        title: 'Clientes',
         to: 'crm-clients',
       },
       {
