@@ -38,7 +38,7 @@ class CreateDoctorRequest extends FormRequest
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
             "name.required"                      => "the field is required",

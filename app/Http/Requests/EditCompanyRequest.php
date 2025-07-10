@@ -45,7 +45,7 @@ class EditCompanyRequest extends FormRequest
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
             "id.required"                        => "the field is required",
