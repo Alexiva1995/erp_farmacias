@@ -38,6 +38,11 @@ function submitForm(){
   emit("clearErrorForm")
   let data=generarFormData(props.formData)
   if(props.formData.id!=null){
+    // company_id
+    if(props.formData.company_id=="" || props.formData.company_id==null){
+      data.delete("company_id")
+    }
+    // birthdate
     if(props.formData.birthdate=="" || props.formData.birthdate==null){
       data.delete("birthdate")
     }
@@ -166,6 +171,7 @@ function formatearFechaCompleta(fechaInput) {
               :items="props.companies"
               item-title="name"
               item-value="id"
+              clearable
               :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
@@ -184,7 +190,7 @@ function formatearFechaCompleta(fechaInput) {
         <VSpacer />
         <VContainer>
           <VRow justify="end">
-            <VCol cols="12" sm="4" md="4" lg="4">
+            <VCol cols="12" sm="6" md="6" lg="6">
               <VBtn
                 color="secondary"
                 variant="outlined"

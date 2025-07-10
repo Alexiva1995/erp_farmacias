@@ -546,13 +546,6 @@ onMounted(async () => {
     />
     <VCard title="Clientes Naturales">
       <VDivider />
-      <!-- <div class="d-flex flex-wrap justify-end gap-4 ma-6">
-        <VBtn color="primary" @click="mostarModal()">
-          <VIcon icon="tabler-plus" class="mr-2" />
-          Agregar
-        </VBtn>
-      </div> -->
-      <VDivider />
       <ClientTable
         :clients="statuModule.itemsClientesNaturales"
         :total-clients="statuModule.totalClientesNaturales"

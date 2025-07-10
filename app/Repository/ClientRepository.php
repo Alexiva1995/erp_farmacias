@@ -55,6 +55,7 @@ class ClientRepository
                         ->orWhereRaw("CONCAT(last_name,' ',name) LIKE ?", ["%{$filtros["buscardor_filtro"]}%"])
                         ->orWhere("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("last_name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("address", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
                 });
             }
@@ -85,7 +86,13 @@ class ClientRepository
             $consulta->where("company_id", "=", $filtros["company_id"]);
         }
 
-        $consulta->orderBy("name", "ASC");
+        if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
+            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+        } else {
+            $consulta->orderBy("name", "ASC");
+        }
+
+        // $consulta->orderBy("name", "ASC");
 
         return $consulta;
     }
