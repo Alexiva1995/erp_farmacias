@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Exports\ProductsExport;
+use App\Exports\HistoriesExport;
 use Illuminate\Http\Request;
 use App\Models\FiscalHistory;
 use App\Services\History\HistoryActionService;
@@ -35,7 +35,7 @@ class FiscalController extends Controller
     {
         $query = $this->HistoryQueryService->getFilteredQuery($request);
         $format = $request->input('format', 'xlsx');
-        $fileName = 'productos-' . now()->format('Y-m-d') . '.' . $format;
-        return Excel::download(new ProductsExport($query), $fileName);
+        $fileName = 'HistoriaFiscal-' . now()->format('Y-m-d') . '.' . $format;
+        return Excel::download(new HistoriesExport($query), $fileName);
     }
 }
