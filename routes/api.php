@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
@@ -80,6 +81,7 @@ Route::get('/product-without-lots', [LotController::class, 'productsWithInconsis
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
 
 // Rutas de Ajustes de Inventario
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
@@ -98,23 +100,42 @@ Route::prefix('sales/report')->controller(TraceabilityController::class)->group(
 
 // Rutas de CRM (provenientes de develop)
 Route::prefix("crm")->group(function () {
+
+
+    // Rutas de Doctores
+    Route::prefix("doctors")->group(function () {
+        Route::post("/",                      [DoctorController::class, "create"]);
+        Route::post("/edit/{id}",             [DoctorController::class, "edit"]);
+        Route::get("/",                       [DoctorController::class, "consultAll"]);
+        Route::get("/{id}",                   [DoctorController::class, "consultById"]);
+        Route::delete("/{id}",                [DoctorController::class, "deleteById"]);
+        Route::post("/filtrar",               [DoctorController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [DoctorController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",         [DoctorController::class, "exportarExcel"]);
+        Route::get("/help/check",             [DoctorController::class, "helpCheck"]);
+    });
+
     // Rutas de Compañías
     Route::prefix("companies")->group(function () {
-        Route::post("/", [CompanyController::class, "create"]);
-        Route::get("/", [CompanyController::class, "consultAll"]);
-        Route::get("/{id}", [CompanyController::class, "consultById"]);
-        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
-        Route::post("/edit/{id}", [CompanyController::class, "edit"]);
-        Route::post("/filrar", [CompanyController::class, "filrar"]);
+        Route::post("/",                      [CompanyController::class, "create"]);
+        Route::get("/",                       [CompanyController::class, "consultAll"]);
+        Route::get("/{id}",                   [CompanyController::class, "consultById"]);
+        Route::delete("/{id}",                [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}",             [CompanyController::class, "edit"]);
+        Route::post("/filtrar",               [CompanyController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [CompanyController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",         [CompanyController::class, "exportarExcel"]);
     });
 
     // Rutas de Clientes
     Route::prefix("clients")->group(function () {
-        Route::post("/", [ClientController::class, "create"]);
-        Route::get("/", [ClientController::class, "consultAll"]);
-        Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [ClientController::class, "deleteById"]);
-        Route::post("/edit/{id}", [ClientController::class, "edit"]);
-        Route::post("/filrar", [ClientController::class, "filrar"]);
+        Route::post("/",                      [ClientController::class, "create"]);
+        Route::get("/",                       [ClientController::class, "consultAll"]);
+        Route::get("/{id}",                   [ClientController::class, "consultById"]);
+        Route::delete("/{id}",                [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}",             [ClientController::class, "edit"]);
+        Route::post("/filtrar",               [ClientController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
     });
 });

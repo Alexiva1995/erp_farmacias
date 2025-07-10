@@ -1,10 +1,10 @@
 <script setup lang="js">
+import { VDateInput } from 'vuetify/labs/VDateInput';
 
 
 const props= defineProps({
-  status: {type: Object, required: true},
+  modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
-  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })
@@ -12,10 +12,7 @@ const props= defineProps({
 const emit= defineEmits(["modalClose", 'save', 'clearErrorForm',"update:busqueda"])
 
 function close(){
-  props.status.statu=false
-  props.status.titulo=""
-  props.status.company={}
-  emit("modalClose")
+  emit("modalClose",false)
 }
 
 function generarFormData(estado){
@@ -71,7 +68,7 @@ function formatearFechaCompleta(fechaInput) {
 }
 </script>
 <template>
-  <VDialog :model-value="props.status.statu" max-width="800px" persistent>
+  <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
     <VCard>
       <VCardTitle class="d-flex align-center">
         <span class="headline">{{ props.titulo }}</span>
@@ -100,6 +97,12 @@ function formatearFechaCompleta(fechaInput) {
               label="Identificación"
               type="text"
               variant="outlined"
+              :counter="9"
+              :maxlength="9"
+              :rules="[
+                (v) => (v && v.length >= 7) || 'Mínimo 7 caracteres',
+                (v) => (v && v.length <= 9) || 'Máximo 9 caracteres',
+              ]"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -118,6 +121,7 @@ function formatearFechaCompleta(fechaInput) {
               label="Apellido"
               type="text"
               variant="outlined"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -138,6 +142,20 @@ function formatearFechaCompleta(fechaInput) {
               variant="outlined"
             />
           </VCol>
+          <VCol
+            cols="12"
+            sm="6"
+            md="6"
+            lg="6"
+            v-if="formData.id != null && formData.identification_type != 'J-'"
+          >
+            <VDateInput
+              v-model="formData.birthdate"
+              :error-messages="formError.birthdate"
+              label="Fecha de Nacimiento"
+              variant="outlined"
+            />
+          </VCol>
           <VCol cols="12">
             <VTextarea
               v-model="formData.address"
@@ -151,12 +169,28 @@ function formatearFechaCompleta(fechaInput) {
 
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="close"
-          >Cancelar</VBtn
-        >
-        <VBtn color="primary" variant="flat" @click="submitForm"
-          >Guardar Cambios</VBtn
-        >
+        <VContainer>
+          <VRow justify="end">
+            <VCol cols="12" sm="4" md="4" lg="4">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                @click="close"
+                width="100%"
+                >Cancelar</VBtn
+              >
+            </VCol>
+            <VCol cols="12" sm="6" md="6" lg="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                @click="submitForm"
+                width="100%"
+                >Guardar Cambios</VBtn
+              >
+            </VCol>
+          </VRow>
+        </VContainer>
       </VCardActions>
     </VCard>
   </VDialog>

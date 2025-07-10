@@ -5,7 +5,7 @@ const props = defineProps({
   selectedOrigin: [Number, String, null],
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
-  selectedSortOption: { type: Array, default: () => [] },
+  stockStatusFilter: [Boolean, null],
 });
 
 const emit = defineEmits([
@@ -13,7 +13,6 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:stockStatusFilter",
-  "update:selectedSortOption",
   "clear",
 ]);
 
@@ -22,16 +21,58 @@ const stockOptions = [
   { title: "Sin Stock", value: false },
 ];
 
+
 const sortOptions = [
-  { title: 'Precio (Menor a Mayor)', value: { sortBy: 'sale_price', orderBy: 'asc' } },
-  { title: 'Precio (Mayor a Menor)', value: { sortBy: 'sale_price', orderBy: 'desc' } },
-  { title: 'Unidades (Menor a Mayor)', value: { sortBy: 'lots_sum_quantity', orderBy: 'asc' } },
-  { title: 'Unidades (Mayor a Menor)', value: { sortBy: 'lots_sum_quantity', orderBy: 'desc' } },
-  { title: 'Más Vendidos', value: { sortBy: 'sales_average', orderBy: 'desc' } },
-  { title: 'Menos Vendidos', value: { sortBy: 'sales_average', orderBy: 'asc' } },
-  { title: 'Expiración (Próxima)', value: { sortBy: 'next_expiration', orderBy: 'asc' } },
+  {
+    title: "Precio mayor",
+    icon: "tabler-arrow-up",
+    key: "sale_price",
+    order: "desc",
+  },
+  {
+    title: "Precio Menor",
+    icon: "tabler-arrow-down",
+    key: "sale_price",
+    order: "asc",
+  },
+  {
+    title: "Más Unidades",
+    icon: "tabler-plus",
+    key: "valid_stock",
+    order: "desc",
+  },
+  {
+    title: "Menos Unidades",
+    icon: "tabler-minus",
+    key: "valid_stock",
+    order: "asc",
+  },
+  {
+    title: "Más Vendidos",
+    icon: "tabler-plus",
+    key: "sales_average",
+    order: "desc",
+  },
+    {
+    title: "Menos Vendidos",
+    icon: "tabler-minus",
+    key: "sales_average",
+    order: "asc",
+  },
+  {
+    title: "Fecha pronto a Vencer",
+    icon: "tabler-calendar-time",
+    key: "next_expiration",
+    order: "asc",
+  },
 ];
+
+const handleSortClick = (option) => {
+  emit("sort", { key: option.key, order: option.order });
+};
+
 </script>
+
 
 <template>
   <VCard title="Filtros" class="mb-6">
@@ -76,16 +117,6 @@ const sortOptions = [
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-           <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.selectedSortOption"
-            label="Ordenar por"
-            :items="sortOptions"
-            placeholder="Selecciona una opción de ordenamiento"
-            clearable
-            @update:model-value="emit('update:selectedSortOption', $event)"
-          />
-        </VCol>
       </VRow>
     </VCardText>
 
@@ -95,6 +126,27 @@ const sortOptions = [
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
+
+      <VMenu>
+        <template #activator="{ props: menuProps }">
+          <VBtn v-bind="menuProps" variant="tonal">
+            Ordenar Por
+            <VIcon end icon="tabler-chevron-down" />
+          </VBtn>
+        </template>
+        <VList>
+          <VListItem
+            v-for="(option, index) in sortOptions"
+            :key="index"
+            @click="handleSortClick(option)"
+          >
+            <template #prepend>
+              <VIcon :icon="option.icon" size="20" class="me-2" />
+            </template>
+            <VListItemTitle>{{ option.title }}</VListItemTitle>
+          </VListItem>
+        </VList>
+      </VMenu>
       <VSpacer />
     </VCardActions>
   </VCard>

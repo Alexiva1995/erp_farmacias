@@ -2,7 +2,6 @@
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
-  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })
@@ -89,12 +88,28 @@ function submitForm(){
       </VContainer>
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="close"
-          >Cancelar</VBtn
-        >
-        <VBtn color="primary" variant="flat" @click="submitForm"
-          >Guardar Cambios</VBtn
-        >
+        <VContainer>
+          <VRow justify="end">
+            <VCol cols="12" sm="6" md="6" lg="6">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                @click="close"
+                width="100%"
+                >Cancelar</VBtn
+              >
+            </VCol>
+            <VCol cols="12" sm="6" md="6" lg="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                @click="submitForm"
+                width="100%"
+                >Guardar Cambios</VBtn
+              >
+            </VCol>
+          </VRow>
+        </VContainer>
       </VCardActions>
     </VCard>
   </VDialog>
