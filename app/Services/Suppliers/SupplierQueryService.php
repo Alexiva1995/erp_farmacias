@@ -18,8 +18,7 @@ class SupplierQueryService
         return Supplier::query()
                         ->withoutTrashed()
                         ->select('suppliers.*')
-                        ->with(['latestScore'])
-                        ->with(['paymentRule']);
+                        ->with(['latestScore', 'paymentRule']);
     }
 
     /**

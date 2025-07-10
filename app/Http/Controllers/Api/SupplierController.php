@@ -8,18 +8,31 @@ use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
 use App\Services\Suppliers\SupplierHealthService;
+use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
+    /**
+     * Constructor to inject the services
+     *
+     * @param SupplierQueryService $supplierQueryService
+     * @param SupplierActionService $supplierActionService
+     */
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService
     ) {
     }
 
+    /**
+     * Display a listing of the suppliers.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $query = $this->supplierQueryService->getFilteredQuery($request);
@@ -33,6 +46,11 @@ class SupplierController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
+    /**
+     * Summary of store
+     * @param \App\Http\Requests\StoreSupplierRequest $request
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function store(StoreSupplierRequest $request)
     {
         $supplier = $this->supplierActionService->createSupplier($request->validated());
@@ -43,6 +61,12 @@ class SupplierController extends Controller
         ], 201);
     }
 
+    /**
+     * Summary of update
+     * @param \App\Http\Requests\UpdateSupplierRequest $request
+     * @param \App\Models\Supplier $supplier
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
         $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
@@ -53,12 +77,23 @@ class SupplierController extends Controller
         ], 200);
     }
 
+    /**
+     * Remove the specified supplier from storage.
+     *
+     * @param Supplier $supplier
+     * @return \Illuminate\Http\Response
+     */
     public function destroy(Supplier $supplier)
     {
         $this->supplierActionService->deleteSupplier($supplier);
         return response()->noContent();
     }
 
+    /**
+     * Summary of checkApiHealth
+     * @param \App\Services\Suppliers\SupplierHealthService $healthService
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
     public function checkApiHealth(SupplierHealthService $healthService)
     {
         $results = $healthService->check();
@@ -70,6 +105,13 @@ class SupplierController extends Controller
         return response()->json(['status' => 'ok', 'results' => $results]);
     }
 
+    /**
+     * Update or create a payment rule for a supplier.
+     *
+     * @param UpdatePaymentRuleSupplierRequest $request
+     * @param Supplier $supplier
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updatePaymentRule(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
     {
         $rule = $this->supplierActionService->updatePaymentRule($supplier, $request->validated());
@@ -77,6 +119,16 @@ class SupplierController extends Controller
         return response()->json([
             'message' => 'Pronto pago actualizado con éxito.',
             'rule' => $rule,
+        ]);
+    }
+
+    public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
+    {
+        $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
+
+        return response()->json([
+            'message' => 'Laboratorio vinculado con éxito.',
+            'laboratory_link' => $link->load('laboratory'),
         ]);
     }
 }

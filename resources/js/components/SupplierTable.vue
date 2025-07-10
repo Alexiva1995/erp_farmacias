@@ -7,7 +7,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-supplier", "delete-supplier", "payment-rule"]);
+const emit = defineEmits(["update:options", "edit-supplier", "delete-supplier", "payment-rule", "supplier-laboratory"]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -106,6 +106,9 @@ const headers = [
         </IconBtn>
         <IconBtn @click="emit('payment-rule', item)">
           <VIcon icon="tabler-percentage" />
+        </IconBtn>
+        <IconBtn @click="emit('supplier-laboratory', item)">
+          <VIcon icon="tabler-test-pipe" />
         </IconBtn>
       </template>  
     </VDataTableServer>

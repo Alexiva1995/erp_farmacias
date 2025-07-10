@@ -3,6 +3,7 @@ import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
+import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -18,10 +19,29 @@ const sortBy = ref();
 const orderBy = ref();
 const searchQuery = ref("");
 
+const laboratories = ref([]);
+const isLoadingFilters = ref(false);
+
 const currentSupplier = ref({});
 const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
 const isPaymentRuleDialogVisible = ref(false);
+const isSupplierLaboratoryDialogVisible = ref(false);
+
+const fetchSelectOptions = async () => {
+  isLoadingFilters.value = true;
+  try {
+    const [labResponse] = await Promise.all([
+      axios.get("/laboratories"),
+    ]);
+    laboratories.value = labResponse.data;
+  } catch (error) {
+    console.error("Error al cargar opciones de los selects:", error);
+    toast.error("No se pudieron cargar los filtros.");
+  } finally {
+    isLoadingFilters.value = false;
+  }
+};
 
 const fetchSuppliers = async () => {
   loading.value = true;
@@ -50,6 +70,7 @@ const fetchSuppliers = async () => {
 };
 
 onMounted(() => {
+  fetchSelectOptions();
   fetchSuppliers();
 });
 
@@ -187,6 +208,34 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
     }
 };
 
+const handleSupplierLaboratory = (supplier) => {
+  currentSupplier.value = { ...supplier };
+  supplierFormErrors.value = {};
+  isSupplierLaboratoryDialogVisible.value = true;
+};
+
+const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
+    const url = `/suppliers/${currentSupplier.value.id}/laboratories`
+    try {
+        const payload = { ...supplierLaboratoryFormData }
+
+        await axios.post(url, payload)
+
+        toast.success('Laboratorio vinculado con éxito')
+
+        isSupplierLaboratoryDialogVisible.value = false;
+        await fetchSuppliers();
+    } catch (error) {
+        if (error.response && error.response.status === 422) {
+            supplierFormErrors.value = error.response.data.errors;
+            toast.error("Por favor, corrige los errores en el formulario.");
+        } else {
+            console.error("Error al guardar/crear la regla de pago:", error);
+            toast.error("Hubo un error al guardar la regla de pago.");
+        }
+    }
+};
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -233,6 +282,7 @@ const updateTableOptions = (options) => {
       @edit-supplier="handleEditSupplier"
       @delete-supplier="handleDeleteSupplier"
       @payment-rule="handlePaymentRule"
+      @supplier-laboratory="handleSupplierLaboratory"
     />
 
     <SupplierEditDialog
@@ -248,6 +298,15 @@ const updateTableOptions = (options) => {
       :supplier="currentSupplier"
       :errors="supplierFormErrors"
       @save="handleSavePaymentRule"
+      @clear-errors="clearFormErrors"
+    />
+
+    <SupplierLaboratoryEditDialog
+      v-model="isSupplierLaboratoryDialogVisible"
+      :supplier="currentSupplier"
+      :laboratories="laboratories"
+      :errors="supplierFormErrors"
+      @save="handleSaveSupplierLaboratory"
       @clear-errors="clearFormErrors"
     />
   </div>
