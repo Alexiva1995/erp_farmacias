@@ -142,7 +142,7 @@ const handleExport = async (format) => {
   });
 
   try {
-    const response = await axios.get("/products/export", {
+    const response = await axios.get("/history/export", {
       params,
       responseType: "blob",
     });
@@ -152,7 +152,7 @@ const handleExport = async (format) => {
     link.href = url;
 
     const contentDisposition = response.headers["content-disposition"];
-    let fileName = `productos.${format}`;
+    let fileName = `historias.${format}`;
     if (contentDisposition) {
       const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
       if (fileNameMatch && fileNameMatch.length === 2)
