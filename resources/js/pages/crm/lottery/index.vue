@@ -7,7 +7,7 @@
 // import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 // import Swal from 'sweetalert2';
 import LotteryFiltrers from '@/components/LotteryFiltrers.vue';
-import { reactive } from 'vue';
+import { onMounted, reactive } from 'vue';
 // import { useRouter } from "vue-router";
 
 const modal= reactive({
@@ -61,6 +61,21 @@ watch(
     console.log("uwu")
   }
 )
+
+async function consultAllLaboratories(){
+  let res = await axios.get("/crm/companies")
+  if(res.status!=200){
+    console.error("error => ",res)
+    return []
+  }
+
+  return [...res.data.data]
+
+}
+
+onMounted(async () => {
+  // await actualizarTabla()
+})
 </script>
 <template>
   <div>
@@ -69,6 +84,7 @@ watch(
       v-model:monto_minimo="monto_minimo"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
+      :laboratories:="[]"
       @clear="limpiarFiltros"
       @add-sortiar="sortiar"
     />

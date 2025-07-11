@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 
@@ -143,4 +144,9 @@ Route::prefix("crm")->group(function () {
     Route::prefix("lottery")->group(function () {
         Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
     });
+});
+
+// Route Laboratorio
+Route::prefix("laboratories")->group(function () {
+    Route::get("/", [LaboratoryController::class, "consultAll"]);
 });
