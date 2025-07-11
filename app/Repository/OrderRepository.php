@@ -14,7 +14,6 @@ class OrderRepository
 
     public function filtrarOrdenesforLottery($filtros)
     {
-        // $consulta = Order::query()->with("details.product");
         $consulta = Order::query();
 
         if (array_key_exists("minimo", $filtros)) {
@@ -33,7 +32,6 @@ class OrderRepository
         }
         // $consulta->where("total_amont_usd", ">", $filtros["minimo"]);
         // $consulta->whereHas(function ($query) use ($filtros) {});
-
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
             if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
