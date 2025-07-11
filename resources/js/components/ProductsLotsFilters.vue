@@ -155,7 +155,7 @@ const isOptionSelected = (option) => {
 };
 
 const handleClear = () => {
-  clearSortFilter();
+  // clearSortFilter();
   emit("clear");
 };
 

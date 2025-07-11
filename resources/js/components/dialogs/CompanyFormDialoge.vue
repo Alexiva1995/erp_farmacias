@@ -6,7 +6,7 @@ const props= defineProps({
   formError: {type: Object, default: () => []},
 })
 
-const emit= defineEmits(["modalClose", 'save', 'clearErrorForm',"update:busqueda"])
+const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
 
 function close(){
   emit("modalClose",false)

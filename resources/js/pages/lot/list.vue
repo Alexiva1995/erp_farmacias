@@ -127,8 +127,8 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
-  sortBy.value = "id";
-  orderBy.value = "desc";
+  // sortBy.value = "id";
+  // orderBy.value = "desc";
 };
 
 const handleAddLot = async () => {

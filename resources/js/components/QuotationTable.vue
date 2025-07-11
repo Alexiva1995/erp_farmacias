@@ -17,11 +17,11 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Stock', key: 'valid_stock_sum',sortable: true},
   //{ title: 'Código de Barra', key: 'barcode', sortable: false },
-  { title: 'Producto', key: 'name',  sortable: true },
+  { title: 'Producto', key: 'name',  sortable: true},
   { title: 'Precio en USD', key: 'sale_price', sortable: true },
   { title: 'Precio en Bs', key: 'price_bs', sortable: true},
   { title: 'Precio en COP', key: 'price_cop', sortable: true },
-  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'  },
+  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'},
 ];
 
 watch(() => props.products, (newProducts) => {
@@ -100,8 +100,8 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
       fixed-header height="auto"
       @update:options="options => emit('update:options', options)"
     >
-      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium">{{ item.valid_stock_sum }}</span></template>
       <template #item.id="{ item }"><span class="font-weight-medium">{{ item.id }}</span></template>
+      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium d-block">{{ item.valid_stock_sum }}</span></template>
       <template #item.barcode="{ item }"><span class="font-weight-medium">{{ item.barcode }}</span></template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
@@ -147,3 +147,14 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
     </VDataTableServer>
   </VCard>
 </template>
+<style scoped>
+:deep(.v-data-table__thead .v-data-table__th:nth-child(2)),
+:deep(.v-data-table__tbody .v-data-table__td:nth-child(2)){
+  width: 50px !important;
+  min-width: 60px !important;
+  max-width: 70px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  text-align: center !important;
+}
+</style>

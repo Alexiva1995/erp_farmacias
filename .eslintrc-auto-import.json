@@ -365,6 +365,7 @@
     "roundUpToNearesHundred": true,
     "roundUpToNearestHundred": true,
     "pdfClienstGenerator": true,
-    "pdfCompaniesGenerator": true
+    "pdfCompaniesGenerator": true,
+    "pdfDoctorsGenerator": true
   }
 }

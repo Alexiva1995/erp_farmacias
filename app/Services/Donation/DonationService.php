@@ -63,7 +63,7 @@ class DonationService
             $expiredLog = $donativeLog->expiredLog;
             if ($expiredLog && $expiredLog->product) {
                 // Agregar precios en bolívares
-                $costPerUnit = $expiredLog->product->sale_price ?? 0;
+                $costPerUnit = $expiredLog->product->unit_cost ?? 0;
                 $expiredLog->cost_per_unit_bs = round($costPerUnit * $bsRate, 2);
                 $expiredLog->total_lost_value_bs = round($expiredLog->total_lost_value * $bsRate, 2);
             }

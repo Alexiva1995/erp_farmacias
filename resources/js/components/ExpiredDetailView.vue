@@ -17,6 +17,7 @@ const emit = defineEmits([
 ]);
 
 const headers = [
+  { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product_name", sortable: false },
   { title: "Lote", key: "lot_number", align: "center", sortable: false },
   { title: "Vencimiento", key: "expired_at", align: "center", sortable: true },
@@ -59,8 +60,7 @@ const formatDate = (dateString) => {
   <VCard>
     <VCardText class="d-flex justify-end pa-4">
       <VBtn
-        color="primary"
-        prepend-icon="tabler-file-plus"
+        variant="tonal"
         :disabled="selected.length === 0"
         @click="emit('generate-donation')"
       >
