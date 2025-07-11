@@ -49,14 +49,33 @@ class ExpirationController extends Controller
     }
 
     /**
-     * Reajusta el precio de un lote específico.
+     * Reajusta los precios de productos caducados específicos de un mes.
      */
-    public function adjustPrice(ProductLot $lot)
+    public function adjustExpiredProductsPrices(Request $request)
     {
-        try {
-            $this->actionService->adjustLotPrice($lot);
+        $validated = $request->validate([
+            'month' => 'required|string|date_format:Y-m',
+            'expired_log_ids' => 'required|array|min:1',
+            'expired_log_ids.*' => 'integer|exists:expired_logs,id',
+        ]);
 
-            return response()->json(['message' => 'Precio del lote reajustado con éxito.'], 200);
+        try {
+            $result = $this->actionService->adjustExpiredProductsPrices(
+                $validated['month'],
+                $validated['expired_log_ids']
+            );
+
+            if ($result['success']) {
+                return response()->json([
+                    'message' => $result['message'],
+                    'processed_products' => $result['processed_products'],
+                    'total_cost_redistributed' => $result['total_cost_redistributed'],
+                ], 200);
+            } else {
+                return response()->json([
+                    'message' => $result['message']
+                ], 400);
+            }
 
         } catch (\Exception $e) {
             $statusCode = $e->getCode() === 400 ? 400 : 500;
@@ -65,32 +84,39 @@ class ExpirationController extends Controller
     }
 
     /**
+     * Verifica si ya se realizó un reajuste de precios en un mes específico.
+     */
+    public function checkMonthAdjustmentStatus($month)
+    {
+        try {
+            $hasAdjustment = $this->actionService->hasMonthPriceAdjustment($month);
+
+            return response()->json([
+                'has_adjustment' => $hasAdjustment,
+                'month' => $month
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reajusta el precio de un lote específico.
+     * @deprecated Esta funcionalidad ya no se usa
+     */
+    public function adjustPrice(ProductLot $lot)
+    {
+        return response()->json(['message' => 'Esta funcionalidad ha sido deshabilitada.'], 400);
+    }
+
+    /**
      * Reajusta los precios de múltiples lotes.
+     * @deprecated Esta funcionalidad ya no se usa
      */
     public function adjustMultiplePrices(Request $request)
     {
-        $validated = $request->validate([
-            'lot_ids' => 'required|array|min:1',
-            'lot_ids.*' => 'integer',
-        ]);
-
-        $result = $this->actionService->adjustMultipleLotsPrices($validated['lot_ids']);
-
-        $successCount = $result['success_count'];
-        $failedLots = $result['failed_lots'];
-        $processedProducts = $result['processed_products'];
-
-        if (empty($failedLots)) {
-            return response()->json([
-                'message' => "Precios reajustados con éxito para {$successCount} lotes de {$processedProducts} productos."
-            ], 200);
-        }
-
-        return response()->json([
-            'message' => "Se procesaron {$successCount} lotes. " . count($failedLots) . " lotes fallaron.",
-            'failed_lots' => $failedLots,
-            'processed_products' => $processedProducts,
-        ], 207);
+        return response()->json(['message' => 'Esta funcionalidad ha sido deshabilitada.'], 400);
     }
 
     /**

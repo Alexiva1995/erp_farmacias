@@ -3,7 +3,9 @@
 namespace App\Services\Expirations;
 
 use App\Models\ExpiredLog;
+use App\Models\PriceAdjustmentLog;
 use App\Models\ProductLot;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -30,14 +32,9 @@ class ExpirationActionService
             $costPerUnit = $lot->unit_cost;
             $totalLostValue = $quantityToExpire * $costPerUnit;
 
-            // Marcar el lote con cantidad 0
             $lot->quantity = 0;
             $lot->save();
 
-            // YA NO se redistribuye el costo automáticamente
-            // $this->redistributeCost($lot->product_id, $lot->id, $totalLostValue);
-
-            // Registrar en el log de caducados
             ExpiredLog::create([
                 'lot_id' => $lot->id,
                 'product_id' => $lot->product_id,
@@ -58,196 +55,108 @@ class ExpirationActionService
     }
 
     /**
-     * Reajusta el precio de un lote específico distribuyendo el costo
-     * de los lotes caducados entre los lotes activos.
+     * Reajusta los precios de productos caducados específicos de un mes.
+     * Distribución global: divide el monto total entre todas las unidades activas.
+     * Actualiza el cost del producto, no de los lotes individuales.
      *
-     * @param ProductLot $lot
-     * @throws Exception Si algo falla en la transacción.
+     * @param string $month Formato Y-m
+     * @param array $expiredLogIds Array de IDs de expired_logs
+     * @return array
+     * @throws Exception
      */
-    public function adjustLotPrice(ProductLot $lot): void
+    public function adjustExpiredProductsPrices(string $month, array $expiredLogIds): array
     {
-        if ($lot->quantity <= 0) {
-            throw new Exception('No se puede reajustar el precio de un lote sin unidades.', 400);
+        if ($this->hasMonthPriceAdjustment($month)) {
+            return [
+                'success' => false,
+                'message' => 'Ya se ha realizado un reajuste de precios para este mes.'
+            ];
         }
 
         DB::beginTransaction();
 
         try {
-            $productId = $lot->product_id;
+            $expiredLogs = ExpiredLog::whereIn('id', $expiredLogIds)
+                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+                ->get();
 
-            // Calcular el valor total perdido de los lotes caducados del mismo producto
-            $totalLostValue = ExpiredLog::where('product_id', $productId)
-                ->whereNotIn('lot_id', function ($query) use ($productId) {
-                    $query->select('lot_id')
-                        ->from('price_adjustment_logs')
-                        ->where('product_id', $productId);
-                })
-                ->sum('total_lost_value');
-
-            if ($totalLostValue <= 0) {
-                throw new Exception('No hay costos de lotes caducados para redistribuir.', 400);
+            if ($expiredLogs->isEmpty()) {
+                throw new Exception('No se encontraron productos caducados válidos para el mes especificado.', 400);
             }
 
-            // Redistribuir el costo entre los lotes activos
-            $this->redistributeCost($productId, null, $totalLostValue);
+            $totalLostValue = $expiredLogs->sum('total_lost_value');
 
-            // Marcar los lotes caducados como ya procesados
-            DB::table('price_adjustment_logs')->insert(
-                ExpiredLog::where('product_id', $productId)
-                    ->whereNotIn('lot_id', function ($query) use ($productId) {
-                        $query->select('lot_id')
-                            ->from('price_adjustment_logs')
-                            ->where('product_id', $productId);
-                    })
-                    ->get(['lot_id', 'product_id'])
-                    ->map(function ($log) {
-                        return [
-                            'lot_id' => $log->lot_id,
-                            'product_id' => $log->product_id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
-                    })
-                    ->toArray()
-            );
+            if ($totalLostValue <= 0) {
+                throw new Exception('No hay valor perdido para redistribuir.', 400);
+            }
+
+            $totalActiveUnits = ProductLot::where('quantity', '>', 0)->sum('quantity');
+
+            if ($totalActiveUnits <= 0) {
+                throw new Exception('No hay unidades activas para redistribuir el costo.', 400);
+            }
+
+            $costAdjustmentPerUnit = $totalLostValue / $totalActiveUnits;
+
+            $activeProductIds = ProductLot::where('quantity', '>', 0)
+                ->distinct()
+                ->pluck('product_id');
+
+            foreach ($activeProductIds as $productId) {
+                $productActiveUnits = ProductLot::where('product_id', $productId)
+                    ->where('quantity', '>', 0)
+                    ->sum('quantity');
+
+                if ($productActiveUnits > 0) {
+                    $productCostAdjustment = $costAdjustmentPerUnit * $productActiveUnits;
+                    DB::table('products')
+                        ->where('id', $productId)
+                        ->increment('unit_cost', ($productCostAdjustment / $productActiveUnits));
+                }
+            }
+
+            foreach ($expiredLogs as $log) {
+                PriceAdjustmentLog::create([
+                    'month' => $month,
+                    'expired_log_id' => $log->id,
+                    'product_id' => $log->product_id,
+                    'product_name' => $log->product_name,
+                    'lot_id' => $log->lot_id,
+                    'lot_number' => $log->lot_number,
+                    'cost_redistributed' => $log->total_lost_value,
+                    'processed_by' => Auth::id(),
+                    'processed_at' => now(),
+                ]);
+            }
 
             DB::commit();
 
+            return [
+                'success' => true,
+                'message' => "Reajuste de precios aplicado exitosamente. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre " . count($activeProductIds) . " productos con " . number_format($totalActiveUnits) . " unidades.",
+                'processed_products' => $expiredLogs->groupBy('product_id')->count(),
+                'total_cost_redistributed' => $totalLostValue,
+                'total_units_affected' => $totalActiveUnits,
+                'affected_products_count' => count($activeProductIds),
+                'cost_per_unit' => $costAdjustmentPerUnit
+            ];
+
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Error al reajustar el precio del lote: ' . $e->getMessage());
-            throw new Exception('Error al reajustar el precio del lote.', 500, $e);
+            Log::error('Error al reajustar precios de productos caducados: ' . $e->getMessage());
+            throw new Exception('Error al reajustar precios de productos caducados.', 500, $e);
         }
     }
 
     /**
-     * Reajusta los precios de múltiples lotes.
+     * Verifica si ya se realizó un reajuste de precios en un mes específico.
      *
-     * @param array $lotIds
-     * @return array
+     * @param string $month
+     * @return bool
      */
-    public function adjustMultipleLotsPrices(array $lotIds): array
+    public function hasMonthPriceAdjustment(string $month): bool
     {
-        $failedLots = [];
-        $successCount = 0;
-        $processedProductIds = [];
-
-        $lots = ProductLot::whereIn('id', $lotIds)
-            ->where('quantity', '>', 0)
-            ->get();
-
-        $foundIds = $lots->pluck('id')->all();
-        $notFoundIds = array_diff($lotIds, $foundIds);
-
-        if (!empty($notFoundIds)) {
-            foreach ($notFoundIds as $id) {
-                $failedLots[] = [
-                    'id' => $id,
-                    'error' => 'Lote no encontrado o sin unidades.',
-                ];
-            }
-        }
-
-        // Agrupar lotes por producto para procesar una vez por producto
-        $lotsByProduct = $lots->groupBy('product_id');
-
-        foreach ($lotsByProduct as $productId => $productLots) {
-            try {
-                // Calcular el valor total perdido para este producto
-                $totalLostValue = ExpiredLog::where('product_id', $productId)
-                    ->whereNotIn('lot_id', function ($query) use ($productId) {
-                        $query->select('lot_id')
-                            ->from('price_adjustment_logs')
-                            ->where('product_id', $productId);
-                    })
-                    ->sum('total_lost_value');
-
-                if ($totalLostValue > 0) {
-                    DB::beginTransaction();
-
-                    // Redistribuir el costo
-                    $this->redistributeCost($productId, null, $totalLostValue);
-
-                    // Marcar como procesados
-                    DB::table('price_adjustment_logs')->insert(
-                        ExpiredLog::where('product_id', $productId)
-                            ->whereNotIn('lot_id', function ($query) use ($productId) {
-                                $query->select('lot_id')
-                                    ->from('price_adjustment_logs')
-                                    ->where('product_id', $productId);
-                            })
-                            ->get(['lot_id', 'product_id'])
-                            ->map(function ($log) {
-                                return [
-                                    'lot_id' => $log->lot_id,
-                                    'product_id' => $log->product_id,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ];
-                            })
-                            ->toArray()
-                    );
-
-                    DB::commit();
-
-                    $successCount += $productLots->count();
-                    $processedProductIds[] = $productId;
-                } else {
-                    foreach ($productLots as $lot) {
-                        $failedLots[] = [
-                            'id' => $lot->id,
-                            'error' => 'No hay costos de lotes caducados para redistribuir.',
-                        ];
-                    }
-                }
-            } catch (Exception $e) {
-                DB::rollBack();
-                foreach ($productLots as $lot) {
-                    $failedLots[] = [
-                        'id' => $lot->id,
-                        'error' => $e->getMessage(),
-                    ];
-                }
-            }
-        }
-
-        return [
-            'success_count' => $successCount,
-            'failed_lots' => $failedLots,
-            'processed_products' => count($processedProductIds),
-        ];
-    }
-
-    /**
-     * Helper para redistribuir el costo entre los lotes restantes de un producto.
-     * 
-     * @param int $productId
-     * @param int|null $excludedLotId
-     * @param float $totalLostValue
-     */
-    private function redistributeCost(int $productId, ?int $excludedLotId, float $totalLostValue): void
-    {
-        $query = ProductLot::where('product_id', $productId)
-            ->where('quantity', '>', 0);
-
-        if ($excludedLotId !== null) {
-            $query->where('id', '!=', $excludedLotId);
-        }
-
-        $remainingStock = $query->sum('quantity');
-
-        if ($remainingStock > 0) {
-            $costAdjustmentPerUnit = $totalLostValue / $remainingStock;
-
-            $updateQuery = ProductLot::where('product_id', $productId)
-                ->where('quantity', '>', 0);
-
-            if ($excludedLotId !== null) {
-                $updateQuery->where('id', '!=', $excludedLotId);
-            }
-
-            $updateQuery->increment('unit_cost', $costAdjustmentPerUnit);
-        }
+        return PriceAdjustmentLog::where('month', $month)->exists();
     }
 
     /**
@@ -291,5 +200,18 @@ class ExpirationActionService
             'success_count' => $successCount,
             'failed_lots' => $failedLots,
         ];
+    }
+
+    /**
+     * @deprecated Métodos antiguos que ya no se usan
+     */
+    public function adjustLotPrice(ProductLot $lot): void
+    {
+        throw new Exception('Esta funcionalidad ha sido deshabilitada.', 400);
+    }
+
+    public function adjustMultipleLotsPrices(array $lotIds): array
+    {
+        throw new Exception('Esta funcionalidad ha sido deshabilitada.', 400);
     }
 }

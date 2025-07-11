@@ -5,6 +5,7 @@ import { generateDonationPDF } from "@/utils/donationPdfGenerator";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 
+import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
 import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
@@ -114,82 +115,6 @@ const handleApplyDiscount = async (item) => {
   } catch (error) {
     console.error("Error al aplicar el descuento:", error);
     toast.error("No se pudo aplicar el descuento.");
-  }
-};
-
-const handlePriceAdjustment = async (item) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `Vas a reajustar el precio del lote Nº ${item.lot_number} del producto "${item.product.name}".`,
-    icon: "info",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Confirmar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    try {
-      // TODO: Implementar lógica de reajuste de precio cuando esté lista
-      toast.info("Funcionalidad de reajuste de precio en desarrollo...");
-    } catch (error) {
-      console.error("Error al reajustar el precio:", error);
-      toast.error("No se pudo reajustar el precio.");
-    }
-  }
-};
-
-const handlePriceAdjustmentSelected = async () => {
-  const selectedCount = selectedLots.value.length;
-  if (selectedCount === 0) {
-    toast.info("Por favor, selecciona al menos un lote.");
-    return;
-  }
-
-  const result = await Swal.fire({
-    title: `¿Estás seguro de reajustar el precio?`,
-    text: `Se reajustará el precio de ${selectedCount} lotes seleccionados.`,
-    icon: "info",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Sí, reajustar precio",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    toast.info("Funcionalidad de reajuste de precio masivo en desarrollo...");
   }
 };
 
@@ -307,6 +232,10 @@ const selectedLogsInDetail = ref([]);
 
 const isDonationModalVisible = ref(false);
 const productsForDonation = ref([]);
+
+const isPriceAdjustmentModalVisible = ref(false);
+const productsForPriceAdjustment = ref([]);
+const selectedMonthForAdjustment = ref(null);
 
 const headersSummaries = [
   { title: "Mes", key: "month", sortable: true },
@@ -438,6 +367,64 @@ const handlePrintDonation = async (month) => {
   }
 };
 
+// Nueva función para manejar reajuste de precios en productos caducados
+const handlePriceAdjustmentExpired = async (month) => {
+  try {
+    // Primero verificar si ya se hizo reajuste en este mes
+    const { data: statusData } = await axios.get(
+      `/expirations/month/${month}/adjustment-status`
+    );
+
+    if (statusData.has_adjustment) {
+      toast.warning("Ya se ha realizado un reajuste de precios para este mes.");
+      return;
+    }
+
+    // Obtener los productos caducados del mes
+    const { data } = await axios.get(`/expired-logs`, {
+      params: {
+        month: month,
+        itemsPerPage: -1, // Traer todos los productos del mes
+      },
+    });
+
+    if (data.data && data.data.length > 0) {
+      productsForPriceAdjustment.value = data.data;
+      selectedMonthForAdjustment.value = month;
+      isPriceAdjustmentModalVisible.value = true;
+    } else {
+      toast.info("No se encontraron productos caducados para este mes.");
+    }
+  } catch (error) {
+    console.error("Error al obtener productos para reajuste:", error);
+    toast.error("No se pudieron cargar los productos del mes.");
+  }
+};
+
+const handleGeneratePriceAdjustment = async (adjustmentData) => {
+  try {
+    const { data: responseData } = await axios.post(
+      "/expirations/adjust-expired-prices",
+      {
+        month: selectedMonthForAdjustment.value,
+        expired_log_ids: adjustmentData.products.map((p) => p.id),
+      }
+    );
+
+    toast.success(responseData.message);
+    isPriceAdjustmentModalVisible.value = false;
+
+    // Refrescar datos
+    await fetchSummaries();
+  } catch (error) {
+    console.error("Error al aplicar reajuste de precios:", error);
+    toast.error(
+      error.response?.data?.message ||
+        "No se pudo aplicar el reajuste de precios."
+    );
+  }
+};
+
 const showDetailView = (month) => {
   selectedMonth.value = month;
   isDetailViewVisible.value = true;
@@ -532,7 +519,6 @@ const formatCurrency = (value) => {
         @clear="handleClearFiltersLots"
         @expire-selected="handleExpireSelected"
         @apply-offer-selected="handleApplyOfferSelected"
-        @price-adjustment-selected="handlePriceAdjustmentSelected"
       />
 
       <!-- Tabla con título integrado -->
@@ -557,7 +543,6 @@ const formatCurrency = (value) => {
             @update:options="updateTableOptionsLots"
             @apply-discount="handleApplyDiscount"
             @expire-lot="handleExpireLot"
-            @price-adjustment="handlePriceAdjustment"
           />
         </VCardText>
       </VCard>
@@ -630,6 +615,27 @@ const formatCurrency = (value) => {
                     </div>
                   </template>
                 </VTooltip>
+                <VTooltip text="Reajustar Precios">
+                  <template #activator="{ props: tooltipProps }">
+                    <div v-bind="tooltipProps" class="d-inline-block">
+                      <IconBtn
+                        :disabled="item.has_price_adjustment"
+                        @click="handlePriceAdjustmentExpired(item.month)"
+                      >
+                        <VIcon
+                          :icon="
+                            item.has_price_adjustment
+                              ? 'tabler-currency-dollar-off'
+                              : 'tabler-currency-dollar'
+                          "
+                          :class="
+                            item.has_price_adjustment ? 'text-disabled' : ''
+                          "
+                        />
+                      </IconBtn>
+                    </div>
+                  </template>
+                </VTooltip>
               </template>
             </VDataTable>
 
@@ -665,6 +671,13 @@ const formatCurrency = (value) => {
       v-model="isDonationModalVisible"
       :initial-products="productsForDonation"
       @generate="handleGenerateDonation"
+    />
+
+    <PriceAdjustmentDialog
+      v-model="isPriceAdjustmentModalVisible"
+      :initial-products="productsForPriceAdjustment"
+      :month-name="formatMonth(selectedMonthForAdjustment)"
+      @adjust-prices="handleGeneratePriceAdjustment"
     />
   </div>
 </template>

@@ -34,7 +34,6 @@ const emit = defineEmits([
   "update:options",
   "apply-discount",
   "expire-lot",
-  "price-adjustment",
 ]);
 
 const headers = [
@@ -85,38 +84,6 @@ const handleApplyDiscount = async (item) => {
 
   if (result.isConfirmed) {
     emit("apply-discount", item);
-  }
-};
-
-const handlePriceAdjustment = async (item) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `Vas a reajustar el precio del lote Nº ${item.lot_number} del producto "${item.product.name}".`,
-    icon: "info",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Confirmar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    emit("price-adjustment", item);
   }
 };
 </script>
@@ -178,15 +145,6 @@ const handlePriceAdjustment = async (item) => {
             </IconBtn>
           </template>
           <span>Aplicar Descuento</span>
-        </VTooltip>
-
-        <VTooltip location="top">
-          <template #activator="{ props: tooltipProps }">
-            <IconBtn v-bind="tooltipProps" @click="handlePriceAdjustment(item)">
-              <VIcon icon="tabler-currency-dollar" />
-            </IconBtn>
-          </template>
-          <span>Reajustar Precio</span>
         </VTooltip>
 
         <VTooltip location="top">
