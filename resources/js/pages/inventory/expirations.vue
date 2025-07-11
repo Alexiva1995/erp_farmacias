@@ -70,12 +70,28 @@ const fetchLots = async () => {
 const handleExpireLot = async (lotToExpire) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: `Vas a marcar como caducado el lote Nº ${lotToExpire.lot_number} del producto "${lotToExpire.product.name}".`,
+    text: `Vas a marcar como caducado el lote No ${lotToExpire.lot_number} del producto "${lotToExpire.product.name}".`,
     icon: "warning",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
     confirmButtonText: "Confirmar",
     reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
   });
   if (result.isConfirmed) {
     try {
@@ -101,6 +117,82 @@ const handleApplyDiscount = async (item) => {
   }
 };
 
+const handlePriceAdjustment = async (item) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `Vas a reajustar el precio del lote Nº ${item.lot_number} del producto "${item.product.name}".`,
+    icon: "info",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Confirmar",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      // TODO: Implementar lógica de reajuste de precio cuando esté lista
+      toast.info("Funcionalidad de reajuste de precio en desarrollo...");
+    } catch (error) {
+      console.error("Error al reajustar el precio:", error);
+      toast.error("No se pudo reajustar el precio.");
+    }
+  }
+};
+
+const handlePriceAdjustmentSelected = async () => {
+  const selectedCount = selectedLots.value.length;
+  if (selectedCount === 0) {
+    toast.info("Por favor, selecciona al menos un lote.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: `¿Estás seguro de reajustar el precio?`,
+    text: `Se reajustará el precio de ${selectedCount} lotes seleccionados.`,
+    icon: "info",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Sí, reajustar precio",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    toast.info("Funcionalidad de reajuste de precio masivo en desarrollo...");
+  }
+};
+
 const handleApplyOfferSelected = async () => {
   const selectedCount = selectedLots.value.length;
   if (selectedCount === 0) {
@@ -116,6 +208,22 @@ const handleApplyOfferSelected = async () => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Sí, aplicar oferta",
     reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
   });
 
   if (result.isConfirmed) {
@@ -137,6 +245,22 @@ const handleExpireSelected = async () => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Sí, caducar todos",
     reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
   });
   if (result.isConfirmed) {
     try {
@@ -408,6 +532,7 @@ const formatCurrency = (value) => {
         @clear="handleClearFiltersLots"
         @expire-selected="handleExpireSelected"
         @apply-offer-selected="handleApplyOfferSelected"
+        @price-adjustment-selected="handlePriceAdjustmentSelected"
       />
 
       <!-- Tabla con título integrado -->
@@ -432,6 +557,7 @@ const formatCurrency = (value) => {
             @update:options="updateTableOptionsLots"
             @apply-discount="handleApplyDiscount"
             @expire-lot="handleExpireLot"
+            @price-adjustment="handlePriceAdjustment"
           />
         </VCardText>
       </VCard>
