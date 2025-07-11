@@ -24,13 +24,10 @@ class ProductLotObserver
      */
     public function updated(ProductLot $productLot)
     {
-        // Solo actualizar stock y precio del producto, no crear movimientos de inventario
-        // EXCEPCIÓN: Si la cantidad cambió a 0, crear movimiento de caducidad
         if ($productLot->isDirty('quantity')) {
             $originalQuantity = $productLot->getOriginal('quantity') ?? 0;
             $newQuantity = $productLot->quantity ?? 0;
 
-            // Si la cantidad cambió de un valor positivo a 0, es una caducidad
             if ($originalQuantity > 0 && $newQuantity === 0) {
                 $this->createExpiredMovement($productLot, $originalQuantity);
             }
@@ -77,7 +74,7 @@ class ProductLotObserver
     protected function createPurchaseMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;  // Tomar del stock del producto
+        $stockBefore = $product->stock ?? 0;
         $stockAfter = $stockBefore + $productLot->quantity;
 
         InventoryMovement::create([
@@ -101,7 +98,7 @@ class ProductLotObserver
     protected function createDeletionMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;  // Tomar del stock del producto
+        $stockBefore = $product->stock ?? 0;
         $stockAfter = $stockBefore - $productLot->quantity;
 
         InventoryMovement::create([
@@ -125,7 +122,7 @@ class ProductLotObserver
     protected function createRestorationMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;  // Tomar del stock del producto
+        $stockBefore = $product->stock ?? 0;
         $stockAfter = $stockBefore + $productLot->quantity;
 
         InventoryMovement::create([
@@ -168,7 +165,7 @@ class ProductLotObserver
     }
 
     /**
-     * Recalcula y actualiza el stock total y precio promedio ponderado del producto.
+     * Recalcula y actualiza el stock total y costo promedio ponderado del producto.
      */
     protected function updateProductStockAndPrice(Product $product)
     {
@@ -193,11 +190,11 @@ class ProductLotObserver
             $totalQuantityWithCost += $lot->quantity;
         }
 
-        $averagePrice = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->sale_price;
+        $averageCost = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->cost;
 
         $product->updateQuietly([
             'stock' => $totalStock,
-            'sale_price' => round($averagePrice, 2)
+            'unit_cost' => round($averageCost, 2)
         ]);
     }
 }

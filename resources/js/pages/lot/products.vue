@@ -33,7 +33,6 @@ const isLoadingDialogData = ref(false);
 const isEditDialogVisible = ref(false);
 const lotsForEditing = ref([]);
 const productNameToEdit = ref("");
-const productBarcodeToEdit = ref("");
 const productIdToEdit = ref(null);
 const productStockToEdit = ref(0);
 
@@ -186,7 +185,6 @@ const handleEditLot = async (lotToEdit) => {
     const product = lotToEdit.product;
 
     productNameToEdit.value = product.name;
-    productBarcodeToEdit.value = product.barcode;
     productIdToEdit.value = product.id;
     productStockToEdit.value = product.stock;
 
@@ -304,7 +302,6 @@ const handleUpdateLot = async (lotsToSave) => {
     <ProductLotEditDialog
       v-model="isEditDialogVisible"
       :product-name="productNameToEdit"
-      :product-barcode="productBarcodeToEdit"
       :product-id="productIdToEdit"
       :product-stock="productStockToEdit"
       :lots="lotsForEditing"

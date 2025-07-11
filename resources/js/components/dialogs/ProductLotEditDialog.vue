@@ -7,7 +7,6 @@ const props = defineProps({
   lots: { type: Array, default: () => [] },
   productId: { type: Number, required: true },
   productStock: { type: Number, default: 0 },
-  productBarcode: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "save"]);
@@ -227,7 +226,10 @@ const getFieldError = (field, index) => {
   >
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">Editar Lotes</span>
+        <span class="text-h5 font-weight-bold"
+          >Edicion de Lotes: {{ props.productId }} -
+          {{ props.productName }}</span
+        >
 
         <VChip
           v-if="hasStockDiscrepancy"
@@ -272,112 +274,104 @@ const getFieldError = (field, index) => {
         >
           {{ errors.total_stock }}
         </VAlert>
-
-        <VSheet color="#f5f5f5" variant="tonal" rounded="lg" class="pa-4">
-          <div class="d-flex align-center mb-4">
-            <p class="text-h6 font-weight-medium">
-              Edicion Lotes del Producto: {{ props.productBarcode }} -
-              {{ props.productName }}
-            </p>
-            <VSpacer />
-            <VBtn
-              prepend-icon="tabler-plus"
-              color="primary"
-              variant="flat"
-              @click="addNewLotRow"
-              :disabled="hasStockDiscrepancy && availableStock <= 0"
-            >
-              Agregar Lote
-            </VBtn>
-          </div>
-
-          <VDataTable
-            :headers="[
-              { title: 'Número de Lote', key: 'lot_number', sortable: false },
-              { title: 'Cantidad', key: 'quantity', sortable: false },
-              {
-                title: 'Fecha de Expiración',
-                key: 'expiration_date',
-                sortable: false,
-              },
-              { title: 'Costo', key: 'unit_cost', sortable: false },
-              { title: 'Ubicación', key: 'location', sortable: false },
-              { title: 'Acciones', key: 'actions', sortable: false },
-            ]"
-            :items="editableLots"
-            density="compact"
-            class="rounded-lg"
-            no-data-text="No hay lotes registrados para este producto."
+        <div class="d-flex align-center mb-4">
+          <VSpacer />
+          <VBtn
+            prepend-icon="tabler-plus"
+            color="primary"
+            variant="flat"
+            @click="addNewLotRow"
+            :disabled="hasStockDiscrepancy && availableStock <= 0"
           >
-            <template #item.lot_number="{ item, index }">
-              <VTextField
-                v-model="item.lot_number"
-                variant="plane"
-                :error-messages="getFieldError('lot_number', index)"
-                hide-details="auto"
-                density="compact"
-              />
-            </template>
+            Agregar Lote
+          </VBtn>
+        </div>
+        <VDataTable
+          :headers="[
+            { title: '# Lote', key: 'lot_number', sortable: false },
+            { title: 'Stock', key: 'quantity', sortable: false },
+            {
+              title: 'Exp',
+              key: 'expiration_date',
+              sortable: false,
+            },
+            { title: 'Costo', key: 'unit_cost', sortable: false },
+            { title: 'Ubicación', key: 'location', sortable: false },
+            { title: 'Accion', key: 'actions', sortable: false },
+          ]"
+          :items="editableLots"
+          density="compact"
+          class="rounded-lg"
+          no-data-text="No hay lotes registrados para este producto."
+        >
+          <template #item.lot_number="{ item, index }">
+            <VTextField
+              v-model="item.lot_number"
+              variant="plane"
+              :error-messages="getFieldError('lot_number', index)"
+              hide-details="auto"
+              density="compact"
+            />
+          </template>
 
-            <template #item.quantity="{ item, index }">
-              <VTextField
-                v-model="item.quantity"
-                type="number"
-                variant="plane"
-                :error-messages="getFieldError('quantity', index)"
-                hide-details="auto"
-                density="compact"
-                @input="onQuantityChange(item, index)"
-              />
-            </template>
+          <template #item.quantity="{ item, index }">
+            <VTextField
+              v-model="item.quantity"
+              type="number"
+              variant="plane"
+              :error-messages="getFieldError('quantity', index)"
+              hide-details="auto"
+              density="compact"
+              @input="onQuantityChange(item, index)"
+            />
+          </template>
 
-            <template #item.expiration_date="{ item, index }">
-              <VTextField
-                v-model="item.expiration_date"
-                type="date"
-                variant="plane"
-                :error-messages="getFieldError('expiration_date', index)"
-                hide-details="auto"
-                density="compact"
-              />
-            </template>
+          <template #item.expiration_date="{ item, index }">
+            <VTextField
+              v-model="item.expiration_date"
+              type="date"
+              variant="plane"
+              :error-messages="getFieldError('expiration_date', index)"
+              hide-details="auto"
+              density="compact"
+            />
+          </template>
 
-            <template #item.unit_cost="{ item, index }">
-              <VTextField
-                v-model="item.unit_cost"
-                type="number"
-                step="0.01"
-                prefix="$"
-                variant="plane"
-                :error-messages="getFieldError('unit_cost', index)"
-                hide-details="auto"
-                density="compact"
-              />
-            </template>
+          <template #item.unit_cost="{ item, index }">
+            <VTextField
+              v-model="item.unit_cost"
+              type="number"
+              step="0.01"
+              prefix="$"
+              variant="plane"
+              :error-messages="getFieldError('unit_cost', index)"
+              hide-details="auto"
+              density="compact"
+            />
+          </template>
 
-            <template #item.location="{ item, index }">
-              <VTextField
-                v-model="item.location"
-                variant="plane"
-                :error-messages="getFieldError('location', index)"
-                hide-details="auto"
-                density="compact"
-                placeholder="Ej: A1-B2"
-              />
-            </template>
+          <template #item.location="{ item, index }">
+            <VTextField
+              v-model="item.location"
+              variant="plane"
+              :error-messages="getFieldError('location', index)"
+              hide-details="auto"
+              density="compact"
+              placeholder="Ej: A1-B2"
+            />
+          </template>
 
-            <template #item.actions="{ item, index }">
-              <VBtn
-                v-if="item.id < 0"
-                icon="tabler-trash"
-                variant="text"
-                color="error"
-                size="small"
-                @click="removeLot(index)"
-              />
-            </template>
-          </VDataTable>
-        </VSheet>
+          <template #item.actions="{ item, index }">
+            <VBtn
+              v-if="item.id < 0"
+              icon="tabler-trash"
+              variant="text"
+              color="error"
+              size="small"
+              @click="removeLot(index)"
+            />
+          </template>
+        </VDataTable>
       </VCardText>
 
       <VDivider />

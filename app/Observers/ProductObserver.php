@@ -72,9 +72,8 @@ class ProductObserver
      */
     private function isStockChangeFromLots(Product $product): bool
     {
-        // Verificar si hay un movimiento reciente de lote para este producto
         return InventoryMovement::where('product_id', $product->id)
-            ->whereNotNull('product_lot_id') // Movimientos de lotes
+            ->whereNotNull('product_lot_id')
             ->where('created_at', '>=', now()->subMinutes(1))
             ->exists();
     }
@@ -125,7 +124,7 @@ class ProductObserver
             'order_id' => null,
             'user_id' => null,
             'stock_before' => $stockBefore,
-            'stock_after' => $stockBefore - $expiredLog->expired_quantity, // Para el registro, pero no actualizar
+            'stock_after' => $stockBefore - $expiredLog->expired_quantity,
             'movement_date' => now(),
         ]);
     }
