@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 
 /*
@@ -139,5 +140,7 @@ Route::prefix("crm")->group(function () {
     });
 
     // Rutas Sorteo
-    Route::prefix("lottery")->group(function () {});
+    Route::prefix("lottery")->group(function () {
+        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+    });
 });
