@@ -137,4 +137,7 @@ Route::prefix("crm")->group(function () {
         Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
     });
+
+    // Rutas Sorteo
+    Route::prefix("lottery")->group(function () {});
 });

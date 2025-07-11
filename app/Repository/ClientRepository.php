@@ -62,7 +62,7 @@ class ClientRepository
         }
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
-            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaDesde_filtro"] != "") {
+            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
                 $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
             }
         }
