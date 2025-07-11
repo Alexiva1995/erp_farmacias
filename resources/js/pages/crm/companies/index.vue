@@ -233,7 +233,7 @@ watch(
       sortBy
   ],
   async () =>{
-    console.log("uwu")
+    // console.log("uwu")
     await actualizarTabla()
   }
 )
@@ -347,7 +347,7 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       @clear="limpiarFiltros"
-      @add-client="mostarModal"
+      @add-company="mostarModal"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
     />
