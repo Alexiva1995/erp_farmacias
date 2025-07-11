@@ -5,6 +5,7 @@ namespace App\Services\Suppliers;
 use App\Models\Supplier;
 
 use Illuminate\Database\Eloquent\Builder;
+ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -92,5 +93,13 @@ class SupplierQueryService
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+
+    /**
+     * Retrieves the laboratories associated with a supplier.
+     */
+    public function getLaboratories(Supplier $supplier): Collection
+    {
+        return $supplier->laboratoryLinks()->with('laboratory')->get();
     }
 }

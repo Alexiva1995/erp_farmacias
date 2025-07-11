@@ -122,6 +122,13 @@ class SupplierController extends Controller
         ]);
     }
 
+    /**
+     * Store a new laboratory link for a supplier.
+     *
+     * @param StoreSupplierLaboratoryRequest $request
+     * @param Supplier $supplier
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
     {
         $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
@@ -130,5 +137,18 @@ class SupplierController extends Controller
             'message' => 'Laboratorio vinculado con éxito.',
             'laboratory_link' => $link->load('laboratory'),
         ]);
+    }
+
+    /**
+     * Get the laboratory links for a supplier.
+     *
+     * @param Supplier $supplier
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getLaboratoryLinks(Supplier $supplier)
+    {
+        $links = $this->supplierQueryService->getLaboratories($supplier);
+
+        return response()->json(['laboratory_links' => $links]);
     }
 }

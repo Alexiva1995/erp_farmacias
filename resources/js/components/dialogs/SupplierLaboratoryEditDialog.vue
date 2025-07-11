@@ -3,6 +3,7 @@
         modelValue: { type: Boolean, required: true },
         supplier: { type: Object, default: () => ({}) },
         laboratories: { type: Array, default: () => [] },
+        laboratoryLinks: { type: Array, default: () => [] },
         errors: { type: Object, default: () => ({}) },
     });
 
@@ -32,6 +33,11 @@
         },
         { deep: true }
     );
+
+    const supplierLaboratoryHeaders = [
+      { title: "Número Representante", key: "phone", sortable: false },
+      { title: "Laboratorio", key: "laboratory.name", sortable: false },
+    ];
 </script>
 
 <template>
@@ -82,6 +88,21 @@
                         />
                     </VCol>
                 </VRow>
+
+                <VDivider class="my-6" />
+
+                <div class="d-flex align-center mb-4">
+                    <p class="text-h6 font-weight-medium">Laboratorios Asociados</p>
+                    <VSpacer />
+                </div>
+
+                <VDataTable
+                    :headers="supplierLaboratoryHeaders"
+                    :items="props.laboratoryLinks || []"
+                    density="compact"
+                    no-data-text="Este proveedor no tiene laboratorios asociados."
+                >
+                </VDataTable>
             </VForm>
         </VCardText>
 

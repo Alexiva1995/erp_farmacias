@@ -20,6 +20,8 @@ const orderBy = ref();
 const searchQuery = ref("");
 
 const laboratories = ref([]);
+const laboratoryLinks = ref([])
+
 const isLoadingFilters = ref(false);
 
 const currentSupplier = ref({});
@@ -68,6 +70,11 @@ const fetchSuppliers = async () => {
     loading.value = false;
   }
 };
+
+const fetchLaboratoryLinks = async () => {
+  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`)
+  laboratoryLinks.value = data.laboratory_links
+}
 
 onMounted(() => {
   fetchSelectOptions();
@@ -208,10 +215,12 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
     }
 };
 
-const handleSupplierLaboratory = (supplier) => {
+const handleSupplierLaboratory = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
   isSupplierLaboratoryDialogVisible.value = true;
+
+  await fetchLaboratoryLinks()
 };
 
 const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
@@ -224,6 +233,7 @@ const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
         toast.success('Laboratorio vinculado con éxito')
 
         isSupplierLaboratoryDialogVisible.value = false;
+        await fetchLaboratoryLinks()
         await fetchSuppliers();
     } catch (error) {
         if (error.response && error.response.status === 422) {
@@ -305,6 +315,7 @@ const updateTableOptions = (options) => {
       v-model="isSupplierLaboratoryDialogVisible"
       :supplier="currentSupplier"
       :laboratories="laboratories"
+      :laboratory-links="laboratoryLinks"
       :errors="supplierFormErrors"
       @save="handleSaveSupplierLaboratory"
       @clear-errors="clearFormErrors"
