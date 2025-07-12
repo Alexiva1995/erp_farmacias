@@ -127,4 +127,5 @@ Route::prefix("suppliers")->group(function () {
     Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
+    Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
 });

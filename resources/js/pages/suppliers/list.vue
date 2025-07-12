@@ -4,6 +4,7 @@ import SupplierTable from "@/components/SupplierTable.vue";
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
+import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingInvoicesDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -21,6 +22,7 @@ const searchQuery = ref("");
 
 const laboratories = ref([]);
 const laboratoryLinks = ref([])
+const pendingInvoices = ref({})
 
 const isLoadingFilters = ref(false);
 
@@ -29,6 +31,7 @@ const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
 const isPaymentRuleDialogVisible = ref(false);
 const isSupplierLaboratoryDialogVisible = ref(false);
+const isPendingInvoicesDialogVisible = ref(false)
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -74,6 +77,18 @@ const fetchSuppliers = async () => {
 const fetchLaboratoryLinks = async () => {
   const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`)
   laboratoryLinks.value = data.laboratory_links
+}
+
+const fetchPendingInvoices = async () => {
+  loading.value = true;
+  try {
+    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/pending-invoices`)
+    pendingInvoices.value = data.pending_invoices
+  } catch (error) {
+    toast.error('Error al cargar facturas pendientes')
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
@@ -246,6 +261,13 @@ const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
     }
 };
 
+const handleSupplierPendingInvoices = async (supplier) => {
+  currentSupplier.value = { ...supplier };
+  isPendingInvoicesDialogVisible.value = true;
+
+  await fetchPendingInvoices()
+};
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -293,6 +315,7 @@ const updateTableOptions = (options) => {
       @delete-supplier="handleDeleteSupplier"
       @payment-rule="handlePaymentRule"
       @supplier-laboratory="handleSupplierLaboratory"
+      @supplier-pending-invoices="handleSupplierPendingInvoices"
     />
 
     <SupplierEditDialog
@@ -319,6 +342,12 @@ const updateTableOptions = (options) => {
       :errors="supplierFormErrors"
       @save="handleSaveSupplierLaboratory"
       @clear-errors="clearFormErrors"
+    />
+
+    <SupplierPendingInvoicesDialog
+      v-model="isPendingInvoicesDialogVisible"
+      :pending-invoices="pendingInvoices"
+      :loading="loading"
     />
   </div>
 </template>

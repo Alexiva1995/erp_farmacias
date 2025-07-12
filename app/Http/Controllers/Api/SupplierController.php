@@ -151,4 +151,16 @@ class SupplierController extends Controller
 
         return response()->json(['laboratory_links' => $links]);
     }
+
+    /**
+     * Get pending invoices for a supplier, grouped by payment date.
+     *
+     * @param Supplier $supplier
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPendingInvoices(Supplier $supplier)
+    {
+        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate($supplier);
+        return response()->json(['pending_invoices' => $grouped]);
+    }
 }

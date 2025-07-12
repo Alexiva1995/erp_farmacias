@@ -3,11 +3,14 @@
 namespace App\Services\Suppliers;
 
 use App\Models\Supplier;
+use App\Models\Invoice;
 
 use Illuminate\Database\Eloquent\Builder;
- use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection as SupportCollection;
+
 
 class SupplierQueryService
 {
@@ -101,5 +104,28 @@ class SupplierQueryService
     public function getLaboratories(Supplier $supplier): Collection
     {
         return $supplier->laboratoryLinks()->with('laboratory')->get();
+    }
+
+    /**
+     * Retrieves unpaid invoices grouped by payment date for a given supplier.
+     */
+    public function getUnpaidInvoicesByDate(Supplier $supplier): SupportCollection
+    {
+        return Invoice::query()
+            ->where('supplier_id', $supplier->id)
+            ->whereHas('payments', fn($q) => $q->where('status', 'unpaid'))
+            ->with(['payments' => fn($q) => $q->where('status', 'unpaid')])
+            ->get()
+            ->flatMap(function ($invoice) {
+                return $invoice->payments->map(function ($payment) use ($invoice) {
+                    return [
+                        'id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'total_amount' => $invoice->total_amount,
+                        'payment_date' => $payment->payment_date,
+                    ];
+                });
+            })
+            ->groupBy('payment_date');
     }
 }
