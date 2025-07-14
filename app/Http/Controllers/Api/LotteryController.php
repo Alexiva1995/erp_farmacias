@@ -60,6 +60,11 @@ class LotteryController extends Controller
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
         }
 
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
         $paginate = $this->lottery->filterOrdersPaginate($filtros, $filtros["itemsPerPage"]);
 
         return ApiResponse::success($paginate, "OK", 200);

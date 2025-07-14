@@ -59,8 +59,8 @@ watch(
       orderBy,
       sortBy
   ],
-  async () =>{
-    console.log("uwu")
+  async  () =>{
+    await filtrar()
   }
 )
 
@@ -97,11 +97,12 @@ async function filtrarConPaginacion(filtros){
 }
 
 async function filtrar(){
+  loading.value=true
   let filtros={
     laboratory_id:laboratory_id.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
-    monto_minimo:monto_minimo.value,
+    minimo:`${monto_minimo.value}`,
     itemsPerPage:itemsPerPage.value,
     page:page.value,
     orderBy:orderBy.value,
@@ -112,7 +113,16 @@ async function filtrar(){
   statuModule.ordenesParaLaLoteria=ordenesSinPaginar
   statuModule.items=ordenesConPaginar.data
   statuModule.total=ordenesConPaginar.total
+  loading.value=false
 
+}
+
+const updateTableOptionsTable = options => {
+  console.log(options)
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage
+  sortBy.value = options.sortBy[0]?.key
+  orderBy.value = options.sortBy[0]?.order
 }
 
 
@@ -144,6 +154,7 @@ onMounted(async () => {
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
+        @update:options="updateTableOptionsTable"
       />
     </VCard>
   </div>
