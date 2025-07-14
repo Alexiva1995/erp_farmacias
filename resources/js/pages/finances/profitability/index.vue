@@ -8,7 +8,7 @@ import { onMounted, ref } from 'vue';
 // Constantes para ProfitabilityTable
 const products = ref([]);
 const totalProduct = ref(0)
-const profitability = ref([]);
+const profitability = ref();
 const page = ref(1)
 const itemsPerPage = ref(10)
 const loading = ref(false)
@@ -36,7 +36,10 @@ const percentProfitability = async () => {
   loading.value = true
   try {
     const response = await axios.get('/finances/profitability');
-    profitability.value = response.data[0];
+   
+    profitability.value = response.data.default_profitability_percentage;
+
+    console.log(profitability.value)
   } catch (error) {
     console.error('Hubo un error al obtener la rentabilidad:', error);
     toast.error('Error al obtener la rentabilidad.');
@@ -71,7 +74,7 @@ onMounted(() => {
     <ProfitabilityTable 
     :products="products" 
     :totalProduct="totalProduct" 
-    :profitability="profitability.default_profitability_percentage" 
+    :profitability="profitability"
     :page="page" 
     :itemsPerPage="itemsPerPage" 
     :loading="loading" 

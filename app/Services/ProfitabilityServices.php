@@ -13,9 +13,9 @@ class ProfitabilityServices implements Profitability
 
     public function __construct(protected ProfitabilityRepository $profitabilityRepository) {}
 
-    public function consultAll(): Collection
+    public function consultOne(): Model | null
     {
-        return $this->profitabilityRepository->consultAll();
+        return $this->profitabilityRepository->consultOne();
     }
 
     public function consultById(string $id): ?Model
@@ -26,6 +26,11 @@ class ProfitabilityServices implements Profitability
     public function store(array $data): Model
     {
         return $this->profitabilityRepository->store($data);
+    }
+
+    public function storeProduct(array $data): Model
+    {
+        return $this->profitabilityRepository->storeProduct($data);
     }
 
     public function editProduct(array $data): Model

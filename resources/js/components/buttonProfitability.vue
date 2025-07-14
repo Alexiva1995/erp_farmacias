@@ -15,7 +15,7 @@ const dialog = ref(false)
 
 const percentage = ref(0)
 
-async function updateProfitability() {
+async function storeProfitability() {
 
   let data = {
     "default_profitability_percentage": percentage.value,
@@ -24,7 +24,7 @@ async function updateProfitability() {
   console.log(data);
   
   try {
-    const response = await axios.post("/finances/profitability/1", data);
+    const response = await axios.post("/finances/profitability/store", data);
     
     console.log('Éxito:', response.data);
     emit("refresh")
@@ -67,8 +67,8 @@ async function updateProfitability() {
         <v-card-actions class="justify-between">
           <VBtn text="Cerrar" @click="dialog = false" />
           <VBtn 
-            text="Cambiar" 
-            @click="updateProfitability" 
+            text="Agregar" 
+            @click="storeProfitability" 
           />
         </v-card-actions>
       </VCard>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\InvestmenController;
@@ -68,11 +69,21 @@ Route::prefix("finances")->group(function () {
     // Profitability
     Route::prefix("profitability")->group(function () {
 
-        Route::get("/", [ProfitabilityController::class, "consultAll"]);
+        Route::get("/", [ProfitabilityController::class, "consultOne"]);
+        Route::post("/store", [ProfitabilityController::class, "store"]);
         Route::post("/{id}", [ProfitabilityController::class, "edit"]);
 
         Route::prefix("product")->group(function () {
-            Route::post("/store", [ProfitabilityController::class, "store"]);
+            Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
+            Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
+            Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
         });
+    });
+
+    // exchange rates
+    Route::prefix("exchange-rates")->group(function () {
+
+        Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::post("/store", [ExchangeRateController::class, "store"]);
     });
 });

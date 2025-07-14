@@ -7,7 +7,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 
-class ProfitabilityCreateRequest extends FormRequest
+class ProfitabilityProductCreateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -28,15 +28,18 @@ class ProfitabilityCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "profitability_percentage" =>    "required|int",
-            "is_locked"                =>    "required|int",
+            "product_id"               =>    "required|integer",
+            "profitability_percentage" =>    "required|numeric",
+            "is_locked"                =>    "required|integer",
         ];
     }
 
     public function menssages()
     {
         return [
-            "profitability_percentage.required"                      => "the field is required",
+            "product_id.required"                => "the product id is required",
+            "profitability_percentage.required"  => "the the percentage is required",
+            "is_locked.required"                 => "the is locked is required",
         ];
     }
 
@@ -55,9 +58,9 @@ class ProfitabilityCreateRequest extends FormRequest
     protected function passedValidation()
     {
         $this->profitability = ProfitabilityCreateData::from([
-            "product_id"                 =>   $this->id,
-            "profitability_percentage"   =>   $this->profitability_percentage,
-            "is_locked"                  =>   $this->is_locked,
+            "product_id"               => $this->product_id,
+            "profitability_percentage" => $this->profitability_percentage,
+            "is_locked"                => $this->is_locked,
         ]);
     }
 }
