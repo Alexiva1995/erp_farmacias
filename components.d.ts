@@ -66,6 +66,7 @@ declare module 'vue' {
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
     InventoryCountModal: typeof import('./resources/js/components/dialogs/InventoryCountModal.vue')['default']
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
+    LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']

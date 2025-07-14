@@ -1,14 +1,17 @@
 <script setup>
 const props = defineProps({
-  buscador: String,
-  tipo_empresa_filtro: String,
   fechaHasta_filtro: [String, null],
   fechaDesde_filtro: [String, null],
+  laboratory_id: [String, null],
+  monto_minimo: [String, null],
+  laboratories: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
+  "update:laboratory_id",
+  "update:monto_minimo",
   "clear",
   "action-sortiar",
 ]);
@@ -42,6 +45,27 @@ const emit = defineEmits([
               dateFormat: 'Y-m-d',
             }"
             @update:model-value="emit('update:fechaHasta_filtro', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
+            :model-value="props.laboratory_id"
+            label="Laboratorios"
+            :items="props.laboratories"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:laboratory_id', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VNumberInput
+            :model-value="props.monto_minimo"
+            placeholder="Monto Minimo"
+            clearable
+            variant="outlined"
+            precision="2"
+            @update:model-value="emit('update:monto_minimo', $event)"
           />
         </VCol>
       </VRow>

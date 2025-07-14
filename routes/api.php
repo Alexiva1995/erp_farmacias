@@ -142,7 +142,8 @@ Route::prefix("crm")->group(function () {
 
     // Rutas Sorteo
     Route::prefix("lottery")->group(function () {
-        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+        Route::post("/filtrar-ordenes-sin-paginar",  [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+        Route::post("/filtrar-ordenes",              [LotteryController::class, "filtrarOrdenesPaginate"]);
     });
 });
 
