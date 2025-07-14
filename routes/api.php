@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
 
@@ -138,6 +139,11 @@ Route::prefix("crm")->group(function () {
         Route::post("/filtrar",               [ClientController::class, "filtrar"]);
         Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
+    });
+
+    // Rutas Sorteo
+    Route::prefix("lottery")->group(function () {
+        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
     });
 });
 

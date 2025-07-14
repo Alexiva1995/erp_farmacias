@@ -23,8 +23,7 @@ class DoctorController extends Controller
     public function create(CreateDoctorRequest $request): JsonResponse
     {
         $record = $this->doctor->create($request->data->all());
-
-        return ApiResponse::success($record, "successfully", 200);
+        return ApiResponse::success($record, "Doctor creado exitosamente", 200);
     }
 
     public function edit(EditDoctorRequest $request): JsonResponse
@@ -33,22 +32,20 @@ class DoctorController extends Controller
         if ($buscarPorIdentificaion) {
             if ($request->data->id != $buscarPorIdentificaion->id) {
                 $errors = [
-                    "identification" => ["Cannot update because the ID is already in use"]
+                    "identification" => ["No se puede actualizar porque la identificación ya está en uso"]
                 ];
-                return ApiResponse::error("Cannot update because the ID is already in use", 400, $errors);
+                return ApiResponse::error("No se puede actualizar porque la identificación ya está en uso", 400, $errors);
             }
         }
 
         $respuestaDB = $this->doctor->edit($request->data->id, $request->data->all());
-
-        return ApiResponse::success($respuestaDB, "doctor successfully edited", 200);
+        return ApiResponse::success($respuestaDB, "Doctor actualizado exitosamente", 200);
     }
-
 
     public function consultAll(): JsonResponse
     {
         $respuesDB = $this->doctor->consultAll();
-        return ApiResponse::success($respuesDB, "successfully", 200);
+        return ApiResponse::success($respuesDB, "Operación exitosa", 200);
     }
 
     public function consultById(Request $request)
@@ -56,10 +53,10 @@ class DoctorController extends Controller
         $respuestaDB = $this->doctor->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the doctor not found", 404);
+            return ApiResponse::error("El doctor no fue encontrado", 404);
         }
 
-        return ApiResponse::success($respuestaDB, "successfully", 200);
+        return ApiResponse::success($respuestaDB, "Operación exitosa", 200);
     }
 
     public function deleteById(Request $request): JsonResponse
@@ -67,7 +64,7 @@ class DoctorController extends Controller
         $respuestaDB = $this->doctor->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the doctor not found", 404);
+            return ApiResponse::error("El doctor no fue encontrado", 404);
         }
 
         $this->doctor->deleteById($request->id);
@@ -75,10 +72,10 @@ class DoctorController extends Controller
         $validarEliminacio = $this->doctor->consultById($request->id);
 
         if ($validarEliminacio) {
-            return ApiResponse::error("the doctor not eliminated", 404);
+            return ApiResponse::error("El doctor no pudo ser eliminado", 404);
         }
 
-        return ApiResponse::success($validarEliminacio, "The doctor was successfully deleted", 200);
+        return ApiResponse::success($validarEliminacio, "Doctor eliminado exitosamente", 200);
     }
 
     public function filtrar(Request $request)

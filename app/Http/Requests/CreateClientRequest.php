@@ -54,42 +54,46 @@ class CreateClientRequest extends FormRequest
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
-            "name.required"                      => "the field is required",
-            "name.string"                        => "the field is type string",
-            "name.max"                           => "the max of field is 255 characters",
+            // Nombre
+            'name.required' => 'El nombre es obligatorio',
+            'name.string' => 'El nombre debe ser texto',
+            'name.max' => 'El nombre no puede exceder 255 caracteres',
 
-            // "last_name.required"                 => "the field is required",
-            "last_name.string"                   => "the field is type string",
-            "last_name.max"                      => "the max of field is 255 characters",
+            // Apellido
+            'last_name.string' => 'El apellido debe ser texto',
+            'last_name.max' => 'El apellido no puede exceder 255 caracteres',
 
-            // "email.required"                     => "the field is required",
-            "email.string"                       => "the field is type string",
-            "email.max"                          => "the max of field is 255 characters",
-            "email.email"                        => "the format of email is invalid",
+            // Email
+            'email.string' => 'El correo electrónico debe ser texto',
+            'email.max' => 'El correo no puede exceder 255 caracteres',
+            'email.email' => 'Debe ingresar un correo electrónico válido',
 
-            "identification_type.required"       => "the field is required",
-            "identification_type.string"         => "the field is type string",
-            "identification_type.in"             => "The document type must be one of: V-, J-, G-, E-",
+            // Tipo de identificación
+            'identification_type.required' => 'El tipo de documento es obligatorio',
+            'identification_type.string' => 'El tipo de documento debe ser texto',
+            'identification_type.in' => 'Tipo de documento inválido. Opciones válidas: V-, J-, G-, E-',
 
-            "identification.required"            => "the field is required",
-            "identification.string"              => "the field is type string",
-            "identification.unique"              => "the ID is already in use",
-            "identification.min"                 => "the min of field is 7 characters",
-            "identification.max"                 => "the max of field is 9 characters",
+            // Identificación
+            'identification.required' => 'La cédula/RIF es obligatoria',
+            'identification.string' => 'La cédula/RIF debe ser texto',
+            'identification.unique' => 'Esta cédula/RIF ya está registrada',
+            'identification.min' => 'La cédula/RIF debe tener al menos 7 caracteres',
+            'identification.max' => 'La cédula/RIF no puede exceder 9 caracteres',
 
-            "phone.required"                     => "the field is required",
-            "phone.string"                       => "the field is type string",
-            "phone.max"                          => "the max of field is 255 characters",
+            // Teléfono
+            'phone.required' => 'El teléfono es obligatorio',
+            'phone.string' => 'El teléfono debe ser texto',
+            'phone.max' => 'El teléfono no puede exceder 50 caracteres',
 
-            "address.required"                   => "the field is required",
-            "address.string"                     => "the field is type string",
+            // Dirección
+            'address.required' => 'La dirección es obligatoria',
+            'address.string' => 'La dirección debe ser texto',
 
-            // "company_id.required"                => "the field is required",
-            "company_id.exists"                  => "the company is not found",
-
+            // Compañía
+            'company_id.exists' => 'La empresa seleccionada no existe',
         ];
     }
 

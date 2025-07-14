@@ -1,7 +1,7 @@
 <script setup lang="js">
 
+import CompanyFilters from "@/components/CompanyFilters.vue";
 import CompanyTable from "@/components/CompanyTable.vue";
-import CompanyFilters from "@/components/dialogs/CompanyFilters.vue";
 import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";

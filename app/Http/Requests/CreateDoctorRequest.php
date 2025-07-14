@@ -38,17 +38,18 @@ class CreateDoctorRequest extends FormRequest
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
-            "name.required"                      => "the field is required",
-            "name.string"                        => "the field is type string",
-            "name.max"                           => "the max of field is 255 characters",
+            "name.required" => "El nombre del doctor es obligatorio",
+            "name.string" => "El nombre debe ser texto",
+            "name.max" => "El nombre no puede exceder 255 caracteres",
 
-            "identification.required"            => "the field is required",
-            "identification.string"              => "the field is type string",
+            "identification.required" => "La identificación es obligatoria",
+            "identification.string" => "La identificación debe ser texto",
+            "identification.unique" => "La identificación ya está registrada",
 
-            "address.string"                     => "the field is type string",
+            "address.string" => "La dirección debe ser texto"
         ];
     }
 

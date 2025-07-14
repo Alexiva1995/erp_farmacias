@@ -5,12 +5,15 @@ namespace App\Providers;
 use App\Contracts\Client;
 use App\Contracts\Company;
 use App\Contracts\Doctor;
+use App\Contracts\Lottery;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\LotteryController;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
+use App\Services\LotteryServices;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +36,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);
+
+        $this->app->when(LotteryController::class)
+            ->needs(Lottery::class)
+            ->give(LotteryServices::class);
     }
 
     /**

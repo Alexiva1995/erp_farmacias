@@ -1,23 +1,16 @@
 <script setup>
 const props = defineProps({
   buscador: String,
-  tipo_identificacion_filtro: String,
-  company_id_filtro: [String, null],
+  tipo_empresa_filtro: String,
   fechaHasta_filtro: [String, null],
   fechaDesde_filtro: [String, null],
-  companies: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
-  "update:buscador",
-  "update:tipo_identificacion_filtro",
-  "update:company_id_filtro",
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
   "clear",
-  "add-client",
-  "export-pdf",
-  "export-excel",
+  "action-sortiar",
 ]);
 </script>
 
@@ -25,36 +18,6 @@ const emit = defineEmits([
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="6">
-          <AppTextField
-            :model-value="props.buscador"
-            placeholder="Buscar por nombre, apellido, identificación o dirección..."
-            clearable
-            @update:model-value="emit('update:buscador', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.tipo_identificacion_filtro"
-            label="Tipo de identificación"
-            :items="['V-', 'J-', 'G-', 'E-']"
-            clearable
-            @update:model-value="
-              emit('update:tipo_identificacion_filtro', $event)
-            "
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.company_id_filtro"
-            label="Empresa"
-            :items="props.companies"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:company_id_filtro', $event)"
-          />
-        </VCol>
         <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
@@ -91,7 +54,7 @@ const emit = defineEmits([
         Limpiar Filtros
       </VBtn>
       <VSpacer />
-      <VMenu>
+      <!-- <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn
             color="success"
@@ -116,13 +79,13 @@ const emit = defineEmits([
             <VListItemTitle>PDF</VListItemTitle>
           </VListItem>
         </VList>
-      </VMenu>
+      </VMenu> -->
       <VBtn
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('add-client')"
+        @click="emit('action-sortiar')"
       >
-        Agregar Cliente
+        Sortiar
       </VBtn>
     </VCardActions>
   </VCard>

@@ -59,7 +59,7 @@ const sortByTablaClientesJuridicos = ref()
 const orderByTablaClientesJuridicos = ref()
 
 const buscardor_filtro= ref("");
-const tipo_identificacion_filtro= ref("");
+const tipo_identificacion_filtro= ref(null);
 const company_id_filtro= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
@@ -217,7 +217,13 @@ async function actualizarTabla(){
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    tipo:["V-","E-"]
+    tipo:["V-","E-"],
+
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
   statuModule.itemsClientesNaturales=respuestaApiNaturles.data
@@ -228,7 +234,13 @@ async function actualizarTabla(){
     itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
     orderBy:orderByTablaClientesJuridicos.value,
     sortBy:sortByTablaClientesJuridicos.value,
-    tipo:["J-","G-"]
+    tipo:["J-","G-"],
+
+    buscardor_filtro:buscardor_filtro.value,
+    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
+    company_id:company_id_filtro.value,
+    fechaDesde_filtro:fechaDesde_filtro.value,
+    fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApiJurudicas= await filtrar(filtroJuridica)
   statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
@@ -372,7 +384,11 @@ watch(
       sortBy
   ],
   async () =>{
-    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==""){
+    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==null){
+      if(tipo_identificacion_filtro.value!=""){
+          statuModule.itemsClientesJuridicos=[]
+          statuModule.totalClientesJuridicos=0
+      }
       await actualizarTablaTablaNatural()
     }
   }
@@ -391,7 +407,11 @@ watch(
       sortByTablaClientesJuridicos
   ],
   async () =>{
-    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==""){
+    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==null){
+      if(tipo_identificacion_filtro.value!=null){
+          statuModule.itemsClientesNaturales=[]
+          statuModule.totalClientesNaturales=0
+      }
       await actualizarTablaTablJuridica()
     }
   }
@@ -545,13 +565,6 @@ onMounted(async () => {
       @save="enviar"
     />
     <VCard title="Clientes Naturales">
-      <VDivider />
-      <!-- <div class="d-flex flex-wrap justify-end gap-4 ma-6">
-        <VBtn color="primary" @click="mostarModal()">
-          <VIcon icon="tabler-plus" class="mr-2" />
-          Agregar
-        </VBtn>
-      </div> -->
       <VDivider />
       <ClientTable
         :clients="statuModule.itemsClientesNaturales"

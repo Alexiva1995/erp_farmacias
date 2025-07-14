@@ -1,6 +1,6 @@
 <script setup lang="js">
-import DoctorFilters from "@/components/dialogs/DoctorFilters.vue";
 import DoctorFormDialoge from "@/components/dialogs/DoctorFormDialoge.vue";
+import DoctorFilters from "@/components/DoctorFilters.vue";
 import DoctorTable from "@/components/DoctorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
