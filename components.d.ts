@@ -65,6 +65,8 @@ declare module 'vue' {
     GroupTable: typeof import('./resources/js/components/GroupTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
     InventoryCountModal: typeof import('./resources/js/components/dialogs/InventoryCountModal.vue')['default']
+    LoaderComponent: typeof import('./resources/js/components/LoaderComponent.vue')['default']
+    LotteryDialoge: typeof import('./resources/js/components/dialogs/LotteryDialoge.vue')['default']
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
     LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']

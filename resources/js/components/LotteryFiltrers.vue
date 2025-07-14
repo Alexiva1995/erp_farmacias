@@ -1,5 +1,6 @@
 <script setup>
 const props = defineProps({
+  numero_de_premios: [String, null],
   fechaHasta_filtro: [String, null],
   fechaDesde_filtro: [String, null],
   laboratory_id: [String, null],
@@ -8,6 +9,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
+  "update:numero_de_premios",
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
   "update:laboratory_id",
@@ -68,6 +70,15 @@ const emit = defineEmits([
             @update:model-value="emit('update:monto_minimo', $event)"
           />
         </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VNumberInput
+            :model-value="props.numero_de_premios"
+            placeholder="Numero de ganadores"
+            clearable
+            variant="outlined"
+            @update:model-value="emit('update:numero_de_premios', $event)"
+          />
+        </VCol>
       </VRow>
     </VCardText>
 
@@ -78,36 +89,10 @@ const emit = defineEmits([
         Limpiar Filtros
       </VBtn>
       <VSpacer />
-      <!-- <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-upload"
-            v-bind="menuProps"
-          >
-            Exportar
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem @click="emit('export-excel', 'xlsx')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
-            </template>
-            <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export-pdf')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
-            </template>
-            <VListItemTitle>PDF</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu> -->
       <VBtn
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('action-sortiar')"
+        @click="emit('action-sortiar', 'ok')"
       >
         Sortiar
       </VBtn>
