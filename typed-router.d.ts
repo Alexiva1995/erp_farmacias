@@ -21,6 +21,7 @@ declare module 'vue-router/auto-routes' {
     'root': RouteRecordInfo<'root', '/', Record<never, never>, Record<never, never>>,
     '$error': RouteRecordInfo<'$error', '/:error(.*)', { error: ParamValue<true> }, { error: ParamValue<false> }>,
     'auth-login': RouteRecordInfo<'auth-login', '/auth/login', Record<never, never>, Record<never, never>>,
+    'finances-exchangerate': RouteRecordInfo<'finances-exchangerate', '/finances/exchangerate', Record<never, never>, Record<never, never>>,
     'finances-profitability': RouteRecordInfo<'finances-profitability', '/finances/profitability', Record<never, never>, Record<never, never>>,
     'inventory-cyclic': RouteRecordInfo<'inventory-cyclic', '/inventory/cyclic', Record<never, never>, Record<never, never>>,
     'inventory-expirations': RouteRecordInfo<'inventory-expirations', '/inventory/expirations', Record<never, never>, Record<never, never>>,

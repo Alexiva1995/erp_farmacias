@@ -6,7 +6,8 @@ use App\Contracts\Profitability;
 use App\Models\ProfitabilitySettings;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ProfitabilityCreateRequest;
+use App\Http\Requests\ProfitabilityProductCreateRequest;
+use App\Http\Requests\ProfitabilityProductEditRequest;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,46 +22,21 @@ class ProfitabilityController extends Controller
 
     // Se deberia hacer una function del controller donce valide si existe un producto o no cuando se le da al candado
 
-    public function store(Request $request)
+    public function storeProfitabilityProduct(ProfitabilityProductCreateRequest $request)
     {
-
-        if ($this->profitability->consultById($request->product_id)) {
-
-            $data = [
-                'id'                       => $request->id,
-                'product_id'               => $request->product_id,
-                'profitability_percentage' => $request->profitability_percentage,
-                'is_locked'                => $request->is_locked
-            ];
-            $this->profitability->editProduct($data);
-        } else {
-            $data = [
-                'product_id'               => $request->product_id,
-                'profitability_percentage' => $request->profitability_percentage,
-                'is_locked'                => $request->is_locked
-            ];
-
-            $this->profitability->store($data);
-        }
-
-        return response()->json("Se ha enviado los datos con exito");
+        //dump($request->profitability);
+        $this->profitability->storeProduct($request->profitability->all());
+        return response()->json("Se ha guardado la rentabilidad del producto");
     }
 
-    //Debe haber un buscador de los prodcutos que ya tienen un dato guardado
-
-    /*public function editProduct(Request $request, $id)
+    public function editProfitabilityProduct(ProfitabilityProductEditRequest $request)
     {
-        $crear = [
-            'product_id'               => $request->id_product,
-            'profitability_percentage' => $request->profitability_percentage,
-            'is_locked'                => $request->is_locked
-        ];
-        $this->profitability->editProduct($editar);
-
+        //return dump($request->profitability);
+        $this->profitability->editProduct($request->profitability->all());
         return response()->json("Se ha actualizado el porcentaje");
-    }*/
+    }
 
-    public function edit(Request $request, $id)
+    /*public function edit(Request $request, $id)
     {
         $editar = [
             'default_profitability_percentage' => $request->default_profitability_percentage,
@@ -69,10 +45,36 @@ class ProfitabilityController extends Controller
         $this->profitability->edit($editar);
 
         return response()->json("Se ha actualizado el porcentaje");
+    }*/
+
+    public function store(Request $request)
+    {
+        $crear = [
+            'default_profitability_percentage' => $request->default_profitability_percentage,
+        ];
+        $this->profitability->store($crear);
+        return response()->json("Se ha actualizado el porcentaje");
     }
 
-    public function consultAll(Request $request)
+    public function consultOne(Request $request)
     {
-        return $this->profitability->consultAll();
+        return $this->profitability->consultOne();
+    }
+
+    public function getProduct($id)
+    {
+
+        if ($this->profitability->consultById($id)) {
+
+            $data = [
+                "message" => "Todo bien"
+            ];
+            return new JsonResponse($data, 200);
+        } else {
+            $data = [
+                "message" => "Todo bien"
+            ];
+            return new JsonResponse($data, 404);
+        }
     }
 }

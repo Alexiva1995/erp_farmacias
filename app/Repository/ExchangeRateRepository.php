@@ -2,38 +2,35 @@
 
 namespace App\Repository;
 
-use App\Models\Product;
-use App\Models\ProfitabilitySettings;
-use App\Models\ProductProfitability;
+use App\Models\ExchangeRate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
-class ProfitabilityRepository
+class ExchangeRateRepository
 {
 
-    public function consultOne(): Model | null
+    public function consultAll(): Collection
     {
-        $product = ProfitabilitySettings::orderBy('created_at', 'desc')->first();
+        $product = ExchangeRate::all();
 
 
         return $product;
     }
 
+    public function store(array $data): Model
+    {
+        return ExchangeRate::create($data);
+    }
+
+    /*
     public function consultById(string $id): ?Model
     {
         $product = ProductProfitability::query()->where("product_id", "=", $id)->first();
         return $product;
     }
 
-    public function store(array $data): Model
-    {
-        return ProfitabilitySettings::create($data);
-    }
 
-    public function storeProduct(array $data): Model
-    {
-        return ProductProfitability::create($data);
-    }
+    
 
     public function editProduct(array $data): Model
     {
@@ -47,5 +44,5 @@ class ProfitabilityRepository
     {
         ProfitabilitySettings::where("id", "=", $data["id"])->update($data);
         return ProfitabilitySettings::find($data["id"]);
-    }
+    }*/
 }

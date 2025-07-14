@@ -10,7 +10,7 @@ class ProfitabilityCreateData extends Data
 
     public function __construct(
         public int $product_id,
-        public int $profitability_percentage,
-        public int $is_locked,
+        public float $profitability_percentage,
+        public int $is_locked
     ) {}
 }

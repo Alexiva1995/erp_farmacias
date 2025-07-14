@@ -13,6 +13,10 @@ export default [
         title: 'Rentabilidad',
         to: 'finances-profitability',
       },
+      {
+        title: 'Tasa de cambio',
+        to: 'finances-exchangerate',
+      },
     ],
   },
 ]
