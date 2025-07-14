@@ -28,6 +28,7 @@ const statuModule= reactive({
 const numero_de_premios = ref(3)
 
 
+const loadingApp = ref(false)
 const loading = ref(false)
 
 const page = ref(1)
@@ -128,6 +129,7 @@ async function sortiar(payload){
   // alert(payload)
   if(numero_de_premios.value!=""){
     if(numero_de_premios.value>0){
+      loadingApp.value=true
       let filtros={
         laboratory_id:laboratory_id.value,
         fechaDesde_filtro:fechaDesde_filtro.value,
@@ -139,6 +141,7 @@ async function sortiar(payload){
         sortBy:sortBy.value,
       }
       let ordenesSinPaginar=await filtrarSinPaginar(filtros)
+      loadingApp.value=false
       statuModule.ordenesParaLaLoteria=ordenesSinPaginar
       let ganadores=seleccionarGanadores([...ordenesSinPaginar],numero_de_premios.value)
       if(ganadores.length>0){
@@ -149,6 +152,7 @@ async function sortiar(payload){
         })
       }
       else{
+        loadingApp.value=false
         modal.statu=false
         modal.lista=[]
         toast.error("Error no hay ganadores suficientes para poder hacer el sorteo")
@@ -214,6 +218,7 @@ onMounted(async () => {
 })
 </script>
 <template>
+  <LoaderComponent :loadingApp="loadingApp" />
   <div>
     <LotteryDialoge
       :modalFormulario="modal.statu"

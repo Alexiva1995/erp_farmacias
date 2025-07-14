@@ -17,7 +17,11 @@ const headers = [
   { title: 'Vendedor',                 key: 'nameSeller', sortable: false, value: item => item.seller.username},
   { title: 'Monto',                    key: 'total_amount_usd', sortable:true},
   { title: 'Moneda',                   key: 'currency', sortable:true},
-  { title: 'Fecha',                    key: 'created_at', sortable: true, value: item => day(item.created_at).format("DD/MM/YYYY") },
+  { title: 'Fecha',                    key: 'created_at', sortable: true, value: item => {
+    const fechaStr = item.created_at.replace('Z', '');
+    const fecha = day(fechaStr).format('DD/MM/YYYY');
+    return fecha;
+  }},
 ];
 
 const emit= defineEmits(["edit",'delete',"update:options"])

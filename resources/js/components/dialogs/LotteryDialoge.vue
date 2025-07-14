@@ -14,7 +14,9 @@ function close(){
   <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
     <VCard>
       <VCardTitle class="d-flex align-center">
-        <span class="headline">Loteria</span>
+        <span class="headline"
+          >Total de ganadores: {{ props.lista.length }}</span
+        >
         <VSpacer />
         <VBtn icon variant="text" @click="close">
           <VIcon>tabler-x</VIcon>
