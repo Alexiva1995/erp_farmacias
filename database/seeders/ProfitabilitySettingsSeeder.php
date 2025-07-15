@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\ProfitabilitySetting;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class ProfitabilitySettingsSeeder extends Seeder
 {
@@ -12,8 +13,10 @@ class ProfitabilitySettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        ProfitabilitySetting::create([
-            'default_profitability_percentage' => '25',
+        DB::table('profitability_settings')->insert([
+            'default_profitability' => 20,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 }

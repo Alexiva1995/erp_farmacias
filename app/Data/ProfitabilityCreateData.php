@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Data;
+
+use Spatie\LaravelData\Data;
+
+
+class ProfitabilityCreateData extends Data
+{
+
+    public function __construct(
+        public int $product_id,
+        public float $profitability_percentage,
+        public int $is_locked
+    ) {}
+}
