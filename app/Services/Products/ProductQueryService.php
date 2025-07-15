@@ -19,6 +19,7 @@ class ProductQueryService
             'laboratory',
             'origin',
             'group',
+            'profitability',
             'lots' => function ($query) {
                 $query->where('quantity', '>', 0);
             },
