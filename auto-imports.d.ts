@@ -109,6 +109,7 @@ declare global {
   const pausableWatch: typeof import('@vueuse/core')['pausableWatch']
   const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
   const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
+  const pdfDoctorsGenerator: typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
@@ -473,6 +474,7 @@ declare module 'vue' {
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
     readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
     readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
+    readonly pdfDoctorsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>

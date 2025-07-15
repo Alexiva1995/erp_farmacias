@@ -4,18 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ExchangeRate extends Model
+class ProfitabilitySettings extends Model
 {
     //
 
-    protected $table = 'exchange_rates';
+    protected $table = 'profitability_settings';
 
     /**
      * Los atributos que son asignables masivamente.
      */
     protected $fillable = [
-        'currency_code',
-        'rate',
-        'source'
+        'default_profitability_percentage'
     ];
 }
