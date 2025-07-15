@@ -12,20 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('exchange_rates', function (Blueprint $table) {
-            $table->id();
+            $table->id(); // Equivalente a BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
             $table->string('currency_code', 10);
             $table->decimal('rate', 10, 4);
             $table->string('source', 50)->nullable();
-            $table->timestamps();
+            $table->timestamps(); // Maneja created_at y updated_at con timestamps por defecto
 
             $table->index('currency_code', 'idx_currency_code');
             $table->index('rate', 'idx_exchange_rate');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('exchange_rates');

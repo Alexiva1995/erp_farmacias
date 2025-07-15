@@ -44,11 +44,16 @@ class ResourceController extends Controller
     {
         try {
             $product = $this->resourceService->getProductByBarcode($barcode);
-           return response()->json($product);
+            return response()->json($product);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Producto no encontrado.'], 404);
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Ocurrió un error inesperado.'], 500);
         }
+    }
+    public function getAllProducts()
+    {
+        $products = $this->resourceService->getAllProducts();
+        return response()->json($products);
     }
 }
