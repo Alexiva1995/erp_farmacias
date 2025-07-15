@@ -9,10 +9,8 @@ import { onMounted, reactive } from 'vue';
 
 const statuModule= reactive({
   items:[],
-  itemsClientesNaturales:[],
-  totalClientesNaturales:0,
-  itemsClientesJuridicos:[],
-  totalClientesJuridicos:0,
+  itemsClientes:[],
+  totalClientes:0,
   comapanies:[],
 })
 
@@ -221,15 +219,15 @@ async function actualizarTabla(){
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
-  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+  statuModule.itemsClientes=respuestaApiNaturles.data
+  statuModule.totalClientes=respuestaApiNaturles.total
 
   statuModule.items=[...respuestaApiNaturles.data]
 
   loading.value = false;
 }
 
-async function actualizarTablaTablaNatural(){
+async function actualizarTablaTablaClientes(){
   loading.value = true;
 
   let filtroNaturales={
@@ -246,10 +244,10 @@ async function actualizarTablaTablaNatural(){
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
-  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+  statuModule.itemsClientes=respuestaApiNaturles.data
+  statuModule.totalClientes=respuestaApiNaturles.total
 
-  statuModule.items=[...statuModule.itemsClientesJuridicos,...respuestaApiNaturles.data]
+  statuModule.items=[...respuestaApiNaturles.data]
 
   loading.value = false;
 }
@@ -329,7 +327,7 @@ watch(
       sortBy
   ],
   async () =>{
-    await actualizarTablaTablaNatural()
+    await actualizarTablaTablaClientes()
   }
 )
 
@@ -483,8 +481,8 @@ onMounted(async () => {
     <VCard title="Clientes">
       <VDivider />
       <ClientTable
-        :clients="statuModule.itemsClientesNaturales"
-        :total-clients="statuModule.totalClientesNaturales"
+        :clients="statuModule.itemsClientes"
+        :total-clients="statuModule.totalClientes"
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
