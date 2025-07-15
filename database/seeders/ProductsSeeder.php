@@ -26,10 +26,9 @@ class ProductsSeeder extends Seeder
 
             $product['category_id'] = $categoryIds[array_rand($categoryIds)];
             $product['origin_id'] = $product['provenance_id'];
-            $product['cost_price'] = $product['cost'];
+            $product['unit_cost'] = $product['cost'];
             $product['sale_price'] = $product['price'] ?? 0;
-            $product['stock'] = $product['units'] ?? 0;
-            $product['from_colombia'] = $product['is_colombian'] ?? 0;
+            $product['is_colombian_origin'] = $product['is_colombian'] ?? 0;
             $product['active_ingredient'] = $product['active_ingredient'] ?? 'MISSING';
             $product['barcode'] = $product['code_bar'] ?? 'MISSING-' . str_pad($missingCount, 6, '0', STR_PAD_LEFT);
             $product['iva'] = 0;

@@ -1,5 +1,4 @@
-import finances from './finances'
 import inventory from './inventory'
 import lot from './lot'
 
-export default [...inventory, ...lot, ...finances]
+export default [...inventory, ...lot]

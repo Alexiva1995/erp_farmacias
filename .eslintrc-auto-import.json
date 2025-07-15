@@ -359,6 +359,13 @@
     "watchThrottled": true,
     "watchTriggerable": true,
     "watchWithFilter": true,
-    "whenever": true
+    "whenever": true,
+    "generateDonationPDF": true,
+    "formatCurrency": true,
+    "roundUpToNearesHundred": true,
+    "roundUpToNearestHundred": true,
+    "pdfClienstGenerator": true,
+    "pdfCompaniesGenerator": true,
+    "pdfDoctorsGenerator": true
   }
 }

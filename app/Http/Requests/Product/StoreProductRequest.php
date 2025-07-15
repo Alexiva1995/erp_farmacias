@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Product;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,7 +31,7 @@ class StoreProductRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'origin_id' => ['required', 'exists:origins,id'],
 
-            'cost_price' => ['required_if:id,null', 'numeric', 'gt:0'],
+            'unit_cost' => ['required_if:id,null', 'numeric', 'gt:0'],
             'sale_price' => ['required', 'numeric', 'min:0'],
 
             'barcode' => [
@@ -43,12 +43,11 @@ class StoreProductRequest extends FormRequest
 
             'iva' => ['required', 'boolean'],
             'psychotropic' => ['required', 'boolean'],
-            'from_colombia' => ['required', 'boolean'],
+            'is_colombian_origin' => ['required', 'boolean'],
 
-            'photo_url' => ['required', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
 
-            'related_product_ids' => ['nullable', 'array'],
-            'related_product_ids.*' => ['exists:products,id'],
+            'group_id' => 'nullable|integer|exists:groups_products,id',
         ];
     }
 
@@ -77,9 +76,9 @@ class StoreProductRequest extends FormRequest
             'origin_id.required' => 'Debe seleccionar un origen.',
             'origin_id.exists' => 'El origen seleccionado no es válido.',
 
-            'cost_price.required_if' => 'El costo de compra es obligatorio para productos nuevos.',
-            'cost_price.numeric' => 'El costo de compra debe ser un número.',
-            'cost_price.gt' => 'El costo de compra debe ser mayor a cero.',
+            'unit_cost.required_if' => 'El costo de compra es obligatorio para productos nuevos.',
+            'unit_cost.numeric' => 'El costo de compra debe ser un número.',
+            'unit_cost.gt' => 'El costo de compra debe ser mayor a cero.',
 
             'sale_price.required' => 'El costo de venta es obligatorio.',
             'sale_price.numeric' => 'El costo de venta debe ser un número.',
@@ -93,8 +92,8 @@ class StoreProductRequest extends FormRequest
             'iva.boolean' => 'El valor para IVA no es válido.',
             'psychotropic.required' => 'Debe indicar si el producto es psicotrópico.',
             'psychotropic.boolean' => 'El valor para Psicotrópico no es válido.',
-            'from_colombia.required' => 'Debe indicar si el producto es de Plan Colombia.',
-            'from_colombia.boolean' => 'El valor para P.Colombia no es válido.',
+            'is_colombian_origin.required' => 'Debe indicar si el producto es de Plan Colombia.',
+            'is_colombian_origin.boolean' => 'El valor para P.Colombia no es válido.',
 
             'photo_url.required' => 'La imagen del producto es obligatoria.',
             'photo_url.image' => 'El archivo debe ser una imagen válida.',

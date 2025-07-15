@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Product;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -14,9 +13,24 @@ class UpdateProductRequest extends FormRequest
      */
     public function authorize()
     {
-        // Aquí puedes poner lógica de autorización más compleja si es necesario.
-        // Por ahora, solo verificamos que el usuario esté autenticado.
         return true;
+    }
+
+    /**
+     * 
+     *
+     * 
+     */
+    protected function prepareForValidation()
+    {
+        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+            $this->request->remove('photo_url');
+        }
+        $this->merge([
+            'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
+            'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
+            'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
+        ]);
     }
 
     /**
@@ -27,18 +41,25 @@ class UpdateProductRequest extends FormRequest
     public function rules()
     {
         $productId = $this->route('product')->id ?? null;
+
         return [
             'name' => 'sometimes|string|max:255',
             'active_ingredient' => 'nullable|string|max:255',
             'laboratory_id' => 'nullable|integer|exists:laboratories,id',
-            'sale_price' => 'nullable|numeric|min:0',
+            'unit_cost' => 'nullable|numeric|min:0',
             'origin_id' => 'nullable|integer|exists:origins,id',
             'category_id' => 'nullable|integer|exists:categories,id',
             'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
             'psychotropic' => 'sometimes|boolean',
-            'from_colombia' => 'sometimes|boolean',
-            'related_product_ids' => 'nullable|array',
-            'related_product_ids.*' => 'integer|exists:products,id',
+            'iva' => 'sometimes|boolean',
+            'is_colombian_origin' => 'sometimes|boolean',
+            'group_id' => 'nullable|integer|exists:groups_products,id',
+            'photo_url' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'max:2048',
+            ],
         ];
     }
 }
