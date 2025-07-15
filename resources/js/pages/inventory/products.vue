@@ -203,8 +203,8 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
-  sortBy.value = undefined;
-  orderBy.value = undefined;
+  // sortBy.value = undefined;
+  // orderBy.value = undefined;
 };
 
 const handleAddProduct = () => {
@@ -265,8 +265,13 @@ const handleExport = async (format) => {
   }
 };
 const handleSort = (sortOptions) => {
-  sortBy.value = sortOptions.key;
-  orderBy.value = sortOptions.order;
+  if (sortOptions.key === undefined && sortOptions.order === undefined) {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  } else {
+    sortBy.value = sortOptions.key;
+    orderBy.value = sortOptions.order;
+  }
 };
 </script>
 

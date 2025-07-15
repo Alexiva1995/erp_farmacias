@@ -5,11 +5,13 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Api\ProfitabilityController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
@@ -17,6 +19,7 @@ use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\FiscalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,7 +31,6 @@ use App\Http\Controllers\Api\QuotationController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
 // Rutas de autenticación
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/two-factor-challenge', [LoginController::class, 'verify2FA']);
@@ -64,14 +66,22 @@ Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
+Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
 Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+
 Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
 Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
 Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
+Route::post('/expirations/adjust-expired-prices', [ExpirationController::class, 'adjustExpiredProductsPrices']);
+Route::get('/expirations/month/{month}/adjustment-status', [ExpirationController::class, 'checkMonthAdjustmentStatus']);
+
+// Opcional: Ruta para obtener el historial de reajustes
+Route::get('/price-adjustments', [ExpirationController::class, 'getPriceAdjustmentHistory']);
+Route::get('/price-adjustments/month/{month}', [ExpirationController::class, 'getMonthPriceAdjustments']);
 
 // Rutas de Donaciones
 Route::post('/donations', [DonationController::class, 'create']);
@@ -83,6 +93,7 @@ Route::get('/product-without-lots', [LotController::class, 'productsWithInconsis
 Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
 
 // Rutas de Ajustes de Inventario
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
@@ -105,39 +116,39 @@ Route::prefix("crm")->group(function () {
 
     // Rutas de Doctores
     Route::prefix("doctors")->group(function () {
-        Route::post("/",                      [DoctorController::class, "create"]);
-        Route::post("/edit/{id}",             [DoctorController::class, "edit"]);
-        Route::get("/",                       [DoctorController::class, "consultAll"]);
-        Route::get("/{id}",                   [DoctorController::class, "consultById"]);
-        Route::delete("/{id}",                [DoctorController::class, "deleteById"]);
-        Route::post("/filtrar",               [DoctorController::class, "filtrar"]);
-        Route::post("/filtrar-sin-paginar",   [DoctorController::class, "filtrarSinPaginar"]);
-        Route::get("/exportar/excel",         [DoctorController::class, "exportarExcel"]);
-        Route::get("/help/check",             [DoctorController::class, "helpCheck"]);
+        Route::post("/", [DoctorController::class, "create"]);
+        Route::post("/edit/{id}", [DoctorController::class, "edit"]);
+        Route::get("/", [DoctorController::class, "consultAll"]);
+        Route::get("/{id}", [DoctorController::class, "consultById"]);
+        Route::delete("/{id}", [DoctorController::class, "deleteById"]);
+        Route::post("/filtrar", [DoctorController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar", [DoctorController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel", [DoctorController::class, "exportarExcel"]);
+        Route::get("/help/check", [DoctorController::class, "helpCheck"]);
     });
 
     // Rutas de Compañías
     Route::prefix("companies")->group(function () {
-        Route::post("/",                      [CompanyController::class, "create"]);
-        Route::get("/",                       [CompanyController::class, "consultAll"]);
-        Route::get("/{id}",                   [CompanyController::class, "consultById"]);
-        Route::delete("/{id}",                [CompanyController::class, "deleteById"]);
-        Route::post("/edit/{id}",             [CompanyController::class, "edit"]);
-        Route::post("/filtrar",               [CompanyController::class, "filtrar"]);
-        Route::post("/filtrar-sin-paginar",   [CompanyController::class, "filtrarSinPaginar"]);
-        Route::get("/exportar/excel",         [CompanyController::class, "exportarExcel"]);
+        Route::post("/", [CompanyController::class, "create"]);
+        Route::get("/", [CompanyController::class, "consultAll"]);
+        Route::get("/{id}", [CompanyController::class, "consultById"]);
+        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::post("/edit/{id}", [CompanyController::class, "edit"]);
+        Route::post("/filtrar", [CompanyController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar", [CompanyController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel", [CompanyController::class, "exportarExcel"]);
     });
 
     // Rutas de Clientes
     Route::prefix("clients")->group(function () {
-        Route::post("/",                      [ClientController::class, "create"]);
-        Route::get("/",                       [ClientController::class, "consultAll"]);
-        Route::get("/{id}",                   [ClientController::class, "consultById"]);
-        Route::delete("/{id}",                [ClientController::class, "deleteById"]);
-        Route::post("/edit/{id}",             [ClientController::class, "edit"]);
-        Route::post("/filtrar",               [ClientController::class, "filtrar"]);
-        Route::post("/filtrar-sin-paginar",   [ClientController::class, "filtrarSinPaginar"]);
-        Route::get("/exportar/excel",         [ClientController::class, "exportarExcel"]);
+        Route::post("/", [ClientController::class, "create"]);
+        Route::get("/", [ClientController::class, "consultAll"]);
+        Route::get("/{id}", [ClientController::class, "consultById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
+        Route::post("/edit/{id}", [ClientController::class, "edit"]);
+        Route::post("/filtrar", [ClientController::class, "filtrar"]);
+        Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
+        Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
     });
 
     // Rutas Sorteo
@@ -147,7 +158,42 @@ Route::prefix("crm")->group(function () {
     });
 });
 
+
 // Route Laboratorio
 Route::prefix("laboratories")->group(function () {
     Route::get("/", [LaboratoryController::class, "consultAll"]);
+
 });
+
+// Ruta de fiscal
+// Histori
+Route::get('/history', [FiscalController::class, 'index']);
+Route::get('/history/export', [FiscalController::class, 'export']);
+
+// Finances
+//Route::get('/profitability', [ProfitabilityController::class, 'getProfitabilityAll']);
+
+Route::prefix("finances")->group(function () {
+
+    // Profitability
+    Route::prefix("profitability")->group(function () {
+
+        Route::get("/", [ProfitabilityController::class, "consultOne"]);
+        Route::post("/store", [ProfitabilityController::class, "store"]);
+        Route::post("/{id}", [ProfitabilityController::class, "edit"]);
+
+        Route::prefix("product")->group(function () {
+            Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
+            Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
+            Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
+        });
+    });
+
+    // exchange rates
+    Route::prefix("exchange-rates")->group(function () {
+
+        Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::post("/store", [ExchangeRateController::class, "store"]);
+    });
+ });
+

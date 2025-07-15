@@ -1,10 +1,9 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 
-import ProductLotEditDialog from "@/components/dialogs/ProductLotEditDialog.vue";
-import ProductLotCreateDialog from "@/components/dialogs/ProductWithoutLotCreateDialog.vue";
+import ProductLotDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
 
@@ -15,32 +14,61 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref("id");
 const orderBy = ref("desc");
-const searchQuery = ref("");
 
-const isCreateDialogVisible = ref(false);
+const searchQuery = ref("");
+const selectedLaboratory = ref(null);
+const stockStatusFilter = ref(null);
+const startDate = ref(null);
+const endDate = ref(null);
+
+const laboratories = ref([]);
+const isLoadingFilters = ref(false);
+
+const isLotDialogVisible = ref(false);
 const availableProducts = ref([]);
 const availableSuppliers = ref([]);
 const isLoadingDialogData = ref(false);
 
-const isEditDialogVisible = ref(false);
-const lotsForEditing = ref([]);
-const productNameToEdit = ref("");
-const productIdToEdit = ref(null);
+const isEditingMode = ref(false);
+const currentLotToEdit = ref(null);
+
+const fetchSelectOptions = async () => {
+  isLoadingFilters.value = true;
+  try {
+    const labResponse = await axios.get("/laboratories");
+    laboratories.value = labResponse.data;
+  } catch (error) {
+    console.error("Error al cargar opciones de los selects:", error);
+    toast.error("No se pudieron cargar los filtros.");
+  } finally {
+    isLoadingFilters.value = false;
+  }
+};
 
 const fetchProductLots = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
+    search: searchQuery.value,
+    laboratoryId: selectedLaboratory.value,
+    ...(stockStatusFilter.value !== null && {
+      hasStock: stockStatusFilter.value,
+    }),
+    startDate: startDate.value,
+    endDate: endDate.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
   };
 
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
   try {
     const response = await axios.get("/product-lots", { params });
     productLots.value = response.data?.data.data || [];
-    totalProductLots.value = response.data?.total || 0;
+    totalProductLots.value = response.data?.data.total || 0;
   } catch (error) {
     console.error("Error al obtener los lotes:", error);
     toast.error("No se pudieron cargar los lotes.");
@@ -51,13 +79,35 @@ const fetchProductLots = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery],
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+    searchQuery,
+    selectedLaboratory,
+    stockStatusFilter,
+    startDate,
+    endDate,
+  ],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProductLots(), 300);
   },
-  { deep: true, immediate: true }
+  { deep: true }
 );
+
+watch(
+  [searchQuery, selectedLaboratory, stockStatusFilter, startDate, endDate],
+  () => {
+    page.value = 1;
+  }
+);
+
+onMounted(() => {
+  fetchSelectOptions();
+  fetchProductLots();
+});
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -66,20 +116,55 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order || "desc";
 };
 
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+};
+
+const handleClearFilters = () => {
+  searchQuery.value = "";
+  selectedLaboratory.value = null;
+  stockStatusFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
+  // sortBy.value = "id";
+  // orderBy.value = "desc";
+};
+
 const handleAddLot = async () => {
   isLoadingDialogData.value = true;
   try {
     const [productsResponse, suppliersResponse] = await Promise.all([
-      axios.get("/products-without-lots"),
+      axios.get("/products/all"),
       axios.get("/available-suppliers"),
     ]);
 
-    availableProducts.value = productsResponse.data.data;
+    availableProducts.value = productsResponse.data;
     availableSuppliers.value = suppliersResponse.data.data;
-    isCreateDialogVisible.value = true;
+
+    isEditingMode.value = false;
+    currentLotToEdit.value = null;
+    isLotDialogVisible.value = true;
   } catch (error) {
     console.error("Error al obtener datos para el modal:", error);
     toast.error("No se pudieron cargar los datos para crear el lote.");
+  } finally {
+    isLoadingDialogData.value = false;
+  }
+};
+
+const handleEditLot = async (lotToEdit) => {
+  isLoadingDialogData.value = true;
+  try {
+    const suppliersResponse = await axios.get("/available-suppliers");
+    availableSuppliers.value = suppliersResponse.data.data;
+
+    isEditingMode.value = true;
+    currentLotToEdit.value = lotToEdit;
+    isLotDialogVisible.value = true;
+  } catch (error) {
+    console.error("Error al obtener datos para el modal:", error);
+    toast.error("No se pudieron cargar los datos para editar el lote.");
   } finally {
     isLoadingDialogData.value = false;
   }
@@ -89,8 +174,8 @@ const handleCreateLot = async (lotData) => {
   try {
     await axios.post("/product-lots", lotData);
     toast.success("Lote creado con éxito.");
-    isCreateDialogVisible.value = false;
-    fetchProductLots(); // Recargar tabla
+    isLotDialogVisible.value = false;
+    fetchProductLots();
   } catch (error) {
     console.error("Error al crear el lote:", error);
     const errorMessage =
@@ -99,47 +184,25 @@ const handleCreateLot = async (lotData) => {
   }
 };
 
-const handleEditLot = (lotToEdit) => {
-  const product = lotToEdit.product;
-
-  productNameToEdit.value = product.name;
-  productIdToEdit.value = product.id;
-
-  lotsForEditing.value = productLots.value.filter(
-    (lot) => lot.product.id === product.id
-  );
-
-  isEditDialogVisible.value = true;
-};
-
-const handleUpdateLot = async (lotsToSave) => {
-  loading.value = true;
+const handleUpdateLot = async (lotData) => {
   try {
-    const payload = {
-      product_id: productIdToEdit.value,
-      lots: lotsToSave,
-    };
-
-    await axios.post("/product-lots/batch-update", payload);
-
-    toast.success("Cambios guardados con éxito.");
-    isEditDialogVisible.value = false;
+    await axios.put(`/product-lots/${lotData.id}`, lotData);
+    toast.success("Lote actualizado con éxito.");
+    isLotDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
-    console.error("Error al guardar los cambios de los lotes:", error);
+    console.error("Error al actualizar el lote:", error);
+    const errorMessage =
+      error.response?.data?.message || "No se pudo actualizar el lote.";
+    toast.error(errorMessage);
+  }
+};
 
-    if (error.response && error.response.status === 422) {
-      toast.error(
-        error.response.data.message ||
-          "Por favor, revisa los datos de los lotes."
-      );
-    } else {
-      const errorMessage =
-        error.response?.data?.message || "No se pudieron guardar los cambios.";
-      toast.error(errorMessage);
-    }
-  } finally {
-    loading.value = false;
+const handleSaveLot = (lotData) => {
+  if (isEditingMode.value) {
+    handleUpdateLot(lotData);
+  } else {
+    handleCreateLot(lotData);
   }
 };
 </script>
@@ -149,7 +212,15 @@ const handleUpdateLot = async (lotsToSave) => {
     <ProductLotsFilters
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"
+      v-model:selectedLaboratory="selectedLaboratory"
+      v-model:stockStatusFilter="stockStatusFilter"
+      v-model:startDate="startDate"
+      v-model:endDate="endDate"
+      :laboratories="laboratories"
+      :loading="isLoadingFilters"
+      @clear="handleClearFilters"
       @add-lot="handleAddLot"
+      @sort="handleSort"
     />
 
     <ProductLotsTable
@@ -162,20 +233,14 @@ const handleUpdateLot = async (lotsToSave) => {
       @edit-lot="handleEditLot"
     />
 
-    <ProductLotCreateDialog
-      v-model="isCreateDialogVisible"
+    <ProductLotDialog
+      v-model="isLotDialogVisible"
       :loading="isLoadingDialogData"
       :products="availableProducts"
       :suppliers="availableSuppliers"
-      @save="handleCreateLot"
-    />
-
-    <ProductLotEditDialog
-      v-model="isEditDialogVisible"
-      :product-name="productNameToEdit"
-      :product-id="productIdToEdit"
-      :lots="lotsForEditing"
-      @save="handleUpdateLot"
+      :is-editing="isEditingMode"
+      :lot-to-edit="currentLotToEdit"
+      @save="handleSaveLot"
     />
   </div>
 </template>

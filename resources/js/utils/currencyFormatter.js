@@ -15,24 +15,33 @@ export const formatCurrency = (value, currency) => {
 
   let locale = 'en-US';
   let currencySymbol = '';
+  let digital=0;
 
   if (currency === 'BS') {
     locale = 'es-VE';
-    currencySymbol = ' Bs';
+    currencySymbol = ' BS';
   } else if (currency === 'COP') {
     locale = 'es-CO';
     currencySymbol = ' COP';
   } else if (currency === 'USD') {
     locale = 'en-US';
-    currencySymbol = ' $';
+    currencySymbol = ' USD';
   } else {
     locale = 'en-US';
-    currencySymbol = '$';
+    currencySymbol = ' USD';
   }
 
+
+  if (currency === 'COP') { 
+      digital = 0;
+  }else{
+      digital = 2;
+  }
+
+
   const formatter = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: digital,
+    maximumFractionDigits: digital,
     useGrouping: true,
   });
 

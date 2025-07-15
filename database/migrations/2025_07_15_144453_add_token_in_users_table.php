@@ -4,17 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create('profitability_settings', function (Blueprint $table) {
-            $table->id();
-            $table->decimal('default_profitability_percentage', 5, 2);
-            $table->timestamps();
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('token_login')->nullable()->after('is_active');
+            $table->rememberToken();
         });
     }
 
@@ -23,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('profitability_settings');
+        Schema::table('users', function (Blueprint $table) {
+            //
+        });
     }
 };

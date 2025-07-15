@@ -42,7 +42,8 @@ class ExpirationQueryService
                     ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
                         $productQuery->where('name', 'like', $searchTerm)
                             ->orWhere('active_ingredient', 'like', $searchTerm)
-                            ->orWhere('barcode', 'like', $searchTerm);
+                            ->orWhere('barcode', 'like', $searchTerm)
+                            ->orWhere('id', 'like', $searchTerm);
                     });
             });
         }
@@ -115,40 +116,27 @@ class ExpirationQueryService
         return $query;
     }
 
-    public function getExpiredLotsSummary(): Collection
+    public function getExpiredLotsSummary()
     {
-        $dbDriver = DB::connection()->getDriverName();
-        $dateFormat = '';
-
-        if ($dbDriver === 'mysql') {
-            $dateFormat = "DATE_FORMAT(created_at, '%Y-%m')";
-        } elseif ($dbDriver === 'sqlite') {
-            $dateFormat = "strftime('%Y-%m', created_at)";
-        } elseif ($dbDriver === 'pgsql') {
-            $dateFormat = "TO_CHAR(created_at, 'YYYY-MM')";
-        } else {
-            $dateFormat = "created_at";
-        }
-
-        $subqueryDateFormat = str_replace('created_at', 'el_sub.created_at', $dateFormat);
-
-        $subquery = DonativeLog::query()
-            ->selectRaw('count(*)')
-            ->from('donative_logs as dl_sub')
-            ->join('expired_logs as el_sub', 'dl_sub.expired_log_id', '=', 'el_sub.id')
-            ->whereRaw("$subqueryDateFormat = month");
-
-
-        $summaries = ExpiredLog::query()
-            ->select(
-                DB::raw("$dateFormat as month"),
-                DB::raw('SUM(expired_quantity) as total_products'),
-                DB::raw('SUM(total_lost_value) as total_cost'),
-            )
-            ->selectSub($subquery, 'donation_count')
-            ->groupBy('month')
+        $summaries = DB::table('expired_logs')
+            ->select([
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
+                DB::raw('COUNT(*) as total_products'),
+                DB::raw('SUM(total_lost_value) as total_cost')
+            ])
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%Y-%m')"))
             ->orderBy('month', 'desc')
             ->get();
+
+        foreach ($summaries as $summary) {
+            $summary->donation_count = DB::table('donations')
+                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$summary->month])
+                ->count();
+
+            $summary->has_price_adjustment = DB::table('price_adjustment_logs')
+                ->where('month', $summary->month)
+                ->exists();
+        }
 
         return $summaries;
     }
