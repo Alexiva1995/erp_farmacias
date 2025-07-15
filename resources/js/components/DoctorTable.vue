@@ -1,5 +1,7 @@
 <script setup lang="js">
 
+import day from 'dayjs';
+
 const props= defineProps({
   items: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -13,6 +15,7 @@ const headers = [
   { title: 'Nombre',                   key: 'name', sortable: true},
   { title: 'Identificación',           key: 'identification', sortable: true},
   { title: 'Dirección',                key: 'address', sortable: false },
+  { title: 'Fecha',                    key: 'created_at', sortable: true, value: item => day(item.created_at).format("DD/MM/YYYY") },
   { title: 'Acciones',                 key: 'acciones', sortable: false },
 ];
 

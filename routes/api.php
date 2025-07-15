@@ -5,15 +5,18 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Api\ProfitabilityController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
 
@@ -27,7 +30,6 @@ use App\Http\Controllers\Api\FiscalController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
 // Rutas de autenticación
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/two-factor-challenge', [LoginController::class, 'verify2FA']);
@@ -63,11 +65,13 @@ Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
+Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
 Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+
 Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
 Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
 Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
@@ -145,6 +149,11 @@ Route::prefix("crm")->group(function () {
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
     });
+
+    // Rutas Sorteo
+    Route::prefix("lottery")->group(function () {
+        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+    });
 });
 
 
@@ -152,3 +161,30 @@ Route::prefix("crm")->group(function () {
 // Histori
 Route::get('/history', [FiscalController::class, 'index']);
 Route::get('/history/export', [FiscalController::class, 'export']);
+
+// Finances
+//Route::get('/profitability', [ProfitabilityController::class, 'getProfitabilityAll']);
+
+Route::prefix("finances")->group(function () {
+
+    // Profitability
+    Route::prefix("profitability")->group(function () {
+
+        Route::get("/", [ProfitabilityController::class, "consultOne"]);
+        Route::post("/store", [ProfitabilityController::class, "store"]);
+        Route::post("/{id}", [ProfitabilityController::class, "edit"]);
+
+        Route::prefix("product")->group(function () {
+            Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
+            Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
+            Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
+        });
+    });
+
+    // exchange rates
+    Route::prefix("exchange-rates")->group(function () {
+
+        Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::post("/store", [ExchangeRateController::class, "store"]);
+    });
+});

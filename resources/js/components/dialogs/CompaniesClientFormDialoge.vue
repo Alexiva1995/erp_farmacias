@@ -171,7 +171,7 @@ function formatearFechaCompleta(fechaInput) {
         <VSpacer />
         <VContainer>
           <VRow justify="end">
-            <VCol cols="12" sm="4" md="4" lg="4">
+            <VCol cols="12" sm="6" md="6" lg="6">
               <VBtn
                 color="secondary"
                 variant="outlined"

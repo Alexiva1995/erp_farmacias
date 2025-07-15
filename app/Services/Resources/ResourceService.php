@@ -57,6 +57,12 @@ class ResourceService
         });
     }
 
+    public function getAllProducts(): Collection
+    {
+        return Cache::remember('resources.products', now()->addDay(), function () {
+            return Product::orderBy('name')->get();
+        });
+    }
     /**
      * Obtiene una sola tasa, utilizando caché.
      */

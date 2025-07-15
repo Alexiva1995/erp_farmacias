@@ -23,22 +23,19 @@ class CompanyController extends Controller
     public function create(CreateCompanyRequest $request): JsonResponse
     {
         $companyDb = $this->company->create($request->company->all());
-
-        return ApiResponse::success($companyDb, "successfully", 200);
+        return ApiResponse::success($companyDb, "Empresa creada exitosamente", 200);
     }
 
     public function edit(EditCompanyRequest $request): JsonResponse
     {
         $respuestaDB = $this->company->edit($request->company->all());
-
-        return ApiResponse::success($respuestaDB, "company successfully edited", 200);
+        return ApiResponse::success($respuestaDB, "Empresa actualizada exitosamente", 200);
     }
-
 
     public function consultAll(): JsonResponse
     {
         $respuesDB = $this->company->consultAll();
-        return ApiResponse::success($respuesDB, "successfully", 200);
+        return ApiResponse::success($respuesDB, "Operación exitosa", 200);
     }
 
     public function consultById(Request $request)
@@ -46,10 +43,10 @@ class CompanyController extends Controller
         $respuestaDB = $this->company->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the company not found", 404);
+            return ApiResponse::error("La empresa no fue encontrada", 404);
         }
 
-        return ApiResponse::success($respuestaDB, "successfully", 200);
+        return ApiResponse::success($respuestaDB, "Operación exitosa", 200);
     }
 
     public function deleteById(Request $request): JsonResponse
@@ -57,7 +54,7 @@ class CompanyController extends Controller
         $respuestaDB = $this->company->consultById($request->id);
 
         if (!$respuestaDB) {
-            return ApiResponse::error("the company not found", 404);
+            return ApiResponse::error("La empresa no fue encontrada", 404);
         }
 
         $this->company->deleteById($request->id);
@@ -65,10 +62,10 @@ class CompanyController extends Controller
         $validarEliminacio = $this->company->consultById($request->id);
 
         if ($validarEliminacio) {
-            return ApiResponse::error("the company not eliminated", 404);
+            return ApiResponse::error("La empresa no pudo ser eliminada", 404);
         }
 
-        return ApiResponse::success($validarEliminacio, "The company was successfully deleted", 200);
+        return ApiResponse::success($validarEliminacio, "Empresa eliminada exitosamente", 200);
     }
 
     public function filtrar(Request $request)

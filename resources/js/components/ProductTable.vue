@@ -134,7 +134,7 @@ const formatPrice = (price) => {
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column">
           <span class="font-weight-medium">
-            ${{ formatPrice(calculateSalePriceWithIva(item)) }}
+            {{ formatPrice(calculateSalePriceWithIva(item)) }}
           </span>
           <span v-if="item.iva == 1" class="text-xs text-success">
             (IVA incluido)

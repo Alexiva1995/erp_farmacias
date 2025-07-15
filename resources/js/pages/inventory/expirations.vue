@@ -27,6 +27,9 @@ const selectedLaboratoryLots = ref(null);
 const startDateLots = ref(null);
 const endDateLots = ref(null);
 
+const allProducts = ref([]);
+const loadingAllProducts = ref(false);
+
 const fetchLaboratories = async () => {
   loadingLaboratories.value = true;
   try {
@@ -38,6 +41,19 @@ const fetchLaboratories = async () => {
     console.error("Error al cargar laboratorios:", error);
   } finally {
     loadingLaboratories.value = false;
+  }
+};
+
+const fetchAllProducts = async () => {
+  loadingAllProducts.value = true;
+  try {
+    const { data } = await axios.get("/products/all");
+    allProducts.value = data;
+  } catch (error) {
+    console.error("Error al cargar productos:", error);
+    toast.error("No se pudieron cargar los productos del sistema.");
+  } finally {
+    loadingAllProducts.value = false;
   }
 };
 
@@ -108,9 +124,7 @@ const handleExpireLot = async (lotToExpire) => {
 };
 
 const handleApplyDiscount = async (item) => {
-  // Modificado para recibir solo el item ya que la tabla cambió
   try {
-    // TODO: Implementar lógica de descuento cuando esté lista
     toast.info("Funcionalidad de descuento en desarrollo...");
   } catch (error) {
     console.error("Error al aplicar el descuento:", error);
@@ -234,7 +248,6 @@ const isDonationModalVisible = ref(false);
 const productsForDonation = ref([]);
 
 const isPriceAdjustmentModalVisible = ref(false);
-const productsForPriceAdjustment = ref([]);
 const selectedMonthForAdjustment = ref(null);
 
 const headersSummaries = [
@@ -253,7 +266,7 @@ const viewTitle = computed(() => {
   if (isDetailViewVisible.value && selectedMonth.value) {
     return `Detalle de Caducados - ${formatMonth(selectedMonth.value)}`;
   }
-  return "Gestión de Caducados por Mes";
+  return "Reporte de Caducados";
 });
 
 const fetchSummaries = async () => {
@@ -367,7 +380,6 @@ const handlePrintDonation = async (month) => {
   }
 };
 
-// Nueva función para manejar reajuste de precios en productos caducados
 const handlePriceAdjustmentExpired = async (month) => {
   try {
     // Primero verificar si ya se hizo reajuste en este mes
@@ -380,41 +392,33 @@ const handlePriceAdjustmentExpired = async (month) => {
       return;
     }
 
-    // Obtener los productos caducados del mes
-    const { data } = await axios.get(`/expired-logs`, {
-      params: {
-        month: month,
-        itemsPerPage: -1, // Traer todos los productos del mes
-      },
-    });
+    await fetchAllProducts();
 
-    if (data.data && data.data.length > 0) {
-      productsForPriceAdjustment.value = data.data;
-      selectedMonthForAdjustment.value = month;
-      isPriceAdjustmentModalVisible.value = true;
-    } else {
-      toast.info("No se encontraron productos caducados para este mes.");
-    }
+    selectedMonthForAdjustment.value = month;
+    isPriceAdjustmentModalVisible.value = true;
   } catch (error) {
-    console.error("Error al obtener productos para reajuste:", error);
-    toast.error("No se pudieron cargar los productos del mes.");
+    console.error("Error al preparar reajuste de precios:", error);
+    toast.error("No se pudo inicializar el reajuste de precios.");
   }
 };
 
 const handleGeneratePriceAdjustment = async (adjustmentData) => {
   try {
+    const payload = {
+      month: selectedMonthForAdjustment.value,
+      excludedProductIds: adjustmentData.excludedProducts.map((p) => p.id),
+    };
+
     const { data: responseData } = await axios.post(
       "/expirations/adjust-expired-prices",
-      {
-        month: selectedMonthForAdjustment.value,
-        expired_log_ids: adjustmentData.products.map((p) => p.id),
-      }
+      payload
     );
 
-    toast.success(responseData.message);
+    toast.success(
+      responseData.message || "Reajuste de precios aplicado correctamente."
+    );
     isPriceAdjustmentModalVisible.value = false;
 
-    // Refrescar datos
     await fetchSummaries();
   } catch (error) {
     console.error("Error al aplicar reajuste de precios:", error);
@@ -506,7 +510,6 @@ const formatCurrency = (value) => {
 
 <template>
   <div>
-    <!-- Sección de Lotes por Vencer -->
     <div>
       <ExpirationsFilters
         v-model:searchQuery="searchQueryLots"
@@ -521,11 +524,10 @@ const formatCurrency = (value) => {
         @apply-offer-selected="handleApplyOfferSelected"
       />
 
-      <!-- Tabla con título integrado -->
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between">
           <div>
-            <h4 class="text-h4 mb-1">Lotes por Vencer</h4>
+            <h4 class="text-h4 mb-1">Productos por Caducar</h4>
             <p class="text-subtitle-1 text-medium-emphasis mb-0">
               Gestiona los lotes próximos a su fecha de caducidad.
             </p>
@@ -550,7 +552,6 @@ const formatCurrency = (value) => {
 
     <VDivider class="my-8" />
 
-    <!-- Sección de Reportes de Caducidad -->
     <div>
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between">
@@ -675,7 +676,7 @@ const formatCurrency = (value) => {
 
     <PriceAdjustmentDialog
       v-model="isPriceAdjustmentModalVisible"
-      :initial-products="productsForPriceAdjustment"
+      :all-products="allProducts"
       :month-name="formatMonth(selectedMonthForAdjustment)"
       @adjust-prices="handleGeneratePriceAdjustment"
     />
