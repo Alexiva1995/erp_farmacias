@@ -29,7 +29,7 @@ const origins = ref([]);
 const suppliers = ref([]);
 const categories = ref([]);
 
-const isEditDialogVisible = ref(false);
+const isEditDialogVisible = ref(true);
 const currentProduct = ref({});
 
 const productFormErrors = ref({});

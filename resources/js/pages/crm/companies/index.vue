@@ -64,7 +64,7 @@ function insertarDatosAlFormulario(datos){
   formulario.identification=datos.identification
   formulario.type_company=datos.type_company
   formulario.name=datos.name
-  formulario.address=datos.address
+  formulario.address=remplazarSiEsNullPor(datos.address)
 }
 
 function limpiarDatosFormulario(){
@@ -334,6 +334,9 @@ function irHaVerClientesEmpresa(payload){
 }
 
 
+function remplazarSiEsNullPor(dato,por=""){
+  return (dato==null)?por:dato
+}
 
 onMounted(async () => {
   await actualizarTabla()
