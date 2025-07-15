@@ -45,7 +45,7 @@ class LoginController extends Controller
             // ->orWhere('username', $request->login)
             ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
             RateLimiter::hit($this->throttleKey($request));
             throw ValidationException::withMessages([
                 'login' => ['Las credenciales proporcionadas son incorrectas.'],
