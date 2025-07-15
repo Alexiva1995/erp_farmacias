@@ -53,11 +53,6 @@ const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
 
-const pageTablaClientesJuridicos = ref(1)
-const itemsPerPageTablaClientesJuridicos = ref(10)
-const sortByTablaClientesJuridicos = ref()
-const orderByTablaClientesJuridicos = ref()
-
 const buscardor_filtro= ref("");
 const tipo_identificacion_filtro= ref(null);
 const company_id_filtro= ref("");
