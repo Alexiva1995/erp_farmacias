@@ -12,10 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->api(prepend: [
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        $middleware->use([
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
+        $middleware->statefulApi();
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

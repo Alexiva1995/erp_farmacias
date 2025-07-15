@@ -14,10 +14,10 @@ class ExpirationActionService
 {
     /**
      * Marca un lote como caducado y registra la acción.
-     * YA NO redistribuye el costo automáticamente.
+     *
      *
      * @param ProductLot $lot
-     * @throws Exception Si el lote no tiene unidades o si algo falla en la transacción.
+     * @throws Exception
      */
     public function expireLot(ProductLot $lot): void
     {
@@ -55,16 +55,15 @@ class ExpirationActionService
     }
 
     /**
-     * Reajusta los precios de productos caducados específicos de un mes.
-     * Distribución global: divide el monto total entre todas las unidades activas.
-     * Actualiza el cost del producto, no de los lotes individuales.
+     * Reajusta los precios de TODOS los productos caducados de un mes,
      *
+     * 
      * @param string $month Formato Y-m
-     * @param array $expiredLogIds Array de IDs de expired_logs
+     * @param array $excludedProductIds Array de IDs de productos a excluir
      * @return array
      * @throws Exception
      */
-    public function adjustExpiredProductsPrices(string $month, array $expiredLogIds): array
+    public function adjustExpiredProductsPricesWithExclusions(string $month, array $excludedProductIds = []): array
     {
         if ($this->hasMonthPriceAdjustment($month)) {
             return [
@@ -76,31 +75,46 @@ class ExpirationActionService
         DB::beginTransaction();
 
         try {
-            $expiredLogs = ExpiredLog::whereIn('id', $expiredLogIds)
-                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+            $allExpiredLogs = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
                 ->get();
 
-            if ($expiredLogs->isEmpty()) {
-                throw new Exception('No se encontraron productos caducados válidos para el mes especificado.', 400);
+            if ($allExpiredLogs->isEmpty()) {
+                throw new Exception('No se encontraron productos caducados para el mes especificado.', 400);
             }
 
-            $totalLostValue = $expiredLogs->sum('total_lost_value');
+            $logsToProcess = $allExpiredLogs->filter(function ($log) use ($excludedProductIds) {
+                return !in_array($log->product_id, $excludedProductIds);
+            });
+
+            $excludedLogs = $allExpiredLogs->filter(function ($log) use ($excludedProductIds) {
+                return in_array($log->product_id, $excludedProductIds);
+            });
+
+            if ($logsToProcess->isEmpty()) {
+                throw new Exception('Todos los productos del mes han sido excluidos del reajuste.', 400);
+            }
+
+            $totalLostValue = $logsToProcess->sum('total_lost_value');
 
             if ($totalLostValue <= 0) {
                 throw new Exception('No hay valor perdido para redistribuir.', 400);
             }
 
-            $totalActiveUnits = ProductLot::where('quantity', '>', 0)->sum('quantity');
+            $totalActiveUnits = ProductLot::where('quantity', '>', 0)
+                ->whereNotIn('product_id', $excludedProductIds)
+                ->sum('quantity');
 
             if ($totalActiveUnits <= 0) {
-                throw new Exception('No hay unidades activas para redistribuir el costo.', 400);
+                throw new Exception('No hay unidades activas para redistribuir el costo (excluyendo productos seleccionados).', 400);
             }
 
             $costAdjustmentPerUnit = $totalLostValue / $totalActiveUnits;
 
             $activeProductIds = ProductLot::where('quantity', '>', 0)
+                ->whereNotIn('product_id', $excludedProductIds)
                 ->distinct()
                 ->pluck('product_id');
+
 
             foreach ($activeProductIds as $productId) {
                 $productActiveUnits = ProductLot::where('product_id', $productId)
@@ -108,14 +122,18 @@ class ExpirationActionService
                     ->sum('quantity');
 
                 if ($productActiveUnits > 0) {
-                    $productCostAdjustment = $costAdjustmentPerUnit * $productActiveUnits;
-                    DB::table('products')
+                    $newUnitCost = DB::table('products')
                         ->where('id', $productId)
-                        ->increment('unit_cost', ($productCostAdjustment / $productActiveUnits));
+                        ->value('unit_cost') + $costAdjustmentPerUnit;
+
+                    $updated = DB::table('products')
+                        ->where('id', $productId)
+                        ->update(['unit_cost' => $newUnitCost]);
+
                 }
             }
 
-            foreach ($expiredLogs as $log) {
+            foreach ($logsToProcess as $log) {
                 PriceAdjustmentLog::create([
                     'month' => $month,
                     'expired_log_id' => $log->id,
@@ -131,10 +149,16 @@ class ExpirationActionService
 
             DB::commit();
 
+            $processedCount = $logsToProcess->count();
+            $excludedCount = $excludedLogs->count();
+            $totalCount = $allExpiredLogs->count();
+
             return [
                 'success' => true,
-                'message' => "Reajuste de precios aplicado exitosamente. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre " . count($activeProductIds) . " productos con " . number_format($totalActiveUnits) . " unidades.",
-                'processed_products' => $expiredLogs->groupBy('product_id')->count(),
+                'message' => "Reajuste aplicado exitosamente. Se procesaron {$processedCount} de {$totalCount} productos caducados del mes. {$excludedCount} productos fueron excluidos. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre " . count($activeProductIds) . " productos activos.",
+                'processed_logs' => $processedCount,
+                'excluded_logs' => $excludedCount,
+                'total_logs' => $totalCount,
                 'total_cost_redistributed' => $totalLostValue,
                 'total_units_affected' => $totalActiveUnits,
                 'affected_products_count' => count($activeProductIds),
@@ -203,7 +227,28 @@ class ExpirationActionService
     }
 
     /**
-     * @deprecated Métodos antiguos que ya no se usan
+     * Método original para compatibilidad hacia atrás (DEPRECATED)
+     * @deprecated Use adjustExpiredProductsPricesWithExclusions instead
+     */
+    public function adjustExpiredProductsPrices(string $month, array $expiredLogIds): array
+    {
+        $allLogsInMonth = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+            ->pluck('product_id')
+            ->unique()
+            ->toArray();
+
+        $processedProductIds = ExpiredLog::whereIn('id', $expiredLogIds)
+            ->pluck('product_id')
+            ->unique()
+            ->toArray();
+
+        $excludedProductIds = array_diff($allLogsInMonth, $processedProductIds);
+
+        return $this->adjustExpiredProductsPricesWithExclusions($month, $excludedProductIds);
+    }
+
+    /**
+     * @deprecated
      */
     public function adjustLotPrice(ProductLot $lot): void
     {

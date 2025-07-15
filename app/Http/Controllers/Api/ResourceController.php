@@ -51,4 +51,9 @@ class ResourceController extends Controller
             return response()->json(['message' => 'Ocurrió un error inesperado.'], 500);
         }
     }
+    public function getAllProducts()
+    {
+        $products = $this->resourceService->getAllProducts();
+        return response()->json($products);
+    }
 }
