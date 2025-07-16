@@ -12,15 +12,16 @@ const props= defineProps({
 
 const headers = [
   { title: 'id',                       key: 'id', sortable: true},
-  { title: 'Nombre',                   key: 'name', sortable: true},
-  { title: 'Identificación',           key: 'identification', sortable: true},
-  { title: 'Dirección',                key: 'address', sortable: false },
-  { title: 'Fecha',                    key: 'created_at', sortable: true, value: item =>{
+  { title: 'Identificación',           key: 'identificationClient', sortable: false,value: item => item.client.identification_type+item.client.identification},
+  { title: 'Cliente',                  key: 'nameClient', sortable: false, value: item => item.client.name+" "+item.client.last_name},
+  { title: 'Vendedor',                 key: 'nameSeller', sortable: false, value: item => item.seller.username},
+  { title: 'Monto',                    key: 'total_amount_usd', sortable:true},
+  { title: 'Moneda',                   key: 'currency', sortable:true},
+  { title: 'Fecha',                    key: 'created_at', sortable: true, value: item => {
     const fechaStr = item.created_at.replace('Z', '');
     const fecha = day(fechaStr).format('DD/MM/YYYY');
     return fecha;
   }},
-  { title: 'Acciones',                 key: 'acciones', sortable: false },
 ];
 
 const emit= defineEmits(["edit",'delete',"update:options"])
@@ -36,17 +37,6 @@ const emit= defineEmits(["edit",'delete',"update:options"])
       :page="props.page"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.id="{ item }"
-        ><span class="font-weight-medium">{{ item.id }}</span></template
-      >
-      <template #item.acciones="{ item }">
-        <IconBtn @click="emit('edit', item.id)"
-          ><VIcon icon="tabler-edit"
-        /></IconBtn>
-        <IconBtn @click="emit('delete', item.id)"
-          ><VIcon icon="tabler-trash"
-        /></IconBtn>
-      </template>
     </VDataTableServer>
   </VCard>
 </template>

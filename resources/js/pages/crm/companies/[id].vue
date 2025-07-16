@@ -1,12 +1,3 @@
-<!-- <script setup lang="js">
-import { useRoute } from 'vue-router';
-
-</script>
-<template>
-  <h1>hola {{ $route.params.id }}</h1>
-  <h1>hola {{ router.params.id }}</h1>
-</template> -->
-
 <script setup lang="js">
 import CompaniesClientsFilters from "@/components/CompaniesClientsFilters.vue";
 import CompaniesClientFormDialoge from "@/components/dialogs/CompaniesClientFormDialoge.vue";
@@ -21,10 +12,8 @@ const router = useRoute()
 
 const statuModule= reactive({
   items:[],
-  itemsClientesNaturales:[],
-  totalClientesNaturales:0,
-  itemsClientesJuridicos:[],
-  totalClientesJuridicos:0,
+  itemsClientes:[],
+  totalClientes:0,
   company:{},
   comapanies:[],
 })
@@ -64,11 +53,6 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
-
-const pageTablaClientesJuridicos = ref(1)
-const itemsPerPageTablaClientesJuridicos = ref(10)
-const sortByTablaClientesJuridicos = ref()
-const orderByTablaClientesJuridicos = ref()
 
 const buscardor_filtro= ref("");
 const tipo_identificacion_filtro= ref(null);
@@ -211,30 +195,17 @@ async function actualizarTabla(){
     orderBy:orderBy.value,
     sortBy:sortBy.value,
     company_id:company_id_filtro.value,
-    tipo:["V-","E-"]
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
-  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+  statuModule.itemsClientes=respuestaApiNaturles.data
+  statuModule.totalClientes=respuestaApiNaturles.total
 
-  let filtroJuridica={
-    page:pageTablaClientesJuridicos.value,
-    itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
-    orderBy:orderByTablaClientesJuridicos.value,
-    sortBy:sortByTablaClientesJuridicos.value,
-    company_id:company_id_filtro.value,
-    tipo:["J-","G-"],
-  }
-  let respuestaApiJurudicas= await filtrar(filtroJuridica)
-  statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
-  statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
-
-  statuModule.items=[...respuestaApiJurudicas.data,...respuestaApiNaturles.data]
+  statuModule.items=[...respuestaApiNaturles.data]
 
   loading.value = false;
 }
 
-async function actualizarTablaTablaNatural(){
+async function actualizarTablaTablaClientes(){
   loading.value = true;
 
   let filtroNaturales={
@@ -242,7 +213,6 @@ async function actualizarTablaTablaNatural(){
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    tipo:["V-","E-"],
     // filtros
     buscardor_filtro:buscardor_filtro.value,
     tipo_identificacion_filtro:tipo_identificacion_filtro.value,
@@ -251,35 +221,10 @@ async function actualizarTablaTablaNatural(){
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientesNaturales=respuestaApiNaturles.data
-  statuModule.totalClientesNaturales=respuestaApiNaturles.total
+  statuModule.itemsClientes=respuestaApiNaturles.data
+  statuModule.totalClientes=respuestaApiNaturles.total
 
-  statuModule.items=[...statuModule.itemsClientesJuridicos,...respuestaApiNaturles.data]
-
-  loading.value = false;
-}
-
-async function actualizarTablaTablJuridica(){
-  loading.value = true;
-
-  let filtroJuridica={
-    page:pageTablaClientesJuridicos.value,
-    itemsPerPage:itemsPerPageTablaClientesJuridicos.value,
-    orderBy:orderByTablaClientesJuridicos.value,
-    sortBy:sortByTablaClientesJuridicos.value,
-    tipo:["J-","G-"],
-    // filtros
-    buscardor_filtro:buscardor_filtro.value,
-    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    company_id:company_id_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
-  }
-  let respuestaApiJurudicas= await filtrar(filtroJuridica)
-  statuModule.itemsClientesJuridicos=respuestaApiJurudicas.data
-  statuModule.totalClientesJuridicos=respuestaApiJurudicas.total
-
-  statuModule.items=[...respuestaApiJurudicas.data,...statuModule.itemsClientesNaturales]
+  statuModule.items=[...respuestaApiNaturles.data]
 
   loading.value = false;
 }
@@ -332,14 +277,6 @@ const updateTableOptions = options => {
   orderBy.value = options.sortBy[0]?.order
 }
 
-const updateTableOptionsJuridico = options => {
-  // console.log(options)
-  pageTablaClientesJuridicos.value = options.page
-  itemsPerPageTablaClientesJuridicos.value = options.itemsPerPage
-  sortByTablaClientesJuridicos.value = options.sortBy[0]?.key
-  orderByTablaClientesJuridicos.value = options.sortBy[0]?.order
-}
-
 watch(
     [
       buscardor_filtro,
@@ -353,36 +290,7 @@ watch(
       sortBy
   ],
   async () =>{
-    if(tipo_identificacion_filtro.value=="V-" || tipo_identificacion_filtro.value=="E-" || tipo_identificacion_filtro.value==null){
-      if(tipo_identificacion_filtro.value!=""){
-        statuModule.itemsClientesJuridicos=[]
-        statuModule.totalClientesJuridicos=0
-      }
-      await actualizarTablaTablaNatural()
-    }
-  }
-)
-
-watch(
-    [
-      buscardor_filtro,
-      tipo_identificacion_filtro,
-      fechaDesde_filtro,
-      fechaHasta_filtro,
-      company_id_filtro,
-      pageTablaClientesJuridicos,
-      itemsPerPageTablaClientesJuridicos,
-      orderByTablaClientesJuridicos,
-      sortByTablaClientesJuridicos
-  ],
-  async () =>{
-    if(tipo_identificacion_filtro.value=="J-" || tipo_identificacion_filtro.value=="G-" || tipo_identificacion_filtro.value==null){
-      if(tipo_identificacion_filtro.value!=null){
-        statuModule.itemsClientesNaturales=[]
-        statuModule.totalClientesNaturales=0
-      }
-      await actualizarTablaTablJuridica()
-    }
+    await actualizarTablaTablaClientes()
   }
 )
 
@@ -538,30 +446,17 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Clientes Naturales">
+    <VCard title="Clientes">
       <VDivider />
       <ClientTable
-        :clients="statuModule.itemsClientesNaturales"
-        :total-clients="statuModule.totalClientesNaturales"
+        :clients="statuModule.itemsClientes"
+        :total-clients="statuModule.totalClientes"
         :loading="loading"
-        :items-per-page="itemsPerPageTablaClientesJuridicos"
-        :page="pageTablaClientesJuridicos"
+        :items-per-page="itemsPerPage"
+        :page="page"
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
         @update:options="updateTableOptions"
-      />
-    </VCard>
-    <div class="mb-5"></div>
-    <VCard title="Clientes Juridicos">
-      <ClientTable
-        :clients="statuModule.itemsClientesJuridicos"
-        :total-clients="statuModule.totalClientesJuridicos"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="pageTablaClientesJuridicos"
-        @edit="mostarModoEdit"
-        @delete="confirmarEliminarCliente"
-        @update:options="updateTableOptionsJuridico"
       />
     </VCard>
   </div>
