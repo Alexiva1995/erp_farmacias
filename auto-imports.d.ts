@@ -48,8 +48,10 @@ declare global {
   const effectScope: typeof import('vue')['effectScope']
   const emailValidator: typeof import('./resources/js/@core/utils/validators.js')['emailValidator']
   const extendRef: typeof import('@vueuse/core')['extendRef']
+  const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
   const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
+  const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
@@ -105,6 +107,9 @@ declare global {
   const paginationMeta: typeof import('./resources/js/utils/paginationMeta.js')['paginationMeta']
   const passwordValidator: typeof import('./resources/js/@core/utils/validators.js')['passwordValidator']
   const pausableWatch: typeof import('@vueuse/core')['pausableWatch']
+  const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
+  const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
+  const pdfDoctorsGenerator: typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
@@ -129,6 +134,7 @@ declare global {
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
   const resolveVuetifyTheme: typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']
   const rgbaToHex: typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']
+  const roundUpToNearestHundred: typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -407,8 +413,10 @@ declare module 'vue' {
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly emailValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['emailValidator']>
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
+    readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
+    readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
@@ -464,6 +472,9 @@ declare module 'vue' {
     readonly paginationMeta: UnwrapRef<typeof import('./resources/js/utils/paginationMeta.js')['paginationMeta']>
     readonly passwordValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['passwordValidator']>
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
+    readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
+    readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
+    readonly pdfDoctorsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
@@ -488,6 +499,7 @@ declare module 'vue' {
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
     readonly resolveVuetifyTheme: UnwrapRef<typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']>
     readonly rgbaToHex: UnwrapRef<typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']>
+    readonly roundUpToNearestHundred: UnwrapRef<typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>

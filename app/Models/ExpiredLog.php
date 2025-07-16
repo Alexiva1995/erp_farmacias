@@ -15,4 +15,12 @@ class ExpiredLog extends Model
         'cost_per_unit',
         'total_lost_value',
     ];
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+    public function donativeLog()
+    {
+        return $this->hasOne(DonativeLog::class);
+    }
 }

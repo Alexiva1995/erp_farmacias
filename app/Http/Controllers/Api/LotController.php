@@ -3,146 +3,172 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+use App\Http\Requests\Lots\StoreLotRequest;
+use App\Http\Requests\Lots\UpdateLotRequest;
+use App\Http\Requests\Lots\BatchUpdateLotRequest;
 use App\Models\ProductLot;
-use App\Models\Supplier;
-use DB;
+use App\Services\Lots\LotActionService;
+use App\Services\Lots\LotQueryService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class LotController extends Controller
 {
+    public function __construct(
+        private LotQueryService $lotQueryService,
+        private LotActionService $lotActionService
+    ) {
+    }
+
     public function index(Request $request)
     {
-        $query = ProductLot::query()
-            ->select('product_lots.*')
-            ->with('product', 'supplier')
-            ->whereHas('product', function ($q) {
-                $q->whereColumn('stock', '=', 'quantity');
-            });    
-
-        if ($request->has('search')) {
-            $query->where('lot_number', 'like', "%{$request->search}%");
-        }
-
-        if ($request->has('sortBy') && $request->has('orderBy')) {
-            if ($request->sortBy === 'product.name') {
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->orderBy('products.name', $request->orderBy);
-            } elseif ($request->sortBy === 'supplier.supplier_name') {
-                $query->join('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
-                    ->orderBy('suppliers.supplier_name', $request->orderBy);
-            } else {
-                $query->orderBy($request->sortBy, $request->orderBy);
-            }
-        }
+        $query = $this->lotQueryService->getFilteredQuery($request);
 
         return response()->json([
             'data' => $query->paginate(10),
         ]);
     }
 
-    public function update(Request $request, ProductLot $productLot)
+    public function store(StoreLotRequest $request)
     {
-        $validatedData = $request->validate([
-            'lot_number' => 'required|string|max:255',
-            'expiration_date' => 'required|date',
-            'quantity' => 'required|integer|min:0',
-            'cost_price' => 'required|numeric|min:0',
-        ]);
+        try {
+            $lot = $this->lotActionService->createLot($request->validated());
 
-        if ($request->has('stock')) {
-            $productLot->product->update([
-                'stock' => $request->stock,
+            return response()->json([
+                'message' => 'Lote creado correctamente',
+                'data' => $lot,
             ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación al crear el lote.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor al crear el lote.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
+    }
 
-        $productLot->update($validatedData);
+    public function update(UpdateLotRequest $request, ProductLot $productLot)
+    {
+        try {
+            $updatedLot = $this->lotActionService->updateLot($productLot, $request->validated());
 
-        return response()->json([
-            'message' => 'Lote actualizado correctamente',
-            'data' => $productLot,
-        ]);
+            return response()->json([
+                'message' => 'Lote actualizado correctamente',
+                'data' => $updatedLot,
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación al actualizar el lote.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor al actualizar el lote.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function destroy(ProductLot $productLot)
+    {
+        try {
+            $this->lotActionService->deleteLot($productLot);
+
+            return response()->json([
+                'message' => 'Lote eliminado correctamente',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor al eliminar el lote.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function batchUpdate(BatchUpdateLotRequest $request)
+    {
+        try {
+            $result = $this->lotActionService->batchUpdateLots($request->validated());
+
+            if (isset($result['errors'])) {
+                return response()->json([
+                    'message' => 'Algunos lotes tienen errores de validación.',
+                    'errors' => $result['errors'],
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => 'Lotes procesados correctamente.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor al procesar los lotes.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function productsWithInconsistentStock(Request $request)
     {
-        $query = ProductLot::query()
-            ->select('product_lots.*')
-            ->with('product')
-            ->whereHas('product', function ($q) {
-                $q->whereColumn('stock', '!=', 'quantity');
-            });
-
-        if ($request->has('search')) {
-            $query->where('lot_number', 'like', "%{$request->search}%");
-        }  
-        
-        if ($request->has('sortBy') && $request->has('orderBy')) {
-            if ($request->sortBy === 'product.name') {
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->orderBy('products.name', $request->orderBy);
-            } elseif ($request->sortBy === 'product.stock') {
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->orderBy('products.stock', $request->orderBy);
-            } else {
-                $query->orderBy($request->sortBy, $request->orderBy);
-            }
-        }
+        $query = $this->lotQueryService->getProductsWithInconsistentStockQuery($request);
 
         return response()->json([
             'data' => $query->paginate(10),
-        ]);
-    }
-
-    public function store(Request $request)
-    {
-        $validatedData = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:0',
-            'expiration_date' => 'required|date',
-            'lot_number' => 'nullable|string|max:255',
-            'cost_price' => 'nullable|numeric|min:0',
-            'location' => 'nullable|string|max:255',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-        ]);
-
-        $lot = ProductLot::create($validatedData);
-
-        // **Actualizar stock en `Product`**
-        $lot->product->update([
-            'stock' => $validatedData['quantity'],
-        ]);
-
-        return response()->json([
-            'message' => 'Lote creado correctamente',
-            'data' => $lot,
         ]);
     }
 
     public function productsWithoutLot()
     {
-        $productsWithoutLot = Product::whereDoesntHave('lots')->get();
+        $products = $this->lotQueryService->getProductsWithoutLot();
 
         return response()->json([
-            'data' => $productsWithoutLot,
+            'data' => $products,
         ]);
     }
 
     public function availableSuppliers()
     {
-        $suppliers = Supplier::select('id', 'supplier_name')->get();
+        $suppliers = $this->lotQueryService->getAvailableSuppliers();
 
         return response()->json([
             'data' => $suppliers,
         ]);
     }
 
-    public function destroy(ProductLot $productLot)
+    /**
+     * Método adicional para obtener información de stock disponible para un producto
+     */
+    public function getAvailableStock(Request $request, $productId)
     {
-        $productLot->delete();
+        try {
+            $product = \App\Models\Product::find($productId);
+            if (!$product) {
+                return response()->json([
+                    'message' => 'Producto no encontrado.',
+                ], 404);
+            }
 
-        return response()->json([
-            'message' => 'Lote eliminado correctamente',
-        ]);
+            $currentLotsSum = ProductLot::where('product_id', $productId)->sum('quantity');
+            $availableStock = max(0, $product->stock - $currentLotsSum);
+
+            return response()->json([
+                'data' => [
+                    'product_id' => $productId,
+                    'product_stock' => $product->stock,
+                    'lots_sum' => $currentLotsSum,
+                    'available_stock' => $availableStock,
+                    'has_discrepancy' => $currentLotsSum != $product->stock,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al obtener información de stock.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

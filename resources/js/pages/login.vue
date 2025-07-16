@@ -1,98 +1,81 @@
 <script setup>
-import TwoFactorAuthModal from '@/components/TwoFactorAuthModal.vue'
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
-import authV1BottomShape from '@images/svg/auth-v1-bottom-shape.svg?raw'
-import authV1TopShape from '@images/svg/auth-v1-top-shape.svg?raw'
-import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
-import { themeConfig } from '@themeConfig'
+import TwoFactorAuthModal from "@/components/TwoFactorAuthModal.vue";
+import AuthProvider from "@/views/pages/authentication/AuthProvider.vue";
+import authV1BottomShape from "@images/svg/auth-v1-bottom-shape.svg?raw";
+import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
+import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
+import { themeConfig } from "@themeConfig";
 
-// --- INICIO DE NUESTRAS IMPORTACIONES ---
-import axios from 'axios'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-// --- FIN DE NUESTRAS IMPORTACIONES ---
+import axios from "axios";
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 
 definePage({
   meta: {
-    layout: 'blank',
+    layout: "blank",
     public: true,
   },
-})
+});
 
-// --- INICIO DE NUESTRO ESTADO REACTIVO ---
 const form = ref({
-  login: '', // Coincide con tu backend, que espera 'login' (para email o usuario)
-  password: '',
+  login: "",
+  password: "",
   remember: false,
-})
+});
 
-const isPasswordVisible = ref(false)
+const isPasswordVisible = ref(false);
 
-// Para manejar el router de Vue
-const router = useRouter()
+const router = useRouter();
 
-// Para manejar los errores de la API
 const errors = ref({
-  login: '',
-  password: '',
-  general: '',
-})
+  login: "",
+  password: "",
+  general: "",
+});
 
-// Para manejar el modal de 2FA
-const is2FAModalVisible = ref(false)
+const is2FAModalVisible = ref(false);
 const twoFactorData = ref({
   needsQrSetup: false,
   qrCodeUrl: null,
-})
+});
 
-// Para manejar el estado de carga del botón
-const isLoading = ref(false)
-// --- FIN DE NUESTRO ESTADO REACTIVO ---
+const isLoading = ref(false);
 
-
-// --- INICIO DE LA LÓGICA DE LOGIN ---
 const handleLogin = async () => {
-  // ... (limpiar errores y poner isLoading a true) ...
-  errors.value = { login: '', password: '', general: '' }
-  isLoading.value = true
+  errors.value = { login: "", password: "", general: "" };
+  isLoading.value = true;
 
   try {
     const formData = {
       login: form.value.login,
       password: form.value.password,
-    }
+    };
 
-    const response = await axios.post('/api/login', formData)
-    const data = response.data
+    const response = await axios.post("/api/login", formData);
+    const data = response.data;
 
-    // 3. ACTUALIZA la lógica para manejar la nueva respuesta del backend
     if (data.two_factor) {
-      // Caso 2FA: Guardar los datos y mostrar el modal
-      twoFactorData.value.needsQrSetup = data.needs_qr_setup
-      twoFactorData.value.qrCodeUrl = data.qr_code_url
-      is2FAModalVisible.value = true
+      twoFactorData.value.needsQrSetup = data.needs_qr_setup;
+      twoFactorData.value.qrCodeUrl = data.qr_code_url;
+      is2FAModalVisible.value = true;
     } else if (data.redirect) {
-      // Caso Login exitoso: Redirigir
-      window.location.href = data.redirect
+      window.location.href = data.redirect;
     } else {
-      errors.value.general = 'Respuesta inesperada del servidor.'
+      errors.value.general = "Respuesta inesperada del servidor.";
     }
   } catch (error) {
-    // ... (tu lógica de manejo de errores no cambia, está perfecta) ...
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 const on2FAVerified = () => {
-  window.location.href = '/' 
-}
-// --- FIN DE LA LÓGICA DE LOGIN ---
+  window.location.href = "/";
+};
 </script>
 
 <template>
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
     <div class="position-relative my-sm-16">
-      <!-- 👉 Top shape & Bottom shape (sin cambios) -->
       <VNodeRenderer
         :nodes="h('div', { innerHTML: authV1TopShape })"
         class="text-primary auth-v1-top-shape d-none d-sm-block"
@@ -102,7 +85,6 @@ const on2FAVerified = () => {
         class="text-primary auth-v1-bottom-shape d-none d-sm-block"
       />
 
-      <!-- 👉 Auth Card -->
       <VCard
         class="auth-card"
         max-width="460"
@@ -123,15 +105,14 @@ const on2FAVerified = () => {
 
         <VCardText>
           <h4 class="text-h4 mb-1">
-            ¡Bienvenido a <span class="text-capitalize">{{ themeConfig.app.title }}</span>! 👋🏻
+            ¡Bienvenido a
+            <span class="text-capitalize">{{ themeConfig.app.title }}</span
+            >! 👋🏻
           </h4>
-          <p class="mb-0">
-            Por favor, inicia sesión en tu cuenta.
-          </p>
+          <p class="mb-0">Por favor, inicia sesión en tu cuenta.</p>
         </VCardText>
 
         <VCardText>
-          <!-- Mensaje de error general -->
           <VAlert
             v-if="errors.general"
             type="error"
@@ -143,7 +124,6 @@ const on2FAVerified = () => {
 
           <VForm @submit.prevent="handleLogin">
             <VRow>
-              <!-- email/username -->
               <VCol cols="12">
                 <AppTextField
                   v-model="form.login"
@@ -155,7 +135,6 @@ const on2FAVerified = () => {
                 />
               </VCol>
 
-              <!-- password -->
               <VCol cols="12">
                 <AppTextField
                   v-model="form.password"
@@ -163,20 +142,18 @@ const on2FAVerified = () => {
                   placeholder="············"
                   :type="isPasswordVisible ? 'text' : 'password'"
                   autocomplete="current-password"
-                  :append-inner-icon="isPasswordVisible ? 'tabler-eye-off' : 'tabler-eye'"
+                  :append-inner-icon="
+                    isPasswordVisible ? 'tabler-eye-off' : 'tabler-eye'
+                  "
                   :error-messages="errors.password"
                   @click:append-inner="isPasswordVisible = !isPasswordVisible"
                 />
 
-                <div class="d-flex align-center justify-space-between flex-wrap my-6">
-                  <VCheckbox
-                    v-model="form.remember"
-                    label="Recordarme"
-                  />
-                  <RouterLink
-                    class="text-primary"
-                    :to="{ name: 'login' }"
-                  >
+                <div
+                  class="d-flex align-center justify-space-between flex-wrap my-6"
+                >
+                  <VCheckbox v-model="form.remember" label="Recordarme" />
+                  <RouterLink class="text-primary" :to="{ name: 'login' }">
                     ¿Olvidaste tu contraseña?
                   </RouterLink>
                 </div>
@@ -191,11 +168,7 @@ const on2FAVerified = () => {
                 </VBtn>
               </VCol>
 
-              <!-- El resto del template no cambia -->
-              <VCol
-                cols="12"
-                class="text-body-1 text-center"
-              >
+              <VCol cols="12" class="text-body-1 text-center">
                 <span class="d-inline-block">
                   ¿Nuevo en nuestra plataforma?
                 </span>
@@ -206,18 +179,12 @@ const on2FAVerified = () => {
                   Crea una cuenta
                 </RouterLink>
               </VCol>
-              <VCol
-                cols="12"
-                class="d-flex align-center"
-              >
+              <VCol cols="12" class="d-flex align-center">
                 <VDivider />
                 <span class="mx-4 text-high-emphasis">o</span>
                 <VDivider />
               </VCol>
-              <VCol
-                cols="12"
-                class="text-center"
-              >
+              <VCol cols="12" class="text-center">
                 <AuthProvider />
               </VCol>
             </VRow>

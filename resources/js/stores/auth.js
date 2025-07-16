@@ -1,13 +1,12 @@
-import axios from '@/plugins/axios'
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import axios from '@/plugins/axios';
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.is_admin ?? false)
-
 
   async function fetchUser() {
     try {
@@ -18,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('No se pudo obtener el usuario.', error)
     }
   }
+
   async function logout() {
     try {
       await axios.post('/logout')

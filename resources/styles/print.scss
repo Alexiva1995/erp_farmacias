@@ -1,0 +1,102 @@
+
+
+@media print {
+  .col-12.col-md-8.mx-auto {
+    padding: 0 !important; 
+  }
+
+  .v-card {
+    border: 2px solid rgba(198, 198, 199, 0.651) !important; 
+    box-shadow: none !important; 
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 50mm !important;
+  }
+
+  .v-card.v-theme--light.v-card--variant-outlined {
+    border: 2px solid rgba(198, 198, 199, 0.651) !important; 
+    box-shadow: none !important;
+  }
+
+  img[alt="Logotipo de la marca"] {
+    max-width: 130px !important;
+    height: auto !important;
+  }
+
+  hr {
+    border-top : 1px solid !important; 
+  }
+  .ticket-total, .ticket-item {
+    color: #000 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .ticket-item { 
+    display: flex; 
+    justify-content: space-between; 
+    margin-bottom: 5px; 
+    }
+
+   .headerPrint {
+            font-weight: 200 !important;
+            font-size: 8pt !important; 
+            color: rgba(83, 83, 83, 0.651) !important;
+            -webkit-print-color-adjust: exact!important;;
+            print-color-adjust: exact!important;;
+        }
+
+      .tituloAzulPrint { 
+            font-weight: 600 !important;
+            font-size: 12pt !important;
+            color: #044C94 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            font-weight: bold;
+        }
+
+        .textoPrint { 
+            font-weight: 600 !important;
+            font-size: 12pt !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            font-weight: bold;
+        }
+
+    body { margin: 0; }
+            .ticket-container {
+                margin: 0px !important;
+            }
+            .ticket-header {
+              margin-bottom: 10px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              font-weight: bold;
+            }
+            .ticket-header p {margin: 2;}
+            .ticket-footer { text-align: center!important; margin-top: auto;padding-top: 5px}
+            .ticket-item-qty { flex-basis: 10%; text-align: left; }
+            .ticket-item-name { flex-basis: 60%; text-align: left; padding-right: 5px; }
+            .ticket-item-price { width: 25%; text-align: right; }
+            .ticket-total {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin: 5px;
+              font-weight: bold;
+            }
+            .text-center img {
+            display: block !important;
+            width: 130px !important;   
+            height: auto !important;    
+            margin: 0 auto !important;
+          }
+  .ticket-body {
+    flex-grow: 1; 
+  }
+     hr {border-top : 1px solid}
+
+}

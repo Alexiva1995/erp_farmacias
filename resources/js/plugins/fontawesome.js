@@ -3,14 +3,15 @@ import { faBoxesStacked } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import {
+  faBarcode,
   faCog,
   faEye,
+  faFileLines,
   faPencilAlt,
   faPlus,
   faSave,
   faTrash,
-  faUser,
-  faBarcode
+  faUser
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -22,7 +23,8 @@ library.add(
   faPencilAlt,
   faEye,
   faBoxesStacked,
-  faBarcode
+  faBarcode,
+  faFileLines,
 )
 
 export default function (app) {

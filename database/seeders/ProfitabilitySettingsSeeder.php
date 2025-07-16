@@ -14,7 +14,7 @@ class ProfitabilitySettingsSeeder extends Seeder
     public function run(): void
     {
         DB::table('profitability_settings')->insert([
-            'default_profitability' => 20,
+            'default_profitability_percentage' => 25,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
