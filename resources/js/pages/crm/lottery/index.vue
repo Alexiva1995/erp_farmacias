@@ -73,7 +73,7 @@ async function consultAllLaboratories(){
     return []
   }
 
-  return [...res.data.data]
+  return [...res.data]
 
 }
 
