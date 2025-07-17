@@ -4,10 +4,30 @@
 namespace App\Repository;
 
 use App\Models\Order;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderRepository
 {
 
+
+
+    public function filtrarOrdenesWithPsychotropicsforPaginate($filtros, $perPage = 10): LengthAwarePaginator
+    {
+        $consulta = Order::query();
+
+        $consulta->select('orders.*')
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->where('products.psychotropic', "=", 1)
+            ->distinct();
+
+
+        if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
+            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+        }
+
+        return $consulta->paginate($perPage);
+    }
 
 
 

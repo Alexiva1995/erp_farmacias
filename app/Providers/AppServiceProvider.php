@@ -15,10 +15,13 @@ use App\Services\CompanyServices;
 use App\Services\DoctorServices;
 use App\Services\LotteryServices;
 use App\Contracts\ExchangeRate;
+use App\Contracts\Order;
 use App\Contracts\Profitability;
 use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Services\ExchangeRateServices;
+use App\Services\OrderServices;
 use App\Services\ProfitabilityServices;
 use Illuminate\Support\ServiceProvider;
 
@@ -52,6 +55,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(LotteryController::class)
             ->needs(Lottery::class)
             ->give(LotteryServices::class);
+
+        $this->app->when(OrderController::class)
+            ->needs(Order::class)
+            ->give(OrderServices::class);
     }
 
     /**
