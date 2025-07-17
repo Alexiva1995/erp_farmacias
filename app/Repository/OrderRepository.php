@@ -13,7 +13,7 @@ class OrderRepository
 
     public function filtrarOrdenesWithPsychotropicsforPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
-        $consulta = Order::query();
+        $consulta = Order::query()->with(["client", "seller"]);
 
         $consulta->select('orders.*')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')

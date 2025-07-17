@@ -6,6 +6,7 @@
 import { toast } from "@/plugins/sweetalert";
 // import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 // import Swal from 'sweetalert2';
+import OrderWithPsychotropicsTable from "@/components/OrderWithPsychotropicsTable.vue";
 import PsychotropicsFilters from '@/components/PsychotropicsFilters.vue';
 import PsychotropicsTable from "@/components/PsychotropicsTable.vue";
 import axios from "@/plugins/axios";
@@ -18,6 +19,13 @@ const modal= reactive({
   titulo:"Nuevo",
 })
 
+const sales = ref([]);
+const totalSales = ref(0);
+
+const pageOrder = ref(1)
+const itemsPerPageOrder = ref(10)
+const sortByOrder  = ref()
+const orderByOrder  = ref()
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -93,6 +101,33 @@ const fetchProducts = async () => {
   }
 };
 
+const fetchSales = async () => {
+  loading.value = true;
+  const params = {
+    page: pageOrder.value,
+    itemsPerPage: itemsPerPageOrder.value,
+    sortBy: sortByOrder.value,
+    orderBy: orderByOrder.value,
+  };
+
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
+  try {
+    const response = await axios.get(`orders/psychotropics/pagination?page=${pageOrder.value}`, { params });
+    console.log("data => ",response)
+    console.log("data => ",response.data.data.data)
+    sales.value = response.data.data.data;
+    totalSales.value = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener el reporte de ventas:", error);
+    toast.error("Error al obtener el reporte.");
+  } finally {
+    loading.value = false;
+  }
+};
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
@@ -113,13 +148,20 @@ const handleSort = (sortOptions) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
-  selectedOrigin.value = null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
+
+const updateTableOptionsOrders = (options) => {
+  pageOrder.value = options.page;
+  itemsPerPageOrder.value = options.itemsPerPage;
+  sortByOrder.value = options.sortBy[0]?.key;
+  orderByOrder.value = options.sortBy[0]?.order;
+};
+
 
 
 watch(
@@ -133,7 +175,6 @@ watch(
       itemsPerPage,
       sortBy,
       orderBy
-
   ],
   async () =>{
     fetchProducts();
@@ -147,6 +188,7 @@ function verProducto(paylod){
 onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
+  fetchSales();
 })
 </script>
 
@@ -171,6 +213,15 @@ onMounted(() => {
       :page="page"
       @update:options="updateTableOptions"
       @action-ver="verProducto"
+    />
+    <div class="mb-5"></div>
+    <OrderWithPsychotropicsTable
+      :sales="sales"
+      :loading="loading"
+      :total-sales="totalSales"
+      :items-per-page="itemsPerPageOrder"
+      :page="pageOrder"
+      @update:options="updateTableOptionsOrders"
     />
   </div>
 </template>
