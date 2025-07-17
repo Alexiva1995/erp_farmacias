@@ -63,8 +63,14 @@ class LotQueryService
         $query = ProductLot::query()
             ->select('product_lots.*')
             ->with(['product.laboratory'])
-            ->whereHas('product', function ($q) {
-                $q->whereColumn('stock', '!=', 'quantity');
+            ->whereHas('product', function ($productQuery) {
+                $productQuery->whereRaw('
+                    stock != (
+                        SELECT COALESCE(SUM(quantity), 0) 
+                        FROM product_lots 
+                        WHERE product_id = products.id
+                    )
+                ');
             });
 
         if ($request->has('search') && !empty($request->search)) {

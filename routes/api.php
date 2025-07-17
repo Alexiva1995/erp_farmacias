@@ -75,6 +75,7 @@ Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
 Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
 Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
 Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
+Route::post('/expirations/adjust-prices/preview', [App\Http\Controllers\Api\ExpirationController::class, 'previewPriceAdjustment']);
 Route::post('/expirations/adjust-expired-prices', [ExpirationController::class, 'adjustExpiredProductsPrices']);
 Route::get('/expirations/month/{month}/adjustment-status', [ExpirationController::class, 'checkMonthAdjustmentStatus']);
 

@@ -48,7 +48,28 @@ class ExpirationController extends Controller
             return response()->json(['message' => $e->getMessage()], $statusCode);
         }
     }
+    public function previewPriceAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'month' => 'required|string|date_format:Y-m',
+            'excludedProductIds' => 'sometimes|array',
+            'excludedProductIds.*' => 'integer|exists:products,id',
+        ]);
 
+        try {
+            // Delegamos la lógica al servicio de acciones
+            $previewData = $this->actionService->getAdjustmentPreview(
+                $validated['month'],
+                $validated['excludedProductIds'] ?? []
+            );
+
+            return response()->json($previewData);
+
+        } catch (\Exception $e) {
+            $statusCode = is_numeric($e->getCode()) && $e->getCode() > 0 ? $e->getCode() : 500;
+            return response()->json(['message' => $e->getMessage()], $statusCode);
+        }
+    }
     /**
      * Reajusta los precios de productos caducados de un mes completo,
      * excluyendo los productos especificados.

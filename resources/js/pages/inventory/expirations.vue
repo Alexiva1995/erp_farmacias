@@ -250,6 +250,8 @@ const productsForDonation = ref([]);
 const isPriceAdjustmentModalVisible = ref(false);
 const selectedMonthForAdjustment = ref(null);
 
+const loadingAdjustmentForMonth = ref(null);
+
 const headersSummaries = [
   { title: "Mes", key: "month", sortable: true },
   {
@@ -381,14 +383,18 @@ const handlePrintDonation = async (month) => {
 };
 
 const handlePriceAdjustmentExpired = async (month) => {
+  if (loadingAdjustmentForMonth.value === month) return;
+
   try {
-    // Primero verificar si ya se hizo reajuste en este mes
+    loadingAdjustmentForMonth.value = month;
+
     const { data: statusData } = await axios.get(
       `/expirations/month/${month}/adjustment-status`
     );
 
     if (statusData.has_adjustment) {
       toast.warning("Ya se ha realizado un reajuste de precios para este mes.");
+      loadingAdjustmentForMonth.value = null;
       return;
     }
 
@@ -399,33 +405,119 @@ const handlePriceAdjustmentExpired = async (month) => {
   } catch (error) {
     console.error("Error al preparar reajuste de precios:", error);
     toast.error("No se pudo inicializar el reajuste de precios.");
+  } finally {
+    loadingAdjustmentForMonth.value = null;
   }
 };
 
 const handleGeneratePriceAdjustment = async (adjustmentData) => {
-  try {
-    const payload = {
-      month: selectedMonthForAdjustment.value,
-      excludedProductIds: adjustmentData.excludedProducts.map((p) => p.id),
-    };
+  isPriceAdjustmentModalVisible.value = false;
 
-    const { data: responseData } = await axios.post(
-      "/expirations/adjust-expired-prices",
+  const payload = {
+    month: selectedMonthForAdjustment.value,
+    excludedProductIds: adjustmentData.excludedProducts.map((p) => p.id),
+  };
+
+  try {
+    Swal.fire({
+      title: "Calculando reajuste...",
+      text: "Por favor espera mientras obtenemos los datos para la confirmación.",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    const { data: preview } = await axios.post(
+      "/expirations/adjust-prices/preview",
       payload
     );
 
-    toast.success(
-      responseData.message || "Reajuste de precios aplicado correctamente."
-    );
-    isPriceAdjustmentModalVisible.value = false;
+    const result = await Swal.fire({
+      title: "Confirmar Reajuste de Precios",
+      html: `
+        <div style="text-align: left; padding: 0 1rem; font-size: 1rem;">
+          <p>Estás a punto de redistribuir el costo de los productos caducados. Por favor, revisa los detalles:</p>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span>Monto total a redistribuir:</span>
+            <strong>${formatCurrency(preview.total_lost_value)}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Total de unidades activas:</span>
+            <strong>${preview.total_active_stock.toLocaleString(
+              "es-CO"
+            )} unidades</strong>
+          </div>
+           <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; color: #6c757d;">
+            <small>(en ${preview.affected_products_count.toLocaleString(
+              "es-CO"
+            )} productos)</small>
+          </div>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem;">
+            <span>Ajuste por cada unidad:</span>
+            <strong style="color: #28a745;">+ ${formatCurrency(
+              preview.cost_adjustment_per_unit
+            )}</strong>
+          </div>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, aplicar reajuste",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      customClass: {
+        htmlContainer: "text-left",
+      },
+      didOpen: () => {
+        const actions = Swal.getActions();
+        const confirmButton = Swal.getConfirmButton();
+        const cancelButton = Swal.getCancelButton();
 
-    await fetchSummaries();
+        actions.style.display = "flex";
+        actions.style.gap = "10px";
+        actions.style.width = "100%";
+        actions.style.padding = "0 20px";
+
+        confirmButton.style.flex = "1";
+        confirmButton.style.width = "50%";
+
+        cancelButton.style.flex = "1";
+        cancelButton.style.width = "50%";
+      },
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: "Aplicando reajuste...",
+        text: "Esta operación puede tardar unos segundos. No cierres esta ventana.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const { data: responseData } = await axios.post(
+        "/expirations/adjust-expired-prices",
+        payload
+      );
+
+      toast.success(
+        responseData.message || "Reajuste de precios aplicado correctamente."
+      );
+
+      await fetchSummaries();
+    }
   } catch (error) {
-    console.error("Error al aplicar reajuste de precios:", error);
-    toast.error(
-      error.response?.data?.message ||
-        "No se pudo aplicar el reajuste de precios."
-    );
+    console.error("Error en el proceso de reajuste de precios:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Operación cancelada",
+      text:
+        error.response?.data?.message || "No se pudo completar la operación.",
+    });
   }
 };
 
@@ -503,7 +595,7 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
   }).format(value);
 };
 </script>
@@ -618,8 +710,22 @@ const formatCurrency = (value) => {
                 </VTooltip>
                 <VTooltip text="Reajustar Precios">
                   <template #activator="{ props: tooltipProps }">
-                    <div v-bind="tooltipProps" class="d-inline-block">
+                    <div
+                      v-bind="tooltipProps"
+                      class="d-inline-block"
+                      style="width: 36px; height: 36px; text-align: center"
+                    >
+                      <VProgressCircular
+                        v-if="loadingAdjustmentForMonth === item.month"
+                        indeterminate
+                        size="20"
+                        width="2"
+                        color="primary"
+                        class="mt-2"
+                      />
+
                       <IconBtn
+                        v-else
                         :disabled="item.has_price_adjustment"
                         @click="handlePriceAdjustmentExpired(item.month)"
                       >
