@@ -6,6 +6,7 @@
 import { toast } from "@/plugins/sweetalert";
 // import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 // import Swal from 'sweetalert2';
+import PsychotropicsRecipeDialoge from "@/components/dialogs/PsychotropicsRecipeDialoge.vue";
 import OrderWithPsychotropicsTable from "@/components/OrderWithPsychotropicsTable.vue";
 import PsychotropicsFilters from '@/components/PsychotropicsFilters.vue';
 import PsychotropicsTable from "@/components/PsychotropicsTable.vue";
@@ -17,6 +18,12 @@ const route= useRouter()
 const modal= reactive({
   statu:false,
   titulo:"Nuevo",
+})
+
+const modalRecipe= reactive({
+  statu:false,
+  titulo:"Nuevo",
+  data:{},
 })
 
 const sales = ref([]);
@@ -108,6 +115,7 @@ const fetchSales = async () => {
     itemsPerPage: itemsPerPageOrder.value,
     sortBy: sortByOrder.value,
     orderBy: orderByOrder.value,
+    "is_psychotropic":1
   };
 
   Object.keys(params).forEach(
@@ -115,10 +123,8 @@ const fetchSales = async () => {
   );
 
   try {
-    const response = await axios.get(`orders/psychotropics/pagination?page=${pageOrder.value}`, { params });
-    console.log("data => ",response)
-    console.log("data => ",response.data.data.data)
-    sales.value = response.data.data.data;
+    const response = await axios.get("/sales/report", { params });
+    sales.value = response.data.data;
     totalSales.value = response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener el reporte de ventas:", error);
@@ -155,7 +161,7 @@ const handleClearFilters = () => {
   // orderBy.value = undefined;
 };
 
-const updateTableOptionsOrders = (options) => {
+const updateTableOptionsProductos = (options) => {
   pageOrder.value = options.page;
   itemsPerPageOrder.value = options.itemsPerPage;
   sortByOrder.value = options.sortBy[0]?.key;
@@ -185,6 +191,17 @@ function verProducto(paylod){
   console.log(paylod)
 }
 
+function verRecipe(paylod){
+  console.log(paylod)
+  modalRecipe.statu=true
+  modalRecipe.titulo=`Recipe: ${paylod.order.id}`
+  modalRecipe.data={...paylod}
+}
+
+function cerrarModalVerRecipe(paylod){
+  modalRecipe.statu=false
+}
+
 onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
@@ -194,6 +211,12 @@ onMounted(() => {
 
 <template>
   <div>
+    <PsychotropicsRecipeDialoge
+      :modal-formulario="modalRecipe.statu"
+      :titulo="modalRecipe.titulo"
+      :data="modalRecipe.data"
+      @modal-close="cerrarModalVerRecipe"
+    />
     <PsychotropicsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
@@ -221,7 +244,8 @@ onMounted(() => {
       :total-sales="totalSales"
       :items-per-page="itemsPerPageOrder"
       :page="pageOrder"
-      @update:options="updateTableOptionsOrders"
+      @action-ver="verRecipe"
+      @update:options="updateTableOptionsProductos"
     />
   </div>
 </template>

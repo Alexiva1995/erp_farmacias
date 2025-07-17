@@ -90,6 +90,7 @@ declare module 'vue' {
     ProductWithoutLotsTable: typeof import('./resources/js/components/ProductWithoutLotsTable.vue')['default']
     ProfitabilityTable: typeof import('./resources/js/components/ProfitabilityTable.vue')['default']
     PsychotropicsFilters: typeof import('./resources/js/components/PsychotropicsFilters.vue')['default']
+    PsychotropicsRecipeDialoge: typeof import('./resources/js/components/dialogs/PsychotropicsRecipeDialoge.vue')['default']
     PsychotropicsTable: typeof import('./resources/js/components/PsychotropicsTable.vue')['default']
     QuotationCard: typeof import('./resources/js/components/cards/QuotationCard.vue')['default']
     QuotationFilters: typeof import('./resources/js/components/QuotationFilters.vue')['default']

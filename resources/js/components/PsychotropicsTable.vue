@@ -125,7 +125,7 @@ const formatPrice = (price) => {
 
       <template #item.actions="{ item }">
         <IconBtn @click="emit('actionVer', item)">
-          <VIcon icon="tabler-edit" />
+          <VIcon icon="tabler-eye" />
         </IconBtn>
       </template>
     </VDataTableServer>
