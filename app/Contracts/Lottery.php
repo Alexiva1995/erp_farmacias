@@ -10,5 +10,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 interface Lottery
 {
 
-    public function filterOrders(array $filtros): Collection;
+
+    public function filterOrdersWithoutPaginate(array $filtros): Collection;
+
+    public function filterOrdersPaginate(array $filtros, int $perPage): LengthAwarePaginator;
 }

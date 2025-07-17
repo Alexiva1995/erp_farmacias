@@ -58,7 +58,7 @@ function insertarDatosAlFormulario(datos){
   formulario.id=datos.id
   formulario.identification=datos.identification
   formulario.name=datos.name
-  formulario.address=datos.address
+  formulario.address=remplazarSiEsNullPor(datos.address)
 }
 
 function limpiarDatosFormulario(){
@@ -314,6 +314,10 @@ async function exportarExcel(formato){
     console.error("Error al exportar los datos:", error);
   }
 
+}
+
+function remplazarSiEsNullPor(dato,por=""){
+  return (dato==null)?por:dato
 }
 
 

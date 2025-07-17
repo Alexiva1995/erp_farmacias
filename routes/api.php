@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
@@ -153,10 +154,17 @@ Route::prefix("crm")->group(function () {
 
     // Rutas Sorteo
     Route::prefix("lottery")->group(function () {
-        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+        Route::post("/filtrar-ordenes-sin-paginar",  [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+        Route::post("/filtrar-ordenes",              [LotteryController::class, "filtrarOrdenesPaginate"]);
     });
 });
 
+
+// Route Laboratorio
+Route::prefix("laboratories")->group(function () {
+    Route::get("/", [LaboratoryController::class, "consultAll"]);
+
+});
 
 // Ruta de fiscal
 // Histori
@@ -188,4 +196,5 @@ Route::prefix("finances")->group(function () {
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
     });
-});
+ });
+
