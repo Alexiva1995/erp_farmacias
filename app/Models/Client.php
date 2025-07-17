@@ -70,4 +70,9 @@ class Client extends Model
     {
         return $this->hasMany(Credit::class);
     }
+
+    public function pendingCredits()
+    {
+        return $this->hasMany(Credit::class)->where('status', 'Active');
+    }
 }

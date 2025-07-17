@@ -96,6 +96,8 @@ Route::prefix("tpv")->group(function () {
     Route::post('/quotations', [QuotationController::class, 'store']);
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
+    Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
+    Route::post('/orders', [OrderController::class, 'store']);
     // Rutas de Pedidos General
 });
 
