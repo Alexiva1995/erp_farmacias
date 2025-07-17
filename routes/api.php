@@ -165,10 +165,10 @@ Route::prefix("orders")->group(function () {
 });
 
 // Route Laboratorio
-Route::prefix("laboratories")->group(function () {
-    Route::get("/", [LaboratoryController::class, "consultAll"]);
+// Route::prefix("laboratories")->group(function () {
+//     Route::get("/", [LaboratoryController::class, "consultAll"]);
 
-});
+// });
 
 // Ruta de fiscal
 // Histori
@@ -200,5 +200,4 @@ Route::prefix("finances")->group(function () {
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
     });
- });
-
+});

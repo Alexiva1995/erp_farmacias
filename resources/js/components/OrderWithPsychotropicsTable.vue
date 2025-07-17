@@ -20,11 +20,11 @@ const headers = [
   { title: "Stock A", key: "stock_before", sortable: true },
   { title: "Cantidad", key: "quantity", sortable: false },
   { title: "Stock F", key: "stock_after", sortable: true },
-  // { title: "Fecha", key: "movement_date", sortable: true },
   { title: "Tipo", key: "movement_type", sortable: true },
   { title: "Proveedor", key: "supplier.name", sortable: true },
-  { title: "Operador", key: "user.email", sortable: true },
+  // { title: "Operador", key: "user.email", sortable: true },
   { title: "Referencia", key: "reference", sortable: true },
+  { title: "Fecha", key: "movement_date", sortable: true },
   { title: "Recipe", key: "recipe", sortable: false },
 ];
 </script>
@@ -45,9 +45,9 @@ const headers = [
         <span class="font-weight-medium">{{ item.product_id }}</span>
       </template>
 
-      <!-- <template #item.movement_date="{ item }">
+      <template #item.movement_date="{ item }">
         <span>{{ new Date(item.movement_date).toLocaleDateString() }}</span>
-      </template> -->
+      </template>
 
       <template #item.customer.name="{ item }">
         <div class="d-flex align-center gap-x-4">
