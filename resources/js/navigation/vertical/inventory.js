@@ -28,6 +28,10 @@ export default [
       {
         title: 'Inventario Ciclicos',
         to: 'inventory-cyclic',
+      },
+      {
+        title: 'Psicotropicos',
+        to: 'inventory-psychotropics',
       }
     ],
   }, 
