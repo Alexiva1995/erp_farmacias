@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
+use App\Http\Controllers\Api\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -159,6 +160,9 @@ Route::prefix("crm")->group(function () {
     });
 });
 
+Route::prefix("orders")->group(function () {
+    Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
+});
 
 // Route Laboratorio
 Route::prefix("laboratories")->group(function () {
