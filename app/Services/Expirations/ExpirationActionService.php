@@ -53,7 +53,56 @@ class ExpirationActionService
             throw new Exception('Error al procesar la caducidad del lote.', 500, $e);
         }
     }
+    public function getAdjustmentPreview(string $month, array $excludedProductIds = []): array
+    {
+        if ($this->hasMonthPriceAdjustment($month)) {
+            throw new Exception('Ya se ha realizado un reajuste de precios para este mes.', 409);
+        }
 
+        $allExpiredLogs = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+            ->get();
+
+        if ($allExpiredLogs->isEmpty()) {
+            throw new Exception('No se encontraron productos caducados para el mes especificado.', 404);
+        }
+
+        $logsToProcess = $allExpiredLogs->filter(function ($log) use ($excludedProductIds) {
+            return !in_array($log->product_id, $excludedProductIds);
+        });
+
+        if ($logsToProcess->isEmpty()) {
+            throw new Exception('Todos los productos del mes han sido excluidos. No hay nada que reajustar.', 400);
+        }
+
+        $totalLostValue = $logsToProcess->sum('total_lost_value');
+
+        if ($totalLostValue <= 0) {
+            throw new Exception('No hay valor perdido para redistribuir.', 400);
+        }
+
+        $totalActiveStock = DB::table('products')
+            ->where('stock', '>', 0)
+            ->whereNotIn('id', $excludedProductIds)
+            ->sum('stock');
+
+        if ($totalActiveStock <= 0) {
+            throw new Exception('No hay stock activo para redistribuir el costo (considerando las exclusiones).', 400);
+        }
+
+        $costAdjustmentPerUnit = $totalLostValue / $totalActiveStock;
+
+        $affectedProductsCount = DB::table('products')
+            ->where('stock', '>', 0)
+            ->whereNotIn('id', $excludedProductIds)
+            ->count();
+
+        return [
+            'total_lost_value' => $totalLostValue,
+            'total_active_stock' => (int) $totalActiveStock,
+            'cost_adjustment_per_unit' => $costAdjustmentPerUnit,
+            'affected_products_count' => $affectedProductsCount,
+        ];
+    }
     /**
      * Reajusta los precios de TODOS los productos caducados de un mes,
      *
@@ -100,36 +149,37 @@ class ExpirationActionService
                 throw new Exception('No hay valor perdido para redistribuir.', 400);
             }
 
-            $totalActiveUnits = ProductLot::where('quantity', '>', 0)
-                ->whereNotIn('product_id', $excludedProductIds)
-                ->sum('quantity');
+            $totalActiveStock = DB::table('products')
+                ->where('stock', '>', 0)
+                ->whereNotIn('id', $excludedProductIds)
+                ->sum('stock');
 
-            if ($totalActiveUnits <= 0) {
-                throw new Exception('No hay unidades activas para redistribuir el costo (excluyendo productos seleccionados).', 400);
+            if ($totalActiveStock <= 0) {
+                throw new Exception('No hay stock activo para redistribuir el costo (excluyendo productos seleccionados).', 400);
             }
 
-            $costAdjustmentPerUnit = $totalLostValue / $totalActiveUnits;
+            $costAdjustmentPerUnit = $totalLostValue / $totalActiveStock;
 
-            $activeProductIds = ProductLot::where('quantity', '>', 0)
-                ->whereNotIn('product_id', $excludedProductIds)
-                ->distinct()
-                ->pluck('product_id');
-
+            $activeProductIds = DB::table('products')
+                ->where('stock', '>', 0)
+                ->whereNotIn('id', $excludedProductIds)
+                ->pluck('id');
 
             foreach ($activeProductIds as $productId) {
-                $productActiveUnits = ProductLot::where('product_id', $productId)
-                    ->where('quantity', '>', 0)
-                    ->sum('quantity');
+                $productStock = DB::table('products')
+                    ->where('id', $productId)
+                    ->value('stock');
 
-                if ($productActiveUnits > 0) {
-                    $newUnitCost = DB::table('products')
+                if ($productStock > 0) {
+                    $currentUnitCost = DB::table('products')
                         ->where('id', $productId)
-                        ->value('unit_cost') + $costAdjustmentPerUnit;
+                        ->value('unit_cost');
+
+                    $newUnitCost = $currentUnitCost + $costAdjustmentPerUnit;
 
                     $updated = DB::table('products')
                         ->where('id', $productId)
                         ->update(['unit_cost' => $newUnitCost]);
-
                 }
             }
 
@@ -153,15 +203,19 @@ class ExpirationActionService
             $excludedCount = $excludedLogs->count();
             $totalCount = $allExpiredLogs->count();
 
+            $totalUnitsProcessed = $logsToProcess->sum('expired_quantity');
+            $affectedProductCount = count($activeProductIds);
+
             return [
                 'success' => true,
-                'message' => "Reajuste aplicado exitosamente. Se procesaron {$processedCount} de {$totalCount} productos caducados del mes. {$excludedCount} productos fueron excluidos. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre " . count($activeProductIds) . " productos activos.",
+                'message' => "Reajuste aplicado exitosamente. Se procesaron {$totalUnitsProcessed} unidades de productos caducados de {$processedCount} productos del mes. {$excludedCount} productos fueron excluidos. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre las {$totalActiveStock} unidades de {$affectedProductCount} productos activos.",
                 'processed_logs' => $processedCount,
                 'excluded_logs' => $excludedCount,
                 'total_logs' => $totalCount,
+                'total_units_processed' => $totalUnitsProcessed,
                 'total_cost_redistributed' => $totalLostValue,
-                'total_units_affected' => $totalActiveUnits,
-                'affected_products_count' => count($activeProductIds),
+                'total_units_affected' => $totalActiveStock,
+                'affected_products_count' => $affectedProductCount,
                 'cost_per_unit' => $costAdjustmentPerUnit
             ];
 

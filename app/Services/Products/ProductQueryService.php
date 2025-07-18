@@ -45,6 +45,10 @@ class ProductQueryService
             $query->where('laboratory_id', $filters['laboratoryId']);
         }
 
+        if (!empty($filters['is_psychotropic'])) {
+            $query->where('psychotropic', $filters['is_psychotropic']);
+        }
+
         if (!empty($filters['originId'])) {
             $query->where('origin_id', $filters['originId']);
         }
@@ -130,6 +134,7 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'is_psychotropic' => $request->is_psychotropic,
         ];
 
         $this->applyFilters($query, $filters);

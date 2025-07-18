@@ -140,4 +140,5 @@ class ExpirationQueryService
 
         return $summaries;
     }
+
 }

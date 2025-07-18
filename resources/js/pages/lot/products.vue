@@ -70,7 +70,7 @@ const fetchProductLots = async () => {
   );
 
   try {
-    const response = await axios.get("/product-lots", { params });
+    const response = await axios.get("/product-without-lots", { params });
     productLots.value = response.data?.data.data || [];
     totalProductLots.value = response.data?.data.total || 0;
   } catch (error) {
@@ -276,6 +276,7 @@ const handleUpdateLot = async (lotsToSave) => {
       v-model:endDate="endDate"
       :laboratories="laboratories"
       :loading="isLoadingFilters"
+      :add-lot-loading="isLoadingDialogData"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
