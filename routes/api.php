@@ -162,7 +162,6 @@ Route::prefix("crm")->group(function () {
 // Route Laboratorio
 Route::prefix("laboratories")->group(function () {
     Route::get("/", [LaboratoryController::class, "consultAll"]);
-
 });
 
 // Ruta de fiscal
@@ -193,7 +192,8 @@ Route::prefix("finances")->group(function () {
     Route::prefix("exchange-rates")->group(function () {
 
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
+        Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
     });
- });
-
+});

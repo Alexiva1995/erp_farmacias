@@ -62,6 +62,7 @@ declare module 'vue' {
     ExpirationsTable: typeof import('./resources/js/components/ExpirationsTable.vue')['default']
     ExpiredDetailView: typeof import('./resources/js/components/ExpiredDetailView.vue')['default']
     ExpiredSummaryCard: typeof import('./resources/js/components/ExpiredSummaryCard.vue')['default']
+    FormExchangeRate: typeof import('./resources/js/components/FormExchangeRate.vue')['default']
     GroupEditDialog: typeof import('./resources/js/components/dialogs/GroupEditDialog.vue')['default']
     GroupFilters: typeof import('./resources/js/components/GroupFilters.vue')['default']
     GroupTable: typeof import('./resources/js/components/GroupTable.vue')['default']
