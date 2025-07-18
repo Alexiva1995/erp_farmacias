@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
@@ -30,7 +31,6 @@ use App\Http\Controllers\Api\FiscalController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
 // Rutas de autenticación
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/two-factor-challenge', [LoginController::class, 'verify2FA']);
@@ -66,11 +66,13 @@ Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
+Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
 Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+
 Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
 Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
 Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
@@ -151,10 +153,16 @@ Route::prefix("crm")->group(function () {
 
     // Rutas Sorteo
     Route::prefix("lottery")->group(function () {
-        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+        Route::post("/filtrar-ordenes-sin-paginar",  [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+        Route::post("/filtrar-ordenes",              [LotteryController::class, "filtrarOrdenesPaginate"]);
     });
 });
 
+
+// Route Laboratorio
+Route::prefix("laboratories")->group(function () {
+    Route::get("/", [LaboratoryController::class, "consultAll"]);
+});
 
 // Ruta de fiscal
 // Histori
@@ -184,6 +192,8 @@ Route::prefix("finances")->group(function () {
     Route::prefix("exchange-rates")->group(function () {
 
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
+        Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
     });
 });
