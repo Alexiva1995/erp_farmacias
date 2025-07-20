@@ -12,8 +12,7 @@ class TraceabilityController extends Controller
 {
     public function __construct(
         private TraceabilityQueryService $salesReportQueryService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {

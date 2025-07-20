@@ -1,4 +1,7 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
+import { computed, onMounted, ref, watch } from "vue";
+
 const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
@@ -60,16 +63,116 @@ const sortOptions = [
     key: "next_expiration",
     order: "asc",
   },
+  {
+    title: "Más Vendidos",
+    icon: "tabler-trending-up",
+    key: "most_sold",
+    order: "desc",
+  },
 ];
 
-const handleSortClick = (option) => {
-  emit("sort", { key: option.key, order: option.order });
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
+
+const selectedSort = ref(null);
+
+const getStorageKey = () =>
+  `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
+
+const loadSavedSort = () => {
+  try {
+    const saved = localStorage.getItem(getStorageKey());
+    if (saved) {
+      const parsedSort = JSON.parse(saved);
+      const isValidSort = sortOptions.find(
+        (option) =>
+          option.key === parsedSort.key && option.order === parsedSort.order
+      );
+      if (isValidSort) {
+        selectedSort.value = parsedSort;
+        emit("sort", parsedSort);
+      }
+    }
+  } catch (error) {
+    console.error("Error al cargar el filtro guardado:", error);
+  }
 };
+
+const saveSortFilter = (sortFilter) => {
+  try {
+    localStorage.setItem(getStorageKey(), JSON.stringify(sortFilter));
+  } catch (error) {
+    console.error("Error al guardar el filtro:", error);
+  }
+};
+
+const handleSortClick = (option) => {
+  const sortFilter = { key: option.key, order: option.order };
+  selectedSort.value = sortFilter;
+  saveSortFilter(sortFilter);
+  emit("sort", sortFilter);
+};
+
+const clearSortFilter = () => {
+  selectedSort.value = null;
+  try {
+    localStorage.removeItem(getStorageKey());
+  } catch (error) {
+    console.error("Error al limpiar el filtro:", error);
+  }
+
+  emit("sort", { key: undefined, order: undefined });
+};
+
+const getSelectedSortTitle = () => {
+  if (!selectedSort.value) return null;
+  const option = sortOptions.find(
+    (opt) =>
+      opt.key === selectedSort.value.key &&
+      opt.order === selectedSort.value.order
+  );
+  return option ? option.title : null;
+};
+
+const getSelectedSortIcon = () => {
+  if (!selectedSort.value) return null;
+  const option = sortOptions.find(
+    (opt) =>
+      opt.key === selectedSort.value.key &&
+      opt.order === selectedSort.value.order
+  );
+  return option ? option.icon : null;
+};
+
+const isOptionSelected = (option) => {
+  return (
+    selectedSort.value &&
+    selectedSort.value.key === option.key &&
+    selectedSort.value.order === option.order
+  );
+};
+
+const handleClear = () => {
+  emit("clear");
+};
+
+onMounted(() => {
+  loadSavedSort();
+});
+
+watch(
+  () => currentUser.value?.id,
+  () => {
+    if (currentUser.value?.id) {
+      loadSavedSort();
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <VCard title="Filtros" class="mb-6">
-    <!-- La sección de filtros se mantiene exactamente igual -->
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">
@@ -150,35 +253,56 @@ const handleSortClick = (option) => {
     <VDivider />
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+      <VBtn color="secondary" variant="outlined" @click="handleClear">
         Limpiar Filtros
       </VBtn>
 
-      <!-- 👉 AÑADIDO: El nuevo menú para ordenar, colocado junto al botón de limpiar -->
-      <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn v-bind="menuProps" variant="tonal">
-            Ordenar Por
-            <VIcon end icon="tabler-chevron-down" />
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem
-            v-for="(option, index) in sortOptions"
-            :key="index"
-            @click="handleSortClick(option)"
-          >
-            <template #prepend>
-              <VIcon :icon="option.icon" size="20" class="me-2" />
-            </template>
-            <VListItemTitle>{{ option.title }}</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu>
+      <div class="d-flex align-center gap-2">
+        <VMenu>
+          <template #activator="{ props: menuProps }">
+            <VBtn v-bind="menuProps" variant="tonal">
+              Ordenar Por
+              <VIcon end icon="tabler-chevron-down" />
+            </VBtn>
+          </template>
+          <VList>
+            <VListItem
+              v-for="(option, index) in sortOptions"
+              :key="index"
+              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
+              @click="handleSortClick(option)"
+            >
+              <template #prepend>
+                <VIcon :icon="option.icon" size="20" class="me-2" />
+              </template>
+              <VListItemTitle>{{ option.title }}</VListItemTitle>
+              <template #append>
+                <VIcon
+                  v-if="isOptionSelected(option)"
+                  icon="tabler-check"
+                  size="16"
+                  color="primary"
+                />
+              </template>
+            </VListItem>
+          </VList>
+        </VMenu>
+
+        <VChip
+          v-if="selectedSort"
+          color="primary"
+          variant="tonal"
+          size="small"
+          closable
+          @click:close="clearSortFilter"
+        >
+          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
+          {{ getSelectedSortTitle() }}
+        </VChip>
+      </div>
 
       <VSpacer />
 
-      <!-- El resto de los botones se mantiene igual -->
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn

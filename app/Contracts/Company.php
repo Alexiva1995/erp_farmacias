@@ -3,6 +3,7 @@
 namespace App\Contracts;
 
 use App\Contracts\Methods\ConsultAll;
+use App\Exports\CompaniesExport;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,4 +21,8 @@ interface Company
     public function deleteById(string $id): void;
 
     public function filtrar(array $filtros): LengthAwarePaginator;
+
+    public function filterWithoutPaginate(array $filtros): Collection;
+
+    public function exportExcel(array $filtros): CompaniesExport;
 }

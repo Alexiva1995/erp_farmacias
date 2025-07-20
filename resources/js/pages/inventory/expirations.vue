@@ -5,6 +5,7 @@ import { generateDonationPDF } from "@/utils/donationPdfGenerator";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 
+import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
 import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
@@ -26,6 +27,9 @@ const selectedLaboratoryLots = ref(null);
 const startDateLots = ref(null);
 const endDateLots = ref(null);
 
+const allProducts = ref([]);
+const loadingAllProducts = ref(false);
+
 const fetchLaboratories = async () => {
   loadingLaboratories.value = true;
   try {
@@ -37,6 +41,19 @@ const fetchLaboratories = async () => {
     console.error("Error al cargar laboratorios:", error);
   } finally {
     loadingLaboratories.value = false;
+  }
+};
+
+const fetchAllProducts = async () => {
+  loadingAllProducts.value = true;
+  try {
+    const { data } = await axios.get("/products/all");
+    allProducts.value = data;
+  } catch (error) {
+    console.error("Error al cargar productos:", error);
+    toast.error("No se pudieron cargar los productos del sistema.");
+  } finally {
+    loadingAllProducts.value = false;
   }
 };
 
@@ -70,12 +87,28 @@ const fetchLots = async () => {
 const handleExpireLot = async (lotToExpire) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: `Vas a marcar como caducado el lote Nº ${lotToExpire.lot_number} del producto "${lotToExpire.product.name}".`,
+    text: `Vas a marcar como caducado el lote No ${lotToExpire.lot_number} del producto "${lotToExpire.product.name}".`,
     icon: "warning",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
     confirmButtonText: "Confirmar",
     reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
   });
   if (result.isConfirmed) {
     try {
@@ -90,30 +123,50 @@ const handleExpireLot = async (lotToExpire) => {
   }
 };
 
-const handleApplyDiscount = async (lot) => {
-  const { value: discount } = await Swal.fire({
-    title: "Aplicar Descuento",
-    input: "number",
-    inputLabel: `Ingrese el porcentaje de descuento para el lote #${lot.lot_number}`,
-    inputPlaceholder: "Ej: 15",
-    inputAttributes: { min: 1, max: 100 },
+const handleApplyDiscount = async (item) => {
+  try {
+    toast.info("Funcionalidad de descuento en desarrollo...");
+  } catch (error) {
+    console.error("Error al aplicar el descuento:", error);
+    toast.error("No se pudo aplicar el descuento.");
+  }
+};
+
+const handleApplyOfferSelected = async () => {
+  const selectedCount = selectedLots.value.length;
+  if (selectedCount === 0) {
+    toast.info("Por favor, selecciona al menos un lote.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: `¿Estás seguro de aplicar esta oferta?`,
+    text: `Se aplicará la oferta a ${selectedCount} lotes seleccionados.`,
+    icon: "question",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
-    confirmButtonText: "Aplicar",
+    confirmButtonText: "Sí, aplicar oferta",
     reverseButtons: true,
-    inputValidator: (value) => {
-      if (!value || value < 1 || value > 100)
-        return "Debes ingresar un porcentaje válido (1-100)";
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
     },
   });
-  if (discount) {
-    try {
-      await axios.post(`/lots/${lot.id}/apply-discount`, { discount });
-      toast.success(`Descuento del ${discount}% aplicado.`);
-    } catch (error) {
-      console.error("Error al aplicar el descuento:", error);
-      toast.error("No se pudo aplicar el descuento.");
-    }
+
+  if (result.isConfirmed) {
+    toast.info("Funcionalidad de ofertas masivas en desarrollo...");
   }
 };
 
@@ -131,6 +184,22 @@ const handleExpireSelected = async () => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Sí, caducar todos",
     reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
   });
   if (result.isConfirmed) {
     try {
@@ -178,6 +247,11 @@ const selectedLogsInDetail = ref([]);
 const isDonationModalVisible = ref(false);
 const productsForDonation = ref([]);
 
+const isPriceAdjustmentModalVisible = ref(false);
+const selectedMonthForAdjustment = ref(null);
+
+const loadingAdjustmentForMonth = ref(null);
+
 const headersSummaries = [
   { title: "Mes", key: "month", sortable: true },
   {
@@ -194,7 +268,7 @@ const viewTitle = computed(() => {
   if (isDetailViewVisible.value && selectedMonth.value) {
     return `Detalle de Caducados - ${formatMonth(selectedMonth.value)}`;
   }
-  return "Gestión de Caducados por Mes";
+  return "Reporte de Caducados";
 });
 
 const fetchSummaries = async () => {
@@ -308,6 +382,145 @@ const handlePrintDonation = async (month) => {
   }
 };
 
+const handlePriceAdjustmentExpired = async (month) => {
+  if (loadingAdjustmentForMonth.value === month) return;
+
+  try {
+    loadingAdjustmentForMonth.value = month;
+
+    const { data: statusData } = await axios.get(
+      `/expirations/month/${month}/adjustment-status`
+    );
+
+    if (statusData.has_adjustment) {
+      toast.warning("Ya se ha realizado un reajuste de precios para este mes.");
+      loadingAdjustmentForMonth.value = null;
+      return;
+    }
+
+    await fetchAllProducts();
+
+    selectedMonthForAdjustment.value = month;
+    isPriceAdjustmentModalVisible.value = true;
+  } catch (error) {
+    console.error("Error al preparar reajuste de precios:", error);
+    toast.error("No se pudo inicializar el reajuste de precios.");
+  } finally {
+    loadingAdjustmentForMonth.value = null;
+  }
+};
+
+const handleGeneratePriceAdjustment = async (adjustmentData) => {
+  isPriceAdjustmentModalVisible.value = false;
+
+  const payload = {
+    month: selectedMonthForAdjustment.value,
+    excludedProductIds: adjustmentData.excludedProducts.map((p) => p.id),
+  };
+
+  try {
+    Swal.fire({
+      title: "Calculando reajuste...",
+      text: "Por favor espera mientras obtenemos los datos para la confirmación.",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    const { data: preview } = await axios.post(
+      "/expirations/adjust-prices/preview",
+      payload
+    );
+
+    const result = await Swal.fire({
+      title: "Confirmar Reajuste de Precios",
+      html: `
+        <div style="text-align: left; padding: 0 1rem; font-size: 1rem;">
+          <p>Estás a punto de redistribuir el costo de los productos caducados. Por favor, revisa los detalles:</p>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span>Monto total a redistribuir:</span>
+            <strong>${formatCurrency(preview.total_lost_value)}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Total de unidades activas:</span>
+            <strong>${preview.total_active_stock.toLocaleString(
+              "es-CO"
+            )} unidades</strong>
+          </div>
+           <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; color: #6c757d;">
+            <small>(en ${preview.affected_products_count.toLocaleString(
+              "es-CO"
+            )} productos)</small>
+          </div>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem;">
+            <span>Ajuste por cada unidad:</span>
+            <strong style="color: #28a745;">+ ${formatCurrency(
+              preview.cost_adjustment_per_unit
+            )}</strong>
+          </div>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, aplicar reajuste",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      customClass: {
+        htmlContainer: "text-left",
+      },
+      didOpen: () => {
+        const actions = Swal.getActions();
+        const confirmButton = Swal.getConfirmButton();
+        const cancelButton = Swal.getCancelButton();
+
+        actions.style.display = "flex";
+        actions.style.gap = "10px";
+        actions.style.width = "100%";
+        actions.style.padding = "0 20px";
+
+        confirmButton.style.flex = "1";
+        confirmButton.style.width = "50%";
+
+        cancelButton.style.flex = "1";
+        cancelButton.style.width = "50%";
+      },
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: "Aplicando reajuste...",
+        text: "Esta operación puede tardar unos segundos. No cierres esta ventana.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const { data: responseData } = await axios.post(
+        "/expirations/adjust-expired-prices",
+        payload
+      );
+
+      toast.success(
+        responseData.message || "Reajuste de precios aplicado correctamente."
+      );
+
+      await fetchSummaries();
+    }
+  } catch (error) {
+    console.error("Error en el proceso de reajuste de precios:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Operación cancelada",
+      text:
+        error.response?.data?.message || "No se pudo completar la operación.",
+    });
+  }
+};
+
 const showDetailView = (month) => {
   selectedMonth.value = month;
   isDetailViewVisible.value = true;
@@ -382,7 +595,7 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
   }).format(value);
 };
 </script>
@@ -390,11 +603,6 @@ const formatCurrency = (value) => {
 <template>
   <div>
     <div>
-      <h4 class="text-h4 mb-1">Lotes por Vencer</h4>
-      <p class="text-subtitle-1 text-medium-emphasis mb-6">
-        Gestiona los lotes próximos a su fecha de caducidad.
-      </p>
-
       <ExpirationsFilters
         v-model:searchQuery="searchQueryLots"
         v-model:selectedLaboratory="selectedLaboratoryLots"
@@ -402,127 +610,181 @@ const formatCurrency = (value) => {
         v-model:endDate="endDateLots"
         :laboratories="laboratories"
         :loading="loadingLaboratories"
+        :selected-lots="selectedLots"
         @clear="handleClearFiltersLots"
+        @expire-selected="handleExpireSelected"
+        @apply-offer-selected="handleApplyOfferSelected"
       />
 
-      <VCard class="mb-6" v-if="selectedLots.length > 0">
-        <VCardText class="d-flex align-center justify-space-between">
+      <VCard>
+        <VCardTitle class="d-flex align-center justify-space-between">
           <div>
-            <span class="font-weight-medium">{{ selectedLots.length }}</span>
-            lote(s) seleccionado(s)
+            <h4 class="text-h4 mb-1">Productos por Caducar</h4>
+            <p class="text-subtitle-1 text-medium-emphasis mb-0">
+              Gestiona los lotes próximos a su fecha de caducidad.
+            </p>
           </div>
-          <VBtn
-            color="warning"
-            prepend-icon="tabler-calendar-off"
-            @click="handleExpireSelected"
-          >
-            Caducar Seleccionados
-          </VBtn>
+        </VCardTitle>
+
+        <VCardText class="pa-0">
+          <ExpirationsTable
+            v-model="selectedLots"
+            :lots="lots"
+            :loading="loadingLots"
+            :total-lots="totalLots"
+            :items-per-page="itemsPerPageLots"
+            :page="pageLots"
+            @update:options="updateTableOptionsLots"
+            @apply-discount="handleApplyDiscount"
+            @expire-lot="handleExpireLot"
+          />
         </VCardText>
       </VCard>
-
-      <ExpirationsTable
-        v-model="selectedLots"
-        :lots="lots"
-        :loading="loadingLots"
-        :total-lots="totalLots"
-        :items-per-page="itemsPerPageLots"
-        :page="pageLots"
-        @update:options="updateTableOptionsLots"
-        @apply-discount="handleApplyDiscount"
-        @expire-lot="handleExpireLot"
-      />
     </div>
 
     <VDivider class="my-8" />
 
     <div>
-      <div class="d-flex justify-space-between align-center mb-6">
-        <h4 class="text-h4 text-capitalize">
-          {{ viewTitle }}
-        </h4>
-        <VBtn
-          v-if="isDetailViewVisible"
-          variant="outlined"
-          prepend-icon="tabler-arrow-left"
-          @click="showSummaryView"
-        >
-          Volver a Resúmenes
-        </VBtn>
-      </div>
-
-      <div v-if="!isDetailViewVisible">
-        <VCard v-if="monthlySummaries.length > 0">
-          <VDataTable
-            :headers="headersSummaries"
-            :items="monthlySummaries"
-            :loading="loadingReports"
-            item-value="month"
-            class="text-no-wrap"
+      <VCard>
+        <VCardTitle class="d-flex align-center justify-space-between">
+          <h4 class="text-h4 text-capitalize">
+            {{ viewTitle }}
+          </h4>
+          <VBtn
+            v-if="isDetailViewVisible"
+            variant="outlined"
+            prepend-icon="tabler-arrow-left"
+            @click="showSummaryView"
           >
-            <template #item.month="{ item }">
-              <span class="text-capitalize font-weight-medium">{{
-                formatMonth(item.month)
-              }}</span>
-            </template>
-            <template #item.total_cost="{ item }">
-              <span class="font-weight-medium">{{
-                formatCurrency(item.total_cost)
-              }}</span>
-            </template>
-            <template #item.total_products="{ item }">
-              <span class="font-weight-medium">{{ item.total_products }}</span>
-            </template>
-            <template #item.actions="{ item }">
-              <VTooltip text="Ver Productos del Mes">
-                <template #activator="{ props: tooltipProps }">
-                  <IconBtn
-                    v-bind="tooltipProps"
-                    @click="showDetailView(item.month)"
-                  >
-                    <VIcon icon="tabler-eye" />
-                  </IconBtn>
-                </template>
-              </VTooltip>
-              <VTooltip text="Imprimir Carta(s) de Donación">
-                <template #activator="{ props: tooltipProps }">
-                  <div v-bind="tooltipProps" class="d-inline-block">
+            Volver a Resúmenes
+          </VBtn>
+        </VCardTitle>
+
+        <VCardText class="pa-0">
+          <div v-if="!isDetailViewVisible">
+            <VDataTable
+              v-if="monthlySummaries.length > 0"
+              :headers="headersSummaries"
+              :items="monthlySummaries"
+              :loading="loadingReports"
+              item-value="month"
+              class="text-no-wrap"
+            >
+              <template #item.month="{ item }">
+                <span class="text-capitalize font-weight-medium">{{
+                  formatMonth(item.month)
+                }}</span>
+              </template>
+              <template #item.total_cost="{ item }">
+                <span class="font-weight-medium">{{
+                  formatCurrency(item.total_cost)
+                }}</span>
+              </template>
+              <template #item.total_products="{ item }">
+                <span class="font-weight-medium">{{
+                  item.total_products
+                }}</span>
+              </template>
+              <template #item.actions="{ item }">
+                <VTooltip text="Ver Productos del Mes">
+                  <template #activator="{ props: tooltipProps }">
                     <IconBtn
-                      :disabled="item.donation_count === 0"
-                      @click="handlePrintDonation(item.month)"
+                      v-bind="tooltipProps"
+                      @click="showDetailView(item.month)"
                     >
-                      <VIcon icon="tabler-printer" />
+                      <VIcon icon="tabler-eye" />
                     </IconBtn>
-                  </div>
-                </template>
-              </VTooltip>
-            </template>
-          </VDataTable>
-        </VCard>
+                  </template>
+                </VTooltip>
+                <VTooltip text="Imprimir Carta(s) de Donación">
+                  <template #activator="{ props: tooltipProps }">
+                    <div v-bind="tooltipProps" class="d-inline-block">
+                      <IconBtn
+                        :disabled="item.donation_count === 0"
+                        @click="handlePrintDonation(item.month)"
+                      >
+                        <VIcon icon="tabler-printer" />
+                      </IconBtn>
+                    </div>
+                  </template>
+                </VTooltip>
+                <VTooltip text="Reajustar Precios">
+                  <template #activator="{ props: tooltipProps }">
+                    <div
+                      v-bind="tooltipProps"
+                      class="d-inline-block"
+                      style="width: 36px; height: 36px; text-align: center"
+                    >
+                      <VProgressCircular
+                        v-if="loadingAdjustmentForMonth === item.month"
+                        indeterminate
+                        size="20"
+                        width="2"
+                        color="primary"
+                        class="mt-2"
+                      />
 
-        <VAlert v-else-if="!loadingReports" type="info" variant="tonal">
-          No se encontraron registros de lotes caducados.
-        </VAlert>
-        <VProgressLinear v-if="loadingReports" indeterminate color="primary" />
-      </div>
+                      <IconBtn
+                        v-else
+                        :disabled="item.has_price_adjustment"
+                        @click="handlePriceAdjustmentExpired(item.month)"
+                      >
+                        <VIcon
+                          :icon="
+                            item.has_price_adjustment
+                              ? 'tabler-currency-dollar-off'
+                              : 'tabler-currency-dollar'
+                          "
+                          :class="
+                            item.has_price_adjustment ? 'text-disabled' : ''
+                          "
+                        />
+                      </IconBtn>
+                    </div>
+                  </template>
+                </VTooltip>
+              </template>
+            </VDataTable>
 
-      <ExpiredDetailView
-        v-else
-        v-model:selected-logs="selectedLogsInDetail"
-        :logs="expiredLogs"
-        :total-logs="totalExpiredLogs"
-        :loading="loadingReports"
-        :page="pageReports"
-        :items-per-page="itemsPerPageReports"
-        @update:options="updateDetailTableOptions"
-        @generate-donation="handleOpenDonationFromSelection"
-      />
+            <div v-else-if="!loadingReports" class="pa-6">
+              <VAlert type="info" variant="tonal">
+                No se encontraron registros de lotes caducados.
+              </VAlert>
+            </div>
+
+            <VProgressLinear
+              v-if="loadingReports"
+              indeterminate
+              color="primary"
+            />
+          </div>
+
+          <ExpiredDetailView
+            v-else
+            v-model:selected-logs="selectedLogsInDetail"
+            :logs="expiredLogs"
+            :total-logs="totalExpiredLogs"
+            :loading="loadingReports"
+            :page="pageReports"
+            :items-per-page="itemsPerPageReports"
+            @update:options="updateDetailTableOptions"
+            @generate-donation="handleOpenDonationFromSelection"
+          />
+        </VCardText>
+      </VCard>
     </div>
 
     <DonationLetterDialog
       v-model="isDonationModalVisible"
       :initial-products="productsForDonation"
       @generate="handleGenerateDonation"
+    />
+
+    <PriceAdjustmentDialog
+      v-model="isPriceAdjustmentModalVisible"
+      :all-products="allProducts"
+      :month-name="formatMonth(selectedMonthForAdjustment)"
+      @adjust-prices="handleGeneratePriceAdjustment"
     />
   </div>
 </template>

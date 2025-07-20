@@ -18,6 +18,7 @@ const headers = [
   { title: "Tipo", key: "movement_type", sortable: true },
   { title: "Proveedor", key: "supplier.name", sortable: true },
   { title: "Operador", key: "user.email", sortable: true },
+  { title: "Referencia", key: "reference", sortable: true },
 ];
 </script>
 
@@ -34,7 +35,7 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">#{{ item.product_id }}</span>
+        <span class="font-weight-medium">{{ item.product_id }}</span>
       </template>
 
       <template #item.movement_date="{ item }">
@@ -80,6 +81,15 @@ const headers = [
             ).toFixed(2)
           }}</span
         >
+      </template>
+      <template #item.reference="{ item }">
+        <a href="#">{{
+          item.order_id != null
+            ? item.order_id
+            : item.invoice_id != null
+            ? item.invoice_id
+            : item.id
+        }}</a>
       </template>
     </VDataTableServer>
   </VCard>

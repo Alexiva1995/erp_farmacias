@@ -30,6 +30,12 @@ class TraceabilityQueryService
             $query->whereDate('movement_date', '>=', $request->input('startDate'));
         }
 
+        if ($request->filled('is_psychotropic')) {
+            $query->whereHas('product', function ($product) use ($request) {
+                $product->where('psychotropic', "=", $request->is_psychotropic);
+            });
+        }
+
         if ($request->filled('endDate')) {
             $query->whereDate('movement_date', '<=', $request->input('endDate'));
         }

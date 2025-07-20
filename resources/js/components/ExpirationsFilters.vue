@@ -26,6 +26,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  selectedLots: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits([
@@ -34,6 +38,8 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "clear",
+  "expire-selected",
+  "apply-offer-selected",
 ]);
 
 const searchQueryModel = computed({
@@ -55,6 +61,8 @@ const endDateModel = computed({
   get: () => props.endDate,
   set: (value) => emit("update:endDate", value),
 });
+
+const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 </script>
 
 <template>
@@ -112,9 +120,37 @@ const endDateModel = computed({
     <VDivider />
 
     <VCardActions class="pa-4 px-6">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
+      <div class="d-flex justify-space-between align-center w-100">
+        <!-- Botón de limpiar filtros -->
+        <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+          Limpiar Filtros
+        </VBtn>
+
+        <!-- Botones de acciones para productos seleccionados -->
+        <div v-if="hasSelectedLots" class="d-flex align-center gap-x-3">
+          <div class="text-body-2 text-medium-emphasis">
+            <span class="font-weight-medium">{{ selectedLots.length }}</span>
+            lote(s) seleccionado(s)
+          </div>
+
+          <VBtn
+            variant="tonal"
+            prepend-icon="tabler-percentage"
+            @click="emit('apply-offer-selected')"
+          >
+            Generar Oferta
+          </VBtn>
+
+          <VBtn
+            variant="tonal"
+            color="warning"
+            prepend-icon="tabler-calendar-off"
+            @click="emit('expire-selected')"
+          >
+            Caducar Seleccionados
+          </VBtn>
+        </div>
+      </div>
     </VCardActions>
   </VCard>
 </template>

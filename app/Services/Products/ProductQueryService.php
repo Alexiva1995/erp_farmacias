@@ -19,6 +19,7 @@ class ProductQueryService
             'laboratory',
             'origin',
             'group',
+            'profitability',
             'lots' => function ($query) {
                 $query->where('quantity', '>', 0);
             },
@@ -42,6 +43,10 @@ class ProductQueryService
 
         if (!empty($filters['laboratoryId'])) {
             $query->where('laboratory_id', $filters['laboratoryId']);
+        }
+
+        if (!empty($filters['is_psychotropic'])) {
+            $query->where('psychotropic', $filters['is_psychotropic']);
         }
 
         if (!empty($filters['originId'])) {
@@ -100,6 +105,10 @@ class ProductQueryService
                 $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
                 return $query->orderBy($subQuery, $orderBy);
 
+            case 'most_sold':
+                $subQuery = DB::raw('COALESCE((SELECT SUM(order_details.quantity) FROM order_details WHERE order_details.product_id = products.id), 0)');
+                return $query->orderBy($subQuery, $orderBy);
+
             case 'id':
             case 'name':
             case 'unit_cost':
@@ -125,6 +134,7 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'is_psychotropic' => $request->is_psychotropic,
         ];
 
         $this->applyFilters($query, $filters);
