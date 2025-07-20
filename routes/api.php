@@ -98,6 +98,7 @@ Route::prefix("tpv")->group(function () {
     Route::get('/order', [OrderController::class, 'index']);
     Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
     // Rutas de Pedidos General
 });
 

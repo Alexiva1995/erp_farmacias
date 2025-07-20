@@ -2,12 +2,13 @@
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderFilters from "@/components/OrderFilters.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
+import OpenOrderCard from '@/components/cards/OpenOrderCard.vue';
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-
+import { useAuthStore } from "@/stores/auth";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -30,6 +31,9 @@ const isLoadingFilters = ref(false);
 const clientIdentification = ref('');
 const showRegisterClientModal = ref(false);
 const selectedClient = ref(null)
+const isLoadingInitialOrder = ref(true);
+
+const selectedDisplayCurrency = ref("COP");
 
 const newClientFormData = ref({
   id: null,
@@ -58,6 +62,12 @@ const newClientFormErrors = reactive({
 })
 
 const companies = ref([]);
+
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
+
+const hasOpenOrder = ref(false); 
+const openOrderData = ref(null); 
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -137,6 +147,21 @@ onMounted(() => {
   consultAllcomapanies()
 });
 
+onMounted(async () => {
+    try {
+        const response = await axios.get('/tpv/order/seller/my-open-order');
+        if (response.data.data && response.data.data.order) {
+            openOrderData.value = response.data.data.order;
+            selectedClient.value = response.data.data.order.client;
+            hasOpenOrder.value = true;
+        }
+    } catch (error) {
+        console.error("Error al verificar orden abierta del vendedor:", error);
+    } finally {
+        isLoadingInitialOrder.value = false;
+    }
+});
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
@@ -190,12 +215,14 @@ clientIdentification.value = identification;
       const clientData = response.data.data.client;
       selectedClient.value = clientData;
       toast.success(`Cliente ${clientData.name} ${clientData.last_name} encontrado.`);
-      if(responseData.has_pending_credits){
-        confirmacionPagoCredit(clientData.id);
-      }else{
-        addOrden(clientData.id)
-      }
-
+       if (data.found_open_order) {
+            hasOpenOrder.value = true;
+            openOrderData.value = data.order;
+        } else {
+            hasOpenOrder.value = false;
+            openOrderData.value = null;
+            addOrden(clientData.id);
+        }
     }
   }catch (error) {
       console.error("Error al verificar cliente:", error);
@@ -203,34 +230,13 @@ clientIdentification.value = identification;
   }
 };
 
-
-const confirmacionPagoCredit = async (id) => {
- const result = await Swal.fire({
-    text: "¡Desea cancelar el crédito pendiente!",
-    icon: "warning",
-    showCancelButton: false,
-    showDenyButton: true,
-    denyButtonText: "No",
-    confirmButtonText: "Si",
-    reverseButtons: true,
-  });
-
-  if (result.isConfirmed) {
-    
-  }else if (result.isDenied){
-      addOrden(id)
-  }
-
-};
-
-
 const addOrden = async (id) => {
-    console.log(id);
     const params = {
       client_id: id,
+      seller_id: currentUser.value?.id || 3
     };
     try {
-      const response = await axios.get("/tpv/order/add",params);
+      const response = await axios.post("/tpv/orders",params);
     }catch (error) {
       console.error("Error al agregar la orden:", error);
       toast.error("Error al agregar la orden.");
@@ -302,14 +308,32 @@ function limpiarErroresFormulario(){
 const clearFormErrors = () => {
   newClientFormErrors.value = {};
 };
+
+const handleCurrencyChanged = (newCurrency) => {
+  selectedDisplayCurrency.value = newCurrency;
+};
 </script>
 <template>
 <div>
 
-  <OrderClienteCard
-    v-model="clientIdentification"
-    @verify-client="verifyClient"
-  />
+<div v-if="isLoadingInitialOrder">
+            <p>Cargando sesión de orden...</p>
+</div>
+
+  <div v-else-if="hasOpenOrder">
+      <OpenOrderCard 
+      :order="openOrderData" 
+      :cliente='selectedClient' 
+      :selected-display-currency="selectedDisplayCurrency"
+      @currency-changed="handleCurrencyChanged"
+      />
+  </div>
+  <div v-else>
+    <OrderClienteCard
+      v-model="clientIdentification"
+      @verify-client="verifyClient"
+    />
+  </div>
 
   <OrderFilters
       v-model:searchQuery="filterSearchQuery"

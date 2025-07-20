@@ -11,6 +11,9 @@ class CashClosing extends Model
 
     protected $table = 'cash_closing';
 
+    const OPEN = 'open';      
+    const CLOSED = 'closed';
+
     protected $fillable = [
         'seller_id',
         'closing_date',
