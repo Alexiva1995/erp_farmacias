@@ -1,6 +1,7 @@
 <script setup>
 import HistoryFilters from "@/components/HistoryFilters.vue";
 import HistoryTable from "@/components/HistoryTable.vue";
+import DetailHistoryShowDialog from "@/components/dialogs/DetailHistoryShowDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -25,6 +26,7 @@ const isEditDialogVisible = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const currentHistoryDetails = ref([]);
+const currentHistoryUser = ref({});
 const isLoadingFilters = ref(false);
 
 const fetchHistorys = async () => {
@@ -100,9 +102,10 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const handleEditProduct = (history) => {
+const handleShowDetailHistory = (history) => {
   currentProduct.value = { ...history };
   currentHistoryDetails.value = history.details || [];
+  currentHistoryUser.value = history.user || {};
   productFormErrors.value = {};
   isEditDialogVisible.value = true;
   historyIdToEdit.value = history.id;
@@ -196,7 +199,7 @@ const handleSort = (sortOptions) => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
-      @show-detailHistory="handleEditProduct"
+      @show-detailHistory="handleShowDetailHistory"
     />
 
     <DetailHistoryShowDialog
@@ -204,7 +207,9 @@ const handleSort = (sortOptions) => {
       :history-name="historyNameToEdit"
       :history-id="historyIdToEdit"
       :details="currentHistoryDetails"
+      :user="currentHistoryUser"
       :errors="productFormErrors"
+      :histories="currentProduct"
       @clear-errors="clearFormErrors"
     />
   </div>
