@@ -120,6 +120,7 @@ const onCancel = () => emit("update:modelValue", false);
                 v-model="lotData.quantity"
                 label="Cantidad"
                 type="number"
+                :disabled="props.isEditing"
               />
             </VCol>
 
@@ -129,6 +130,7 @@ const onCancel = () => emit("update:modelValue", false);
                 label="Precio de Costo"
                 type="number"
                 prefix="$"
+                :disabled="props.isEditing"
               />
             </VCol>
 

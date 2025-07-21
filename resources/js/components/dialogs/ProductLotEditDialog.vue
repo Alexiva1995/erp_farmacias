@@ -80,9 +80,15 @@ const canSave = computed(() => {
 });
 
 const validateLotQuantity = (lot, index) => {
-  const quantity = parseInt(lot.quantity) || 0;
+  const quantity = parseInt(lot.quantity);
+  const isExistingLot = lot.id > 0;
 
-  if (quantity <= 0) {
+  if (isExistingLot && (isNaN(quantity) || quantity <= 0)) {
+    errors.value[`quantity_${index}`] = "La cantidad debe ser mayor a 0";
+    return false;
+  }
+
+  if (!isExistingLot && !isNaN(quantity) && quantity <= 0) {
     errors.value[`quantity_${index}`] = "La cantidad debe ser mayor a 0";
     return false;
   }
@@ -100,7 +106,7 @@ const validateLotQuantity = (lot, index) => {
 
     const maxAllowed = props.productStock - otherLotsSum;
 
-    if (quantity > maxAllowed) {
+    if (!isNaN(quantity) && quantity > maxAllowed) {
       errors.value[
         `quantity_${index}`
       ] = `Máximo ${maxAllowed} unidades disponibles`;
@@ -295,8 +301,13 @@ const getFieldError = (field, index) => {
               key: 'expiration_date',
               sortable: false,
             },
-            { title: 'Costo', key: 'unit_cost', sortable: false },
-            { title: 'Ubicación', key: 'location', sortable: false },
+            { title: 'Costo', key: 'unit_cost', sortable: false, width: '15%' },
+            {
+              title: 'Ubicación',
+              key: 'location',
+              sortable: false,
+              width: '25%',
+            },
             { title: 'Accion', key: 'actions', sortable: false },
           ]"
           :items="editableLots"
@@ -323,6 +334,7 @@ const getFieldError = (field, index) => {
               hide-details="auto"
               density="compact"
               @input="onQuantityChange(item, index)"
+              min="1"
             />
           </template>
 
@@ -347,6 +359,7 @@ const getFieldError = (field, index) => {
               :error-messages="getFieldError('unit_cost', index)"
               hide-details="auto"
               density="compact"
+              :disabled="item.id > 0"
             />
           </template>
 
