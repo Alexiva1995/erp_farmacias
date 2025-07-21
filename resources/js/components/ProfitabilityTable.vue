@@ -15,17 +15,20 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-//console.log(props)
 
-const emit = defineEmits(['refresh']);
+
+const emit = defineEmits(['refresh', "update", "editProduct"]);
 
 const headers = [
-  { title: 'Bloquear', key: 'products' },
-  { title: 'ID', key: 'id' },
-  { title: 'Producto', key: 'name' },
-  { title: 'Monto', key: 'sale_price' },
-  { title: '% Utilidad', key: 'profitability' }, 
-  { title: 'Fecha', key: 'valid_stock' },
+  { title: 'Bloquear', key: 'products', sortable: false },
+  { title: "id", key: "id", sortable: true },
+  { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory.name", sortable: true },
+  { title: "Costo", key: "cost_price", sortable: true },
+  { title: "Precio Venta", key: "sale_price", sortable: true },
+  { title: '% Utilidad', key: 'profitability', sortable: true  }, 
+  { title: 'Fecha', key: 'valid_stock', sortable: true  },
+    { title: "Acciones", key: "actions", sortable: false },
 ];
 
 function storeProfitability(product_id, profitability){
@@ -144,6 +147,7 @@ try {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
+      @update="(options) => emit('update', options)"
       >
       <template #item.products="{ item }">
         <Vbtn color="primary" icon @click="productExistProfitability(item.id,  item.profitability?.id, profitability, item.profitability?.is_locked)">
@@ -156,18 +160,29 @@ try {
       <template #item.name="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.name }}</span>
       </template> 
+      <template #item.laboratory="{ item }">
+        <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.laboratory.name }}</span>
+      </template> 
+      <template #item.cost_price="{ item }">
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.cost_price }}</span>
+      </template>
       <template #item.sale_price="{ item }">
-        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">${{ item.cost_price }}</span>
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.sale_price }}</span>
       </template>
       <template #item.profitability="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">
           ${{ item.profitability?.is_locked == '1' ? 
-            parseFloat(item.cost_price) + (parseFloat(item.cost_price) * (parseInt(item.profitability.profitability_percentage)/100))
-            : parseFloat(item.cost_price) + (parseFloat(item.cost_price) * (parseInt(profitability)/100)) }}
+            (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2)
+            : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
         </span>
       </template>
       <template #item.valid_stock="{ item }">
-        <span class="" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ new Date(item.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ new Date(item.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
+      </template>
+      <template #item.actions="{ item }" >
+        <IconBtn @click="emit('editProduct', item.profitability.id, item.profitability.profitability_percentage, item.id, item.profitability.is_locked)" :class="[item.profitability?.is_locked == '1' ? 'hidden p-1' : 'd-none']">
+          <VIcon icon="tabler-edit" />
+        </IconBtn>
       </template>
     </VDataTableServer>
 

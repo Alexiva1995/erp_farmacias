@@ -2,32 +2,31 @@
 import axios from '@/plugins/axios';
 import { ref } from 'vue';
 const props= defineProps({
-  //modalFormulario: {type: Boolean, required: true},
-  percentage: {type: Number, default: () => 0},
-  //companies: {type: Array, required: true},
-  //formData: {type: Object, default: () => []},
-  //formError: {type: Object, default: () => []},
+  dialog:  {type: Boolean, required: true},
+  product: {type: Object, requerired: true},
 })
 
-const emit = defineEmits(["reloadTable"])
 
-const dialog = ref(false)
+const emit = defineEmits(["refresh", "close-modal"])
 
-const percentage = ref(0)
+const percentage = ref()
 
-async function storeProfitability() {
+async function updateProfitability() {
 
   let data = {
-    "default_profitability_percentage": percentage.value,
+    "id": props.product.id,
+    "product_id": props.product.product_id,
+    "profitability_percentage": percentage.value,
+    "is_locked" : props.product.is_locked
   };
   
-  console.log(data);
-  
+  console.log(data)
+
   try {
-    const response = await axios.post("/finances/profitability/store", data);
+    const response = axios.post("/finances/profitability/product/update", data);
     
     console.log('Éxito:', response.data);
-    emit("reloadTable")
+    emit("refresh")
     
   } catch (error) {
     console.error('Error en la solicitud:', error);
@@ -37,6 +36,10 @@ async function storeProfitability() {
       console.error('Datos del error:', error.response.data);
       console.error('Status:', error.response.status);
       console.error('Headers:', error.response.headers);
+      
+      if (error.response.status === 405) {
+        console.error('Sugerencia: Prueba con PUT/PATCH en lugar de POST');
+      }
     } else if (error.request) {
       // La solicitud fue hecha pero no hubo respuesta
       console.error('No se recibió respuesta del servidor');
@@ -47,35 +50,31 @@ async function storeProfitability() {
   }
 }
 
+console.log(props.product);
+
 </script>
 
 
 <template>
   <div>
-    <v-btn color="primary" @click="dialog = true">Cambiar Rentabilidad</v-btn>
-
     <VDialog
 
-      v-model="dialog" 
+      v-model="props.dialog" 
       max-width="600px"
     >
       <VCard class="shadow-lg bg-white" style="padding: 2em;">
-          <h3>Asignar rentabilidad</h3>
+          <h3>Editar rentabilidad</h3>
           
-            <VNumberInput v-model="percentage" label="porcentaje" placeholder="25%" />
+            <VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" />
             
         <v-card-actions class="justify-between">
-          <VBtn text="Cerrar" @click="dialog = false" />
+          <VBtn text="Cerrar" @click="emit('close-modal')" />
           <VBtn 
-            text="Agregar" 
-            @click="storeProfitability" 
+            text="actualizar" 
+            @click="updateProfitability"
           />
         </v-card-actions>
       </VCard>
     </VDialog>
   </div>
 </template>
-
-
-
-
