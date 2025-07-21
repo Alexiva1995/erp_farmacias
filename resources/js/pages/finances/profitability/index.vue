@@ -105,7 +105,7 @@ const closeModal = () => {
   dialog.value = false
 }
 
-const editProductProfitability = (profitability_id, percentage, id_product, is_locked = 1) => {
+const editProductProfitability = (profitability_id = null, percentage = 0, id_product, is_locked = 1) => {
   editDialog.value = true
   productProfitability.value = {
     "id"         : profitability_id,

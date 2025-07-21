@@ -180,7 +180,7 @@ try {
         <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ new Date(item.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
       </template>
       <template #item.actions="{ item }" >
-        <IconBtn @click="emit('editProduct', item.profitability.id, item.profitability.profitability_percentage, item.id, item.profitability.is_locked)" :class="[item.profitability?.is_locked == '1' ? 'hidden p-1' : 'd-none']">
+        <IconBtn @click="emit('editProduct', item.profitability?.id, item.profitability?.profitability_percentage, item.id, item.profitability?.is_locked)">
           <VIcon icon="tabler-edit" />
         </IconBtn>
       </template>

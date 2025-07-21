@@ -11,21 +11,20 @@ const emit = defineEmits(["refresh", "close-modal"])
 
 const percentage = ref()
 
-async function updateProfitability() {
+function storeProfitability(){
 
   let data = {
-    "id": props.product.id,
     "product_id": props.product.product_id,
     "profitability_percentage": percentage.value,
-    "is_locked" : props.product.is_locked
+    "is_locked" : 1
   };
   
-  console.log(data)
-
+  //console.log(data)
   try {
-    const response = axios.post("/finances/profitability/product/update", data);
+    const response = axios.post("/finances/profitability/product/store", data);
     
     console.log('Éxito:', response.data);
+    emit('close-modal')
     emit("refresh")
     
   } catch (error) {
@@ -50,6 +49,64 @@ async function updateProfitability() {
   }
 }
 
+async function updateProfitability() {
+
+  let data = {
+    "id": props.product.id,
+    "product_id": props.product.product_id,
+    "profitability_percentage": percentage.value,
+    "is_locked" : props.product.is_locked
+  };
+  
+  console.log(data)
+
+  try {
+    const response = axios.post("/finances/profitability/product/update", data);
+    
+    console.log('Éxito:', response.data);
+    emit('close-modal')
+    emit("refresh")
+    
+  } catch (error) {
+    console.error('Error en la solicitud:', error);
+    
+    if (error.response) {
+      // El servidor respondió con un código de error
+      console.error('Datos del error:', error.response.data);
+      console.error('Status:', error.response.status);
+      console.error('Headers:', error.response.headers);
+      
+      if (error.response.status === 405) {
+        console.error('Sugerencia: Prueba con PUT/PATCH en lugar de POST');
+      }
+    } else if (error.request) {
+      // La solicitud fue hecha pero no hubo respuesta
+      console.error('No se recibió respuesta del servidor');
+    } else {
+      // Hubo un error al configurar la solicitud
+      console.error('Error al configurar la solicitud:', error.message);
+    }
+  }
+}
+
+const productExistProfitability = async () => {
+
+try {
+  const response = await axios.get(`/finances/profitability/product/${props.product.product_id}`);
+
+    if (response.status === 200) {
+      console.log("estas editando")
+      updateProfitability();
+
+    }
+  } catch (error) {
+      console.log("estas creando")
+      storeProfitability()
+
+  }
+
+}
+
 console.log(props.product);
 
 </script>
@@ -71,7 +128,7 @@ console.log(props.product);
           <VBtn text="Cerrar" @click="emit('close-modal')" />
           <VBtn 
             text="actualizar" 
-            @click="updateProfitability"
+            @click="productExistProfitability"
           />
         </v-card-actions>
       </VCard>
