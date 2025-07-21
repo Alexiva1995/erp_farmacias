@@ -107,13 +107,22 @@ const closeDialog = () => {
       </VCardText>
       <VDivider />
       <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="closeDialog"
-          >Cancelar</VBtn
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="closeDialog"
+          class="flex-fill me-2"
         >
-        <VBtn color="primary" variant="flat" @click="handleGenerate"
-          >Generar Carta</VBtn
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="handleGenerate"
+          class="flex-fill ms-2"
         >
+          Generar Carta
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

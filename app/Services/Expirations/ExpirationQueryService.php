@@ -42,7 +42,8 @@ class ExpirationQueryService
                     ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
                         $productQuery->where('name', 'like', $searchTerm)
                             ->orWhere('active_ingredient', 'like', $searchTerm)
-                            ->orWhere('barcode', 'like', $searchTerm);
+                            ->orWhere('barcode', 'like', $searchTerm)
+                            ->orWhere('id', 'like', $searchTerm);
                     });
             });
         }
@@ -139,4 +140,5 @@ class ExpirationQueryService
 
         return $summaries;
     }
+
 }

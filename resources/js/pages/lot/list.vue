@@ -135,11 +135,11 @@ const handleAddLot = async () => {
   isLoadingDialogData.value = true;
   try {
     const [productsResponse, suppliersResponse] = await Promise.all([
-      axios.get("/products-without-lots"),
+      axios.get("/products/all"),
       axios.get("/available-suppliers"),
     ]);
 
-    availableProducts.value = productsResponse.data.data;
+    availableProducts.value = productsResponse.data;
     availableSuppliers.value = suppliersResponse.data.data;
 
     isEditingMode.value = false;

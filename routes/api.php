@@ -16,9 +16,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
+use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\FiscalController;
+use App\Http\Controllers\Api\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,7 +32,6 @@ use App\Http\Controllers\Api\FiscalController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-
 // Rutas de autenticación
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/two-factor-challenge', [LoginController::class, 'verify2FA']);
@@ -66,14 +67,17 @@ Route::get('/laboratories', [ResourceController::class, 'getLaboratories']);
 Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
+Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
 Route::put('/lots/{lot}/expire', [ExpirationController::class, 'expire']);
+
 Route::post('/lots/expire-multiple', [ExpirationController::class, 'expireMultiple']);
 Route::get('/expired-logs/summary', [ExpirationController::class, 'getSummary']);
 Route::get('/expired-logs', [ExpirationController::class, 'getLotExpired']);
+Route::post('/expirations/adjust-prices/preview', [App\Http\Controllers\Api\ExpirationController::class, 'previewPriceAdjustment']);
 Route::post('/expirations/adjust-expired-prices', [ExpirationController::class, 'adjustExpiredProductsPrices']);
 Route::get('/expirations/month/{month}/adjustment-status', [ExpirationController::class, 'checkMonthAdjustmentStatus']);
 
@@ -151,10 +155,20 @@ Route::prefix("crm")->group(function () {
 
     // Rutas Sorteo
     Route::prefix("lottery")->group(function () {
-        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenes"]);
+        Route::post("/filtrar-ordenes-sin-paginar",  [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+        Route::post("/filtrar-ordenes",              [LotteryController::class, "filtrarOrdenesPaginate"]);
     });
 });
 
+Route::prefix("orders")->group(function () {
+    Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
+});
+
+// Route Laboratorio
+// Route::prefix("laboratories")->group(function () {
+//     Route::get("/", [LaboratoryController::class, "consultAll"]);
+
+// });
 
 // Ruta de fiscal
 // Histori

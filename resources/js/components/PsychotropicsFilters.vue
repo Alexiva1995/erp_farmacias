@@ -3,26 +3,24 @@ import { useAuthStore } from "@/stores/auth";
 import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
-  searchQuery: { type: String, required: true },
-  itemsPerPage: { type: Number, required: true },
+  searchQuery: String,
   selectedLaboratory: [Number, String, null],
   stockStatusFilter: [Boolean, null],
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  addLotLoading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   "update:searchQuery",
-  "update:itemsPerPage",
   "update:selectedLaboratory",
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
   "clear",
-  "add-lot",
+  "export",
+  "add-product",
   "sort",
 ]);
 
@@ -33,45 +31,39 @@ const stockOptions = [
 
 const sortOptions = [
   {
-    title: "Más Recientes",
-    icon: "tabler-calendar-plus",
-    key: "created_at",
-    order: "desc",
-  },
-  {
-    title: "Más Antiguos",
-    icon: "tabler-calendar-minus",
-    key: "created_at",
-    order: "asc",
-  },
-  {
-    title: "Mayor Cantidad",
+    title: "Precio mayor",
     icon: "tabler-arrow-up",
-    key: "quantity",
+    key: "sale_price",
     order: "desc",
   },
   {
-    title: "Menor Cantidad",
+    title: "Precio Menor",
     icon: "tabler-arrow-down",
-    key: "quantity",
+    key: "sale_price",
     order: "asc",
   },
   {
-    title: "Pronto a Vencer",
+    title: "Más Unidades",
+    icon: "tabler-plus",
+    key: "valid_stock",
+    order: "desc",
+  },
+  {
+    title: "Menos Unidades",
+    icon: "tabler-minus",
+    key: "valid_stock",
+    order: "asc",
+  },
+  {
+    title: "Fecha pronto a Vencer",
     icon: "tabler-calendar-time",
-    key: "expiration_date",
+    key: "next_expiration",
     order: "asc",
   },
   {
-    title: "Producto A-Z",
-    icon: "tabler-sort-ascending-letters",
-    key: "product.name",
-    order: "asc",
-  },
-  {
-    title: "Producto Z-A",
-    icon: "tabler-sort-descending-letters",
-    key: "product.name",
+    title: "Más Vendidos",
+    icon: "tabler-trending-up",
+    key: "most_sold",
     order: "desc",
   },
 ];
@@ -82,7 +74,7 @@ const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 
 const getStorageKey = () =>
-  `product_lots_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
+  `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
 const loadSavedSort = () => {
   try {
@@ -125,6 +117,8 @@ const clearSortFilter = () => {
   } catch (error) {
     console.error("Error al limpiar el filtro:", error);
   }
+
+  emit("sort", { key: undefined, order: undefined });
 };
 
 const getSelectedSortTitle = () => {
@@ -156,7 +150,6 @@ const isOptionSelected = (option) => {
 };
 
 const handleClear = () => {
-  // clearSortFilter();
   emit("clear");
 };
 
@@ -182,12 +175,11 @@ watch(
         <VCol cols="12" sm="6" md="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por Lote, Producto, Proveedor..."
+            placeholder="Buscar por ID, Producto, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-
         <VCol cols="12" sm="6" md="4">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
@@ -295,15 +287,32 @@ watch(
 
       <VSpacer />
 
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-lot')"
-        :loading="props.addLotLoading"
-        :disabled="props.addLotLoading"
-      >
-        Agregar Lote
-      </VBtn>
+      <VMenu>
+        <template #activator="{ props: menuProps }">
+          <VBtn
+            color="success"
+            variant="flat"
+            prepend-icon="tabler-upload"
+            v-bind="menuProps"
+          >
+            Exportar
+          </VBtn>
+        </template>
+        <VList>
+          <VListItem @click="emit('export', 'xlsx')">
+            <template #prepend>
+              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+            </template>
+            <VListItemTitle class="text-success">Excel</VListItemTitle>
+          </VListItem>
+          <VListItem @click="emit('export', 'pdf')">
+            <template #prepend>
+              <VIcon icon="tabler-file-type-pdf" class="me-2" />
+            </template>
+            <VListItemTitle>PDF</VListItemTitle>
+          </VListItem>
+        </VList>
+      </VMenu>
     </VCardActions>
   </VCard>
 </template>

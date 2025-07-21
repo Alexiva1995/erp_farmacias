@@ -27,6 +27,9 @@ const selectedLaboratoryLots = ref(null);
 const startDateLots = ref(null);
 const endDateLots = ref(null);
 
+const allProducts = ref([]);
+const loadingAllProducts = ref(false);
+
 const fetchLaboratories = async () => {
   loadingLaboratories.value = true;
   try {
@@ -38,6 +41,19 @@ const fetchLaboratories = async () => {
     console.error("Error al cargar laboratorios:", error);
   } finally {
     loadingLaboratories.value = false;
+  }
+};
+
+const fetchAllProducts = async () => {
+  loadingAllProducts.value = true;
+  try {
+    const { data } = await axios.get("/products/all");
+    allProducts.value = data;
+  } catch (error) {
+    console.error("Error al cargar productos:", error);
+    toast.error("No se pudieron cargar los productos del sistema.");
+  } finally {
+    loadingAllProducts.value = false;
   }
 };
 
@@ -108,9 +124,7 @@ const handleExpireLot = async (lotToExpire) => {
 };
 
 const handleApplyDiscount = async (item) => {
-  // Modificado para recibir solo el item ya que la tabla cambió
   try {
-    // TODO: Implementar lógica de descuento cuando esté lista
     toast.info("Funcionalidad de descuento en desarrollo...");
   } catch (error) {
     console.error("Error al aplicar el descuento:", error);
@@ -234,8 +248,9 @@ const isDonationModalVisible = ref(false);
 const productsForDonation = ref([]);
 
 const isPriceAdjustmentModalVisible = ref(false);
-const productsForPriceAdjustment = ref([]);
 const selectedMonthForAdjustment = ref(null);
+
+const loadingAdjustmentForMonth = ref(null);
 
 const headersSummaries = [
   { title: "Mes", key: "month", sortable: true },
@@ -253,7 +268,7 @@ const viewTitle = computed(() => {
   if (isDetailViewVisible.value && selectedMonth.value) {
     return `Detalle de Caducados - ${formatMonth(selectedMonth.value)}`;
   }
-  return "Gestión de Caducados por Mes";
+  return "Reporte de Caducados";
 });
 
 const fetchSummaries = async () => {
@@ -367,61 +382,142 @@ const handlePrintDonation = async (month) => {
   }
 };
 
-// Nueva función para manejar reajuste de precios en productos caducados
 const handlePriceAdjustmentExpired = async (month) => {
+  if (loadingAdjustmentForMonth.value === month) return;
+
   try {
-    // Primero verificar si ya se hizo reajuste en este mes
+    loadingAdjustmentForMonth.value = month;
+
     const { data: statusData } = await axios.get(
       `/expirations/month/${month}/adjustment-status`
     );
 
     if (statusData.has_adjustment) {
       toast.warning("Ya se ha realizado un reajuste de precios para este mes.");
+      loadingAdjustmentForMonth.value = null;
       return;
     }
 
-    // Obtener los productos caducados del mes
-    const { data } = await axios.get(`/expired-logs`, {
-      params: {
-        month: month,
-        itemsPerPage: -1, // Traer todos los productos del mes
-      },
-    });
+    await fetchAllProducts();
 
-    if (data.data && data.data.length > 0) {
-      productsForPriceAdjustment.value = data.data;
-      selectedMonthForAdjustment.value = month;
-      isPriceAdjustmentModalVisible.value = true;
-    } else {
-      toast.info("No se encontraron productos caducados para este mes.");
-    }
+    selectedMonthForAdjustment.value = month;
+    isPriceAdjustmentModalVisible.value = true;
   } catch (error) {
-    console.error("Error al obtener productos para reajuste:", error);
-    toast.error("No se pudieron cargar los productos del mes.");
+    console.error("Error al preparar reajuste de precios:", error);
+    toast.error("No se pudo inicializar el reajuste de precios.");
+  } finally {
+    loadingAdjustmentForMonth.value = null;
   }
 };
 
 const handleGeneratePriceAdjustment = async (adjustmentData) => {
+  isPriceAdjustmentModalVisible.value = false;
+
+  const payload = {
+    month: selectedMonthForAdjustment.value,
+    excludedProductIds: adjustmentData.excludedProducts.map((p) => p.id),
+  };
+
   try {
-    const { data: responseData } = await axios.post(
-      "/expirations/adjust-expired-prices",
-      {
-        month: selectedMonthForAdjustment.value,
-        expired_log_ids: adjustmentData.products.map((p) => p.id),
-      }
+    Swal.fire({
+      title: "Calculando reajuste...",
+      text: "Por favor espera mientras obtenemos los datos para la confirmación.",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    const { data: preview } = await axios.post(
+      "/expirations/adjust-prices/preview",
+      payload
     );
 
-    toast.success(responseData.message);
-    isPriceAdjustmentModalVisible.value = false;
+    const result = await Swal.fire({
+      title: "Confirmar Reajuste de Precios",
+      html: `
+        <div style="text-align: left; padding: 0 1rem; font-size: 1rem;">
+          <p>Estás a punto de redistribuir el costo de los productos caducados. Por favor, revisa los detalles:</p>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span>Monto total a redistribuir:</span>
+            <strong>${formatCurrency(preview.total_lost_value)}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Total de unidades activas:</span>
+            <strong>${preview.total_active_stock.toLocaleString(
+              "es-CO"
+            )} unidades</strong>
+          </div>
+           <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; color: #6c757d;">
+            <small>(en ${preview.affected_products_count.toLocaleString(
+              "es-CO"
+            )} productos)</small>
+          </div>
+          <hr style="margin: 1rem 0;" />
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem;">
+            <span>Ajuste por cada unidad:</span>
+            <strong style="color: #28a745;">+ ${formatCurrency(
+              preview.cost_adjustment_per_unit
+            )}</strong>
+          </div>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, aplicar reajuste",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      customClass: {
+        htmlContainer: "text-left",
+      },
+      didOpen: () => {
+        const actions = Swal.getActions();
+        const confirmButton = Swal.getConfirmButton();
+        const cancelButton = Swal.getCancelButton();
 
-    // Refrescar datos
-    await fetchSummaries();
+        actions.style.display = "flex";
+        actions.style.gap = "10px";
+        actions.style.width = "100%";
+        actions.style.padding = "0 20px";
+
+        confirmButton.style.flex = "1";
+        confirmButton.style.width = "50%";
+
+        cancelButton.style.flex = "1";
+        cancelButton.style.width = "50%";
+      },
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: "Aplicando reajuste...",
+        text: "Esta operación puede tardar unos segundos. No cierres esta ventana.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const { data: responseData } = await axios.post(
+        "/expirations/adjust-expired-prices",
+        payload
+      );
+
+      toast.success(
+        responseData.message || "Reajuste de precios aplicado correctamente."
+      );
+
+      await fetchSummaries();
+    }
   } catch (error) {
-    console.error("Error al aplicar reajuste de precios:", error);
-    toast.error(
-      error.response?.data?.message ||
-        "No se pudo aplicar el reajuste de precios."
-    );
+    console.error("Error en el proceso de reajuste de precios:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Operación cancelada",
+      text:
+        error.response?.data?.message || "No se pudo completar la operación.",
+    });
   }
 };
 
@@ -499,14 +595,13 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
   }).format(value);
 };
 </script>
 
 <template>
   <div>
-    <!-- Sección de Lotes por Vencer -->
     <div>
       <ExpirationsFilters
         v-model:searchQuery="searchQueryLots"
@@ -521,11 +616,10 @@ const formatCurrency = (value) => {
         @apply-offer-selected="handleApplyOfferSelected"
       />
 
-      <!-- Tabla con título integrado -->
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between">
           <div>
-            <h4 class="text-h4 mb-1">Lotes por Vencer</h4>
+            <h4 class="text-h4 mb-1">Productos por Caducar</h4>
             <p class="text-subtitle-1 text-medium-emphasis mb-0">
               Gestiona los lotes próximos a su fecha de caducidad.
             </p>
@@ -550,7 +644,6 @@ const formatCurrency = (value) => {
 
     <VDivider class="my-8" />
 
-    <!-- Sección de Reportes de Caducidad -->
     <div>
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between">
@@ -617,8 +710,22 @@ const formatCurrency = (value) => {
                 </VTooltip>
                 <VTooltip text="Reajustar Precios">
                   <template #activator="{ props: tooltipProps }">
-                    <div v-bind="tooltipProps" class="d-inline-block">
+                    <div
+                      v-bind="tooltipProps"
+                      class="d-inline-block"
+                      style="width: 36px; height: 36px; text-align: center"
+                    >
+                      <VProgressCircular
+                        v-if="loadingAdjustmentForMonth === item.month"
+                        indeterminate
+                        size="20"
+                        width="2"
+                        color="primary"
+                        class="mt-2"
+                      />
+
                       <IconBtn
+                        v-else
                         :disabled="item.has_price_adjustment"
                         @click="handlePriceAdjustmentExpired(item.month)"
                       >
@@ -675,7 +782,7 @@ const formatCurrency = (value) => {
 
     <PriceAdjustmentDialog
       v-model="isPriceAdjustmentModalVisible"
-      :initial-products="productsForPriceAdjustment"
+      :all-products="allProducts"
       :month-name="formatMonth(selectedMonthForAdjustment)"
       @adjust-prices="handleGeneratePriceAdjustment"
     />

@@ -19,7 +19,11 @@ const headers = [
   { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, },
   { title: 'Empresa', key: 'company.name', sortable: false },
   { title: 'Dirección', key: 'address', sortable: true  },
-  { title: 'Fecha',    key: 'created_at', sortable: true, value: item => day(item.created_at).format("DD/MM/YYYY") },
+  { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
+    const fechaStr = item.created_at.replace('Z', '');
+    const fecha = day(fechaStr).format('DD/MM/YYYY');
+    return fecha;
+  }},
   { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 </script>

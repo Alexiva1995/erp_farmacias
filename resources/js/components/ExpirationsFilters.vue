@@ -40,7 +40,6 @@ const emit = defineEmits([
   "clear",
   "expire-selected",
   "apply-offer-selected",
-  "price-adjustment-selected",
 ]);
 
 const searchQueryModel = computed({
@@ -144,14 +143,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 
           <VBtn
             variant="tonal"
-            prepend-icon="tabler-currency-dollar"
-            @click="emit('price-adjustment-selected')"
-          >
-            Reajustar Precio
-          </VBtn>
-
-          <VBtn
-            variant="tonal"
+            color="warning"
             prepend-icon="tabler-calendar-off"
             @click="emit('expire-selected')"
           >

@@ -7,6 +7,7 @@ use App\Models\ProductLot;
 use App\Services\Expirations\ExpirationActionService;
 use App\Services\Expirations\ExpirationQueryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ExpirationController extends Controller
 {
@@ -47,29 +48,54 @@ class ExpirationController extends Controller
             return response()->json(['message' => $e->getMessage()], $statusCode);
         }
     }
+    public function previewPriceAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'month' => 'required|string|date_format:Y-m',
+            'excludedProductIds' => 'sometimes|array',
+            'excludedProductIds.*' => 'integer|exists:products,id',
+        ]);
 
+        try {
+            // Delegamos la lógica al servicio de acciones
+            $previewData = $this->actionService->getAdjustmentPreview(
+                $validated['month'],
+                $validated['excludedProductIds'] ?? []
+            );
+
+            return response()->json($previewData);
+
+        } catch (\Exception $e) {
+            $statusCode = is_numeric($e->getCode()) && $e->getCode() > 0 ? $e->getCode() : 500;
+            return response()->json(['message' => $e->getMessage()], $statusCode);
+        }
+    }
     /**
-     * Reajusta los precios de productos caducados específicos de un mes.
+     * Reajusta los precios de productos caducados de un mes completo,
+     * excluyendo los productos especificados.
      */
     public function adjustExpiredProductsPrices(Request $request)
     {
         $validated = $request->validate([
             'month' => 'required|string|date_format:Y-m',
-            'expired_log_ids' => 'required|array|min:1',
-            'expired_log_ids.*' => 'integer|exists:expired_logs,id',
+            'excludedProductIds' => 'array',
+            'excludedProductIds.*' => 'integer|exists:products,id',
         ]);
 
         try {
-            $result = $this->actionService->adjustExpiredProductsPrices(
+            $result = $this->actionService->adjustExpiredProductsPricesWithExclusions(
                 $validated['month'],
-                $validated['expired_log_ids']
+                $validated['excludedProductIds'] ?? []
             );
 
             if ($result['success']) {
                 return response()->json([
                     'message' => $result['message'],
-                    'processed_products' => $result['processed_products'],
+                    'processed_logs' => $result['processed_logs'],
+                    'excluded_logs' => $result['excluded_logs'],
                     'total_cost_redistributed' => $result['total_cost_redistributed'],
+                    'affected_products_count' => $result['affected_products_count'],
+                    'total_units_affected' => $result['total_units_affected'],
                 ], 200);
             } else {
                 return response()->json([

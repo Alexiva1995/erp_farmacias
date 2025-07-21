@@ -28,7 +28,7 @@ class EditDoctorRequest extends FormRequest
     {
         return [
             //
-            "id"                     =>    "required|numeric|exists:companies,id",
+            "id"                     =>    "required|numeric|exists:doctors,id",
             "name"                   =>    "required|string|max:255",
             "identification"         =>    "required|string",
             "address"                =>    "nullable|string",

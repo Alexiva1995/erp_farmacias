@@ -7,7 +7,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-product", "delete-product"]);
+const emit = defineEmits(["update:options", "actionVer"]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -15,8 +15,6 @@ const headers = [
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Stock", key: "valid_stock", sortable: true },
   { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Costo", key: "cost_price", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -58,7 +56,7 @@ const calculateSalePriceWithIva = (product) => {
 
   if (product.iva == 1) {
     const priceWithIva = basePrice * 1.16;
-    console.log(product);
+    // console.log(product);
     return priceWithIva.toFixed(2);
   }
 
@@ -125,29 +123,9 @@ const formatPrice = (price) => {
         <span>{{ nextExpirationDate(item) }}</span>
       </template>
 
-      <template #item.cost_price="{ item }">
-        <span class="font-weight-medium">{{
-          formatPrice(item.unit_cost)
-        }}</span>
-      </template>
-
-      <template #item.sale_price="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">
-            {{ formatPrice(calculateSalePriceWithIva(item)) }}
-          </span>
-          <span v-if="item.iva == 1" class="text-xs text-success">
-            (IVA incluido)
-          </span>
-        </div>
-      </template>
-
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-product', item)">
-          <VIcon icon="tabler-edit" />
-        </IconBtn>
-        <IconBtn @click="emit('delete-product', item.id)">
-          <VIcon icon="tabler-trash" />
+        <IconBtn @click="emit('actionVer', item)">
+          <VIcon icon="tabler-eye" />
         </IconBtn>
       </template>
     </VDataTableServer>
