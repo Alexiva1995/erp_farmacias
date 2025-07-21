@@ -27,15 +27,24 @@ class UpdateExchangeRate extends Command
      */
     public function handle()
     {
-        /*$response = Http::get('https://ve.dolarapi.com/v1/dolares');
-
+        //$exchangeRate = new ExchangeRate;
+        //$id = null;
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+        //$this->info($response[0]['promedio']);
         $data = [
             "currency_code" => "USD",
             "rate"          => $response[0]['promedio'],
+            "source"        => null,
         ];
 
-        return ExchangeRate::create($data);*/
-
-        $this->info("DOOM ETERNAL");
+        ExchangeRate::create($data);
+        $this->info("The BCV exchange rate has been created");
+        /*if ($exchangeRate->where("currency_code", "USD")->first()) {
+            $this->info("Existe un valor BCV");
+            $this->info("The BCV exchange rate has been update");
+        } else {
+            ExchangeRate::create($data);
+            $this->info("The BCV exchange rate has been created");
+        }*/
     }
 }
