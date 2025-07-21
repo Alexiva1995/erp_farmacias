@@ -128,6 +128,62 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+let debounceTimer;
+watch(
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+  ],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
+  },
+  { deep: true }
+);
+
+watch(
+  [
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+  ],
+  () => {
+    page.value = 1;
+  }
+);
+
+const handleSort = (sortOptions) => {
+  if (sortOptions.key === undefined && sortOptions.order === undefined) {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  } else {
+    sortBy.value = sortOptions.key;
+    orderBy.value = sortOptions.order;
+  }
+};
+
+const handleClearFilters = () => {
+  searchQuery.value = "";
+  selectedLaboratory.value = null;
+  selectedOrigin.value = null;
+  stockStatusFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
+  // sortBy.value = undefined;
+  // orderBy.value = undefined;
+};
+
 function reloadTable() {
   fetchProducts();
   percentProfitability();
@@ -157,7 +213,8 @@ onMounted(() => {
     :origins="origins"
     :loading="isLoadingFilters"
     @add-profitability="addProfitability" 
-    
+    @sort="handleSort"
+    @clear="handleClearFilters"
   />
 
   <addProfitabilityDialog 
