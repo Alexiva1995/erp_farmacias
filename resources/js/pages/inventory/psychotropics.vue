@@ -115,7 +115,7 @@ const fetchSales = async () => {
     itemsPerPage: itemsPerPageOrder.value,
     sortBy: sortByOrder.value,
     orderBy: orderByOrder.value,
-    "is_psychotropic":1
+    is_psychotropic:1
   };
 
   Object.keys(params).forEach(
@@ -193,9 +193,11 @@ function verProducto(paylod){
 
 function verRecipe(paylod){
   console.log(paylod)
-  modalRecipe.statu=true
-  modalRecipe.titulo=`Recipe: ${paylod.order.id}`
-  modalRecipe.data={...paylod}
+  if(paylod.order.url_recipe!=null){
+    modalRecipe.statu=true
+    modalRecipe.titulo=`Recipe: ${paylod.order.id}`
+    modalRecipe.data={...paylod}
+  }
 }
 
 function cerrarModalVerRecipe(paylod){
