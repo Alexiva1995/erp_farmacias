@@ -2,16 +2,12 @@
 import axios from '@/plugins/axios';
 import { ref } from 'vue';
 const props= defineProps({
-  //modalFormulario: {type: Boolean, required: true},
+  dialog:     {type: Boolean, required: true},
   percentage: {type: Number, default: () => 0},
-  //companies: {type: Array, required: true},
-  //formData: {type: Object, default: () => []},
-  //formError: {type: Object, default: () => []},
+
 })
 
-const emit = defineEmits(["reloadTable"])
-
-const dialog = ref(false)
+const emit = defineEmits(["refresh", "close-modal"])
 
 const percentage = ref(0)
 
@@ -27,7 +23,8 @@ async function storeProfitability() {
     const response = await axios.post("/finances/profitability/store", data);
     
     console.log('Éxito:', response.data);
-    emit("reloadTable")
+    emit("refresh")
+    emit("close-modal")
     
   } catch (error) {
     console.error('Error en la solicitud:', error);
@@ -52,11 +49,9 @@ async function storeProfitability() {
 
 <template>
   <div>
-    <v-btn color="primary" @click="dialog = true">Cambiar Rentabilidad</v-btn>
-
     <VDialog
 
-      v-model="dialog" 
+      v-model="props.dialog" 
       max-width="600px"
     >
       <VCard class="shadow-lg bg-white" style="padding: 2em;">
@@ -65,7 +60,7 @@ async function storeProfitability() {
             <VNumberInput v-model="percentage" label="porcentaje" placeholder="25%" />
             
         <v-card-actions class="justify-between">
-          <VBtn text="Cerrar" @click="dialog = false" />
+          <VBtn text="Cerrar" @click="emit('close-modal')" />
           <VBtn 
             text="Agregar" 
             @click="storeProfitability" 
@@ -75,7 +70,3 @@ async function storeProfitability() {
     </VDialog>
   </div>
 </template>
-
-
-
-
