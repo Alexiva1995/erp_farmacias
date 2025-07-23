@@ -152,4 +152,18 @@ class OrderController extends Controller
         }
 
     }
+
+     public function abandonOrder(Order $order)
+    {
+        if ($order->status !== 'Pending') {
+            return ApiResponse::error('Solo se pueden abandonar órdenes abiertas.', 400);
+        }
+        try {
+            $abandonedOrder = $this->orderActionService->abandonOrder($order);
+            return ApiResponse::success('Orden abandonada exitosamente.', ['order' => $abandonedOrder]);
+        } catch (\Exception $e) {
+            Log::error('Error al abandonar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo abandonar la orden: ' . $e->getMessage(), 500);
+        }
+    }
 }

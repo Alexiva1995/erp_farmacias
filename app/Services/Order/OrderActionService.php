@@ -205,4 +205,23 @@ class OrderActionService
             throw $e;
         }
     }
+
+    public function abandonOrder(Order $order): Order
+    {
+        DB::beginTransaction();
+         try {
+            $order->status = 'abandoned';
+            $order->save();
+            DB::commit();
+            Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
+            return $order;
+         }catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al abandonar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
 }

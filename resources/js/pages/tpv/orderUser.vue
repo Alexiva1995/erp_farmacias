@@ -152,7 +152,6 @@ onMounted(() => {
   consultAllcomapanies();
 });
 
-
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
@@ -163,16 +162,15 @@ const formatOrderItemForFrontend = (backendItem) => {
     title: product.name,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
-    price: parseFloat(product.sale_price) || 0, 
+    price: parseFloat(product.sale_price) || 0,
     price_bs: parseFloat(product.price_bs) || 0,
     price_cop: parseFloat(product.price_cop) || 0,
-    availableQuantity: (parseInt(product.valid_stock_sum)) || 0,
-    selectedQuantity: (parseInt(backendItem.quantity)) || 0,
+    availableQuantity: parseInt(product.valid_stock_sum) || 0,
+    selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
   };
 };
-
 
 onMounted(async () => {
   try {
@@ -182,14 +180,17 @@ onMounted(async () => {
       selectedClient.value = response.data.data.order.client;
       hasOpenOrder.value = true;
       if (openOrderData.value.currency) {
-        selectedDisplayCurrency.value = openOrderData.value.currency.toUpperCase();
+        selectedDisplayCurrency.value =
+          openOrderData.value.currency.toUpperCase();
       }
       if (response.data.data.order.details) {
-        orderItems.value = response.data.data.order.details.map((item) => formatOrderItemForFrontend(item));
-      }else{
+        orderItems.value = response.data.data.order.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
         orderItems.value = [];
       }
-    }else{
+    } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
       selectedClient.value = null;
@@ -244,7 +245,6 @@ watch(barcodeSearchQuery, (newValueBar) => {
   }
 });
 
-
 const addProductToOrderByBarcode = async (barcode) => {
   try {
     const response = await axios.get(`/barcode/${barcode}`);
@@ -293,16 +293,15 @@ const verifyClient = async (identification) => {
         hasOpenOrder.value = true;
         openOrderData.value = responseData.order;
 
-         if (openOrderData.value.currency) {
-              selectedDisplayCurrency.value = openOrderData.value.currency.toUpperCase();
-          }
-
+        if (openOrderData.value.currency) {
+          selectedDisplayCurrency.value =
+            openOrderData.value.currency.toUpperCase();
+        }
       } else {
         hasOpenOrder.value = false;
         openOrderData.value = null;
         addOrden(clientData.id);
       }
-
     }
   } catch (error) {
     console.error("Error al verificar cliente:", error);
@@ -314,7 +313,7 @@ const addOrden = async (id) => {
   const params = {
     client_id: id,
     seller_id: currentUser.value?.id || 3,
-    currency: selectedDisplayCurrency.value
+    currency: selectedDisplayCurrency.value,
   };
   try {
     const response = await axios.post("/tpv/orders", params);
@@ -408,11 +407,9 @@ const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
 };
 
-
 const totalOrderAmount = computed(() => {
   return totalProductsAmount.value + totalIVAAmount.value;
 });
-
 
 const totalIVAAmount = computed(() => {
   let totalIVA = 0;
@@ -434,8 +431,6 @@ const totalProductsAmount = computed(() => {
   });
   return total;
 });
-
-
 
 const totalAmountBs = computed(() => {
   let total = 0;
@@ -470,73 +465,86 @@ const totalAmountCop = computed(() => {
   return total;
 });
 
-
-
 const updateOrderTotalsInBackend = async () => {
-    if (!openOrderData.value || !openOrderData.value.id) {
-        return;
-    }
-    try {
-        const payload = {
-            total_amount: totalOrderAmount.value,
-            currency: selectedDisplayCurrency.value,
-        };
-        await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
-    } catch (error) {
-        toast.error("Error al actualizar los totales de la orden.");
-    }
+  if (!openOrderData.value || !openOrderData.value.id) {
+    return;
+  }
+  try {
+    const payload = {
+      total_amount: totalOrderAmount.value,
+      currency: selectedDisplayCurrency.value,
+    };
+    await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
+  } catch (error) {
+    toast.error("Error al actualizar los totales de la orden.");
+  }
 };
-
 
 const updateOrderItemQuantity = async ({ productId, quantity }) => {
-    if (quantity <= 0) {
-        return;
+  if (quantity <= 0) {
+    return;
+  }
+
+  if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
+    toast.error("Debe haber una orden abierta para modificar productos.");
+    return;
+  }
+
+  try {
+    const currentItem = orderItems.value.find(
+      (item) => item.product_id === productId
+    );
+    if (!currentItem) {
+      toast.error(
+        "Producto no encontrado en la orden para actualizar su cantidad."
+      );
+      return;
     }
+    const payload = {
+      product_id: productId,
+      quantity: quantity,
+      price_at_product: currentItem.orderPrice || currentItem.price,
+      currency_at_order: selectedDisplayCurrency.value,
+    };
 
-    if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
-        toast.error("Debe haber una orden abierta para modificar productos.");
-        return;
+    const backendResponse = await axios.post(
+      `/tpv/orders/${openOrderData.value.id}/items`,
+      payload
+    );
+    const backendOrderItem = backendResponse.data.data.order_item;
+
+    const existingItemIndex = orderItems.value.findIndex(
+      (item) => item.product_id === backendOrderItem.product_id
+    );
+    if (existingItemIndex !== -1) {
+      orderItems.value[existingItemIndex] =
+        formatOrderItemForFrontend(backendOrderItem);
+      toast.success(
+        `Cantidad de "${orderItems.value[existingItemIndex].title}" actualizada a ${backendOrderItem.quantity}.`
+      );
+    } else {
+      const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
+      orderItems.value.push(itemToAdd);
+      toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }
-
-    try {
-        const currentItem = orderItems.value.find(item => item.product_id === productId);
-        if (!currentItem) {
-            toast.error("Producto no encontrado en la orden para actualizar su cantidad.");
-            return;
-        }
-        const payload = {
-            product_id: productId,
-            quantity: quantity,
-            price_at_product: currentItem.orderPrice || currentItem.price,
-            currency_at_order: selectedDisplayCurrency.value,
-        };
-
-        const backendResponse = await axios.post(`/tpv/orders/${openOrderData.value.id}/items`,payload);
-        const backendOrderItem = backendResponse.data.data.order_item;
-
-        const existingItemIndex = orderItems.value.findIndex((item) => item.product_id === backendOrderItem.product_id);
-        if (existingItemIndex !== -1) {
-            orderItems.value[existingItemIndex] = formatOrderItemForFrontend(backendOrderItem);
-            toast.success(
-                `Cantidad de "${orderItems.value[existingItemIndex].title}" actualizada a ${backendOrderItem.quantity}.`
-            );
-        } else {
-            const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
-            orderItems.value.push(itemToAdd);
-            toast.success(`"${itemToAdd.title}" agregado a la orden.`);
-        }
-    } catch (error) {
-        const errorMessage = error.response?.data?.message || "Error al actualizar el producto en la orden. Inténtalo de nuevo.";
-        toast.error(errorMessage);
-        if (error.response && error.response.status === 400 && error.response.data.data) {
-            const { available_stock, requested_quantity, product_name } = error.response.data.data;
-            toast.error(
-                `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
-            );
-        }
+  } catch (error) {
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al actualizar el producto en la orden. Inténtalo de nuevo.";
+    toast.error(errorMessage);
+    if (
+      error.response &&
+      error.response.status === 400 &&
+      error.response.data.data
+    ) {
+      const { available_stock, requested_quantity, product_name } =
+        error.response.data.data;
+      toast.error(
+        `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
+      );
     }
+  }
 };
-
 
 const addProductToOrder = async ({ productId, quantity }) => {
   if (quantity <= 0) {
@@ -553,9 +561,13 @@ const addProductToOrder = async ({ productId, quantity }) => {
     const response = await axios.get(`/product/${productId}`);
     const productDetails = response.data;
     const availableQuantity = productDetails.valid_stock_sum;
-    
-    const currentItemInOrder = orderItems.value.find(item => item.product_id === productId);
-    const currentQuantityInOrder = currentItemInOrder ? currentItemInOrder.selectedQuantity : 0;
+
+    const currentItemInOrder = orderItems.value.find(
+      (item) => item.product_id === productId
+    );
+    const currentQuantityInOrder = currentItemInOrder
+      ? currentItemInOrder.selectedQuantity
+      : 0;
     const newTotalQuantity = currentQuantityInOrder + quantity;
 
     if (quantity > availableQuantity) {
@@ -565,7 +577,10 @@ const addProductToOrder = async ({ productId, quantity }) => {
       return;
     }
 
-    const priceInSelectedCurrency = getItemPriceByCurrency(productDetails, selectedDisplayCurrency.value);
+    const priceInSelectedCurrency = getItemPriceByCurrency(
+      productDetails,
+      selectedDisplayCurrency.value
+    );
     const payload = {
       product_id: productDetails.id,
       quantity: newTotalQuantity,
@@ -574,12 +589,18 @@ const addProductToOrder = async ({ productId, quantity }) => {
       currency_at_order: selectedDisplayCurrency.value,
     };
 
-    const backendResponse = await axios.post(`/tpv/orders/${openOrderData.value.id}/items`,payload);
+    const backendResponse = await axios.post(
+      `/tpv/orders/${openOrderData.value.id}/items`,
+      payload
+    );
     const backendOrderItem = backendResponse.data.data.order_item;
-    const existingItemIndex = orderItems.value.findIndex((item) => item.product_id === backendOrderItem.product_id);
+    const existingItemIndex = orderItems.value.findIndex(
+      (item) => item.product_id === backendOrderItem.product_id
+    );
 
     if (existingItemIndex !== -1) {
-      orderItems.value[existingItemIndex] = formatOrderItemForFrontend(backendOrderItem);
+      orderItems.value[existingItemIndex] =
+        formatOrderItemForFrontend(backendOrderItem);
       toast.success(
         `Cantidad de "${productDetails.name}" incrementada a ${backendOrderItem.quantity}.`
       );
@@ -589,32 +610,38 @@ const addProductToOrder = async ({ productId, quantity }) => {
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }
   } catch (error) {
-   console.error(
+    console.error(
       "Error al obtener o agregar el producto a la orden:",
       error.response ? error.response.data : error.message
     );
-    const errorMessage = error.response?.data?.message || "Error al agregar el producto a la orden. Inténtalo de nuevo.";
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al agregar el producto a la orden. Inténtalo de nuevo.";
     toast.error(errorMessage);
-    if (error.response && error.response.status === 400 && error.response.data.data) {
-        const { available_stock, requested_quantity, product_name } = error.response.data.data;
-        toast.error(
-            `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
-        );
+    if (
+      error.response &&
+      error.response.status === 400 &&
+      error.response.data.data
+    ) {
+      const { available_stock, requested_quantity, product_name } =
+        error.response.data.data;
+      toast.error(
+        `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
+      );
     }
   }
 };
 
-
 watch(
-    [totalOrderAmount, selectedDisplayCurrency],
-    async (newValue, oldValue) => {
-        if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
-            if (hasOpenOrder.value && openOrderData.value?.id) {
-                await updateOrderTotalsInBackend();
-            }
-        }
-    },
-    { deep: false }
+  [totalOrderAmount, selectedDisplayCurrency],
+  async (newValue, oldValue) => {
+    if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
+      if (hasOpenOrder.value && openOrderData.value?.id) {
+        await updateOrderTotalsInBackend();
+      }
+    }
+  },
+  { deep: false }
 );
 
 const getItemPriceByCurrency = (item, currency) => {
@@ -628,36 +655,68 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const removeOrderItem = async (productIdToRemove) => {
-    Swal.fire({
-        title: "¿Estás seguro?",
-        text: "¡Desea eliminar el producto!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Sí, eliminarlo",
-        cancelButtonText: "Cancelar"
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
-                toast.error("No hay una orden abierta para eliminar productos.");
-                return;
-            }
-            try {
-                const itemToRemove = orderItems.value.find(item => item.product_id === productIdToRemove);
-                if (!itemToRemove || !itemToRemove.order_detail_id) {
-                    toast.error("No se encontró el detalle del producto en la orden para eliminar.");
-                    return;
-                }
-
-                await axios.delete(`/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`);
-                orderItems.value = orderItems.value.filter(item => item.product_id !== productIdToRemove);
-                toast.success("Producto eliminado de la orden.");
-            } catch (error) {
-                toast.error("Error al eliminar el producto de la orden.");
-            }
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea eliminar el producto!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      if (
+        !hasOpenOrder.value ||
+        !openOrderData.value ||
+        !openOrderData.value.id
+      ) {
+        toast.error("No hay una orden abierta para eliminar productos.");
+        return;
+      }
+      try {
+        const itemToRemove = orderItems.value.find(
+          (item) => item.product_id === productIdToRemove
+        );
+        if (!itemToRemove || !itemToRemove.order_detail_id) {
+          toast.error(
+            "No se encontró el detalle del producto en la orden para eliminar."
+          );
+          return;
         }
-    });
+
+        await axios.delete(
+          `/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`
+        );
+        orderItems.value = orderItems.value.filter(
+          (item) => item.product_id !== productIdToRemove
+        );
+        toast.success("Producto eliminado de la orden.");
+      } catch (error) {
+        toast.error("Error al eliminar el producto de la orden.");
+      }
+    }
+  });
+};
+
+const cancelarOrder = async () => {
+  try {
+    await axios.patch(`/tpv/orders/${openOrderData.value.id}/abandon`);
+    toast.success("Orden abandonada exitosamente.");
+    hasOpenOrder.value = false;
+    openOrderData.value = null;
+    selectedClient.value = null;
+    orderItems.value = [];
+  } catch (error) {
+    console.error(
+      "Error al abandonar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al abandonar la orden. Inténtalo de nuevo.";
+    toast.error(errorMessage);
+  }
 };
 </script>
 <template>
@@ -679,6 +738,7 @@ const removeOrderItem = async (productIdToRemove) => {
         @currency-changed="handleCurrencyChanged"
         @update-quantity="updateOrderItemQuantity"
         @remove-item="removeOrderItem"
+        @cancelar-order="cancelarOrder"
       />
     </div>
     <div v-else>

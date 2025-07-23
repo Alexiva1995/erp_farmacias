@@ -103,6 +103,7 @@ Route::prefix("tpv")->group(function () {
     Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
     Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
+    Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
     // Rutas de Pedidos General
 });
 

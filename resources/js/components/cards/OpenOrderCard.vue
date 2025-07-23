@@ -2,6 +2,7 @@
 import { defineProps, computed, ref } from 'vue';
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
+import Swal from "sweetalert2";
 
 const props = defineProps({
     orderProducts: {
@@ -60,7 +61,7 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const emit = defineEmits(["update:searchQuery", "currency-changed","update-quantity","remove-item"]);
+const emit = defineEmits(["update:searchQuery", "currency-changed","update-quantity","remove-item","cancelar-order"]);
 
 const chipColor = "primary";
 
@@ -131,7 +132,22 @@ const handleClickProductItem = (productId, currentQuantity) => {
         emit('remove-item', productId);
     }
 };
-
+const hadleCancelarOrder = () => {
+  Swal.fire({
+        title: "¿Estás seguro?",
+        text: "¡Desea Cancelar la Orden!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Continuar",
+        cancelButtonText: "Cancelar"
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+             emit('cancelar-order');
+        }
+    });
+};
 </script>
 <template>
  <VCard class="mb-6">
@@ -264,7 +280,7 @@ const handleClickProductItem = (productId, currentQuantity) => {
         </VCardText>
 
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-    <VBtn color="secondary" variant="outlined" @click="" class="flex-grow-1">Cancelar</VBtn>
+    <VBtn color="secondary" variant="outlined" @click="hadleCancelarOrder" class="flex-grow-1">Cancelar</VBtn>
     <VBtn color="primary" variant="flat" @click="" class="flex-grow-1">Completar</VBtn>
     </VCardActions>
 
