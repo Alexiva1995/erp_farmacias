@@ -1,8 +1,13 @@
 <script setup>
-import { defineProps, computed } from 'vue';
+import { defineProps, computed, ref } from 'vue';
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
 
 const props = defineProps({
+    orderProducts: {
+    type: Array,
+    default: () => [],
+  },
   order: {
     type: Object,
     required: true
@@ -24,13 +29,25 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-    totalQuotationAmount: {
+    totalOrderAmount: {
     type: Number,
     default: 0,
   },
-  quotationProducts: {
-    type: Array,
-    default: () => [],
+    searchQuery: {
+    type: String,
+    default: "",
+  },
+ totalAmountBs: {
+    type: Number,
+    default: 0
+  },
+  totalAmountUsd: {
+    type: Number,
+    default: 0
+  },
+  totalAmountCop: {
+    type: Number,
+    default: 0
   },
 });
 
@@ -43,7 +60,7 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const emit = defineEmits(['currency-changed']);
+const emit = defineEmits(["update:searchQuery", "currency-changed","update-quantity","remove-item"]);
 
 const chipColor = "primary";
 
@@ -64,16 +81,12 @@ const breakdownItems = computed(() => {
 });
 
 const formattedTotalQuotation = computed(() => {
-  let amountToFormat = props.totalQuotationAmount;
+  let amountToFormat = props.totalOrderAmount;
   if (props.selectedDisplayCurrency === 'COP') {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
   }
   return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
-
-const handleCurrencyChanged = (newCurrency) => {
-  selectedDisplayCurrency.value = newCurrency;
-};
 
 const selectCurrency = (currency) => {
   emit('currency-changed', currency);
@@ -81,7 +94,8 @@ const selectCurrency = (currency) => {
 
 const totalSelectedQuantity = computed(() => {
   let total = 0;
-  props.quotationProducts.forEach(product => {
+  console.log(props.orderProducts);
+  props.orderProducts.forEach(product => {
     const quantity = parseInt(product.selectedQuantity);
     if (!isNaN(quantity) && quantity > 0) {
       total += quantity;
@@ -90,6 +104,34 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
+
+
+const getProductPrice = (product, currency) => {
+const taxRate = product.taxRate || 0;
+let basePrice = 0;
+  if (currency === 'BS') {
+    basePrice = product.price_bs || 0;
+  } else if (currency === 'COP') {
+    basePrice = product.price_cop || 0;
+  } else { // Default to USD price
+    basePrice = product.price || 0;
+  }
+
+  let priceWithIva = basePrice * (1 + taxRate);
+  if (currency === 'COP') {
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+  }
+  return priceWithIva;
+};
+
+const handleClickProductItem = (productId, currentQuantity) => {
+    if (currentQuantity > 1) {
+        emit('update-quantity', { productId, quantity: currentQuantity - 1 });
+    } else {
+        emit('remove-item', productId);
+    }
+};
+
 </script>
 <template>
  <VCard class="mb-6">
@@ -97,8 +139,7 @@ const totalSelectedQuantity = computed(() => {
       <span>Cliente:   {{ clientName }}</span><br>
       <span>Identidad: {{ Identidad }}</span>
     </template>
-
-    <VRow no-gutters> 
+    <VRow> 
     <VCol cols="6"> 
     <VCardItem>
       <VCardTitle>Factura</VCardTitle>
@@ -159,7 +200,6 @@ const totalSelectedQuantity = computed(() => {
         </div>
       </div>
     </VCardText>
-
  </VCol>
 
       <VCol cols="6">
@@ -178,16 +218,54 @@ const totalSelectedQuantity = computed(() => {
               <span class="font-weight-medium">{{totalSelectedQuantity}}</span>
             </VChip>
           </template>
-          
         </VCardItem>
         
         <VCardText>
+          <AppTextField
+              :model-value="props.searchQuery"
+              placeholder="Código de Barra"
+              clearable
+              @update:model-value="emit('update:searchQuery', $event)"
+              class="flex-grow-1"
+            />
         <VDivider class="mt-auto"/>
+        </VCardText>
+        <VCardText>
+          <div class="scrollable-list-container"
+            :class="{ 'show-scroll': props.orderProducts.length > 2 }" >
+            <VList class="card-list" density="compact" nav>
+                 <VListItem
+                    v-for="product in props.orderProducts"
+                    :key="product.id"
+                    class="rounded-0"
+                    @click="handleClickProductItem(product.product_id, product.selectedQuantity)"
+                    :class="{ 'cursor-pointer': true }"
+                >
+            <template #prepend>
+                <span>{{product.selectedQuantity}} x</span>
+            </template>
+
+                <VListItemTitle class="font-weight-medium me-4 mx-2">{{ product.title }}</VListItemTitle>
+                <VListItemSubtitle class='mx-2'>{{product.active_ingredient}} {{product.laboratory}}</VListItemSubtitle>
+
+                <template #append>
+                <div class="d-flex align-center">
+                <span class="text-body-1 me-2">{{
+                    formatCurrency(
+                    getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity,
+                    props.selectedDisplayCurrency
+                  )
+                }}</span>
+              </div>
+                </template>
+                </VListItem>
+            </VList>
+          </div>
         </VCardText>
 
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-    <VBtn color="secondary" variant="outlined" @click="remove()" class="flex-grow-1"> Cancelar </VBtn>
-    <VBtn color="primary" variant="flat" @click="handlePrintButtonClick" class="flex-grow-1"> Completar </VBtn>
+    <VBtn color="secondary" variant="outlined" @click="" class="flex-grow-1">Cancelar</VBtn>
+    <VBtn color="primary" variant="flat" @click="" class="flex-grow-1">Completar</VBtn>
     </VCardActions>
 
       </VCol>
@@ -195,3 +273,13 @@ const totalSelectedQuantity = computed(() => {
 
     </VCard>
 </template>
+<style scoped>
+.scrollable-list-container {
+  max-height: 110px;
+  overflow-y: hidden;
+  transition: overflow-y 0.3s ease-in-out;
+}
+.scrollable-list-container.show-scroll {
+  overflow-y: auto; 
+}
+</style>

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Resources\ResourceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-
+use App\Models\Product;
 class ResourceController extends Controller
 {
     public function __construct(private ResourceService $resourceService)
@@ -45,6 +45,19 @@ class ResourceController extends Controller
         try {
             $product = $this->resourceService->getProductByBarcode($barcode);
             return response()->json($product);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Producto no encontrado.'], 404);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Ocurrió un error inesperado.'], 500);
+        }
+    }
+
+
+    public function findProductById(Product $product): JsonResponse
+    {
+        try {
+            $detailedProduct = $this->resourceService->loadProductDetails($product);
+            return response()->json($detailedProduct);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Producto no encontrado.'], 404);
         } catch (\Throwable $e) {

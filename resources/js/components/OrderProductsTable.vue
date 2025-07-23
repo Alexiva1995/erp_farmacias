@@ -71,6 +71,21 @@ watch(() => props.products, (newProducts) => {
   inputQuantities.value = newOrderMap;
 }, { immediate: true });
 
+
+const handleInputOrderChange = (productId, val) => {
+  let cleanVal = parseInt(val);
+  const maxQty = props.products.find(p => p.id === productId)?.valid_stock_sum ?? 0;
+  if (isNaN(cleanVal) || cleanVal < 0) {
+    cleanVal = 0;
+  }
+  if (maxQty === 0) {
+    cleanVal = 0;
+  } else if (cleanVal > maxQty) {
+    cleanVal = maxQty;
+  }
+  inputQuantities.value.set(productId, cleanVal);
+};
+
 </script>
 
 <template>
@@ -104,7 +119,7 @@ watch(() => props.products, (newProducts) => {
         <div class="d-flex align-center gap-2">
           <VTextField
             :model-value="inputQuantities.get(item.id) ?? 0"
-            @update:model-value="val => handleInputQuantityChange(item.id, val)"
+            @update:model-value="val => handleInputOrderChange(item.id, val)"
             type="number"
             min="0"
             :max="item.valid_stock_sum"

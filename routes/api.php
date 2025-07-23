@@ -64,6 +64,7 @@ Route::get('/origins', [ResourceController::class, 'getOrigins']);
 Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
+Route::get('/product/{product}', [ResourceController::class, 'findProductById']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
@@ -99,6 +100,9 @@ Route::prefix("tpv")->group(function () {
     Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
+    Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
+    Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
     // Rutas de Pedidos General
 });
 

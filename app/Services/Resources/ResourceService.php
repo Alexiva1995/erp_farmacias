@@ -102,4 +102,17 @@ class ResourceService
         return $product;
     }
 
+    public function loadProductDetails(Product $product): Product
+    {
+        $product->load([
+            'laboratory',
+        ]);
+
+         if (!$product) {
+            throw new ModelNotFoundException("Producto no encontrado.");
+        }
+        $product->loadSum('lots', 'quantity');
+        return $product;
+    }
+
 }
