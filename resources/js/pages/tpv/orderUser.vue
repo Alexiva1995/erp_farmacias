@@ -28,6 +28,10 @@ const laboratories = ref([]);
 const origins = ref([]);
 const isLoadingFilters = ref(false);
 
+const barcodeSearchQuery = ref("");
+let barcodeInputTimer;
+const BARCODE_LENGTH_THRESHOLD = 10;
+
 const clientIdentification = ref("");
 const showRegisterClientModal = ref(false);
 const selectedClient = ref(null);
@@ -226,6 +230,36 @@ watch(
     page.value = 1;
   }
 );
+
+watch(barcodeSearchQuery, (newValueBar) => {
+  clearTimeout(barcodeInputTimer);
+  if (!newValueBar) {
+    return;
+  }
+  if (newValueBar.length >= BARCODE_LENGTH_THRESHOLD) {
+    barcodeInputTimer = setTimeout(async () => {
+      await addProductToOrderByBarcode(newValueBar);
+      barcodeSearchQuery.value = "";
+    }, 300);
+  }
+});
+
+
+const addProductToOrderByBarcode = async (barcode) => {
+  try {
+    const response = await axios.get(`/barcode/${barcode}`);
+    const productDetails = response.data;
+    await addProductToOrder({ productId: productDetails.id, quantity: 1 });
+  } catch (error) {
+    console.error(
+      "Error al agregar producto por código de barras:",
+      error.response ? error.response.data : error.message
+    );
+    toast.error(
+      "Producto no encontrado o error al agregar por código de barras."
+    );
+  }
+};
 
 const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
@@ -634,6 +668,7 @@ const removeOrderItem = async (productIdToRemove) => {
 
     <div v-else-if="hasOpenOrder">
       <OpenOrderCard
+        v-model:searchQuery="barcodeSearchQuery"
         :order-products="orderItems"
         :order="openOrderData"
         :total-products-amount="totalProductsAmount"
