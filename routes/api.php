@@ -201,5 +201,6 @@ Route::prefix("finances")->group(function () {
         Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
+        Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
     });
 });
