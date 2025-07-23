@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\SupplierLaboratoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -128,4 +129,10 @@ Route::prefix("suppliers")->group(function () {
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
     Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+});
+
+
+Route::prefix("supplier-laboratories")->group(function () {
+    Route::get('/{supplier}/discount-rules', [SupplierLaboratoryController::class, 'getDiscountRules']);
+    Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
 });

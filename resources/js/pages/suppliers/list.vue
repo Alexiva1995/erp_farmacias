@@ -2,6 +2,7 @@
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
+import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
 import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingInvoicesDialog.vue";
@@ -23,6 +24,7 @@ const searchQuery = ref("");
 const laboratories = ref([]);
 const laboratoryLinks = ref([])
 const pendingInvoices = ref({})
+const discountRules = ref([]);
 
 const isLoadingFilters = ref(false);
 
@@ -32,6 +34,7 @@ const isEditDialogVisible = ref(false);
 const isPaymentRuleDialogVisible = ref(false);
 const isSupplierLaboratoryDialogVisible = ref(false);
 const isPendingInvoicesDialogVisible = ref(false)
+const isSupplierDiscountRuleDialogVisible = ref(false)
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -77,6 +80,17 @@ const fetchSuppliers = async () => {
 const fetchLaboratoryLinks = async () => {
   const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`)
   laboratoryLinks.value = data.laboratory_links
+}
+
+const fetchDiscountRules = async () => {
+  try {
+    const { data } = await axios.get(`/supplier-laboratories/${currentSupplier.value.id}/discount-rules`)
+    discountRules.value = data.discount_rules
+  } catch (error) {
+    toast.error('Error al cargar las reglas de descuento')
+  } finally {
+    loading.value = false
+  }
 }
 
 const fetchPendingInvoices = async () => {
@@ -268,6 +282,35 @@ const handleSupplierPendingInvoices = async (supplier) => {
   await fetchPendingInvoices()
 };
 
+const handleSupplierDiscountRule = async (supplier) => {
+  currentSupplier.value = { ...supplier }
+  isSupplierDiscountRuleDialogVisible.value = true
+
+  loading.value = true;
+  await fetchLaboratoryLinks()
+  await fetchDiscountRules()
+}
+
+const handleSaveDiscountRules = async (formData) => {
+  try {
+    await axios.post(`/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`, formData)
+
+    toast.success('Reglas de descuento guardadas con éxito')
+    isSupplierDiscountRuleDialogVisible.value = false
+
+    await fetchDiscountRules()
+    await fetchSuppliers()
+  } catch (error) {
+    if (error.response?.status === 422) {
+      supplierFormErrors.value = error.response.data.errors
+      toast.error("Corrige los errores del formulario.")
+    } else {
+      console.error("Error al guardar reglas de descuento:", error)
+      toast.error("Hubo un error al guardar las reglas.")
+    }
+  }
+}
+
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
@@ -316,6 +359,7 @@ const updateTableOptions = (options) => {
       @payment-rule="handlePaymentRule"
       @supplier-laboratory="handleSupplierLaboratory"
       @supplier-pending-invoices="handleSupplierPendingInvoices"
+      @supplier-discount-rule="handleSupplierDiscountRule"
     />
 
     <SupplierEditDialog
@@ -348,6 +392,16 @@ const updateTableOptions = (options) => {
       v-model="isPendingInvoicesDialogVisible"
       :pending-invoices="pendingInvoices"
       :loading="loading"
+    />
+
+    <SupplierDiscountRulesDialog
+      v-model="isSupplierDiscountRuleDialogVisible"
+      :supplier="currentSupplier"
+      :laboratory-links="laboratoryLinks"
+      :discount-rules="discountRules"
+      :loading="loading"
+      @save="handleSaveDiscountRules"
+      @clear-errors="clearFormErrors"
     />
   </div>
 </template>
