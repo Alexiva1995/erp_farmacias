@@ -2,12 +2,11 @@
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
-  companies: {type: Array, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
 })
 
-const emit= defineEmits(["modalClose", 'save', 'clearErrorForm',"update:busqueda"])
+const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
 
 function close(){
   emit("modalClose",false)
@@ -87,12 +86,22 @@ function submitForm(){
           </VCol>
         </VRow>
       </VContainer>
+      <VDivider />
       <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="close"
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="close"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
           >Cancelar</VBtn
         >
-        <VBtn color="primary" variant="flat" @click="submitForm"
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
           >Guardar Cambios</VBtn
         >
       </VCardActions>

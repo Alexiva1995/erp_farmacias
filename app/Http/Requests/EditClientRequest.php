@@ -35,8 +35,8 @@ class EditClientRequest extends FormRequest
             //
             "id"                     =>    "required|numeric|exists:clients,id",
             "name"                   =>    "required|string|max:255",
-            "last_name"              =>    "required|string|max:255",
-            "email"                  =>    "required|string|max:255|email:rfc,dns",
+            "last_name"              =>    "nullable|string|max:255",
+            "email"                  =>    "nullable|string|max:255|email:rfc,dns",
             "identification_type"    =>    [
                 "required",
                 "string",
@@ -48,54 +48,64 @@ class EditClientRequest extends FormRequest
                 ]),
 
             ],
-            "identification"         =>    "required|string",
+            "identification"         =>    "required|string|min:7|max:9",
             "phone"                  =>    "required|string|max:50",
             "address"                =>    "required|string",
-            "company_id"             =>    "required|exists:companies,id",
+            "company_id"             =>    "nullable|exists:companies,id",
             "birthdate"              =>    "nullable|date",
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
-            "id.required"                        => "the field is required",
-            "id.numeric"                         => "the field is type numeric",
-            "id.exists"                          => "the client is not found",
+            // ID Cliente
+            'id.required' => 'El ID del cliente es obligatorio',
+            'id.numeric' => 'El ID debe ser un valor numérico',
+            'id.exists' => 'El cliente no existe en nuestros registros',
 
-            "name.required"                      => "the field is required",
-            "name.string"                        => "the field is type string",
-            "name.max"                           => "the max of field is 255 characters",
+            // Nombre
+            'name.required' => 'El nombre es obligatorio',
+            'name.string' => 'El nombre debe ser texto',
+            'name.max' => 'El nombre no puede exceder 255 caracteres',
 
-            "last_name.required"                 => "the field is required",
-            "last_name.string"                   => "the field is type string",
-            "last_name.max"                      => "the max of field is 255 characters",
+            // Apellido
+            'last_name.string' => 'El apellido debe ser texto',
+            'last_name.max' => 'El apellido no puede exceder 255 caracteres',
 
-            "email.required"                     => "the field is required",
-            "email.string"                       => "the field is type string",
-            "email.max"                          => "the max of field is 255 characters",
-            "email.email"                        => "the format of email is invalid",
+            // Email
+            'email.string' => 'El correo electrónico debe ser texto',
+            'email.max' => 'El correo no puede exceder 255 caracteres',
+            'email.email' => 'Debe ingresar un correo electrónico válido',
 
-            "identification_type.required"       => "the field is required",
-            "identification_type.string"         => "the field is type string",
-            "identification_type.in"             => "The document type must be one of: V-, J-, G-, E-",
+            // Tipo de identificación
+            'identification_type.required' => 'El tipo de documento es obligatorio',
+            'identification_type.string' => 'El tipo de documento debe ser texto',
+            'identification_type.in' => 'Tipo de documento inválido. Opciones válidas: V-, J-, G-, E-',
 
-            "identification.required"            => "the field is required",
-            "identification.string"              => "the field is type string",
-            "identification.unique"              => "the ID is already in use",
+            // Identificación
+            'identification.required' => 'La cédula/RIF es obligatoria',
+            'identification.string' => 'La cédula/RIF debe ser texto',
+            'identification.min' => 'La cédula/RIF debe tener al menos 7 caracteres',
+            'identification.max' => 'La cédula/RIF no puede exceder 9 caracteres',
 
-            "phone.required"                     => "the field is required",
-            "phone.string"                       => "the field is type string",
-            "phone.max"                          => "the max of field is 255 characters",
+            // Teléfono
+            'phone.required' => 'El teléfono es obligatorio',
+            'phone.string' => 'El teléfono debe ser texto',
+            'phone.max' => 'El teléfono no puede exceder 50 caracteres',
 
-            "address.required"                   => "the field is required",
-            "address.string"                     => "the field is type string",
+            // Dirección
+            'address.required' => 'La dirección es obligatoria',
+            'address.string' => 'La dirección debe ser texto',
 
-            "company_id.required"                => "the field is required",
-            "company_id.exists"                  => "the company is not found",
+            // Compañía
+            'company_id.exists' => 'La empresa seleccionada no existe',
 
-            "birthdate.data"                     => "the date format is not valid",
+            // Fecha de nacimiento (CORRECCIÓN: estaba como "data" en lugar de "date")
+            'birthdate.date' => 'La fecha de nacimiento debe tener un formato válido',
 
+            // Mensaje adicional que faltaba para la validación email:rfc,dns
+            'email.email' => 'El formato del correo electrónico no es válido'
         ];
     }
 

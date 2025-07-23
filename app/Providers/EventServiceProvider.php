@@ -2,12 +2,20 @@
 
 namespace App\Providers;
 
+use App\Models\ExpiredLog;
+use App\Models\Invoice;
+use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use App\Models\ProductLot;
 use App\Observers\ProductLotObserver;
+use App\Observers\ProductObserver;
+use App\Observers\OrderObserver;
+use App\Observers\InvoiceObserver;
+use App\Observers\ExpiredLogObserver;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -29,6 +37,10 @@ class EventServiceProvider extends ServiceProvider
      */
     protected $observers = [
         ProductLot::class => [ProductLotObserver::class],
+        Product::class => [ProductObserver::class],
+        Order::class => [OrderObserver::class],
+        Invoice::class => [InvoiceObserver::class],
+        ExpiredLog::class => [ExpiredLogObserver::class],
     ];
 
     /**

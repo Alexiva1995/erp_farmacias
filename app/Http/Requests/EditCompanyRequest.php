@@ -45,26 +45,25 @@ class EditCompanyRequest extends FormRequest
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
-            "id.required"                        => "the field is required",
-            "id.numeric"                         => "the field is type numeric",
-            "id.exists"                          => "the client is not found",
+            "id.required" => "El ID de la empresa es obligatorio",
+            "id.numeric" => "El ID debe ser numérico",
+            "id.exists" => "La empresa no fue encontrada",
 
-            "name.required"                      => "the field is required",
-            "name.string"                        => "the field is type string",
-            "name.max"                           => "the max of field is 255 characters",
+            "name.required" => "El nombre de la empresa es obligatorio",
+            "name.string" => "El nombre debe ser texto",
+            "name.max" => "El nombre no puede exceder 255 caracteres",
 
-            "identification.required"            => "the field is required",
-            "identification.string"              => "the field is type string",
+            "identification.required" => "El RIF/identificación es obligatorio",
+            "identification.string" => "La identificación debe ser texto",
 
-            "type_company.required"              => "the field is required",
-            "type_company.string"                => "the field is type string",
-            "type_company.in"                    => "The Company type must be one of: Empresa or Clinica",
+            "type_company.required" => "El tipo de empresa es obligatorio",
+            "type_company.string" => "El tipo de empresa debe ser texto",
+            "type_company.in" => "El tipo de empresa debe ser: Empresa o Clínica",
 
-            "address.required"                   => "the field is required",
-            "address.string"                     => "the field is type string",
+            "address.string" => "La dirección debe ser texto"
         ];
     }
 

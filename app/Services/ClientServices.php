@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Client;
 use App\Data\CreateClientData;
 use App\Data\EditClientData;
+use App\Exports\ClientsExport;
 use App\Repository\ClientRepository;
 use App\Repository\CompanyRepository;
 use Illuminate\Database\Eloquent\Collection;
@@ -52,5 +53,16 @@ class ClientServices implements Client
     public function filtrar(array $filtros): LengthAwarePaginator
     {
         return $this->clientRepository->filtrar($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function filterWithoutPaginate(array $filtros): Collection
+    {
+        return $this->clientRepository->filterWithoutPaginate($filtros);
+    }
+
+    public function exportExcel(array $filtros): ClientsExport
+    {
+        $query = $this->clientRepository->builerPaginate($filtros);
+        return new ClientsExport($query);
     }
 }

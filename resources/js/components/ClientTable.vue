@@ -1,4 +1,5 @@
 <script setup lang="js">
+import day from "dayjs";
 
 
 const props= defineProps({
@@ -14,10 +15,15 @@ const emit= defineEmits(["edit",'delete','update:options'])
 
 const headers = [
   { title: 'id', key: 'id', sortable: true,},
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${item.last_name}`, sortable: true, },
-  { title: 'Identidad', key: 'identificaction', value: item => `${item.identification_type}${item.identification}`, sortable: false, },
+  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
+  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, },
   { title: 'Empresa', key: 'company.name', sortable: false },
-  { title: 'Dirección', key: 'address', sortable: false  },
+  { title: 'Dirección', key: 'address', sortable: true  },
+  { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
+    const fechaStr = item.created_at.replace('Z', '');
+    const fecha = day(fechaStr).format('DD/MM/YYYY');
+    return fecha;
+  }},
   { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 </script>

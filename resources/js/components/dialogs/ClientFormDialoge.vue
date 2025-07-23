@@ -38,7 +38,14 @@ function submitForm(){
   emit("clearErrorForm")
   let data=generarFormData(props.formData)
   if(props.formData.id!=null){
+    // company_id
+    if(props.formData.company_id=="" || props.formData.company_id==null){
+      console.log("borrar empresa")
+      data.delete("company_id")
+    }
+    // birthdate
     if(props.formData.birthdate=="" || props.formData.birthdate==null){
+      console.log("borrar birthdate")
       data.delete("birthdate")
     }
     else{
@@ -48,6 +55,12 @@ function submitForm(){
       fecha=formatearFechaCompleta(fecha)
       console.log(fecha)
       data.set("birthdate",fecha)
+    }
+  }
+  else{
+    if(props.formData.company_id=="" || props.formData.company_id==null){
+      console.log("borrar empresa")
+      data.delete("company_id")
     }
   }
   emit("save",data)
@@ -98,6 +111,12 @@ function formatearFechaCompleta(fechaInput) {
               label="Identificación"
               type="text"
               variant="outlined"
+              :counter="9"
+              :maxlength="9"
+              :rules="[
+                (v) => (v && v.length >= 7) || 'Mínimo 7 caracteres',
+                (v) => (v && v.length <= 9) || 'Máximo 9 caracteres',
+              ]"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -116,6 +135,7 @@ function formatearFechaCompleta(fechaInput) {
               label="Apellido"
               type="text"
               variant="outlined"
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -159,6 +179,8 @@ function formatearFechaCompleta(fechaInput) {
               :items="props.companies"
               item-title="name"
               item-value="id"
+              clearable
+              :disabled="formData.identification_type == 'J-'"
             />
           </VCol>
           <VCol cols="12">
@@ -171,13 +193,22 @@ function formatearFechaCompleta(fechaInput) {
           </VCol>
         </VRow>
       </VContainer>
-
+      <VDivider />
       <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="close"
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="close"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
           >Cancelar</VBtn
         >
-        <VBtn color="primary" variant="flat" @click="submitForm"
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
           >Guardar Cambios</VBtn
         >
       </VCardActions>
