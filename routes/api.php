@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\OrderController;
 
@@ -202,4 +204,19 @@ Route::prefix("finances")->group(function () {
         Route::post("/store", [ExchangeRateController::class, "store"]);
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
     });
+});
+
+// Rutas de Proveedores
+Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
+Route::prefix("suppliers")->group(function () {
+    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
+    Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
+    Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
+    Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+});
+
+Route::prefix("supplier-laboratories")->group(function () {
+    Route::get('/{supplier}/discount-rules', [SupplierLaboratoryController::class, 'getDiscountRules']);
+    Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
 });
