@@ -109,6 +109,7 @@ Route::post('/quotations', [QuotationController::class, 'store']);
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
     Route::get('/', 'index')->name('api.sales.report.index');
+    Route::get('/filterByPsychotropics', 'filterByPsychotropics');
     Route::get('/export', 'export')->name('api.sales.report.export');
 });
 
