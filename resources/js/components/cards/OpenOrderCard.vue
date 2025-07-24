@@ -71,6 +71,7 @@ const emit = defineEmits([
   "update-quantity",
   "remove-item",
   "cancelar-order",
+  "open-buys-modal",
 ]);
 
 const chipColor = "primary";
@@ -155,6 +156,11 @@ const hadleCancelarOrder = () => {
     }
   });
 };
+
+const handleCompleteOrder = () => {
+  emit('open-buys-modal');
+};
+
 </script>
 <template>
   <VCard class="mb-6">
@@ -316,7 +322,7 @@ const hadleCancelarOrder = () => {
             class="flex-grow-1"
             >Cancelar</VBtn
           >
-          <VBtn color="primary" variant="flat" @click="" class="flex-grow-1"
+          <VBtn color="primary" variant="flat" @click="handleCompleteOrder" class="flex-grow-1"
             >Completar</VBtn
           >
         </VCardActions>

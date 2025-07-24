@@ -4,6 +4,7 @@ import OrderFilters from "@/components/OrderFilters.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
+import BuysModal from "@/components/dialogs/BuysModal.vue";
 import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
@@ -74,6 +75,8 @@ const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
 
 const orderItems = ref([]);
+
+const showBuysModal = ref(false);
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -718,6 +721,18 @@ const cancelarOrder = async () => {
     toast.error(errorMessage);
   }
 };
+
+const openBuysModal = () => {
+    showBuysModal.value = true;
+};
+
+
+const closeBuysModal = () => {
+    showBuysModal.value = false;
+};
+
+const handleBuysCompletion = (orderId) => {
+};
 </script>
 <template>
   <div>
@@ -739,6 +754,7 @@ const cancelarOrder = async () => {
         @update-quantity="updateOrderItemQuantity"
         @remove-item="removeOrderItem"
         @cancelar-order="cancelarOrder"
+        @open-buys-modal="openBuysModal"
       />
     </div>
     <div v-else>
@@ -781,5 +797,17 @@ const cancelarOrder = async () => {
       @save="handleSaveNewClient"
       @clearErrorForm="clearFormErrors"
     />
+
+
+    <BuysModal
+            v-model:is-dialog-visible="showBuysModal"
+            :order-products="orderItems"
+            :order-data="openOrderData"
+            :total-amount="totalOrderAmount"
+            :selected-currency="selectedDisplayCurrency"
+            @modal-closed="closeBuysModal"
+            @Buys-completed="handleBuysCompletion"
+        />
+
   </div>
 </template>
