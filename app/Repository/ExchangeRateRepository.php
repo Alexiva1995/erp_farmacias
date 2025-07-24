@@ -25,6 +25,13 @@ class ExchangeRateRepository
         return $exhange;
     }
 
+    public function consultOneBCV(): Model | null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'USD')->first();
+
+        return $exhange;
+    }
+
     public function store(array $data): Model
     {
         return ExchangeRate::create($data);
