@@ -117,20 +117,56 @@ console.log(props.product);
     <VDialog
 
       v-model="props.dialog" 
-      max-width="600px"
+      max-width="800px"
     >
-      <VCard class="shadow-lg bg-white" style="padding: 2em;">
-          <h3>Editar rentabilidad</h3>
-          
-            <VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" />
-            
-        <v-card-actions class="justify-between">
-          <VBtn text="Cerrar" @click="emit('close-modal')" />
-          <VBtn 
-            text="actualizar" 
-            @click="productExistProfitability"
-          />
-        </v-card-actions>
+      <VCard class="d-flex flex-column">
+        <VCardTitle class="d-flex align-center">
+          <span class="text-h5 font-weight-bold">{{
+            props.product.id ? "Crear Rentabilidad" : "Editar Rentabilidad"
+          }}</span>
+          <VSpacer />
+          <VBtn icon variant="text" @click="emit('close-modal')">
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
+        
+        </VCardTitle>
+
+        <VDivider />
+
+        <VCardText class="d-flex">
+
+          <VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" />
+              
+          <!--v-card-actions class="justify-between">
+            <VBtn text="Cerrar" @click="emit('close-modal')" />
+            <VBtn 
+              text="actualizar" 
+              @click="productExistProfitability"
+            />
+          </v-card-actions-->
+        </VCardText>
+
+        <VDivider />
+
+      <!-- El VCardActions se mantiene igual, será el pie de página fijo -->
+      <VCardActions class="pa-4">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="emit('close-modal')"
+          class="flex-grow-1 w-0 mr-4"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="productExistProfitability"
+          class="flex-grow-1 w-0"
+        >
+          Guardar
+        </VBtn>
+      </VCardActions>
       </VCard>
     </VDialog>
   </div>
