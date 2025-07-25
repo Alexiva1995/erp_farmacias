@@ -29,10 +29,19 @@ class ProductRepository
             DB::raw('stock - sales_average AS diferencia_product')
         ]);
 
-        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
-            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
-                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
-            }
+        $consulta->selectSub(function ($query) {
+            $query->selectRaw('COALESCE(SUM(order_details.quantity), 0)')
+                ->from('order_details')
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->whereColumn('order_details.product_id', 'products.id')
+                ->where('orders.status', 'Completed');
+        }, 'total_sold_completed');
+
+
+        if (array_key_exists("expirationDays", $filtros)) {
+            $consulta->whereHas("lots", function ($query) use ($filtros) {
+                $query->whereBetween("expiration_date", [$filtros["dateToday"], $filtros["expirationDate"]]);
+            });
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
