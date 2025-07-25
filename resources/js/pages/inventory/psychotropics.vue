@@ -83,6 +83,7 @@ const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: searchQuery.value,
+    hasStock: stockStatusFilter.value,
     laboratoryId: selectedLaboratory.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
@@ -111,11 +112,15 @@ const fetchProducts = async () => {
 const fetchSales = async () => {
   loading.value = true;
   const params = {
+    q: searchQuery.value,
+    hasStock: stockStatusFilter.value,
+    laboratoryId: selectedLaboratory.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
     page: pageOrder.value,
     itemsPerPage: itemsPerPageOrder.value,
     sortBy: sortByOrder.value,
     orderBy: orderByOrder.value,
-    is_psychotropic:1
   };
 
   Object.keys(params).forEach(
@@ -123,7 +128,7 @@ const fetchSales = async () => {
   );
 
   try {
-    const response = await axios.get("/sales/report", { params });
+    const response = await axios.get("/sales/report/filterByPsychotropics", { params });
     sales.value = response.data.data;
     totalSales.value = response.data.total;
   } catch (error) {
@@ -186,6 +191,24 @@ watch(
     fetchProducts();
   }
 )
+
+watch(
+    [
+      searchQuery,
+      selectedLaboratory,
+      stockStatusFilter,
+      startDate,
+      endDate,
+      pageOrder,
+      pageOrder,
+      sortByOrder,
+      orderByOrder
+  ],
+  async () =>{
+    fetchSales();
+  }
+)
+
 
 function verProducto(paylod){
   console.log(paylod)
