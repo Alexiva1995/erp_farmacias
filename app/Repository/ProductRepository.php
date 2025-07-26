@@ -22,12 +22,13 @@ class ProductRepository
             'name',
             'stock',
             'group_id',
+            'laboratory_id',
             "sales_average",
             DB::raw('stock / NULLIF(
                 (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
             0) AS preferencia_product'),
             DB::raw('stock - sales_average AS diferencia_product')
-        ]);
+        ])->with(["laboratory", "lots"]);
 
         $consulta->selectSub(function ($query) {
             $query->selectRaw('COALESCE(SUM(order_details.quantity), 0)')
@@ -37,10 +38,38 @@ class ProductRepository
                 ->where('orders.status', 'Completed');
         }, 'total_sold_completed');
 
+        if (array_key_exists("q", $filtros)) {
+            if ($filtros["q"] != "") {
+                $consulta->where(function ($query) use ($filtros) {
+                    $query->where("name", "like", "%" . $filtros["q"] . "%")
+                        ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+                });
+            }
+        }
+
+
+        if (array_key_exists("laboratoryId", $filtros)) {
+            $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
+        }
+
+        if (array_key_exists("stock", $filtros)) {
+
+            if ($filtros["stock"] == "exceso") {
+                $consulta->having("diferencia_product", "<", 0);
+            }
+            if ($filtros["stock"] == "faltas") {
+                $consulta->having("diferencia_product", ">", 0);
+            }
+        }
 
         if (array_key_exists("expirationDays", $filtros)) {
             $consulta->whereHas("lots", function ($query) use ($filtros) {
                 $query->whereBetween("expiration_date", [$filtros["dateToday"], $filtros["expirationDate"]]);
+                if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
+                    if ($filtros["startDate"] != "" && $filtros["endDate"] != "") {
+                        $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
+                    }
+                }
             });
         }
 

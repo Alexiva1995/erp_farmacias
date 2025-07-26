@@ -24,6 +24,29 @@ class InventoryStockController extends Controller
             "page"         => $request->page,
         ];
 
+        if ($request->filled("q")) {
+            $filtros["q"] = $request->q;
+        }
+
+        if ($request->filled("hasStock")) {
+            $filtros["hasStock"] = $request->hasStock;
+        }
+
+        if ($request->filled("laboratoryId")) {
+            $filtros["laboratoryId"] = $request->laboratoryId;
+        }
+
+        if ($request->filled("stock")) {
+            $filtros["stock"] = $request->stock;
+        }
+
+
+        if ($request->filled("startDate") && $request->filled("endDate")) {
+            $filtros["startDate"] = $request->startDate;
+            $filtros["endDate"] = $request->endDate;
+        }
+
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
