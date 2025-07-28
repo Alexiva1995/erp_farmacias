@@ -5,6 +5,7 @@ namespace App\Repository;
 
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -83,6 +84,14 @@ class ProductRepository
         return $consulta;
     }
 
+
+    public function filtrarProductforStocktWithoutPaginate($filtros): Collection
+    {
+
+        $consulta = $this->builerFiltrarProductforStock($filtros);
+
+        return $consulta->get();
+    }
 
 
 

@@ -169,6 +169,8 @@ Route::prefix("inventory")->group(function () {
 
     Route::prefix("stock")->group(function () {
         Route::post("/filter", [InventoryStockController::class, "filter"]);
+        Route::post("/filter-without-paginate", [InventoryStockController::class, "filterWithoutPaginate"]);
+        Route::get("/exportar/excel", [InventoryStockController::class, "exportarExcel"]);
     });
 });
 

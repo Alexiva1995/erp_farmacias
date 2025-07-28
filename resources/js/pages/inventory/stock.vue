@@ -3,6 +3,7 @@ import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
 import { onMounted, reactive, watch } from 'vue';
 import { useRouter } from "vue-router";
 const route= useRouter()
@@ -65,10 +66,10 @@ const fetchProducts = async () => {
   loading.value = true;
   let respuesApi=await axios.post("/inventory/stock/filter",data)
   if(respuesApi.status==200){
-    toast.success("El cliente se a guardado correctamente")
+    console.log("productos consultados correctamente")
   }
   else{
-    toast.error("Error al crear el cliente")
+    toast.error("error al consultar")
     console.log("error en el servidor => ",error)
   }
   loading.value=false
@@ -140,6 +141,91 @@ onMounted(async () => {
   modulo.totalItems=dataTabla.total
   // fetchSales();
 })
+
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/inventory/stock/filter-without-paginate`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  // console.log("respues api => ",respuestaApi)
+
+  return [...respuestaApi.data.data]
+}
+
+async function exportarPdf(){
+    let filtros={
+      // filtros
+      q: searchQuery.value,
+      hasStock: stockStatusFilter.value,
+      laboratoryId: selectedLaboratory.value,
+      sortBy: sortBy.value,
+      orderBy: orderBy.value,
+      startDate: startDate.value,
+      endDate: endDate.value,
+      expirationDays: expirationDays.value,
+      stock: stock.value,
+  }
+  let respuestaApi= await filtrarSinPaginar(filtros)
+  console.log("respuesta => ",respuestaApi)
+
+  if(respuestaApi.length==0){
+    toast.info("No hay clientes para poder genera un reporte")
+    return null;
+  }
+
+  pdfStockProductsGenerator(respuestaApi)
+
+}
+
+async function exportarExcel(formato){
+
+  try{
+      let params={
+        q: searchQuery.value,
+        hasStock: stockStatusFilter.value,
+        laboratoryId: selectedLaboratory.value,
+        sortBy: sortBy.value,
+        orderBy: orderBy.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+        expirationDays: expirationDays.value,
+        stock: stock.value,
+        formato
+    }
+
+    let respuestaApi = await axios.get(`/inventory/stock/exportar/excel`,{
+      params,
+      responseType: "blob",
+    })
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `stock-products.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
+}
 </script>
 <template>
   <div>
@@ -155,6 +241,8 @@ onMounted(async () => {
       :loading="loading"
       @clear="handleClearFilters"
       @sort="handleSort"
+      @export-pdf="exportarPdf"
+      @export-excel="exportarExcel"
     />
     <InventoryStockTable
       :products="modulo.items"

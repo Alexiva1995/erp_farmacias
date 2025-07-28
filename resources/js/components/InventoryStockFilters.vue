@@ -1,6 +1,6 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -21,9 +21,10 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "clear",
-  "export",
   "add-product",
   "sort",
+  "export-pdf",
+  "export-excel",
 ]);
 
 const stockOptions = [
@@ -44,44 +45,44 @@ const diasVencimientos = [
   { title: "90", value: 90 },
 ];
 
-const sortOptions = [
-  {
-    title: "Precio mayor",
-    icon: "tabler-arrow-up",
-    key: "sale_price",
-    order: "desc",
-  },
-  {
-    title: "Precio Menor",
-    icon: "tabler-arrow-down",
-    key: "sale_price",
-    order: "asc",
-  },
-  {
-    title: "Más Unidades",
-    icon: "tabler-plus",
-    key: "valid_stock",
-    order: "desc",
-  },
-  {
-    title: "Menos Unidades",
-    icon: "tabler-minus",
-    key: "valid_stock",
-    order: "asc",
-  },
-  {
-    title: "Fecha pronto a Vencer",
-    icon: "tabler-calendar-time",
-    key: "next_expiration",
-    order: "asc",
-  },
-  {
-    title: "Más Vendidos",
-    icon: "tabler-trending-up",
-    key: "most_sold",
-    order: "desc",
-  },
-];
+// const sortOptions = [
+//   {
+//     title: "Precio mayor",
+//     icon: "tabler-arrow-up",
+//     key: "sale_price",
+//     order: "desc",
+//   },
+//   {
+//     title: "Precio Menor",
+//     icon: "tabler-arrow-down",
+//     key: "sale_price",
+//     order: "asc",
+//   },
+//   {
+//     title: "Más Unidades",
+//     icon: "tabler-plus",
+//     key: "valid_stock",
+//     order: "desc",
+//   },
+//   {
+//     title: "Menos Unidades",
+//     icon: "tabler-minus",
+//     key: "valid_stock",
+//     order: "asc",
+//   },
+//   {
+//     title: "Fecha pronto a Vencer",
+//     icon: "tabler-calendar-time",
+//     key: "next_expiration",
+//     order: "asc",
+//   },
+//   {
+//     title: "Más Vendidos",
+//     icon: "tabler-trending-up",
+//     key: "most_sold",
+//     order: "desc",
+//   },
+// ];
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -90,25 +91,6 @@ const selectedSort = ref(null);
 
 const getStorageKey = () =>
   `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
-
-const loadSavedSort = () => {
-  try {
-    const saved = localStorage.getItem(getStorageKey());
-    if (saved) {
-      const parsedSort = JSON.parse(saved);
-      const isValidSort = sortOptions.find(
-        (option) =>
-          option.key === parsedSort.key && option.order === parsedSort.order
-      );
-      if (isValidSort) {
-        selectedSort.value = parsedSort;
-        emit("sort", parsedSort);
-      }
-    }
-  } catch (error) {
-    console.error("Error al cargar el filtro guardado:", error);
-  }
-};
 
 const saveSortFilter = (sortFilter) => {
   try {
@@ -125,62 +107,9 @@ const handleSortClick = (option) => {
   emit("sort", sortFilter);
 };
 
-const clearSortFilter = () => {
-  selectedSort.value = null;
-  try {
-    localStorage.removeItem(getStorageKey());
-  } catch (error) {
-    console.error("Error al limpiar el filtro:", error);
-  }
-
-  emit("sort", { key: undefined, order: undefined });
-};
-
-const getSelectedSortTitle = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
-  );
-  return option ? option.title : null;
-};
-
-const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
-  );
-  return option ? option.icon : null;
-};
-
-const isOptionSelected = (option) => {
-  return (
-    selectedSort.value &&
-    selectedSort.value.key === option.key &&
-    selectedSort.value.order === option.order
-  );
-};
-
 const handleClear = () => {
   emit("clear");
 };
-
-onMounted(() => {
-  loadSavedSort();
-});
-
-watch(
-  () => currentUser.value?.id,
-  () => {
-    if (currentUser.value?.id) {
-      loadSavedSort();
-    }
-  },
-  { immediate: true }
-);
 </script>
 
 <template>
@@ -273,7 +202,7 @@ watch(
         Limpiar Filtros
       </VBtn>
 
-      <div class="d-flex align-center gap-2">
+      <!-- <div class="d-flex align-center gap-2">
         <VMenu>
           <template #activator="{ props: menuProps }">
             <VBtn v-bind="menuProps" variant="tonal">
@@ -315,7 +244,7 @@ watch(
           <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
           {{ getSelectedSortTitle() }}
         </VChip>
-      </div>
+      </div> -->
 
       <VSpacer />
 
@@ -331,13 +260,13 @@ watch(
           </VBtn>
         </template>
         <VList>
-          <VListItem @click="emit('export', 'xlsx')">
+          <VListItem @click="emit('export-excel', 'xlsx')">
             <template #prepend>
               <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
             </template>
             <VListItemTitle class="text-success">Excel</VListItemTitle>
           </VListItem>
-          <VListItem @click="emit('export', 'pdf')">
+          <VListItem @click="emit('export-pdf')">
             <template #prepend>
               <VIcon icon="tabler-file-type-pdf" class="me-2" />
             </template>
