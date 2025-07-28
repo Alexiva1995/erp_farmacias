@@ -1,12 +1,11 @@
 <script setup>
-import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
+import InventoryCountDialog from "@/components/dialogs/InventoryCountDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
 
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -26,27 +25,37 @@ const endDate = ref(null);
 
 const laboratories = ref([]);
 const origins = ref([]);
-const suppliers = ref([]);
-const categories = ref([]);
 
-const isEditDialogVisible = ref(false);
+const isCountDialogVisible = ref(false);
 const currentProduct = ref({});
-
-const productFormErrors = ref({});
+const activeCycle = ref(null);
+const hasActiveCycle = ref(false);
 
 const isLoadingFilters = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse, categoryResponse] = await Promise.all([
+    const [labResponse, originResponse, cycleResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
-      axios.get("/categories"),
+      axios.get("/inventory/cycle/active"),
     ]);
+
     laboratories.value = labResponse.data.data;
     origins.value = originResponse.data;
-    categories.value = categoryResponse.data;
+
+    // Verificar estado del ciclo activo
+    if (cycleResponse.data.success) {
+      hasActiveCycle.value = cycleResponse.data.has_active_cycle;
+      activeCycle.value = cycleResponse.data.data;
+
+      if (!hasActiveCycle.value) {
+        toast.warning(
+          "No existe un ciclo de inventario activo. Los conteos no podrán ser registrados."
+        );
+      }
+    }
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -76,7 +85,7 @@ const fetchProducts = async () => {
   );
 
   try {
-    const response = await axios.get("/products", { params });
+    const response = await axios.get("/inventory/products", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -134,96 +143,50 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const handleEditProduct = (product) => {
-  currentProduct.value = { ...product };
-  productFormErrors.value = {};
-  isEditDialogVisible.value = true;
-};
-
-const handleDeleteProduct = async (id) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de este producto!",
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Eliminar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await axios.delete(`/products/${id}`);
-      toast.success("Producto eliminado con éxito.");
-      fetchProducts();
-    } catch (error) {
-      console.error(`Error al borrar el producto ${id}:`, error);
-      toast.error("No se pudo eliminar el producto.");
-    }
-  }
-};
-
-const handleSaveProduct = async (productFormData) => {
-  const isNewProduct = !currentProduct.value.id;
-  const url = isNewProduct
-    ? "/products"
-    : `/products/${currentProduct.value.id}`;
-
-  try {
-    if (!isNewProduct) {
-      productFormData.append("_method", "PUT");
-    }
-
-    await axios.post(url, productFormData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    toast.success(
-      `Producto ${isNewProduct ? "creado" : "actualizado"} con éxito`
+const handleCountProduct = (product) => {
+  if (!hasActiveCycle.value) {
+    toast.error(
+      "No se puede realizar el conteo. No existe un ciclo de inventario activo."
     );
-    isEditDialogVisible.value = false;
-    await fetchProducts();
-  } catch (error) {
-    if (error.response && error.response.status === 422) {
-      productFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
+    return;
+  }
+
+  currentProduct.value = { ...product };
+  isCountDialogVisible.value = true;
+};
+
+const handleSaveCount = async (countData) => {
+  try {
+    const response = await axios.post(
+      `/inventory/count/${currentProduct.value.id}`,
+      {
+        barcode: countData.barcode,
+        counted_quantity: countData.countedQuantity,
+        system_quantity: countData.system_quantity, // <-- AÑADIDO
+        discrepancy: countData.discrepancy,
+      }
+    );
+
+    if (response.data.success) {
+      toast.success(response.data.message || "Conteo registrado exitosamente");
+      isCountDialogVisible.value = false;
+      await fetchProducts(); // Refrescar la tabla
     } else {
-      console.error("Error al guardar/crear el producto:", error);
-      toast.error("Hubo un error al guardar el producto.");
+      toast.error(response.data.message || "Error al registrar el conteo");
+    }
+  } catch (error) {
+    console.error("Error al registrar el conteo:", error);
+
+    if (error.response?.status === 422) {
+      // Errores de validación
+      const errors = error.response.data.errors;
+      const errorMessages = Object.values(errors).flat().join(", ");
+      toast.error(`Errores de validación: ${errorMessages}`);
+    } else if (error.response?.status === 400) {
+      // Error de negocio (ej: código de barras no coincide)
+      toast.error(error.response.data.message);
+    } else {
+      toast.error("Hubo un error al registrar el conteo.");
     }
   }
 };
@@ -235,18 +198,6 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
-  // sortBy.value = undefined;
-  // orderBy.value = undefined;
-};
-
-const handleAddProduct = () => {
-  currentProduct.value = {};
-  productFormErrors.value = {};
-  isEditDialogVisible.value = true;
-};
-
-const clearFormErrors = () => {
-  productFormErrors.value = {};
 };
 
 const handleExport = async (format) => {
@@ -269,7 +220,7 @@ const handleExport = async (format) => {
   });
 
   try {
-    const response = await axios.get("/products/export", {
+    const response = await axios.get("/inventory/export", {
       params,
       responseType: "blob",
     });
@@ -279,7 +230,7 @@ const handleExport = async (format) => {
     link.href = url;
 
     const contentDisposition = response.headers["content-disposition"];
-    let fileName = `productos.${format}`;
+    let fileName = `inventario.${format}`;
     if (contentDisposition) {
       const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
       if (fileNameMatch && fileNameMatch.length === 2)
@@ -296,6 +247,7 @@ const handleExport = async (format) => {
     console.error("Error al exportar los datos:", error);
   }
 };
+
 const handleSort = (sortOptions) => {
   if (sortOptions.key === undefined && sortOptions.order === undefined) {
     sortBy.value = undefined;
@@ -319,9 +271,8 @@ const handleSort = (sortOptions) => {
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
+      mode="inventory"
       @clear="handleClearFilters"
-      @export="handleExport"
-      @add-product="handleAddProduct"
       @sort="handleSort"
     />
 
@@ -331,22 +282,15 @@ const handleSort = (sortOptions) => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      mode="inventory"
       @update:options="updateTableOptions"
-      @edit-product="handleEditProduct"
-      @delete-product="handleDeleteProduct"
+      @count-product="handleCountProduct"
     />
-    <ProductEditDialog
-      v-model="isEditDialogVisible"
+
+    <InventoryCountDialog
+      v-model="isCountDialogVisible"
       :product="currentProduct"
-      :laboratories="laboratories"
-      :origins="origins"
-      :suppliers="suppliers"
-      :categories="categories"
-      :all-products="products"
-      :errors="productFormErrors"
-      :groups="groups"
-      @save="handleSaveProduct"
-      @clear-errors="clearFormErrors"
+      @save="handleSaveCount"
     />
   </div>
 </template>

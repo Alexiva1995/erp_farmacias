@@ -24,10 +24,6 @@ export default [
       {
         title: 'Trazabilidad',
         to: 'inventory-traceability',
-      },
-      {
-        title: 'Inventario Ciclicos',
-        to: 'inventory-cyclic',
       }
     ],
   }, 

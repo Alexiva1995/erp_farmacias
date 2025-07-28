@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
@@ -50,8 +51,6 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::delete('/products/{product}', [ProductController::class, 'destroy']);
 Route::get('/products/export', [ProductController::class, 'export']);
 Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
-Route::get('/cyclic', [ProductController::class, 'getProductAll']);
-
 
 // Rutas de Grupos de Productos
 Route::get('/groups', [GroupController::class, 'index']);
@@ -95,6 +94,35 @@ Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot'
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
 Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
+
+Route::get('/products/count', [InventoryCycleController::class, 'getProductCount']);
+Route::post('/products/count/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
+Route::prefix('inventory')->group(function () {
+
+    Route::get('cycle/active', [InventoryCycleController::class, 'getActiveCycleStatus'])
+        ->name('inventory.cycle.active');
+
+    Route::get('products', [InventoryCycleController::class, 'getProductsForInventory'])
+        ->name('inventory.products.index');
+
+    Route::prefix('count')->group(function () {
+        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount'])
+            ->name('inventory.count.store');
+
+        Route::get('/', [InventoryCycleController::class, 'getProductCount'])
+            ->name('inventory.counts.index');
+
+        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction'])
+            ->name('inventory.counts.action');
+    });
+
+    // Estadísticas y reportes (funcionalidad futura)
+    Route::prefix('statistics')->group(function () {
+        Route::get('/', [InventoryCycleController::class, 'getCountStatistics'])
+            ->name('inventory.statistics');
+    });
+});
+
 
 // Rutas de Ajustes de Inventario
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
@@ -154,8 +182,8 @@ Route::prefix("crm")->group(function () {
 
     // Rutas Sorteo
     Route::prefix("lottery")->group(function () {
-        Route::post("/filtrar-ordenes-sin-paginar",  [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
-        Route::post("/filtrar-ordenes",              [LotteryController::class, "filtrarOrdenesPaginate"]);
+        Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+        Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
     });
 });
 
@@ -196,5 +224,4 @@ Route::prefix("finances")->group(function () {
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
     });
- });
-
+});
