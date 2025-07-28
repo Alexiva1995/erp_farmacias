@@ -13,6 +13,7 @@ class ExchangeRate extends Model
     /**
      * Los atributos que son asignables masivamente.
      */
+
     protected $fillable = [
         'currency_code',
         'rate',

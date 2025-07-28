@@ -24,6 +24,10 @@ export default [
       {
         title: 'Trazabilidad',
         to: 'inventory-traceability',
+      },
+      {
+        title: 'Psicotropicos',
+        to: 'inventory-psychotropics',
       }
     ],
   }, 

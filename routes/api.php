@@ -20,7 +20,10 @@ use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
+use App\Http\Controllers\Api\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -136,6 +139,7 @@ Route::post('/quotations', [QuotationController::class, 'store']);
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
     Route::get('/', 'index')->name('api.sales.report.index');
+    Route::get('/filterByPsychotropics', 'filterByPsychotropics');
     Route::get('/export', 'export')->name('api.sales.report.export');
 });
 
@@ -187,12 +191,15 @@ Route::prefix("crm")->group(function () {
     });
 });
 
+Route::prefix("orders")->group(function () {
+    Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
+});
 
 // Route Laboratorio
-Route::prefix("laboratories")->group(function () {
-    Route::get("/", [LaboratoryController::class, "consultAll"]);
+// Route::prefix("laboratories")->group(function () {
+//     Route::get("/", [LaboratoryController::class, "consultAll"]);
 
-});
+// });
 
 // Ruta de fiscal
 // Histori
@@ -222,6 +229,24 @@ Route::prefix("finances")->group(function () {
     Route::prefix("exchange-rates")->group(function () {
 
         Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
         Route::post("/store", [ExchangeRateController::class, "store"]);
+        Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
+        Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
     });
+});
+
+// Rutas de Proveedores
+Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
+Route::prefix("suppliers")->group(function () {
+    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
+    Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
+    Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
+    Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+});
+
+Route::prefix("supplier-laboratories")->group(function () {
+    Route::get('/{supplier}/discount-rules', [SupplierLaboratoryController::class, 'getDiscountRules']);
+    Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
 });

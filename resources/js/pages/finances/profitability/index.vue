@@ -1,6 +1,8 @@
 <script setup>
 import ProfitabilityTable from '@/components/ProfitabilityTable.vue';
-import buttonProfitability from '@/components/buttonProfitability.vue';
+import ProductProfitabilityEditDialog from '@/components/dialogs/ProductProfitabilityEditDialog.vue';
+import addProfitabilityDialog from '@/components/dialogs/addProfitabilityDialog.vue';
+import profitabilityFilters from '@/components/profitabilityFilters.vue';
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
 import { onMounted, ref } from 'vue';
@@ -11,14 +13,29 @@ const totalProduct = ref(0)
 const profitability = ref();
 const page = ref(1)
 const itemsPerPage = ref(10)
+const sortBy = ref();
+const orderBy = ref();
 const loading = ref(false)
 
-// Constantes para buttonProfitability
+// Constantes para buttonProfitability/addProfitabilityDialog
 const percentage = ref()
+const dialog = ref(false)
 
-const fetchProducts = async () => {
-  // Si no usas params, elimina esta línea
-  // Object.keys(params).forEach(key => (params[key] === null || params[key] === '') && delete params[key]);
+// Datos para el filtro
+const searchQuery = ref("");
+const selectedLaboratory = ref(null);
+const selectedOrigin = ref(null);
+const stockStatusFilter = ref(null);
+const startDate = ref(null);
+const endDate = ref(null);
+const laboratories = ref([]);
+const origins = ref([]);
+const isLoadingFilters = ref(false);
+
+const editDialog = ref(false)
+const productProfitability = ref({})
+
+/*const fetchProducts = async () => {
   loading.value = true
   try {
     const response = await axios.get('/products');
@@ -30,7 +47,40 @@ const fetchProducts = async () => {
     toast.error('Error al obtener los productos.');
   }
   loading.value = false
-}
+}*/
+
+const fetchProducts = async () => {
+  loading.value = true;
+  const params = {
+    q: searchQuery.value,
+    laboratoryId: selectedLaboratory.value,
+    originId: selectedOrigin.value,
+    ...(stockStatusFilter.value !== null && {
+      hasStock: stockStatusFilter.value,
+    }),
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+  };
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
+  try {
+    const response = await axios.get("/products", { params });
+    products.value = response.data.data;
+    console.log("productos")
+    totalProduct.value = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener los productos:", error);
+    toast.error("Error al obtener los productos.");
+  } finally {
+    loading.value = false;
+  }
+};
 
 const percentProfitability = async () => {
   loading.value = true
@@ -47,13 +97,97 @@ const percentProfitability = async () => {
   loading.value = false
 }
 
+const addProfitability = () => {
+  dialog.value = true
+}
+
+const closeModal = () => {
+  dialog.value = false
+}
+
+const editProductProfitability = (profitability_id = null, percentage = 0, id_product, is_locked = 1) => {
+  editDialog.value = true
+  productProfitability.value = {
+    "id"         : profitability_id,
+    "percentage" : percentage, 
+    "product_id" : id_product, 
+    "is_locked"  : is_locked
+  }
+  console.log(productProfitability.value);
+}
+
+const closeEditModal = () => {
+  editDialog.value = false
+
+}
+
+const updateTableOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  sortBy.value = options.sortBy[0]?.key;
+  orderBy.value = options.sortBy[0]?.order;
+};
+
+let debounceTimer;
+watch(
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+  ],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
+  },
+  { deep: true }
+);
+
+watch(
+  [
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+  ],
+  () => {
+    page.value = 1;
+  }
+);
+
+const handleSort = (sortOptions) => {
+  if (sortOptions.key === undefined && sortOptions.order === undefined) {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  } else {
+    sortBy.value = sortOptions.key;
+    orderBy.value = sortOptions.order;
+  }
+};
+
+const handleClearFilters = () => {
+  searchQuery.value = "";
+  selectedLaboratory.value = null;
+  selectedOrigin.value = null;
+  stockStatusFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
+  // sortBy.value = undefined;
+  // orderBy.value = undefined;
+};
+
 function reloadTable() {
   fetchProducts();
   percentProfitability();
 }
-
-
-
 
 onMounted(() => {
   reloadTable();
@@ -61,16 +195,44 @@ onMounted(() => {
 </script>
 
 <template>
-  <VCard class="flex justify-end">
-  <div class="py-5 px-5">
+
+  <!--div class="py-5 px-5">
     <buttonProfitability 
     :percentage="percentage" 
     @refresh="reloadTable"
     />
-  </div>
-  <VDivider />
+  </div-->
+  <profitabilityFilters
+    v-model:searchQuery="searchQuery"
+    v-model:selectedLaboratory="selectedLaboratory"
+    v-model:selectedOrigin="selectedOrigin"
+    v-model:stockStatusFilter="stockStatusFilter"
+    v-model:startDate="startDate"
+    v-model:endDate="endDate"
+    :laboratories="laboratories"
+    :origins="origins"
+    :loading="isLoadingFilters"
+    @add-profitability="addProfitability" 
+    @sort="handleSort"
+    @clear="handleClearFilters"
+  />
+
+  <addProfitabilityDialog 
+    :percentage="percentage"
+    :dialog="dialog" 
+    @close-modal="closeModal"
+    @refresh="reloadTable"
+  />
+
+  <ProductProfitabilityEditDialog 
+    :product="productProfitability"
+    :dialog="editDialog" 
+    @close-modal="closeEditModal"
+    @refresh="reloadTable"
+  />
+
+  <VCard>
   <div>
-    <!-- Usa el componente y pásale los datos si es necesario -->
     <ProfitabilityTable 
     :products="products" 
     :totalProduct="totalProduct" 
@@ -79,6 +241,8 @@ onMounted(() => {
     :itemsPerPage="itemsPerPage" 
     :loading="loading" 
     @refresh="reloadTable"
+    @update="updateTableOptions"
+    @editProduct="editProductProfitability"
     />
   </div>
   </VCard>

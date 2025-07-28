@@ -40,10 +40,12 @@ function submitForm(){
   if(props.formData.id!=null){
     // company_id
     if(props.formData.company_id=="" || props.formData.company_id==null){
+      console.log("borrar empresa")
       data.delete("company_id")
     }
     // birthdate
     if(props.formData.birthdate=="" || props.formData.birthdate==null){
+      console.log("borrar birthdate")
       data.delete("birthdate")
     }
     else{
@@ -53,6 +55,12 @@ function submitForm(){
       fecha=formatearFechaCompleta(fecha)
       console.log(fecha)
       data.set("birthdate",fecha)
+    }
+  }
+  else{
+    if(props.formData.company_id=="" || props.formData.company_id==null){
+      console.log("borrar empresa")
+      data.delete("company_id")
     }
   }
   emit("save",data)

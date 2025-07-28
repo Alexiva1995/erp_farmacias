@@ -12,12 +12,24 @@ class TraceabilityController extends Controller
 {
     public function __construct(
         private TraceabilityQueryService $salesReportQueryService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
         $query = $this->salesReportQueryService->getFilteredQuery($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+
+    public function filterByPsychotropics(Request $request)
+    {
+        $query = $this->salesReportQueryService->getFilteredQueryByPsychotropics($request);
 
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
