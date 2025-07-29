@@ -18,6 +18,36 @@ class ProductRepository
 
     public function builerFiltrarProductforStock($filtros): Builder
     {
+        // $consulta = Product::select([
+        //     'id',
+        //     'name',
+        //     'stock',
+        //     'group_id',
+        //     'laboratory_id',
+        //     "sales_average",
+        //     DB::raw('stock / NULLIF(
+        //         (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
+        //     0) AS preferencia_product'),
+        //     DB::raw('stock - sales_average AS diferencia_product'),
+        //     // DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MAX(expiration_date)) 
+        //     //  FROM product_lots 
+        //     //  WHERE product_lots.product_id = products.id) AS meses_faltantes')
+        //     DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
+        //      FROM product_lots 
+        //      WHERE product_lots.product_id = products.id
+        //      AND expiration_date >= CURDATE()) AS meses_faltantes'),
+        //     DB::raw('(SELECT pl.quantity 
+        //      FROM product_lots pl
+        //      WHERE pl.product_id = products.id
+        //      AND pl.expiration_date = (
+        //          SELECT MIN(expiration_date)
+        //          FROM product_lots
+        //          WHERE product_id = products.id
+        //          AND expiration_date >= CURDATE()
+        //      )
+        //      LIMIT 1) AS lote_quantity')
+        // ])->with(["laboratory", "lots"]);
+
         $consulta = Product::select([
             'id',
             'name',
@@ -25,10 +55,38 @@ class ProductRepository
             'group_id',
             'laboratory_id',
             "sales_average",
+            DB::raw('stock - sales_average AS diferencia_product'),
             DB::raw('stock / NULLIF(
                 (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
             0) AS preferencia_product'),
-            DB::raw('stock - sales_average AS diferencia_product')
+            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
+             FROM product_lots 
+             WHERE product_lots.product_id = products.id
+             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            DB::raw('(SELECT quantity 
+             FROM product_lots 
+             WHERE product_id = products.id
+             AND expiration_date = (
+                 SELECT MIN(expiration_date)
+                 FROM product_lots
+                 WHERE product_id = products.id
+                 AND expiration_date >= CURDATE()
+             ) LIMIT 1) AS lote_quantity'),
+            DB::raw('COALESCE(
+        (SELECT quantity FROM product_lots 
+         WHERE product_id = products.id
+         AND expiration_date = (
+             SELECT MIN(expiration_date)
+             FROM product_lots
+             WHERE product_id = products.id
+             AND expiration_date >= CURDATE()
+         ) LIMIT 1), 0) - 
+        (sales_average * 
+        COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
+         FROM product_lots 
+         WHERE product_lots.product_id = products.id
+         AND expiration_date >= CURDATE()), 0)
+    ) AS demanda_ajustada')
         ])->with(["laboratory", "lots"]);
 
         $consulta->selectSub(function ($query) {
@@ -51,6 +109,12 @@ class ProductRepository
 
         if (array_key_exists("laboratoryId", $filtros)) {
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
+        }
+
+        if (array_key_exists("expProd", $filtros)) {
+            if ($filtros["expProd"] == true) {
+                $consulta->having("demanda_ajustada", ">", 0);
+            }
         }
 
         if (array_key_exists("stock", $filtros)) {

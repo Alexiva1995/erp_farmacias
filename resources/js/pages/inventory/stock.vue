@@ -25,6 +25,7 @@ const startDate = ref(null);
 const endDate = ref(null);
 const expirationDays = ref(15);
 const stock = ref("all");
+const expProd = ref(false);
 
 const loading = ref(false)
 
@@ -62,6 +63,7 @@ const fetchProducts = async () => {
     endDate: endDate.value,
     expirationDays: expirationDays.value,
     stock: stock.value,
+    expProd: expProd.value,
   };
   loading.value = true;
   let respuesApi=await axios.post("/inventory/stock/filter",data)
@@ -85,6 +87,7 @@ const handleClearFilters = () => {
   endDate.value = null;
   stock.value = "all";
   expirationDays.value = 15;
+  expProd.value = false;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
@@ -101,6 +104,7 @@ const handleSort = (sortOptions) => {
 
 watch(
     [
+      expProd,
       stock,
       expirationDays,
       searchQuery,
@@ -164,6 +168,7 @@ async function exportarPdf(){
       endDate: endDate.value,
       expirationDays: expirationDays.value,
       stock: stock.value,
+      expProd: expProd.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
@@ -190,6 +195,7 @@ async function exportarExcel(formato){
         endDate: endDate.value,
         expirationDays: expirationDays.value,
         stock: stock.value,
+        expProd: expProd.value,
         formato
     }
 
@@ -237,6 +243,7 @@ async function exportarExcel(formato){
       v-model:endDate="endDate"
       v-model:expirationDays="expirationDays"
       v-model:stock="stock"
+      v-model:expProd="expProd"
       :laboratories="laboratories"
       :loading="loading"
       @clear="handleClearFilters"

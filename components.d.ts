@@ -68,7 +68,6 @@ declare module 'vue' {
     HistoryFilters: typeof import('./resources/js/components/HistoryFilters.vue')['default']
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
-    IntentoryStockFilters: typeof import('./resources/js/components/IntentoryStockFilters.vue')['default']
     InventoryCountModal: typeof import('./resources/js/components/dialogs/InventoryCountModal.vue')['default']
     InventoryStockFilters: typeof import('./resources/js/components/InventoryStockFilters.vue')['default']
     InventoryStockTable: typeof import('./resources/js/components/InventoryStockTable.vue')['default']

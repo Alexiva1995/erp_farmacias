@@ -6,6 +6,7 @@ const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
   stockStatusFilter: [Boolean, null],
+  expProd: [Boolean, null],
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
@@ -20,6 +21,7 @@ const emit = defineEmits([
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
+  "update:expProd",
   "clear",
   "add-product",
   "sort",
@@ -191,6 +193,15 @@ const handleClear = () => {
             clearable
             @update:model-value="emit('update:stock', $event)"
           />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <v-checkbox
+            v-model="props.expProd"
+            color="primary"
+            label="Pos. Exp"
+            @update:model-value="emit('update:expProd', $event)"
+            hide-details
+          ></v-checkbox>
         </VCol>
       </VRow>
     </VCardText>

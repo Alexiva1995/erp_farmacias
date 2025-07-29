@@ -41,6 +41,10 @@ class InventoryStockController extends Controller
             $filtros["stock"] = $request->stock;
         }
 
+        if ($request->filled("expProd")) {
+            $filtros["expProd"] = $request->expProd;
+        }
+
 
         if ($request->filled("startDate") && $request->filled("endDate")) {
             $filtros["startDate"] = $request->startDate;
@@ -88,6 +92,11 @@ class InventoryStockController extends Controller
         if ($request->filled("stock")) {
             $filtros["stock"] = $request->stock;
         }
+
+        if ($request->filled("expProd")) {
+            $filtros["expProd"] = $request->expProd;
+        }
+
 
 
         if ($request->filled("startDate") && $request->filled("endDate")) {
@@ -137,6 +146,9 @@ class InventoryStockController extends Controller
             $filtros["stock"] = $request->stock;
         }
 
+        if ($request->filled("expProd")) {
+            $filtros["expProd"] = $request->expProd;
+        }
 
         if ($request->filled("startDate") && $request->filled("endDate")) {
             $filtros["startDate"] = $request->startDate;
