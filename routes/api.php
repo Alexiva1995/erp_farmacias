@@ -65,6 +65,7 @@ Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
 Route::get('/product/{product}', [ResourceController::class, 'findProductById']);
+Route::get('/exchange-rates', [ResourceController::class, 'getExchangeRates']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);

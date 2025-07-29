@@ -78,9 +78,9 @@ class ResourceService
      */
     public function getAllExchangeRate(): Collection
     {
-        return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
+      //  return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
             return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
-        });
+       // });
     }
 
 

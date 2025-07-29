@@ -266,6 +266,7 @@ const handleCompleteOrder = () => {
           />
           <VDivider class="mt-auto" />
         </VCardText>
+
         <VCardText>
           <div
             class="scrollable-list-container"

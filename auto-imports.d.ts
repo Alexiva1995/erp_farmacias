@@ -50,6 +50,7 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
   const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
+  const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -414,6 +415,7 @@ declare module 'vue' {
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
+    readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>

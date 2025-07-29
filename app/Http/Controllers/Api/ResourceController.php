@@ -64,4 +64,10 @@ class ResourceController extends Controller
             return response()->json(['message' => 'Ocurrió un error inesperado.'], 500);
         }
     }
+
+    public function getExchangeRates(): JsonResponse
+    {
+        $rates = $this->resourceService->getAllExchangeRate();
+        return response()->json($rates);
+    }
 }
