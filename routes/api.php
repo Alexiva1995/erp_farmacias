@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
+use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 
 /*
@@ -165,6 +166,14 @@ Route::prefix("crm")->group(function () {
 
 Route::prefix("orders")->group(function () {
     Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
+});
+Route::prefix("inventory")->group(function () {
+
+    Route::prefix("stock")->group(function () {
+        Route::post("/filter", [InventoryStockController::class, "filter"]);
+        Route::post("/filter-without-paginate", [InventoryStockController::class, "filterWithoutPaginate"]);
+        Route::get("/exportar/excel", [InventoryStockController::class, "exportarExcel"]);
+    });
 });
 
 // Route Laboratorio

@@ -71,6 +71,8 @@ declare module 'vue' {
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
     InventoryCountModal: typeof import('./resources/js/components/dialogs/InventoryCountModal.vue')['default']
+    InventoryStockFilters: typeof import('./resources/js/components/InventoryStockFilters.vue')['default']
+    InventoryStockTable: typeof import('./resources/js/components/InventoryStockTable.vue')['default']
     LoaderComponent: typeof import('./resources/js/components/LoaderComponent.vue')['default']
     LotteryDialoge: typeof import('./resources/js/components/dialogs/LotteryDialoge.vue')['default']
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
