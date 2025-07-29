@@ -14,9 +14,33 @@ const headers = [
   { title: "Producto", key: "name", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "stock", sortable: true },
-  { title: "Promedio", key: "sales_average", sortable: true },
-  { title: "Preferencia", key: "preferencia_product", sortable: true },
-  { title: "Diferencia ", key: "diferencia_product", sortable: true },
+  {
+    title: "Preferencia",
+    key: "preferencia_product",
+    sortable: true,
+    value: (item) =>
+      item.preferencia_product != "" && item.preferencia_product != null
+        ? parseFloat(item.preferencia_product).toFixed(2)
+        : 0,
+  },
+  {
+    title: "Promedio",
+    key: "promedio_calculado",
+    sortable: true,
+    value: (item) =>
+      item.promedio_calculado != "" && item.promedio_calculado != null
+        ? parseFloat(item.promedio_calculado).toFixed(2)
+        : 0,
+  },
+  {
+    title: "Diferencia ",
+    key: "diferencia_product",
+    sortable: true,
+    value: (item) =>
+      item.diferencia_product != "" && item.diferencia_product != null
+        ? parseFloat(item.diferencia_product).toFixed(2)
+        : 0,
+  },
 ];
 </script>
 
