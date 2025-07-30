@@ -27,6 +27,10 @@ class ProductRepository
             'laboratory_id',
             "sales_average",
             "sale_price",
+            "unit_cost",
+            "psychotropic",
+            "is_colombian_origin",
+            "active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -154,10 +158,10 @@ class ProductRepository
         if (array_key_exists("stock", $filtros)) {
 
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("diferencia_product", "<", 0);
-            }
-            if ($filtros["stock"] == "faltas") {
                 $consulta->having("diferencia_product", ">", 0);
+            }
+            if ($filtros["stock"] == "fallas") {
+                $consulta->having("diferencia_product", "<", 0);
             }
         }
 

@@ -36,7 +36,7 @@ const stockOptions = [
 
 const stock = [
   { title: "Exceso", value: "exceso" },
-  { title: "Faltas", value: "faltas" },
+  { title: "Fallas", value: "fallas" },
   { title: "All", value: "all" },
 ];
 
