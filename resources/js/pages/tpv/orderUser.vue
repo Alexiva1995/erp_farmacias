@@ -414,6 +414,11 @@ const totalOrderAmount = computed(() => {
   return totalProductsAmount.value + totalIVAAmount.value;
 });
 
+const myCalculatedTotal = computed(() => {
+  let valor = totalProductsAmount.value + totalIVAAmount.value;
+   return parseFloat(valor.toFixed(2));
+});
+
 const totalIVAAmount = computed(() => {
   let totalIVA = 0;
   orderItems.value.forEach((item) => {
@@ -803,7 +808,7 @@ const handleBuysCompletion = (orderId) => {
             v-model:is-dialog-visible="showBuysModal"
             :order-products="orderItems"
             :order-data="openOrderData"
-            :total-amount="totalOrderAmount"
+            :total-amount="myCalculatedTotal"
             :selected-currency="selectedDisplayCurrency"
             @modal-closed="closeBuysModal"
             @Buys-completed="handleBuysCompletion"

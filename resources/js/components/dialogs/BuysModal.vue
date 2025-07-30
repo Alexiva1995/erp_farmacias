@@ -85,36 +85,64 @@ const paymentMethodsByCurrency = {
   ],
 };
 
-/*const exchangeRates = ref({
-  COP: { BS: 0.00095, USD: 0.00025 },
-  BS: { COP: 1052.63, USD: 0.263 },
-  USD: { COP: 4000, BS: 3.8 },
-});*/
 const exchangeRates = ref({});
 
 const continueButtonText = computed(() => {
   return currentProgress.value === 100 ? "Finalizar" : "Continuar";
 });
 
+const isTransferMethod = (method) =>
+  ["bank_transfer", "bank_transfer_bs", "mobile_payment", "card"].includes(
+    method
+  );
+
+function roundToTwoDecimalPlaces(num) {
+  return Number(Math.round(num + "e+2") + "e-2");
+}
+
+const getPaymentMethodLabel = (methodValue, currency) => {
+  if (!methodValue) return "N/A";
+  const methodsForCurrency = paymentMethodsByCurrency[currency];
+  if (methodsForCurrency) {
+    const foundMethod = methodsForCurrency.find((m) => m.value === methodValue);
+    if (foundMethod) {
+      return foundMethod.label;
+    }
+  }
+  for (const key in paymentMethodsByCurrency) {
+    const methods = paymentMethodsByCurrency[key];
+    const foundMethod = methods.find((m) => m.value === methodValue);
+    if (foundMethod) {
+      return foundMethod.label;
+    }
+  }
+  return methodValue.replace(/_/g, " ").toUpperCase();
+};
+
 const totalPaidAmount = computed(() => {
-  const total = payments.value.reduce((sum, payment) => {
-    const amount = Number(payment.amount) || 0;
+  let currentSum = 0;
+  payments.value.forEach((payment, index) => {
+    let amount = Number(payment.amount) || 0;
+
+    let amountToAdd = 0;
     if (payment.currency === props.selectedCurrency) {
-      return sum + amount;
+      amountToAdd = amount;
     } else {
-      const rate = exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+      const rate =
+        exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+      console.log(exchangeRates.value);
+      console.log(rate);
+      console.log(props.selectedCurrency);
       if (rate) {
         let convertedAmount = amount * rate;
-        if (props.selectedCurrency === "COP") {
-          convertedAmount = Math.ceil(convertedAmount);
-        }
-        return sum + convertedAmount;
-      } else {
-        return sum;
+        amountToAdd = convertedAmount;
       }
     }
-  }, 0);
-  return parseFloat(total.toFixed(2));
+    console.log(currentSum);
+    console.log(amountToAdd);
+    currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
+  });
+  return currentSum;
 });
 
 const fetchExchangeRates = async () => {
@@ -141,54 +169,53 @@ const fetchExchangeRates = async () => {
       }
 
       if (formattedRates["COP"] && formattedRates["BS"]) {
-        formattedRates["COP"]["BS"] =
-          formattedRates["COP"]["USD"] * formattedRates["USD"]["BS"];
-        formattedRates["BS"]["COP"] =
-          formattedRates["BS"]["USD"] * formattedRates["USD"]["COP"];
+        formattedRates["COP"]["BS"] = parseFloat(
+          (formattedRates["COP"]["USD"] * formattedRates["USD"]["BS"]).toFixed(
+            9
+          )
+        );
+        formattedRates["BS"]["COP"] = parseFloat(
+          (formattedRates["BS"]["USD"] * formattedRates["USD"]["COP"]).toFixed(
+            9
+          )
+        );
       }
     });
     exchangeRates.value = formattedRates;
   } catch (error) {
     toast.error("No se pudieron cargar las tasas de cambio.");
+    console.error("Error fetching exchange rates:", error);
   }
 };
-
-const totalPaidRounded = computed(() => {
-  console.log(totalPaidAmount.value);
-  return parseFloat(totalPaidAmount.value.toFixed(2));
-});
 
 onMounted(() => {
   fetchExchangeRates();
 });
 
 const remainingAmount = computed(() => {
+  console.log(props.totalAmount);
+  console.log(totalPaidAmount.value);
   const rawDifference = props.totalAmount - totalPaidAmount.value;
-  const roundedDifference = parseFloat(rawDifference.toFixed(2));
-  return roundedDifference;
+  return roundToTwoDecimalPlaces(rawDifference);
 });
 
 const getConvertedRemainingAmount = (currency) => {
   const baseCurrency = props.selectedCurrency;
   const targetCurrency = currency;
   const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
-
+  let converted = remainingAmount.value;
   if (rate) {
-    return formatCurrency(remainingAmount.value * rate, targetCurrency);
+    converted = remainingAmount.value * rate;
   }
-  return formatCurrency(remainingAmount.value, targetCurrency);
+  return parseFloat(converted.toFixed(2));
 };
 
 const getPlaceholderText = (index, payment) => {
-  if (index === 0) {
-    return `Monto restante: ${formatCurrency(
-      remainingAmount.value,
-      props.selectedCurrency
-    )}`;
-  } else {
-    const convertedAmount = getConvertedRemainingAmount(payment.currency);
-    return `Monto restante: ${convertedAmount}`;
-  }
+  const convertedRemaining = getConvertedRemainingAmount(payment.currency);
+  return `Monto restante: ${formatCurrency(
+    convertedRemaining,
+    payment.currency
+  )}`;
 };
 
 const addPaymentBlock = () => {
@@ -204,6 +231,23 @@ const addPaymentBlock = () => {
   }
 };
 
+const canAddPaymentBlock = computed(() => {
+  const lastPayment = payments.value[payments.value.length - 1];
+  if (remainingAmount.value <= 0) return false;
+  if (payments.value[0].method === "credit") return false;
+  if (!lastPayment.method) return false;
+  if (isTransferMethod(lastPayment.method) && !lastPayment.reference)
+    return false;
+
+  if (
+    lastPayment.method !== "credit" &&
+    (Number(lastPayment.amount) <= 0 || lastPayment.amount === null)
+  ) {
+    return false;
+  }
+  return true;
+});
+
 const closeModal = () => {
   dialogVisible.value = false;
   emit("modal-closed");
@@ -211,32 +255,68 @@ const closeModal = () => {
 };
 
 const handleCompletePurchase = () => {
-  const tolerance = 0.01; 
-  if (currentProgress.value === 50 && payments.value[0].method !== "credit") {
+  const tolerance = 1;
+  payments.value.forEach((p, index) => {
+    if (
+      isTransferMethod(p.method) &&
+      (p.amount === null || Number(p.amount) === 0)
+    ) {
+      let amountToAssign = 0;
+      if (index === 0) {
+        amountToAssign = remainingAmount.value;
+        p.currency = props.selectedCurrency;
+      } else {
+        const baseCurrency = props.selectedCurrency;
+        const targetCurrency = p.currency;
+        amountToAssign = remainingAmount.value;
 
-    if (remainingAmount.value < 0) {
+        if (baseCurrency !== targetCurrency) {
+          const rate = exchangeRates.value?.[baseCurrency]?.[targetCurrency];
+          if (rate) {
+            amountToAssign = amountToAssign * rate;
+          } else {
+            console.warn(
+              `Advertencia: No se encontró tasa de cambio de ${baseCurrency} a ${targetCurrency}. No se pudo asignar automáticamente el monto.`
+            );
+            return;
+          }
+        }
+      }
+      p.amount = parseFloat(amountToAssign.toFixed(2));
+    }
+  });
+
+  if (currentProgress.value === 50 && payments.value[0].method !== "credit") {
+    let finalRemainingAmount = remainingAmount.value;
+    console.log(finalRemainingAmount);
+    if (Math.abs(finalRemainingAmount) < tolerance) {
+      finalRemainingAmount = 0;
+    }
+
+    if (finalRemainingAmount < 0 && !showChangeAmount.value) {
       toast.error("El monto total pagado excede el monto de la compra.");
       return;
     }
-    console.log(remainingAmount.value)
-    if (remainingAmount.value > tolerance) {
+
+    if (finalRemainingAmount > 0) {
       toast.error(
         "El monto total no ha sido cubierto. Agrega más pagos para continuar."
       );
       return;
     }
 
-    /* if (totalPaidAmount.value > props.totalAmount) {
-      toast.error("El monto total pagado excede el monto de la compra.");
-      return;
-    }*/
+    const invalidPayment = payments.value.find((p) => {
+      if (!p.method) return true;
+      if (isTransferMethod(p.method) && !p.reference) return true;
+      if (
+        p.method !== "credit" &&
+        (Number(p.amount) <= 0 || p.amount === null)
+      ) {
+        return true;
+      }
+      return false;
+    });
 
-    const invalidPayment = payments.value.find(
-      (p) =>
-        !p.method ||
-        (p.amount <= 0 &&
-          !["bank_transfer_cop", "bank_transfer_bs"].includes(p.method))
-    );
     if (invalidPayment) {
       toast.error(
         "Por favor, revisa y completa los campos de todos los pagos."
@@ -256,6 +336,7 @@ const handleCompletePurchase = () => {
     console.log("Completando compra...");
     console.log("Datos de la orden:", props.orderData);
     console.log("Monto total:", props.totalAmount, props.selectedCurrency);
+    console.log("Pagos a enviar:", JSON.parse(JSON.stringify(payments.value))); // Debugging final
 
     emit("purchase-completed", props.orderData.id, payments.value);
     dialogVisible.value = false;
@@ -288,10 +369,15 @@ watch(
         "El modal se ha abierto. Moneda de la orden:",
         props.selectedCurrency
       );
+      console.log("Prop totalAmount:", props.totalAmount);
       resetProgress();
     }
   }
 );
+
+const roundUpToNearestHundred = (value) => {
+  return Math.ceil(value / 100) * 100;
+};
 
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
@@ -301,16 +387,18 @@ const getProductPrice = (product, currency) => {
   } else if (currency === "COP") {
     basePrice = product.price_cop || 0;
   } else {
-    // Default to USD price
     basePrice = product.price || 0;
   }
-
   let priceWithIva = basePrice * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
   return priceWithIva;
 };
+
+const hasCreditPayment = computed(() => {
+  return payments.value.some((payment) => payment.method === "credit");
+});
 
 const totalSelectedQuantity = computed(() => {
   let total = 0;
@@ -322,7 +410,46 @@ const totalSelectedQuantity = computed(() => {
   });
   return total;
 });
+
+const totalCashPaidInUSDOrCOP = computed(() => {
+  let cashAmount = 0;
+  payments.value.forEach((payment) => {
+    if (
+      (payment.method === "cash_usd" || payment.method === "cash_cop") &&
+      payment.amount
+    ) {
+      if (payment.currency === props.selectedCurrency) {
+        cashAmount += Number(payment.amount);
+      } else {
+        const rate =
+          exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+        if (rate) {
+          cashAmount += Number(payment.amount) * rate;
+        }
+      }
+    }
+  });
+  return roundToTwoDecimalPlaces(cashAmount);
+});
+
+const changeAmount = computed(() => {
+  const diff = totalCashPaidInUSDOrCOP.value - props.totalAmount;
+  return Math.max(
+    0,
+    roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
+  );
+});
+
+const showChangeAmount = computed(() => {
+  const hasRelevantCashPayment = payments.value.some(
+    (payment) =>
+      (payment.method === "cash_usd" && payment.currency === "USD") ||
+      (payment.method === "cash_cop" && payment.currency === "COP")
+  );
+  return hasRelevantCashPayment && changeAmount.value > 0;
+});
 </script>
+
 <template>
   <VDialog v-model="dialogVisible" max-width="500px">
     <VCard>
@@ -450,8 +577,24 @@ const totalSelectedQuantity = computed(() => {
           <div class="my-4">
             <VRadioGroup v-model="payment.method" inline>
               <VRadio
-                v-for="method in paymentMethodsByCurrency[payment.currency] ||
-                []"
+                v-for="method in (
+                  paymentMethodsByCurrency[payment.currency] || []
+                ).filter((m) => {
+                  if (index === 0 && payment.currency === 'USD') {
+                    return true;
+                  }
+                  if (
+                    index === 0 &&
+                    payment.currency !== 'USD' &&
+                    m.value === 'credit'
+                  ) {
+                    return false;
+                  }
+                  if (index > 0 && m.value === 'credit') {
+                    return false;
+                  }
+                  return true;
+                })"
                 :key="method.value"
                 :label="method.label"
                 :value="method.value"
@@ -460,7 +603,7 @@ const totalSelectedQuantity = computed(() => {
           </div>
 
           <VTextField
-            v-if="payment.method && !['credit'].includes(payment.method)"
+            v-if="payment.method && payment.method !== 'credit'"
             v-model.number="payment.amount"
             label="Monto del pago"
             :placeholder="getPlaceholderText(index, payment)"
@@ -469,15 +612,7 @@ const totalSelectedQuantity = computed(() => {
           />
 
           <VTextField
-            v-if="
-              payment.method &&
-              [
-                'bank_transfer',
-                'bank_transfer_bs',
-                'mobile_payment',
-                'card',
-              ].includes(payment.method)
-            "
+            v-if="payment.method && isTransferMethod(payment.method)"
             v-model="payment.reference"
             label="Número de Referencia"
             placeholder="Ingresa el número de referencia del pago"
@@ -499,7 +634,7 @@ const totalSelectedQuantity = computed(() => {
             variant="text"
             color="primary"
             @click="addPaymentBlock"
-            :disabled="remainingAmount <= 0 || payments[0].method === 'credit'"
+            :disabled="!canAddPaymentBlock"
           >
             <VIcon start icon="tabler-plus" />
             Agregar otro método de pago
@@ -511,6 +646,16 @@ const totalSelectedQuantity = computed(() => {
           <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-4">
             {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+          </p>
+        </div>
+
+        <div
+          v-if="showChangeAmount"
+          class="d-flex flex-wrap justify-space-between"
+        >
+          <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
+          <p class="font-weight-bold text-h6 mt-2">
+            {{ formatCurrency(changeAmount, props.selectedCurrency) }}
           </p>
         </div>
 
@@ -567,9 +712,23 @@ const totalSelectedQuantity = computed(() => {
         </div>
 
         <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6">Métodos de pago</p>
-          <p class="font-weight-bold text-h6"></p>
+          <p class="font-weight-bold text-h6">Métodos de Pago</p>
+          <div class="text-end">
+            <p
+              v-for="(payment, pIndex) in payments"
+              :key="`ticket-payment-${pIndex}`"
+              class="font-weight-bold my-1"
+            >
+              <span
+                >{{
+                  getPaymentMethodLabel(payment.method, payment.currency)
+                }}
+                ({{ payment.currency }})</span
+              >
+            </p>
+          </div>
         </div>
+
         <div
           class="scrollable-list-container"
           :class="{ 'show-scroll': props.orderProducts.length > 2 }"
@@ -607,13 +766,37 @@ const totalSelectedQuantity = computed(() => {
           </VList>
         </div>
         <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-4">
+          <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
+          <p class="font-weight-bold text-h6 mt-2">
             {{ formatCurrency(totalAmount, props.selectedCurrency) }}
           </p>
         </div>
-      </VCardText>
 
+        <div class="d-flex flex-wrap justify-space-between">
+          <p class="font-weight-bold text-h6 mt-2">Pago:</p>
+          <div class="text-end">
+            <p
+              v-for="(payment, pIndex) in payments"
+              :key="`ticket-payment-${pIndex}`"
+              class="font-weight-bold my-1"
+            >
+              <span>
+                {{ formatCurrency(payment.amount || 0, payment.currency) }}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          v-if="hasCreditPayment"
+          class="d-flex flex-wrap justify-space-between"
+        >
+          <p class="font-weight-bold text-h6">Crédito:</p>
+          <p class="font-weight-bold text-h6">
+            {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+          </p>
+        </div>
+          <p class='font-weight-bold text-center text-success'>¡GRACIAS POR SU COMPRA!</p>
+      </VCardText>
       <VCardActions class="p-4 d-flex flex-wrap justify-space-between">
         <VBtn
           color="secondary"
