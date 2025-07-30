@@ -57,13 +57,13 @@ class InventoryStockController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        if ($request->filled("expirationDays")) {
+        if ($request->filled("days")) {
             $dateToday = new DateTime("now");
-            $filtros["expirationDays"] = $request->expirationDays;
-            $expirationDate = new DateTime("now");
-            $expirationDate->modify("+" . $filtros["expirationDays"] . " days");
+            $filtros["days"] = $request->days;
+            $previousDate = new DateTime("now");
+            $previousDate->modify("-" . $filtros["days"] . " days");
             $filtros["dateToday"] = $dateToday->format("Y-m-d");
-            $filtros["expirationDate"] = $expirationDate->format("Y-m-d");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
         // dd($filtros);
@@ -110,13 +110,13 @@ class InventoryStockController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        if ($request->filled("expirationDays")) {
+        if ($request->filled("days")) {
             $dateToday = new DateTime("now");
-            $filtros["expirationDays"] = $request->expirationDays;
-            $expirationDate = new DateTime("now");
-            $expirationDate->modify("+" . $filtros["expirationDays"] . " days");
+            $filtros["days"] = $request->days;
+            $previousDate = new DateTime("now");
+            $previousDate->modify("-" . $filtros["days"] . " days");
             $filtros["dateToday"] = $dateToday->format("Y-m-d");
-            $filtros["expirationDate"] = $expirationDate->format("Y-m-d");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
         // dd($filtros);
@@ -161,13 +161,13 @@ class InventoryStockController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        if ($request->filled("expirationDays")) {
+        if ($request->filled("days")) {
             $dateToday = new DateTime("now");
-            $filtros["expirationDays"] = $request->expirationDays;
-            $expirationDate = new DateTime("now");
-            $expirationDate->modify("+" . $filtros["expirationDays"] . " days");
+            $filtros["days"] = (int)$request->days;
+            $previousDate = new DateTime("now");
+            $previousDate->modify("-" . $filtros["days"] . " days");
             $filtros["dateToday"] = $dateToday->format("Y-m-d");
-            $filtros["expirationDate"] = $expirationDate->format("Y-m-d");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
         $excel = $this->product->exportExcel($filtros);

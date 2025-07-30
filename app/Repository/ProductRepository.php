@@ -18,44 +18,14 @@ class ProductRepository
 
     public function builerFiltrarProductforStock($filtros): Builder
     {
-        // $consulta = Product::select([
-        //     'id',
-        //     'name',
-        //     'stock',
-        //     'group_id',
-        //     'laboratory_id',
-        //     "sales_average",
-        //     DB::raw('stock / NULLIF(
-        //         (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
-        //     0) AS preferencia_product'),
-        //     DB::raw('stock - sales_average AS diferencia_product'),
-        //     // DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MAX(expiration_date)) 
-        //     //  FROM product_lots 
-        //     //  WHERE product_lots.product_id = products.id) AS meses_faltantes')
-        //     DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-        //      FROM product_lots 
-        //      WHERE product_lots.product_id = products.id
-        //      AND expiration_date >= CURDATE()) AS meses_faltantes'),
-        //     DB::raw('(SELECT pl.quantity 
-        //      FROM product_lots pl
-        //      WHERE pl.product_id = products.id
-        //      AND pl.expiration_date = (
-        //          SELECT MIN(expiration_date)
-        //          FROM product_lots
-        //          WHERE product_id = products.id
-        //          AND expiration_date >= CURDATE()
-        //      )
-        //      LIMIT 1) AS lote_quantity')
-        // ])->with(["laboratory", "lots"]);
 
-        $consulta = Product::select([
+        $columnas = [
             'id',
             'name',
             'stock',
             'group_id',
             'laboratory_id',
             "sales_average",
-            DB::raw('stock - sales_average AS diferencia_product'),
             DB::raw('stock / NULLIF(
                 (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
             0) AS preferencia_product'),
@@ -64,36 +34,67 @@ class ProductRepository
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(SELECT quantity 
-             FROM product_lots 
-             WHERE product_id = products.id
-             AND expiration_date = (
-                 SELECT MIN(expiration_date)
-                 FROM product_lots
-                 WHERE product_id = products.id
-                 AND expiration_date >= CURDATE()
-             ) LIMIT 1) AS lote_quantity'),
-            DB::raw('COALESCE(
-        (SELECT quantity FROM product_lots 
-         WHERE product_id = products.id
-         AND expiration_date = (
-             SELECT MIN(expiration_date)
-             FROM product_lots
-             WHERE product_id = products.id
-             AND expiration_date >= CURDATE()
-         ) LIMIT 1), 0) - 
-        (sales_average * 
-        COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
-         FROM product_lots 
-         WHERE product_lots.product_id = products.id
-         AND expiration_date >= CURDATE()), 0)
-    ) AS demanda_ajustada')
-        ])->with(["laboratory", "lots"]);
+                    FROM product_lots 
+                    WHERE product_id = products.id
+                    AND expiration_date = (
+                        SELECT MIN(expiration_date)
+                        FROM product_lots
+                        WHERE product_id = products.id
+                        AND expiration_date >= CURDATE()
+                    ) LIMIT 1) AS lote_quantity'),
+        ];
 
-        $consulta->selectSub(function ($query) {
+        // calcular promedio en vace a los dias => promedio_calculado
+        $promedio_calculado = "";
+        if ($filtros["days"] == 15) {
+            $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 2';
+        }
+
+        if ($filtros["days"] == 30) {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
+        }
+
+        if ($filtros["days"] == 60) {
+            $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 2';
+        }
+
+        if ($filtros["days"] == 90) {
+            $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 3';
+        }
+
+        // calcular diferencia_product con promedio_calculado
+        $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
+
+        // calcular demanda_ajustada con promedio_calculado
+        $columnas[] =  DB::raw('COALESCE(
+                (SELECT quantity FROM product_lots 
+                WHERE product_id = products.id
+                AND expiration_date = (
+                    SELECT MIN(expiration_date)
+                    FROM product_lots
+                    WHERE product_id = products.id
+                    AND expiration_date >= CURDATE()
+                ) LIMIT 1), 0) - 
+                ((' . $promedio_calculado . ') * 
+                COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
+                FROM product_lots 
+                WHERE product_lots.product_id = products.id
+                AND expiration_date >= CURDATE()), 0)
+            ) AS demanda_ajustada');
+
+
+        $consulta = Product::select($columnas)->with(["laboratory", "lots"]);
+
+        $consulta->selectSub(function ($query) use ($filtros) {
             $query->selectRaw('COALESCE(SUM(order_details.quantity), 0)')
                 ->from('order_details')
                 ->join('orders', 'orders.id', '=', 'order_details.order_id')
                 ->whereColumn('order_details.product_id', 'products.id')
+                ->whereBetween('orders.created_at', [$filtros["previousDate"], $filtros["dateToday"]])
                 ->where('orders.status', 'Completed');
         }, 'total_sold_completed');
 
@@ -127,14 +128,9 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("expirationDays", $filtros)) {
+        if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
             $consulta->whereHas("lots", function ($query) use ($filtros) {
-                $query->whereBetween("expiration_date", [$filtros["dateToday"], $filtros["expirationDate"]]);
-                if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
-                    if ($filtros["startDate"] != "" && $filtros["endDate"] != "") {
-                        $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
-                    }
-                }
+                $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
             });
         }
 
