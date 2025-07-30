@@ -28,6 +28,10 @@ export default [
       {
         title: 'Psicotropicos',
         to: 'inventory-psychotropics',
+      },
+      {
+        title: 'Control de Stock',
+        to: 'inventory-stock',
       }
     ],
   }, 

@@ -368,6 +368,7 @@
     "pdfCompaniesGenerator": true,
     "pdfDoctorsGenerator": true,
     "useDataTable": true,
-    "useCyclicTable": true
+    "useCyclicTable": true,
+    "pdfStockProductsGenerator": true
   }
 }
