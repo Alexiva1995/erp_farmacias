@@ -10,7 +10,6 @@ class ProductCount extends Model
     protected $fillable = [
         'cycle_id',
         'product_id',
-        'product_lot_id',
         'counted_quantity',
         'system_quantity',
         'discrepancy',
@@ -36,11 +35,6 @@ class ProductCount extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function productLot(): BelongsTo
-    {
-        return $this->belongsTo(ProductLot::class);
     }
 
     public function user(): BelongsTo
@@ -133,5 +127,9 @@ class ProductCount extends Model
     public function getAbsoluteDiscrepancyAttribute(): int
     {
         return abs($this->discrepancy ?? 0);
+    }
+    public function distributions()
+    {
+        return $this->hasMany(ProductDistribution::class);
     }
 }

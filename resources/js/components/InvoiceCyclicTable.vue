@@ -11,41 +11,27 @@ const props = defineProps({
 
 const emits = defineEmits([
   "update:options",
-  "product-click",
   "approve-product",
   "reject-product",
 ]);
 
 const headers = [
   { title: "Producto", key: "product.name" },
-  { title: "Stock Actual", key: "system_quantity", align: "center" },
+  { title: "Stock Sistema", key: "system_quantity", align: "center" },
   { title: "Cant. Contada", key: "counted_quantity", align: "center" },
-  {
-    title: "Diferencia",
-    key: "discrepancy",
-    sortable: false,
-    align: "center",
-  },
+  { title: "Diferencia", key: "discrepancy", sortable: false, align: "center" },
   { title: "Usuario", key: "user.email" },
-  { title: "Accion", key: "actions", sortable: false },
+  { title: "Acción", key: "actions", sortable: false },
 ];
 
-const emitProductClick = (product) => {
-  console.log(product);
-  emits("product-click", product);
-};
-
 const handleApproveProduct = async (product) => {
-  const userName = product.user?.email || "un usuario";
-
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: `Vas a aprobar el conteo del producto "${product.product.name}" realizado por ${userName}.`,
+    text: `Vas a aprobar el conteo para "${product.product.name}".`,
     icon: "question",
     showCancelButton: true,
-    cancelButtonText: "Cancelar",
     confirmButtonText: "Aprobar",
-    confirmButtonColor: "#28a745",
+    cancelButtonText: "Cancelar",
     reverseButtons: true,
     didOpen: () => {
       const actions = Swal.getActions();
@@ -64,7 +50,6 @@ const handleApproveProduct = async (product) => {
       cancelButton.style.width = "50%";
     },
   });
-
   if (result.isConfirmed) {
     emits("approve-product", product);
   }
@@ -73,12 +58,11 @@ const handleApproveProduct = async (product) => {
 const handleRejectProduct = async (product) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: `Vas a rechazar el conteo del producto "${product.product.name}" y abrir el modal de corrección.`,
+    text: `Vas a rechazar el conteo de "${product.product.name}" y abrir el modal de corrección.`,
     icon: "warning",
     showCancelButton: true,
-    cancelButtonText: "Cancelar",
     confirmButtonText: "Abrir Corrección",
-    confirmButtonColor: "#dc3545",
+    cancelButtonText: "Cancelar",
     reverseButtons: true,
     didOpen: () => {
       const actions = Swal.getActions();
@@ -97,7 +81,6 @@ const handleRejectProduct = async (product) => {
       cancelButton.style.width = "50%";
     },
   });
-
   if (result.isConfirmed) {
     emits("reject-product", product);
   }
@@ -106,6 +89,7 @@ const handleRejectProduct = async (product) => {
 
 <template>
   <VCard>
+    <VCardTitle>Conteos de Factura Pendientes</VCardTitle>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -118,10 +102,6 @@ const handleRejectProduct = async (product) => {
       item-value="id"
       hover
     >
-      <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
-      </template>
-
       <template #item.product.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <VAvatar
@@ -132,17 +112,9 @@ const handleRejectProduct = async (product) => {
             :image="item.product.photo_url"
           />
           <div class="d-flex flex-column">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 'text-primary': item.product.psychotropic == 1 }"
-            >
-              {{ item.product.name }}
-
-              <span v-if="item.product.iva == 1"> (G)</span>
-
-              <span v-if="item.product.is_colombian_origin == 1"> (COL)</span>
-            </span>
-
+            <span class="text-body-1 font-weight-medium text-high-emphasis">{{
+              item.product.name
+            }}</span>
             <span class="text-sm text-disabled">{{
               item.product.active_ingredient
             }}</span>
@@ -151,35 +123,30 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.discrepancy="{ item }">
-        <template
-          v-if="item.product && typeof item.product.stock !== 'undefined'"
+        <span
+          :class="{
+            'text-success': item.discrepancy > 0,
+            'text-error': item.discrepancy < 0,
+          }"
+          class="font-weight-medium"
         >
-          <span
-            :class="{
-              'text-success': item.counted_quantity - item.product.stock > 0,
-              'text-error': item.counted_quantity - item.product.stock < 0,
-            }"
-            class="font-weight-medium"
-          >
-            {{ item.counted_quantity - item.product.stock > 0 ? "+" : ""
-            }}{{ item.counted_quantity - item.product.stock }}
-          </span>
-        </template>
-        <template v-else>
-          <span class="text-disabled">N/A</span>
-        </template>
+          {{ item.discrepancy > 0 ? "+" : "" }}{{ item.discrepancy }}
+        </span>
       </template>
 
       <template #item.actions="{ item }">
         <div class="d-flex gap-2">
           <IconBtn @click="handleApproveProduct(item)" size="small">
-            <VIcon icon="tabler-check" />
-            <VTooltip activator="parent" location="top"> Aprobar </VTooltip>
+            <VIcon icon="tabler-check" /><VTooltip
+              activator="parent"
+              location="top"
+              >Aprobar</VTooltip
+            >
           </IconBtn>
-
           <IconBtn @click="handleRejectProduct(item)" size="small">
-            <VIcon icon="tabler-x" />
-            <VTooltip activator="parent" location="top"> Rechazar </VTooltip>
+            <VIcon icon="tabler-x" /><VTooltip activator="parent" location="top"
+              >Rechazar</VTooltip
+            >
           </IconBtn>
         </div>
       </template>

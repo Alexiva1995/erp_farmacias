@@ -1,37 +1,48 @@
 <script setup>
 import InventoryCountDialog from "@/components/dialogs/InventoryCountDialog.vue";
+import InvoiceToCountTable from "@/components/InvoiceToCountTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
+import { useDataTable } from "@/composables/useDataTable";
 import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
-
 import { toast } from "@/plugins/sweetalert";
+import { onMounted, reactive, ref } from "vue";
 
-const products = ref([]);
-const totalProduct = ref(0);
-const loading = ref(false);
+const filters = reactive({
+  q: "",
+  laboratoryId: null,
+  originId: null,
+  hasStock: null,
+  startDate: null,
+  endDate: null,
+});
 
-const page = ref(1);
-const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const {
+  items: products,
+  totalItems: totalProduct,
+  loading: productLoading,
+  options: productOptions,
+  fetchData: fetchProducts,
+  updateTableOptions: updateProductTableOptions,
+} = useDataTable("/inventory/products", filters);
 
-const searchQuery = ref("");
-const selectedLaboratory = ref(null);
-const selectedOrigin = ref(null);
-const stockStatusFilter = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
+const {
+  items: invoiceProductsToCount,
+  totalItems: totalInvoiceProductsToCount,
+  loading: invoiceProductsLoading,
+  options: invoiceProductsOptions,
+  fetchData: fetchInvoiceProductsToCount,
+  updateTableOptions: updateInvoiceProductsTableOptions,
+} = useDataTable("/inventory/count/invoice-details-to-count", filters);
 
 const laboratories = ref([]);
 const origins = ref([]);
+const isLoadingFilters = ref(false);
 
 const isCountDialogVisible = ref(false);
 const currentProduct = ref({});
-const activeCycle = ref(null);
 const hasActiveCycle = ref(false);
-
-const isLoadingFilters = ref(false);
+const countType = ref("product");
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -45,11 +56,8 @@ const fetchSelectOptions = async () => {
     laboratories.value = labResponse.data.data;
     origins.value = originResponse.data;
 
-    // Verificar estado del ciclo activo
     if (cycleResponse.data.success) {
       hasActiveCycle.value = cycleResponse.data.has_active_cycle;
-      activeCycle.value = cycleResponse.data.data;
-
       if (!hasActiveCycle.value) {
         toast.warning(
           "No existe un ciclo de inventario activo. Los conteos no podrán ser registrados."
@@ -64,86 +72,13 @@ const fetchSelectOptions = async () => {
   }
 };
 
-const fetchProducts = async () => {
-  loading.value = true;
-  const params = {
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    ...(stockStatusFilter.value !== null && {
-      hasStock: stockStatusFilter.value,
-    }),
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-  };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
-
-  try {
-    const response = await axios.get("/inventory/products", { params });
-    products.value = response.data.data;
-    totalProduct.value = response.data.total;
-  } catch (error) {
-    console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
-  } finally {
-    loading.value = false;
-  }
-};
-
-let debounceTimer;
-watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true }
-);
-
-watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    page.value = 1;
-  }
-);
-
 onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
+  fetchInvoiceProductsToCount();
 });
 
-const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
-};
-
-const handleCountProduct = (product) => {
+const handleCountProduct = (product, type) => {
   if (!hasActiveCycle.value) {
     toast.error(
       "No se puede realizar el conteo. No existe un ciclo de inventario activo."
@@ -151,39 +86,45 @@ const handleCountProduct = (product) => {
     return;
   }
 
+  countType.value = type;
   currentProduct.value = { ...product };
   isCountDialogVisible.value = true;
 };
 
 const handleSaveCount = async (countData) => {
+  const productId = currentProduct.value.id;
+  const endpoint =
+    countType.value === "invoice"
+      ? `/inventory/count/invoice-count/${productId}`
+      : `/inventory/count/${productId}`;
+
   try {
-    const response = await axios.post(
-      `/inventory/count/${currentProduct.value.id}`,
-      {
-        barcode: countData.barcode,
-        counted_quantity: countData.countedQuantity,
-        system_quantity: countData.system_quantity, // <-- AÑADIDO
-        discrepancy: countData.discrepancy,
-      }
-    );
+    const response = await axios.post(endpoint, {
+      barcode: countData.barcode,
+      counted_quantity: countData.countedQuantity,
+      system_quantity: countData.system_quantity,
+      discrepancy: countData.discrepancy,
+    });
 
     if (response.data.success) {
       toast.success(response.data.message || "Conteo registrado exitosamente");
       isCountDialogVisible.value = false;
-      await fetchProducts(); // Refrescar la tabla
+
+      if (countType.value === "invoice") {
+        await fetchInvoiceProductsToCount();
+      } else {
+        await fetchProducts();
+      }
     } else {
       toast.error(response.data.message || "Error al registrar el conteo");
     }
   } catch (error) {
     console.error("Error al registrar el conteo:", error);
-
     if (error.response?.status === 422) {
-      // Errores de validación
       const errors = error.response.data.errors;
       const errorMessages = Object.values(errors).flat().join(", ");
       toast.error(`Errores de validación: ${errorMessages}`);
     } else if (error.response?.status === 400) {
-      // Error de negocio (ej: código de barras no coincide)
       toast.error(error.response.data.message);
     } else {
       toast.error("Hubo un error al registrar el conteo.");
@@ -192,100 +133,60 @@ const handleSaveCount = async (countData) => {
 };
 
 const handleClearFilters = () => {
-  searchQuery.value = "";
-  selectedLaboratory.value = null;
-  selectedOrigin.value = null;
-  stockStatusFilter.value = null;
-  startDate.value = null;
-  endDate.value = null;
-};
-
-const handleExport = async (format) => {
-  const params = {
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    ...(stockStatusFilter.value !== null && {
-      hasStock: stockStatusFilter.value,
-    }),
-    startDate: startDate.value,
-    endDate: endDate.value,
-    format: format,
-  };
-
-  Object.keys(params).forEach((key) => {
-    if (params[key] === null || params[key] === "") {
-      delete params[key];
-    }
-  });
-
-  try {
-    const response = await axios.get("/inventory/export", {
-      params,
-      responseType: "blob",
-    });
-
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-
-    const contentDisposition = response.headers["content-disposition"];
-    let fileName = `inventario.${format}`;
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2)
-        fileName = fileNameMatch[1];
-    }
-
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Error al exportar los datos:", error);
-  }
-};
-
-const handleSort = (sortOptions) => {
-  if (sortOptions.key === undefined && sortOptions.order === undefined) {
-    sortBy.value = undefined;
-    orderBy.value = undefined;
-  } else {
-    sortBy.value = sortOptions.key;
-    orderBy.value = sortOptions.order;
-  }
+  filters.q = "";
+  filters.laboratoryId = null;
+  filters.originId = null;
+  filters.hasStock = null;
+  filters.startDate = null;
+  filters.endDate = null;
 };
 </script>
 
 <template>
   <div>
     <ProductFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
+      v-model:searchQuery="filters.q"
+      v-model:selectedLaboratory="filters.laboratoryId"
+      v-model:selectedOrigin="filters.originId"
+      v-model:stockStatusFilter="filters.hasStock"
+      v-model:startDate="filters.startDate"
+      v-model:endDate="filters.endDate"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
       mode="inventory"
       @clear="handleClearFilters"
-      @sort="handleSort"
     />
 
-    <ProductTable
-      :products="products"
-      :loading="loading"
-      :total-product="totalProduct"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      mode="inventory"
-      @update:options="updateTableOptions"
-      @count-product="handleCountProduct"
-    />
+    <VRow class="mt-4">
+      <VCol cols="12">
+        <h5 class="text-h5 mb-2">Productos Pendientes de Conteo</h5>
+        <ProductTable
+          :products="products"
+          :loading="productLoading"
+          :total-product="totalProduct"
+          :items-per-page="productOptions.itemsPerPage"
+          :page="productOptions.page"
+          mode="inventory"
+          @update:options="updateProductTableOptions"
+          @count-product="(product) => handleCountProduct(product, 'product')"
+        />
+      </VCol>
+
+      <VCol cols="12">
+        <h5 class="text-h5 mb-2">Productos de Factura por Contar</h5>
+        <InvoiceToCountTable
+          :products="invoiceProductsToCount"
+          :loading="invoiceProductsLoading"
+          :total-product="totalInvoiceProductsToCount"
+          :items-per-page="invoiceProductsOptions.itemsPerPage"
+          :page="invoiceProductsOptions.page"
+          mode="inventory"
+          @update:options="updateInvoiceProductsTableOptions"
+          @count-product="(product) => handleCountProduct(product, 'invoice')"
+        />
+      </VCol>
+    </VRow>
 
     <InventoryCountDialog
       v-model="isCountDialogVisible"

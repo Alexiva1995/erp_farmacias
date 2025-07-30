@@ -3,6 +3,7 @@
 namespace App\Services\InventoryCycle;
 
 use App\Models\InventoryCycle;
+use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,9 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryCycleQueryService
 {
-    /**
-     * Prepara la consulta base para los conteos de productos.
-     */
     private function getBaseQuery(): Builder
     {
         return ProductCount::query()->select('product_counts.*')->with([
@@ -23,21 +21,14 @@ class InventoryCycleQueryService
             'user',
             'supervisor',
             'cycle',
-            'productLot',
         ]);
     }
 
-    /**
-     * Prepara la consulta base para productos (para la vista de inventario).
-     */
     private function getProductsBaseQuery(): Builder
     {
         return Product::query()->with(['lots', 'laboratory', 'origin']);
     }
 
-    /**
-     * Aplica los filtros a la consulta de conteos.
-     */
     private function applyFiltersToCount(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
@@ -83,9 +74,6 @@ class InventoryCycleQueryService
         return $query;
     }
 
-    /**
-     * Aplica los filtros a la consulta de productos (para inventario).
-     */
     private function applyFiltersToProducts(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
@@ -128,48 +116,42 @@ class InventoryCycleQueryService
         return $query;
     }
 
-    /**
-     * Aplica la ordenación a la consulta de conteos.
-     */
     private function applySortingToCount(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
-        $query->select('product_counts.*');
+        $tableName = $query->getModel()->getTable();
+
+        $query->select("{$tableName}.*");
 
         switch ($sortBy) {
             case 'product.name':
-                return $query->join('products', 'product_counts.product_id', '=', 'products.id')
+                return $query->join('products', "{$tableName}.product_id", '=', 'products.id')
                     ->orderBy('products.name', $orderBy);
 
             case 'laboratory.name':
-                return $query->join('products', 'product_counts.product_id', '=', 'products.id')
+                return $query->join('products', "{$tableName}.product_id", '=', 'products.id')
                     ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
                     ->orderBy('laboratories.name', $orderBy);
 
             case 'user.name':
-                return $query->join('users', 'product_counts.user_id', '=', 'users.id')
+                return $query->join('users', "{$tableName}.user_id", '=', 'users.id')
                     ->orderBy('users.name', $orderBy);
 
             case 'counted_quantity':
             case 'system_quantity':
             case 'discrepancy':
             case 'final_quantity':
-                return $query->orderBy("product_counts.{$sortBy}", $orderBy);
-
             case 'created_at':
             case 'processed_at':
-                return $query->orderBy("product_counts.{$sortBy}", $orderBy);
+                return $query->orderBy("{$tableName}.{$sortBy}", $orderBy);
 
             default:
-                $defaultSortColumn = $query->getQuery()->wheres && in_array('confirmed', array_column($query->getQuery()->wheres, 'values'))
+                $defaultSortColumn = ($tableName === 'product_counts' && $query->getQuery()->wheres && in_array('confirmed', array_column($query->getQuery()->wheres, 'values')))
                     ? 'processed_at'
                     : 'created_at';
                 return $query->orderBy($defaultSortColumn, 'desc');
         }
     }
 
-    /**
-     * Aplica la ordenación a la consulta de productos.
-     */
     private function applySortingToProducts(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         switch ($sortBy) {
@@ -208,9 +190,6 @@ class InventoryCycleQueryService
         }
     }
 
-    /**
-     * Obtiene la consulta filtrada para conteos de productos.
-     */
     public function getFilteredQuery(Request $request): Builder
     {
         $query = $this->getBaseQuery();
@@ -236,29 +215,18 @@ class InventoryCycleQueryService
         return $query;
     }
 
-    /**
-     * Obtiene la consulta filtrada para productos (vista de inventario).
-     */
     public function getProductsFilteredQuery(Request $request): Builder
     {
         $query = $this->getProductsBaseQuery();
 
-        // --- INICIO DE LA LÓGICA MODIFICADA ---
-        // 1. Buscamos el ID del ciclo de inventario que está actualmente activo.
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
 
-        // 2. Si se encontró un ciclo activo, filtramos los productos que ya han sido contados en este ciclo.
         if ($activeCycleId) {
-            // `whereDoesntHave` excluye los productos que tienen un conteo (`productCounts`)
-            // que coincide con el `cycle_id` activo.
             $query->whereDoesntHave('productCounts', function (Builder $subQuery) use ($activeCycleId) {
                 $subQuery->where('cycle_id', $activeCycleId);
             });
         }
-        // Si no hay ciclo activo, se muestran todos los productos (sujeto a otros filtros).
-        // --- FIN DE LA LÓGICA MODIFICADA ---
 
-        // Aplicamos el resto de los filtros de la solicitud
         $filters = [
             'q' => $request->q,
             'laboratoryId' => $request->laboratoryId,
@@ -274,9 +242,6 @@ class InventoryCycleQueryService
         return $query;
     }
 
-    /**
-     * Obtiene estadísticas de conteos por usuario.
-     */
     public function getCountStatisticsByUser(int $userId): array
     {
         $statistics = ProductCount::where('user_id', $userId)
@@ -299,9 +264,6 @@ class InventoryCycleQueryService
         ];
     }
 
-    /**
-     * Obtiene conteos recientes para un producto específico.
-     */
     public function getRecentCountsForProduct(int $productId, int $limit = 5): \Illuminate\Database\Eloquent\Collection
     {
         return ProductCount::with(['user'])
@@ -311,9 +273,6 @@ class InventoryCycleQueryService
             ->get();
     }
 
-    /**
-     * Obtiene productos con discrepancias frecuentes.
-     */
     public function getProductsWithFrequentDiscrepancies(int $limit = 10): \Illuminate\Database\Eloquent\Collection
     {
         return Product::withCount([
@@ -327,5 +286,145 @@ class InventoryCycleQueryService
             ->orderBy('discrepancy_count', 'desc')
             ->limit($limit)
             ->get();
+    }
+
+    public function getInvoiceDetailsToCountQuery(Request $request): Builder
+    {
+        $query = Product::query()->with(['lots', 'laboratory', 'origin']);
+
+        $query->whereHas('invoiceDetails.invoice', function ($subQuery) {
+            $subQuery->where('status', 'ordered');
+        });
+
+        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        if ($activeCycleId) {
+            $query->whereDoesntHave('invoiceCounts', function (Builder $subQuery) use ($activeCycleId) {
+                $subQuery->where('cycle_id', $activeCycleId);
+            });
+        }
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+        ];
+
+        $query = $this->applyFiltersToProducts($query, $filters);
+        $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    private function getInvoiceCountBaseQuery(): Builder
+    {
+        return InvoiceCount::query()->select('invoices_counts.*')->with([
+            'product' => function ($query) {
+                $query->with(['lots', 'laboratory']);
+            },
+            'user',
+            'supervisor',
+            'cycle',
+        ]);
+    }
+
+    public function getInvoiceCountFilteredQuery(Request $request): Builder
+    {
+        $query = $this->getInvoiceCountBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'status' => 'pending',
+        ];
+
+        $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+
+        return $query;
+    }
+
+    public function getCashCloseItemsQuery(Request $request)
+    {
+        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+
+        $productCounts = ProductCount::query()
+            ->select([
+                'id',
+                'product_id',
+                'user_id',
+                'discrepancy',
+                'status',
+                'updated_at',
+                DB::raw("'product_count' as source_type")
+            ])
+            ->where('status', '!=', 'pending')
+            ->where('cycle_id', $activeCycleId);
+
+        $invoiceCounts = InvoiceCount::query()
+            ->select([
+                'id',
+                'product_id',
+                'user_id',
+                'discrepancy',
+                'status',
+                'updated_at',
+                DB::raw("'invoice_count' as source_type")
+            ])
+            ->where('status', '!=', 'pending')
+            ->where('cycle_id', $activeCycleId);
+
+        $unionQuery = $productCounts->unionAll($invoiceCounts);
+
+        $query = DB::query()->fromSub($unionQuery, 'discrepancies')
+            ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
+            ->leftJoin('users', 'discrepancies.user_id', '=', 'users.id')
+            ->select([
+                'discrepancies.id',
+                'discrepancies.discrepancy',
+                'discrepancies.source_type',
+                'discrepancies.updated_at as processed_date',
+                'products.name as product_name',
+                'products.sale_price as product_sale_price',
+                'users.username as user_name',
+                'users.email as user_email'
+            ]);
+
+        if ($request->filled('searchQuery')) {
+            $searchTerm = '%' . $request->input('searchQuery') . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('products.name', 'like', $searchTerm)
+                    ->orWhere('users.username', 'like', $searchTerm)
+                    ->orWhere('users.email', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('startDate')) {
+            $query->where('discrepancies.updated_at', '>=', $request->input('startDate'));
+        }
+
+        if ($request->filled('endDate')) {
+            $query->where('discrepancies.updated_at', '<=', $request->input('endDate') . ' 23:59:59');
+        }
+
+        $sortBy = $request->input('sortBy', 'processed_date');
+        $orderBy = $request->input('orderBy', 'desc');
+
+        $sortableColumns = [
+            'product.name' => 'products.name',
+            'discrepancy' => 'discrepancies.discrepancy',
+            'user.name' => 'users.username',
+            'amount' => DB::raw('products.sale_price * discrepancies.discrepancy'),
+            'processed_date' => 'discrepancies.updated_at'
+        ];
+
+        if (isset($sortableColumns[$sortBy])) {
+            $query->orderBy($sortableColumns[$sortBy], $orderBy);
+        } else {
+            $query->orderBy('discrepancies.updated_at', 'desc');
+        }
+
+        return $query;
     }
 }

@@ -1,4 +1,3 @@
-<!-- InventoryCorrectionModal.vue -->
 <script setup>
 import { computed, ref, watch } from "vue";
 
@@ -9,33 +8,27 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "correction-processed"]);
 
-// Estado del modal
 const isVisible = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
 });
 
-// Estado del formulario
 const correctedQuantity = ref(0);
 const isProcessing = ref(false);
 
-// Resetear el formulario cuando se abre el modal
 watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue && props.product) {
-      // Inicializar con la cantidad contada actual
       correctedQuantity.value = props.product.counted_quantity || 0;
     }
   }
 );
 
-// Calcular la diferencia
 const quantityDifference = computed(() => {
   return correctedQuantity.value - (props.product?.counted_quantity || 0);
 });
 
-// Determinar si es incremento o reducción basado en la diferencia real
 const isIncrement = computed(() => {
   return quantityDifference.value > 0;
 });
@@ -44,12 +37,10 @@ const isReduction = computed(() => {
   return quantityDifference.value < 0;
 });
 
-// Determinar el tipo de cambio en el inventario
 const inventoryChange = computed(() => {
   const originalQty = props.product?.counted_quantity || 0;
   const correctedQty = correctedQuantity.value;
 
-  // Si la cantidad original era negativa y la corregida es menos negativa o positiva
   if (originalQty < 0 && correctedQty > originalQty) {
     return {
       type: "improvement",
@@ -60,7 +51,6 @@ const inventoryChange = computed(() => {
     };
   }
 
-  // Si la cantidad original era negativa y la corregida es más negativa
   if (originalQty < 0 && correctedQty < originalQty) {
     return {
       type: "worsening",
@@ -68,7 +58,6 @@ const inventoryChange = computed(() => {
     };
   }
 
-  // Si la cantidad original era positiva y la corregida es mayor
   if (originalQty >= 0 && correctedQty > originalQty) {
     return {
       type: "increment",
@@ -76,7 +65,6 @@ const inventoryChange = computed(() => {
     };
   }
 
-  // Si la cantidad original era positiva y la corregida es menor
   if (originalQty >= 0 && correctedQty < originalQty) {
     return {
       type: "reduction",
@@ -90,7 +78,6 @@ const inventoryChange = computed(() => {
   };
 });
 
-// Obtener el color del alert basado en el tipo de cambio
 const getAlertType = computed(() => {
   switch (inventoryChange.value.type) {
     case "improvement":
@@ -104,7 +91,6 @@ const getAlertType = computed(() => {
   }
 });
 
-// Obtener el ícono apropiado
 const getAlertIcon = computed(() => {
   switch (inventoryChange.value.type) {
     case "improvement":
@@ -118,7 +104,6 @@ const getAlertIcon = computed(() => {
   }
 });
 
-// Validaciones
 const isValidQuantity = computed(() => {
   return !isNaN(correctedQuantity.value) && correctedQuantity.value !== null;
 });
@@ -127,7 +112,6 @@ const canSubmit = computed(() => {
   return isValidQuantity.value && !isProcessing.value;
 });
 
-// Métodos
 const handleSubmit = () => {
   if (!canSubmit.value) return;
 
@@ -139,7 +123,6 @@ const handleSubmit = () => {
     difference: quantityDifference.value,
   });
 
-  // El componente padre manejará el loading, así que lo reseteamos después de emitir
   setTimeout(() => {
     isProcessing.value = false;
   }, 100);
@@ -150,7 +133,6 @@ const handleCancel = () => {
   correctedQuantity.value = 0;
 };
 
-// Formatear números para mostrar
 const formatQuantity = (quantity) => {
   return new Intl.NumberFormat("es-CO").format(quantity);
 };
@@ -165,7 +147,6 @@ const formatQuantity = (quantity) => {
 
       <VCardText class="pa-6 pt-0">
         <div v-if="product">
-          <!-- Información del producto -->
           <div class="mb-6">
             <div class="d-flex align-center gap-3 mb-4">
               <VAvatar
@@ -186,7 +167,6 @@ const formatQuantity = (quantity) => {
             </div>
           </div>
 
-          <!-- Información del conteo -->
           <VAlert type="info" variant="tonal" class="mb-6">
             <div class="d-flex justify-space-between align-center">
               <div>
@@ -217,7 +197,6 @@ const formatQuantity = (quantity) => {
             </div>
           </VAlert>
 
-          <!-- Input para corrección -->
           <div class="mb-4">
             <VTextField
               v-model.number="correctedQuantity"
@@ -236,37 +215,6 @@ const formatQuantity = (quantity) => {
               </template>
             </VTextField>
           </div>
-
-          <!-- Mostrar diferencia si hay cambios
-          <div v-if="quantityDifference !== 0" class="mb-4">
-            <VAlert :type="getAlertType" variant="tonal">
-              <div class="d-flex align-center gap-2">
-                <VIcon :icon="getAlertIcon" />
-                <div class="flex-grow-1">
-                  <div class="mb-1">
-                    <strong>Cambio:</strong>
-                    {{ inventoryChange.description }}
-                  </div>
-                  <div class="text-body-2">
-                    <span class="text-medium-emphasis">Diferencia:</span>
-                    <span
-                      :class="{
-                        'text-success': quantityDifference > 0,
-                        'text-error': quantityDifference < 0,
-                      }"
-                      class="font-weight-medium ml-1"
-                    >
-                      {{ quantityDifference > 0 ? "+" : ""
-                      }}{{ formatQuantity(quantityDifference) }}
-                    </span>
-                    {{
-                      Math.abs(quantityDifference) === 1 ? "unidad" : "unidades"
-                    }}
-                  </div>
-                </div>
-              </div>
-            </VAlert>
-          </div> -->
         </div>
       </VCardText>
 

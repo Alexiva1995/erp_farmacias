@@ -54,12 +54,15 @@ const resetForm = () => {
   isScanning.value = false;
 };
 
+const handleCancel = () => {
+  isVisible.value = false;
+};
+
 watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
       nextTick(() => {
-        // Focus en el input del código de barras al abrir el modal
         const barcodeInputElement = document.querySelector("#barcode-input");
         if (barcodeInputElement) {
           barcodeInputElement.focus();
@@ -77,7 +80,6 @@ watch(barcodeInput, (newBarcode) => {
     return;
   }
 
-  // Verificar si el código de barras coincide con el producto
   if (props.product.barcode && newBarcode.trim() !== props.product.barcode) {
     barcodeError.value = "El código de barras no coincide con este producto";
   } else {
@@ -87,7 +89,6 @@ watch(barcodeInput, (newBarcode) => {
 
 const handleBarcodeEnter = () => {
   if (!barcodeError.value && barcodeInput.value.trim()) {
-    // Enfocar en el input de cantidad después de escanear
     nextTick(() => {
       const quantityInput = document.querySelector("#quantity-input");
       if (quantityInput) {
@@ -112,8 +113,6 @@ const handleSave = () => {
 
 const startScanning = () => {
   isScanning.value = true;
-  // Aquí podrías implementar integración con una librería de escaneo como QuaggaJS
-  // Por ahora simulamos el escaneo
   setTimeout(() => {
     isScanning.value = false;
     if (props.product.barcode) {
@@ -134,7 +133,6 @@ const startScanning = () => {
       <VDivider />
 
       <VCardText class="pa-6">
-        <!-- Información del producto -->
         <div class="mb-6">
           <div class="d-flex align-center gap-4 mb-4">
             <VAvatar
@@ -161,7 +159,6 @@ const startScanning = () => {
             </div>
           </div>
 
-          <!-- Stock actual -->
           <VAlert type="info" variant="tonal" class="mb-4">
             <template #prepend>
               <VIcon icon="tabler-package" />
@@ -174,7 +171,6 @@ const startScanning = () => {
         </div>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Escaneo de código de barras -->
           <div class="mb-4">
             <label class="text-body-1 font-weight-medium mb-2 d-block">
               Código de Barras *
@@ -206,7 +202,6 @@ const startScanning = () => {
             </div>
           </div>
 
-          <!-- Cantidad contada -->
           <div class="mb-4">
             <label class="text-body-1 font-weight-medium mb-2 d-block">
               Cantidad Contada *
@@ -226,7 +221,6 @@ const startScanning = () => {
             </VTextField>
           </div>
 
-          <!-- Discrepancia -->
           <div v-if="countedQuantity !== ''" class="mb-4">
             <VAlert :type="discrepancyColor" variant="tonal">
               <template #prepend>
@@ -253,10 +247,16 @@ const startScanning = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-6 pt-4">
-        <VSpacer />
-        <VBtn variant="outlined" @click="handleCancel"> Cancelar </VBtn>
-        <VBtn color="primary" :disabled="!canSave" @click="handleSave">
+      <VCardActions class="d-flex pa-6 pt-4 ga-4">
+        <VBtn class="flex-grow-1" variant="outlined" @click="handleCancel">
+          Cancelar
+        </VBtn>
+        <VBtn
+          class="flex-grow-1"
+          color="primary"
+          :disabled="!canSave"
+          @click="handleSave"
+        >
           <VIcon icon="tabler-check" start />
           Guardar Conteo
         </VBtn>

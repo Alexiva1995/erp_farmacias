@@ -108,9 +108,23 @@ Route::prefix('inventory')->group(function () {
     Route::get('products', [InventoryCycleController::class, 'getProductsForInventory'])
         ->name('inventory.products.index');
 
+    Route::get('/cash-close-items', [InventoryCycleController::class, 'getCashCloseItems']);
+
+    Route::post('/cycle/close', [InventoryCycleController::class, 'closeActiveCycle']);
+
+    Route::post('/cycle/create', [InventoryCycleController::class, 'createCycle']);
+
     Route::prefix('count')->group(function () {
         Route::post('{product}', [InventoryCycleController::class, 'storeProductCount'])
             ->name('inventory.count.store');
+
+        Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
+        Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
+        Route::post('/invoice-count/{productId}', [InventoryCycleController::class, 'storeInvoiceCount']);
+
+        Route::get('/invoice-details-to-count', [InventoryCycleController::class, 'getInvoiceDetailsToCount']);
+
+        Route::post('/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
 
         Route::get('/', [InventoryCycleController::class, 'getProductCount'])
             ->name('inventory.counts.index');

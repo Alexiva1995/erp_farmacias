@@ -14,10 +14,10 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('cycle_id')->constrained('inventory_cycles')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
-            $table->foreignId('product_lot_id')->nullable()->constrained('product_lots')->nullOnDelete();
             $table->integer('counted_quantity');
             $table->integer('system_quantity');
             $table->integer('discrepancy')->comment('counted_quantity - system_quantity');
+            $table->enum('type', ['cash', 'invoice']);
             $table->enum('status', ['pending', 'approved', 'rejected', 'recount'])->default('pending');
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->nullOnDelete();

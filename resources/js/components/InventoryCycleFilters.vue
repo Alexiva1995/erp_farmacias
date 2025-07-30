@@ -1,4 +1,3 @@
-<!-- src/components/InventoryCycleFilters.vue -->
 <script setup>
 import { useAuthStore } from "@/stores/auth";
 import { computed, onMounted, ref, watch } from "vue";
@@ -12,7 +11,6 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 
-// Se ha eliminado 'export' de los emits
 const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
@@ -77,7 +75,6 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 
-// La lógica para guardar y cargar el ordenamiento no cambia
 const getStorageKey = () =>
   `inventory_cycle_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
@@ -167,7 +164,6 @@ watch(
   <VCard title="Filtros de Conteos" class="mb-6">
     <VCardText>
       <VRow>
-        <!-- Filtro de Búsqueda -->
         <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.searchQuery"
@@ -176,7 +172,6 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <!-- Filtro de Laboratorio -->
         <VCol cols="12" sm="6" md="6">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
@@ -190,7 +185,6 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <!-- Filtro de Fecha Desde -->
         <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="props.startDate"
@@ -204,7 +198,6 @@ watch(
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <!-- Filtro de Fecha Hasta -->
         <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="props.endDate"
@@ -228,7 +221,6 @@ watch(
         Limpiar Filtros
       </VBtn>
 
-      <!-- Menú de Ordenamiento -->
       <div class="d-flex align-center gap-2">
         <VMenu>
           <template #activator="{ props: menuProps }">
@@ -273,8 +265,6 @@ watch(
       </div>
 
       <VSpacer />
-
-      <!-- Menú de Exportación ELIMINADO -->
     </VCardActions>
   </VCard>
 </template>

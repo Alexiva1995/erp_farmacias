@@ -1,4 +1,3 @@
-<!-- components/ProductHistoryTable.vue -->
 <script setup>
 import { ref } from "vue";
 
@@ -27,7 +26,6 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options"]);
 
-// --- CAMBIO 1: Aseguramos que la clave de la fecha sea 'updated_at' ---
 const headers = ref([
   { title: "Producto", key: "product.name", sortable: true },
   {
@@ -55,7 +53,6 @@ const headers = ref([
     align: "center",
     sortable: false,
   },
-  // La clave ya apunta a 'updated_at', lo cual es correcto para nuestro objetivo.
   {
     title: "Fecha Proceso",
     key: "updated_at",
@@ -64,20 +61,16 @@ const headers = ref([
   },
 ]);
 
-// --- CAMBIO 2: Creamos una función para formatear la fecha a YYYY-MM-DD ---
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   try {
     const date = new Date(dateString);
-    // Extraemos año, mes y día
     const year = date.getFullYear();
-    // getMonth() es 0-indexado, por eso sumamos 1. padStart asegura que tenga 2 dígitos (ej. 09)
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const day = date.getDate().toString().padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   } catch (error) {
-    // En caso de que la fecha sea inválida
     return "N/A";
   }
 };
@@ -114,7 +107,6 @@ const updateOptions = (options) => {
       item-value="id"
       hover
     >
-      <!-- Template para el producto (sin cambios) -->
       <template #item.product.name="{ item: count }">
         <div class="d-flex align-center gap-x-4 py-2">
           <VAvatar
@@ -140,7 +132,6 @@ const updateOptions = (options) => {
         </div>
       </template>
 
-      <!-- Templates para columnas numéricas y de estado (sin cambios) -->
       <template #item.final_quantity="{ item: count }">
         <span class="font-weight-medium">
           {{ count.final_quantity ?? count.counted_quantity }}
@@ -170,10 +161,7 @@ const updateOptions = (options) => {
         </VChip>
       </template>
 
-      <!-- --- CAMBIO 3: Actualizamos el template para la fecha --- -->
-      <!-- El nombre del slot '#item.updated_at' debe coincidir con la 'key' en los headers. -->
       <template #item.updated_at="{ item: count }">
-        <!-- Usamos nuestra nueva función de formato -->
         <span>{{ formatDate(count.updated_at) }}</span>
       </template>
     </VDataTableServer>

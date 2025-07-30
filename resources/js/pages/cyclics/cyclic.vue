@@ -1,298 +1,103 @@
-<!-- cyclic.vue -->
 <script setup>
 import InventoryCorrectionModal from "@/components/dialogs/InventoryCorrectionModal.vue";
-import InventoryCountModal from "@/components/dialogs/InventoryCountModal.vue";
+import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
 import InventoryCycleFilters from "@/components/InventoryCycleFilters.vue";
+import InvoiceCyclicTable from "@/components/InvoiceCyclicTable.vue";
 import ProductCyclicTable from "@/components/ProductCyclicTable.vue";
+import { useCyclicTable } from "@/composables/useCyclicTable";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, reactive, ref } from "vue";
 
-// --- Estado para la tabla y paginación ---
-const products = ref([]);
-const totalProduct = ref(0);
-const loading = ref(false);
-const page = ref(1);
-const itemsPerPage = ref(10);
-const sortBy = ref(); // Se manejará por el filtro o la tabla
-const orderBy = ref();
+const filters = reactive({
+  searchQuery: "",
+  selectedLaboratory: null,
+  startDate: null,
+  endDate: null,
+  sortBy: undefined,
+  orderBy: undefined,
+});
 
-// --- 2. Estado para los filtros ---
-const searchQuery = ref("");
-const selectedLaboratory = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
+const {
+  items: productCounts,
+  totalItems: totalProductCount,
+  loading: productLoading,
+  options: productOptions,
+  updateTableOptions: updateProductOptions,
+  showCorrectionModal: showProductCorrectionModal,
+  selectedItemForCorrection: productForCorrection,
+  showLotDistributionModal: showProductLotModal,
+  itemForLotDistribution: productForLotDistribution,
+  targetQuantityForDistribution: productTargetQuantity,
+  handleApproveItem: handleApproveProduct,
+  handleRejectItem: handleRejectProduct,
+  handleCorrectionProcessed: handleProductCorrection,
+  handleLotsDistributed: handleProductLots,
+} = useCyclicTable("/products", filters);
+
+const {
+  items: invoiceCounts,
+  totalItems: totalInvoiceCount,
+  loading: invoiceLoading,
+  options: invoiceOptions,
+  updateTableOptions: updateInvoiceOptions,
+  showCorrectionModal: showInvoiceCorrectionModal,
+  selectedItemForCorrection: invoiceForCorrection,
+  showLotDistributionModal: showInvoiceLotModal,
+  itemForLotDistribution: invoiceForLotDistribution,
+  targetQuantityForDistribution: invoiceTargetQuantity,
+  handleApproveItem: handleApproveInvoice,
+  handleRejectItem: handleRejectInvoice,
+  handleCorrectionProcessed: handleInvoiceCorrection,
+  handleLotsDistributed: handleInvoiceLots,
+} = useCyclicTable("inventory/count/invoices", filters);
+
 const laboratories = ref([]);
 const isLoadingFilters = ref(false);
 
-// --- Estado para el modal ---
-const showCountModal = ref(false);
-const selectedProduct = ref(null);
-
-// --- Estado para el modal de corrección ---
-const showCorrectionModal = ref(false);
-const selectedProductForCorrection = ref(null);
-
-const showLotDistributionModal = ref(false);
-const productForLotDistribution = ref(null);
-const targetQuantityForDistribution = ref(0);
-
-const pendingAction = ref({ type: null, data: {} });
-
-// 3. Cargar datos para los selects de los filtros
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
     const labResponse = await axios.get("/laboratories");
-
     laboratories.value = labResponse.data.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
-
-    // **Ajuste 2: Asegurar que laboratories es un array en caso de error**
-    laboratories.value = [];
   } finally {
     isLoadingFilters.value = false;
   }
 };
 
-// 4. Actualizar la llamada a la API para incluir los filtros
-const fetchProducts = async () => {
-  loading.value = true;
-  const params = {
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-  };
-
-  // Limpiar parámetros nulos o vacíos
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
-
-  try {
-    // Asegúrate de que esta es la ruta correcta definida en tu api.php
-    const response = await axios.get("/products/count", {
-      params,
-    });
-    products.value = response.data.data;
-    totalProduct.value = response.data.total;
-  } catch (error) {
-    console.error("Hubo un error al obtener los conteos:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// 5. Observar todos los cambios para recargar los datos
-let debounceTimer;
-watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    searchQuery,
-    selectedLaboratory,
-    startDate,
-    endDate,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true }
-);
-
-// Reiniciar a la página 1 si cambia un filtro (mejora la UX)
-watch([searchQuery, selectedLaboratory, startDate, endDate], () => {
-  page.value = 1;
-});
-
 onMounted(() => {
   fetchSelectOptions();
-  fetchProducts();
 });
 
-// --- Lógica de la tabla y modales ---
-
-const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-  // Solo actualiza el orden si el filtro de ordenamiento no está activo
-  if (!sortBy.value && options.sortBy && options.sortBy.length > 0) {
-    sortBy.value = options.sortBy[0]?.key;
-    orderBy.value = options.sortBy[0]?.order;
-  }
-};
-
-const openCountModal = (product) => {
-  selectedProduct.value = product;
-  if (selectedProduct.value) {
-    showCountModal.value = true;
-  }
-};
-
-const handleCountProcessed = async () => {
-  console.log("Actualizando la tabla después del modal");
-  fetchProducts();
-};
-
-// --- 6. Manejadores para los eventos del componente de filtros ---
 const handleClearFilters = () => {
-  searchQuery.value = "";
-  selectedLaboratory.value = null;
-  startDate.value = null;
-  endDate.value = null;
-  // Opcional: reiniciar también el ordenamiento
-  sortBy.value = undefined;
-  orderBy.value = undefined;
+  filters.searchQuery = "";
+  filters.selectedLaboratory = null;
+  filters.startDate = null;
+  filters.endDate = null;
+  filters.sortBy = undefined;
+  filters.orderBy = undefined;
 };
 
 const handleSort = (sortOptions) => {
-  sortBy.value = sortOptions.key;
-  orderBy.value = sortOptions.order;
+  filters.sortBy = sortOptions.key;
+  filters.orderBy = sortOptions.order;
 };
 
 const handleExport = async (format) => {
-  // Lógica de exportación similar a la de productos, pero apuntando a una nueva ruta
-  toast.info(`Exportando a ${format}... (funcionalidad pendiente en backend)`);
-  // Aquí iría el código de llamada a axios a la ruta '/inventory-cycle/export'
-};
-
-const callProcessApi = async (productId, payload) => {
-  try {
-    const response = await axios.post(
-      `/products/count/${productId}/process`,
-      payload
-    );
-    if (response.data.success) {
-      toast.success(response.data.message);
-      await fetchProducts(); // Recargar la tabla
-    } else {
-      toast.error(response.data.message);
-    }
-  } catch (error) {
-    console.error("Error al procesar la acción:", error);
-    const errorMessage =
-      error.response?.data?.message || "Hubo un error al procesar la acción.";
-    toast.error(errorMessage);
-  } finally {
-    // Limpiar estados de modales y pendientes
-    showCorrectionModal.value = false;
-    showLotDistributionModal.value = false;
-    selectedProductForCorrection.value = null;
-    productForLotDistribution.value = null;
-    pendingAction.value = { type: null, data: {} };
-  }
-};
-// --- 7. Nuevos manejadores para aprobar/rechazar productos ---
-const handleApproveProduct = async (product) => {
-  // La discrepancia se calcula entre lo contado y lo que el sistema esperaba.
-  const discrepancy = product.discrepancy;
-  // CONDICIÓN CLAVE:
-  // Si (discrepancia NO es cero) Y (el producto TIENE lotes) Y (la lista de lotes NO está vacía)
-  if (
-    discrepancy !== 0 &&
-    product.product.lots &&
-    product.product.lots.length > 0
-  ) {
-    // ----> CORRECTO: Abre el modal de distribución
-    productForLotDistribution.value = product.product;
-    targetQuantityForDistribution.value = product.counted_quantity; // El objetivo es la cantidad contada
-    pendingAction.value = { type: "approve" };
-    showLotDistributionModal.value = true;
-  } else {
-    // ----> CORRECTO: Procesa directamente si no hay discrepancia o no hay lotes
-    await callProcessApi(product.id, { action: "approve" });
-  }
-};
-
-const handleRejectProduct = async (product) => {
-  // Esto no cambia, sigue abriendo el modal de corrección
-  selectedProductForCorrection.value = product;
-  showCorrectionModal.value = true;
-};
-
-const handleCorrectionProcessed = async (correctionData) => {
-  const product = selectedProductForCorrection.value;
-  // Se calcula la nueva discrepancia con el valor corregido
-  const newDiscrepancy =
-    correctionData.correctedQuantity - product.system_quantity;
-
-  const payload = {
-    action: "reject",
-    corrected_quantity: correctionData.correctedQuantity,
-    original_quantity: correctionData.originalQuantity,
-  };
-
-  if (
-    newDiscrepancy !== 0 &&
-    product.product.lots &&
-    product.product.lots.length > 0
-  ) {
-    // ----> CORRECTO: Abre el modal de distribución
-    productForLotDistribution.value = product.product;
-    targetQuantityForDistribution.value = correctionData.correctedQuantity; // El objetivo es la cantidad CORREGIDA
-    pendingAction.value = { type: "reject", data: payload };
-    showCorrectionModal.value = false;
-    showLotDistributionModal.value = true;
-  } else {
-    // ----> CORRECTO: Procesa directamente si no hay nueva discrepancia o no hay lotes
-    await callProcessApi(product.id, payload);
-  }
-};
-
-// 4. Nuevo manejador para cuando se guarda la distribución de lotes
-const handleLotsDistributed = async (modifiedLot) => {
-  // <-- AJUSTE CLAVE: Recibe un solo objeto
-  const product = productForLotDistribution.value;
-  let finalPayload = {};
-
-  if (pendingAction.value.type === "approve") {
-    // El payload ahora contiene una clave 'lot' (singular) con el objeto recibido
-    finalPayload = { action: "approve", lot: modifiedLot };
-  } else if (pendingAction.value.type === "reject") {
-    // Combina los datos de la corrección con los del lote modificado
-    finalPayload = { ...pendingAction.value.data, lot: modifiedLot };
-  }
-
-  // El resto de la lógica para encontrar el registro de conteo y llamar a la API
-  // puede permanecer igual, ya que se basa en `finalPayload`.
-
-  let originalCountRecord = null;
-  if (selectedProductForCorrection.value) {
-    originalCountRecord = selectedProductForCorrection.value;
-  } else {
-    originalCountRecord = products.value.find(
-      (p) => p.product_id === product.id
-    );
-  }
-
-  if (originalCountRecord) {
-    await callProcessApi(originalCountRecord.id, finalPayload);
-  } else {
-    toast.error(
-      "Error crítico: No se pudo encontrar el registro del conteo original."
-    );
-  }
+  toast.info(`Exportando a ${format}...`);
 };
 </script>
 
 <template>
   <div>
-    <!-- Filtros y Tabla (sin cambios) -->
     <InventoryCycleFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
+      v-model:searchQuery="filters.searchQuery"
+      v-model:selectedLaboratory="filters.selectedLaboratory"
+      v-model:startDate="filters.startDate"
+      v-model:endDate="filters.endDate"
       :laboratories="laboratories"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
@@ -300,41 +105,62 @@ const handleLotsDistributed = async (modifiedLot) => {
       @sort="handleSort"
     />
 
-    <ProductCyclicTable
-      :products="products"
-      :loading="loading"
-      :total-product="totalProduct"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @product-click="openCountModal"
-      @approve-product="handleApproveProduct"
-      @reject-product="handleRejectProduct"
-    />
+    <VRow class="mt-4">
+      <VCol cols="12">
+        <ProductCyclicTable
+          :products="productCounts"
+          :loading="productLoading"
+          :total-product="totalProductCount"
+          :items-per-page="productOptions.itemsPerPage"
+          :page="productOptions.page"
+          @update:options="updateProductOptions"
+          @approve-product="handleApproveProduct"
+          @reject-product="handleRejectProduct"
+        />
+      </VCol>
 
-    <!-- Modales existentes (sin cambios en su declaración) -->
-    <InventoryCountModal
-      v-if="showCountModal && selectedProduct"
-      v-model="showCountModal"
-      :product="selectedProduct"
-      @count-processed="handleCountProcessed"
+      <VCol cols="12">
+        <InvoiceCyclicTable
+          :products="invoiceCounts"
+          :loading="invoiceLoading"
+          :total-product="totalInvoiceCount"
+          :items-per-page="invoiceOptions.itemsPerPage"
+          :page="invoiceOptions.page"
+          @update:options="updateInvoiceOptions"
+          @approve-product="handleApproveInvoice"
+          @reject-product="handleRejectInvoice"
+        />
+      </VCol>
+    </VRow>
+
+    <InventoryCorrectionModal
+      v-if="showProductCorrectionModal"
+      v-model="showProductCorrectionModal"
+      :product="productForCorrection"
+      @correction-processed="handleProductCorrection"
+    />
+    <LotDistributionModal
+      v-if="showProductLotModal"
+      v-model="showProductLotModal"
+      :product-name="productForLotDistribution.name"
+      :lots="productForLotDistribution.lots"
+      :target-quantity="productTargetQuantity"
+      @save="handleProductLots"
     />
 
     <InventoryCorrectionModal
-      v-if="showCorrectionModal && selectedProductForCorrection"
-      v-model="showCorrectionModal"
-      :product="selectedProductForCorrection"
-      @correction-processed="handleCorrectionProcessed"
+      v-if="showInvoiceCorrectionModal"
+      v-model="showInvoiceCorrectionModal"
+      :product="invoiceForCorrection"
+      @correction-processed="handleInvoiceCorrection"
     />
-
-    <!-- 5. Añadir el nuevo modal al template -->
     <LotDistributionModal
-      v-if="showLotDistributionModal && productForLotDistribution"
-      v-model="showLotDistributionModal"
-      :product-name="productForLotDistribution.name"
-      :lots="productForLotDistribution.lots"
-      :target-quantity="targetQuantityForDistribution"
-      @save="handleLotsDistributed"
+      v-if="showInvoiceLotModal"
+      v-model="showInvoiceLotModal"
+      :product-name="invoiceForLotDistribution.name"
+      :lots="invoiceForLotDistribution.lots"
+      :target-quantity="invoiceTargetQuantity"
+      @save="handleInvoiceLots"
     />
   </div>
 </template>

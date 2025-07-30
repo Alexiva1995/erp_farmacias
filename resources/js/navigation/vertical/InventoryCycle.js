@@ -17,10 +17,14 @@ export default [
         title: 'Inventarios Users',
         to: 'cyclics-users',
       },
-       {
+      {
         title: 'Inventarios historial',
         to: 'cyclics-history',
+      },
+      {
+        title: 'Cierre de Inventario',
+        to: 'cyclics-closing'
       }
-    ],
-  },
+    ]
+  }
 ]

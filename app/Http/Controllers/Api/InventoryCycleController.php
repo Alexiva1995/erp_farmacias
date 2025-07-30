@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\TraceabilityExport;
 use App\Http\Controllers\Controller;
+use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
 use App\Services\InventoryCycle\InventoryCycleQueryService;
@@ -22,9 +23,6 @@ class InventoryCycleController extends Controller
     ) {
     }
 
-    /**
-     * Obtiene productos para la vista de inventario
-     */
     public function getProductsForInventory(Request $request)
     {
         $query = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
@@ -52,24 +50,20 @@ class InventoryCycleController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    /**
-     * Registra un nuevo conteo de inventario para un producto
-     */
     public function storeProductCount(Request $request, $productId)
     {
         $request->validate([
             'barcode' => 'required|string',
             'counted_quantity' => 'required|numeric|min:0',
-            'system_quantity' => 'required|numeric|min:0', // Validar que venga del frontend
+            'system_quantity' => 'required|numeric|min:0',
             'discrepancy' => 'required|numeric'
         ]);
 
         try {
-            // --- AJUSTE AQUÍ: Pasar system_quantity al servicio ---
             $result = $this->inventoryCycleActionService->createProductCount($productId, [
                 'barcode' => $request->input('barcode'),
                 'counted_quantity' => $request->input('counted_quantity'),
-                'system_quantity' => $request->input('system_quantity'), // Pasar el valor recibido
+                'system_quantity' => $request->input('system_quantity'),
                 'discrepancy' => $request->input('discrepancy')
             ]);
 
@@ -107,35 +101,29 @@ class InventoryCycleController extends Controller
         }
     }
 
-    /**
-     * Calcula el stock actual del producto basado en lotes válidos
-     */
     private function calculateCurrentStock(Product $product): int
     {
-        // Este método se movió al servicio
-        // Se mantiene aquí solo por compatibilidad si se usa en otros lugares
         return $this->inventoryCycleActionService->calculateCurrentStock($product);
     }
 
-    /**
-     * Procesa la acción de aprobar o rechazar un conteo de inventario
-     */
     public function processCountAction(Request $request, $countId)
     {
         $request->validate([
             'action' => 'required|in:approve,reject',
             'corrected_quantity' => 'nullable|numeric',
-            // --- AJUSTE AQUÍ: Validar un objeto 'lot', no un array 'lots' ---
-            'lot' => 'nullable|array',
-            'lot.lot_id' => 'required_with:lot|integer|exists:product_lots,id',
-            'lot.quantity' => 'required_with:lot|integer|min:0',
+            'updated_lots' => 'nullable|array',
+            'updated_lots.*.id' => 'required_with:updated_lots|integer|exists:product_lots,id',
+            'updated_lots.*.quantity' => 'required_with:updated_lots|integer|min:0',
+            'new_lots' => 'nullable|array',
+            'new_lots.*.lot_number' => 'required_with:new_lots|string|max:255',
+            'new_lots.*.expiration_date' => 'required_with:new_lots|date',
+            'new_lots.*.quantity' => 'required_with:new_lots|integer|min:0',
         ]);
 
         try {
             $productCount = ProductCount::findOrFail($countId);
             $action = $request->input('action');
-
-            $data = $request->only(['corrected_quantity', 'lot']);
+            $data = $request->only(['corrected_quantity', 'updated_lots', 'new_lots']);
 
             $result = $this->inventoryCycleActionService->processAction($productCount, $action, $data);
 
@@ -158,6 +146,11 @@ class InventoryCycleController extends Controller
                 'message' => 'Registro de conteo no encontrado.'
             ], 404);
         } catch (\Exception $e) {
+            Log::error('Error en processCountAction', [
+                'countId' => $countId,
+                'request' => $request->all(),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno del servidor: ' . $e->getMessage()
@@ -165,9 +158,6 @@ class InventoryCycleController extends Controller
         }
     }
 
-    /**
-     * Obtiene las estadísticas de conteos
-     */
     public function getCountStatistics()
     {
         try {
@@ -185,9 +175,6 @@ class InventoryCycleController extends Controller
         }
     }
 
-    /**
-     * Verifica si existe un ciclo activo y devuelve su información
-     */
     public function getActiveCycleStatus()
     {
         try {
@@ -220,5 +207,144 @@ class InventoryCycleController extends Controller
                 'message' => 'Error al verificar el ciclo activo: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getInvoiceDetailsToCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getInvoiceDetailsToCountQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function storeInvoiceCount(Request $request, $productId)
+    {
+        $request->validate([
+            'barcode' => 'required|string',
+            'counted_quantity' => 'required|numeric|min:0',
+            'system_quantity' => 'required|numeric|min:0',
+            'discrepancy' => 'required|numeric'
+        ]);
+
+        try {
+            $result = $this->inventoryCycleActionService->createInvoiceCount($productId, $request->all());
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'data' => $result['data']
+                ], 201);
+            } else {
+                $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], $statusCode);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de validación incorrectos.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error en controlador al registrar conteo de factura', [
+                'product_id' => $productId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor.'
+            ], 500);
+        }
+    }
+
+    public function getInvoiceCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getInvoiceCountFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function processInvoiceCountAction(Request $request, $countId)
+    {
+        $request->validate([
+            'action' => 'required|in:approve,reject',
+            'corrected_quantity' => 'nullable|numeric',
+            'updated_lots' => 'nullable|array',
+            'updated_lots.*.id' => 'required_with:updated_lots|integer|exists:product_lots,id',
+            'updated_lots.*.quantity' => 'required_with:updated_lots|integer|min:0',
+            'new_lots' => 'nullable|array',
+            'new_lots.*.lot_number' => 'required_with:new_lots|string|max:255',
+            'new_lots.*.expiration_date' => 'required_with:new_lots|date',
+            'new_lots.*.quantity' => 'required_with:new_lots|integer|min:0',
+        ]);
+
+        try {
+            $invoiceCount = InvoiceCount::findOrFail($countId);
+            $action = $request->input('action');
+            $data = $request->only(['corrected_quantity', 'updated_lots', 'new_lots']);
+
+            $result = $this->inventoryCycleActionService->processInvoiceCountAction($invoiceCount, $action, $data);
+
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => $result['message'], 'data' => $result['data']], 200);
+            } else {
+                return response()->json(['success' => false, 'message' => $result['message']], 400);
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Registro de conteo de factura no encontrado.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Error en processInvoiceCountAction', ['countId' => $countId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error interno del servidor.'], 500);
+        }
+    }
+
+    public function getCashCloseItems(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total()
+        ]);
+    }
+
+    public function closeActiveCycle(Request $request)
+    {
+        try {
+            $result = $this->inventoryCycleActionService->closeActiveCycle();
+
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => $result['message']]);
+            } else {
+                return response()->json(['success' => false, 'message' => $result['message']], 400);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al intentar cerrar el ciclo de inventario activo.', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Ocurrió un error inesperado en el servidor.'], 500);
+        }
+    }
+
+    public function createCycle(Request $request)
+    {
+        $result = $this->inventoryCycleActionService->createNewCycle();
+        if ($result['success']) {
+            return response()->json(['success' => true, 'message' => $result['message']]);
+        }
+        return response()->json(['success' => false, 'message' => $result['message']], 400);
     }
 }

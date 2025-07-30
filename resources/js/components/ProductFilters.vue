@@ -12,7 +12,7 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  mode: { type: String, default: "products" }, // 'products' | 'inventory'
+  mode: { type: String, default: "products" },
 });
 
 const emit = defineEmits([

@@ -278,4 +278,8 @@ class Product extends Model
     {
         $this->attributes['name'] = Str::upper($value);
     }
+    public function invoiceCounts()
+    {
+        return $this->hasMany(InvoiceCount::class);
+    }
 }
