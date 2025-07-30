@@ -26,9 +26,7 @@ class ProductRepository
             'group_id',
             'laboratory_id',
             "sales_average",
-            DB::raw('stock / NULLIF(
-                (SELECT COUNT(*) FROM products AS p2 WHERE p2.group_id = products.group_id), 
-            0) AS preferencia_product'),
+            "sale_price",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -41,7 +39,43 @@ class ProductRepository
                         FROM product_lots
                         WHERE product_id = products.id
                         AND expiration_date >= CURDATE()
-                    ) LIMIT 1) AS lote_quantity'),
+                        ) LIMIT 1) AS lote_quantity'),
+            DB::raw('(
+                SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND orders.status = "Completed"
+            ) AS total_sold_completed'),
+            DB::raw('(
+                SELECT COALESCE(SUM(od.quantity), 0)
+                FROM order_details od
+                JOIN orders o ON o.id = od.order_id
+                JOIN products p ON p.id = od.product_id
+                WHERE p.group_id = products.group_id
+                AND o.status = "Completed"
+                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+            ) AS total_group_sales'),
+            //  para calcular la preferencia del producto veta del producto / ventas totales del grupo que pertenece el producto * 100
+            DB::raw(' NULLIF((
+            (
+                SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND orders.status = "Completed"
+            ) / (
+                SELECT COALESCE(SUM(od.quantity), 0)
+                FROM order_details od
+                JOIN orders o ON o.id = od.order_id
+                JOIN products p ON p.id = od.product_id
+                WHERE p.group_id = products.group_id
+                AND o.status = "Completed"
+                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+            ) 
+            ),0)* 100 AS preferencia_product'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -89,15 +123,6 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots"]);
 
-        $consulta->selectSub(function ($query) use ($filtros) {
-            $query->selectRaw('COALESCE(SUM(order_details.quantity), 0)')
-                ->from('order_details')
-                ->join('orders', 'orders.id', '=', 'order_details.order_id')
-                ->whereColumn('order_details.product_id', 'products.id')
-                ->whereBetween('orders.created_at', [$filtros["previousDate"], $filtros["dateToday"]])
-                ->where('orders.status', 'Completed');
-        }, 'total_sold_completed');
-
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
@@ -115,6 +140,14 @@ class ProductRepository
         if (array_key_exists("expProd", $filtros)) {
             if ($filtros["expProd"] == true) {
                 $consulta->having("demanda_ajustada", ">", 0);
+            }
+        }
+
+        if (array_key_exists("hasStock", $filtros)) {
+            if ($filtros["hasStock"] == true) {
+                $consulta->where("stock", ">", 0);
+            } else {
+                $consulta->where("stock", "=", 0);
             }
         }
 

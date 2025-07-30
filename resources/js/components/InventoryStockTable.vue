@@ -12,6 +12,7 @@ const emit = defineEmits(["update:options"]);
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
+  { title: "Costo", key: "sale_price", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "stock", sortable: true },
   {

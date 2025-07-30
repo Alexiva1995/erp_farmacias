@@ -181,7 +181,6 @@ const handleClear = () => {
             :model-value="props.days"
             label="Dias"
             :items="diasVencimientos"
-            clearable
             @update:model-value="emit('update:days', $event)"
           />
         </VCol>
