@@ -199,6 +199,7 @@ class ProductRepository
 
     public function builerFiltrarProductForIaOrderAssistantTypeAverage($filtros): Builder
     {
+        // solicitar = stock - promedio
 
         $columnas = [
             'id',
@@ -242,51 +243,43 @@ class ProductRepository
                 AND o.status = "Completed"
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
-            //  para calcular la preferencia del producto veta del producto / ventas totales del grupo que pertenece el producto * 100
-            DB::raw(' NULLIF((
-            (
-                SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-                AND orders.status = "Completed"
-            ) / (
-                SELECT COALESCE(SUM(od.quantity), 0)
-                FROM order_details od
-                JOIN orders o ON o.id = od.order_id
-                JOIN products p ON p.id = od.product_id
-                WHERE p.group_id = products.group_id
-                AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-            ) 
-            ),0)* 100 AS preferencia_product'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
         $promedio_calculado = "";
-        if ($filtros["days"] == 15) {
+        if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
         }
 
-        if ($filtros["days"] == 30) {
+        if ($filtros["lapso_de_tiempo"] == "1 month") {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
         }
 
-        if ($filtros["days"] == 60) {
-            $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 2';
-        }
-
-        if ($filtros["days"] == 90) {
+        if ($filtros["lapso_de_tiempo"] == "3 month") {
             $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 3';
         }
 
+        if ($filtros["lapso_de_tiempo"] == "6 month") {
+            $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 6';
+        }
+
+        if ($filtros["lapso_de_tiempo"] == "1 year") {
+            $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 12';
+        }
+
         // calcular diferencia_product con promedio_calculado
         $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
+
+        // calculando preferencia formula: promedio_calculado * 100 = preferencia de producto
+        $columnas[] = DB::raw('(' . $promedio_calculado . ') * 100 AS preferencia_product');
+
+        // calcular solicitar
+        $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS solicitar');
 
         // calcular demanda_ajustada con promedio_calculado
         $columnas[] =  DB::raw('COALESCE(
@@ -322,6 +315,7 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
+        // hay que cambiar el demanda_ajustada por solicitar
         if (array_key_exists("expProd", $filtros)) {
             if ($filtros["expProd"] == true) {
                 $consulta->having("demanda_ajustada", ">", 0);
@@ -380,6 +374,7 @@ class ProductRepository
 
     public function builerFiltrarProductForIaOrderAssistantTypeSales($filtros): Builder
     {
+        // solicitar = stock - ventas
 
         $columnas = [
             'id',
@@ -446,24 +441,29 @@ class ProductRepository
 
         // calcular promedio en vace a los dias => promedio_calculado
         $promedio_calculado = "";
-        if ($filtros["days"] == 15) {
+        if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
         }
 
-        if ($filtros["days"] == 30) {
+        if ($filtros["lapso_de_tiempo"] == "1 month") {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
         }
 
-        if ($filtros["days"] == 60) {
-            $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 2';
-        }
-
-        if ($filtros["days"] == 90) {
+        if ($filtros["lapso_de_tiempo"] == "3 month") {
             $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 3';
+        }
+
+        if ($filtros["lapso_de_tiempo"] == "6 month") {
+            $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 6';
+        }
+
+        if ($filtros["lapso_de_tiempo"] == "1 year") {
+            $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 12';
         }
 
         // calcular diferencia_product con promedio_calculado
@@ -503,6 +503,7 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
+        // hay que cambiar el demanda_ajustada por solicitar
         if (array_key_exists("expProd", $filtros)) {
             if ($filtros["expProd"] == true) {
                 $consulta->having("demanda_ajustada", ">", 0);
