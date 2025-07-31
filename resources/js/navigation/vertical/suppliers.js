@@ -12,6 +12,10 @@ export default [
       {
         title: 'Listado de Proveedores',
         to: 'suppliers-list',
+      },
+      {
+        title: 'IA Assistence de Pedidos',
+        to: 'suppliers-supplieriaorderassistant',
       }
     ],
   },

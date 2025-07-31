@@ -315,12 +315,12 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
-        // hay que cambiar el demanda_ajustada por solicitar
-        if (array_key_exists("expProd", $filtros)) {
-            if ($filtros["expProd"] == true) {
-                $consulta->having("demanda_ajustada", ">", 0);
-            }
-        }
+
+        // if (array_key_exists("expProd", $filtros)) {
+        //     if ($filtros["expProd"] == true) {
+        //         $consulta->having("demanda_ajustada", ">", 0);
+        //     }
+        // }
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
@@ -333,10 +333,10 @@ class ProductRepository
         if (array_key_exists("stock", $filtros)) {
 
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("diferencia_product", ">", 0);
+                $consulta->having("solicitar", ">", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("diferencia_product", "<", 0);
+                $consulta->having("solicitar", "<", 0);
             }
         }
 
@@ -374,7 +374,20 @@ class ProductRepository
 
     public function builerFiltrarProductForIaOrderAssistantTypeSales($filtros): Builder
     {
-        // solicitar = stock - ventas
+        // solicitar = stock - ventas individuales
+
+        $ventasIndividualDelProducto = '
+            (
+                SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND orders.status = "Completed"
+            ) "
+        
+        ';
+
 
         $columnas = [
             'id',
@@ -437,6 +450,7 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
+            DB::raw(' stock - ' . $ventasIndividualDelProducto . '  AS solicitar'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -503,12 +517,12 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
-        // hay que cambiar el demanda_ajustada por solicitar
-        if (array_key_exists("expProd", $filtros)) {
-            if ($filtros["expProd"] == true) {
-                $consulta->having("demanda_ajustada", ">", 0);
-            }
-        }
+
+        // if (array_key_exists("expProd", $filtros)) {
+        //     if ($filtros["expProd"] == true) {
+        //         $consulta->having("demanda_ajustada", ">", 0);
+        //     }
+        // }
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
@@ -521,10 +535,10 @@ class ProductRepository
         if (array_key_exists("stock", $filtros)) {
 
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("diferencia_product", ">", 0);
+                $consulta->having("solicitar", ">", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("diferencia_product", "<", 0);
+                $consulta->having("solicitar", "<", 0);
             }
         }
 
