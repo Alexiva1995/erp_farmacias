@@ -114,6 +114,7 @@ declare module 'vue' {
     SupplierDiscountRulesDialog: typeof import('./resources/js/components/dialogs/SupplierDiscountRulesDialog.vue')['default']
     SupplierEditDialog: typeof import('./resources/js/components/dialogs/SupplierEditDialog.vue')['default']
     SupplierFilters: typeof import('./resources/js/components/SupplierFilters.vue')['default']
+    SupplierIaOrderAssistantFilter: typeof import('./resources/js/components/SupplierIaOrderAssistantFilter.vue')['default']
     SupplierLaboratoryEditDialog: typeof import('./resources/js/components/dialogs/SupplierLaboratoryEditDialog.vue')['default']
     SupplierPendingInvoicesDialog: typeof import('./resources/js/components/dialogs/SupplierPendingInvoicesDialog.vue')['default']
     SupplierTable: typeof import('./resources/js/components/SupplierTable.vue')['default']

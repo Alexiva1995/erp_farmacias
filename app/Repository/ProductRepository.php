@@ -301,6 +301,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
+        if ($filtros["tipo_vista"] == true) {
+            $consulta->has("group");
+        }
+
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
@@ -384,7 +388,7 @@ class ProductRepository
                 WHERE order_details.product_id = products.id
                 AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
                 AND orders.status = "Completed"
-            ) "
+            )
         
         ';
 
@@ -502,6 +506,10 @@ class ProductRepository
 
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+
+        if ($filtros["tipo_vista"] == true) {
+            $consulta->has("group");
+        }
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
