@@ -38,6 +38,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
+        if ($request->filled("stock")) {
+            $filtros["stock"] = $request->stock;
+        }
+
 
         if ($request->filled("lapso_de_tiempo")) {
             $dateToday = new DateTime("now");

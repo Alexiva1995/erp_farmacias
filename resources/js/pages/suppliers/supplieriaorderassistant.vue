@@ -1,5 +1,6 @@
 <script setup lang="js">
 import SupplierIaOrderAssistantFilter from '@/components/SupplierIaOrderAssistantFilter.vue';
+import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
 
 // import DoctorFormDialoge from "@/components/dialogs/DoctorFormDialoge.vue";
 // import DoctorFilters from "@/components/DoctorFilters.vue";
@@ -74,6 +75,15 @@ async function actualizarTabla(){
 
 }
 
+const updateTableOptionsTable = options => {
+  // console.log(options)
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage
+  sortBy.value = options.sortBy[0]?.key
+  orderBy.value = options.sortBy[0]?.order
+}
+
+
 
 watch([
   tipo_de_vista,
@@ -109,5 +119,14 @@ onMounted(async () => {
     />
   </div>
   <div v-if="tipo_de_vista == true">vista grupal</div>
-  <div v-if="tipo_de_vista == false">vista individual</div>
+  <div v-if="tipo_de_vista == false">
+    <SupplierIaOrderAssistantIndividualTable
+      :products="statuModule.items"
+      :total-product="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptionsTable"
+    />
+  </div>
 </template>

@@ -75,40 +75,6 @@ const stockOpciones = [
             @update:model-value="emit('update:stock', $event)"
           />
         </VCol>
-        <!-- <VCol cols="12" sm="12" md="12">
-          <AppTextField
-            :model-value="props.buscador"
-            placeholder="Buscar por nombre, identificación o dirección..."
-            clearable
-            @update:model-value="emit('update:buscador', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaDesde_filtro"
-            label="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaDesde_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaHasta_filtro"
-            label="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaHasta_filtro', $event)"
-          />
-        </VCol> -->
       </VRow>
     </VCardText>
 
@@ -146,7 +112,7 @@ const stockOpciones = [
           </VListItem>
         </VList>
       </VMenu> -->
-      <VBtn color="success" variant="flat"> Cargar </VBtn>
+      <!-- <VBtn color="success" variant="flat"> Cargar </VBtn> -->
     </VCardActions>
   </VCard>
 </template>
