@@ -1,5 +1,6 @@
 <script setup lang="js">
 import SupplierIaOrderAssistantFilter from '@/components/SupplierIaOrderAssistantFilter.vue';
+import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssistantGrupoTable.vue';
 import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
 
 // import DoctorFormDialoge from "@/components/dialogs/DoctorFormDialoge.vue";
@@ -118,7 +119,16 @@ onMounted(async () => {
       @clear="handleClearFilters"
     />
   </div>
-  <div v-if="tipo_de_vista == true">vista grupal</div>
+  <div v-if="tipo_de_vista == true">
+    <SupplierIaOrderAssistantGrupoTable
+      :products="statuModule.items"
+      :total-product="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptionsTable"
+    />
+  </div>
   <div v-if="tipo_de_vista == false">
     <SupplierIaOrderAssistantIndividualTable
       :products="statuModule.items"
