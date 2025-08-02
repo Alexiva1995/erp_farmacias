@@ -36,7 +36,7 @@ const stockOptions = [
 
 const stock = [
   { title: "Exceso", value: "exceso" },
-  { title: "Faltas", value: "faltas" },
+  { title: "Fallas", value: "fallas" },
   { title: "All", value: "all" },
 ];
 
@@ -181,7 +181,6 @@ const handleClear = () => {
             :model-value="props.days"
             label="Dias"
             :items="diasVencimientos"
-            clearable
             @update:model-value="emit('update:days', $event)"
           />
         </VCol>

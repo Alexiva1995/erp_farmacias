@@ -5,97 +5,95 @@ import { computed, onMounted, ref, watch } from "vue";
 const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
-  selectedOrigin: [Number, String, null],
-  stockStatusFilter: [Boolean, null],
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
-  origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  mode: { type: String, default: "products" },
 });
 
 const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
-  "update:selectedOrigin",
-  "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
   "clear",
-  "export",
-  "add-product",
   "sort",
 ]);
 
-const stockOptions = [
-  { title: "Con Stock", value: true },
-  { title: "Sin Stock", value: false },
-];
-
 const sortOptions = [
   {
-    title: "Precio mayor",
-    icon: "tabler-arrow-up",
-    key: "sale_price",
-    order: "desc",
-  },
-  {
-    title: "Precio Menor",
-    icon: "tabler-arrow-down",
-    key: "sale_price",
+    title: "Nombre Producto (A-Z)",
+    icon: "tabler-sort-ascending-letters",
+    key: "product.name",
     order: "asc",
   },
   {
-    title: "Más Unidades",
-    icon: "tabler-plus",
-    key: "valid_stock",
+    title: "Nombre Producto (Z-A)",
+    icon: "tabler-sort-descending-letters",
+    key: "product.name",
     order: "desc",
   },
   {
-    title: "Menos Unidades",
-    icon: "tabler-minus",
-    key: "valid_stock",
+    title: "Laboratorio (A-Z)",
+    icon: "tabler-sort-ascending-letters",
+    key: "laboratory.name",
     order: "asc",
   },
   {
-    title: "Fecha pronto a Vencer",
+    title: "Laboratorio (Z-A)",
+    icon: "tabler-sort-descending-letters",
+    key: "laboratory.name",
+    order: "desc",
+  },
+  {
+    title: "Fecha Conteo (Reciente)",
     icon: "tabler-calendar-time",
-    key: "next_expiration",
+    key: "created_at",
+    order: "desc",
+  },
+  {
+    title: "Fecha Conteo (Antiguo)",
+    icon: "tabler-calendar-time",
+    key: "created_at",
     order: "asc",
   },
   {
-    title: "Más Vendidos",
-    icon: "tabler-trending-up",
-    key: "most_sold",
+    title: "Mayor Discrepancia",
+    icon: "tabler-alert-triangle",
+    key: "discrepancy",
+    order: "desc",
+  },
+  {
+    title: "Mayor Cantidad Contada",
+    icon: "tabler-arrow-up",
+    key: "counted_quantity",
     order: "desc",
   },
 ];
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
-
 const selectedSort = ref(null);
 
 const getStorageKey = () =>
-  `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
+  `inventory_cycle_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
 const loadSavedSort = () => {
   try {
     const saved = localStorage.getItem(getStorageKey());
     if (saved) {
       const parsedSort = JSON.parse(saved);
-      const isValidSort = sortOptions.find(
-        (option) =>
-          option.key === parsedSort.key && option.order === parsedSort.order
-      );
-      if (isValidSort) {
+      if (
+        sortOptions.some(
+          (opt) => opt.key === parsedSort.key && opt.order === parsedSort.order
+        )
+      ) {
         selectedSort.value = parsedSort;
         emit("sort", parsedSort);
       }
     }
   } catch (error) {
-    console.error("Error al cargar el filtro guardado:", error);
+    console.error("Error al cargar el filtro de ordenamiento guardado:", error);
   }
 };
 
@@ -103,7 +101,7 @@ const saveSortFilter = (sortFilter) => {
   try {
     localStorage.setItem(getStorageKey(), JSON.stringify(sortFilter));
   } catch (error) {
-    console.error("Error al guardar el filtro:", error);
+    console.error("Error al guardar el filtro de ordenamiento:", error);
   }
 };
 
@@ -116,34 +114,27 @@ const handleSortClick = (option) => {
 
 const clearSortFilter = () => {
   selectedSort.value = null;
-  try {
-    localStorage.removeItem(getStorageKey());
-  } catch (error) {
-    console.error("Error al limpiar el filtro:", error);
-  }
-
+  localStorage.removeItem(getStorageKey());
   emit("sort", { key: undefined, order: undefined });
 };
 
-const getSelectedSortTitle = () => {
+const getSelectedSortTitle = computed(() => {
   if (!selectedSort.value) return null;
-  const option = sortOptions.find(
+  return sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
       opt.order === selectedSort.value.order
-  );
-  return option ? option.title : null;
-};
+  )?.title;
+});
 
-const getSelectedSortIcon = () => {
+const getSelectedSortIcon = computed(() => {
   if (!selectedSort.value) return null;
-  const option = sortOptions.find(
+  return sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
       opt.order === selectedSort.value.order
-  );
-  return option ? option.icon : null;
-};
+  )?.icon;
+});
 
 const isOptionSelected = (option) => {
   return (
@@ -153,83 +144,51 @@ const isOptionSelected = (option) => {
   );
 };
 
-const handleClear = () => {
-  emit("clear");
-};
-
-// Computed para título dinámico
-const cardTitle = computed(() => {
-  return props.mode === "inventory" ? "Filtros de Inventario" : "Filtros";
-});
-
 onMounted(() => {
-  loadSavedSort();
+  if (currentUser.value?.id) {
+    loadSavedSort();
+  }
 });
 
 watch(
   () => currentUser.value?.id,
-  () => {
-    if (currentUser.value?.id) {
+  (newId) => {
+    if (newId) {
       loadSavedSort();
     }
-  },
-  { immediate: true }
+  }
 );
 </script>
 
 <template>
-  <VCard :title="cardTitle" class="mb-6">
+  <VCard title="Filtros de Conteos" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
+            placeholder="Buscar por Producto, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="Selecciona un laboratorio"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VAutocomplete
-            :model-value="props.selectedOrigin"
-            :items="props.origins"
-            :loading="props.loading"
-            label="Origen"
-            placeholder="Escribe para buscar un origen"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedOrigin', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Fecha de Conteo Desde"
             clearable
             :config="{
               altInput: true,
@@ -239,11 +198,10 @@ watch(
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Fecha de Conteo Hasta"
             clearable
             :config="{
               altInput: true,
@@ -259,7 +217,7 @@ watch(
     <VDivider />
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
 
@@ -293,7 +251,6 @@ watch(
             </VListItem>
           </VList>
         </VMenu>
-
         <VChip
           v-if="selectedSort"
           color="primary"
@@ -302,54 +259,12 @@ watch(
           closable
           @click:close="clearSortFilter"
         >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
+          <VIcon :icon="getSelectedSortIcon" size="14" class="me-1" />
+          {{ getSelectedSortTitle }}
         </VChip>
       </div>
 
       <VSpacer />
-
-      <!-- Botones solo para modo productos -->
-      <template v-if="mode === 'products'">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn
-              color="success"
-              variant="flat"
-              prepend-icon="tabler-upload"
-              v-bind="menuProps"
-            >
-              Exportar
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem @click="emit('export', 'xlsx')">
-              <template #prepend>
-                <VIcon
-                  icon="tabler-file-type-csv"
-                  class="me-2"
-                  color="success"
-                />
-              </template>
-              <VListItemTitle class="text-success">Excel</VListItemTitle>
-            </VListItem>
-            <VListItem @click="emit('export', 'pdf')">
-              <template #prepend>
-                <VIcon icon="tabler-file-type-pdf" class="me-2" />
-              </template>
-              <VListItemTitle>PDF</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
-
-        <VBtn
-          color="primary"
-          prepend-icon="tabler-plus"
-          @click="emit('add-product')"
-        >
-          Añadir Producto
-        </VBtn>
-      </template>
     </VCardActions>
   </VCard>
 </template>
