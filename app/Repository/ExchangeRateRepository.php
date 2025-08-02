@@ -11,10 +11,25 @@ class ExchangeRateRepository
 
     public function consultAll(): Collection
     {
-        $product = ExchangeRate::all();
+        $exhange = ExchangeRate::all();
 
 
-        return $product;
+        return $exhange;
+    }
+
+    public function consultOneCOP(): Model | null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
+
+
+        return $exhange;
+    }
+
+    public function consultOneBCV(): Model | null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'USD')->first();
+
+        return $exhange;
     }
 
     public function store(array $data): Model
