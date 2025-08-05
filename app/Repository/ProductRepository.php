@@ -301,9 +301,12 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
-        if ($filtros["tipo_vista"] == true) {
-            $consulta->has("group");
+        if (array_key_exists("tipo_vista", $filtros)) {
+            if ($filtros["tipo_vista"] == true) {
+                $consulta->has("group");
+            }
         }
+
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
@@ -507,8 +510,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
-        if ($filtros["tipo_vista"] == true) {
-            $consulta->has("group");
+        if (array_key_exists("tipo_vista", $filtros)) {
+            if ($filtros["tipo_vista"] == true) {
+                $consulta->has("group");
+            }
         }
 
         if (array_key_exists("q", $filtros)) {

@@ -2,14 +2,8 @@
 import SupplierIaOrderAssistantFilter from '@/components/SupplierIaOrderAssistantFilter.vue';
 import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssistantGrupoTable.vue';
 import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
-
-// import DoctorFormDialoge from "@/components/dialogs/DoctorFormDialoge.vue";
-// import DoctorFilters from "@/components/DoctorFilters.vue";
-// import DoctorTable from "@/components/DoctorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-// import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
-// import Swal from 'sweetalert2';
 import { onMounted, reactive, watch } from 'vue';
 import { useRouter } from "vue-router";
 const route= useRouter()
@@ -100,6 +94,18 @@ async () => {
   await actualizarTabla()
 })
 
+function generarPedido(){
+  // route.push(`/suppliers/supplieriaorderassistantgenerar-pedido?tipo_de_vista=${tipo_de_vista.value}`)
+  route.push({
+    path:"/suppliers/generar-pedido",
+    query:{
+      "tipo_filtracion":tipo_de_filtracion.value,
+      "lapso_de_tiempo":lapso_de_tiempo.value,
+      "stock":stock.value,
+    }
+  })
+}
+
 onMounted(async () => {
   await actualizarTabla()
 
@@ -117,6 +123,7 @@ onMounted(async () => {
       :lapso_de_tiempo="lapso_de_tiempo"
       :stock="stock"
       @clear="handleClearFilters"
+      @generarPedido="generarPedido"
     />
   </div>
   <div v-if="tipo_de_vista == true">
