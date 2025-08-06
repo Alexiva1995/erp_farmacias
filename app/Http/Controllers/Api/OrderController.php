@@ -8,6 +8,7 @@ use App\Services\Quotation\QuotationQueryService;
 use App\Contracts\Client;
 use App\Helpers\ApiResponse;
 use App\Services\Order\OrderActionService;
+use App\Services\Order\OrderQueryService;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
@@ -28,7 +29,8 @@ class OrderController extends Controller
     public function __construct(
         private QuotationQueryService $quotationQueryService,
         protected Client $client,
-        private OrderActionService $orderActionService
+        private OrderActionService $orderActionService,
+        private OrderQueryService $orderQueryService
     ) {}
     public function index(Request $request)
     {
@@ -94,7 +96,8 @@ class OrderController extends Controller
     }
 
 
-    public function storeOrderItem(AddOrderItemRequest $request, Order $order){
+    public function storeOrderItem(AddOrderItemRequest $request, Order $order)
+    {
         $validatedData = $request->validated();
         try {
             $orderItem = $this->orderActionService->addUpdateOrderItems($order, $validatedData);
@@ -138,7 +141,8 @@ class OrderController extends Controller
         }
     }
 
-    public function deleteOrderDetail(Order $order, OrderDetail $item){
+    public function deleteOrderDetail(Order $order, OrderDetail $item)
+    {
         if ($item->order_id !== $order->id) {
             return ApiResponse::error('El detalle del producto no pertenece a esta orden.', 403);
         }
@@ -150,10 +154,9 @@ class OrderController extends Controller
             Log::error('Error al eliminar producto de la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id, 'order_detail_id' => $item->id]);
             return ApiResponse::error('Error al eliminar el producto: ' . $e->getMessage(), 500);
         }
-
     }
 
-     public function abandonOrder(Order $order)
+    public function abandonOrder(Order $order)
     {
         if ($order->status !== 'Pending') {
             return ApiResponse::error('Solo se pueden abandonar órdenes abiertas.', 400);
@@ -165,5 +168,84 @@ class OrderController extends Controller
             Log::error('Error al abandonar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
             return ApiResponse::error('No se pudo abandonar la orden: ' . $e->getMessage(), 500);
         }
+    }
+
+    public function completeOrder(Order $orderId, Request $request)
+    {
+
+        if ($orderId->details()->doesntExist()) {
+            return ApiResponse::error('No hay productos en la orden', 500);
+        }
+
+        try {
+            $this->orderActionService->complete($orderId, $request);
+        } catch (\Exception $e) {
+            Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
+            return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function getcompletedOrder(Request $request)
+    {
+        $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function getAllOrder(Request $request)
+    {
+        $query = $this->orderQueryService->getFilteredQuery($request, 'all');
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function getAbandonedOrder(Request $request)
+    {
+        $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function getCancelledOrder(Request $request)
+    {
+        $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+
+    public function getCPrintOrder(int $orderId)
+    {
+        $order = Order::with('details.product','client','seller')->find($orderId);
+        if (!$order) {
+            return ApiResponse::error('Orden no encontrada.', 404);
+        }
+        return ApiResponse::success([
+            'order' => $order,
+        ], "Datos de la orden recuperados correctamente", 200);
     }
 }

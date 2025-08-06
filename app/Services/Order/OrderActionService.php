@@ -5,11 +5,14 @@ namespace App\Services\Order;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Product;
+use App\Models\Credit;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\CashClosing;
 use Exception;
 use App\Exceptions\InsufficientStockException;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class OrderActionService
 {
@@ -19,7 +22,7 @@ class OrderActionService
         try {
 
             $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
-                ->where('status', CashClosing::OPEN) // <-- Asume que tienes una constante OPEN
+                ->where('status', CashClosing::OPEN)
                 ->first();
             if (!$openCashRegisterClosing) {
                 throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
@@ -31,8 +34,8 @@ class OrderActionService
             }
 
             $order = Order::create($data);
-
             DB::commit();
+            $order->load('seller','client');
             return $order;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -45,9 +48,10 @@ class OrderActionService
     {
         try {
             $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status','Pending')
+                ->where('status', 'Pending')
                 ->with([
                     'client',
+                    'seller',
                     'details' => function ($query) {
                         $query->with([
                             'product' => function ($q) {
@@ -60,7 +64,7 @@ class OrderActionService
                 ->first();
             return $openOrder;
         } catch (\Exception $e) {
-              Log::error('Error en getMyOpenOrder para seller_id: ' . $sellerId . ' - ' . $e->getMessage(), [
+            Log::error('Error en getMyOpenOrder para seller_id: ' . $sellerId . ' - ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'exception' => $e
             ]);
@@ -69,18 +73,18 @@ class OrderActionService
     }
 
 
-       public function addUpdateOrderItems(Order $order, array $validatedData): OrderDetail
+    public function addUpdateOrderItems(Order $order, array $validatedData): OrderDetail
     {
         DB::beginTransaction();
         try {
-             
+
             $product = Product::findOrFail($validatedData['product_id']);
             $product->loadSum('lots', 'quantity');
             $availableStock = (int)$product->lots_sum_quantity ?? 0;
-        
+
             $requestedQuantity = $validatedData['quantity'];
             $unitPriceAtOrder = $validatedData['price_at_product'];
-              
+
             $orderItem = $order->details()->where('product_id', $validatedData['product_id'])->first();
 
             if ($requestedQuantity === 0) {
@@ -94,7 +98,7 @@ class OrderActionService
                 return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
             }
 
-             if ($requestedQuantity > $availableStock) {
+            if ($requestedQuantity > $availableStock) {
                 throw new InsufficientStockException(
                     $product->name,
                     $availableStock,
@@ -121,12 +125,11 @@ class OrderActionService
             $orderItem->load([
                 'product' => function ($q) {
                     $q->with('laboratory')
-                      ->withSum('lots', 'quantity');
+                        ->withSum('lots', 'quantity');
                 }
             ]);
             $orderItem->product->valid_stock_sum = $orderItem->product->lots_sum_quantity;
             return $orderItem;
-
         } catch (InsufficientStockException $e) {
             DB::rollBack();
             Log::warning("Intento de agregar o actualizar productos con stock insuficiente: " . $e->getMessage(), [
@@ -209,13 +212,13 @@ class OrderActionService
     public function abandonOrder(Order $order): Order
     {
         DB::beginTransaction();
-         try {
+        try {
             $order->status = 'abandoned';
             $order->save();
             DB::commit();
             Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
             return $order;
-         }catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al abandonar la orden: ' . $e->getMessage(), [
                 'order_id' => $order->id,
@@ -224,4 +227,132 @@ class OrderActionService
             throw $e;
         }
     }
+
+    public function invoicing($id){
+
+    }
+
+    public function complete(Order $orderId, Request $request): bool
+    {
+        DB::beginTransaction();
+        try {
+            $orderId->status = 'Completed';
+            $orderId->payment_methods = $request->payments;
+            $ivaEjecuted = false;
+
+            if (isset($request->changeAmount)) {
+                $orderId->money_returns = $request->changeAmount;
+            }
+
+            //$cliente->save();
+            $orderId->save();
+
+            if ($request->credit) {
+                Credit::create([
+                    'client_id' => $request->client_id,
+                    'order_id' => $orderId->id,
+                    'credit_amount' => $request->total_amount,
+                    'pending_amount' => $request->total_amount,
+                    'credit_date' => Carbon::now(),
+                    'status' => 'Active'
+                ]);
+            }
+
+            if ($request->generate_invoice) {
+                $this->invoicing($orderId->id);
+                $ivaEjecuted = true;
+            }
+
+            $orderId->load('details.product.lots');
+            foreach ($orderId->details as $detail) {
+                if ($detail->product) {
+
+                    if ($request->generate_invoice) {
+                        if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
+                            $this->invoicing($orderId->id);
+                            $ivaEjecuted = true;
+                        }
+                    }
+
+                    //   dd($detail->product->lots);
+                    //   $untsProd = $detail->product->quantity;
+                    $untsProd = $detail->product->quantity;
+                    if ($untsProd <= $detail->quantity) {
+                        //   $detail->product->quantity = 0;
+                    } else {
+                        //  $detail->product->quantity = $detail->quantity - $untsProd;
+                    }
+
+                    //$detail->product->save();
+                }
+            }
+
+            DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
+            $current_cash = CashClosing::where('status', 'open')->where('seller_id', $orderId->seller_id)->first();
+            if (!isset($current_cash)) {
+                $current_cash = CashClosing::create([
+                    'seller_id' => $orderId->seller_id,
+                    'status' =>  'open',
+                    'closing_date' => Carbon::now(),
+                ]);
+            }
+
+  
+            foreach ($request->payments as $paymend) {
+                if (isset($paymend['method'])) {
+                    switch ($paymend['method']) {
+                        case 'cash_usd':
+                            $current_cash->usd_cash += $paymend['amount'];
+                        break;
+                        case 'binance':
+                            $current_cash->usd_binance += $paymend['amount'];
+                        break;
+                        case 'paypal':
+                            $current_cash->usd_paypal += $paymend['amount'];
+                        break;
+                        case 'credit':
+                            $current_cash->usd_credit += $request->total_amount;
+                        break;
+                        case 'cash_bs':
+                            $current_cash->bs_cash += $paymend['amount'];
+                        break;
+                        case 'mobile_payment':
+                            $current_cash->bs_mobile += $paymend['amount'];
+                        break;
+                        case 'bank_transfer_bs':
+                            $current_cash->bs_transfer += $paymend['amount'];
+                        break;
+                        case 'card':
+                            $current_cash->bs_card += $paymend['amount'];
+                        break;
+                        case 'cash_cop':
+                            $current_cash->cop_cash += $paymend['amount'];
+                        break;
+                        case 'bank_transfer':
+                            $current_cash->cop_transfer += $paymend['amount'];
+                        break;
+                    }
+                }
+            }
+            
+            $total_bs = $current_cash->bs_cash+$current_cash->bs_mobile+$current_cash->bs_transfer+$current_cash->bs_card;
+            $total_cop = $current_cash->cop_cash+$current_cash->cop_transfer;
+            $total_usd = $current_cash->usd_cash+$current_cash->usd_binance+$current_cash->usd_paypal+$current_cash->usd_credit;
+
+            $current_cash->total_bs += $total_bs;
+            $current_cash->total_cop += $total_cop;
+            $current_cash->total_usd += $total_usd;
+            $current_cash->update();
+            DB::commit();
+            return true;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al completar la orden: ' . $e->getMessage(), [
+                'order_id' => $orderId->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
 }

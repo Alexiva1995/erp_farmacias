@@ -105,7 +105,13 @@ Route::prefix("tpv")->group(function () {
     Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
     Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
+    Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
     // Rutas de Pedidos General
+    Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
+    Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
+    Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
+    Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
+    Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
 });
 
 

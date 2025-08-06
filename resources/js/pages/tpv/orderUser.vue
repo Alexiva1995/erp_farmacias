@@ -10,6 +10,7 @@ import { onMounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { useAuthStore } from "@/stores/auth";
+import OrderTicket from "@/components/OrderTicket.vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -37,6 +38,7 @@ const clientIdentification = ref("");
 const showRegisterClientModal = ref(false);
 const selectedClient = ref(null);
 const isLoadingInitialOrder = ref(true);
+const isPrinting = ref(false);
 
 const selectedDisplayCurrency = ref("COP");
 
@@ -77,6 +79,11 @@ const openOrderData = ref(null);
 const orderItems = ref([]);
 
 const showBuysModal = ref(false);
+
+const paymentsForPrint = ref([]);
+const changeAmountForPrint = ref(0);
+const creditAmountForPrint = ref(0);
+const creditForPrint = ref(false);
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -180,6 +187,7 @@ onMounted(async () => {
     const response = await axios.get("/tpv/order/seller/my-open-order");
     if (response.data.data && response.data.data.order) {
       openOrderData.value = response.data.data.order;
+      console.log(openOrderData);
       selectedClient.value = response.data.data.order.client;
       hasOpenOrder.value = true;
       if (openOrderData.value.currency) {
@@ -278,6 +286,7 @@ const verifyClient = async (identification) => {
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
+    console.log(responseData)
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -303,7 +312,7 @@ const verifyClient = async (identification) => {
       } else {
         hasOpenOrder.value = false;
         openOrderData.value = null;
-        addOrden(clientData.id);
+        await addOrden(clientData.id);
       }
     }
   } catch (error) {
@@ -321,11 +330,14 @@ const addOrden = async (id) => {
   try {
     const response = await axios.post("/tpv/orders", params);
     openOrderData.value = response.data.data.order;
+    console.log(response.data.data);
     hasOpenOrder.value = true;
     toast.success("Orden creada exitosamente.");
+    return response.data.data.order;
   } catch (error) {
     console.error("Error al agregar la orden:", error);
     toast.error("Error al agregar la orden.");
+    return null;
   }
 };
 
@@ -736,8 +748,98 @@ const closeBuysModal = () => {
     showBuysModal.value = false;
 };
 
-const handleBuysCompletion = (orderId) => {
+const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount, switchStates) => {
+
+  try {
+    const payload = {
+      order_id: orderId,
+      payments: paymentsData,
+      total_amount: myCalculatedTotal.value, 
+      currency: selectedDisplayCurrency.value, 
+      client_id: selectedClient.value?.id, 
+      seller_id: currentUser.value?.id,
+      balance_used: switchStates.balance_switch,
+      generate_invoice: switchStates.invoice_switch,
+      credit: credit,
+      changeAmount: changeAmount,
+    };
+
+    const response = await axios.post(`/tpv/orders/${orderId}/complete`, payload);
+    if (response.status === 200 || response.status === 201) {
+      toast.success("¡Compra finalizada y registrada con éxito!");
+
+      paymentsForPrint.value = [...paymentsData];
+      changeAmountForPrint.value = changeAmount;
+      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditForPrint.value = credit;
+      await fetchProducts();
+      showBuysModal.value = false; 
+      isPrinting.value = true;
+      await nextTick();
+      const printContents = document.getElementById("orderPrint");
+      if (printContents) {
+      const printWindow = window.open("", "", "height=600,width=800");
+      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+      const styleSheets = document.styleSheets;
+      for (let i = 0; i < styleSheets.length; i++) {
+        const sheet = styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            let cssText = '';
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              cssText += sheet.cssRules[j].cssText;
+            }
+            printWindow.document.write(`<style>${cssText}</style>`);
+          } else if (sheet.href) {
+            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          }
+        } catch (e) {
+          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
+        }
+      }
+      printWindow.document.write("</head><body>");
+      printWindow.document.write(printContents.innerHTML);
+      printWindow.document.write("</body></html>");
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    } else {
+      console.warn("Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
+      window.print();
+    }
+
+    }else{
+      toast.error(`Error inesperado al finalizar la compra: ${response.data.message || 'Intente de nuevo.'}`);
+      
+    }
+
+
+    setTimeout(() => {
+      isPrinting.value = false;
+      paymentsForPrint.value = [];
+      hasOpenOrder.value = false;
+      openOrderData.value = null;
+      selectedClient.value = null;
+      orderItems.value = [];
+      changeAmountForPrint.value = 0;
+      creditAmountForPrint.value = 0;
+      clientIdentification.value = "";
+      creditForPrint.value = false;
+    }, 500);
+
+  } catch (error) {
+    console.error("Error al finalizar la compra:", error.response ? error.response.data : error.message);
+    const errorMessage = error.response?.data?.message || "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
+    toast.error(errorMessage);
+    isPrinting.value = false;
+    paymentsForPrint.value = [];
+    changeAmountForPrint.value = 0;
+    creditAmountForPrint.value = 0;
+    creditForPrint.value = false;
+  }
 };
+
 </script>
 <template>
   <div>
@@ -811,8 +913,23 @@ const handleBuysCompletion = (orderId) => {
             :total-amount="myCalculatedTotal"
             :selected-currency="selectedDisplayCurrency"
             @modal-closed="closeBuysModal"
-            @Buys-completed="handleBuysCompletion"
+            @purchase-completed="handleBuysCompletion"
         />
+
+
+     <div id="orderPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
+      <OrderTicket
+        v-if="isPrinting && openOrderData"
+        :order-data="openOrderData"
+        :order-products="orderItems"
+        :total-amount="myCalculatedTotal"
+        :selected-currency="selectedDisplayCurrency"
+        :payments="paymentsForPrint"
+        :change-amount="changeAmountForPrint"
+        :credit-amount="creditAmountForPrint"
+        :credit="creditForPrint"
+      />
+    </div>
 
   </div>
 </template>

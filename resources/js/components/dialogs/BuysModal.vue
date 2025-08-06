@@ -193,8 +193,6 @@ onMounted(() => {
 });
 
 const remainingAmount = computed(() => {
-  console.log(props.totalAmount);
-  console.log(totalPaidAmount.value);
   const rawDifference = props.totalAmount - totalPaidAmount.value;
   return roundToTwoDecimalPlaces(rawDifference);
 });
@@ -249,7 +247,7 @@ const canAddPaymentBlock = computed(() => {
 });
 
 const closeModal = () => {
-  dialogVisible.value = false;
+  emit("update:isDialogVisible", false);
   emit("modal-closed");
   resetProgress();
 };
@@ -288,7 +286,6 @@ const handleCompletePurchase = () => {
 
   if (currentProgress.value === 50 && payments.value[0].method !== "credit") {
     let finalRemainingAmount = remainingAmount.value;
-    console.log(finalRemainingAmount);
     if (Math.abs(finalRemainingAmount) < tolerance) {
       finalRemainingAmount = 0;
     }
@@ -333,12 +330,14 @@ const handleCompletePurchase = () => {
       currentProgress.value = 100;
     }
   } else {
-    console.log("Completando compra...");
-    console.log("Datos de la orden:", props.orderData);
-    console.log("Monto total:", props.totalAmount, props.selectedCurrency);
-    console.log("Pagos a enviar:", JSON.parse(JSON.stringify(payments.value))); // Debugging final
-
-    emit("purchase-completed", props.orderData.id, payments.value);
+    emit(
+  "purchase-completed",
+  props.orderData.id,
+  payments.value,
+  hasCreditPayment.value, 
+  changeAmount.value, 
+  {balance_switch: balanceSwitch.value,invoice_switch: invoiceSwitch.value,}
+);
     dialogVisible.value = false;
     resetProgress();
   }
@@ -691,15 +690,15 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <span class="font-weight-bold text-h6"> Cajero </span>
           <span class="font-weight-bold text-h6">
-            {{ props.orderData.seller_id }}
+            {{ props.orderData.seller?.username || 'N/A' }}
           </span>
         </div>
 
         <div class="d-flex flex-wrap justify-space-between">
           <span class="font-weight-bold text-h6"> Cedula </span>
           <span class="font-weight-bold text-h6">
-            {{ props.orderData.client.identification_type }}
-            {{ props.orderData.client.identification }}
+            {{ props.orderData.client?.identification_type || 'N/A' }}
+            {{ props.orderData.client?.identification || 'N/A' }}
           </span>
         </div>
 
@@ -795,6 +794,16 @@ const showChangeAmount = computed(() => {
             {{ formatCurrency(totalAmount, props.selectedCurrency) }}
           </p>
         </div>
+        <div
+          v-if="showChangeAmount"
+          class="d-flex flex-wrap justify-space-between"
+        >
+          <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
+          <p class="font-weight-bold text-h6 mt-2">
+            {{ formatCurrency(changeAmount, props.selectedCurrency) }}
+          </p>
+        </div>
+
           <p class='font-weight-bold text-center text-success'>¡GRACIAS POR SU COMPRA!</p>
       </VCardText>
       <VCardActions class="p-4 d-flex flex-wrap justify-space-between">
