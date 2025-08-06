@@ -38,4 +38,9 @@ class ExchangeRateController extends Controller
     {
         return $this->exchangeRate->consultOneCOP();
     }
+
+    public function consultOneBCV()
+    {
+        return $this->exchangeRate->consultOneBCV();
+    }
 }

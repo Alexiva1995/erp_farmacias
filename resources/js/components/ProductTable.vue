@@ -5,9 +5,15 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  mode: { type: String, default: "products" },
 });
 
-const emit = defineEmits(["update:options", "edit-product", "delete-product"]);
+const emit = defineEmits([
+  "update:options",
+  "edit-product",
+  "delete-product",
+  "count-product",
+]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -20,16 +26,16 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
-const calculateValidStock = (product) => {
-  if (!product.lots || !Array.isArray(product.lots)) return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return product.lots
-    .filter(
-      (lot) => lot.expiration_date && new Date(lot.expiration_date) >= today
-    )
-    .reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
-};
+// const calculateValidStock = (product) => {
+//   if (!product.lots || !Array.isArray(product.lots)) return 0;
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+//   return product.lots
+//     .filter(
+//       (lot) => lot.expiration_date && new Date(lot.expiration_date) >= today
+//     )
+//     .reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+// };
 
 const nextExpirationDate = (product) => {
   if (
@@ -58,7 +64,6 @@ const calculateSalePriceWithIva = (product) => {
 
   if (product.iva == 1) {
     const priceWithIva = basePrice * 1.16;
-    console.log(product);
     return priceWithIva.toFixed(2);
   }
 
@@ -70,6 +75,18 @@ const formatPrice = (price) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price);
+};
+
+const getInventoryStatus = (product) => {
+  const stock = calculateValidStock(product);
+
+  if (stock === 0) return { text: "Sin Stock", color: "error" };
+  if (stock < 10) return { text: "Stock Bajo", color: "warning" };
+  if (product.last_count_discrepancy > 0)
+    return { text: "Sobrante", color: "info" };
+  if (product.last_count_discrepancy < 0)
+    return { text: "Faltante", color: "error" };
+  return { text: "Normal", color: "success" };
 };
 </script>
 
@@ -118,7 +135,7 @@ const formatPrice = (price) => {
       </template>
 
       <template #item.valid_stock="{ item }">
-        <span class="font-weight-medium">{{ calculateValidStock(item) }}</span>
+        <span class="font-weight-medium">{{ item.stock }}</span>
       </template>
 
       <template #item.next_expiration="{ item }">
@@ -143,12 +160,23 @@ const formatPrice = (price) => {
       </template>
 
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-product', item)">
-          <VIcon icon="tabler-edit" />
-        </IconBtn>
-        <IconBtn @click="emit('delete-product', item.id)">
-          <VIcon icon="tabler-trash" />
-        </IconBtn>
+        <template v-if="mode === 'products'">
+          <IconBtn @click="emit('edit-product', item)">
+            <VIcon icon="tabler-edit" />
+          </IconBtn>
+          <IconBtn @click="emit('delete-product', item.id)">
+            <VIcon icon="tabler-trash" />
+          </IconBtn>
+        </template>
+
+        <template v-else-if="mode === 'inventory'">
+          <IconBtn @click="emit('count-product', item)">
+            <VIcon icon="tabler-scan" />
+            <VTooltip activator="parent" location="top">
+              Contar producto
+            </VTooltip>
+          </IconBtn>
+        </template>
       </template>
     </VDataTableServer>
   </VCard>
