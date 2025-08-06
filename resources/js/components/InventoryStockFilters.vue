@@ -11,7 +11,7 @@ const props = defineProps({
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  expirationDays: [String, null],
+  days: [String, null],
   stock: [String, null],
 });
 
@@ -36,7 +36,7 @@ const stockOptions = [
 
 const stock = [
   { title: "Exceso", value: "exceso" },
-  { title: "Faltas", value: "faltas" },
+  { title: "Fallas", value: "fallas" },
   { title: "All", value: "all" },
 ];
 
@@ -178,11 +178,10 @@ const handleClear = () => {
         </VCol>
         <VCol cols="12" sm="6" md="4">
           <VSelect
-            :model-value="props.expirationDays"
-            label="Dias de vencimiento"
+            :model-value="props.days"
+            label="Dias"
             :items="diasVencimientos"
-            clearable
-            @update:model-value="emit('update:expirationDays', $event)"
+            @update:model-value="emit('update:days', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">

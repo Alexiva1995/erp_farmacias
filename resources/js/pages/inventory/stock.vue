@@ -23,7 +23,7 @@ const selectedLaboratory = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
-const expirationDays = ref(15);
+const days = ref(30);
 const stock = ref("all");
 const expProd = ref(false);
 
@@ -61,7 +61,7 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
-    expirationDays: expirationDays.value,
+    days: days.value,
     stock: stock.value,
     expProd: expProd.value,
   };
@@ -86,7 +86,7 @@ const handleClearFilters = () => {
   startDate.value = null;
   endDate.value = null;
   stock.value = "all";
-  expirationDays.value = 15;
+  days.value = 30;
   expProd.value = false;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
@@ -106,7 +106,7 @@ watch(
     [
       expProd,
       stock,
-      expirationDays,
+      days,
       searchQuery,
       selectedLaboratory,
       stockStatusFilter,
@@ -166,7 +166,7 @@ async function exportarPdf(){
       orderBy: orderBy.value,
       startDate: startDate.value,
       endDate: endDate.value,
-      expirationDays: expirationDays.value,
+      days: days.value,
       stock: stock.value,
       expProd: expProd.value,
   }
@@ -193,16 +193,27 @@ async function exportarExcel(formato){
         orderBy: orderBy.value,
         startDate: startDate.value,
         endDate: endDate.value,
-        expirationDays: expirationDays.value,
+        days: days.value,
         stock: stock.value,
         expProd: expProd.value,
         formato
     }
 
-    let respuestaApi = await axios.get(`/inventory/stock/exportar/excel`,{
-      params,
-      responseType: "blob",
-    })
+    // let respuestaApi = await axios.get(`/inventory/stock/exportar/excel`,{
+    //   params,
+    //   responseType: "blob",
+    // })
+
+    let respuestaApi = await axios.post(
+      '/inventory/stock/exportar/excel',
+      params,  // Tus parámetros como objeto
+      {
+        responseType: 'blob',
+        headers: {
+          'Content-Type': 'application/json',  // Asegura el envío correcto de los parámetros
+        }
+      }
+    );
 
     console.log("res => ",respuestaApi)
 
@@ -241,7 +252,7 @@ async function exportarExcel(formato){
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
-      v-model:expirationDays="expirationDays"
+      v-model:days="days"
       v-model:stock="stock"
       v-model:expProd="expProd"
       :laboratories="laboratories"

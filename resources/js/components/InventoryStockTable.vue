@@ -12,11 +12,37 @@ const emit = defineEmits(["update:options"]);
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "stock", sortable: true },
-  { title: "Promedio", key: "sales_average", sortable: true },
-  { title: "Preferencia", key: "preferencia_product", sortable: true },
-  { title: "Diferencia ", key: "diferencia_product", sortable: true },
+  {
+    title: "Preferencia",
+    key: "preferencia_product",
+    sortable: true,
+    value: (item) =>
+      item.preferencia_product != "" && item.preferencia_product != null
+        ? parseFloat(item.preferencia_product).toFixed(2)
+        : 0,
+  },
+  {
+    title: "Promedio",
+    key: "promedio_calculado",
+    sortable: true,
+    value: (item) =>
+      item.promedio_calculado != "" && item.promedio_calculado != null
+        ? parseFloat(item.promedio_calculado).toFixed(2)
+        : 0,
+  },
+  {
+    title: "Diferencia ",
+    key: "diferencia_product",
+    sortable: true,
+    value: (item) =>
+      item.diferencia_product != "" && item.diferencia_product != null
+        ? parseFloat(item.diferencia_product).toFixed(2)
+        : 0,
+  },
 ];
 </script>
 
@@ -32,6 +58,24 @@ const headers = [
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.name="{ item }">
+        <div class="d-flex align-center gap-x-4">
+          <div class="d-flex flex-column">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
+
+            <span class="text-sm text-disabled">{{
+              item.active_ingredient
+            }}</span>
+          </div>
+        </div>
+      </template>
     </VDataTableServer>
   </VCard>
 </template>

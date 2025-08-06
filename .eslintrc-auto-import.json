@@ -367,6 +367,8 @@
     "pdfClienstGenerator": true,
     "pdfCompaniesGenerator": true,
     "pdfDoctorsGenerator": true,
+    "useDataTable": true,
+    "useCyclicTable": true,
     "pdfStockProductsGenerator": true
   }
 }
