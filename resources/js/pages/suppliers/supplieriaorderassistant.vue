@@ -101,7 +101,7 @@ function generarPedido(){
     query:{
       "tipo_filtracion":tipo_de_filtracion.value,
       "lapso_de_tiempo":lapso_de_tiempo.value,
-      "stock":stock.value,
+      // "stock":stock.value,
     }
   })
 }
