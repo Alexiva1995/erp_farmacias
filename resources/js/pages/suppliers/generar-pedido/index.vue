@@ -1,13 +1,16 @@
 <script setup lang="js">
+import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
 import axios from "@/plugins/axios";
-import { onMounted, reactive } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 
 const route= useRoute()
 
 console.log(route.query)
+
+const indexNavegacion=ref(1)
 
 const module=reactive({
   dataProductos:{},
@@ -128,6 +131,11 @@ onMounted(async () => {
 //   console.log(input.target.value)
 // }
 
+
+function actualizarIndexNavegacion(payload){
+  indexNavegacion.value=payload
+}
+
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
@@ -138,12 +146,33 @@ function generateUUID() {
 </script>
 <template>
   <div>
-    <VCard title="IA Assistence de Pedidos" class="mb-6"></VCard>
-    <VCard title="porductos que excedieron la tolerancia" class="mb-6">
+    <NavegationIaAutoOrder
+      :index-navegacion="indexNavegacion"
+      @actualizar-index-navegacion="actualizarIndexNavegacion"
+    />
+    <VCard title="" class="mb-6" v-if="indexNavegacion == 1">
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard title="productos que no excedieron la tolerancia" class="mb-6">
+    <VCard
+      title="productos que no excedieron la tolerancia"
+      class="mb-6"
+      v-if="indexNavegacion == 2"
+    >
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
+    </VCard>
+    <VCard
+      title="Oportunidades Unicas de Mercado"
+      class="mb-6"
+      v-if="indexNavegacion == 3"
+    >
+      <h1>pantalla 3</h1>
+    </VCard>
+    <VCard
+      title="Detalles de la Orden"
+      class="mb-6"
+      v-if="indexNavegacion == 4"
+    >
+      <h1>pantalla 4</h1>
     </VCard>
   </div>
 </template>

@@ -76,6 +76,7 @@ declare module 'vue' {
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
     LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
+    NavegationIaAutoOrder: typeof import('./resources/js/components/NavegationIaAutoOrder.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
     OrderWithPsychotropicsTable: typeof import('./resources/js/components/OrderWithPsychotropicsTable.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
