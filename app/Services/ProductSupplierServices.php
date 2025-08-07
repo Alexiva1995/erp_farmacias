@@ -55,7 +55,15 @@ class ProductSupplierServices implements ProductSupplier
 
                     $oferta = $ofertas[$index2];
 
-                    $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
+                    $suma = null;
+
+                    // formula dependiendo si el solicitar es positivo o negativo
+                    if ((int)$products[$index]->solicitar >= 0) {
+                        $suma = $ofertas[$index2]->quantity - (int)$products[$index]->solicitar;
+                    } else {
+                        $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
+                    }
+
                     if ($suma < 0) {
                         $products[$index]->solicitar = $suma;
                         $reponer = $ofertas[$index2]->quantity;
