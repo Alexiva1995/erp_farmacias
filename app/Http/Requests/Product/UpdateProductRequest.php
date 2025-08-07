@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Requests\Product;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateProductRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
+     */
+    public function authorize()
+    {
+        return true;
+    }
+
+    /**
+     * 
+     *
+     * 
+     */
+    protected function prepareForValidation()
+    {
+        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+            $this->request->remove('photo_url');
+        }
+        $this->merge([
+            'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
+            'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
+            'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
+        ]);
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, mixed>
+     */
+    public function rules()
+    {
+        $productId = $this->route('product')->id ?? null;
+
+        return [
+            'name' => 'sometimes|string|max:255',
+            'active_ingredient' => 'nullable|string|max:255',
+            'laboratory_id' => 'nullable|integer|exists:laboratories,id',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'origin_id' => 'nullable|integer|exists:origins,id',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
+            'psychotropic' => 'sometimes|boolean',
+            'iva' => 'sometimes|boolean',
+            'is_colombian_origin' => 'sometimes|boolean',
+            'group_id' => 'nullable|integer|exists:groups_products,id',
+            'photo_url' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'max:2048',
+            ],
+        ];
+    }
+}

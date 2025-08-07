@@ -25,7 +25,7 @@ class Supplier extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'supplier_name',
+        'name',
         'social_reason',
         'sales_phone',
         'collections_phone',
@@ -36,6 +36,12 @@ class Supplier extends Model
         'cash_payment',
         'charges_igtf',
         'rating',
+        'is_deleted'
+    ];
+
+    protected $casts = [
+        'dispatch_days' => 'array',
+        'order_days' => 'array',
     ];
 
     /**
@@ -44,6 +50,9 @@ class Supplier extends Model
      *
      * @var array<string, string>
      */
+
+    protected $appends = ['debt'];
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
@@ -52,5 +61,70 @@ class Supplier extends Model
     public function laboratories(): BelongsToMany
     {
         return $this->belongsToMany(Laboratory::class, 'suppliers_laboratories');
+    }
+
+    public function autoOrders()
+    {
+        return $this->hasMany(AutoOrder::class);
+    }
+
+    public function productSuppliers()
+    {
+        return $this->hasMany(ProductSupplier::class);
+    }
+
+    public function laboratoryLinks()
+    {
+        return $this->hasMany(SupplierLaboratory::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class);
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(SupplierRating::class);
+    }
+
+    public function configProducts()
+    {
+        return $this->hasMany(SuppliersConfigProduct::class);
+    }
+
+    public function paymentRule()
+    {
+        return $this->hasOne(PaymentRule::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function psychotropicControls()
+    {
+        return $this->hasMany(PsychotropicControl::class);
+    }
+
+    public function scores()
+    {
+        return $this->hasMany(SupplierScore::class);
+    }
+
+    public function latestScore()
+    {
+        return $this->hasOne(SupplierScore::class)->latestOfMany('evaluated_on');
+    }
+
+    public function getDebtAttribute(): float
+    {
+        return $this->invoices->sum->outstanding_debt;
     }
 }

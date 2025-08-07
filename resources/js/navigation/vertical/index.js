@@ -1,9 +1,11 @@
-import appsAndPages from './apps-and-pages'
-import charts from './charts'
-import dashboard from './dashboard'
-import forms from './forms'
+import crm from './crm'
+import finances from './finances'
+import fiscal from './fiscal'
 import inventory from './inventory'
-import others from './others'
-import uiElements from './ui-elements'
+import InventoryCycle from './InventoryCycle'
+import invoice from './invoice'
+import lot from './lot'
+import suppliers from './suppliers'
+import tpv from './tpv'
 
-export default [...dashboard, ...inventory, ...appsAndPages, ...uiElements, ...forms, ...charts, ...others]
+export default [...inventory, ...lot, ...tpv, ...crm, ...fiscal, ...finances, ...InventoryCycle, ...suppliers, ...invoice]
