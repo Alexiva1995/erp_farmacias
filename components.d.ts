@@ -79,6 +79,8 @@ declare module 'vue' {
     InventoryStockFilters: typeof import('./resources/js/components/InventoryStockFilters.vue')['default']
     InventoryStockTable: typeof import('./resources/js/components/InventoryStockTable.vue')['default']
     InvoiceCyclicTable: typeof import('./resources/js/components/InvoiceCyclicTable.vue')['default']
+    InvoiceFilters: typeof import('./resources/js/components/InvoiceFilters.vue')['default']
+    InvoiceTable: typeof import('./resources/js/components/InvoiceTable.vue')['default']
     InvoiceToCountTable: typeof import('./resources/js/components/InvoiceToCountTable.vue')['default']
     LoaderComponent: typeof import('./resources/js/components/LoaderComponent.vue')['default']
     LotDistributionModal: typeof import('./resources/js/components/dialogs/LotDistributionModal.vue')['default']
