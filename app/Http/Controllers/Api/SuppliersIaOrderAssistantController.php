@@ -107,30 +107,30 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"]);
         $respuesta["productosFallas"] = $productosFallas;
         // codigo para listar porductos que tengan oportunidad unica de mercado
-        $productosExceso = null;
+        // $productosExceso = null;
 
-        $filtrosConExistencia = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => "1 year",
-            "stock"             => "exceso",
-            "dateToday"         => null,
-            "previousDate"      => null,
-            "orderBy"      => "asc",
-            "sortBy"      => "stock",
-        ];
+        // $filtrosConExistencia = [
+        //     "tipo_filtracion"   => $request->tipo_filtracion,
+        //     "lapso_de_tiempo"   => "1 year",
+        //     "stock"             => "exceso",
+        //     "dateToday"         => null,
+        //     "previousDate"      => null,
+        //     "orderBy"      => "asc",
+        //     "sortBy"      => "stock",
+        // ];
 
-        $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d");
-        $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
+        // $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d");
+        // $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
 
 
-        if ($filtrosConExistencia["tipo_filtracion"] == "average") {
-            $productosExceso = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosConExistencia);
-        }
-        if ($filtrosConExistencia["tipo_filtracion"] == "sales") {
-            $productosExceso = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
-        }
+        // if ($filtrosConExistencia["tipo_filtracion"] == "average") {
+        //     $productosExceso = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosConExistencia);
+        // }
+        // if ($filtrosConExistencia["tipo_filtracion"] == "sales") {
+        //     $productosExceso = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
+        // }
 
-        $respuesta["productosExceso"] = $productosExceso;
+        // $respuesta["productosExceso"] = $productosExceso;
 
         return ApiResponse::success($respuesta, "ok", 200);
     }

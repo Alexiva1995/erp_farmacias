@@ -47,7 +47,7 @@ class ProductSupplierServices implements ProductSupplier
 
             $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index]);
             $products[$index]->ofertas = $ofertas;
-            $products[$index]->repuesto = 0;
+            // $products[$index]->repuesto = 0;
             $products[$index]->solicitar = ceil((int)$products[$index]->solicitar);
 
             if ((int)$products[$index]->solicitar < 0) {
@@ -56,15 +56,15 @@ class ProductSupplierServices implements ProductSupplier
                     $oferta = $ofertas[$index2];
 
                     $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
-                    if ($suma >= 0) {
-                        $products[$index]->repuesto = abs((int)$products[$index]->solicitar);
+                    if ($suma < 0) {
+                        $products[$index]->solicitar = $suma;
+                        $reponer = $ofertas[$index2]->quantity;
+                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
+                    } else if ($suma >= 0) {
+                        $reponer = abs((int)$products[$index]->solicitar);
                         $products[$index]->solicitar = 0;
-                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta);
+                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
                         break;
-                    } else if ($suma < 0) {
-                        $products[$index]->solicitar = (int)$suma;
-                        $products[$index]->repuesto += $ofertas[$index2]->quantity;
-                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta);
                     }
                 }
             }
@@ -72,7 +72,7 @@ class ProductSupplierServices implements ProductSupplier
         return $respuesta;
     }
 
-    public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier): array
+    public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, $repuesto): array
     {
         $data = [
             // object
@@ -80,7 +80,7 @@ class ProductSupplierServices implements ProductSupplier
             "product" => $product,
             "productSupplier" => $productSupplier,
             // data
-            "reponer" => $product->repuesto,
+            "reponer" => $repuesto,
             "solicitar" => $product->solicitar,
             "percentageIncrease" => 0,
             "increase" => null,

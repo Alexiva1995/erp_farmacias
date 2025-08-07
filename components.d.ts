@@ -90,6 +90,7 @@ declare module 'vue' {
     ProductLotDialog: typeof import('./resources/js/components/dialogs/ProductLotDialog.vue')['default']
     ProductLotEditDialog: typeof import('./resources/js/components/dialogs/ProductLotEditDialog.vue')['default']
     ProductProfitabilityEditDialog: typeof import('./resources/js/components/dialogs/ProductProfitabilityEditDialog.vue')['default']
+    ProductsExceededDidNotToleranceTable: typeof import('./resources/js/components/ProductsExceededDidNotToleranceTable.vue')['default']
     ProductsExceededToleranceTable: typeof import('./resources/js/components/ProductsExceededToleranceTable.vue')['default']
     ProductsLotsFilters: typeof import('./resources/js/components/ProductsLotsFilters.vue')['default']
     ProductsLotsTable: typeof import('./resources/js/components/ProductsLotsTable.vue')['default']

@@ -20,7 +20,7 @@ interface ProductSupplier
 
     public function getSupplierToReplenishTheProducts(Collection $products): array;
 
-    public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier): array;
+    public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, int $repuesto): array;
 
     public function checkTolerance(array $replenishTheProducts): array;
 }

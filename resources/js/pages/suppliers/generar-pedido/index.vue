@@ -1,4 +1,5 @@
 <script setup lang="js">
+import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
 import axios from "@/plugins/axios";
 import { onMounted, reactive } from "vue";
@@ -110,11 +111,11 @@ onMounted(async () => {
     a.uuid=generateUUID()
     return a
   })
-  module.dataProductos=data.data
+  module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
 
-  module.productsExceededTolerance=module.productoFallas.filter(pro => pro.increase==true)
-  module.productsExceededDidNotTheTolerance=module.productoFallas.filter(pro => pro.increase==false)
+  // module.productsExceededTolerance=module.productoFallas.filter(pro => pro.increase==true)
+  // module.productsExceededDidNotTheTolerance=module.productoFallas.filter(pro => pro.increase==false)
 
   // ordenProducts.productsExceededTolerance=generarDatosDeProductosOrden(module.productsExceededTolerance)
   // ordenProducts.productsExceededDidNotTheTolerance=generarDatosDeProductosOrden(module.productsExceededDidNotTheTolerance)
@@ -122,10 +123,10 @@ onMounted(async () => {
 
 })
 
-function actualizarCantidadProductoQueSeExcedio(payload){
-  let {product_id,supplier_id,product_suppliers_id,input} = payload
-  console.log(input.target.value)
-}
+// function actualizarCantidadProductoQueSeExcedio(payload){
+//   let {product_id,supplier_id,product_suppliers_id,input} = payload
+//   console.log(input.target.value)
+// }
 
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -137,13 +138,12 @@ function generateUUID() {
 </script>
 <template>
   <div>
-    <VCard title="IA Assistence de Pedidos" class="mb-6">
-      <ProductsExceededToleranceTable
-        :dataProductos="module.dataProductos"
-        :list="module.productoFallas"
-        :productsExceededTolerance="module.productsExceededTolerance"
-        @actualizar-cantidad="actualizarCantidadProductoQueSeExcedio"
-      />
+    <VCard title="IA Assistence de Pedidos" class="mb-6"></VCard>
+    <VCard title="porductos que excedieron la tolerancia" class="mb-6">
+      <ProductsExceededToleranceTable :list="module.productoFallas" />
+    </VCard>
+    <VCard title="productos que no excedieron la tolerancia" class="mb-6">
+      <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
   </div>
 </template>

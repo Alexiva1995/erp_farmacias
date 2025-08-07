@@ -7,7 +7,7 @@ const props= defineProps({
 })
 
 const productosTable = computed(() => {
-  return props.list?.filter(pro => pro.increase == true) || [];
+  return props.list?.filter(pro => pro.increase == false) || [];
 });
 </script>
 
@@ -29,7 +29,6 @@ const productosTable = computed(() => {
       </thead>
 
       <tbody>
-        <!-- <tr v-for="item in props.list" :key="item.product.id"> -->
         <tr v-for="item in productosTable" :key="item.uuid">
           <td>
             {{ item.product.name }}
