@@ -5,6 +5,7 @@ import ExpiredDetailView from '@/components/ExpiredDetailView.vue';
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
 import { BASE64_LOGO_DATA } from '@/constants/logo.js';
 import { useAuthStore } from "@/stores/auth";
+import { formatDateTime } from "@/utils/formatDateTime";
 
 const props = defineProps({
   orderData: {
@@ -70,22 +71,6 @@ const logoSrc = computed(() => {
   return BASE64_LOGO_DATA;
 });
 
-const formattedDateAndFullTime = computed(() => {
-  const now = new Date();
-  const datePart = now.toLocaleDateString('es-VE', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric'
-  });
-  const timePart = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-  return `${datePart}, ${timePart}`;
-});
-
-
 const getPaymentMethodLabel = (methodValue, currency) => {
     // Definir los métodos de pago aquí o pasarlos como prop si son dinámicos
     const paymentMethodsByCurrency = {
@@ -128,9 +113,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
 const showChangeAmount = computed(() => {
   return props.changeAmount > 0;
 });
-/*const showCreditAmount = computed(() => {
-  return props.creditAmount > 0;
-});*/
+
 </script>
 <template>
  <div class="col-12 col-md-8 mx-auto">
@@ -160,7 +143,7 @@ const showChangeAmount = computed(() => {
     <div class="ticket-header d-flex justify-space-between align-start mt-2">
       <span class="font-weight-bold tituloAzulPrint">Order N° {{orderData.id}}</span>
       <div class="text-right d-flex flex-column align-end">
-      <p class="text-black font-weight-regular mb-0 textoPrint">Fecha: {{ formattedDateAndFullTime }}</p>
+      <p class="text-black font-weight-regular mb-0 textoPrint">Fecha: {{ formatDateTime(props.orderData.created_at, "date") }} {{ formatDateTime(props.orderData.created_at, "time") }}</p>
       </div>
     </div>
     <div class="d-flex justify-space-between align-start textoPrint mb-1">
@@ -226,14 +209,14 @@ const showChangeAmount = computed(() => {
           </div>
         </div>
 
-        <div v-if="showCredit" class="ticket-total d-flex justify-space-between align-center">
+        <div v-if="credit" class="ticket-total d-flex justify-space-between align-center">
              <span class="font-weight-bold tituloAzulPrint">{{'CRÉDITO'}}:</span>
              <span class="text-end font-weight-black tituloAzulPrint">
-                {{ formatCurrency(totalAmount, selectedCurrency) }}
+                {{ formatCurrency(creditAmount, selectedCurrency) }}
             </span>
         </div>
 
-         <div v-if="credit" class="ticket-total d-flex justify-space-between align-center">
+         <div v-if="showChangeAmount" class="ticket-total d-flex justify-space-between align-center">
             <span class="font-weight-bold tituloAzulPrint">DEVOLUCION:</span>
             <span class="text-end font-weight-black tituloAzulPrint">
                 {{ formatCurrency(changeAmount, selectedCurrency) }}

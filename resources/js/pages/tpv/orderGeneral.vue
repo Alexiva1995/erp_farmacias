@@ -6,6 +6,7 @@ import { onMounted, ref, watch } from "vue";
 import QuotationFilters from "@/components/QuotationFilters.vue";
 import OrderFiltersGeneral from "@/components/OrderFiltersGeneral.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
+import OrderViewModal from "@/components/dialogs/OrderViewModal.VUE";
 
 const ordersCompleted = ref([]);
 const totalOrdersCompleted = ref(0);
@@ -13,6 +14,8 @@ const loadingOrdersCompleted = ref(false);
 
 const pageOrdersCompleted = ref(1);
 const itemsPerPageOrdersCompleted = ref(10);
+const sortByOrdersCompleted = ref();
+const orderByOrdersCompleted = ref();
 
 const ordersAll = ref([]);
 const totalOrdersAll = ref(0);
@@ -22,6 +25,8 @@ const pageOrdersAll = ref(1);
 const itemsPerPageOrdersAll = ref(10);
 const sortByOrdersAll = ref();
 const orderByOrdersAll = ref();
+const startDateFilterAll = ref(null);
+const endDateFilterAll = ref(null);
 
 const isPrinting = ref(false);
 
@@ -33,6 +38,8 @@ const pageOrdersAbandoned = ref(1);
 const itemsPerPageOrdersAbandoned = ref(10);
 const sortByOrdersAbandoned = ref();
 const orderByOrdersAbandoned = ref();
+const startDateFilterAbandoned = ref(null);
+const endDateFilterAbandoned = ref(null);
 
 const ordersCancelled = ref([]);
 const totalOrdersCancelled = ref(0);
@@ -42,6 +49,8 @@ const pageOrdersCancelled = ref(1);
 const itemsPerPageOrdersCancelled = ref(10);
 const sortByOrdersCancelled = ref();
 const orderByOrdersCancelled = ref();
+const startDateFilterCancelled = ref(null);
+const endDateFilterCancelled = ref(null);
 
 const currencyFilterCompleted = ref(null);
 const filterSearchQueryCompleted = ref("");
@@ -49,20 +58,27 @@ const filterSearchQueryIdCompleted = ref("");
 
 const currencyFilterAll = ref(null);
 const filterSearchQueryAll = ref("");
+const filterSearchQueryIdAll = ref("");
+const stateFilterAll = ref(null);
 
+const filterSearchQueryIdAbandoned = ref("");
 const currencyFilterAbandoned = ref(null);
 const filterSearchQueryAbandoned = ref("");
 
+const filterSearchQueryIdCancelled = ref("");
 const currencyFilterCancelled = ref(null);
 const filterSearchQueryCancelled = ref("");
 
 const paymentsForPrint = ref([]);
 const changeAmountForPrint = ref(0);
 const creditAmountForPrint = ref(0);
+const amountForPrint = ref(0);
 const creditForPrint = ref(false);
 const currency = ref("COP");
 const orderData = ref(null);
 const orderItems = ref([]);
+
+const viewModal = ref(false);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -95,8 +111,10 @@ const fetchOrderCompleted = async () => {
     ...(currencyFilterCompleted.value !== null && {
       currency: currencyFilterCompleted.value,
     }),
-    pageOrdersCompleted: pageOrdersCompleted.value,
-    itemsPerPageOrdersCompleted: itemsPerPageOrdersCompleted.value,
+    page: pageOrdersCompleted.value,
+    itemsPerPage: itemsPerPageOrdersCompleted.value,
+    sortBy: sortByOrdersCompleted.value,
+    orderBy: orderByOrdersCompleted.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -116,10 +134,24 @@ const fetchOrderCompleted = async () => {
 const fetchOrderAll = async () => {
   loadingOrdersAll.value = true;
   const params = {
-    pageOrdersAll: pageOrdersAll.value,
-    itemsPerPageOrdersAll: itemsPerPageOrdersAll.value,
-    sortByOrdersAll: sortByOrdersAll.value,
-    orderByOrdersAll: orderByOrdersAll.value,
+    id: filterSearchQueryIdAll.value,
+    q: filterSearchQueryAll.value,
+    ...(currencyFilterAll.value !== null && {
+      currency: currencyFilterAll.value,
+    }),
+     ...(stateFilterAll.value !== null && {
+      state: stateFilterAll.value,
+    }),
+    ...(startDateFilterAll.value !== null && {
+            start_date: startDateFilterAll.value,
+        }),
+        ...(endDateFilterAll.value !== null && {
+            end_date: endDateFilterAll.value,
+        }),
+    page: pageOrdersAll.value,
+    itemsPerPage: itemsPerPageOrdersAll.value,
+    sortBy: sortByOrdersAll.value,
+    orderBy: orderByOrdersAll.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -139,10 +171,21 @@ const fetchOrderAll = async () => {
 const fetchOrderAbandoned = async () => {
   loadingOrdersAbandoned.value = true;
   const params = {
-    pageOrdersAbandoned: pageOrdersAbandoned.value,
-    itemsPerPageOrdersAbandoned: itemsPerPageOrdersAbandoned.value,
-    sortByOrdersAbandoned: sortByOrdersAbandoned.value,
-    orderByOrdersAbandoned: orderByOrdersAbandoned.value,
+    id: filterSearchQueryIdAbandoned.value,
+    q: filterSearchQueryAbandoned.value,
+    ...(currencyFilterAbandoned.value !== null && {
+      currency: currencyFilterAbandoned.value,
+    }),
+      ...(startDateFilterAbandoned.value !== null && {
+            start_date: startDateFilterAbandoned.value,
+        }),
+        ...(endDateFilterAbandoned.value !== null && {
+            end_date: endDateFilterAbandoned.value,
+        }),
+    page: pageOrdersAbandoned.value,
+    itemsPerPage: itemsPerPageOrdersAbandoned.value,
+    sortBy: sortByOrdersAbandoned.value,
+    orderBy: orderByOrdersAbandoned.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -162,10 +205,21 @@ const fetchOrderAbandoned = async () => {
 const fetchOrderCancelled = async () => {
   loadingOrdersCancelled.value = true;
   const params = {
-    pageOrdersCancelled: pageOrdersCancelled.value,
-    itemsPerPageOrdersCancelled: itemsPerPageOrdersCancelled.value,
-    sortByOrdersCancelled: sortByOrdersCancelled.value,
-    orderByOrdersCancelled: orderByOrdersCancelled.value,
+    id: filterSearchQueryIdCancelled.value,
+    q: filterSearchQueryCancelled.value,
+    ...(currencyFilterCancelled.value !== null && {
+      currency: currencyFilterCancelled.value,
+    }),
+      ...(startDateFilterCancelled.value !== null && {
+            start_date: startDateFilterCancelled.value,
+        }),
+        ...(endDateFilterCancelled.value !== null && {
+            end_date: endDateFilterCancelled.value,
+        }),
+    page: pageOrdersCancelled.value,
+    itemsPerPage: itemsPerPageOrdersCancelled.value,
+    sortBy: sortByOrdersCancelled.value,
+    orderBy: orderByOrdersCancelled.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -189,7 +243,7 @@ onMounted(() => {
   fetchOrderCancelled();
 });
 
-let debounceTimer;
+let debounceTimerCompleted;
 watch(
   [
     pageOrdersCompleted,
@@ -197,25 +251,79 @@ watch(
     currencyFilterCompleted,
     filterSearchQueryIdCompleted,
     filterSearchQueryCompleted,
-    pageOrdersAll,
-    itemsPerPageOrdersAll,
-    sortByOrdersAll,
-    orderByOrdersAll,
-    pageOrdersAbandoned,
-    itemsPerPageOrdersAbandoned,
-    sortByOrdersAbandoned,
-    orderByOrdersAbandoned,
-    pageOrdersCancelled,
-    itemsPerPageOrdersCancelled,
-    sortByOrdersCancelled,
-    orderByOrdersCancelled,
+    sortByOrdersCompleted,
+    orderByOrdersCompleted,
   ],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
+    clearTimeout(debounceTimerCompleted);
+    debounceTimerCompleted = setTimeout(() => {
       fetchOrderCompleted();
+    }, 300);
+  },
+  { deep: true }
+);
+
+let debounceTimerAll;
+watch(
+  [
+    pageOrdersAll,
+    itemsPerPageOrdersAll,
+    currencyFilterAll,
+    stateFilterAll,
+    filterSearchQueryIdAll,
+    filterSearchQueryAll,
+    sortByOrdersAll,
+    orderByOrdersAll,
+    startDateFilterAll,
+    endDateFilterAll
+  ],
+  () => {
+    clearTimeout(debounceTimerAll);
+    debounceTimerAll = setTimeout(() => {
       fetchOrderAll();
+    }, 300);
+  },
+  { deep: true }
+);
+
+let debounceTimerAbandoned;
+watch(
+  [
+    pageOrdersAbandoned,
+    itemsPerPageOrdersAbandoned,
+    currencyFilterAbandoned,
+    filterSearchQueryIdAbandoned,
+    filterSearchQueryAbandoned,
+    sortByOrdersAbandoned,
+    orderByOrdersAbandoned,
+    startDateFilterAbandoned,
+    endDateFilterAbandoned
+  ],
+  () => {
+    clearTimeout(debounceTimerAbandoned);
+    debounceTimerAbandoned = setTimeout(() => {
       fetchOrderAbandoned();
+    }, 300);
+  },
+  { deep: true }
+);
+
+let debounceTimerCancelled;
+watch(
+  [
+    pageOrdersCancelled,
+    itemsPerPageOrdersCancelled,
+    currencyFilterCancelled,
+    filterSearchQueryIdCancelled,
+    filterSearchQueryCancelled,
+    sortByOrdersCancelled,
+    orderByOrdersCancelled,
+     startDateFilterCancelled,
+    endDateFilterCancelled
+  ],
+  () => {
+    clearTimeout(debounceTimerCancelled);
+    debounceTimerCancelled = setTimeout(() => {
       fetchOrderCancelled();
     }, 300);
   },
@@ -226,36 +334,103 @@ const handleClearFiltersCompleted = () => {
   filterSearchQueryIdCompleted.value = "";
   filterSearchQueryCompleted.value = "";
   currencyFilterCompleted.value = null;
+  sortByOrdersCompleted.value = undefined;
+  orderByOrdersCompleted.value = undefined;
+};
+
+const handleClearFiltersAll = () => {
+  filterSearchQueryIdAll.value = "";
+  filterSearchQueryAll.value = "";
+  currencyFilterAll.value = null;
+  stateFilterAll.value = null;
+  sortByOrdersAll.value = undefined;
+  orderByOrdersAll.value = undefined;
+  startDateFilterAll.value = null;
+  endDateFilterAll.value = null;
+};
+
+const handleClearFiltersAbandoned = () => {
+  filterSearchQueryIdAbandoned.value = "";
+  filterSearchQueryAbandoned.value = "";
+  currencyFilterAbandoned.value = null;
+  sortByOrdersAbandoned.value = undefined;
+  orderByOrdersAbandoned.value = undefined;
+    startDateFilterAbandoned.value = null;
+  endDateFilterAbandoned.value = null;
+};
+
+const handleClearFiltersCancelled = () => {
+  filterSearchQueryIdCancelled.value = "";
+  filterSearchQueryCancelled.value = "";
+  currencyFilterCancelled.value = null;
+  sortByOrdersCancelled.value = undefined;
+  orderByOrdersCancelled.value = undefined;
+    startDateFilterCancelled.value = null;
+  endDateFilterCancelled.value = null;
 };
 
 watch([filterSearchQueryCompleted, currencyFilterCompleted], () => {
   pageOrdersCompleted.value = 1;
 });
 
+watch([filterSearchQueryAll, currencyFilterAll, stateFilterAll], () => {
+  pageOrdersAll.value = 1;
+});
+
+watch([filterSearchQueryAbandoned, currencyFilterAbandoned], () => {
+  pageOrdersAbandoned.value = 1;
+});
+
+watch([filterSearchQueryCancelled, currencyFilterCancelled], () => {
+  pageOrdersCancelled.value = 1;
+});
+
 const updateTableOptionsOrdersCompleted = (options) => {
-  pageOrdersCompleted.value = options.pageOrdersCompleted;
-  itemsPerPageOrdersCompleted.value = options.itemsPerPageOrdersCompleted;
+  pageOrdersCompleted.value = options.page;
+  itemsPerPageOrdersCompleted.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByOrdersCompleted.value = options.sortBy[0].key;
+    orderByOrdersCompleted.value = options.sortBy[0].order;
+  } else {
+    sortByOrdersCompleted.value = null;
+    orderByOrdersCompleted.value = null;
+  }
 };
 
 const updateTableOptionsOrdersAll = (options) => {
-  pageOrdersAll.value = options.pageOrdersAll;
-  itemsPerPageOrdersAll.value = options.itemsPerPageOrdersAll;
-  //sortByOrdersAll.value = options.sortByOrdersAll[0]?.key;
-  // orderByOrdersAll.value = options.orderByOrdersAll[0]?.order;
+  pageOrdersAll.value = options.page;
+  itemsPerPageOrdersAll.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByOrdersAll.value = options.sortBy[0].key;
+    orderByOrdersAll.value = options.sortBy[0].order;
+  } else {
+    sortByOrdersAll.value = null;
+    orderByOrdersAll.value = null;
+  }
 };
 
 const updateTableOptionsOrdersAbandoned = (options) => {
-  pageOrdersAbandoned.value = options.pageOrdersAbandoned;
-  itemsPerPageOrdersAbandoned.value = options.itemsPerPageOrdersAbandoned;
-  //sortByOrdersAbandoned.value = options.sortByOrdersAbandoned[0]?.key;
-  // orderByOrdersAbandoned.value = options.orderByOrdersAbandoned[0]?.order;
+  pageOrdersAbandoned.value = options.page;
+  itemsPerPageOrdersAbandoned.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByOrdersAbandoned.value = options.sortBy[0].key;
+    orderByOrdersAbandoned.value = options.sortBy[0].order;
+  } else {
+    sortByOrdersAbandoned.value = null;
+    orderByOrdersAbandoned.value = null;
+  }
 };
 
 const updateTableOptionsOrdersCancelled = (options) => {
-  pageOrdersCancelled.value = options.pageOrdersCancelled;
-  itemsPerPageOrdersCancelled.value = options.itemsPerPageOrdersCancelled;
-  //sortByOrdersCancelled.value = options.sortByOrdersCancelled[0]?.key;
-  // orderByOrdersCancelled.value = options.orderByOrdersCancelled[0]?.order;
+  pageOrdersCancelled.value = options.page;
+  itemsPerPageOrdersCancelled.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByOrdersCancelled.value = options.sortBy[0].key;
+    orderByOrdersCancelled.value = options.sortBy[0].order;
+  } else {
+    sortByOrdersCancelled.value = null;
+    orderByOrdersCancelled.value = null;
+  }
 };
 
 const printOrder = async (orderId) => {
@@ -265,41 +440,59 @@ const printOrder = async (orderId) => {
     if (response.data && response.data.data && response.data.data.order) {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
-       orderItems.value = response.data.data.order.details.map(detail => ({
+      orderItems.value = response.data.data.order.details.map((detail) => ({
         title: detail.product.name,
         selectedQuantity: detail.quantity,
         taxRate: detail.product.iva,
-        price_bs: detail.product.price_bs,
-        price_cop: detail.product.price_cop,
-        price: detail.product.price,
+        price_bs: parseFloat(detail.price),
+        price_cop: parseFloat(detail.price),
+        price: parseFloat(detail.price),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
+      changeAmountForPrint.value = parseFloat(
+        response.data.data.order.money_returns
+      );
+      amountForPrint.value = parseFloat(response.data.data.order.total_amount);
+      creditAmountForPrint.value = response.data.data.hasCreditPayment
+        ? parseFloat(response.data.data.order.total_amount)
+        : 0;
+      creditForPrint.value = response.data.data.hasCreditPayment;
+      console.log(response.data.data);
+      console.log(creditAmountForPrint.value);
       isPrinting.value = true;
       await nextTick();
       const printContents = document.getElementById("orderPrint");
 
       if (printContents) {
         const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
-        
+        printWindow.document.write(
+          "<html><head><title>Farmacia Barrio Sucre</title>"
+        );
+
         const styleSheets = document.styleSheets;
         for (let i = 0; i < styleSheets.length; i++) {
           const sheet = styleSheets[i];
           try {
             if (sheet.cssRules) {
-              let cssText = '';
+              let cssText = "";
               for (let j = 0; j < sheet.cssRules.length; j++) {
                 cssText += sheet.cssRules[j].cssText;
               }
               printWindow.document.write(`<style>${cssText}</style>`);
             } else if (sheet.href) {
-              printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+              printWindow.document.write(
+                `<link rel="stylesheet" href="${sheet.href}">`
+              );
             }
           } catch (e) {
-            console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
+            console.warn(
+              "No se pudo acceder a la hoja de estilo:",
+              sheet.href || sheet,
+              e
+            );
           }
         }
-        
+
         printWindow.document.write("</head><body>");
         printWindow.document.write(printContents.innerHTML);
         printWindow.document.write("</body></html>");
@@ -308,22 +501,29 @@ const printOrder = async (orderId) => {
         printWindow.print();
         printWindow.close();
       } else {
-        console.warn("Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
+        console.warn(
+          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        );
         window.print();
       }
     } else {
       console.error("Respuesta de API con formato incorrecto:", response.data);
-      toast.error('La respuesta del servidor no tiene el formato esperado.');
+      toast.error("La respuesta del servidor no tiene el formato esperado.");
     }
   } catch (error) {
-    // Aquí se capturarán errores de red, 4xx, 5xx, y errores de sintaxis
-    console.error("Error al imprimir la orden:", error.response?.data || error.message);
-    const errorMessage = error.response?.data?.message || "Hubo un problema al imprimir la orden. Por favor, intente de nuevo.";
+    console.error(
+      "Error al imprimir la orden:",
+      error.response?.data || error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Hubo un problema al imprimir la orden. Por favor, intente de nuevo.";
     toast.error(errorMessage);
     isPrinting.value = false;
     paymentsForPrint.value = [];
     orderData.value = null;
     orderItems.value = [];
+    amountForPrint.value = 0;
     changeAmountForPrint.value = 0;
     creditAmountForPrint.value = 0;
     creditForPrint.value = false;
@@ -335,14 +535,56 @@ const printOrder = async (orderId) => {
       orderItems.value = [];
       changeAmountForPrint.value = 0;
       creditAmountForPrint.value = 0;
+      amountForPrint.value = 0;
       creditForPrint.value = false;
     }, 500);
   }
 };
 
-const myCalculatedTotal = computed(() => {
-   return 0;
-});
+const handleCloseViewModal = () => {
+  viewModal.value = false;
+  orderData.value = null;
+  orderItems.value = [];
+  paymentsForPrint.value = [];
+  changeAmountForPrint.value = 0;
+  amountForPrint.value = 0;
+  creditAmountForPrint.value = 0;
+  creditForPrint.value = false;
+};
+
+const handleViewOrder = async (orderId) => {
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/print`); // Llama al endpoint de impresión
+    if (response.data && response.data.data && response.data.data.order) {
+      // Prepara y asigna los datos de la misma manera que en `printOrder`
+      orderData.value = response.data.data.order;
+      currency.value = response.data.data.order.currency.toUpperCase();
+      orderItems.value = response.data.data.order.details.map(detail => ({
+        title: detail.product.name,
+        selectedQuantity: detail.quantity,
+        taxRate: detail.product.iva,
+        price_bs: parseFloat(detail.price),
+        price_cop: parseFloat(detail.price),
+        price: parseFloat(detail.price),
+      }));
+      paymentsForPrint.value = response.data.data.order.payment_methods;
+      changeAmountForPrint.value = parseFloat(response.data.data.order.money_returns);
+      amountForPrint.value = parseFloat(response.data.data.order.total_amount);
+      creditAmountForPrint.value = response.data.data.hasCreditPayment ? parseFloat(response.data.data.order.total_amount) : 0;
+      creditForPrint.value = response.data.data.hasCreditPayment;
+      
+      // Abre el modal
+      viewModal.value = true;
+    } else {
+      console.error("Respuesta de API con formato incorrecto:", response.data);
+      toast.error('La respuesta del servidor no tiene el formato esperado.');
+    }
+  } catch (error) {
+    console.error("Error al obtener los detalles de la orden:", error);
+    toast.error("Error al obtener los detalles de la orden.");
+  }
+};
+
 </script>
 <template>
   <div>
@@ -364,18 +606,22 @@ const myCalculatedTotal = computed(() => {
         :headers="headers"
         @update:options="updateTableOptionsOrdersCompleted"
         @print-order="printOrder"
+        @view-order="handleViewOrder"
       />
     </VCard>
     <div class="mb-5"></div>
 
-    <QuotationFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:stockStatusFilter="stockStatusFilter"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-      @clear-sort="handleClearSortOrder"
-    ></QuotationFilters>
+    <OrderFiltersGeneral
+      v-model:idSearchQuery="filterSearchQueryIdAll"
+      v-model:searchQuery="filterSearchQueryAll"
+      v-model:currencyFilter="currencyFilterAll"
+      v-model:startDate="startDateFilterAll"
+      v-model:endDate="endDateFilterAll"
+      v-model:stateFilter="stateFilterAll"
+      @clear="handleClearFiltersAll"
+      :showDateFilters="true"
+      :showStateFilters="true"
+    ></OrderFiltersGeneral>
 
     <VCard title="Todas las Órdenes">
       <div class="mb-2"></div>
@@ -387,22 +633,21 @@ const myCalculatedTotal = computed(() => {
         :page="pageOrdersAll"
         :headers="headersAll"
         @update:options="updateTableOptionsOrdersAll"
+        @print-order="printOrder"
+        @view-order="handleViewOrder"
       />
     </VCard>
     <div class="mb-5"></div>
 
-    <QuotationFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      :laboratories="laboratories"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-      @clear-sort="handleClearSortOrder"
-    ></QuotationFilters>
+    <OrderFiltersGeneral
+      v-model:idSearchQuery="filterSearchQueryIdCancelled"
+      v-model:searchQuery="filterSearchQueryCancelled"
+      v-model:currencyFilter="currencyFilterCancelled"
+      @clear="handleClearFiltersCancelled"
+      v-model:startDate="startDateFilterCancelled"
+      v-model:endDate="endDateFilterCancelled"
+      :showDateFilters="true"
+    ></OrderFiltersGeneral>
 
     <VCard title="Órdenes Canceladas">
       <div class="mb-2"></div>
@@ -414,22 +659,21 @@ const myCalculatedTotal = computed(() => {
         :page="pageOrdersCancelled"
         :headers="headers"
         @update:options="updateTableOptionsOrdersCancelled"
+        @print-order="printOrder"
+         @view-order="handleViewOrder"
       />
     </VCard>
     <div class="mb-5"></div>
 
-    <QuotationFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      :laboratories="laboratories"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-      @clear-sort="handleClearSortOrder"
-    ></QuotationFilters>
+    <OrderFiltersGeneral
+      v-model:idSearchQuery="filterSearchQueryIdAbandoned"
+      v-model:searchQuery="filterSearchQueryAbandoned"
+      v-model:currencyFilter="currencyFilterAbandoned"
+      @clear="handleClearFiltersAbandoned"
+      v-model:startDate="startDateFilterAbandoned"
+      v-model:endDate="endDateFilterAbandoned"
+      :showDateFilters="true"
+    ></OrderFiltersGeneral>
 
     <VCard title="Órdenes Abandonadas">
       <div class="mb-2"></div>
@@ -441,6 +685,8 @@ const myCalculatedTotal = computed(() => {
         :page="pageOrdersAbandoned"
         :headers="headers"
         @update:options="updateTableOptionsOrdersAbandoned"
+        @print-order="printOrder"
+         @view-order="handleViewOrder"
       />
     </VCard>
 
@@ -452,7 +698,7 @@ const myCalculatedTotal = computed(() => {
         v-if="isPrinting && orderData"
         :order-data="orderData"
         :order-products="orderItems"
-        :total-amount="myCalculatedTotal"
+        :total-amount="amountForPrint"
         :selected-currency="currency"
         :payments="paymentsForPrint"
         :change-amount="changeAmountForPrint"
@@ -460,5 +706,18 @@ const myCalculatedTotal = computed(() => {
         :credit="creditForPrint"
       />
     </div>
+
+    <OrderViewModal
+      v-model:isDialogVisible="viewModal"
+      :order-data="orderData"
+      :order-products="orderItems"
+      :total-amount="amountForPrint"
+      :selected-currency="currency"
+      :payments="paymentsForPrint"
+      :change-amount="changeAmountForPrint"
+      :credit-amount="creditAmountForPrint"
+      :credit="creditForPrint"
+      @close="handleCloseViewModal"
+    />
   </div>
 </template>

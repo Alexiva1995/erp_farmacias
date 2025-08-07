@@ -5,6 +5,23 @@ const props = defineProps({
   searchQuery: String,
   idSearchQuery: String,
   currencyFilter: [Number, String, null],
+  startDate: {
+    type: String,
+    default: null,
+  },
+  endDate: {
+    type: String,
+    default: null,
+  },
+  showDateFilters: {
+    type: Boolean,
+    default: false,
+  },
+    showStateFilters: {
+    type: Boolean,
+    default: false,
+  },
+   stateFilter: [Number, String, null],
 });
 
 const emit = defineEmits([
@@ -12,6 +29,9 @@ const emit = defineEmits([
   "update:idSearchQuery",
   "update:currencyFilter",
   "clear",
+  "update:startDate",
+  "update:endDate",
+  "update:stateFilter",
 ]);
 
 const currencyOptions = [
@@ -20,6 +40,11 @@ const currencyOptions = [
   { title: "COP", value: "COP" },
 ];
 
+const stateOptions = [
+  { title: "Completada", value: "Completed" },
+  { title: "Abandonada", value: "Abandoned" },
+  { title: "Cancelada", value: "Cancelled" },
+];
 
 const sortOptions = [
   {
@@ -52,7 +77,7 @@ const sortOptions = [
     key: "sales_average",
     order: "desc",
   },
-    {
+  {
     title: "Menos Vendidos",
     icon: "tabler-minus",
     key: "sales_average",
@@ -69,15 +94,13 @@ const sortOptions = [
 const handleSortClick = (option) => {
   emit("sort", { key: option.key, order: option.order });
 };
-
 </script>
-
 
 <template>
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-       <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.idSearchQuery"
             placeholder="Buscar por ID"
@@ -93,7 +116,7 @@ const handleSortClick = (option) => {
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-         
+
         <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.currencyFilter"
@@ -103,6 +126,46 @@ const handleSortClick = (option) => {
             @update:model-value="emit('update:currencyFilter', $event)"
           />
         </VCol>
+<template v-if="props.showStateFilters">
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
+            :model-value="props.stateFilter"
+            label="Estados"
+            :items="stateOptions"
+            clearable
+            @update:model-value="emit('update:stateFilter', $event)"
+          />
+        </VCol>
+ </template>
+        <template v-if="props.showDateFilters">
+          <VCol cols="12" sm="6" md="4">
+            <AppDateTimePicker
+              :model-value="props.startDate"
+              placeholder="Fecha Desde"
+              clearable
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
+              @update:model-value="emit('update:startDate', $event)"
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" md="4">
+            <AppDateTimePicker
+              :model-value="props.endDate"
+              placeholder="Fecha Hasta"
+              clearable
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
+              @update:model-value="emit('update:endDate', $event)"
+            />
+          </VCol>
+        </template>
       </VRow>
     </VCardText>
 

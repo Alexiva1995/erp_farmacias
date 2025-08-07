@@ -240,12 +240,18 @@ class OrderController extends Controller
 
     public function getCPrintOrder(int $orderId)
     {
-        $order = Order::with('details.product','client','seller')->find($orderId);
+        $order = Order::with('details.product', 'client', 'seller')->find($orderId);
         if (!$order) {
             return ApiResponse::error('Orden no encontrada.', 404);
         }
+
+        $hasCreditPayment = collect($order->payment_methods)->contains(function ($payment) {
+            return $payment['method'] === 'credit';
+        });
+
         return ApiResponse::success([
             'order' => $order,
+            'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
 }

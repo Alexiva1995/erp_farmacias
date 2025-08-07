@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class OrderQueryService
 {
@@ -15,7 +16,7 @@ class OrderQueryService
         if($valor=='Completed'){
             $start = now()->startOfDay();
             $end = now()->endOfDay();
-            return Order::query()->where('status',$valor)->whereBetween('created_at', [$start, $end])->with('client','seller');
+            return Order::query()->where('status',$valor)->whereBetween('order_date', [$start, $end])->with('client','seller');
         }else if ($valor=='all'){
             return Order::query()->with('client','seller');
         }
@@ -26,12 +27,10 @@ class OrderQueryService
 
 private function applyFilters(Builder $query, array $filters): Builder
 {
-    // FILTRO POR ID (si se proporciona)
     if (!empty($filters['id'])) {
         $query->where('id', $filters['id']);
     }
 
-    // FILTRO GENERAL (si se proporciona)
     if (!empty($filters['q'])) {
         $searchTerm = "%{$filters['q']}%";
         
@@ -48,10 +47,26 @@ private function applyFilters(Builder $query, array $filters): Builder
         });
     }
 
-    // Filtro de moneda, se mantiene igual
     if (!empty($filters['currency'])) {
         $query->where('currency', $filters['currency']);
     }
+
+    if (!empty($filters['state'])) {
+        $query->where('status', $filters['state']);
+    }
+
+    if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
+         $startDate = !empty($filters['start_date']) ? Carbon::parse($filters['start_date'])->startOfDay() : null;
+        $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
+
+          if ($startDate && $endDate) {
+                $query->whereBetween('order_date', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $query->where('order_date', '>=', $startDate);
+            } elseif ($endDate) {
+                $query->where('order_date', '<=', $endDate);
+            }
+        }
 
     return $query;
 }
@@ -62,7 +77,10 @@ private function applyFilters(Builder $query, array $filters): Builder
           $filters = [
             'id' => $request->id,
             'q' => $request->q,
-            'currency' => $request->currency
+            'currency' => $request->currency,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'state' => $request->state,
         ];
         $this->applyFilters($query, $filters);
         return $query;

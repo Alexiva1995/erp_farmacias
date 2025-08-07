@@ -74,6 +74,7 @@ declare module 'vue' {
     OrderTable: typeof import('./resources/js/components/OrderTable.vue')['default']
     OrderTicke: typeof import('./resources/js/components/OrderTicke.vue')['default']
     OrderTicket: typeof import('./resources/js/components/OrderTicket.vue')['default']
+    OrderViewModal: typeof import('./resources/js/components/dialogs/OrderViewModal.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PricingPlanDialog: typeof import('./resources/js/components/dialogs/PricingPlanDialog.vue')['default']
     ProductCyclicTable: typeof import('./resources/js/components/ProductCyclicTable.vue')['default']
