@@ -31,6 +31,7 @@ const endDate = ref(null);
 const laboratories = ref([]);
 const origins = ref([]);
 const isLoadingFilters = ref(false);
+const lockedValue = ref()
 
 const editDialog = ref(false)
 const productProfitability = ref({})
@@ -64,6 +65,7 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    lockedValue: lockedValue.value
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -141,6 +143,7 @@ watch(
     stockStatusFilter,
     startDate,
     endDate,
+    lockedValue,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -157,6 +160,7 @@ watch(
     stockStatusFilter,
     startDate,
     endDate,
+    lockedValue,
   ],
   () => {
     page.value = 1;
@@ -180,6 +184,7 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
+  lockedValue.value = null;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
@@ -196,12 +201,6 @@ onMounted(() => {
 
 <template>
 
-  <!--div class="py-5 px-5">
-    <buttonProfitability 
-    :percentage="percentage" 
-    @refresh="reloadTable"
-    />
-  </div-->
   <profitabilityFilters
     v-model:searchQuery="searchQuery"
     v-model:selectedLaboratory="selectedLaboratory"
@@ -209,6 +208,7 @@ onMounted(() => {
     v-model:stockStatusFilter="stockStatusFilter"
     v-model:startDate="startDate"
     v-model:endDate="endDate"
+    v-model:lockedValue="lockedValue"
     :laboratories="laboratories"
     :origins="origins"
     :loading="isLoadingFilters"
@@ -241,7 +241,7 @@ onMounted(() => {
     :itemsPerPage="itemsPerPage" 
     :loading="loading" 
     @refresh="reloadTable"
-    @update="updateTableOptions"
+    @update:options="updateTableOptions"
     @editProduct="editProductProfitability"
     />
   </div>

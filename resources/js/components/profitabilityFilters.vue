@@ -12,15 +12,31 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  lockedValue: { type: Number, default: null }
 });
 
 const emit = defineEmits([
+  "update:searchQuery",
+  "update:selectedLaboratory",
+  "update:selectedOrigin",
+  "update:stockStatusFilter",
+  "update:startDate",
+  "update:endDate",
+  "update:lockedValue",
   "add-profitability",
+  "clear",
+  "export",
+  "sort",
 ]);
 
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
+];
+
+const lockedOptions = [
+  { name: "Bloqueado", value: 1 },
+  { name: "No bloqueado", value: 0 },
 ];
 
 const sortOptions = [
@@ -236,6 +252,18 @@ watch(
               dateFormat: 'Y-m-d',
             }"
             @update:model-value="emit('update:endDate', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
+            :model-value="props.lockedValue"
+            :items="lockedOptions"
+            label="Estado"
+            placeholder="Bloqueado"
+            item-title="name"
+            item-value="value"
+            clearable
+            @update:model-value="emit('update:lockedValue', $event)"
           />
         </VCol>
       </VRow>
