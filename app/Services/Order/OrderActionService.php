@@ -35,7 +35,7 @@ class OrderActionService
 
             $order = Order::create($data);
             DB::commit();
-            $order->load('seller','client');
+            $order->load('seller', 'client');
             return $order;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -228,9 +228,7 @@ class OrderActionService
         }
     }
 
-    public function invoicing($id){
-
-    }
+    public function invoicing($id) {}
 
     public function complete(Order $orderId, Request $request): bool
     {
@@ -243,6 +241,25 @@ class OrderActionService
             if (isset($request->changeAmount)) {
                 $orderId->money_returns = $request->changeAmount;
             }
+
+
+            $currencies = [];
+            foreach ($request->payments as $payment) {
+                $method = $payment['method'];
+                if ($payment['currency'] == 'USD') {
+                    $currencies[] = 'USD';
+                } elseif ($payment['currency'] == 'BS') {
+                    $currencies[] = 'BS';
+                } elseif ($payment['currency'] == 'COP') {
+                    $currencies[] = 'COP';
+                }
+                if ($method === 'binance' || $method === 'paypal' || $method === 'credit') {
+                    $currencies[] = 'USD';
+                }
+            }
+
+            $uniqueCurrencies = array_unique($currencies);
+            $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
             //$cliente->save();
             $orderId->save();
@@ -297,47 +314,48 @@ class OrderActionService
                 ]);
             }
 
-  
-            foreach ($request->payments as $paymend) {
-                if (isset($paymend['method'])) {
-                    switch ($paymend['method']) {
+
+            foreach ($request->payments as $payment) {
+                $method = $payment['method'];
+                if (isset($method)) {
+                    switch ($method) {
                         case 'cash_usd':
-                            $current_cash->usd_cash += $paymend['amount'];
-                        break;
+                            $current_cash->usd_cash += $payment['amount'];
+                            break;
                         case 'binance':
-                            $current_cash->usd_binance += $paymend['amount'];
-                        break;
+                            $current_cash->usd_binance += $payment['amount'];
+                            break;
                         case 'paypal':
-                            $current_cash->usd_paypal += $paymend['amount'];
-                        break;
+                            $current_cash->usd_paypal += $payment['amount'];
+                            break;
                         case 'credit':
                             $current_cash->usd_credit += $request->total_amount;
-                        break;
+                            break;
                         case 'cash_bs':
-                            $current_cash->bs_cash += $paymend['amount'];
-                        break;
+                            $current_cash->bs_cash += $payment['amount'];
+                            break;
                         case 'mobile_payment':
-                            $current_cash->bs_mobile += $paymend['amount'];
-                        break;
+                            $current_cash->bs_mobile += $payment['amount'];
+                            break;
                         case 'bank_transfer_bs':
-                            $current_cash->bs_transfer += $paymend['amount'];
-                        break;
+                            $current_cash->bs_transfer += $payment['amount'];
+                            break;
                         case 'card':
-                            $current_cash->bs_card += $paymend['amount'];
-                        break;
+                            $current_cash->bs_card += $payment['amount'];
+                            break;
                         case 'cash_cop':
-                            $current_cash->cop_cash += $paymend['amount'];
-                        break;
+                            $current_cash->cop_cash += $payment['amount'];
+                            break;
                         case 'bank_transfer':
-                            $current_cash->cop_transfer += $paymend['amount'];
-                        break;
+                            $current_cash->cop_transfer += $payment['amount'];
+                            break;
                     }
                 }
             }
-            
-            $total_bs = $current_cash->bs_cash+$current_cash->bs_mobile+$current_cash->bs_transfer+$current_cash->bs_card;
-            $total_cop = $current_cash->cop_cash+$current_cash->cop_transfer;
-            $total_usd = $current_cash->usd_cash+$current_cash->usd_binance+$current_cash->usd_paypal+$current_cash->usd_credit;
+
+            $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
+            $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
+            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit;
 
             $current_cash->total_bs += $total_bs;
             $current_cash->total_cop += $total_cop;
@@ -354,5 +372,4 @@ class OrderActionService
             throw $e;
         }
     }
-
 }
