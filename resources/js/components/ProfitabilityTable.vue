@@ -17,7 +17,7 @@ const props = defineProps({
 
 
 
-const emit = defineEmits(['refresh', "update", "editProduct"]);
+const emit = defineEmits(['refresh', "update:options", "editProduct"]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -146,7 +146,7 @@ try {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      @update="(options) => emit('update', options)"
+      @update:options="(options) => emit('update:options', options)"
       >
       <template #item.id="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.id }}</span>
@@ -165,7 +165,7 @@ try {
       </template>
       <template #item.profitability="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">
-          ${{ item.profitability?.is_locked == '1' ? 
+          {{ item.profitability?.is_locked == '1' ? 
             (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2)
             : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
         </span>
