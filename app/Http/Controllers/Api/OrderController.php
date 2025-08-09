@@ -28,7 +28,7 @@ class OrderController extends Controller
     public function __construct(
         protected Client $client,
         private OrderActionService $orderActionService,
-        private OrderQueryService $orderQueryService
+        private OrderQueryService $orderQueryService,
     ) {}
     public function index(Request $request)
     {
@@ -74,7 +74,7 @@ class OrderController extends Controller
     {
         try {
             // $sellerId = Auth::id();
-            $sellerId = 3;
+            $sellerId = 3; //para realizar pruebas
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }

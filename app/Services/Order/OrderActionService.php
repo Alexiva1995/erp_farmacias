@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\Credit;
+use App\Models\FiscalHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\CashClosing;
@@ -228,7 +229,48 @@ class OrderActionService
         }
     }
 
-    public function invoicing($id) {}
+    public function invoicing(Order $order)
+    {
+
+        $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
+        $totalIva = 0;
+        $exemptAmount = 0;
+        $client = $order->client;
+        if (!$fiscalexist) {
+            foreach ($order->details as $detail) {
+                $product = $detail->product;
+                $priceBs = $product->price_bs; 
+                $quantity = $detail->quantity;
+
+                if ($product->iva == 1) {
+                    $ivaRate = 0.16;
+                    $itemTotal = $priceBs * $quantity;
+                    $itemIva = $itemTotal * $ivaRate;
+                    $totalIva += $itemIva;
+                }
+
+                $exemptAmount += $priceBs * $quantity;
+            }
+
+            $totalAmountBs = $exemptAmount + $totalIva;
+            $fiscalHistory = FiscalHistory::create([
+                'user_id'      => $order->seller_id,
+                'order_id'       => $order->id,
+                'invoice_number' => null,
+                'business_name' => $client->name . ' ' . $client->last_name,
+                'identification' => $client->identification_type . $client->identification,
+                'address' => $client->address,
+                'exempt_amount'     => $exemptAmount,
+                'iva_amount'     => $totalIva,
+                'total_amount'   => $totalAmountBs,
+                'invoice_date'   => Carbon::now(),
+            ]);
+
+            $fiscalHistory->save();
+            return $fiscalHistory;
+        }
+        return $fiscalexist;
+    }
 
     public function complete(Order $orderId, Request $request): bool
     {
@@ -275,18 +317,18 @@ class OrderActionService
                 ]);
             }
 
+            $orderId->load('details.product.lots');
             if ($request->generate_invoice) {
-                $this->invoicing($orderId->id);
+                $this->invoicing($orderId);
                 $ivaEjecuted = true;
             }
 
-            $orderId->load('details.product.lots');
             foreach ($orderId->details as $detail) {
                 if ($detail->product) {
 
-                    if ($request->generate_invoice) {
+                    if (!$request->generate_invoice) {
                         if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
-                            $this->invoicing($orderId->id);
+                            $this->invoicing($orderId);
                             $ivaEjecuted = true;
                         }
                     }

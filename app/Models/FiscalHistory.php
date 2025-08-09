@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FiscalHistory extends Model
 {
+    protected $table = 'fiscal_history';
     protected $fillable = [
         'user_id',
         'order_id',
