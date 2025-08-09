@@ -22,7 +22,7 @@ class SupplierQueryService
         return Supplier::query()
                         ->withoutTrashed()
                         ->select('suppliers.*')
-                        ->with(['latestScore', 'paymentRule']);
+                        ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -127,5 +127,15 @@ class SupplierQueryService
                 });
             })
             ->groupBy('payment_date');
+    }
+
+    public function getPaymentRules(Supplier $supplier): Collection
+    {
+        return $supplier->paymentRules()->get();
+    }
+    
+    public function getDiscounts(Supplier $supplier): Collection
+    {
+        return $supplier->discounts()->get();
     }
 }
