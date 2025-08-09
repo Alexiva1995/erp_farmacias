@@ -14,13 +14,13 @@ const emit = defineEmits([
   "update:selectedOrigin",
   "update:stockStatusFilter",
   "clear",
+  "back",
 ]);
 
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
 ];
-
 
 const sortOptions = [
   {
@@ -53,7 +53,7 @@ const sortOptions = [
     key: "sales_average",
     order: "desc",
   },
-    {
+  {
     title: "Menos Vendidos",
     icon: "tabler-minus",
     key: "sales_average",
@@ -71,8 +71,10 @@ const handleSortClick = (option) => {
   emit("sort", { key: option.key, order: option.order });
 };
 
+const handleBack = () => {
+  emit("back");
+};
 </script>
-
 
 <template>
   <VCard title="Filtros" class="mb-6">
@@ -123,10 +125,7 @@ const handleSortClick = (option) => {
     <VDivider />
 
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
-
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')"> Limpiar Filtros</VBtn>
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn v-bind="menuProps" variant="tonal">
@@ -148,6 +147,17 @@ const handleSortClick = (option) => {
         </VList>
       </VMenu>
       <VSpacer />
+
+        <VSpacer />
+
+      <VBtn
+        color="primary"
+        prepend-icon="tabler-arrow-back"
+        @click="handleBack"
+      >
+        Volver
+      </VBtn>
+
     </VCardActions>
   </VCard>
 </template>

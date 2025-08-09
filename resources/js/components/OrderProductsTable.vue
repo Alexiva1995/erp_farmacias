@@ -11,7 +11,7 @@ const props = defineProps({
 });
 
 const inputQuantities = ref(new Map()); 
-const emit = defineEmits(['update:options', 'add-product']);
+const emit = defineEmits(['update:options', 'add-product',"view-group-products"]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -86,6 +86,9 @@ const handleInputOrderChange = (productId, val) => {
   inputQuantities.value.set(productId, cleanVal);
 };
 
+const handleViewGroupProducts = (product) => {
+    emit('view-group-products', product.group_id);
+};
 </script>
 
 <template>
@@ -144,9 +147,10 @@ const handleInputOrderChange = (productId, val) => {
         </div>
       </template>
        <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-product', item)">
-          <VIcon icon="tabler-edit" />
-        </IconBtn>
+         <IconBtn 
+        @click="handleViewGroupProducts(item)">
+        <VIcon icon="tabler-eye" />
+      </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>

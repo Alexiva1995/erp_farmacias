@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\Quotation\QuotationQueryService;
 use App\Contracts\Client;
 use App\Helpers\ApiResponse;
 use App\Services\Order\OrderActionService;
@@ -27,14 +26,13 @@ class OrderController extends Controller
 {
 
     public function __construct(
-        private QuotationQueryService $quotationQueryService,
         protected Client $client,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService
     ) {}
     public function index(Request $request)
     {
-        $query = $this->quotationQueryService->getFilteredQuery($request);
+        $query = $this->orderQueryService->getFilteredQueryProduct($request);
         $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {

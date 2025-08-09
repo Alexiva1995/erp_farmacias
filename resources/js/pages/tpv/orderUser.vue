@@ -85,6 +85,8 @@ const changeAmountForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 const creditForPrint = ref(false);
 
+const currentGroupId = ref(null);
+
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
@@ -98,6 +100,9 @@ const fetchProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+     ...(currentGroupId.value !== null && {
+            groupId: currentGroupId.value,
+        }),
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -143,6 +148,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    currentGroupId,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -840,6 +846,20 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
   }
 };
 
+
+const fetchGroupProducts = async (groupId) => {
+    if (!groupId) {
+    toast.info("Este producto no pertenece a un grupo.");
+    if (currentGroupId.value !== null) {
+      currentGroupId.value = null;
+    }
+    return;
+  }
+  currentGroupId.value = groupId;
+};
+const handleBackFromGroupView = () => {
+    currentGroupId.value = null;
+};
 </script>
 <template>
   <div>
@@ -881,6 +901,7 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
+      @back="handleBackFromGroupView" 
     >
     </OrderFilters>
 
@@ -892,6 +913,7 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       :page="page"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
+      @view-group-products="fetchGroupProducts"
     />
 
     <RegisterClientModal

@@ -3,6 +3,7 @@
 namespace App\Services\Order;
 
 use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,112 @@ private function applyFilters(Builder $query, array $filters): Builder
             'state' => $request->state,
         ];
         $this->applyFilters($query, $filters);
+        return $query;
+    }
+
+
+
+     private function getBaseQueryProduct(): Builder
+    {
+        return Product::query()->select(
+            'products.*'
+        )
+        ->with([
+            'laboratory',
+            'origin',
+            'group',
+        ])
+        ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
+    }
+
+
+    private function applyFiltersProduct(Builder $query, array $filters): Builder
+    {
+        if (!empty($filters['q'])) {
+            $searchTerm = "%{$filters['q']}%";
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('name', 'like', $searchTerm)
+                    ->orWhere('active_ingredient', 'like', $searchTerm)
+                    ->orWhere('barcode', 'like', $searchTerm);
+            });
+        }
+
+        if (!empty($filters['laboratoryId'])) {
+            $query->where('laboratory_id', $filters['laboratoryId']);
+        }
+
+        if (!empty($filters['originId'])) {
+            $query->where('origin_id', $filters['originId']);
+        }
+
+        if (!empty($filters['groupId'])) {
+            $query->where('group_id', $filters['groupId']);
+        }
+
+        $hasStock = $filters['hasStock'] ?? null;
+        if ($hasStock === true) {
+            $query->groupBy('products.id')
+                  ->havingRaw('valid_stock_sum > 0');
+        } elseif ($hasStock === false) {
+            $query->groupBy('products.id')
+                  ->havingRaw('valid_stock_sum <= 0');
+        }
+
+          if (!empty($filters['groupId'])) {
+            $query->where('group_id', $filters['groupId']);
+        }
+
+        return $query;
+    }
+
+    private function applySortingProduct(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
+        if (empty($sortBy)) {
+            return $query->orderBy('products.name', 'asc');
+        }
+
+        switch ($sortBy) {
+            case 'laboratory.name':
+                return $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                    ->orderBy('laboratories.name', $orderBy);
+
+            case 'valid_stock':
+            case 'lots_sum_quantity':
+            case 'valid_stock_sum':
+                return $query->orderBy('valid_stock_sum', $orderBy);
+
+            case 'next_expiration':
+                $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0)');
+                return $query->orderBy($subQuery, $orderBy);
+
+            case 'sales_average':
+            return $query->orderBy('products.sales_average', $orderBy);
+
+            case 'id':
+            case 'name':
+            case 'cost_price':
+            case 'sale_price':
+                return $query->orderBy("products.{$sortBy}", $orderBy);
+        }
+
+        return $query;
+    }
+
+    public function getFilteredQueryProduct(Request $request): Builder
+    {
+        $query = $this->getBaseQueryProduct();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'groupId' => $request->get('groupId'),
+        ];
+
+        $this->applyFiltersProduct($query, $filters);
+        $this->applySortingProduct($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
         return $query;
     }
 }
