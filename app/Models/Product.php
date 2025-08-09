@@ -53,6 +53,7 @@ class Product extends Model
     ];
 
     // Atributos que se añadirán al array del modelo cuando se serialice a JSON.
+    // protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'preferencia_producto'];
     protected $appends = ['formatted_details', 'price_bs', 'price_cop'];
 
     /**
@@ -278,4 +279,18 @@ class Product extends Model
     {
         $this->attributes['name'] = Str::upper($value);
     }
+    public function invoiceCounts()
+    {
+        return $this->hasMany(InvoiceCount::class);
+    }
+
+    // public function getPreferenciaProductoAttribute()
+    // {
+    //     if ($this->group_id == null) {
+    //         return 0;
+    //     }
+
+    //     $cantidadEnGrupo = self::where('group_id', $this->group_id)->count();
+    //     return $cantidadEnGrupo > 0 ? $this->stock / $cantidadEnGrupo : 0;
+    // }
 }
