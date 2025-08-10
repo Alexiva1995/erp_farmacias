@@ -102,6 +102,10 @@ function roundToTwoDecimalPlaces(num) {
 }
 
 const getPaymentMethodLabel = (methodValue, currency) => {
+  if (methodValue === "balance") {
+    return "Saldo del Cliente";
+  }
+
   if (!methodValue) return "N/A";
   const methodsForCurrency = paymentMethodsByCurrency[currency];
   if (methodsForCurrency) {
@@ -202,12 +206,11 @@ const roundedTotalAmountToPay = computed(() => {
 
 const remainingAmount = computed(() => {
   const rawDifference = props.totalAmount - totalPaidAmount.value;
-  //return roundToTwoDecimalPlaces(rawDifference);
-   if (props.selectedDisplayCurrency === "COP") {
+  if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(rawDifference);
-  }else{
-    return roundToTwoDecimalPlaces(rawDifference);
   }
+
+  return roundToTwoDecimalPlaces(rawDifference);
 });
 
 const getConvertedRemainingAmount = (currency) => {
@@ -235,7 +238,7 @@ const addPaymentBlock = () => {
       method: null,
       amount: null,
       reference: null,
-      currency: props.selectedDisplayCurrency,
+      currency: props.selectedCurrency,
     });
   } else {
     toast.error("El monto total ya ha sido cubierto.");
@@ -268,6 +271,10 @@ const closeModal = () => {
 const handleCompletePurchase = () => {
   const tolerance = 1;
   payments.value.forEach((p, index) => {
+    if (p.method === "balance") {
+      return;
+    }
+
     if (
       isTransferMethod(p.method) &&
       (p.amount === null || Number(p.amount) === 0)
@@ -316,6 +323,10 @@ const handleCompletePurchase = () => {
     }
 
     const invalidPayment = payments.value.find((p) => {
+      if (p.method === "balance") {
+        return false;
+      }
+
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;
       if (
@@ -344,13 +355,16 @@ const handleCompletePurchase = () => {
     }
   } else {
     emit(
-  "purchase-completed",
-  props.orderData.id,
-  payments.value,
-  hasCreditPayment.value, 
-  changeAmount.value, 
-  {balance_switch: balanceSwitch.value,invoice_switch: invoiceSwitch.value,}
-);
+      "purchase-completed",
+      props.orderData.id,
+      payments.value,
+      hasCreditPayment.value,
+      changeAmount.value,
+      {
+        balance_switch: balanceSwitch.value,
+        invoice_switch: invoiceSwitch.value,
+      }
+    );
     dialogVisible.value = false;
     resetProgress();
   }
@@ -367,6 +381,8 @@ const resetProgress = () => {
       currency: props.selectedCurrency,
     },
   ];
+  balanceSwitch.value = false;
+  invoiceSwitch.value = false;
 };
 
 const logoSrc = computed(() => {
@@ -443,12 +459,19 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 const changeAmount = computed(() => {
   const diff = totalCashPaidInUSDOrCOP.value - props.totalAmount;
 
-   if (props.selectedDisplayCurrency === "COP") {
-    return Math.max(0,roundToTwoDecimalPlaces(totalPaidAmount.value - roundUpToNearestHundred(props.totalAmount)));
-  }else{
-     return Math.max(0,roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount));
+  if (props.selectedCurrency === "COP") {
+    return Math.max(
+      0,
+      roundToTwoDecimalPlaces(
+        totalPaidAmount.value - roundUpToNearestHundred(props.totalAmount)
+      )
+    );
+  } else {
+    return Math.max(
+      0,
+      roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
+    );
   }
-
 });
 
 const showChangeAmount = computed(() => {
@@ -460,6 +483,58 @@ const showChangeAmount = computed(() => {
   return hasRelevantCashPayment && changeAmount.value > 0;
 });
 
+watch(balanceSwitch, (newVal) => {
+  if (newVal) {
+    if (payments.value[0] && payments.value[0].method !== "balance") {
+      payments.value[0].amount = null;
+    }
+
+    const clientBalance = props.orderData.client?.balance || 0;
+    if (clientBalance <= 0) {
+      toast.error("El cliente no tiene saldo disponible.");
+      balanceSwitch.value = false;
+      return;
+    }
+
+    let remainingAmountInOrderCurrency = remainingAmount.value;
+
+    let rateToUSD;
+    if (props.selectedCurrency === "USD") {
+      rateToUSD = 1;
+    } else {
+      rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+    }
+
+    if (!rateToUSD) {
+      toast.error(
+        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
+      );
+      balanceSwitch.value = false;
+      return;
+    }
+
+    const remainingAmountInUSD = remainingAmountInOrderCurrency / rateToUSD;
+    const amountToUse = Math.min(remainingAmountInUSD, clientBalance);
+    const formattedAmount = parseFloat(amountToUse.toFixed(2));
+    const balancePayment = {
+      method: "balance",
+      amount: formattedAmount,
+      currency: "USD",
+      reference: "",
+    };
+    payments.value.unshift(balancePayment);
+  } else {
+    payments.value = payments.value.filter((p) => p.method !== "balance");
+    if (payments.value.length === 0) {
+      payments.value.push({
+        method: null,
+        amount: null,
+        reference: null,
+        currency: props.selectedCurrency,
+      });
+    }
+  }
+});
 </script>
 
 <template>
@@ -550,14 +625,16 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-4">
-            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
+            {{
+              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
+            }}
           </p>
         </div>
       </VCardText>
 
       <VCardText v-else-if="currentProgress === 50">
         <div class="d-flex flex-wrap justify-space-between">
-          <span>Saldo</span>
+          <span>Saldo {{ props.orderData.client?.balance || "0.00" }}</span>
           <VSwitch v-model="balanceSwitch" />
         </div>
         <div class="d-flex flex-wrap justify-space-between">
@@ -586,7 +663,7 @@ const showChangeAmount = computed(() => {
             class="mt-4"
           />
 
-          <div class="my-4">
+          <div class="my-4" v-if="payment.method !== 'balance'">
             <VRadioGroup v-model="payment.method" inline>
               <VRadio
                 v-for="method in (
@@ -615,13 +692,25 @@ const showChangeAmount = computed(() => {
           </div>
 
           <VTextField
-            v-if="payment.method && payment.method !== 'credit'"
-            v-model.number="payment.amount"
-            label="Monto del pago"
-            :placeholder="getPlaceholderText(index, payment)"
-            type="number"
-            class="my-4"
-          />
+        v-if="payment.method === 'balance'"
+        :model-value="payment.amount.toFixed(2)"
+        label="Monto del pago"
+        :placeholder="getPlaceholderText(index, payment)"
+        type="text"
+        class="my-4"
+        readonly
+        :persistent-hint="true"
+        hint="Monto del saldo no editable."
+      />
+
+      <VTextField
+        v-else-if="payment.method && payment.method !== 'credit'"
+        v-model.number="payment.amount"
+        label="Monto del pago"
+        :placeholder="getPlaceholderText(index, payment)"
+        type="number"
+        class="my-4"
+      />
 
           <VTextField
             v-if="payment.method && isTransferMethod(payment.method)"
@@ -657,7 +746,9 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-4">
-            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
+            {{
+              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
+            }}
           </p>
         </div>
 
@@ -703,15 +794,15 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <span class="font-weight-bold text-h6"> Cajero </span>
           <span class="font-weight-bold text-h6">
-            {{ props.orderData.seller?.username || 'N/A' }}
+            {{ props.orderData.seller?.username || "N/A" }}
           </span>
         </div>
 
         <div class="d-flex flex-wrap justify-space-between">
           <span class="font-weight-bold text-h6"> Cedula </span>
           <span class="font-weight-bold text-h6">
-            {{ props.orderData.client?.identification_type || 'N/A' }}
-            {{ props.orderData.client?.identification || 'N/A' }}
+            {{ props.orderData.client?.identification_type || "N/A" }}
+            {{ props.orderData.client?.identification || "N/A" }}
           </span>
         </div>
 
@@ -780,7 +871,9 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
+            {{
+              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
+            }}
           </p>
         </div>
 
@@ -804,7 +897,9 @@ const showChangeAmount = computed(() => {
         >
           <p class="font-weight-bold text-h6">Crédito:</p>
           <p class="font-weight-bold text-h6">
-            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
+            {{
+              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
+            }}
           </p>
         </div>
         <div
@@ -817,7 +912,9 @@ const showChangeAmount = computed(() => {
           </p>
         </div>
 
-          <p class='font-weight-bold text-center text-success'>¡GRACIAS POR SU COMPRA!</p>
+        <p class="font-weight-bold text-center text-success">
+          ¡GRACIAS POR SU COMPRA!
+        </p>
       </VCardText>
       <VCardActions class="p-4 d-flex flex-wrap justify-space-between">
         <VBtn

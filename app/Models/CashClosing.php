@@ -21,7 +21,7 @@ class CashClosing extends Model
         'total_usd', 'total_cop', 'total_bs',
         'bs_card', 'bs_cash', 'bs_transfer', 'bs_mobile',
         'cop_cash', 'cop_transfer', 'cop_conversion', 'cop_spare',
-        'usd_transfer', 'usd_cash', 'usd_paypal', 'usd_binance', 'usd_conversion', 'usd_credit',
+        'usd_transfer', 'usd_cash', 'usd_paypal', 'usd_binance', 'usd_conversion', 'usd_credit', 'usd_balance',
         'usd_delivered', 'cop_delivered', 'bs_delivered',
     ];
 

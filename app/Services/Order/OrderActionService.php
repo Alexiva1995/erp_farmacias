@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\Credit;
+use App\Models\Client;
 use App\Models\FiscalHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -303,8 +304,14 @@ class OrderActionService
             $uniqueCurrencies = array_unique($currencies);
             $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
-            //$cliente->save();
             $orderId->save();
+
+            $balancePayment = collect($request->payments)->firstWhere('method', 'balance');
+            if ($balancePayment) {
+                $client = $orderId->client;
+                $client->balance -= $balancePayment['amount'];
+                $client->save();
+            }
 
             if ($request->credit) {
                 Credit::create([
@@ -403,13 +410,16 @@ class OrderActionService
                         case 'bank_transfer':
                             $current_cash->cop_transfer += $payment['amount'];
                             break;
+                        case 'balance':
+                            $current_cash->usd_balance += $payment['amount'];
+                            break;
                     }
                 }
             }
 
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
             $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
-            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit;
+            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance;
 
             $current_cash->total_bs += $total_bs;
             $current_cash->total_cop += $total_cop;
