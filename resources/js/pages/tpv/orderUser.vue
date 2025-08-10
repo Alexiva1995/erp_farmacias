@@ -760,7 +760,7 @@ const closeBuysModal = () => {
     showBuysModal.value = false;
 };
 
-const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount, switchStates) => {
+const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,changeAmountUSD, switchStates) => {
 
   try {
     const payload = {
@@ -774,6 +774,7 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       generate_invoice: switchStates.invoice_switch,
       credit: credit,
       changeAmount: changeAmount,
+      changeAmountUSD: changeAmountUSD,
     };
 
     const response = await axios.post(`/tpv/orders/${orderId}/complete`, payload);

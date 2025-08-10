@@ -52,6 +52,8 @@ const currentStageIndex = ref(0);
 const balanceSwitch = ref(false);
 const invoiceSwitch = ref(false);
 
+const changeAmountUSD = ref(0);
+
 const payments = ref([
   {
     method: null,
@@ -128,23 +130,18 @@ const totalPaidAmount = computed(() => {
   let currentSum = 0;
   payments.value.forEach((payment, index) => {
     let amount = Number(payment.amount) || 0;
-
     let amountToAdd = 0;
+
     if (payment.currency === props.selectedCurrency) {
       amountToAdd = amount;
     } else {
       const rate =
         exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-      console.log(exchangeRates.value);
-      console.log(rate);
-      console.log(props.selectedCurrency);
       if (rate) {
         let convertedAmount = amount * rate;
         amountToAdd = convertedAmount;
       }
     }
-    console.log(currentSum);
-    console.log(amountToAdd);
     currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
   });
   return currentSum;
@@ -354,12 +351,14 @@ const handleCompletePurchase = () => {
       currentProgress.value = 100;
     }
   } else {
+
     emit(
       "purchase-completed",
       props.orderData.id,
       payments.value,
       hasCreditPayment.value,
-      changeAmount.value,
+      changeAmountInCOP.value,
+      changeAmountInUSD.value,
       {
         balance_switch: balanceSwitch.value,
         invoice_switch: invoiceSwitch.value,
@@ -457,8 +456,7 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 });
 
 const changeAmount = computed(() => {
-  const diff = totalCashPaidInUSDOrCOP.value - props.totalAmount;
-
+  const diff = totalPaidAmount.value - props.totalAmount;
   if (props.selectedCurrency === "COP") {
     return Math.max(
       0,
@@ -467,11 +465,67 @@ const changeAmount = computed(() => {
       )
     );
   } else {
-    return Math.max(
-      0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
-    );
+    return Math.max(0, roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount));
   }
+});
+
+const changeAmountInUSD = computed(() => {
+  // 1. Identificar pagos en efectivo en USD
+  const cashPaymentsInUSD = payments.value.filter(
+    (p) => p.method === "cash_usd" && p.currency === "USD"
+  );
+
+  // Si no hay pagos en efectivo en USD, el vuelto es cero.
+  if (cashPaymentsInUSD.length === 0) {
+    return 0;
+  }
+
+  // 2. Calcular el total de los pagos en efectivo en USD
+  let totalCashPaidInUSD = 0;
+  cashPaymentsInUSD.forEach((p) => {
+    totalCashPaidInUSD += Number(p.amount) || 0;
+  });
+
+  // 3. Calcular el total de la orden en USD
+  // Si la moneda de la orden no es USD, la convertimos.
+  let totalOrdenEnUSD;
+  if (props.selectedCurrency === "USD") {
+    totalOrdenEnUSD = props.totalAmount;
+  } else {
+    const rate = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+    if (!rate) {
+      console.error(
+        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
+      );
+      return 0;
+    }
+    totalOrdenEnUSD = props.totalAmount / rate;
+  }
+
+  // 4. Calcular el vuelto en USD, solo si la diferencia es positiva.
+  const diff = totalCashPaidInUSD - totalOrdenEnUSD;
+  return Math.max(0, roundToTwoDecimalPlaces(diff));
+});
+
+
+const changeAmountInCOP = computed(() => {
+  // Primero, obtenemos el vuelto en la moneda de la orden
+  const vueltoEnMonedaOrden = changeAmount.value;
+  
+  // Si la moneda de la orden ya es COP, no hacemos nada.
+  if (props.selectedCurrency === "COP") {
+    return vueltoEnMonedaOrden;
+  }
+  
+  // Si no es COP, la convertimos.
+  const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+  if (rate) {
+    const vueltoConvertido = vueltoEnMonedaOrden * rate;
+    return roundUpToNearestHundred(vueltoConvertido); // Aplicamos el redondeo para COP
+  }
+  
+  // En caso de que no haya tasa de cambio, devolvemos 0.
+  return 0;
 });
 
 const showChangeAmount = computed(() => {
@@ -758,7 +812,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmount, props.selectedCurrency) }}
+            {{ formatCurrency(changeAmountInCOP, 'COP') }}
           </p>
         </div>
 
@@ -908,7 +962,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmount, props.selectedCurrency) }}
+            {{ formatCurrency(changeAmountInCOP, 'COP') }}
           </p>
         </div>
 

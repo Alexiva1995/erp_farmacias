@@ -240,7 +240,7 @@ class OrderActionService
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
                 $product = $detail->product;
-                $priceBs = $product->price_bs; 
+                $priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
 
                 if ($product->iva == 1) {
@@ -376,50 +376,60 @@ class OrderActionService
             }
 
 
+            $current_cash->cop_conversion += $request->changeAmount ?? null;
+            $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
+
             foreach ($request->payments as $payment) {
-                $method = $payment['method'];
+                $method = $payment['method'] ?? null;
+                $amount = $payment['amount'] ?? 0;
+
                 if (isset($method)) {
                     switch ($method) {
                         case 'cash_usd':
-                            $current_cash->usd_cash += $payment['amount'];
+                            $current_cash->usd_cash += $amount;
                             break;
                         case 'binance':
-                            $current_cash->usd_binance += $payment['amount'];
+                            $current_cash->usd_binance += $amount;
                             break;
                         case 'paypal':
-                            $current_cash->usd_paypal += $payment['amount'];
+                            $current_cash->usd_paypal += $amount;
                             break;
                         case 'credit':
                             $current_cash->usd_credit += $request->total_amount;
                             break;
                         case 'cash_bs':
-                            $current_cash->bs_cash += $payment['amount'];
+                            $current_cash->bs_cash += $amount;
                             break;
                         case 'mobile_payment':
-                            $current_cash->bs_mobile += $payment['amount'];
+                            $current_cash->bs_mobile += $amount;
                             break;
                         case 'bank_transfer_bs':
-                            $current_cash->bs_transfer += $payment['amount'];
+                            $current_cash->bs_transfer += $amount;
                             break;
                         case 'card':
-                            $current_cash->bs_card += $payment['amount'];
+                            $current_cash->bs_card += $amount;
                             break;
                         case 'cash_cop':
-                            $current_cash->cop_cash += $payment['amount'];
+                            $current_cash->cop_cash += $amount;
                             break;
                         case 'bank_transfer':
-                            $current_cash->cop_transfer += $payment['amount'];
+                            $current_cash->cop_transfer += $amount;
                             break;
                         case 'balance':
-                            $current_cash->usd_balance += $payment['amount'];
+                            $current_cash->usd_balance += $amount;
                             break;
                     }
                 }
             }
 
+
+            if (isset($request->changeAmountUSD)) {
+                $current_cash->usd_cash -= $request->changeAmountUSD;
+            }
+
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
             $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
-            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance;
+            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance + $current_cash->usd_conversion;
 
             $current_cash->total_bs += $total_bs;
             $current_cash->total_cop += $total_cop;

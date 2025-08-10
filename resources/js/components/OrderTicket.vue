@@ -219,7 +219,7 @@ const showChangeAmount = computed(() => {
          <div v-if="showChangeAmount" class="ticket-total d-flex justify-space-between align-center">
             <span class="font-weight-bold tituloAzulPrint">DEVOLUCION:</span>
             <span class="text-end font-weight-black tituloAzulPrint">
-                {{ formatCurrency(changeAmount, selectedCurrency) }}
+                {{ formatCurrency(changeAmount, 'COP') }}
             </span>
         </div>
     </div>
