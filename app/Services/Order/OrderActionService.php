@@ -427,6 +427,10 @@ class OrderActionService
                 $current_cash->usd_cash -= $request->changeAmountUSD;
             }
 
+            if (isset($request->changeAmount)) {
+                $current_cash->cop_cash -= $request->changeAmount;
+            }
+
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
             $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
             $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance + $current_cash->usd_conversion;
