@@ -822,8 +822,7 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
     }
 
     }else{
-      toast.error(`Error inesperado al finalizar la compra: ${response.data.message || 'Intente de nuevo.'}`);
-      
+      toast.error(`Error inesperado al finalizar la compra: ${response.data.message || 'Intente de nuevo.'}`);  
     }
 
 
@@ -866,6 +865,30 @@ const fetchGroupProducts = async (groupId) => {
 const handleBackFromGroupView = () => {
     currentGroupId.value = null;
 };
+
+const handleAddQuotationProducts = async (productsFromQuotation) => {
+  if (!productsFromQuotation || productsFromQuotation.length === 0) {
+    toast.info("La cotización no tiene productos o está vacía.");
+    return;
+  }
+
+  for (const product of productsFromQuotation) {
+    try {
+      await addProductToOrder({
+        productId: product.product_id,
+        quantity: product.units,
+      });
+    } catch (error) {
+      console.error(
+        `Error al agregar el producto con ID ${product.product_id}:`,
+        error
+      );
+    }
+  }
+
+  toast.success("Productos de la cotización agregados al pedido.");
+  await fetchProducts();
+};
 </script>
 <template>
   <div>
@@ -888,6 +911,7 @@ const handleBackFromGroupView = () => {
         @remove-item="removeOrderItem"
         @cancelar-order="cancelarOrder"
         @open-buys-modal="openBuysModal"
+        @add-quotation-products="handleAddQuotationProducts"
       />
     </div>
     <div v-else>

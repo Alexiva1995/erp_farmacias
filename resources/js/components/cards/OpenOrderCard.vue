@@ -3,6 +3,8 @@ import { defineProps, computed, ref } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import Swal from "sweetalert2";
+import { toast } from "@/plugins/sweetalert";
+import axios from "@/plugins/axios";
 
 const props = defineProps({
   orderProducts: {
@@ -52,6 +54,8 @@ const props = defineProps({
   },
 });
 
+const quotationId = ref('');
+
 const clientName = computed(() => {
   return props.cliente
     ? `${props.cliente.name} ${props.cliente.last_name}`
@@ -72,6 +76,7 @@ const emit = defineEmits([
   "remove-item",
   "cancelar-order",
   "open-buys-modal",
+  "add-quotation-products",
 ]);
 
 const chipColor = "primary";
@@ -159,6 +164,23 @@ const hadleCancelarOrder = () => {
 
 const handleCompleteOrder = () => {
   emit('open-buys-modal');
+};
+
+
+const fetchQuotationProducts = async (id) => {
+    if (!id) return;
+    try {
+        const response = await axios.get(`/tpv/quotations/${id}/products`);
+        const quotationData = response.data;
+        emit('add-quotation-products', quotationData.products);
+        toast.success('Productos de la cotización cargados exitosamente.');
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || 'Error de red o cotización no encontrada.';
+        toast.error(errorMessage);
+        console.error('Error fetching quotation:', error);
+    } finally {
+        quotationId.value = '';
+    }
 };
 
 </script>
@@ -257,6 +279,28 @@ const handleCompleteOrder = () => {
         </VCardItem>
 
         <VCardText>
+         <AppTextField
+            v-model="quotationId"
+            placeholder="ID de la cotización"
+            clearable
+            class="flex-grow-1 mb-2"
+          >
+          <template #append-inner>
+              <VBtn
+                icon
+                variant="text"
+                color="primary"
+                size="small"
+                @click="fetchQuotationProducts(quotationId)"
+                :disabled="!quotationId"
+              >
+                <VIcon icon="tabler-plus" />
+              </VBtn>
+            </template>
+            </AppTextField>
+          <VDivider class="mt-auto" />
+        
+
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Código de Barra"

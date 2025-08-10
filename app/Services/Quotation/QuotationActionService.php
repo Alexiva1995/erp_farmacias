@@ -65,4 +65,10 @@ class QuotationActionService
             throw $e;
         }
     }
+
+     public function getProducts(string $quotationId): ?Quotation
+    {
+        $quotation = Quotation::with('products')->find($quotationId);
+        return $quotation;
+    }
 }

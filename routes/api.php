@@ -96,6 +96,8 @@ Route::prefix("tpv")->group(function () {
     Route::get('/quotation', [QuotationController::class, 'index']);
     Route::get('/quotation/{product}', [QuotationController::class, 'show']);
     Route::post('/quotations', [QuotationController::class, 'store']);
+    Route::get('/quotations/{quotationId}/products', [QuotationController::class, 'showProducts']);
+
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
     Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
@@ -106,6 +108,7 @@ Route::prefix("tpv")->group(function () {
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
     Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
     Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+
     // Rutas de Pedidos General
     Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
     Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
