@@ -5,6 +5,7 @@ import { formatCurrency } from "@/utils/currencyFormatter";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { toast } from "@/plugins/sweetalert";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 
 const props = defineProps({
   isDialogVisible: {
@@ -192,9 +193,21 @@ onMounted(() => {
   fetchExchangeRates();
 });
 
+const roundedTotalAmountToPay = computed(() => {
+  if (props.selectedCurrency === "COP") {
+    return roundUpToNearestHundred(props.totalAmount);
+  }
+  return props.totalAmount;
+});
+
 const remainingAmount = computed(() => {
   const rawDifference = props.totalAmount - totalPaidAmount.value;
-  return roundToTwoDecimalPlaces(rawDifference);
+  //return roundToTwoDecimalPlaces(rawDifference);
+   if (props.selectedDisplayCurrency === "COP") {
+    return roundUpToNearestHundred(rawDifference);
+  }else{
+    return roundToTwoDecimalPlaces(rawDifference);
+  }
 });
 
 const getConvertedRemainingAmount = (currency) => {
@@ -374,10 +387,6 @@ watch(
   }
 );
 
-const roundUpToNearestHundred = (value) => {
-  return Math.ceil(value / 100) * 100;
-};
-
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -433,10 +442,13 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 
 const changeAmount = computed(() => {
   const diff = totalCashPaidInUSDOrCOP.value - props.totalAmount;
-  return Math.max(
-    0,
-    roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
-  );
+
+   if (props.selectedDisplayCurrency === "COP") {
+    return Math.max(0,roundToTwoDecimalPlaces(totalPaidAmount.value - roundUpToNearestHundred(props.totalAmount)));
+  }else{
+     return Math.max(0,roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount));
+  }
+
 });
 
 const showChangeAmount = computed(() => {
@@ -447,6 +459,7 @@ const showChangeAmount = computed(() => {
   );
   return hasRelevantCashPayment && changeAmount.value > 0;
 });
+
 </script>
 
 <template>
@@ -537,7 +550,7 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-4">
-            {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
           </p>
         </div>
       </VCardText>
@@ -644,7 +657,7 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-4">
-            {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
           </p>
         </div>
 
@@ -767,7 +780,7 @@ const showChangeAmount = computed(() => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
           </p>
         </div>
 
@@ -791,7 +804,7 @@ const showChangeAmount = computed(() => {
         >
           <p class="font-weight-bold text-h6">Crédito:</p>
           <p class="font-weight-bold text-h6">
-            {{ formatCurrency(totalAmount, props.selectedCurrency) }}
+            {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
           </p>
         </div>
         <div

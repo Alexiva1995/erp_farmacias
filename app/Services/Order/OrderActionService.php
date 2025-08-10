@@ -318,6 +318,30 @@ class OrderActionService
             }
 
             $orderId->load('details.product.lots');
+
+            foreach ($orderId->details as $detail) {
+                $quantityToReduce = $detail->quantity;
+                $lots = $detail->product->lots->sortBy('expiration_date');
+                foreach ($lots as $lot) {
+                    if ($quantityToReduce <= 0) {
+                        break;
+                    }
+                    if ($lot->quantity >= $quantityToReduce) {
+                        $lot->quantity -= $quantityToReduce;
+                        $lot->save();
+                        $quantityToReduce = 0;
+                    } else {
+                        $quantityToReduce -= $lot->quantity;
+                        $lot->quantity = 0;
+                        $lot->save();
+                    }
+                }
+                if ($quantityToReduce > 0) {
+                    throw new \Exception("No hay suficiente stock en los lotes para el producto ID: {$detail->product->id}");
+                }
+            }
+
+
             if ($request->generate_invoice) {
                 $this->invoicing($orderId);
                 $ivaEjecuted = true;
@@ -325,24 +349,12 @@ class OrderActionService
 
             foreach ($orderId->details as $detail) {
                 if ($detail->product) {
-
                     if (!$request->generate_invoice) {
                         if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
                             $this->invoicing($orderId);
                             $ivaEjecuted = true;
                         }
                     }
-
-                    //   dd($detail->product->lots);
-                    //   $untsProd = $detail->product->quantity;
-                    $untsProd = $detail->product->quantity;
-                    if ($untsProd <= $detail->quantity) {
-                        //   $detail->product->quantity = 0;
-                    } else {
-                        //  $detail->product->quantity = $detail->quantity - $untsProd;
-                    }
-
-                    //$detail->product->save();
                 }
             }
 

@@ -434,7 +434,10 @@ const totalOrderAmount = computed(() => {
 
 const myCalculatedTotal = computed(() => {
   let valor = totalProductsAmount.value + totalIVAAmount.value;
-   return parseFloat(valor.toFixed(2));
+    if (selectedDisplayCurrency.value === 'COP') {
+      return roundUpToNearestHundred(valor);
+   }
+    return parseFloat(valor.toFixed(2));
 });
 
 const totalIVAAmount = computed(() => {
@@ -495,9 +498,12 @@ const updateOrderTotalsInBackend = async () => {
   if (!openOrderData.value || !openOrderData.value.id) {
     return;
   }
+
+  let total = selectedDisplayCurrency.value == 'COP' ? roundUpToNearestHundred(totalOrderAmount.value) : totalOrderAmount.value
+
   try {
     const payload = {
-      total_amount: totalOrderAmount.value,
+      total_amount: total,
       currency: selectedDisplayCurrency.value,
     };
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
