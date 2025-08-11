@@ -33,7 +33,6 @@ const isLoadingDialogData = ref(false);
 const isEditDialogVisible = ref(false);
 const lotsForEditing = ref([]);
 const productNameToEdit = ref("");
-const productBarcodeToEdit = ref("");
 const productIdToEdit = ref(null);
 const productStockToEdit = ref(0);
 
@@ -71,7 +70,7 @@ const fetchProductLots = async () => {
   );
 
   try {
-    const response = await axios.get("/product-lots", { params });
+    const response = await axios.get("/product-without-lots", { params });
     productLots.value = response.data?.data.data || [];
     totalProductLots.value = response.data?.data.total || 0;
   } catch (error) {
@@ -186,7 +185,6 @@ const handleEditLot = async (lotToEdit) => {
     const product = lotToEdit.product;
 
     productNameToEdit.value = product.name;
-    productBarcodeToEdit.value = product.barcode;
     productIdToEdit.value = product.id;
     productStockToEdit.value = product.stock;
 
@@ -278,6 +276,7 @@ const handleUpdateLot = async (lotsToSave) => {
       v-model:endDate="endDate"
       :laboratories="laboratories"
       :loading="isLoadingFilters"
+      :add-lot-loading="isLoadingDialogData"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
@@ -304,7 +303,6 @@ const handleUpdateLot = async (lotsToSave) => {
     <ProductLotEditDialog
       v-model="isEditDialogVisible"
       :product-name="productNameToEdit"
-      :product-barcode="productBarcodeToEdit"
       :product-id="productIdToEdit"
       :product-stock="productStockToEdit"
       :lots="lotsForEditing"

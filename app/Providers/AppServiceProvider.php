@@ -5,12 +5,30 @@ namespace App\Providers;
 use App\Contracts\Client;
 use App\Contracts\Company;
 use App\Contracts\Doctor;
+use App\Contracts\Laboratory;
+use App\Contracts\Lottery;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\LaboratoryController;
+use App\Http\Controllers\Api\LotteryController;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
+use App\Services\LaboratoryServices;
+use App\Services\LotteryServices;
+use App\Contracts\ExchangeRate;
+use App\Contracts\Order;
+use App\Contracts\Product;
+use App\Contracts\Profitability;
+use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\InventoryStockController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ProfitabilityController;
+use App\Services\ExchangeRateServices;
+use App\Services\OrderServices;
+use App\Services\ProductServices;
+use App\Services\ProfitabilityServices;
 use Illuminate\Support\ServiceProvider;
 use App\Http\Controllers\Api\OrderController;
 
@@ -21,7 +39,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->when(ProfitabilityController::class)
+            ->needs(Profitability::class)
+            ->give(ProfitabilityServices::class);
+
+        $this->app->when(ExchangeRateController::class)
+            ->needs(ExchangeRate::class)
+            ->give(ExchangeRateServices::class);
         $this->app->when(ClientController::class)
             ->needs(Client::class)
             ->give(ClientServices::class);
@@ -38,6 +62,22 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);
+
+        $this->app->when(LotteryController::class)
+            ->needs(Lottery::class)
+            ->give(LotteryServices::class);
+
+        $this->app->when(LaboratoryController::class)
+            ->needs(Laboratory::class)
+            ->give(LaboratoryServices::class);
+
+        $this->app->when(OrderController::class)
+            ->needs(Order::class)
+            ->give(OrderServices::class);
+
+        $this->app->when(InventoryStockController::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
     }
 
     /**

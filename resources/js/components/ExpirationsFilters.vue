@@ -134,8 +134,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
           </div>
 
           <VBtn
-            color="info"
-            variant="outlined"
+            variant="tonal"
             prepend-icon="tabler-percentage"
             @click="emit('apply-offer-selected')"
           >
@@ -143,6 +142,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
           </VBtn>
 
           <VBtn
+            variant="tonal"
             color="warning"
             prepend-icon="tabler-calendar-off"
             @click="emit('expire-selected')"

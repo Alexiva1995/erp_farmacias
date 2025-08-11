@@ -6,7 +6,7 @@ const props= defineProps({
   formError: {type: Object, default: () => []},
 })
 
-const emit= defineEmits(["modalClose", 'save', 'clearErrorForm',"update:busqueda"])
+const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
 
 function close(){
   emit("modalClose",false)
@@ -86,30 +86,24 @@ function submitForm(){
           </VCol>
         </VRow>
       </VContainer>
+      <VDivider />
       <VCardActions class="pa-4">
-        <VSpacer />
-        <VContainer>
-          <VRow justify="end">
-            <VCol cols="12" sm="6" md="6" lg="6">
-              <VBtn
-                color="secondary"
-                variant="outlined"
-                @click="close"
-                width="100%"
-                >Cancelar</VBtn
-              >
-            </VCol>
-            <VCol cols="12" sm="6" md="6" lg="6">
-              <VBtn
-                color="primary"
-                variant="flat"
-                @click="submitForm"
-                width="100%"
-                >Guardar Cambios</VBtn
-              >
-            </VCol>
-          </VRow>
-        </VContainer>
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="close"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
+          >Cancelar</VBtn
+        >
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          width="100%"
+          class="flex-grow-1 w-0 mr-4"
+          >Guardar Cambios</VBtn
+        >
       </VCardActions>
     </VCard>
   </VDialog>

@@ -11,6 +11,6 @@ class ExpiredLogObserver
      */
     public function created(ExpiredLog $expiredLog): void
     {
-        ProductObserver::handleExpiredProduct($expiredLog);
+        // ProductObserver::handleExpiredProduct($expiredLog);
     }
 }

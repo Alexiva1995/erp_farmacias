@@ -12,6 +12,9 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  mode: { type: String, default: "products" },
+  showAddButton: { type: Boolean, default: true },
+  addButtonText: { type: String, default: "Añadir Producto" },
 });
 
 const emit = defineEmits([
@@ -120,6 +123,8 @@ const clearSortFilter = () => {
   } catch (error) {
     console.error("Error al limpiar el filtro:", error);
   }
+
+  emit("sort", { key: undefined, order: undefined });
 };
 
 const getSelectedSortTitle = () => {
@@ -154,6 +159,11 @@ const handleClear = () => {
   emit("clear");
 };
 
+// Computed para título dinámico
+const cardTitle = computed(() => {
+  return props.mode === "inventory" ? "Filtros de Inventario" : "Filtros";
+});
+
 onMounted(() => {
   loadSavedSort();
 });
@@ -170,7 +180,7 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard :title="cardTitle" class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">
@@ -301,39 +311,58 @@ watch(
 
       <VSpacer />
 
-      <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-upload"
-            v-bind="menuProps"
-          >
-            Exportar
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem @click="emit('export', 'xlsx')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
-            </template>
-            <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export', 'pdf')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
-            </template>
-            <VListItemTitle>PDF</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu>
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-product')"
-      >
-        Añadir Producto
-      </VBtn>
+      <!-- Botones solo para modo productos -->
+      <template v-if="mode === 'products'">
+        <VMenu>
+          <template #activator="{ props: menuProps }">
+            <VBtn
+              color="success"
+              variant="flat"
+              prepend-icon="tabler-upload"
+              v-bind="menuProps"
+            >
+              Exportar
+            </VBtn>
+          </template>
+          <VList>
+            <VListItem @click="emit('export', 'xlsx')">
+              <template #prepend>
+                <VIcon
+                  icon="tabler-file-type-csv"
+                  class="me-2"
+                  color="success"
+                />
+              </template>
+              <VListItemTitle class="text-success">Excel</VListItemTitle>
+            </VListItem>
+            <VListItem @click="emit('export', 'pdf')">
+              <template #prepend>
+                <VIcon icon="tabler-file-type-pdf" class="me-2" />
+              </template>
+              <VListItemTitle>PDF</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
+
+        <VBtn
+          v-if="props.showAddButton"
+          color="primary"
+          prepend-icon="tabler-plus"
+          @click="emit('add-product')"
+        >
+          {{ props.addButtonText }}
+        </VBtn>
+      </template>
+      <template v-else-if="mode === 'minimal'">
+        <VBtn
+          v-if="props.showAddButton"
+          color="primary"
+          prepend-icon="tabler-plus"
+          @click="emit('add-product')"
+        >
+          {{ props.addButtonText }}
+        </VBtn>
+      </template>
     </VCardActions>
   </VCard>
 </template>

@@ -28,7 +28,7 @@ const emit = defineEmits([
         <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.buscador"
-            placeholder="Buscar por nombre, apellido o identificación..."
+            placeholder="Buscar por nombre, apellido, identificación o dirección..."
             clearable
             @update:model-value="emit('update:buscador', $event)"
           />
