@@ -13,6 +13,10 @@ export default [
         title: 'Cotización',
         to: 'tpv-quotation',
       },
+      {
+        title: 'Creditos',
+        to: 'tpv-credit',
+      },
     ],
   },
 ]
