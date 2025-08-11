@@ -30,7 +30,6 @@ use App\Services\OrderServices;
 use App\Services\ProductServices;
 use App\Services\ProfitabilityServices;
 use Illuminate\Support\ServiceProvider;
-use App\Http\Controllers\Api\OrderController;
 
 class AppServiceProvider extends ServiceProvider
 {

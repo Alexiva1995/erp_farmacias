@@ -22,17 +22,15 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
 use App\Contracts\Order as OrderContract;
 
-
 class OrderController extends Controller
 {
 
     public function __construct(
         protected Client $client,
-        protected Order $order,
+        protected OrderContract $orderContract,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
     ) {}
-    
     public function index(Request $request)
     {
         $query = $this->orderQueryService->getFilteredQueryProduct($request);
@@ -255,7 +253,8 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
-  
+
+
      public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
     {
         $filtros = [
@@ -269,8 +268,9 @@ class OrderController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        $repuesta = $this->order->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
+        $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
      }
+
 }
