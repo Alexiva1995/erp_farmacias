@@ -20,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
-use App\Contracts\Order;
+use App\Contracts\Order as OrderContract;
 
 
 class OrderController extends Controller
@@ -32,6 +32,7 @@ class OrderController extends Controller
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
     ) {}
+    
     public function index(Request $request)
     {
         $query = $this->orderQueryService->getFilteredQueryProduct($request);
