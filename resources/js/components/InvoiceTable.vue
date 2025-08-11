@@ -1,4 +1,3 @@
-<!-- src/components/invoices/InvoiceTable.vue -->
 <script setup>
 const props = defineProps({
   invoices: { type: Array, required: true },
@@ -6,9 +5,16 @@ const props = defineProps({
   totalInvoices: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  actionsMode: { type: String, default: "default" },
 });
 
-const emit = defineEmits(["update:options", "edit-invoice", "delete-invoice"]);
+const emit = defineEmits([
+  "update:options",
+  "edit-invoice",
+  "delete-invoice",
+  "approve-invoice",
+  "reject-invoice",
+]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -33,8 +39,10 @@ const resolveStatusVariant = (status) => {
   const statusMap = {
     Pagada: { color: "success", icon: "tabler-check" },
     Pendiente: { color: "warning", icon: "tabler-clock" },
+    "Por Aprobar": { color: "info", icon: "tabler-hourglass" },
     Vencida: { color: "error", icon: "tabler-alert-triangle" },
     Anulada: { color: "secondary", icon: "tabler-circle-x" },
+    Rechazada: { color: "error", icon: "tabler-thumb-down" },
   };
   return (
     statusMap[status] || { color: "default", icon: "tabler-question-mark" }
@@ -93,12 +101,46 @@ const resolveStatusVariant = (status) => {
       </template>
 
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-invoice', item)">
-          <VIcon icon="tabler-edit" />
-        </IconBtn>
-        <IconBtn @click="emit('delete-invoice', item.id)">
-          <VIcon icon="tabler-trash" />
-        </IconBtn>
+        <div v-if="props.actionsMode === 'approval'">
+          <VTooltip text="Aprobar Factura">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                color="success"
+                @click="emit('approve-invoice', item)"
+              >
+                <VIcon icon="tabler-thumb-up" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+          <VTooltip text="Rechazar Factura">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                color="error"
+                @click="emit('reject-invoice', item)"
+              >
+                <VIcon icon="tabler-thumb-down" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+          <VTooltip text="Ver Detalles">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="emit('edit-invoice', item)">
+                <VIcon icon="tabler-eye" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+        </div>
+
+        <div v-else>
+          <IconBtn @click="emit('edit-invoice', item)">
+            <VIcon icon="tabler-edit" />
+          </IconBtn>
+          <IconBtn @click="emit('delete-invoice', item.id)">
+            <VIcon icon="tabler-trash" />
+          </IconBtn>
+        </div>
       </template>
     </VDataTableServer>
   </VCard>

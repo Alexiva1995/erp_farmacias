@@ -278,6 +278,7 @@ Route::prefix("supplier-laboratories")->group(function () {
 
 //Invoices
 Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+Route::get('invoices/for-order', [InvoiceController::class, 'indexForOrder'])->name('invoices.forOrder');
 Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
 Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
 Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');

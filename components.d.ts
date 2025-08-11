@@ -22,6 +22,7 @@ declare module 'vue' {
     AppDrawerHeaderSection: typeof import('./resources/js/@core/components/AppDrawerHeaderSection.vue')['default']
     AppLoadingIndicator: typeof import('./resources/js/components/AppLoadingIndicator.vue')['default']
     AppPricing: typeof import('./resources/js/components/AppPricing.vue')['default']
+    ApproveInvoiceModal: typeof import('./resources/js/components/dialogs/ApproveInvoiceModal.vue')['default']
     AppSearchHeader: typeof import('./resources/js/components/AppSearchHeader.vue')['default']
     AppSelect: typeof import('./resources/js/@core/components/app-form-elements/AppSelect.vue')['default']
     AppStepper: typeof import('./resources/js/@core/components/AppStepper.vue')['default']

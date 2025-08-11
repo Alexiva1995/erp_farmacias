@@ -34,6 +34,18 @@ class InvoiceController extends Controller
             'total' => $paginatedResult->total(),
         ]);
     }
+    public function indexForOrder(Request $request)
+    {
+        $query = $this->invoiceQueryService->getForOrderQuery($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
 
     /**
      * Almacena una nueva factura.

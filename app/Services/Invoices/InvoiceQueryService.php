@@ -64,6 +64,48 @@ class InvoiceQueryService
 
         return $query;
     }
+    public function getForOrderQuery(Request $request): Builder
+    {
+        $query = Invoice::query()
+            ->with('supplier')
+            ->where('status', 'to_order');
+
+        if ($request->filled('q')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('invoice_number', 'like', '%' . $request->q . '%')
+                    ->orWhere('control_number', 'like', '%' . $request->q . '%')
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($request) {
+                        $supplierQuery->where('name', 'like', '%' . $request->q . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('supplierId')) {
+            $query->where('supplier_id', $request->supplierId);
+        }
+
+        if ($request->filled('startDate')) {
+            $query->whereDate('exp_date', '>=', $request->startDate);
+        }
+
+        if ($request->filled('endDate')) {
+            $query->whereDate('exp_date', '<=', $request->endDate);
+        }
+
+        if ($request->filled('sortBy') && $request->filled('orderBy')) {
+            if ($request->sortBy === 'supplier.name') {
+                $query->join('suppliers', 'invoices.supplier_id', '=', 'suppliers.id')
+                    ->orderBy('suppliers.name', $request->orderBy)
+                    ->select('invoices.*');
+            } else {
+                $query->orderBy($request->sortBy, $request->orderBy);
+            }
+        } else {
+            $query->orderBy('invoices.id', 'desc');
+        }
+
+        return $query;
+    }
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
     {
         $configuredProducts = SuppliersConfigProduct::query()
