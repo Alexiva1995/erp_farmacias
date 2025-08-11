@@ -20,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
-use App\Contracts\Order;
+use App\Contracts\Order as OrderContract;
 
 
 class OrderController extends Controller
@@ -28,7 +28,7 @@ class OrderController extends Controller
 
     public function __construct(
         protected Client $client,
-        protected Order $order,
+        protected OrderContract $orderContract,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
     ) {}
@@ -268,7 +268,7 @@ class OrderController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
-        $repuesta = $this->order->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
+        $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
      }

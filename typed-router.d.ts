@@ -39,13 +39,16 @@ declare module 'vue-router/auto-routes' {
     'inventory-psychotropics': RouteRecordInfo<'inventory-psychotropics', '/inventory/psychotropics', Record<never, never>, Record<never, never>>,
     'inventory-stock': RouteRecordInfo<'inventory-stock', '/inventory/stock', Record<never, never>, Record<never, never>>,
     'inventory-traceability': RouteRecordInfo<'inventory-traceability', '/inventory/traceability', Record<never, never>, Record<never, never>>,
+    'invoice-invoice-details': RouteRecordInfo<'invoice-invoice-details', '/invoice/invoiceDetails', Record<never, never>, Record<never, never>>,
+    'invoice-invoices': RouteRecordInfo<'invoice-invoices', '/invoice/invoices', Record<never, never>, Record<never, never>>,
+    'invoice-register': RouteRecordInfo<'invoice-register', '/invoice/register', Record<never, never>, Record<never, never>>,
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,
     'lot-products': RouteRecordInfo<'lot-products', '/lot/products', Record<never, never>, Record<never, never>>,
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
+    'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
-    'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
   }
 }
