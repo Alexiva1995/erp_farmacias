@@ -34,6 +34,8 @@ declare module 'vue-router/auto-routes' {
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,
     'lot-products': RouteRecordInfo<'lot-products', '/lot/products', Record<never, never>, Record<never, never>>,
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
+    'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
+    'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
   }
 }

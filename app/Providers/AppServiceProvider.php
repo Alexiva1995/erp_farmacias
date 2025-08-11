@@ -12,6 +12,7 @@ use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
 use Illuminate\Support\ServiceProvider;
+use App\Http\Controllers\Api\OrderController;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(ClientController::class)
             ->needs(Client::class)
             ->give(ClientServices::class);
+
+        $this->app->when(OrderController::class) // Cuando el OrderController
+            ->needs(Client::class)               // necesite una instancia de Client
+            ->give(ClientServices::class); 
 
         $this->app->when(CompanyController::class)
             ->needs(Company::class)
