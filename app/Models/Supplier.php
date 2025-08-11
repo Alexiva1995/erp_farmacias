@@ -39,12 +39,20 @@ class Supplier extends Model
         'is_deleted'
     ];
 
+    protected $casts = [
+        'dispatch_days' => 'array',
+        'order_days' => 'array',
+    ];
+
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      * Esto es muy útil para manejar JSON, booleanos, fechas, etc.
      *
      * @var array<string, string>
      */
+
+    protected $appends = ['debt'];
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
@@ -85,9 +93,9 @@ class Supplier extends Model
         return $this->hasMany(SuppliersConfigProduct::class);
     }
 
-    public function paymentRules()
+    public function paymentRule()
     {
-        return $this->hasMany(PaymentRule::class);
+        return $this->hasOne(PaymentRule::class);
     }
 
     public function invoices()
@@ -103,5 +111,20 @@ class Supplier extends Model
     public function psychotropicControls()
     {
         return $this->hasMany(PsychotropicControl::class);
+    }
+
+    public function scores()
+    {
+        return $this->hasMany(SupplierScore::class);
+    }
+
+    public function latestScore()
+    {
+        return $this->hasOne(SupplierScore::class)->latestOfMany('evaluated_on');
+    }
+
+    public function getDebtAttribute(): float
+    {
+        return $this->invoices->sum->outstanding_debt;
     }
 }

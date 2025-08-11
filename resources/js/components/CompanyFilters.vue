@@ -12,7 +12,7 @@ const emit = defineEmits([
   "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
   "clear",
-  "add-client",
+  "add-company",
   "export-pdf",
   "export-excel",
 ]);
@@ -104,7 +104,7 @@ const emit = defineEmits([
       <VBtn
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('add-client')"
+        @click="emit('add-company')"
       >
         Agregar Empresa
       </VBtn>

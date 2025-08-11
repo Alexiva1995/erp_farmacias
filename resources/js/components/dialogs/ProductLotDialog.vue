@@ -88,7 +88,7 @@ const onCancel = () => emit("update:modelValue", false);
                 v-model="lotData.product_id"
                 label="Seleccionar Producto"
                 :items="props.products"
-                item-title="name"
+                :item-title="(item) => item.id + ' - ' + item.name"
                 item-value="id"
                 placeholder="Busca un producto"
               />
@@ -120,6 +120,7 @@ const onCancel = () => emit("update:modelValue", false);
                 v-model="lotData.quantity"
                 label="Cantidad"
                 type="number"
+                :disabled="props.isEditing"
               />
             </VCol>
 
@@ -129,6 +130,7 @@ const onCancel = () => emit("update:modelValue", false);
                 label="Precio de Costo"
                 type="number"
                 prefix="$"
+                :disabled="props.isEditing"
               />
             </VCol>
 
@@ -154,14 +156,19 @@ const onCancel = () => emit("update:modelValue", false);
         </VContainer>
       </VCardText>
 
-      <VCardActions>
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="onCancel">
-          Cancelar
-        </VBtn>
-        <VBtn color="primary" variant="flat" @click="onSave">
-          {{ props.isEditing ? "Actualizar Lote" : "Guardar Lote" }}
-        </VBtn>
+      <VCardActions class="pa-4 px-10">
+        <VRow no-gutters class="w-100">
+          <VCol cols="6" class="pe-1">
+            <VBtn color="secondary" variant="outlined" @click="onCancel" block>
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="ps-1">
+            <VBtn color="primary" variant="flat" @click="onSave" block>
+              {{ props.isEditing ? "Actualizar Lote" : "Guardar Lote" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

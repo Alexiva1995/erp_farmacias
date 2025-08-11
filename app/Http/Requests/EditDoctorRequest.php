@@ -28,28 +28,28 @@ class EditDoctorRequest extends FormRequest
     {
         return [
             //
-            "id"                     =>    "required|numeric|exists:companies,id",
+            "id"                     =>    "required|numeric|exists:doctors,id",
             "name"                   =>    "required|string|max:255",
             "identification"         =>    "required|string",
             "address"                =>    "nullable|string",
         ];
     }
 
-    public function menssages()
+    public function messages()
     {
         return [
-            "id.required"                        => "the field is required",
-            "id.numeric"                         => "the field is type numeric",
-            "id.exists"                          => "the client is not found",
+            "id.required" => "El ID del doctor es obligatorio",
+            "id.numeric" => "El ID debe ser numérico",
+            "id.exists" => "El doctor no fue encontrado",
 
-            "name.required"                      => "the field is required",
-            "name.string"                        => "the field is type string",
-            "name.max"                           => "the max of field is 255 characters",
+            "name.required" => "El nombre del doctor es obligatorio",
+            "name.string" => "El nombre debe ser texto",
+            "name.max" => "El nombre no puede exceder 255 caracteres",
 
-            "identification.required"            => "the field is required",
-            "identification.string"              => "the field is type string",
+            "identification.required" => "La identificación es obligatoria",
+            "identification.string" => "La identificación debe ser texto",
 
-            "address.string"                     => "the field is type string",
+            "address.string" => "La dirección debe ser texto"
         ];
     }
 

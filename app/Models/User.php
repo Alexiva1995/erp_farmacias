@@ -22,7 +22,9 @@ class User extends Authenticatable
         'username',
         'email',
         'password_hash',
-        'is_active'
+        'is_active',
+        'token_login',
+        'remember_token'
     ];
 
     /**

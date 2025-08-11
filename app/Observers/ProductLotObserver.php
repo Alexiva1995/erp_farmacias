@@ -24,11 +24,18 @@ class ProductLotObserver
      */
     public function updated(ProductLot $productLot)
     {
-        if ($productLot->isDirty('quantity') || $productLot->isDirty('unit_cost')) {
-            if ($productLot->isDirty('quantity')) {
-                $this->createAdjustmentMovement($productLot);
+        if ($productLot->isDirty('quantity')) {
+            $originalQuantity = $productLot->getOriginal('quantity') ?? 0;
+            $newQuantity = $productLot->quantity ?? 0;
+
+            if ($originalQuantity > 0 && $newQuantity === 0) {
+                $this->createExpiredMovement($productLot, $originalQuantity);
+            } elseif ($originalQuantity !== $newQuantity) {
+                $this->createAdjustmentMovement($productLot, $originalQuantity, $newQuantity);
             }
 
+            $this->updateProductStockAndPrice($productLot->product);
+        } elseif ($productLot->isDirty('unit_cost')) {
             $this->updateProductStockAndPrice($productLot->product);
         }
     }
@@ -69,7 +76,8 @@ class ProductLotObserver
     protected function createPurchaseMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;
+
+        $stockBefore = $product->lots()->where('id', '!=', $productLot->id)->sum('quantity');
         $stockAfter = $stockBefore + $productLot->quantity;
 
         InventoryMovement::create([
@@ -88,40 +96,13 @@ class ProductLotObserver
     }
 
     /**
-     * Crear movimiento de ajuste cuando se actualiza un lote
-     */
-    protected function createAdjustmentMovement(ProductLot $productLot)
-    {
-        $product = $productLot->product;
-        $originalQuantity = $productLot->getOriginal('quantity') ?? 0;
-        $newQuantity = $productLot->quantity ?? 0;
-        $difference = $newQuantity - $originalQuantity;
-
-        $stockBefore = $product->stock ?? 0;
-        $stockAfter = $stockBefore + $difference;
-
-        InventoryMovement::create([
-            'product_id' => $product->id,
-            'product_lot_id' => $productLot->id,
-            'movement_type' => 'adjustment',
-            'quantity' => $difference,
-            'invoice_id' => null,
-            'supplier_id' => null,
-            'order_id' => null,
-            'user_id' => Auth::id(),
-            'stock_before' => $stockBefore,
-            'stock_after' => $stockAfter,
-            'movement_date' => now(),
-        ]);
-    }
-
-    /**
      * Crear movimiento cuando se elimina un lote
      */
     protected function createDeletionMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;
+
+        $stockBefore = $product->lots()->where('id', '!=', $productLot->id)->sum('quantity') + $productLot->quantity;
         $stockAfter = $stockBefore - $productLot->quantity;
 
         InventoryMovement::create([
@@ -145,7 +126,8 @@ class ProductLotObserver
     protected function createRestorationMovement(ProductLot $productLot)
     {
         $product = $productLot->product;
-        $stockBefore = $product->stock ?? 0;
+
+        $stockBefore = $product->lots()->where('id', '!=', $productLot->id)->sum('quantity');
         $stockAfter = $stockBefore + $productLot->quantity;
 
         InventoryMovement::create([
@@ -164,10 +146,73 @@ class ProductLotObserver
     }
 
     /**
-     * Recalcula y actualiza el stock total y precio promedio ponderado del producto.
+     * Crear movimiento de caducidad cuando un lote pasa de tener cantidad a 0
+     */
+    protected function createExpiredMovement(ProductLot $productLot, int $expiredQuantity)
+    {
+        $product = $productLot->product;
+
+        $existingMovement = InventoryMovement::where('product_lot_id', $productLot->id)
+            ->where('movement_type', 'expired')
+            ->where('quantity', -$expiredQuantity)
+            ->where('created_at', '>=', now()->subMinute())
+            ->first();
+
+        if ($existingMovement) {
+            return;
+        }
+
+        $stockBefore = $product->lots()->sum('quantity') + ($expiredQuantity - $productLot->quantity);
+        $stockAfter = $stockBefore - $expiredQuantity;
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => $productLot->id,
+            'movement_type' => 'expired',
+            'quantity' => -$expiredQuantity,
+            'invoice_id' => null,
+            'supplier_id' => null,
+            'order_id' => null,
+            'user_id' => Auth::id(),
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
+    }
+
+    /**
+     * Crear movimiento de ajuste para otros cambios de cantidad
+     */
+    protected function createAdjustmentMovement(ProductLot $productLot, int $originalQuantity, int $newQuantity)
+    {
+        $product = $productLot->product;
+
+        $stockBefore = $product->lots()->sum('quantity') + ($originalQuantity - $productLot->quantity);
+        $quantityDifference = $newQuantity - $originalQuantity;
+        $stockAfter = $stockBefore + $quantityDifference;
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => $productLot->id,
+            'movement_type' => 'adjustment',
+            'quantity' => $quantityDifference,
+            'invoice_id' => null,
+            'supplier_id' => null,
+            'order_id' => null,
+            'user_id' => Auth::id(),
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
+    }
+
+    /**
+     * Recalcula y actualiza el stock total y costo promedio ponderado del producto.
      */
     protected function updateProductStockAndPrice(Product $product)
     {
+        $product->load('lots');
+
         $totalStock = $product->lots()->sum('quantity');
 
         $lots = $product->lots()
@@ -189,11 +234,11 @@ class ProductLotObserver
             $totalQuantityWithCost += $lot->quantity;
         }
 
-        $averagePrice = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->sale_price;
+        $averageCost = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->cost;
 
         $product->updateQuietly([
             'stock' => $totalStock,
-            'sale_price' => round($averagePrice, 2) // Redondear a 2 decimales
+            'unit_cost' => round($averageCost, 2)
         ]);
     }
 }
