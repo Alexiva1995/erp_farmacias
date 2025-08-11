@@ -36,6 +36,7 @@ declare module 'vue-router/auto-routes' {
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
+    'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
   }
 }
