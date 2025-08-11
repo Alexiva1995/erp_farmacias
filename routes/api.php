@@ -265,10 +265,13 @@ Route::prefix("finances")->group(function () {
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
     Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
-    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
+    Route::post('/{supplier}/payment-rules', [SupplierController::class, 'storePaymentRules']);
+    Route::get('/{supplier}/payment-rules', [SupplierController::class, 'getPaymentRules']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
     Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+    Route::post('/{supplier}/discounts', [SupplierController::class, 'storeDiscounts']);
+    Route::get('/{supplier}/discounts', [SupplierController::class, 'getDiscounts']);
 });
 
 Route::prefix("supplier-laboratories")->group(function () {
