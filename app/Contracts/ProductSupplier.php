@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 interface ProductSupplier
 {
@@ -23,4 +24,6 @@ interface ProductSupplier
     public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, int $repuesto): array;
 
     public function checkTolerance(array $replenishTheProducts): array;
+
+    public function obtainProductsWithUniqueMarketOpportunities(array $productos): array;
 }

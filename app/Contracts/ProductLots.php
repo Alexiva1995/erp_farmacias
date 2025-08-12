@@ -6,10 +6,9 @@ use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 
-interface ProductLots {
+interface ProductLots
+{
 
 
-    public function checkTheLotWithTheLowestPrice(Product $producto, Supplier $supplier): Model | null
-
-
+    public function checkTheLotWithTheLowestPrice(Product $producto, Supplier $supplier): Model | null;
 }

@@ -6,13 +6,17 @@ use App\Contracts\ProductSupplier;
 use App\Models\Product;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
+use App\Repository\ProductLotsRepository;
 use App\Repository\ProductSupplierRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class ProductSupplierServices implements ProductSupplier
 {
 
-    public function __construct(protected ProductSupplierRepository $productSupplierRepository) {}
+    public function __construct(
+        protected ProductSupplierRepository $productSupplierRepository,
+        protected ProductLotsRepository $productLotsRepository
+    ) {}
 
 
     public function consultSupplierByProductWithBetterPrice(Product $product): Collection
@@ -94,6 +98,7 @@ class ProductSupplierServices implements ProductSupplier
             "increase" => null,
             "tolerance" => 0,
             "purchasingOpportunity" => null,
+            // "checkUniquePurchaseOpportunity" => false,
         ];
 
         return $data;
@@ -123,5 +128,25 @@ class ProductSupplierServices implements ProductSupplier
         }
 
         return $replenishTheProducts;
+    }
+
+    public function obtainProductsWithUniqueMarketOpportunities(array $productos): array
+    {
+        $productosConOportunidad = [];
+        for ($index = 0; $index < count($productos); $index++) {
+            # code...
+            $producto = $productos[$index];
+
+            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPrice($producto["product"], $producto["supplier"]);
+            if ($lote) {
+                if ((float)$producto["productSupplier"]->unit_cost <= (float)$lote->unit_cost) {
+                    $producto["checkUniquePurchaseOpportunity"] = true;
+                }
+                $productos[$index] = $producto;
+                $productosConOportunidad[] = $productos[$index];
+            }
+        }
+
+        return $productosConOportunidad;
     }
 }
