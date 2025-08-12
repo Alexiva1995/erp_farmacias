@@ -78,6 +78,7 @@ declare module 'vue' {
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     NavegationIaAutoOrder: typeof import('./resources/js/components/NavegationIaAutoOrder.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
+    OrderProductListTable: typeof import('./resources/js/components/OrderProductListTable.vue')['default']
     OrderWithPsychotropicsTable: typeof import('./resources/js/components/OrderWithPsychotropicsTable.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']

@@ -1,5 +1,6 @@
 <script setup lang="js">
 import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
+import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
 import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
@@ -17,7 +18,7 @@ const module=reactive({
   dataProductos:{},
   productoFallas:[],
   productosOportunidadUnica:[],
-  productosConProveedorFinal:[],
+  deltalleOrder:[],
 })
 
 
@@ -94,11 +95,25 @@ function seleccionarProductosParaElDetalle(){
   // TODO: falta obtener los productos que no estan en falla
   // lo que se puede hacer es hacer comparar la lista productosEnFalla y los que coincidan eliminarlos de la otra lista (trabajar con una copia) y solo dejar los que no coincidan
   // luego uniar las dos listas y eso si guardarlo en un estado
-  module.detalles=[]
+  module.deltalleOrder=[]
   let productosEnFalla=verificarSiHayProductosEnFallaEnLaLista([...module.productoFallas],[...module.productosOportunidadUnica])
   console.log("productos en falla que puedan ser que tenga una oportunidad unica =>",productosEnFalla)
+  let productosSinFallas=removerProductosConProveedores([...productosEnFalla],[...module.productosOportunidadUnica])
+  console.log("productos con oportunidad unica de mercado sin falla =>",productosSinFallas)
+  let detalles = [...productosEnFalla,...productosSinFallas]
+  module.deltalleOrder=detalles
 
 }
+
+function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
+  for (let index = 0; index < productosEnFalla.length; index++) {
+    const producto = productosEnFalla[index];
+    productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => producto.product.id!=productUnique.product.id && producto.supplier.id!=productUnique.supplier.id)
+
+  }
+  return productosOportunidadUnica
+}
+
 
 function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProductosOportunidaUnica){
 
@@ -151,7 +166,7 @@ function generateUUID() {
       class="mb-6"
       v-if="indexNavegacion == 4"
     >
-      <h1>pantalla 4</h1>
+      <OrderProductListTable :list="module.deltalleOrder" />
     </VCard>
   </div>
 </template>
