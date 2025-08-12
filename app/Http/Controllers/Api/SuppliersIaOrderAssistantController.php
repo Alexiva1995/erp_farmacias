@@ -135,8 +135,6 @@ class SuppliersIaOrderAssistantController extends Controller
         // $respuesta["productos"] = $productos;
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"]);
-        // todo: hacer la consulta de consultar los lotes mas antiguo por producto y proveeddor y compararlo con el precio actual del proveedor 
-        // y de el precio actual de proveedor es menor al precio mas bajo me tengo que traer ese
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
 
 
