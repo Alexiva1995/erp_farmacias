@@ -264,7 +264,7 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
-    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+    Route::get('/connection', [SupplierController::class, 'connectionServiceSupplier']);
     Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);

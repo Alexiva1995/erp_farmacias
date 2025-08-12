@@ -7,7 +7,7 @@ use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
-use App\Services\Suppliers\SupplierHealthService;
+use App\Services\Suppliers\SupplierConnectionService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Models\Supplier;
@@ -90,13 +90,13 @@ class SupplierController extends Controller
     }
 
     /**
-     * Summary of checkApiHealth
-     * @param \App\Services\Suppliers\SupplierHealthService $healthService
+     * Summary of connectionServiceSupplier
+     * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function checkApiHealth(SupplierHealthService $healthService)
+    public function connectionServiceSupplier(SupplierConnectionService $connectionService)
     {
-        $results = $healthService->check();
+        $results = $connectionService->fetchData();
 
         if (isset($results['error'])) {
             return response()->json(['status' => 'error', 'results' => $results], 500);

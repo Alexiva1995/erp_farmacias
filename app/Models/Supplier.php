@@ -127,4 +127,9 @@ class Supplier extends Model
     {
         return $this->invoices->sum->outstanding_debt;
     }
+
+    public function connections()
+    {
+        return $this->hasMany(SupplierConnection::class);
+    }
 }
