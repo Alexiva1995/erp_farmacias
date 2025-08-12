@@ -2,6 +2,7 @@
 
 namespace App\Services\Suppliers;
 
+use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\SupplierConnection;
 use Illuminate\Support\Facades\Crypt;
@@ -75,85 +76,81 @@ class SupplierConnectionService
         string $content,
         SupplierConnection $connection,
     ) {
-        $structure = [
-            ["type" => "string", "name" => "codigo_producto"],
-            ["type" => "string", "name" => "codigo_barras"],
-            ["type" => "string", "name" => "descripcion_producto"],
-            ["type" => "date", "name" => "fecha_lote"],
-            ["type" => "decimal", "name" => "precio_unitario_final"],
+        $now = now();
+        $supplierId = $connection->supplier_id;
+        $structureMap = [
+            1 => ["db" => "barcode_match", "type" => "string"],
+            2 => ["db" => "name", "type" => "string"],
+            3 => ["db" => "expiration", "type" => "date"],
+            4 => ["db" => "unit_cost", "type" => "decimal"],
         ];
-        $lines = explode("\n", trim($content));
-        $result = [];
 
-        foreach ($lines as $lineNumber => $line) {
-            if (trim($line) === "") {
-                continue;
-            }
+        $lines = array_filter(explode("\n", trim($content)), "trim");
+        $barcodes = [];
 
-            $fields = explode(";", $line);
-            $entry = [];
+        foreach ($lines as $line) {
+            $cols = explode(";", $line);
+            $barcodes[] = trim($cols[1] ?? "");
+        }
 
-            $entry["supplier_id"] = $connection->supplier_id;
-            $now = now();
-            $entry["created_at"] = $now;
-            $entry["updated_at"] = $now;
-            $entry["connection_date"] = $now;
-            $entry["laboratory"] = null;
+        $barcodes = array_unique(array_filter($barcodes));
+        $products = Product::with("laboratory")
+            ->whereIn("barcode", $barcodes)
+            ->get()
+            ->keyBy("barcode");
 
-            foreach ($structure as $index => $column) {
-                $raw = $fields[$index] ?? null;
+        $result = collect($lines)->map(function (string $line) use (
+            $structureMap,
+            $now,
+            $supplierId,
+            $products,
+        ) {
+            $cols = explode(";", $line);
+            $entry = [
+                "supplier_id" => $supplierId,
+                "created_at" => $now,
+                "updated_at" => $now,
+                "connection_date" => $now,
+                "laboratory" => null,
+                "product_id" => null,
+            ];
+
+            foreach ($structureMap as $index => $meta) {
+                $raw = $cols[$index] ?? "";
                 $value = trim($raw);
 
-                $db_column["name"] = match ($column["name"]) {
-                    "codigo_producto" => "product_id",
-                    "codigo_barras" => "barcode_match",
-                    "descripcion_producto" => "name",
-                    "fecha_lote" => "expiration",
-                    "precio_unitario_final" => "unit_cost",
-                };
+                switch ($meta["type"]) {
+                    case "string":
+                        $entry[$meta["db"]] = $value;
+                        break;
 
-                if ($column["type"] === "date" && $value == "") {
-                    $entry[$db_column["name"]] = null;
-                } else {
-                    switch ($column["type"]) {
-                        case "string":
-                            $entry[$db_column["name"]] = $value;
-                            break;
+                    case "decimal":
+                        $entry[$meta["db"]] = is_numeric($value)
+                            ? number_format((float) $value, 2, ".", "")
+                            : null;
+                        break;
 
-                        case "int":
-                            $entry[$db_column["name"]] = is_numeric($value)
-                                ? (int) $value
-                                : null;
-                            break;
-
-                        case "decimal":
-                            $entry[$db_column["name"]] = is_numeric($value)
-                                ? number_format((float) $value, 2, ".", "")
-                                : null;
-                            break;
-
-                        case "date":
-                            if ($value === "") {
-                                $entry[$db_column["name"]] = null;
-                            }
-
-                            $entry[
-                                $db_column["name"]
-                            ] = \DateTime::createFromFormat(
+                    case "date":
+                        $entry[$meta["db"]] =
+                            $value === ""
+                                ? null
+                                : \DateTime::createFromFormat(
                                     "d/m/Y",
                                     $value,
                                 )?->format("Y-m-d");
-                            break;
+                        break;
+                }
 
-                        default:
-                            $entry[$db_column["name"]] = $value;
-                    }
+                if ($meta["db"] === "barcode_match" && $value !== "") {
+                    $product = $products->get($value);
+                    $entry["laboratory"] = $product?->laboratory?->name;
+                    $entry["product_id"] = $product?->id;
                 }
             }
 
-            $result[] = $entry;
-        }
+            return $entry;
+        });
 
-        return $result;
+        return $result->toArray();
     }
 }

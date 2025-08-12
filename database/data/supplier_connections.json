@@ -1,11 +1,11 @@
 [
-    {
-        "supplier_id": "9",
-        "type": "ftp",
-        "host": "ftp.dromega.com.ve",
-        "port": null,
-        "username": "clientemerida@dromega.com.ve",
-        "password": "eyJpdiI6IlhUSkpVbFoxTWF5Zjl2Q2dBZUZWN0E9PSIsInZhbHVlIjoiMGlmSU9XbTcrT3ppaTZCbExUZDI3QT09IiwibWFjIjoiNzMxZjBmYWMxOTQ4NDEzMzUxZWE1N2MzMGUxY2U5NGZhOGY3ZWRiMDIxMDZhYTJiN2Y2YzI4ZWJlOGE1M2E4YSIsInRhZyI6IiJ9",
-        "path": "Existencia/inventariomerida.txt"
-    }
+  {
+    "supplier_id": "9",
+    "type": "ftp",
+    "host": "ftp.dromega.com.ve",
+    "port": null,
+    "username": "clientemerida@dromega.com.ve",
+    "password": "eyJpdiI6IlhUSkpVbFoxTWF5Zjl2Q2dBZUZWN0E9PSIsInZhbHVlIjoiMGlmSU9XbTcrT3ppaTZCbExUZDI3QT09IiwibWFjIjoiNzMxZjBmYWMxOTQ4NDEzMzUxZWE1N2MzMGUxY2U5NGZhOGY3ZWRiMDIxMDZhYTJiN2Y2YzI4ZWJlOGE1M2E4YSIsInRhZyI6IiJ9",
+    "path": "Existencia/inventariomerida.txt"
+  }
 ]

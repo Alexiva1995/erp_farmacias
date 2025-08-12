@@ -128,7 +128,7 @@ class SupplierController extends Controller
 
         return response()->json(
             ["status" => $status, "count" => count($results)],
-            $status === "error" && 500,
+            $status === "error" ? 500 : 200,
         );
     }
 

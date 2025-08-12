@@ -129,7 +129,9 @@ class SupplierQueryService
             ->with(["payments" => fn($q) => $q->where("status", "unpaid")])
             ->get()
             ->flatMap(function ($invoice) {
-                return $invoice->payments->map(function ($payment) use ($invoice, ) {
+                return $invoice->payments->map(function ($payment) use (
+                    $invoice,
+                ) {
                     return [
                         "id" => $invoice->id,
                         "invoice_number" => $invoice->invoice_number,

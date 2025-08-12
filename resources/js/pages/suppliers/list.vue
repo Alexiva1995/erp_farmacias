@@ -64,7 +64,7 @@ const fetchSuppliers = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -80,14 +80,16 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
+  const { data } = await axios.get(
+    `/suppliers/${currentSupplier.value.id}/laboratories`,
+  );
   laboratoryLinks.value = data.laboratory_links;
 };
 
 const fetchDiscountRules = async () => {
   try {
     const { data } = await axios.get(
-      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
     );
     discountRules.value = data.discount_rules;
   } catch (error) {
@@ -101,7 +103,7 @@ const fetchPendingInvoices = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/pending-invoices`
+      `/suppliers/${currentSupplier.value.id}/pending-invoices`,
     );
     pendingInvoices.value = data.pending_invoices;
   } catch (error) {
@@ -114,7 +116,7 @@ const fetchPendingInvoices = async () => {
 const fetchPaymentRules = async () => {
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/payment-rules`
+      `/suppliers/${currentSupplier.value.id}/payment-rules`,
     );
     paymentRules.value = data.payment_rules;
   } catch (error) {
@@ -126,7 +128,9 @@ const fetchPaymentRules = async () => {
 
 const fetchSupplierDiscount = async () => {
   try {
-    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
+    const { data } = await axios.get(
+      `/suppliers/${currentSupplier.value.id}/discounts`,
+    );
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
@@ -159,7 +163,9 @@ const handleAddSupplier = () => {
 
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
-  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
+  const url = isNewSupplier
+    ? "/suppliers"
+    : `/suppliers/${currentSupplier.value.id}`;
 
   const payloadKeys = Object.keys(supplierFormData);
   if (!isNewSupplier && payloadKeys.length === 0) {
@@ -176,7 +182,9 @@ const handleSaveSupplier = async (supplierFormData) => {
 
     await axios.post(url, payload);
 
-    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
+    toast.success(
+      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,
+    );
     isEditDialogVisible.value = false;
     await fetchSuppliers();
   } catch (error) {
@@ -224,17 +232,9 @@ const handleCheckSupplierApi = async (supplier) => {
     const { data } = await axios.get(`/suppliers/${supplier.id}/connection`); //`/suppliers/${supplier.id}/check-health`
 
     if (data.status === "ok") {
-      const fallas = Object.entries(data.results).filter(
-        ([verb, status]) => status !== "OK"
+      toast.success(
+        `Se añadieron ${data.count} productos del proveedor ${supplier.name}`,
       );
-      if (fallas.length === 0) {
-        toast.success(`API de ${supplier.name} está 100% operativa ✅`);
-      } else {
-        const fallosList = fallas
-          .map(([verb, status]) => `${verb}: ${status}`)
-          .join(", ");
-        toast.warning(`Fallas detectadas en ${supplier.name}: ${fallosList}`);
-      }
     } else {
       toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
     }
@@ -328,7 +328,7 @@ const handleSaveDiscountRules = async (formData) => {
   try {
     await axios.post(
       `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
-      formData
+      formData,
     );
 
     toast.success("Reglas de descuento guardadas con éxito");
@@ -391,7 +391,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery], () => {
