@@ -2,6 +2,7 @@
 import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
+import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
 import axios from "@/plugins/axios";
 import { onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -15,16 +16,13 @@ const indexNavegacion=ref(1)
 const module=reactive({
   dataProductos:{},
   productoFallas:[],
-  productsExceededTolerance:[],
-  productsExceededDidNotTheTolerance:[],
+  productosOportunidadUnica:[],
+  productosConProveedorFinal:[],
 })
 
 
 
-const ordenProducts=reactive({
-  productsExceededTolerance:[],
-  productsExceededDidNotTheTolerance:[],
-})
+
 
 
 
@@ -67,73 +65,54 @@ async function generarPedido(){
 }
 
 
-
-// function generarDatosDeProductosOrden(products){
-//   let hashIdSupplier={}
-//   let listaNueva=[]
-//   for (let index = 0; index < products.length; index++) {
-//     const producto = products[index];
-//     let uuid=generateUUID()
-//     let oreder={...formatoDatosOrder}
-
-//     if(!hashIdSupplier[producto.productSupplier.supplier_id]){
-
-//       oreder.id=uuid
-//       oreder.supplier_id=producto.productSupplier.supplier_id
-
-//       let detalleProductoOrden={...formatoDatosProductosOrderDetalles}
-//       detalleProductoOrden.product_suppliers_id=producto.productSupplier.id
-//       detalleProductoOrden.unit_cost=producto.productSupplier.unit_cost
-
-//       oreder.details=[detalleProductoOrden]
-
-//       hashIdSupplier[producto.productSupplier.supplier_id]=index;
-
-//       listaNueva.push({...oreder})
-//       // oreder.data={...producto}
-//     }
-//     else{
-//       let indexSupplier=hashIdSupplier[producto.productSupplier.supplier_id]
-
-//       let detalleProductoOrden={...formatoDatosProductosOrderDetalles}
-//       detalleProductoOrden.product_suppliers_id=producto.productSupplier.id
-//       detalleProductoOrden.unit_cost=producto.productSupplier.unit_cost
-
-//       listaNueva[indexSupplier].details.push(detalleProductoOrden)
-
-//     }
-
-//   }
-//   return listaNueva
-// }
-
-
 onMounted(async () => {
   let data = await generarPedido()
   data.data.productos_a_reponer=data.data.productos_a_reponer.map(a => {
     a.uuid=generateUUID()
     return a
   })
+  data.data.productos_oportunidad_unica=data.data.productos_oportunidad_unica.map(a => {
+    a.uuid=generateUUID()
+    return a
+  })
   module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
-
-  // module.productsExceededTolerance=module.productoFallas.filter(pro => pro.increase==true)
-  // module.productsExceededDidNotTheTolerance=module.productoFallas.filter(pro => pro.increase==false)
-
-  // ordenProducts.productsExceededTolerance=generarDatosDeProductosOrden(module.productsExceededTolerance)
-  // ordenProducts.productsExceededDidNotTheTolerance=generarDatosDeProductosOrden(module.productsExceededDidNotTheTolerance)
-
+  module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
 
 })
 
-// function actualizarCantidadProductoQueSeExcedio(payload){
-//   let {product_id,supplier_id,product_suppliers_id,input} = payload
-//   console.log(input.target.value)
-// }
 
 
 function actualizarIndexNavegacion(payload){
   indexNavegacion.value=payload
+  if(payload==4){
+    seleccionarProductosParaElDetalle()
+  }
+}
+
+function seleccionarProductosParaElDetalle(){
+  // TODO: falta obtener los productos que no estan en falla
+  // lo que se puede hacer es hacer comparar la lista productosEnFalla y los que coincidan eliminarlos de la otra lista (trabajar con una copia) y solo dejar los que no coincidan
+  // luego uniar las dos listas y eso si guardarlo en un estado
+  module.detalles=[]
+  let productosEnFalla=verificarSiHayProductosEnFallaEnLaLista([...module.productoFallas],[...module.productosOportunidadUnica])
+  console.log("productos en falla que puedan ser que tenga una oportunidad unica =>",productosEnFalla)
+
+}
+
+function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProductosOportunidaUnica){
+
+  for (let index = 0; index < productosEnFalla.length; index++) {
+    const producto = productosEnFalla[index];
+    let buscarSiTieneOportunidadUnica=listaDeProductosOportunidaUnica.find(productUnique => producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id)
+    if(buscarSiTieneOportunidadUnica){
+      if(buscarSiTieneOportunidadUnica.reponer>producto.reponer){
+        productosEnFalla[index]=buscarSiTieneOportunidadUnica
+      }
+    }
+  }
+  return productosEnFalla;
+
 }
 
 function generateUUID() {
@@ -165,7 +144,7 @@ function generateUUID() {
       class="mb-6"
       v-if="indexNavegacion == 3"
     >
-      <h1>pantalla 3</h1>
+      <UniqueMarketOpportunityTable :list="module.productosOportunidadUnica" />
     </VCard>
     <VCard
       title="Detalles de la Orden"

@@ -134,6 +134,7 @@ declare module 'vue' {
     TraceabilityReportTable: typeof import('./resources/js/components/TraceabilityReportTable.vue')['default']
     TwoFactorAuthDialog: typeof import('./resources/js/components/dialogs/TwoFactorAuthDialog.vue')['default']
     TwoFactorAuthModal: typeof import('./resources/js/components/TwoFactorAuthModal.vue')['default']
+    UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
   }

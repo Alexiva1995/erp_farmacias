@@ -3,7 +3,6 @@ import { computed } from 'vue';
 
 const props= defineProps({
   list: { type: Array, required: true },
-  productosTable: { type: Array, required: true },
 })
 
 const productosTable = computed(() => {
