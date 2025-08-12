@@ -95,9 +95,9 @@ class SupplierController extends Controller
      * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function connectionServiceSupplier(SupplierConnectionService $connectionService)
+    public function connectionServiceSupplier(SupplierConnectionService $connectionService, Supplier $supplier)
     {
-        $results = $connectionService->fetchData();
+        $results = $connectionService->fetchData($supplier->connections->first());
 
         if (isset($results['error'])) {
             return response()->json(['status' => 'error', 'results' => $results], 500);

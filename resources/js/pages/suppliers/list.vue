@@ -221,7 +221,7 @@ const handleDeleteSupplier = async (id) => {
 
 const handleCheckSupplierApi = async (supplier) => {
   try {
-    const { data } = await axios.get("/suppliers/check-health"); //`/suppliers/${supplier.id}/check-health`
+    const { data } = await axios.get(`/suppliers/${supplier.id}/connection`); //`/suppliers/${supplier.id}/check-health`
 
     if (data.status === "ok") {
       const fallas = Object.entries(data.results).filter(
