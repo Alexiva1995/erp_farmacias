@@ -10,6 +10,7 @@ use App\Models\Product as ModelsProduct;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
 use DateTime;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SuppliersIaOrderAssistantController extends Controller
@@ -22,7 +23,7 @@ class SuppliersIaOrderAssistantController extends Controller
     ) {}
 
 
-    public function filtrarPaginate(Request $request)
+    public function filtrarPaginate(Request $request): JsonResponse
     {
         $respuesta = [
             "tipo_filtracion"  => $request->tipo_filtracion,
@@ -68,7 +69,7 @@ class SuppliersIaOrderAssistantController extends Controller
         return ApiResponse::success($respuesta, "ok", 200);
     }
 
-    public function generateListProductoToRequest(Request $request)
+    public function generateListProductoToRequest(Request $request): JsonResponse
     {
         $dateToday = new DateTime("now");
         $respuesta = [
@@ -148,5 +149,13 @@ class SuppliersIaOrderAssistantController extends Controller
         $fecha = new DateTime("now");
         $fecha->modify("-" . $cantidad . " " . $tiempo);
         return $fecha->format("Y-m-d");
+    }
+
+    public function generarOrden(Request $request): JsonResponse
+    {
+
+
+
+        return ApiResponse::success($request->orders, "ok", 200);
     }
 }

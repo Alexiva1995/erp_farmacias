@@ -42,6 +42,7 @@ const productosTable = computed(() => {
           </td>
           <td>{{ item.productSupplier.quantity }}</td>
           <td>
+            <VIcon icon="tabler-currency-dollar" />
             {{ item.productSupplier.unit_cost }}
           </td>
         </tr>

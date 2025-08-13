@@ -8,7 +8,7 @@ const headers = [
   { title: 'Nombre',                            key: 'product.name'},
   { title: 'Cantidad',                          key: 'reponer'},
   { title: 'Costo Unit.',                       key: 'productSupplier.unit_cost'},
-  { title: 'Total',                             key: 'totalPorveedor'},
+  { title: 'Total',                             key: 'totalPorveedor',sortable:false},
 ];
 
 const groupBy = [{ key: 'supplier.name' }]
@@ -25,14 +25,17 @@ const groupBy = [{ key: 'supplier.name' }]
       fixed-header
     >
       <template #item.reponer="{ item }">
-        <VTextField
+        <!-- <VTextField
           class="w-100"
           type="number"
           v-model="item.reponer"
+          readonly="true"
           :max="item.productSupplier.quantity"
-        />
+        /> -->
+        {{ item.reponer }}
       </template>
       <template #item.totalPorveedor="{ item }">
+        <VIcon icon="tabler-currency-dollar" />
         {{ item.reponer * item.productSupplier.unit_cost }}
       </template>
     </v-data-table-virtual>

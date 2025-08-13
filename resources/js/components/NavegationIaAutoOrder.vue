@@ -7,7 +7,11 @@ const prop= defineProps({
 const emit= defineEmits(['actualizarIndexNavegacion'])
 </script>
 <template>
-  <VCard title="IA Assistence de Pedidos" class="mb-5 pb-5">
+  <VCard
+    title="IA Assistence de Pedidos"
+    class="mb-5"
+    style="padding-bottom: 24px"
+  >
     <VRow align="center" justify="center">
       <VCol sm="auto" md="auto" lg="auto">
         <VIcon
