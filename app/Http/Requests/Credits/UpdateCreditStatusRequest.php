@@ -23,7 +23,9 @@ class UpdateCreditStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', Rule::in(['Active', 'Paid'])],
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:credits,id',
+            'status' => 'required|in:Paid,Active',
         ];
     }
 }

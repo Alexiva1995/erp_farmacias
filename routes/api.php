@@ -177,7 +177,7 @@ Route::prefix("tpv")->group(function () {
     Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
 
     Route::get('/credits', [CreditsController::class, 'index']);
-    Route::put('/credits/{credit}', [CreditsController::class, 'updateCreditStatus']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
 });
 
 

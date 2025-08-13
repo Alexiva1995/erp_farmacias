@@ -99,6 +99,7 @@ const handleCreditsCompletion = async () => {
       :page="page"
       @update:options="updateTableOptions"
       @open-payment-modal="openCreditsModal"
+      @reload="fetchCredits"
     />
 
    <CreditsModal

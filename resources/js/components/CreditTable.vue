@@ -10,7 +10,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(['update:options', 'open-payment-modal']);
+const emit = defineEmits(['update:options', 'open-payment-modal','reload']);
 
 const headers = [
   { title: 'Nombre', key: 'client_full_name', sortable: true },
@@ -23,10 +23,17 @@ const headers = [
 const toggleCreditStatus = async (item, newValue) => {
   try {
     const newStatus = newValue ? 'Paid' : 'Active';
-    item.status = newStatus;
-    await axios.put(`/tpv/credits/${item.id}`, { status: newStatus });
-    console.log(`Estado del crédito ${item.id} actualizado a '${newStatus}' con éxito.`);
-    toast.success(`Estado del crédito ${item.id} actualizado a '${newStatus}' con éxito.`);
+   // item.status = newStatus;
+     const requestData = {
+            ids: item.credit_ids,
+            status: newStatus
+        };
+
+    console.log(item);
+    await axios.put(`/tpv/credits/status`, requestData);
+    console.log(`Estado de los créditos ${item.credit_ids} actualizado a '${newStatus}' con éxito.`);
+    toast.success(`Estado del crédito ${item.credit_ids} actualizado a '${newStatus}' con éxito.`);
+    emit('reload');
   } catch (error) {
     console.error("Error al actualizar el estado del crédito:", error);
     item.status = newValue ? 'Active' : 'Paid'; 
@@ -59,7 +66,7 @@ const toggleCreditStatus = async (item, newValue) => {
             Pagar
           </VBtn>
          <VSwitch
-          :model-value="item.status === 'Paid'"
+          :model-value="!!item.is_paid" 
           @update:model-value="newValue => toggleCreditStatus(item, newValue)"
         />
 

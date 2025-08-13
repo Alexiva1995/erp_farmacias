@@ -39,6 +39,8 @@ class CreditsQueryService
          $query = $this->getBaseQuery()
             ->select('client_id')
             ->selectRaw('SUM(pending_amount) as total_pending_amount')
+            ->selectRaw('GROUP_CONCAT(id) as credit_ids')
+            ->selectRaw('COUNT(CASE WHEN status != "Paid" THEN 1 END) = 0 as is_paid') 
             ->groupBy('client_id');
 
           $query = $this->applySorting(
