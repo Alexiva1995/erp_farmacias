@@ -1,11 +1,20 @@
 [
-    {
-        "supplier_id": "9",
-        "type": "ftp",
-        "host": "ftp.dromega.com.ve",
-        "port": null,
-        "username": "clientemerida@dromega.com.ve",
-        "password": "eyJpdiI6IlEvT0UwdEY4SUFpank5RFNhRnAvUUE9PSIsInZhbHVlIjoiQTF6ZXRuVGlzMlhEa0xjcjBmWWNiQT09IiwibWFjIjoiNzBiYTZlNGRhMjhjN2Q2ZTk0M2YzODliZDdiMDA1ZjRlNWUwZTExMjNkMDdjOWZmNDgyNjVhYjY2NDI4NzRkYiIsInRhZyI6IiJ9",
-        "path": "Existencia/inventariomerida.txt"
-    }
+  {
+    "supplier_id": "9",
+    "type": "ftp",
+    "host": "ftp.dromega.com.ve",
+    "port": null,
+    "username": "clientemerida@dromega.com.ve",
+    "password": "eyJpdiI6IlEvT0UwdEY4SUFpank5RFNhRnAvUUE9PSIsInZhbHVlIjoiQTF6ZXRuVGlzMlhEa0xjcjBmWWNiQT09IiwibWFjIjoiNzBiYTZlNGRhMjhjN2Q2ZTk0M2YzODliZDdiMDA1ZjRlNWUwZTExMjNkMDdjOWZmNDgyNjVhYjY2NDI4NzRkYiIsInRhZyI6IiJ9",
+    "path": "Existencia/inventariomerida.txt"
+  },
+  {
+    "supplier_id": "15",
+    "type": "ftp",
+    "host": "195.35.33.28",
+    "port": null,
+    "username": "u639259455.u863948713",
+    "password": "eyJpdiI6InlSTzlVOFlqWGtpU2JsaG5nbkZ0aFE9PSIsInZhbHVlIjoiVVRwVThZR3U3Vzd4K0huMGp4Nmx3dz09IiwibWFjIjoiZTcwZmI0MTY1MjBhNjM3NmNiYWNlNGRiODk2NzJhMjZkMTljZDQzNWZhYmJkZjBmNjU3OGFiNWVkMmZiOWYyMyIsInRhZyI6IiJ9",
+    "path": "Existencia/inventario.txt"
+  }
 ]
