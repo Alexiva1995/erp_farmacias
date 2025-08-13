@@ -16,10 +16,14 @@ class SupplierConnection extends Model
         "password",
         "path",
         "pasv",
+        "has_header",
+        "structure",
     ];
 
     protected $casts = [
         "pasv" => "boolean",
+        "has_header" => "boolean",
+        "structure" => "array",
     ];
 
     public function supplier(): BelongsTo

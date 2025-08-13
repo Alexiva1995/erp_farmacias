@@ -74,19 +74,24 @@ class SupplierConnectionService
     ) {
         $now = now();
         $supplierId = $connection->supplier_id;
-        $structureMap = [
-            1 => ["db" => "barcode_match", "type" => "string"],
-            2 => ["db" => "name", "type" => "string"],
-            3 => ["db" => "expiration", "type" => "date"],
-            6 => ["db" => "unit_cost", "type" => "decimal"],
-        ];
+        $structure = $connection->structure;
+        $has_header = $connection->has_header;
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $barcodes = [];
 
+        // ignora la primera fila si contiene encabezados en vez de registros
+        if ($has_header) {
+            array_shift($lines);
+        }
+
+        $barcodeKey = collect($structure)->search(
+            fn($f) => ($f["target"] ?? null) === "barcode_match",
+        );
+
         foreach ($lines as $line) {
             $cols = explode(";", $line);
-            $barcodes[] = trim($cols[1] ?? "");
+            $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
         $barcodes = array_unique(array_filter($barcodes));
@@ -96,7 +101,7 @@ class SupplierConnectionService
             ->keyBy("barcode");
 
         $result = collect($lines)->map(function (string $line) use (
-            $structureMap,
+            $structure,
             $now,
             $supplierId,
             $products,
@@ -111,23 +116,42 @@ class SupplierConnectionService
                 "product_id" => null,
             ];
 
-            foreach ($structureMap as $index => $meta) {
+            $table_structure = collect($structure)->filter(
+                fn($f) => $f["target"] ?? null,
+            );
+
+            foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
 
                 switch ($meta["type"]) {
                     case "string":
-                        $entry[$meta["db"]] = $value;
+                        $entry[$meta["target"]] = $value;
                         break;
 
                     case "decimal":
-                        $entry[$meta["db"]] = is_numeric($value)
+                        $entry[$meta["target"]] = is_numeric($value)
                             ? number_format((float) $value, 2, ".", "")
                             : null;
                         break;
 
                     case "date":
-                        $entry[$meta["db"]] =
+                        if ($value === "0000-00-00") {
+                            $entry[$meta["target"]] = null;
+                            break;
+                        }
+
+                        if (\Datetime::createFromFormat("Y-m-d", $value)) {
+                            $entry[$meta["target"]] = $value;
+                            break;
+                        }
+
+                        if ($value === "NULL") {
+                            $entry[$meta["target"]] = null;
+                            break;
+                        }
+
+                        $entry[$meta["target"]] =
                             $value === ""
                                 ? null
                                 : \DateTime::createFromFormat(
@@ -137,7 +161,7 @@ class SupplierConnectionService
                         break;
                 }
 
-                if ($meta["db"] === "barcode_match" && $value !== "") {
+                if ($meta["target"] === "barcode_match" && $value !== "") {
                     $product = $products->get($value);
                     $entry["laboratory"] = $product?->laboratory?->name;
                     $entry["product_id"] = $product?->id;

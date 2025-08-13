@@ -13,12 +13,20 @@ class SupplierConnectionSeeder extends Seeder
      */
     public function run(): void
     {
-        $json = File::get(database_path('data/supplier_connections.json'));
+        $json = File::get(database_path("data/supplier_connections.json"));
         $supplier_connections = json_decode($json, true);
 
+        $prepared = array_map(
+            fn(array $item) => [
+                ...$item,
+                "structure" => json_encode($item["structure"]),
+            ],
+            $supplier_connections,
+        );
+
         // Insertar en chunks
-        foreach (array_chunk($supplier_connections, 500) as $chunk) {
-            DB::table('supplier_connections')->insert($chunk);
+        foreach (array_chunk($prepared, 500) as $chunk) {
+            DB::table("supplier_connections")->insert($chunk);
         }
     }
 }
