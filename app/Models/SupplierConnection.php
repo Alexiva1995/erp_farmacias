@@ -8,13 +8,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SupplierConnection extends Model
 {
     protected $fillable = [
-        'supplier_id',
-        'type',
-        'host',
-        'port',
-        'username',
-        'password',
-        'path',
+        "supplier_id",
+        "type",
+        "host",
+        "port",
+        "username",
+        "password",
+        "path",
+        "pasv",
+    ];
+
+    protected $casts = [
+        "pasv" => "boolean",
     ];
 
     public function supplier(): BelongsTo

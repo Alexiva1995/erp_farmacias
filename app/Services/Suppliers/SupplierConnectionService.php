@@ -40,7 +40,7 @@ class SupplierConnectionService
             throw new \Exception("Credenciales inválidas");
         }
 
-        ftp_pasv($ftp, false); // Modo pasivo
+        ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
         if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {

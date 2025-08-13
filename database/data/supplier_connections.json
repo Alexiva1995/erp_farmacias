@@ -6,7 +6,8 @@
     "port": null,
     "username": "clientemerida@dromega.com.ve",
     "password": "eyJpdiI6IlEvT0UwdEY4SUFpank5RFNhRnAvUUE9PSIsInZhbHVlIjoiQTF6ZXRuVGlzMlhEa0xjcjBmWWNiQT09IiwibWFjIjoiNzBiYTZlNGRhMjhjN2Q2ZTk0M2YzODliZDdiMDA1ZjRlNWUwZTExMjNkMDdjOWZmNDgyNjVhYjY2NDI4NzRkYiIsInRhZyI6IiJ9",
-    "path": "Existencia/inventariomerida.txt"
+    "path": "Existencia/inventariomerida.txt",
+    "pasv": true
   },
   {
     "supplier_id": "15",
@@ -15,7 +16,8 @@
     "port": null,
     "username": "u639259455.u863948713",
     "password": "eyJpdiI6InlSTzlVOFlqWGtpU2JsaG5nbkZ0aFE9PSIsInZhbHVlIjoiVVRwVThZR3U3Vzd4K0huMGp4Nmx3dz09IiwibWFjIjoiZTcwZmI0MTY1MjBhNjM3NmNiYWNlNGRiODk2NzJhMjZkMTljZDQzNWZhYmJkZjBmNjU3OGFiNWVkMmZiOWYyMyIsInRhZyI6IiJ9",
-    "path": "Existencia/inventario.txt"
+    "path": "Existencia/inventario.txt",
+    "pasv": true
   },
   {
     "supplier_id": "21",
@@ -24,6 +26,7 @@
     "port": null,
     "username": "CL103740@strixposback.gotdns.com",
     "password": "eyJpdiI6ImF0dmhLQ2pSS08zZFc2c0Uybm9qZlE9PSIsInZhbHVlIjoiRVArUlQyRXRsV3dSWVp4N2ZubTE4UnR3R2tJbm90akI4dkNwelFuNys0OD0iLCJtYWMiOiIwYzVhOTc2NzcxYmU5NGM3MWEzMTBhMTc1M2EzYTlmOGQ4MDBmNDBmODFmOWQ4YzUyNmU1N2UwYTRhY2M2YWRlIiwidGFnIjoiIn0=",
-    "path": "Existencia/inventario.txt"
+    "path": "Existencia/inventario.txt",
+    "pasv": false
   }
 ]
