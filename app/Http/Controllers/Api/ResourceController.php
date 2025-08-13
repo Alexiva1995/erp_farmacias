@@ -68,7 +68,7 @@ class ResourceController extends Controller
     {
         $rates = $this->resourceService->getAllExchangeRate();
         return response()->json($rates);
-
+    }
     public function getAllProducts()
     {
         $products = $this->resourceService->getAllProducts();
