@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -304,7 +305,14 @@ Route::prefix("supplier-laboratories")->group(function () {
     Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
 });
 
-//Invoices
+Route::prefix("suppliers-ia-order-assistant")->group(function () {
+    Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
+    Route::prefix("generate-order")->group(function () {
+        Route::post("/creat",                    [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request",      [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+    });
+});
+
 Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
 Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
 Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
