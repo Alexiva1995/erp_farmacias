@@ -1,6 +1,7 @@
 <script setup>
 import CreditTable from "@/components/CreditTable.vue";
 import axios from "@/plugins/axios";
+import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 
 const credits = ref([]);
 const totalCredits = ref(0);
@@ -10,6 +11,9 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
+
+const showCreditsModal = ref(false);
+const creditsData = ref(null);
 
 const fetchCredits= async () => {
   loading.value = true;
@@ -24,7 +28,6 @@ const fetchCredits= async () => {
   );
   try {
     const response = await axios.get("/tpv/credits", { params });
-    console.log(response.data.data);
     credits.value = response.data.data;
     totalCredits.value = response.data.total;
   } catch (error) {
@@ -62,6 +65,29 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+
+const openCreditsModal = (credit) => {
+    creditsData.value = credit; 
+        console.log(creditsData);
+    showCreditsModal.value = true;
+};
+
+
+const closeCreditsModal = () => {
+    showCreditsModal.value = false;
+    creditsData.value = null;
+};
+
+const handleCreditsCompletion = async () => {
+ try {
+    showCreditsModal.value = false; 
+ } catch (error) {
+    console.error("Error al finalizar el pago del crédito:", error.response ? error.response.data : error.message);
+    const errorMessage = error.response?.data?.message || "Hubo un problema al procesar su pago. Por favor, intente de nuevo.";
+    toast.error(errorMessage);
+  }
+}
+
 </script>
 
 <template>
@@ -72,21 +98,15 @@ const updateTableOptions = (options) => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @open-payment-modal="openCreditsModal"
     />
 
-
-      <div id="creditsPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
-      <CreditsTicket
-        v-if="isPrinting && openOrderData"
-        :order-data="openOrderData"
-        :order-products="orderItems"
-        :total-amount="myCalculatedTotal"
-        :selected-currency="selectedDisplayCurrency"
-        :payments="paymentsForPrint"
-        :change-amount="changeAmountForPrint"
-        :credit-amount="creditAmountForPrint"
-        :credit="creditForPrint"
-      />
-    </div>
+   <CreditsModal
+            v-if="showCreditsModal && creditsData"
+            v-model:is-dialog-visible="showCreditsModal"
+            :credits-data="creditsData"
+            @modal-closed="closeCreditsModal"
+            @purchase-completed="handleCreditsCompletion"
+        />
 
 </template>

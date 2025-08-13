@@ -75,9 +75,9 @@ class OrderController extends Controller
     {
         try {
 
-             $sellerId = Auth::id();
-            //$sellerId = 3; //para realizar pruebas
-            dd($sellerId);
+           //  $sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+            
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }

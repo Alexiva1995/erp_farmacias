@@ -336,7 +336,7 @@ const addOrden = async (id) => {
   try {
     const response = await axios.post("/tpv/orders", params);
     openOrderData.value = response.data.data.order;
-    console.log(response.data.data);
+    selectedClient.value = response.data.data.order.client;
     hasOpenOrder.value = true;
     toast.success("Orden creada exitosamente.");
     return response.data.data.order;

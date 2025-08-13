@@ -10,11 +10,11 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(['update:options']);
+const emit = defineEmits(['update:options', 'open-payment-modal']);
 
 const headers = [
   { title: 'Nombre', key: 'client_full_name', sortable: true },
-  { title: 'Monto', key: 'pending_amount',  sortable: true},
+  { title: 'Monto', key: 'total_pending_amount',  sortable: true},
   { title: 'Añadir', key: 'action', sortable: false},
 ];
 
@@ -55,7 +55,7 @@ const toggleCreditStatus = async (item, newValue) => {
 
     <template v-slot:item.action="{ item }">
     <div class="d-flex align-center gap-2">
-          <VBtn color="primary" variant="outlined" @click="emit('paid')">
+          <VBtn color="primary" variant="outlined" @click="emit('open-payment-modal', item)" >
             Pagar
           </VBtn>
          <VSwitch

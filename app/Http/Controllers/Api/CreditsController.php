@@ -23,6 +23,7 @@ class CreditsController extends Controller
        $query = $this->creditsQueryService->getFilteredQuery($request);
     
        $perPage = $request->input('itemsPerPage', 10);
+     //  $paginatedCredits = $query->paginate($perPage)->withQueryString();
 
         if ($perPage < 1) {
             $items = $query->get();
