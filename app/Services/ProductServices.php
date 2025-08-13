@@ -29,4 +29,24 @@ class ProductServices implements Product
         $query = $this->productRepository->builerFiltrarProductforStock($filtros);
         return new StockProductExport($query);
     }
+
+    public function filtrarIaOrderAssistantTypeAverage(array $filtros): LengthAwarePaginator
+    {
+        return $this->productRepository->filtrarProductforIaOrderAssistantTypeAverageWithPaginate($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function filtrarIaOrderAssistantTypeAverageWithoutPaginate(array $filtros): Collection
+    {
+        return $this->productRepository->filtrarProductforIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+    }
+    // 
+    public function filtrarIaOrderAssistantTypeSales(array $filtros): LengthAwarePaginator
+    {
+        return $this->productRepository->filtrarProductforIaOrderAssistantTypeSalesWithPaginate($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function filtrarIaOrderAssistantTypeSalesWithoutPaginate(array $filtros): Collection
+    {
+        return $this->productRepository->filtrarProductforIaOrderAssistantTypeSalesWithoutPaginate($filtros);
+    }
 }
