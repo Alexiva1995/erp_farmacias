@@ -49,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Client::class)
             ->give(ClientServices::class);
 
+        $this->app->when(OrderController::class) // Cuando el OrderController
+            ->needs(Client::class)               // necesite una instancia de Client
+            ->give(ClientServices::class); 
+
         $this->app->when(CompanyController::class)
             ->needs(Company::class)
             ->give(CompanyServices::class);
