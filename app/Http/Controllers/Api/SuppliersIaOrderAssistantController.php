@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Contracts\AutoOrder;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
 use App\Helpers\ApiResponse;
@@ -19,7 +20,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function __construct(
         protected Product $product,
-        protected ProductSupplier $productSupplier
+        protected ProductSupplier $productSupplier,
+        protected AutoOrder $autoOrder
     ) {}
 
 
@@ -154,8 +156,8 @@ class SuppliersIaOrderAssistantController extends Controller
     public function generarOrden(Request $request): JsonResponse
     {
 
+        $listAutoOrders = $this->autoOrder->createMultiple($request->orders);
 
-
-        return ApiResponse::success($request->orders, "ok", 200);
+        return ApiResponse::success($listAutoOrders, "ok", 200);
     }
 }

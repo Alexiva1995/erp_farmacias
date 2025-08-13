@@ -224,7 +224,7 @@ async function realizarCompra(){
     return
   }
    toast.success("Compra realizada con exito")
-  //  router.push("/suppliers/supplieriaorderassistant")
+   router.push("/suppliers/supplieriaorderassistant")
 }
 </script>
 <template>

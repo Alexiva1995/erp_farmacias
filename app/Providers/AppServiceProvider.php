@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\AutoOrder;
 use App\Contracts\Client;
 use App\Contracts\Company;
 use App\Contracts\Doctor;
@@ -26,6 +27,7 @@ use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
 use App\Services\OrderServices;
 use App\Services\ProductServices;
@@ -79,6 +81,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(SuppliersIaOrderAssistantController::class)
             ->needs(ProductSupplier::class)
             ->give(ProductSupplierServices::class);
+
+        $this->app->when(SuppliersIaOrderAssistantController::class)
+            ->needs(AutoOrder::class)
+            ->give(AutoOrderServices::class);
     }
 
     /**
