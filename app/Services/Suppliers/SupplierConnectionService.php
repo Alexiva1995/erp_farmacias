@@ -6,10 +6,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\SupplierConnection;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use App\Helpers\FtpCrypt;
 
 class SupplierConnectionService
 {
@@ -38,7 +35,7 @@ class SupplierConnectionService
         $login = ftp_login(
             $ftp,
             $connection->username,
-            Crypt::decryptString($connection->password),
+            FtpCrypt::decrypt($connection->password),
         );
         if (!$login) {
             throw new \Exception("Credenciales inválidas");
