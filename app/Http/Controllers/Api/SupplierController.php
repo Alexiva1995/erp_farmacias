@@ -124,6 +124,7 @@ class SupplierController extends Controller
             $supplier,
             $results,
         );
+
         $status = $result ? "ok" : "error";
 
         return response()->json(

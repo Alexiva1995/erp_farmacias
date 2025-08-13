@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Str;
 
 class SupplierQueryService
 {
@@ -156,10 +157,22 @@ class SupplierQueryService
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
         try {
-            DB::transaction(function () use ($supplier, $data) {
+            $unique = collect($data)
+                ->groupBy(function ($row) {
+                    return is_null($row["product_id"])
+                        ? Str::uuid()
+                        : $row["product_id"] . "-" . $row["supplier_id"];
+                })
+                ->map(function ($group) {
+                    return $group->sortBy("unit_cost")->first();
+                })
+                ->values()
+                ->toArray();
+
+            DB::transaction(function () use ($supplier, $unique) {
                 $supplier->productSuppliers()->delete();
 
-                foreach (array_chunk($data, 500) as $chunk) {
+                foreach (array_chunk($unique, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
                 }
             });

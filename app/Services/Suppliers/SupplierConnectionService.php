@@ -3,9 +3,7 @@
 namespace App\Services\Suppliers;
 
 use App\Models\Product;
-use App\Models\Supplier;
 use App\Models\SupplierConnection;
-use Illuminate\Support\Facades\Crypt;
 use App\Helpers\FtpCrypt;
 
 class SupplierConnectionService
@@ -37,11 +35,12 @@ class SupplierConnectionService
             $connection->username,
             FtpCrypt::decrypt($connection->password),
         );
+
         if (!$login) {
             throw new \Exception("Credenciales inválidas");
         }
 
-        ftp_pasv($ftp, true); // Modo pasivo
+        ftp_pasv($ftp, false); // Modo pasivo
 
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
         if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
