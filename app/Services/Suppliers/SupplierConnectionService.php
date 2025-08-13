@@ -79,7 +79,7 @@ class SupplierConnectionService
             1 => ["db" => "barcode_match", "type" => "string"],
             2 => ["db" => "name", "type" => "string"],
             3 => ["db" => "expiration", "type" => "date"],
-            4 => ["db" => "unit_cost", "type" => "decimal"],
+            6 => ["db" => "unit_cost", "type" => "decimal"],
         ];
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
