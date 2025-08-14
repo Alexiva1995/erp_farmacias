@@ -233,18 +233,22 @@ async function realizarCompra(){
       :index-navegacion="indexNavegacion"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
-    <VCard title="" class="mb-6" v-if="indexNavegacion == 1">
+    <VCard
+      title="PRODUCTOS EXCEDIERON LA TOLERANCIA DE COSTO"
+      class="mb-6"
+      v-if="indexNavegacion == 1"
+    >
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="productos que no excedieron la tolerancia"
+      title="PRODUCTOS QUE NO EXCEDIERON LA TOLERANCIA DE COSTO"
       class="mb-6"
       v-if="indexNavegacion == 2"
     >
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="Oportunidades Unicas de Mercado"
+      title="OPORTUNIDADES UNICA DE MERCADO"
       class="mb-6"
       v-if="indexNavegacion == 3"
     >
@@ -262,7 +266,7 @@ async function realizarCompra(){
           md="12"
           lg="9"
         >
-          <VCard title="Detalles de la Orden" class="">
+          <VCard title="DETALLES DE LA ORDEN" class="">
             <OrderProductListTable :list="module.deltalleOrder" />
           </VCard>
         </VCol>

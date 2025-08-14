@@ -34,7 +34,7 @@ const headers = [
         : 0,
   },
   {
-    title: "Solicitar ",
+    title: "Análisis",
     key: "solicitar",
     sortable: true,
     value: (item) =>
@@ -74,6 +74,11 @@ const headers = [
             }}</span>
           </div>
         </div>
+      </template>
+      <template #item.solicitar="{ item }">
+        <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
+          >{{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}</span
+        >
       </template>
     </VDataTableServer>
   </VCard>
