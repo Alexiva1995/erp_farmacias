@@ -140,29 +140,24 @@ class SupplierController extends Controller
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storePaymentRules(
-        UpdatePaymentRuleSupplierRequest $request,
-        Supplier $supplier,
-    ) {
+    public function storePaymentRules(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
+    {
         $validated = $request->validated();
 
         $createdRules = [];
 
-        foreach ($validated["rules"] as $rule) {
+        foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                "days" => $rule["days"],
-                "discount_percentage" => $rule["discount_percentage"],
+                'days' =>  $rule['days'],
+                'discount_percentage' => $rule['discount_percentage'],
             ];
 
-            $createdRules[] = $this->supplierActionService->createPaymentRule(
-                $supplier,
-                $ruleData,
-            );
+            $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
 
         return response()->json([
-            "message" => "Reglas registradas correctamente.",
-            "rules" => $createdRules,
+            'message' => 'Reglas registradas correctamente.',
+            'rules' => $createdRules,
         ]);
     }
 
@@ -170,7 +165,7 @@ class SupplierController extends Controller
     {
         $rules = $this->supplierQueryService->getPaymentRules($supplier);
 
-        return response()->json(["payment_rules" => $rules]);
+        return response()->json(['payment_rules' => $rules]);
     }
 
     /**
@@ -252,6 +247,34 @@ class SupplierController extends Controller
         return response()->json([
             "message" => "Descuentos registrados correctamente.",
             "discounts" => $createdDiscounts,
+        ]);
+    }
+
+    public function getDiscounts(Supplier $supplier)
+    {
+        $discounts = $this->supplierQueryService->getDiscounts($supplier);
+
+        return response()->json(['supplier_discount' => $discounts]);
+    }
+
+    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
+    {
+        $validated = $request->validated();
+
+        $createdDiscounts = [];
+
+        foreach ($validated['discounts'] as $rule) {
+            $discountData = [
+                'name' =>  $rule['name'],
+                'discount_percentage' => $rule['discount_percentage'],
+            ];
+
+            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+        }
+
+        return response()->json([
+            'message' => 'Descuentos registrados correctamente.',
+            'discounts' => $createdDiscounts,
         ]);
     }
 }

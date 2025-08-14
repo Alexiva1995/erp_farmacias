@@ -20,9 +20,9 @@ class SupplierQueryService
     private function getBaseQuery(): Builder
     {
         return Supplier::query()
-            ->withoutTrashed()
-            ->select("suppliers.*")
-            ->with(["latestScore", "paymentRules"]);
+                        ->withoutTrashed()
+                        ->select('suppliers.*')
+                        ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -181,5 +181,15 @@ class SupplierQueryService
             report($e);
             return false;
         }
+    }
+
+    public function getPaymentRules(Supplier $supplier): Collection
+    {
+        return $supplier->paymentRules()->get();
+    }
+    
+    public function getDiscounts(Supplier $supplier): Collection
+    {
+        return $supplier->discounts()->get();
     }
 }

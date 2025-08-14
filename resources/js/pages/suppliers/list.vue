@@ -80,16 +80,14 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(
-    `/suppliers/${currentSupplier.value.id}/laboratories`,
-  );
+  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
   laboratoryLinks.value = data.laboratory_links;
 };
 
 const fetchDiscountRules = async () => {
   try {
     const { data } = await axios.get(
-      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`
     );
     discountRules.value = data.discount_rules;
   } catch (error) {
@@ -103,7 +101,7 @@ const fetchPendingInvoices = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/pending-invoices`,
+      `/suppliers/${currentSupplier.value.id}/pending-invoices`
     );
     pendingInvoices.value = data.pending_invoices;
   } catch (error) {
@@ -116,7 +114,7 @@ const fetchPendingInvoices = async () => {
 const fetchPaymentRules = async () => {
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/payment-rules`,
+      `/suppliers/${currentSupplier.value.id}/payment-rules`
     );
     paymentRules.value = data.payment_rules;
   } catch (error) {
@@ -128,9 +126,7 @@ const fetchPaymentRules = async () => {
 
 const fetchSupplierDiscount = async () => {
   try {
-    const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/discounts`,
-    );
+    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
@@ -163,9 +159,7 @@ const handleAddSupplier = () => {
 
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
-  const url = isNewSupplier
-    ? "/suppliers"
-    : `/suppliers/${currentSupplier.value.id}`;
+  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
 
   const payloadKeys = Object.keys(supplierFormData);
   if (!isNewSupplier && payloadKeys.length === 0) {
@@ -182,9 +176,7 @@ const handleSaveSupplier = async (supplierFormData) => {
 
     await axios.post(url, payload);
 
-    toast.success(
-      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,
-    );
+    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
     isEditDialogVisible.value = false;
     await fetchSuppliers();
   } catch (error) {
@@ -328,7 +320,7 @@ const handleSaveDiscountRules = async (formData) => {
   try {
     await axios.post(
       `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
-      formData,
+      formData
     );
 
     toast.success("Reglas de descuento guardadas con éxito");
