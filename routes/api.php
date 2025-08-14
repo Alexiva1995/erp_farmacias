@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 
 /*
@@ -160,7 +161,7 @@ Route::prefix("tpv")->group(function () {
 
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
-    Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
     Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
@@ -311,6 +312,10 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         Route::post("/creat",                    [SuppliersIaOrderAssistantController::class, "generarOrden"]);
         Route::post("/products-to-request",      [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
     });
+});
+
+Route::prefix("suppliers-ia-assistant-report")->group(function () {
+    Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
 });
 
 Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
