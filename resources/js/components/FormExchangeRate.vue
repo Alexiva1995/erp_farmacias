@@ -29,10 +29,10 @@ const sudmitPesos = async () => {
 </script>
 
 <template>
-  <VForm ref="formRef" @submit.prevent="() => {}">
+  <!--VForm ref="formRef" @submit.prevent="() => {}">
     <VRow>
       <VCol cols="12">
-        <VRow no-gutters>
+        <VRow no-gutters-->
           <!-- 👉 First Name -->
           <!--VCol
             cols="12"
@@ -55,14 +55,14 @@ const sudmitPesos = async () => {
               placeholder="Bs"
               persistent-placeholder
             />
-          </VCol-->
+          </VCol>
         </VRow>
       </VCol>
 
       <VCol cols="12">
-        <VRow no-gutters>
+        <VRow no-gutters-->
           <!-- 👉 Email -->
-          <VCol
+          <!--VCol
             cols="12"
             md="3"
             class="d-flex align-items-center"
@@ -88,9 +88,9 @@ const sudmitPesos = async () => {
       </VCol>
 
       <VCol cols="12">
-        <VRow no-gutters>
+        <VRow no-gutters-->
           <!-- 👉 Mobile -->
-          <VCol
+          <!--VCol
             cols="12"
             md="3"
             class="d-flex align-items-center"
@@ -114,10 +114,10 @@ const sudmitPesos = async () => {
             />
           </VCol>
         </VRow>
-      </VCol>
+      </VCol-->
 
       <!-- 👉 submit and reset button -->
-      <VCol cols="12">
+      <!--VCol cols="12">
         <VRow no-gutters>
           <VCol
             cols="12"
@@ -145,18 +145,18 @@ const sudmitPesos = async () => {
         </VRow>
       </VCol>
     </VRow>
-  </VForm>
-  <!-- 
+  </VForm-->
+   
   <VRow>
     <VCol cols="12">
       <VCard class="px-4 py-4">
         <VCardTitle>
-          <span>Tasa de Dolar BCV</span>
-          <VChip color="success" >12:00</VChip>
+          <span class="mr-2">Tasa de Dolar</span>
+          <VChip color="success">12:00</VChip>
         </VCardTitle>
         <VCardText>
-          <VForm>
-            <label class="mb-1 text-lg">Bolivares</label>
+          
+            <label class="mb-1 text-sm">Bolivares</label>
             <VTextField
               id="firstName"
               v-model="props.dollar"
@@ -173,85 +173,50 @@ const sudmitPesos = async () => {
                 cols="12"
               >
                 <VBtn
-                  type="submit"
-                  class="me-4"
-                >
-                  Submit
-                </VBtn>
-                <VBtn
                   color="secondary"
                   variant="tonal"
                   type="reset"
+                  class="me-4"
                 >
-                  Reset
+                  cancelar
+                </VBtn>
+                <VBtn
+                  type="submit"
+                  
+                >
+                  Establecer
                 </VBtn>
               </VCol>
             </VRow>
-          </VForm>
+          
         </VCardText>
       </VCard>
     </VCol>
 
     
-    <VCol cols="4">
+    <VCol cols="12">
       <VCard class="px-4 py-4">
         <VCardTitle>
-          <span>Precio del Dolar</span>
+          <span class="mr-2">Precio del Dolar a BCV</span>
           <VChip color="success" >12:00</VChip>
         </VCardTitle>
         <VCardText>
-          <VForm>
-            <label class="mb-1 text-lg">Bolivares</label>
+          
+            <label class="mb-1 text-sm">Bolivares</label>
             <VTextField
               id="firstName"
               v-model="props.bolivares"
-              placeholder="$"
+              :placeholder="props.dollar"
               persistent-placeholder
               class="mb-2"
             />
 
-            <VRow no-gutters>
-              <VCol
-                cols="12"
-              />
-              <VCol
-                cols="12"
-              >
-                <VBtn
-                  type="submit"
-                  class="me-4"
-                >
-                  Submit
-                </VBtn>
-                <VBtn
-                  color="secondary"
-                  variant="tonal"
-                  type="reset"
-                >
-                  Reset
-                </VBtn>
-              </VCol>
-            </VRow>
-          </VForm>
-        </VCardText>
-      </VCard>
-    </VCol>
-  
-
-    
-    <VCol cols="4">
-      <VCard class="px-4 py-4">
-        <VCardTitle>
-          <span>Tasa de Factura</span>
-          <VChip color="success" >12:00</VChip>
-        </VCardTitle>
-        <VCardText>
-          <VForm>
-            <label class="mb-1 text-lg">COP</label>
+            
+            <label class="mb-1 text-sm">COP</label>
             <VTextField
               id="firstName"
-              v-model="props.pesos"
-              placeholder="$"
+              v-model="pesos"
+              :placeholder="props.pesos"
               persistent-placeholder
               class="mb-2"
             />
@@ -263,25 +228,28 @@ const sudmitPesos = async () => {
               <VCol
                 cols="12"
               >
-                <VBtn
-                  type="submit"
-                  class="me-4"
-                >
-                  Submit
-                </VBtn>
+              
                 <VBtn
                   color="secondary"
                   variant="tonal"
                   type="reset"
+                  class="me-4"
                 >
-                  Reset
+                  cancelar
                 </VBtn>
+                <VBtn
+                  type="button"
+                  @click="sudmitPesos"
+                >
+                  Establecer
+                </VBtn>
+                
               </VCol>
             </VRow>
-          </VForm>
+          
         </VCardText>
       </VCard>
     </VCol>
   </VRow>
-  -->
+  
 </template>

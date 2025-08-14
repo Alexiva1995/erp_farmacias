@@ -127,8 +127,9 @@ const updateTableOptionsTable = options => {
 
 async function sortiar(payload){
   // alert(payload)
-  if(numero_de_premios.value!=""){
-    if(numero_de_premios.value>0){
+  let numeroDePremiosSorteo=parseInt(numero_de_premios.value)
+  if(numeroDePremiosSorteo!=""){
+    if(numeroDePremiosSorteo>0){
       loadingApp.value=true
       let filtros={
         laboratory_id:laboratory_id.value,
@@ -143,7 +144,7 @@ async function sortiar(payload){
       let ordenesSinPaginar=await filtrarSinPaginar(filtros)
       loadingApp.value=false
       statuModule.ordenesParaLaLoteria=ordenesSinPaginar
-      let ganadores=seleccionarGanadores([...ordenesSinPaginar],numero_de_premios.value)
+      let ganadores=seleccionarGanadores([...ordenesSinPaginar],numeroDePremiosSorteo)
       if(ganadores.length>0){
       console.log("datos => ",ganadores)
         modal.statu=true

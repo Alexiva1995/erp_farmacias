@@ -27,6 +27,19 @@ class TraceabilityController extends Controller
         ]);
     }
 
+    public function filterByPsychotropics(Request $request)
+    {
+        $query = $this->salesReportQueryService->getFilteredQueryByPsychotropics($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+
     public function export(Request $request)
     {
         $query = $this->salesReportQueryService->getFilteredQuery($request);

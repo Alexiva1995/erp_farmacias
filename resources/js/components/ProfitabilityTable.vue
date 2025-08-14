@@ -17,10 +17,9 @@ const props = defineProps({
 
 
 
-const emit = defineEmits(['refresh', "update", "editProduct"]);
+const emit = defineEmits(['refresh', "update:options", "editProduct"]);
 
 const headers = [
-  { title: 'Bloquear', key: 'products', sortable: false },
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
@@ -28,7 +27,7 @@ const headers = [
   { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: '% Utilidad', key: 'profitability', sortable: true  }, 
   { title: 'Fecha', key: 'valid_stock', sortable: true  },
-    { title: "Acciones", key: "actions", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false },
 ];
 
 function storeProfitability(product_id, profitability){
@@ -147,13 +146,8 @@ try {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      @update="(options) => emit('update', options)"
+      @update:options="(options) => emit('update:options', options)"
       >
-      <template #item.products="{ item }">
-        <Vbtn color="primary" icon @click="productExistProfitability(item.id,  item.profitability?.id, profitability, item.profitability?.is_locked)">
-          <FontAwesomeIcon :class="[item.profitability?.is_locked == '1' ? 'text-lg text-error' : 'text-lg']" :icon="['fas', item.profitability?.is_locked == '1' ? 'lock' : 'unlock']" />
-        </Vbtn>
-      </template>
       <template #item.id="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.id }}</span>
       </template>    
@@ -171,7 +165,7 @@ try {
       </template>
       <template #item.profitability="{ item }">
         <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">
-          ${{ item.profitability?.is_locked == '1' ? 
+          {{ item.profitability?.is_locked == '1' ? 
             (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2)
             : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
         </span>
@@ -182,6 +176,9 @@ try {
       <template #item.actions="{ item }" >
         <IconBtn @click="emit('editProduct', item.profitability?.id, item.profitability?.profitability_percentage, item.id, item.profitability?.is_locked)">
           <VIcon icon="tabler-edit" />
+        </IconBtn>
+        <IconBtn color="primary" icon @click="productExistProfitability(item.id,  item.profitability?.id, profitability, item.profitability?.is_locked)">
+          <FontAwesomeIcon :class="[item.profitability?.is_locked == '1' ? 'text-lg text-error' : 'text-lg']" :icon="['fas', item.profitability?.is_locked == '1' ? 'lock' : 'unlock']" />
         </IconBtn>
       </template>
     </VDataTableServer>

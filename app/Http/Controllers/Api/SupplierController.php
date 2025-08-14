@@ -10,6 +10,7 @@ use App\Services\Suppliers\SupplierActionService;
 use App\Services\Suppliers\SupplierHealthService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
+use App\Http\Requests\StoreDiscountsRequest;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
@@ -106,20 +107,38 @@ class SupplierController extends Controller
     }
 
     /**
-     * Update or create a payment rule for a supplier.
+     * Update or create  payment rules for a supplier.
      *
      * @param UpdatePaymentRuleSupplierRequest $request
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updatePaymentRule(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
+    public function storePaymentRules(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
     {
-        $rule = $this->supplierActionService->updatePaymentRule($supplier, $request->validated());
+        $validated = $request->validated();
+
+        $createdRules = [];
+
+        foreach ($validated['rules'] as $rule) {
+            $ruleData = [
+                'days' =>  $rule['days'],
+                'discount_percentage' => $rule['discount_percentage'],
+            ];
+
+            $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
+        }
 
         return response()->json([
-            'message' => 'Pronto pago actualizado con éxito.',
-            'rule' => $rule,
+            'message' => 'Reglas registradas correctamente.',
+            'rules' => $createdRules,
         ]);
+    }
+
+    public function getPaymentRules(Supplier $supplier)
+    {
+        $rules = $this->supplierQueryService->getPaymentRules($supplier);
+
+        return response()->json(['payment_rules' => $rules]);
     }
 
     /**
@@ -162,5 +181,33 @@ class SupplierController extends Controller
     {
         $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate($supplier);
         return response()->json(['pending_invoices' => $grouped]);
+    }
+
+    public function getDiscounts(Supplier $supplier)
+    {
+        $discounts = $this->supplierQueryService->getDiscounts($supplier);
+
+        return response()->json(['supplier_discount' => $discounts]);
+    }
+
+    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
+    {
+        $validated = $request->validated();
+
+        $createdDiscounts = [];
+
+        foreach ($validated['discounts'] as $rule) {
+            $discountData = [
+                'name' =>  $rule['name'],
+                'discount_percentage' => $rule['discount_percentage'],
+            ];
+
+            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+        }
+
+        return response()->json([
+            'message' => 'Descuentos registrados correctamente.',
+            'discounts' => $createdDiscounts,
+        ]);
     }
 }
