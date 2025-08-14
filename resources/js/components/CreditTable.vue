@@ -1,6 +1,7 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   credits: { type: Array, required: true },
@@ -18,18 +19,17 @@ const headers = [
   { title: 'Añadir', key: 'action', sortable: false},
 ];
 
-
+const authStore = useAuthStore();
+//const isAdmin = computed(() => authStore.user?.id === 3);
+const isAdmin = computed(() => 3 === 3);
 
 const toggleCreditStatus = async (item, newValue) => {
   try {
     const newStatus = newValue ? 'Paid' : 'Active';
-   // item.status = newStatus;
      const requestData = {
             ids: item.credit_ids,
             status: newStatus
         };
-
-    console.log(item);
     await axios.put(`/tpv/credits/status`, requestData);
     console.log(`Estado de los créditos ${item.credit_ids} actualizado a '${newStatus}' con éxito.`);
     toast.success(`Estado del crédito ${item.credit_ids} actualizado a '${newStatus}' con éxito.`);
@@ -66,6 +66,7 @@ const toggleCreditStatus = async (item, newValue) => {
             Pagar
           </VBtn>
          <VSwitch
+          v-if="isAdmin"
           :model-value="!!item.is_paid" 
           @update:model-value="newValue => toggleCreditStatus(item, newValue)"
         />

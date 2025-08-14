@@ -178,6 +178,7 @@ Route::prefix("tpv")->group(function () {
 
     Route::get('/credits', [CreditsController::class, 'index']);
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+     Route::get('/credits/complete', [CreditsController::class, 'getcompletedCredits']);
 });
 
 
