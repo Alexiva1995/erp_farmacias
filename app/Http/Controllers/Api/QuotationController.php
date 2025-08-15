@@ -71,6 +71,19 @@ class QuotationController extends Controller
         return response()->json($detailedProduct);
     }
 
+      public function showProducts(int $quotationId)
+    {
+        $quotation = $this->quotationActionService->getProducts($quotationId);
+      
+        if (!$quotation) {
+            return response()->json(['message' => 'Quotation not found'], 404);
+        }
+        return response()->json([
+            'quotation_id' => $quotation->id,
+            'products' => $quotation->products,
+        ]);
+    }
+
     /**
      * Update the specified resource in storage.
      */
