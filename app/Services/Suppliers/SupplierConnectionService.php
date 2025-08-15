@@ -2,9 +2,11 @@
 
 namespace App\Services\Suppliers;
 
+use App\Jobs\FetchSupplierConnectionData;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
+use Illuminate\Support\Facades\Http;
 
 class SupplierConnectionService
 {
@@ -65,13 +67,34 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        return [];
+        $user = $connection->username;
+        $password = FtpCrypt::decrypt($connection->password);
+
+        $response = Http::post($connection->host, [
+            "usuario" => $user,
+            "clave" => $password,
+        ]);
+        $token = $response->json()["token"];
+
+        try {
+            $response = Http::withHeaders([
+                "autorizacion" => $token,
+            ])
+                ->timeout(600)
+                ->get($connection->path);
+
+            if ($response->successful()) {
+                return $response->json();
+            } else {
+                throw new \Exception("La petición a la API falló");
+            }
+        } catch (\Exception $e) {
+            throw new \Exception("No se pudo establecer la conexión");
+        }
     }
 
-    public function parseDynamicContent(
-        string $content,
-        SupplierConnection $connection,
-    ) {
+    public function parseDynamicContent(string $content, SupplierConnection $connection)
+    {
         $now = now();
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
@@ -85,9 +108,7 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
-        $barcodeKey = collect($structure)->search(
-            fn($f) => ($f["target"] ?? null) === "barcode_match",
-        );
+        $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
             $cols = explode(";", $line);
@@ -95,17 +116,9 @@ class SupplierConnectionService
         }
 
         $barcodes = array_unique(array_filter($barcodes));
-        $products = Product::with("laboratory")
-            ->whereIn("barcode", $barcodes)
-            ->get()
-            ->keyBy("barcode");
+        $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $supplierId, $products) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -116,9 +129,7 @@ class SupplierConnectionService
                 "product_id" => null,
             ];
 
-            $table_structure = collect($structure)->filter(
-                fn($f) => $f["target"] ?? null,
-            );
+            $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
 
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
@@ -130,9 +141,7 @@ class SupplierConnectionService
                         break;
 
                     case "decimal":
-                        $entry[$meta["target"]] = is_numeric($value)
-                            ? number_format((float) $value, 2, ".", "")
-                            : null;
+                        $entry[$meta["target"]] = is_numeric($value) ? number_format((float) $value, 2, ".", "") : null;
                         break;
 
                     case "date":
@@ -152,12 +161,7 @@ class SupplierConnectionService
                         }
 
                         $entry[$meta["target"]] =
-                            $value === ""
-                                ? null
-                                : \DateTime::createFromFormat(
-                                    "d/m/Y",
-                                    $value,
-                                )?->format("Y-m-d");
+                            $value === "" ? null : \DateTime::createFromFormat("d/m/Y", $value)?->format("Y-m-d");
                         break;
                 }
 
