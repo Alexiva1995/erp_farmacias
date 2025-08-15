@@ -322,6 +322,12 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
+        }
+
 
         // if (array_key_exists("expProd", $filtros)) {
         //     if ($filtros["expProd"] == true) {
@@ -530,6 +536,11 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
+        }
 
         // if (array_key_exists("expProd", $filtros)) {
         //     if ($filtros["expProd"] == true) {

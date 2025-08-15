@@ -64,6 +64,7 @@ Route::post('/groups', [GroupController::class, 'store']);
 Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+Route::get('/groups/consult-all', [GroupController::class, 'consultAll']);
 
 
 // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
@@ -160,7 +161,7 @@ Route::prefix("tpv")->group(function () {
 
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
-    Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
     Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);

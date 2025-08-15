@@ -27,12 +27,16 @@ const module=reactive({
 
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
+const groups= ref(JSON.parse(route.query.groups));// grupos
+const laboratoryId= ref(route.query.laboratoryId);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
 async function generarPedido(){
   let data ={
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
+    "groups":groups.value,
+    "laboratoryId":laboratoryId.value,
     // "stock":stock.value,
   }
   let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`,data)
@@ -234,7 +238,9 @@ async function realizarCompra(){
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
     <VCard
-      title="PRODUCTOS EXCEDIERON LA TOLERANCIA DE COSTO"
+      :title="`PRODUCTOS EXCEDIERON LA TOLERANCIA DE COSTO (${
+        module.productoFallas.filter((pro) => pro.increase == true).length
+      })`"
       class="mb-6"
       v-if="indexNavegacion == 1"
     >
