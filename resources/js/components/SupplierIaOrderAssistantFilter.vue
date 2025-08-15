@@ -1,0 +1,95 @@
+<script setup>
+const props = defineProps({
+  tipo_de_vista: Boolean,
+  tipo_de_filtracion: String,
+  lapso_de_tiempo: String,
+  stock: String,
+});
+
+const emit = defineEmits([
+  "update:tipo_de_vista",
+  "update:tipo_de_filtracion",
+  "update:lapso_de_tiempo",
+  "update:stock",
+  "clear",
+  "generarPedido",
+]);
+
+const tipoDeVistaOpcion = [
+  { title: "Grupal", value: true },
+  { title: "Individual", value: false },
+];
+
+const tipoFiltracionOpcion = [
+  { title: "Promedio", value: "average" },
+  { title: "Ventas", value: "sales" },
+];
+
+const lapsoDeTiempoOpciones = [
+  { title: "15 Dias", value: "15 days" },
+  { title: "1 Mes", value: "1 month" },
+  { title: "3 Meses", value: "3 month" },
+  { title: "6 Meses", value: "6 month" },
+  { title: "1 Año", value: "1 year" },
+];
+
+const stockOpciones = [
+  { title: "Exceso", value: "exceso" },
+  { title: "Fallas", value: "fallas" },
+  { title: "All", value: "all" },
+];
+</script>
+
+<template>
+  <VCard title="Filtros" class="mb-6">
+    <VCardText>
+      <VRow>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.tipo_de_vista"
+            label="Tipo de vista"
+            :items="tipoDeVistaOpcion"
+            @update:model-value="emit('update:tipo_de_vista', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.tipo_de_filtracion"
+            label="Calcular Por"
+            :items="tipoFiltracionOpcion"
+            @update:model-value="emit('update:tipo_de_filtracion', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.lapso_de_tiempo"
+            label="Lapso de tiempo"
+            :items="lapsoDeTiempoOpciones"
+            @update:model-value="emit('update:lapso_de_tiempo', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.stock"
+            label="Stock"
+            :items="stockOpciones"
+            @update:model-value="emit('update:stock', $event)"
+          />
+        </VCol>
+      </VRow>
+    </VCardText>
+
+    <VDivider />
+
+    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+        Limpiar Filtros
+      </VBtn>
+
+      <VSpacer />
+      <VBtn color="success" variant="flat" @click="emit('generarPedido')">
+        Generar Pedido
+      </VBtn>
+    </VCardActions>
+  </VCard>
+</template>

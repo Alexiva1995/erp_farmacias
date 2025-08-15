@@ -1,146 +1,313 @@
 [
-  {
-    "supplier_id": "9",
-    "type": "ftp",
-    "host": "ftp.dromega.com.ve",
-    "port": null,
-    "username": "clientemerida@dromega.com.ve",
-    "password": "eyJpdiI6IlEvT0UwdEY4SUFpank5RFNhRnAvUUE9PSIsInZhbHVlIjoiQTF6ZXRuVGlzMlhEa0xjcjBmWWNiQT09IiwibWFjIjoiNzBiYTZlNGRhMjhjN2Q2ZTk0M2YzODliZDdiMDA1ZjRlNWUwZTExMjNkMDdjOWZmNDgyNjVhYjY2NDI4NzRkYiIsInRhZyI6IiJ9",
-    "path": "Existencia/inventariomerida.txt",
-    "pasv": true,
-    "has_header": false,
-    "structure": {
-      "0": { "file_field": "codigo_producto", "type": "string" },
-      "1": {
-        "file_field": "codigo_barras",
-        "type": "string",
-        "target": "barcode_match"
-      },
-      "2": {
-        "file_field": "descripcion_producto",
-        "type": "string",
-        "target": "name"
-      },
-      "3": {
-        "file_field": "fecha_lote",
-        "type": "date",
-        "target": "expiration"
-      },
-      "4": { "file_field": "precio_unitario", "type": "decimal" },
-      "5": { "file_field": "porcentaje_oferta_vigente", "type": "decimal" },
-      "6": {
-        "file_field": "precio_unitario_final",
-        "type": "decimal",
-        "target": "unit_cost"
-      },
-      "7": { "file_field": "stock_disponible", "type": "integer" }
+    {
+        "supplier_id": "9",
+        "type": "ftp",
+        "host": "ftp.dromega.com.ve",
+        "port": null,
+        "username": "clientemerida@dromega.com.ve",
+        "password": "eyJpdiI6IlEvT0UwdEY4SUFpank5RFNhRnAvUUE9PSIsInZhbHVlIjoiQTF6ZXRuVGlzMlhEa0xjcjBmWWNiQT09IiwibWFjIjoiNzBiYTZlNGRhMjhjN2Q2ZTk0M2YzODliZDdiMDA1ZjRlNWUwZTExMjNkMDdjOWZmNDgyNjVhYjY2NDI4NzRkYiIsInRhZyI6IiJ9",
+        "path": "Existencia/inventariomerida.txt",
+        "pasv": true,
+        "has_header": false,
+        "invoice_path": "Facturas/0287",
+        "structure": {
+            "0": {
+                "file_field": "codigo_producto",
+                "type": "string"
+            },
+            "1": {
+                "file_field": "codigo_barras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "2": {
+                "file_field": "descripcion_producto",
+                "type": "string",
+                "target": "name"
+            },
+            "3": {
+                "file_field": "fecha_lote",
+                "type": "date",
+                "target": "expiration"
+            },
+            "4": {
+                "file_field": "precio_unitario",
+                "type": "decimal"
+            },
+            "5": {
+                "file_field": "porcentaje_oferta_vigente",
+                "type": "decimal"
+            },
+            "6": {
+                "file_field": "precio_unitario_final",
+                "type": "decimal",
+                "target": "unit_cost"
+            },
+            "7": {
+                "file_field": "stock_disponible",
+                "type": "integer"
+            }
+        },
+        "invoice_structure": {
+            "separator": ";",
+            "decimal_separator": ".",
+            "decimals": 2,
+            "header": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "integer"
+                },
+                "2": {
+                    "field": "control_number",
+                    "type": "string"
+                },
+                "3": {
+                    "field": "exp_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "8": {
+                    "field": "total_amount",
+                    "type": "decimal"
+                },
+                "13": {
+                    "field": "tax_amount",
+                    "type": "decimal"
+                }
+            },
+            "lines": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "fact_num",
+                    "type": "integer"
+                },
+                "2": {
+                    "field": "numcon",
+                    "type": "string"
+                },
+                "3": {
+                    "field": "codigo_producto",
+                    "type": "string"
+                },
+                "4": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "5": {
+                    "field": "descripcion_producto",
+                    "type": "string"
+                },
+                "6": {
+                    "field": "quantity",
+                    "type": "integer"
+                },
+                "10": {
+                    "field": "unit_cost",
+                    "type": "decimal"
+                },
+                "11": {
+                    "field": "lot_number",
+                    "type": "string"
+                },
+                "12": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "13": {
+                    "field": "porcentaje_iva",
+                    "type": "decimal"
+                }
+            }
+        }
+    },
+    {
+        "supplier_id": "15",
+        "type": "ftp",
+        "host": "195.35.33.28",
+        "port": null,
+        "username": "u639259455.u863948713",
+        "password": "eyJpdiI6InlSTzlVOFlqWGtpU2JsaG5nbkZ0aFE9PSIsInZhbHVlIjoiVVRwVThZR3U3Vzd4K0huMGp4Nmx3dz09IiwibWFjIjoiZTcwZmI0MTY1MjBhNjM3NmNiYWNlNGRiODk2NzJhMjZkMTljZDQzNWZhYmJkZjBmNjU3OGFiNWVkMmZiOWYyMyIsInRhZyI6IiJ9",
+        "path": "Existencia/inventario.txt",
+        "pasv": true,
+        "has_header": false,
+        "invoice_path": null,
+        "structure": {
+            "0": {
+                "file_field": "codigo_producto",
+                "type": "string"
+            },
+            "1": {
+                "file_field": "codigo_barras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "2": {
+                "file_field": "descripcion_producto",
+                "type": "string",
+                "target": "name"
+            },
+            "3": {
+                "file_field": "fecha_lote",
+                "type": "date",
+                "target": "expiration"
+            },
+            "4": {
+                "file_field": "precio_unitario",
+                "type": "decimal"
+            },
+            "5": {
+                "file_field": "porcentaje_oferta_vigente",
+                "type": "decimal"
+            },
+            "6": {
+                "file_field": "precio_unitario_final",
+                "type": "decimal",
+                "target": "unit_cost"
+            },
+            "7": {
+                "file_field": "stock_disponible",
+                "type": "integer"
+            }
+        }
+    },
+    {
+        "supplier_id": "21",
+        "type": "ftp",
+        "host": "strixposback.gotdns.com",
+        "port": null,
+        "username": "CL103740",
+        "password": "eyJpdiI6ImF0dmhLQ2pSS08zZFc2c0Uybm9qZlE9PSIsInZhbHVlIjoiRVArUlQyRXRsV3dSWVp4N2ZubTE4UnR3R2tJbm90akI4dkNwelFuNys0OD0iLCJtYWMiOiIwYzVhOTc2NzcxYmU5NGM3MWEzMTBhMTc1M2EzYTlmOGQ4MDBmNDBmODFmOWQ4YzUyNmU1N2UwYTRhY2M2YWRlIiwidGFnIjoiIn0=",
+        "path": "inventario05-08-2025_21:54:42.txt",
+        "pasv": false,
+        "has_header": false,
+        "invoice_path": null,
+        "structure": {
+            "0": {
+                "file_field": "codigo_producto",
+                "type": "string"
+            },
+            "1": {
+                "file_field": "codigo_barras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "2": {
+                "file_field": "descripcion_producto",
+                "type": "string",
+                "target": "name"
+            },
+            "3": {
+                "file_field": "fecha_lote",
+                "type": "date",
+                "target": "expiration"
+            },
+            "4": {
+                "file_field": "precio_unitario",
+                "type": "decimal"
+            },
+            "5": {
+                "file_field": "porcentaje_oferta_vigente",
+                "type": "decimal"
+            },
+            "6": {
+                "file_field": "precio_unitario_final",
+                "type": "decimal",
+                "target": "unit_cost"
+            },
+            "7": {
+                "file_field": "stock_disponible",
+                "type": "integer"
+            }
+        }
+    },
+    {
+        "supplier_id": "2",
+        "type": "ftp",
+        "host": "drocerca.proteoerp.org",
+        "port": null,
+        "username": "C008B3",
+        "password": "eyJpdiI6Im1YVjRMYy96UFdzbndIMTRUMW1CQ1E9PSIsInZhbHVlIjoiMHIwK1hhendnaTR4OU5OZ3gxMTdoQT09IiwibWFjIjoiNDNmOTkxZDdiZWI1ZWVlNjE3NWYzMzA1MmNlOTYyOGEyNjI5NDMyNzAxM2UwZmQyNjYzZDdkNjM1YjhiYjYwNyIsInRhZyI6IiJ9=",
+        "path": "inventario.txt",
+        "pasv": false,
+        "has_header": true,
+        "invoice_path": null,
+        "structure": {
+            "0": {
+                "file_field": "Codigo",
+                "type": "string"
+            },
+            "1": {
+                "file_field": "CodBarras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "2": {
+                "file_field": "Descripcion",
+                "type": "string",
+                "target": "name"
+            },
+            "3": {
+                "file_field": "exisMerida",
+                "type": "decimal"
+            },
+            "4": {
+                "file_field": "exisCaracas",
+                "type": "decimal"
+            },
+            "5": {
+                "file_field": "exisOriente",
+                "type": "decimal"
+            },
+            "6": {
+                "file_field": "Marca",
+                "type": "string"
+            },
+            "7": {
+                "file_field": "Precio",
+                "type": "decimal"
+            },
+            "8": {
+                "file_field": "Oferta",
+                "type": "decimal",
+                "target": "unit_cost"
+            },
+            "9": {
+                "file_field": "Grupo",
+                "type": "string"
+            },
+            "10": {
+                "file_field": "Vence",
+                "type": "date",
+                "target": "expiration"
+            },
+            "11": {
+                "file_field": "Principio",
+                "type": "string"
+            },
+            "12": {
+                "file_field": "Escala",
+                "type": "decimal"
+            },
+            "13": {
+                "file_field": "DescXEscala",
+                "type": "decimal"
+            },
+            "14": {
+                "file_field": "Bonifica",
+                "type": "decimal"
+            },
+            "15": {
+                "file_field": "CantBonifica",
+                "type": "decimal"
+            }
+        }
     }
-  },
-  {
-    "supplier_id": "15",
-    "type": "ftp",
-    "host": "195.35.33.28",
-    "port": null,
-    "username": "u639259455.u863948713",
-    "password": "eyJpdiI6InlSTzlVOFlqWGtpU2JsaG5nbkZ0aFE9PSIsInZhbHVlIjoiVVRwVThZR3U3Vzd4K0huMGp4Nmx3dz09IiwibWFjIjoiZTcwZmI0MTY1MjBhNjM3NmNiYWNlNGRiODk2NzJhMjZkMTljZDQzNWZhYmJkZjBmNjU3OGFiNWVkMmZiOWYyMyIsInRhZyI6IiJ9",
-    "path": "Existencia/inventario.txt",
-    "pasv": true,
-    "has_header": false,
-    "structure": {
-      "0": { "file_field": "codigo_producto", "type": "string" },
-      "1": {
-        "file_field": "codigo_barras",
-        "type": "string",
-        "target": "barcode_match"
-      },
-      "2": {
-        "file_field": "descripcion_producto",
-        "type": "string",
-        "target": "name"
-      },
-      "3": {
-        "file_field": "fecha_lote",
-        "type": "date",
-        "target": "expiration"
-      },
-      "4": { "file_field": "precio_unitario", "type": "decimal" },
-      "5": { "file_field": "porcentaje_oferta_vigente", "type": "decimal" },
-      "6": {
-        "file_field": "precio_unitario_final",
-        "type": "decimal",
-        "target": "unit_cost"
-      },
-      "7": { "file_field": "stock_disponible", "type": "integer" }
-    }
-  },
-  {
-    "supplier_id": "21",
-    "type": "ftp",
-    "host": "strixposback.gotdns.com",
-    "port": null,
-    "username": "CL103740",
-    "password": "eyJpdiI6ImF0dmhLQ2pSS08zZFc2c0Uybm9qZlE9PSIsInZhbHVlIjoiRVArUlQyRXRsV3dSWVp4N2ZubTE4UnR3R2tJbm90akI4dkNwelFuNys0OD0iLCJtYWMiOiIwYzVhOTc2NzcxYmU5NGM3MWEzMTBhMTc1M2EzYTlmOGQ4MDBmNDBmODFmOWQ4YzUyNmU1N2UwYTRhY2M2YWRlIiwidGFnIjoiIn0=",
-    "path": "inventario05-08-2025_21:54:42.txt",
-    "pasv": false,
-    "has_header": false,
-    "structure": {
-      "0": { "file_field": "codigo_producto", "type": "string" },
-      "1": {
-        "file_field": "codigo_barras",
-        "type": "string",
-        "target": "barcode_match"
-      },
-      "2": {
-        "file_field": "descripcion_producto",
-        "type": "string",
-        "target": "name"
-      },
-      "3": {
-        "file_field": "fecha_lote",
-        "type": "date",
-        "target": "expiration"
-      },
-      "4": { "file_field": "precio_unitario", "type": "decimal" },
-      "5": { "file_field": "porcentaje_oferta_vigente", "type": "decimal" },
-      "6": {
-        "file_field": "precio_unitario_final",
-        "type": "decimal",
-        "target": "unit_cost"
-      },
-      "7": { "file_field": "stock_disponible", "type": "integer" }
-    }
-  },
-  {
-    "supplier_id": "2",
-    "type": "ftp",
-    "host": "drocerca.proteoerp.org",
-    "port": null,
-    "username": "C008B3",
-    "password": "eyJpdiI6Im1YVjRMYy96UFdzbndIMTRUMW1CQ1E9PSIsInZhbHVlIjoiMHIwK1hhendnaTR4OU5OZ3gxMTdoQT09IiwibWFjIjoiNDNmOTkxZDdiZWI1ZWVlNjE3NWYzMzA1MmNlOTYyOGEyNjI5NDMyNzAxM2UwZmQyNjYzZDdkNjM1YjhiYjYwNyIsInRhZyI6IiJ9=",
-    "path": "inventario.txt",
-    "pasv": false,
-    "has_header": true,
-    "structure": {
-      "0": { "file_field": "Codigo", "type": "string" },
-      "1": {
-        "file_field": "CodBarras",
-        "type": "string",
-        "target": "barcode_match"
-      },
-      "2": { "file_field": "Descripcion", "type": "string", "target": "name" },
-      "3": { "file_field": "exisMerida", "type": "decimal" },
-      "4": { "file_field": "exisCaracas", "type": "decimal" },
-      "5": { "file_field": "exisOriente", "type": "decimal" },
-      "6": { "file_field": "Marca", "type": "string" },
-      "7": { "file_field": "Precio", "type": "decimal" },
-      "8": { "file_field": "Oferta", "type": "decimal", "target": "unit_cost" },
-      "9": { "file_field": "Grupo", "type": "string" },
-      "10": { "file_field": "Vence", "type": "date", "target": "expiration" },
-      "11": { "file_field": "Principio", "type": "string" },
-      "12": { "file_field": "Escala", "type": "decimal" },
-      "13": { "file_field": "DescXEscala", "type": "decimal" },
-      "14": { "file_field": "Bonifica", "type": "decimal" },
-      "15": { "file_field": "CantBonifica", "type": "decimal" }
-    }
-  }
 ]

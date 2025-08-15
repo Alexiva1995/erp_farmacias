@@ -40,6 +40,8 @@ const isPendingInvoicesDialogVisible = ref(false);
 const isSupplierDiscountRuleDialogVisible = ref(false);
 const isSupplierDiscountDialogVisible = ref(false);
 
+const checkingApiSupplierId = ref(null);
+
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
@@ -64,7 +66,7 @@ const fetchSuppliers = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
 
   try {
@@ -80,16 +82,14 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(
-    `/suppliers/${currentSupplier.value.id}/laboratories`,
-  );
+  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
   laboratoryLinks.value = data.laboratory_links;
 };
 
 const fetchDiscountRules = async () => {
   try {
     const { data } = await axios.get(
-      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`
     );
     discountRules.value = data.discount_rules;
   } catch (error) {
@@ -103,7 +103,7 @@ const fetchPendingInvoices = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/pending-invoices`,
+      `/suppliers/${currentSupplier.value.id}/pending-invoices`
     );
     pendingInvoices.value = data.pending_invoices;
   } catch (error) {
@@ -116,7 +116,7 @@ const fetchPendingInvoices = async () => {
 const fetchPaymentRules = async () => {
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/payment-rules`,
+      `/suppliers/${currentSupplier.value.id}/payment-rules`
     );
     paymentRules.value = data.payment_rules;
   } catch (error) {
@@ -128,9 +128,7 @@ const fetchPaymentRules = async () => {
 
 const fetchSupplierDiscount = async () => {
   try {
-    const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/discounts`,
-    );
+    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
@@ -163,9 +161,7 @@ const handleAddSupplier = () => {
 
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
-  const url = isNewSupplier
-    ? "/suppliers"
-    : `/suppliers/${currentSupplier.value.id}`;
+  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
 
   const payloadKeys = Object.keys(supplierFormData);
   if (!isNewSupplier && payloadKeys.length === 0) {
@@ -182,9 +178,7 @@ const handleSaveSupplier = async (supplierFormData) => {
 
     await axios.post(url, payload);
 
-    toast.success(
-      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,
-    );
+    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
     isEditDialogVisible.value = false;
     await fetchSuppliers();
   } catch (error) {
@@ -228,12 +222,14 @@ const handleDeleteSupplier = async (id) => {
 };
 
 const handleCheckSupplierApi = async (supplier) => {
+  checkingApiSupplierId.value = supplier.id;
+
   try {
-    const { data } = await axios.get(`/suppliers/${supplier.id}/connection`); //`/suppliers/${supplier.id}/check-health`
+    const { data } = await axios.get(`/suppliers/${supplier.id}/connection`);
 
     if (data.status === "ok") {
       toast.success(
-        `Se añadieron ${data.count} productos del proveedor ${supplier.name}`,
+        `Se añadieron ${data.count_product} productos y ${data.count_invoice} facturas del proveedor ${supplier.name}`
       );
     } else {
       toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
@@ -241,6 +237,8 @@ const handleCheckSupplierApi = async (supplier) => {
   } catch (error) {
     console.error(`Error al verificar API de ${supplier.name}:`, error);
     toast.error(`No se pudo verificar la API de ${supplier.name}`);
+  } finally {
+    checkingApiSupplierId.value = null;
   }
 };
 
@@ -328,7 +326,7 @@ const handleSaveDiscountRules = async (formData) => {
   try {
     await axios.post(
       `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
-      formData,
+      formData
     );
 
     toast.success("Reglas de descuento guardadas con éxito");
@@ -391,7 +389,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
   },
-  { deep: true },
+  { deep: true }
 );
 
 watch([searchQuery], () => {
@@ -421,6 +419,7 @@ const updateTableOptions = (options) => {
       :total-supplier="totalSupplier"
       :items-per-page="itemsPerPage"
       :page="page"
+      :checking-api-id="checkingApiSupplierId"
       @update:options="updateTableOptions"
       @edit-supplier="handleEditSupplier"
       @delete-supplier="handleDeleteSupplier"
