@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\GroupProduct\StoreGroupRequest;
 use App\Http\Requests\GroupProduct\UpdateGroupRequest;
 use App\Models\GroupsProduct;
 use App\Services\Groups\GroupActionService;
 use App\Services\Groups\GroupQueryService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GroupController extends Controller
@@ -15,8 +17,7 @@ class GroupController extends Controller
     public function __construct(
         private GroupQueryService $queryService,
         private GroupActionService $actionService
-    ) {
-    }
+    ) {}
 
     /**
      * Obtiene una lista paginada de grupos.
@@ -84,5 +85,14 @@ class GroupController extends Controller
         }
 
         return response()->json(['message' => 'Grupo no encontrado.'], 404);
+    }
+
+    /**
+     * consultat todos los grupos
+     */
+    public function consultAll(): JsonResponse
+    {
+        $respuesta = $this->queryService->consultAll();
+        return ApiResponse::success($respuesta, "ok", 200);
     }
 }

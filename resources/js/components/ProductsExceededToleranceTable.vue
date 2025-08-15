@@ -21,7 +21,7 @@ const productosTable = computed(() => {
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>cantidad</th>
+          <th>Sugerencia</th>
           <th>Stock Pro.</th>
           <th>Costo Unit.</th>
         </tr>
