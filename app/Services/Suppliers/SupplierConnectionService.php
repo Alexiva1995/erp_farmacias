@@ -5,6 +5,7 @@ namespace App\Services\Suppliers;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
+use Illuminate\Support\Facades\Log;
 
 class SupplierConnectionService
 {
@@ -42,6 +43,7 @@ class SupplierConnectionService
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
+        // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
         if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
             $content = file_get_contents($tempFile);
@@ -50,12 +52,33 @@ class SupplierConnectionService
                 "UTF-8",
                 "ISO-8859-1",
             ); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-            ftp_close($ftp);
-            return $this->parseDynamicContent($content_encoded, $connection);
+            $productData = $this->parseDynamicContent($content_encoded, $connection);
         } else {
-            ftp_close($ftp);
-            throw new \Exception("No se pudo descargar el archivo");
+            throw new \Exception("No se pudo guardar los productos");
         }
+
+        // Facturas (si tiene ruta definida)
+        $invoiceResults = [];
+        if (!empty($connection->invoice_path)) {
+            $files = ftp_nlist($ftp, $connection->invoice_path);
+            foreach ($files as $filePath) {
+                if (!str_ends_with($filePath, '.txt')) continue;
+                $tempInvoice = tempnam(sys_get_temp_dir(), 'inv_');
+
+                if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                    $invoiceContent = file_get_contents($tempInvoice);
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection);
+                    $invoiceResults[] = $parsed;
+                }
+            }
+        }
+
+        ftp_close($ftp);
+
+        return [
+            'products' => $productData ?? [],
+            'invoices' => $invoiceResults,
+        ];
     }
 
     public function fetchFromSftp(SupplierConnection $connection)
@@ -172,5 +195,86 @@ class SupplierConnectionService
         });
 
         return $result->toArray();
+    }
+
+    public function invoiceTxtParser(string $content, SupplierConnection $connection): array    {
+        $lines = array_filter(explode("\n", trim($content)), "trim");
+        $structure = $connection->invoice_structure;
+        $separator = $structure["separator"] ?? ";";
+
+        $invoices = [];
+        $bufferLines = [];
+
+        $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
+
+        $barcodes = [];
+
+        foreach ($lines as $line) {
+            $cols = explode($separator, $line);
+            $tipo = trim($cols[0] ?? "");
+
+            if ($tipo === "R" && $barcodeField !== false) {
+                $barcode = trim($cols[$barcodeField] ?? "");
+                if ($barcode !== "") {
+                    $barcodes[] = $barcode;
+                }
+            }
+        }
+
+        $products = Product::whereIn('barcode', array_unique($barcodes))->get()->keyBy('barcode');
+
+        foreach ($lines as $line) {
+            $cols = explode($separator, $line);
+            $tipo = trim($cols[0] ?? "");
+
+            if ($tipo === "E") {
+                $header = [];
+
+                foreach ($structure["header"] as $index => $meta) {
+                    $raw = $cols[$index] ?? "";
+                    $value = $this->castValue($raw, $meta);
+                    $header[$meta["field"]] = $value;
+                }
+
+                $invoices = [
+                    "header" => $header,
+                    "lines" => $bufferLines,
+                ];
+
+                $bufferLines = []; // limpiar para el próximo bloque
+            }
+
+            if ($tipo === "R") {
+                $lineData = [];
+
+                foreach ($structure["lines"] as $index => $meta) {
+                    $raw = $cols[$index] ?? "";
+                    $value = $this->castValue($raw, $meta);
+                    $lineData[$meta["field"]] = $value;
+                }
+
+                $barcode = $lineData["barcode"] ?? null;
+                $lineData["product_id"] = $products[$barcode]->id ?? null;
+
+                $unitCost = floatval($lineData["unit_cost"] ?? 0);
+                $quantity = intval($lineData["quantity"] ?? 0);
+                $lineData["total_cost"] = $unitCost * $quantity;
+
+                $bufferLines[] = $lineData;
+            }
+        }
+        return $invoices;
+    }
+
+    private function castValue(string $raw, array $meta): mixed {
+        $value = trim($raw);
+
+        return match ($meta["type"]) {
+            "string" => $value,
+            "integer" => is_numeric($value) ? (int) $value : null,
+            "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
+            "date" => \DateTime::createFromFormat($meta["format"] ?? "Y-m-d", $value)?->format("Y-m-d"),
+            default => $value,
+        };
     }
 }

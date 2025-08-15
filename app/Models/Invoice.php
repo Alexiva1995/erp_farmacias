@@ -29,6 +29,16 @@ class Invoice extends Model
         'ordered_by',
     ];
 
+    public const FILLABLEHEADER = [
+        'invoice_number',
+        'control_number',
+        'exp_date',
+        'tax_amount',
+        'total_amount',
+    ];
+
+    protected $fillableFromHeader  = self::FILLABLEHEADER;
+
     protected $appends = ['outstanding_debt'];
 
     public function supplier(): BelongsTo
