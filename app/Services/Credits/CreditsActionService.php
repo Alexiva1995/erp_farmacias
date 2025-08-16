@@ -50,15 +50,12 @@ class CreditsActionService
             $creditosPendientes = Credit::where('client_id', $request->clientId)->where('status', 'Active')->orderBy('created_at')->get();
 
             foreach ($request->payments as $paymend) {
-               
                 $montoRestantePagoActual = $paymend['amount'];
                 $montoRestantePagoActual = (float)$montoRestantePagoActual;
-
                 
                 $rates = $this->resourceService->getAllExchangeRate();
                 $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
                  
-
                 if ($paymend['currency'] == 'bs') {
                     $bsToUsdRate = (float) ($ratesArray['BS'] ?? 0);
                     if ($bsToUsdRate > 0) {
@@ -117,6 +114,52 @@ class CreditsActionService
                 'payment_date'   => Carbon::now(),
             ]);
 
+            $current_cash->cop_conversion_payment_credit += $request->changeAmount ?? 0.00;
+
+             foreach ($request->payments as $payment) {
+                $method = $payment['method'] ?? null;
+                $amount = $payment['amount'] ?? 0;
+
+                if (isset($method)) {
+                    switch ($method) {
+                        case 'cash_usd':
+                            $current_cash->usd_cash_payment_credit += $amount;
+                            break;
+                        case 'binance':
+                            $current_cash->usd_binance_payment_credit += $amount;
+                            break;
+                        case 'paypal':
+                            $current_cash->usd_paypal_payment_credit += $amount;
+                            break;
+                        case 'cash_bs':
+                            $current_cash->bs_cash_payment_credit += $amount;
+                            break;
+                        case 'mobile_payment':
+                            $current_cash->bs_mobile_payment_credit += $amount;
+                            break;
+                        case 'bank_transfer_bs':
+                            $current_cash->bs_transfer_payment_credit += $amount;
+                            break;
+                        case 'card':
+                            $current_cash->bs_card_payment_credit += $amount;
+                            break;
+                        case 'cash_cop':
+                            $current_cash->cop_cash_payment_credit += $amount;
+                            break;
+                        case 'bank_transfer':
+                            $current_cash->cop_transfer_payment_credit += $amount;
+                            break;
+                    }
+                }
+            }
+
+            if (!isset($request->changeAmountUSD)) {
+                if (isset($request->changeAmount)) {
+                $current_cash->cop_cash -= $request->changeAmount;
+                }
+            }
+
+            $current_cash->update();
             DB::commit();
             return true;
 
