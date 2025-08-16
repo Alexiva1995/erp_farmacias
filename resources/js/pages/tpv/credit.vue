@@ -91,13 +91,21 @@ const closeCreditsModal = () => {
 const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountUSD) => {
  try {
 
+  const clientId = creditsData.value?.client?.id;
+
+    if (!clientId) {
+      toast.error("No se pudo obtener el ID del cliente. Intente de nuevo.");
+      return; // Detiene la ejecución si no hay ID de cliente
+    }
+
  const payload = {
+      clientId: clientId,
       payments: paymentsData,
       changeAmount: changeAmount,
       changeAmountUSD: changeAmountUSD,
     };
-   // const response = await axios.post(`/tpv/credits/complete`, payload);
-   // if (response.status === 200 || response.status === 201) {
+    const response = await axios.post(`/tpv/credits/complete`, payload);
+    if (response.status === 200 || response.status === 201) {
     
     toast.success("¡Pago finalizado y registrado con éxito!");
 
@@ -138,11 +146,9 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
       window.print();
     }
 
-  /*  }else{
+    }else{
       toast.error(`Error inesperado al finalizar el pago: ${response.data.message || 'Intente de nuevo.'}`);  
-    }*/
-
-     
+    }
 
     setTimeout(() => {
       isPrinting.value = false;

@@ -99,6 +99,7 @@ const fetchExchangeRates = async () => {
     }
     const apiRates = await response.json();
     const formattedRates = {};
+    console.log(apiRates)
     apiRates.forEach((rateItem) => {
       const currencyCode = rateItem.currency_code;
       const rateValue = parseFloat(rateItem.rate);
