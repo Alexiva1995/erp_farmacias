@@ -142,5 +142,38 @@
       "14": { "file_field": "Bonifica", "type": "decimal" },
       "15": { "file_field": "CantBonifica", "type": "decimal" }
     }
+  },
+  {
+    "supplier_id": "23",
+    "type": "api",
+    "host": "http://www.cobeca.com:8080/pedidofl/api/Login",
+    "port": null,
+    "username": "f31373",
+    "password": "eyJpdiI6IlEzMnR6cmUydFhEWFZndGNnNnA1Nmc9PSIsInZhbHVlIjoiSHZ3Z2FHWUZlc21yVm5VS0toR3cxdz09IiwibWFjIjoiMzU1MDQxZDg4OTI4NjMzN2IwZGU3YzUwZDFmNzdhNDVkZTdiZjBkOTQ0NTcwNDY3Y2M3ZGMyZTc1MGUzOGQwNCIsInRhZyI6IiJ9",
+    "path": "http://www.cobeca.com:8080/pedidofl/api/Articulos?cod_drogueria=3",
+    "pasv": false,
+    "has_header": false,
+    "structure": {
+      "0": {
+        "file_field": "cod_barras",
+        "type": "string",
+        "target": "barcode_match"
+      },
+      "1": {
+        "file_field": "desc_articulo",
+        "type": "string",
+        "target": "name"
+      },
+      "2": {
+        "file_field": "fecha_Expire_ned",
+        "type": "date",
+        "target": "expiration"
+      },
+      "3": {
+        "file_field": "monto_final",
+        "type": "decimal",
+        "target": "unit_cost"
+      }
+    }
   }
 ]
