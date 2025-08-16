@@ -108,7 +108,7 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
     if (response.status === 200 || response.status === 201) {
     
     toast.success("¡Pago finalizado y registrado con éxito!");
-
+    await fetchCredits(); 
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       isPrinting.value = true;

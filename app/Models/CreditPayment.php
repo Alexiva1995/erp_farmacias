@@ -12,6 +12,11 @@ class CreditPayment extends Model
         'cash_closing_id',
         'money_returns',
         'payment_date',
-        'payment_methods',
+        'method_Payment',
     ];
+
+        protected $casts = [
+        'method_Payment' => 'array',
+    ];
+
 }

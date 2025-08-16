@@ -12,9 +12,14 @@ use Carbon\Carbon;
 use App\Models\CreditPayment;
 use App\Models\CashClosing;
 use Illuminate\Support\Facades\Auth;
+use App\Services\Resources\ResourceService;
 
 class CreditsActionService
 {
+
+    public function __construct(private ResourceService $resourceService)
+    {
+    }
 
     public function updateStatus(array $creditIds, string $status): bool
     {
@@ -36,27 +41,85 @@ class CreditsActionService
     public function complete(Request $request): bool
     {
         try {
-          
+            DB::beginTransaction();
             $money_returns = (isset($request->changeAmount)) ? $request->changeAmount : 0;
 
             //  $sellerId = Auth::id();
             $sellerId = 3; //para realizar pruebas
+            $creditosPagados = [];
+            $creditosPendientes = Credit::where('client_id', $request->clientId)->where('status', 'Active')->orderBy('created_at')->get();
 
-             $openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
-                ->where('status', CashClosing::OPEN)
-                ->first();
+            foreach ($request->payments as $paymend) {
+               
+                $montoRestantePagoActual = $paymend['amount'];
+                $montoRestantePagoActual = (float)$montoRestantePagoActual;
+
                 
-            dd($request);
+                $rates = $this->resourceService->getAllExchangeRate();
+                $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
+                 
+
+                if ($paymend['currency'] == 'bs') {
+                    $bsToUsdRate = (float) ($ratesArray['BS'] ?? 0);
+                    if ($bsToUsdRate > 0) {
+                        $montoRestantePagoActual /= $bsToUsdRate;
+                    }
+                }else if ($paymend['currency'] == 'cop') {
+                     $copToUsdRate = (float) ($ratesArray['COP'] ?? 0);
+                    if ($copToUsdRate > 0) {
+                        $montoRestantePagoActual /= $copToUsdRate;
+                    }
+                }
+                
+                if ($montoRestantePagoActual <= 0) {
+                    continue;
+                }
+
+                foreach ($creditosPendientes as $credito) {
+                    if ($montoRestantePagoActual <= 0) {
+                        break; 
+                    }
+
+                    $credito->refresh();
+
+                    if ($credito->pending_amount <= 0) {
+                        continue;
+                    }
+
+                    $saldoPendiente = $credito->pending_amount;
+                    $montoAplicado = min($montoRestantePagoActual, $saldoPendiente);
+
+                    $credito->pending_amount -= $montoAplicado;
+                    $credito->save();
+                    $montoRestantePagoActual -= $montoAplicado;
+
+                    if (!in_array($credito->id, $creditosPagados)) {
+                        $creditosPagados[] = $credito->id;
+                    }
+                }
+            }
+
+            $current_cash = CashClosing::where('status', 'open')->where('seller_id', $sellerId)->first();
+            if (!isset($current_cash)) {
+                $current_cash = CashClosing::create([
+                    'seller_id' => $sellerId,
+                    'status' =>  'open',
+                    'closing_date' => Carbon::now(),
+                ]);
+            }
+                
             CreditPayment::create([
                 'client_id'      => $request->clientId,
                 'seller_id'       => $sellerId,
-                'cash_closing_id'       => $openCashRegisterClosing->id,
+                'cash_closing_id'       => $current_cash->id,
                 'method_Payment'       => $request->payments,
                 'money_returns'       => $money_returns,
                 'payment_date'   => Carbon::now(),
             ]);
 
-          return true;
+            DB::commit();
+            return true;
+
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al completar el pago: ' . $e->getMessage(), [
