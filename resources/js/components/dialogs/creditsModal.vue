@@ -353,7 +353,6 @@ const handleCompletePurchase = () => {
 };
 
 const roundedTotalAmountToPay = computed(() => {
-  console.log();
   return props.creditsData.total_pending_amount;
 });
 

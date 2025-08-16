@@ -32,6 +32,10 @@ const props = defineProps({
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
+const userUsername = computed(() => {
+  return currentUser.value?.username || "N/A";
+});
+
 const logoSrc = computed(() => {
   return BASE64_LOGO_DATA;
 });
@@ -104,14 +108,14 @@ const showChangeAmount = computed(() => {
         <span class="font-weight-bold tituloAzulPrint"></span>
         <div class="text-right d-flex flex-column align-end">
           <p class="text-black font-weight-regular mb-0 textoPrint">
-            Fecha: {{ formatDateTime(props.creditsData?.created_at, "date") }}
-            {{ formatDateTime(props.creditsData?.created_at, "time") }}
+            Fecha: {{ formatDateTime(today, "date") }}
+            {{ formatDateTime(today, "time") }}
           </p>
         </div>
       </div>
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint">Cajero:</span>
-        <span>{{ creditsData?.seller?.username }}</span>
+        <span>{{ userUsername }}</span>
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
@@ -151,13 +155,14 @@ const showChangeAmount = computed(() => {
         <div class="ticket-item">
           <span class="ticket-item-qty"></span>
           <span class="ticket-item-name">Créditos</span>
-          <span class="ticket-item-total"> </span>
+          <span class="ticket-item-total">{{formatCurrency(parseFloat(creditsData.total_pending_amount), props.selectedCurrency)}}</span>
         </div>
         <hr />
 
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold tituloAzulPrint">TOTAL:</span>
-          <span class="text-end font-weight-black tituloAzulPrint"> </span>
+          <span class="text-end font-weight-black tituloAzulPrint">
+          {{ creditsData.total_pending_amount }} {{ props.selectedCurrency }}</span>
         </div>
 
         <div class="ticket-total d-flex flex-wrap justify-space-between">
