@@ -11,15 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('exchange_rates', function (Blueprint $table) {
+        Schema::create('profitability_settings', function (Blueprint $table) {
             $table->id();
-            $table->string('currency_code', 10);
-            $table->decimal('rate', 10, 4);
-            $table->string('source', 50)->nullable();
+            $table->decimal('default_profitability_percentage', 5, 2)->nullable(false);
             $table->timestamps();
-
-            $table->index('currency_code', 'idx_currency_code');
-            $table->index('rate', 'idx_exchange_rate');
         });
     }
 
@@ -28,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('exchange_rates');
+        Schema::dropIfExists('profitability_settings');
     }
 };

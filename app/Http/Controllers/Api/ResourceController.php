@@ -52,7 +52,6 @@ class ResourceController extends Controller
         }
     }
 
-
     public function findProductById(Product $product): JsonResponse
     {
         try {
@@ -69,5 +68,10 @@ class ResourceController extends Controller
     {
         $rates = $this->resourceService->getAllExchangeRate();
         return response()->json($rates);
+    }
+    public function getAllProducts()
+    {
+        $products = $this->resourceService->getAllProducts();
+        return response()->json($products);
     }
 }

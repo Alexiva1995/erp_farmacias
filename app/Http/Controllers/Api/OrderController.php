@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
+use App\Contracts\Order as OrderContract;
 
 
 class OrderController extends Controller
@@ -27,6 +28,7 @@ class OrderController extends Controller
 
     public function __construct(
         protected Client $client,
+        protected OrderContract $orderContract,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
     ) {}
@@ -252,4 +254,22 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
+  
+     public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
+    {
+        $filtros = [
+            "itemsPerPage" => $request->itemsPerPage,
+            "page"         => $request->page,
+        ];
+
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
+
+        return ApiResponse::success($repuesta, "OK", 200);
+     }
 }

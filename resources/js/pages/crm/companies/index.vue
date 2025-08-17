@@ -1,7 +1,7 @@
 <script setup lang="js">
 
+import CompanyFilters from "@/components/CompanyFilters.vue";
 import CompanyTable from "@/components/CompanyTable.vue";
-import CompanyFilters from "@/components/dialogs/CompanyFilters.vue";
 import CompanyFormDialoge from "@/components/dialogs/CompanyFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -64,7 +64,7 @@ function insertarDatosAlFormulario(datos){
   formulario.identification=datos.identification
   formulario.type_company=datos.type_company
   formulario.name=datos.name
-  formulario.address=datos.address
+  formulario.address=remplazarSiEsNullPor(datos.address)
 }
 
 function limpiarDatosFormulario(){
@@ -233,7 +233,7 @@ watch(
       sortBy
   ],
   async () =>{
-    console.log("uwu")
+    // console.log("uwu")
     await actualizarTabla()
   }
 )
@@ -334,6 +334,9 @@ function irHaVerClientesEmpresa(payload){
 }
 
 
+function remplazarSiEsNullPor(dato,por=""){
+  return (dato==null)?por:dato
+}
 
 onMounted(async () => {
   await actualizarTabla()
@@ -347,7 +350,7 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       @clear="limpiarFiltros"
-      @add-client="mostarModal"
+      @add-company="mostarModal"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
     />

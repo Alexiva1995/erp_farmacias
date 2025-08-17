@@ -365,6 +365,11 @@
     "watchThrottled": true,
     "watchTriggerable": true,
     "watchWithFilter": true,
-    "whenever": true
+    "whenever": true,
+    "roundUpToNearesHundred": true,
+    "pdfDoctorsGenerator": true,
+    "useDataTable": true,
+    "useCyclicTable": true,
+    "pdfStockProductsGenerator": true
   }
 }
