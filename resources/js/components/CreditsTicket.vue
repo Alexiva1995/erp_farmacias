@@ -32,6 +32,8 @@ const props = defineProps({
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
+const today = new Date();
+
 const userUsername = computed(() => {
   return currentUser.value?.username || "N/A";
 });
