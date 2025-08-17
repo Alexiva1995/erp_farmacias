@@ -54,7 +54,7 @@ const props = defineProps({
   },
 });
 
-const quotationId = ref('');
+const quotationId = ref("");
 
 const clientName = computed(() => {
   return props.cliente
@@ -163,72 +163,238 @@ const hadleCancelarOrder = () => {
 };
 
 const handleCompleteOrder = () => {
-  emit('open-buys-modal');
+  emit("open-buys-modal");
 };
-
 
 const fetchQuotationProducts = async (id) => {
-    if (!id) return;
-    try {
-        const response = await axios.get(`/tpv/quotations/${id}/products`);
-        const quotationData = response.data;
-        emit('add-quotation-products', quotationData.products);
-        toast.success('Productos de la cotización cargados exitosamente.');
-    } catch (error) {
-        const errorMessage = error.response?.data?.message || 'Error de red o cotización no encontrada.';
-        toast.error(errorMessage);
-        console.error('Error fetching quotation:', error);
-    } finally {
-        quotationId.value = '';
-    }
+  if (!id) return;
+  try {
+    const response = await axios.get(`/tpv/quotations/${id}/products`);
+    const quotationData = response.data;
+    emit("add-quotation-products", quotationData.products);
+    toast.success("Productos de la cotización cargados exitosamente.");
+  } catch (error) {
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error de red o cotización no encontrada.";
+    toast.error(errorMessage);
+    console.error("Error fetching quotation:", error);
+  } finally {
+    quotationId.value = "";
+  }
 };
-
 </script>
 <template>
   <VCard class="mb-6">
-    <template #title>
-      <span>Cliente: {{ clientName }}</span
-      ><br />
-      <span>Identidad: {{ Identidad }}</span>
-    </template>
+    <VCardItem>
+      <VCardTitle>{{ clientName }} {{ Identidad }}</VCardTitle>
+      <template #append>
+        <VMenu>
+          <template #activator="{ props: menuProps }">
+            <VBtn
+              type="button"
+              color="primary"
+              variant="tonal"
+              density="default"
+              size="small"
+              class="mx-auto"
+              v-bind="menuProps"
+            >
+              <span>{{ props.selectedDisplayCurrency }}</span>
+
+              <template #append>
+                <VIcon icon="tabler-chevron-down" size="16" />
+              </template>
+            </VBtn>
+          </template>
+
+          <VList>
+            <VListItem
+              v-for="currencyOption in availableCurrency"
+              :key="currencyOption"
+              :value="currencyOption"
+              @click="selectCurrency(currencyOption)"
+            >
+              <VListItemTitle>{{ currencyOption }}</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
+      </template>
+    </VCardItem>
+
     <VRow>
       <VCol cols="6">
         <VCardItem>
-          <VCardTitle>Factura</VCardTitle>
+          <VCardTitle>Productos</VCardTitle>
           <template #append>
-            <VMenu>
-              <template #activator="{ props: menuProps }">
-                <VBtn
-                  type="button"
-                  color="primary"
-                  variant="tonal"
-                  density="default"
-                  size="small"
-                  class="mx-auto"
-                  v-bind="menuProps"
-                >
-                  <span>{{ props.selectedDisplayCurrency }}</span>
-
-                  <template #append>
-                    <VIcon icon="tabler-chevron-down" size="16" />
-                  </template>
-                </VBtn>
-              </template>
-
-              <VList>
-                <VListItem
-                  v-for="currencyOption in availableCurrency"
-                  :key="currencyOption"
-                  :value="currencyOption"
-                  @click="selectCurrency(currencyOption)"
-                >
-                  <VListItemTitle>{{ currencyOption }}</VListItemTitle>
-                </VListItem>
-              </VList>
-            </VMenu>
+            <VChip
+              label
+              :color="chipColor"
+              variant="tonal"
+              density="default"
+              size="small"
+              draggable="false"
+              class="ms-auto"
+            >
+              <span class="font-weight-medium">{{
+                totalSelectedQuantity
+              }}</span>
+            </VChip>
           </template>
         </VCardItem>
+      </VCol>
+      <VCol cols="6">
+        <VCardText>
+          <VRow>
+            <VCol cols="6">
+              <AppTextField
+                v-model="quotationId"
+                placeholder="ID de la cotización"
+                clearable
+                class="flex-grow-1 mb-2"
+              >
+                <template #append-inner>
+                  <VBtn
+                    icon
+                    variant="text"
+                    color="primary"
+                    size="small"
+                    @click="fetchQuotationProducts(quotationId)"
+                    :disabled="!quotationId"
+                  >
+                    <VIcon icon="tabler-plus" />
+                  </VBtn>
+                </template>
+              </AppTextField>
+            </VCol>
+            <VCol cols="6">
+              <AppTextField
+                :model-value="props.searchQuery"
+                placeholder="Código de Barra"
+                clearable
+                @update:model-value="emit('update:searchQuery', $event)"
+                class="flex-grow-1"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCol>
+    </VRow>
 
+    <VCardText>
+      <div>
+        <VList class="card-list" density="compact" nav>
+          <VListItem
+            v-for="product in props.orderProducts"
+            :key="product.id"
+            class="rounded-0"
+            @click="
+              handleClickProductItem(
+                product.product_id,
+                product.selectedQuantity
+              )
+            "
+            :class="{ 'cursor-pointer': true }"
+          >
+            <template #prepend>
+              <span>{{ product.selectedQuantity }} x</span>
+            </template>
+
+            <VListItemTitle class="font-weight-medium me-4 mx-2">{{
+              product.title
+            }}</VListItemTitle>
+            <VListItemSubtitle class="mx-2"
+              >{{ product.active_ingredient
+              }}{{ product.laboratory }}</VListItemSubtitle
+            >
+
+            <template #append>
+              <div class="d-flex align-center">
+                <div class="d-flex flex-column align-end me-4">
+                  <span class="text-body-2 text-medium-emphasis">Precio</span>
+                  <span class="text-body-1">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+
+                <div class="d-flex flex-column align-end me-4">
+                  <span class="text-body-2 text-medium-emphasis">IVA</span>
+                  <span class="text-body-1">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+
+                <div class="d-flex flex-column align-end">
+                  <span class="text-body-2 text-medium-emphasis">Total</span>
+                  <span class="text-body-1 me-2 font-weight-bold">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </VListItem>
+        </VList>
+      </div>
+    </VCardText>
+
+        <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
+          <VDivider class="mt-auto" />
+          <h4 class="text-h4 text-center">Monto Total</h4>
+          <div class="text-h4 text-success">
+            {{ formattedTotalQuotation }}
+          </div>
+        </VCardActions>
+
+<VCardActions class="pa-4 d-flex flex-wrap gap-1">
+       <VRow>
+    <VCol cols="2">
+      <VBtn
+        color="secondary"
+        variant="outlined"
+        @click="hadleCancelarOrder"
+        block
+        >Cancelar</VBtn
+      >
+    </VCol>
+    <VCol cols="2">
+      <VBtn
+        color="primary"
+        variant="flat"
+        @click="handleCompleteOrder"
+        block
+        >Completar</VBtn
+      >
+    </VCol>
+    <VCol cols="2">
+      <VBtn
+        color="primary"
+        variant="flat"
+        @click="handleCompleteOrder"
+        block
+        >Reservar</VBtn
+      >
+    </VCol>
+  </VRow>
+        </VCardActions>
+
+
+    <VRow>
+      <VCol cols="6">
         <VCardText class="flex-grow-1 d-flex flex-column mt-6">
           <VList class="card-list mb-6" density="compact" nav>
             <VListItem
@@ -249,12 +415,13 @@ const fetchQuotationProducts = async (id) => {
             </VListItem>
           </VList>
         </VCardText>
-         <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
+
+        <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
           <VDivider class="mt-auto" />
-            <h4 class="text-h4 text-center">Monto Total</h4>
-            <div class="text-h4 text-success">
-              {{ formattedTotalQuotation }}
-            </div>
+          <h4 class="text-h4 text-center">Monto Total</h4>
+          <div class="text-h4 text-success">
+            {{ formattedTotalQuotation }}
+          </div>
         </VCardActions>
       </VCol>
 
@@ -279,13 +446,13 @@ const fetchQuotationProducts = async (id) => {
         </VCardItem>
 
         <VCardText>
-         <AppTextField
+          <AppTextField
             v-model="quotationId"
             placeholder="ID de la cotización"
             clearable
             class="flex-grow-1 mb-2"
           >
-          <template #append-inner>
+            <template #append-inner>
               <VBtn
                 icon
                 variant="text"
@@ -297,9 +464,8 @@ const fetchQuotationProducts = async (id) => {
                 <VIcon icon="tabler-plus" />
               </VBtn>
             </template>
-            </AppTextField>
+          </AppTextField>
           <VDivider class="mt-auto" />
-        
 
           <AppTextField
             :model-value="props.searchQuery"
@@ -367,7 +533,11 @@ const fetchQuotationProducts = async (id) => {
             class="flex-grow-1"
             >Cancelar</VBtn
           >
-          <VBtn color="primary" variant="flat" @click="handleCompleteOrder" class="flex-grow-1"
+          <VBtn
+            color="primary"
+            variant="flat"
+            @click="handleCompleteOrder"
+            class="flex-grow-1"
             >Completar</VBtn
           >
         </VCardActions>
