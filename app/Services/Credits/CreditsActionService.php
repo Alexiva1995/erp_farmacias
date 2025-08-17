@@ -56,12 +56,12 @@ class CreditsActionService
                 $rates = $this->resourceService->getAllExchangeRate();
                 $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
                  
-                if ($paymend['currency'] == 'bs') {
+                if ($paymend['currency'] == 'BS') {
                     $bsToUsdRate = (float) ($ratesArray['BS'] ?? 0);
                     if ($bsToUsdRate > 0) {
                         $montoRestantePagoActual /= $bsToUsdRate;
                     }
-                }else if ($paymend['currency'] == 'cop') {
+                }else if ($paymend['currency'] == 'COP') {
                      $copToUsdRate = (float) ($ratesArray['COP'] ?? 0);
                     if ($copToUsdRate > 0) {
                         $montoRestantePagoActual /= $copToUsdRate;

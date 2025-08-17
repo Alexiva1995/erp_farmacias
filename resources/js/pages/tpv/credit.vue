@@ -155,10 +155,8 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
       paymentsForPrint.value = [];
       creditsData.value = null;
       selectedClient.value = null;
-      orderItems.value = [];
       changeAmountForPrint.value = 0;
       creditAmountForPrint.value = 0;
-      clientIdentification.value = "";
     }, 500);
 
 

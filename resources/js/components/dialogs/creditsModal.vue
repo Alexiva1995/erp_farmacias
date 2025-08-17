@@ -460,7 +460,6 @@ const changeAmountInUSD = computed(() => {
           </p>
 
           <VSelect
-            v-if="index > 0"
             v-model="payment.currency"
             :items="currencies"
             item-title="label"
