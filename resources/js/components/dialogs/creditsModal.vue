@@ -311,11 +311,6 @@ const handleCompletePurchase = () => {
       return;
     }
 
-    /*if (finalRemainingAmount > 0) {
-      toast.error("El monto total no ha sido cubierto. Agrega más pagos para continuar.");
-      return;
-    }*/
-
     const invalidPayment = payments.value.find((p) => {
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;

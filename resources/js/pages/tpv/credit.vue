@@ -95,7 +95,7 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
 
     if (!clientId) {
       toast.error("No se pudo obtener el ID del cliente. Intente de nuevo.");
-      return; // Detiene la ejecución si no hay ID de cliente
+      return;
     }
 
  const payload = {
