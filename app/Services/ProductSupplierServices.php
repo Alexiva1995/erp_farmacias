@@ -139,11 +139,11 @@ class ProductSupplierServices implements ProductSupplier
 
             $lote = $this->productLotsRepository->checkTheLotWithTheLowestPrice($producto["product"], $producto["supplier"]);
             if ($lote) {
-                if ((float)$producto["productSupplier"]->unit_cost <= (float)$lote->unit_cost) {
+                if ((float)$producto["productSupplier"]->unit_cost < (float)$lote->unit_cost) {
                     $producto["checkUniquePurchaseOpportunity"] = true;
+                    $productos[$index] = $producto;
+                    $productosConOportunidad[] = $productos[$index];
                 }
-                $productos[$index] = $producto;
-                $productosConOportunidad[] = $productos[$index];
             }
         }
 

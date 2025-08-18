@@ -138,8 +138,8 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
-            "orderBy"      => "asc",
-            "sortBy"      => "stock",
+            "orderBy"           => "asc",
+            "sortBy"            => "stock",
         ];
 
         if ($request->filled("laboratoryId")) {
