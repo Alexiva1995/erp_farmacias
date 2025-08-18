@@ -1,0 +1,91 @@
+<script setup>
+const props = defineProps({
+  purchaseOrders: { type: Array, required: true },
+  loading: { type: Boolean, default: false },
+  totalPurchaseOrders: { type: Number, required: true },
+  itemsPerPage: { type: Number, required: true },
+  page: { type: Number, required: true },
+});
+
+const emit = defineEmits(["update:options", "delete-purchaseOrder"]);
+
+const headers = [
+  { title: "Id", key: "id", sortable: true },
+  { title: "Proveedor", key: "supplier_name", sortable: true },
+  { title: "Unidades", key: "total_quantity", sortable: true },
+  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "Acciones", key: "actions", sortable: false },
+];
+</script>
+
+<template>
+  <VCard>
+    <VDataTableServer
+      :items-per-page="props.itemsPerPage"
+      :page="props.page"
+      :headers="headers"
+      :items="props.purchaseOrders"
+      :items-length="props.totalPurchaseOrders"
+      :loading="props.loading"
+      class="text-no-wrap"
+      @update:options="(options) => emit('update:options', options)"
+    >
+      <template #item.id="{ item }">
+        <span class="font-weight-medium">{{ item.id }}</span>
+      </template>
+
+      <template #item.name="{ item }">
+        <div class="d-flex align-center gap-x-4">
+          <div class="d-flex flex-column">
+            <span class="text-body-1 font-weight-medium text-high-emphasis">
+              {{ item.name }}
+            </span>
+          </div>
+        </div>
+      </template>
+
+      <template #item.total_quantity="{ item }">
+        <span class="font-weight-medium">{{ item.total_quantity }}</span>
+      </template>
+
+      <template #item.total_amount="{ item }">
+        <span class="font-weight-medium">{{ item.total_amount }}</span>
+      </template>
+
+      <template #item.debt="{ item }">
+        <span class="font-weight-medium">{{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}</span>
+      </template>
+
+      <template #item.actions="{ item }">
+        <VTooltip text="Editar Órden de Compra" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('edit-purchaseOrder', item)">
+              <VIcon icon="tabler-edit" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Ver Órden de Compra" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('edit-supplier', item)">
+              <VIcon icon="tabler-eye" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Eliminar Órden de Compra" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('delete-purchaseOrder', item.id)">
+              <VIcon icon="tabler-trash" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Enviar Órden de Compra" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('edit-supplier', item)">
+              <VIcon icon="tabler-send" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+      </template>
+    </VDataTableServer>
+  </VCard>
+</template>
