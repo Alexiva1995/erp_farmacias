@@ -18,26 +18,28 @@ class InvoiceActionService
     public function createInvoice(array $data): Invoice
     {
         return DB::transaction(function () use ($data) {
-            $convertedData = $this->convertInvoiceDataToUSD($data);
+            $totalUSD = $this->calculateTotalUSD($data);
 
             $invoiceData = [
-                'supplier_id' => $convertedData['supplier_id'],
-                'invoice_number' => $convertedData['invoice_number'],
-                'control_number' => $convertedData['control_number'],
-                'exp_date' => $convertedData['exp_date'],
-                'payment_date' => $convertedData['payment_date'] ?? null,
-                'received_date' => $convertedData['received_date'],
-                'exempt_amount' => $convertedData['exempt_amount'] ?? 0,
-                'taxable_base' => $convertedData['taxable_base'] ?? 0,
-                'tax_amount' => $convertedData['tax_amount'] ?? 0,
-                'exchange_rate' => $convertedData['exchange_rate'],
-                'total_amount' => $convertedData['total_amount'],
-                'total_usd' => $convertedData['total_amount'],
-                'currency' => $convertedData['currency'],
+                'supplier_id' => $data['supplier_id'],
+                'invoice_number' => $data['invoice_number'],
+                'control_number' => $data['control_number'],
+                'exp_date' => $data['exp_date'],
+                'payment_date' => $data['payment_date'] ?? null,
+                'received_date' => $data['received_date'],
+                'exempt_amount' => $data['exempt_amount'] ?? 0,
+                'taxable_base' => $data['taxable_base'] ?? 0,
+                'tax_amount' => $data['tax_amount'] ?? 0,
+                'exchange_rate' => $data['exchange_rate'],
+                'total_amount' => $data['total_amount'],
+                'total_usd' => $totalUSD,
+                'currency' => $data['currency'],
+                'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'loaded',
                 'registered_by' => 1,
                 'uploaded_by' => 1
             ];
+
             return Invoice::create($invoiceData);
         });
     }
@@ -56,23 +58,23 @@ class InvoiceActionService
     public function updateInvoiceData(Invoice $invoice, array $data): Invoice
     {
         return DB::transaction(function () use ($invoice, $data) {
-            $convertedData = $this->convertInvoiceDataToUSD($data);
+            $totalUSD = $this->calculateTotalUSD($data);
 
             $invoiceData = [
-                'supplier_id' => $convertedData['supplier_id'],
-                'invoice_number' => $convertedData['invoice_number'],
-                'control_number' => $convertedData['control_number'],
-                'exp_date' => $convertedData['exp_date'],
-                'payment_date' => $convertedData['payment_date'] ?? null,
-                'received_date' => $convertedData['received_date'],
-                'exempt_amount' => $convertedData['exempt_amount'] ?? 0,
-                'taxable_base' => $convertedData['taxable_base'] ?? 0,
-                'tax_amount' => $convertedData['tax_amount'] ?? 0,
-                'exchange_rate' => $convertedData['exchange_rate'],
-                'total_amount' => $convertedData['total_amount'],
-                'total_usd' => $convertedData['total_amount'],
-                'currency' => $convertedData['currency'],
-                'discount_rule_id' => $convertedData['discount_rule_id'] ?? null,
+                'supplier_id' => $data['supplier_id'],
+                'invoice_number' => $data['invoice_number'],
+                'control_number' => $data['control_number'],
+                'exp_date' => $data['exp_date'],
+                'payment_date' => $data['payment_date'] ?? null,
+                'received_date' => $data['received_date'],
+                'exempt_amount' => $data['exempt_amount'] ?? 0,
+                'taxable_base' => $data['taxable_base'] ?? 0,
+                'tax_amount' => $data['tax_amount'] ?? 0,
+                'exchange_rate' => $data['exchange_rate'],
+                'total_amount' => $data['total_amount'],
+                'total_usd' => $totalUSD,
+                'currency' => $data['currency'],
+                'discount_rule_id' => $data['discount_rule_id'] ?? null,
             ];
 
             $invoice->update($invoiceData);
@@ -84,29 +86,45 @@ class InvoiceActionService
     public function updateInvoice(Invoice $invoice, array $data): Invoice
     {
         return DB::transaction(function () use ($invoice, $data) {
-            $convertedInvoiceData = $this->convertInvoiceDataToUSD($data['invoice']);
-            $convertedInvoiceData['status'] = 'to_order';
-            $invoice->update($convertedInvoiceData);
+            $mergedInvoiceData = array_merge($invoice->toArray(), $data['invoice']);
+            $totalUSD = $this->calculateTotalUSD($mergedInvoiceData);
+            $updateData = array_merge($data['invoice'], [
+                'total_usd' => $totalUSD,
+                'status' => 'to_order'
+            ]);
 
+            $invoice->update($updateData);
             $invoice->details()->delete();
+            $currency = $mergedInvoiceData['currency'];
+            $rate = (float) ($mergedInvoiceData['exchange_rate'] ?? 0);
 
-            $currency = $data['invoice']['currency'];
-            $rate = ($currency !== 'USD') ? $this->getExchangeRateForCurrency($currency) : 1;
+            if ($currency !== 'USD' && $rate <= 0) {
+                throw new Exception("La tasa de cambio para la moneda {$currency} debe ser mayor a 0.");
+            }
 
             foreach ($data['details'] as $detail) {
-                if ($detail['quantity'] > 0) {
-                    $unitCostUSD = $detail['unit_cost'] / $rate;
-
-                    $invoice->details()->create([
-                        'product_id' => $detail['product']['id'],
-                        'quantity' => $detail['quantity'],
-                        'unit_cost' => $unitCostUSD,
-                        'total_cost' => $detail['quantity'] * $unitCostUSD,
-                        'lot_number' => $detail['lot_number'],
-                        'expiration_date' => $detail['expiration_date'],
-                        'location' => $detail['location'],
-                    ]);
+                if ($detail['quantity'] <= 0) {
+                    continue;
                 }
+
+                $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
+                $unitCostUSD = $unitCostInInvoiceCurrency;
+
+                if ($currency !== 'USD') {
+                    $unitCostUSD = round($unitCostInInvoiceCurrency / $rate, 2);
+                }
+
+                $totalCostUSD = round($detail['quantity'] * $unitCostUSD, 2);
+
+                $invoice->details()->create([
+                    'product_id' => $detail['product']['id'],
+                    'quantity' => $detail['quantity'],
+                    'unit_cost' => $unitCostUSD,
+                    'total_cost' => $totalCostUSD,
+                    'lot_number' => $detail['lot_number'],
+                    'expiration_date' => $detail['expiration_date'],
+                    'location' => $detail['location'],
+                ]);
             }
 
             return $invoice->fresh(['details.product', 'supplier']);
@@ -160,10 +178,10 @@ class InvoiceActionService
                 $this->createProductLot($detail, $finalUnitCost, $invoice);
             }
 
-            $invoice->update([
+            $updateData = [
                 'status' => 'ordered'
-            ]);
-
+            ];
+            $invoice->update($updateData);
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }
@@ -210,6 +228,31 @@ class InvoiceActionService
         ]);
     }
 
+    /**
+     * Calcula el total en USD usando la tasa de cambio ingresada por el usuario
+     */
+    private function calculateTotalUSD(array $data): float
+    {
+        $currency = $data['currency'];
+        $totalAmount = $data['total_amount'];
+
+        if ($currency === 'USD') {
+            return $totalAmount;
+        }
+
+        $rate = $data['exchange_rate'] ?? 1;
+
+        if ($rate <= 0) {
+            throw new Exception("La tasa de cambio debe ser mayor a 0");
+        }
+
+        return round($totalAmount / $rate, 2);
+    }
+
+    /**
+     * Mantuve este método por si se necesita en otras partes del sistema
+     * donde sí se requiera conversión completa a USD
+     */
     private function convertInvoiceDataToUSD(array $data): array
     {
         $currency = $data['currency'];

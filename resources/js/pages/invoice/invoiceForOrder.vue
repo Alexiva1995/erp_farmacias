@@ -17,7 +17,6 @@ const suppliers = ref([]);
 const isLoadingFilters = ref(false);
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
-const selectedStatus = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 const page = ref(1);
@@ -30,7 +29,6 @@ const availableDiscounts = ref([]);
 const availablePaymentRules = ref([]);
 const isApproving = ref(false);
 const invoiceDetails = ref([]);
-const exchangeRates = ref([]);
 
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
@@ -45,17 +43,6 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchExchangeRates = async () => {
-  try {
-    const response = await axios.get("/finances/exchange-rates");
-    exchangeRates.value = response.data.data ?? response.data ?? [];
-  } catch (error) {
-    console.error("Error al cargar los tipos de cambio:", error);
-    toast.error("No se pudieron cargar los tipos de cambio.");
-    exchangeRates.value = [];
-  }
-};
-
 const fetchInvoices = async () => {
   loading.value = true;
   const params = {
@@ -65,7 +52,6 @@ const fetchInvoices = async () => {
     orderBy: orderBy.value,
     q: searchQuery.value,
     supplierId: selectedSupplier.value,
-    status: selectedStatus.value,
     startDate: startDate.value,
     endDate: endDate.value,
   };
@@ -86,36 +72,6 @@ const fetchInvoices = async () => {
   }
 };
 
-const fetchPaymentRulesForSupplier = async (supplierId) => {
-  if (!supplierId) {
-    availablePaymentRules.value = [];
-    return;
-  }
-  try {
-    const response = await axios.get(`/suppliers/${supplierId}/payment-rules`);
-    availablePaymentRules.value = response.data.data || response.data || [];
-  } catch (error) {
-    console.error("Error al obtener las reglas de pago del proveedor:", error);
-    toast.error("No se pudieron cargar las reglas de pago del proveedor.");
-    availablePaymentRules.value = [];
-  }
-};
-
-const fetchDiscountsForSupplier = async (supplierId) => {
-  if (!supplierId) {
-    availableDiscounts.value = [];
-    return;
-  }
-  try {
-    const response = await axios.get(`/suppliers/${supplierId}/discounts`);
-    availableDiscounts.value = response.data.supplier_discount || [];
-  } catch (error) {
-    console.error("Error al obtener los descuentos del proveedor:", error);
-    toast.error("No se pudieron cargar los descuentos del proveedor.");
-    availableDiscounts.value = [];
-  }
-};
-
 let debounceTimer;
 watch(
   [
@@ -125,7 +81,6 @@ watch(
     orderBy,
     searchQuery,
     selectedSupplier,
-    selectedStatus,
     startDate,
     endDate,
   ],
@@ -139,7 +94,12 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedSupplier, selectedStatus, startDate, endDate],
+  [
+    searchQuery,
+    selectedSupplier,
+    /* se elimina selectedStatus */ startDate,
+    endDate,
+  ],
   () => {
     if (page.value !== 1) {
       page.value = 1;
@@ -148,7 +108,6 @@ watch(
 );
 
 onMounted(() => {
-  fetchExchangeRates();
   fetchSuppliers();
   fetchInvoices();
 });
@@ -163,7 +122,6 @@ const updateTableOptions = (options) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
-  selectedStatus.value = null;
   startDate.value = null;
   endDate.value = null;
 };
@@ -201,7 +159,6 @@ const handleApproveInvoice = async (invoice) => {
           );
           availableDiscounts.value = [];
         }),
-
       axios
         .get(`/suppliers/${invoice.supplier_id}/payment-rules`)
         .then((response) => {
@@ -218,7 +175,6 @@ const handleApproveInvoice = async (invoice) => {
           );
           availablePaymentRules.value = [];
         }),
-
       axios.get(`/invoices/${invoice.id}/details`).then((response) => {
         invoiceDetails.value = response.data.data || [];
       }),
@@ -254,7 +210,6 @@ const confirmApproval = async ({
 
   try {
     await axios.post(`/invoices/${invoiceId}/approve`, payload);
-
     toast.success("Factura aprobada con éxito (con posibles devoluciones).");
     isApproveModalVisible.value = false;
     fetchInvoices();
@@ -282,15 +237,12 @@ const handleRejectInvoice = async (invoice) => {
       const actions = Swal.getActions();
       const confirmButton = Swal.getConfirmButton();
       const cancelButton = Swal.getCancelButton();
-
       actions.style.display = "flex";
       actions.style.gap = "10px";
       actions.style.width = "100%";
       actions.style.padding = "0 20px";
-
       confirmButton.style.flex = "1";
       confirmButton.style.width = "50%";
-
       cancelButton.style.flex = "1";
       cancelButton.style.width = "50%";
     },
@@ -326,7 +278,6 @@ const closeApproveModal = () => {
       <InvoiceFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedSupplier="selectedSupplier"
-        v-model:selectedStatus="selectedStatus"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
         :suppliers="suppliers"
@@ -340,7 +291,6 @@ const closeApproveModal = () => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
-        :exchange-rates="exchangeRates"
         actions-mode="approval"
         @update:options="updateTableOptions"
         @edit-invoice="handleViewDetails"
@@ -352,7 +302,6 @@ const closeApproveModal = () => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
-        :exchange-rates="exchangeRates"
         @back-to-list="handleReturnToList"
         mode="read-only"
       />
@@ -364,7 +313,6 @@ const closeApproveModal = () => {
       :discounts="availableDiscounts"
       :payment-rules="availablePaymentRules"
       :details="invoiceDetails"
-      :exchange-rates="exchangeRates"
       :loading="isApproving"
       @confirm="confirmApproval"
     />

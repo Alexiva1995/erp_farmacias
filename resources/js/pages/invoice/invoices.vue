@@ -18,11 +18,9 @@ const totalInvoices = ref(0);
 const loading = ref(false);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
-const exchangeRates = ref([]);
 
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
-const selectedStatus = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
@@ -44,17 +42,6 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchExchangeRates = async () => {
-  try {
-    const response = await axios.get("/finances/exchange-rates");
-    exchangeRates.value = response.data.data ?? response.data ?? [];
-  } catch (error) {
-    console.error("Error al cargar los tipos de cambio:", error);
-    toast.error("No se pudieron cargar los tipos de cambio.");
-    exchangeRates.value = [];
-  }
-};
-
 const fetchInvoices = async () => {
   loading.value = true;
   const params = {
@@ -64,7 +51,6 @@ const fetchInvoices = async () => {
     orderBy: orderBy.value,
     q: searchQuery.value,
     supplierId: selectedSupplier.value,
-    status: selectedStatus.value,
     startDate: startDate.value,
     endDate: endDate.value,
   };
@@ -94,7 +80,6 @@ watch(
     orderBy,
     searchQuery,
     selectedSupplier,
-    selectedStatus,
     startDate,
     endDate,
   ],
@@ -108,7 +93,12 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedSupplier, selectedStatus, startDate, endDate],
+  [
+    searchQuery,
+    selectedSupplier,
+    /* Se elimina `selectedStatus` */ startDate,
+    endDate,
+  ],
   () => {
     if (page.value !== 1) {
       page.value = 1;
@@ -117,7 +107,6 @@ watch(
 );
 
 onMounted(() => {
-  fetchExchangeRates();
   fetchSuppliers();
   fetchInvoices();
 });
@@ -132,7 +121,6 @@ const updateTableOptions = (options) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
-  selectedStatus.value = null;
   startDate.value = null;
   endDate.value = null;
 };
@@ -201,7 +189,6 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedSupplier="selectedSupplier"
-        v-model:selectedStatus="selectedStatus"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
         :suppliers="suppliers"
@@ -215,7 +202,6 @@ const handleDeleteInvoice = async (id) => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
-        :exchange-rates="exchangeRates"
         @update:options="updateTableOptions"
         @edit-invoice="handleEditInvoice"
         @edit-invoice-form="handleEditInvoiceForm"
@@ -226,7 +212,6 @@ const handleDeleteInvoice = async (id) => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
-        :exchange-rates="exchangeRates"
         @back-to-list="handleReturnToList"
       />
     </div>
@@ -235,7 +220,6 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceFormEdit
         :invoice-id="selectedInvoiceId"
         :is-edit-mode="true"
-        :exchange-rates="exchangeRates"
         @back-to-list="handleReturnToList"
         @invoice-saved="handleReturnToList"
       />

@@ -8,7 +8,6 @@ const props = defineProps({
   paymentRules: { type: Array, default: () => [] },
   details: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  exchangeRates: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:modelValue", "confirm"]);
@@ -16,34 +15,6 @@ const emit = defineEmits(["update:modelValue", "confirm"]);
 const selectedDiscountId = ref(null);
 const selectedPaymentRuleId = ref(null);
 const itemsToReturn = ref([]);
-
-const getExchangeRate = (currency) => {
-  if (!currency || currency === "USD") return 1;
-
-  const currencyMapping = {
-    Bs: "BS",
-    BS: "BS",
-    COP: "COP",
-    USD: "USD",
-  };
-
-  const mappedCurrency = currencyMapping[currency] || currency;
-  const rate = props.exchangeRates.find(
-    (rate) => rate.currency_code === mappedCurrency
-  );
-
-  return rate ? parseFloat(rate.rate) : 1;
-};
-
-const convertAmount = (usdAmount, targetCurrency) => {
-  if (!targetCurrency || targetCurrency === "USD") {
-    return usdAmount;
-  }
-
-  const rate = getExchangeRate(targetCurrency);
-
-  return usdAmount * rate;
-};
 
 const formattedPaymentRules = computed(() => {
   return (props.paymentRules || []).map((rule) => ({
@@ -55,14 +26,21 @@ const formattedPaymentRules = computed(() => {
 const processedDetails = computed(() => {
   if (!props.invoice || !props.details.length) return [];
 
+  const rate = parseFloat(props.invoice.exchange_rate);
+  const isUsd = props.invoice.currency === "USD";
+
   return props.details.map((detail) => {
-    const convertedCost = convertAmount(
-      detail.unit_cost,
-      props.invoice.currency
-    );
+    const unitCostUsd = detail.unit_cost || 0;
+    let unitCostLocal = unitCostUsd;
+
+    if (!isUsd && rate > 0) {
+      unitCostLocal = unitCostUsd * rate;
+    }
+
     return {
       ...detail,
-      converted_unit_cost: convertedCost,
+      unit_cost_usd: unitCostUsd,
+      unit_cost_local: unitCostLocal,
     };
   });
 });
@@ -77,7 +55,6 @@ watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
-      console.log("Modal abierto - Props recibidas:", props);
       selectedDiscountId.value = null;
       selectedPaymentRuleId.value = null;
       itemsToReturn.value = [];
@@ -109,9 +86,7 @@ const formatCurrency = (value, currency) => {
     COP: "COP",
     USD: "USD",
   };
-
   const mappedCurrency = currencyMap[currency] || currency;
-
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: mappedCurrency,
@@ -161,8 +136,8 @@ const formatCurrency = (value, currency) => {
           <div>
             <strong>Factura en {{ props.invoice.currency }}</strong>
             <div class="text-caption mt-1">
-              Los montos se muestran convertidos desde USD usando el tipo de
-              cambio actual
+              Los montos se muestran en la moneda de la factura, calculados
+              desde USD con la tasa de cambio de la factura.
             </div>
           </div>
         </VAlert>
@@ -235,17 +210,14 @@ const formatCurrency = (value, currency) => {
             <div class="d-flex flex-column align-end">
               <span class="font-weight-medium">
                 {{
-                  formatCurrency(
-                    item.converted_unit_cost,
-                    props.invoice.currency
-                  )
+                  formatCurrency(item.unit_cost_local, props.invoice.currency)
                 }}
               </span>
               <span
                 v-if="props.invoice.currency !== 'USD'"
                 class="text-caption text-medium-emphasis"
               >
-                {{ formatCurrency(item.unit_cost, "USD") }}
+                {{ formatCurrency(item.unit_cost_usd, "USD") }}
               </span>
             </div>
           </template>
