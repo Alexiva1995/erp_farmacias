@@ -198,6 +198,10 @@ const handleCompleteOrder = () => {
   emit("open-buys-modal");
 };
 
+const handleTReserveOrder = () => {
+ // emit("open-buys-modal");
+};
+
 const fetchQuotationProducts = async (id) => {
   if (!id) return;
   try {
@@ -336,8 +340,7 @@ const fetchQuotationProducts = async (id) => {
               product.title
             }}</VListItemTitle>
             <VListItemSubtitle class="mx-2"
-              >{{ product.active_ingredient
-              }}{{ product.laboratory }}</VListItemSubtitle
+              >{{product.active_ingredient}} {{ product.laboratory ? `- ${product.laboratory}` : '' }}</VListItemSubtitle
             >
 
             <template #append>
@@ -419,7 +422,7 @@ const fetchQuotationProducts = async (id) => {
           <VBtn
             color="success"
             variant="flat"
-            @click="handleCompleteOrder"
+            @click="handleTReserveOrder"
             block
             >Reservar</VBtn
           >

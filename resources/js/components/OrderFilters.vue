@@ -20,6 +20,7 @@ const emit = defineEmits([
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
+  { title: "Todos", value: null },
 ];
 
 const sortOptions = [
