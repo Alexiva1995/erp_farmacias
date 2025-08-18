@@ -200,24 +200,27 @@ const handleCancel = () => {
             />
           </VCol>
           <VCol cols="12" md="2">
-            <AppDateTimePicker
+            <VTextField
               v-model="formData.exp_date"
-              placeholder="F. de Vencimiento"
-              class="date-fix"
+              label="Fecha de Vencimiento"
+              type="date"
+              placeholder="YYYY-MM-DD"
             />
           </VCol>
           <VCol cols="12" md="2">
-            <AppDateTimePicker
+            <VTextField
               v-model="formData.payment_date"
-              placeholder="F. Límite de Pago"
-              class="date-fix"
+              label="F. Límite de Pago"
+              type="date"
+              placeholder="YYYY-MM-DD"
             />
           </VCol>
           <VCol cols="12" md="2">
-            <AppDateTimePicker
+            <VTextField
               v-model="formData.received_date"
-              placeholder="F. de Recibo"
-              class="date-fix"
+              label="F. de Recibo"
+              type="date"
+              placeholder="YYYY-MM-DD"
             />
           </VCol>
         </VRow>

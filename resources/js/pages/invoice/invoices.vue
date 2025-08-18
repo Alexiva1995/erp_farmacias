@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
+import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -17,6 +18,7 @@ const totalInvoices = ref(0);
 const loading = ref(false);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
+const exchangeRates = ref([]);
 
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
@@ -39,6 +41,17 @@ const fetchSuppliers = async () => {
     toast.error("No se pudieron cargar los proveedores.");
   } finally {
     isLoadingFilters.value = false;
+  }
+};
+
+const fetchExchangeRates = async () => {
+  try {
+    const response = await axios.get("/finances/exchange-rates");
+    exchangeRates.value = response.data.data ?? response.data ?? [];
+  } catch (error) {
+    console.error("Error al cargar los tipos de cambio:", error);
+    toast.error("No se pudieron cargar los tipos de cambio.");
+    exchangeRates.value = [];
   }
 };
 
@@ -104,6 +117,7 @@ watch(
 );
 
 onMounted(() => {
+  fetchExchangeRates();
   fetchSuppliers();
   fetchInvoices();
 });
@@ -124,13 +138,16 @@ const handleClearFilters = () => {
 };
 
 const handleEditInvoice = (invoice) => {
-  console.log("Cambiando a la vista de detalle para la factura:", invoice.id);
   selectedInvoiceId.value = invoice.id;
   currentView.value = "detail";
 };
 
+const handleEditInvoiceForm = (invoice) => {
+  selectedInvoiceId.value = invoice.id;
+  currentView.value = "edit-form";
+};
+
 const handleReturnToList = () => {
-  console.log("Volviendo a la lista de facturas");
   selectedInvoiceId.value = null;
   currentView.value = "list";
   fetchInvoices();
@@ -198,8 +215,10 @@ const handleDeleteInvoice = async (id) => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        :exchange-rates="exchangeRates"
         @update:options="updateTableOptions"
         @edit-invoice="handleEditInvoice"
+        @edit-invoice-form="handleEditInvoiceForm"
         @delete-invoice="handleDeleteInvoice"
       />
     </div>
@@ -207,7 +226,18 @@ const handleDeleteInvoice = async (id) => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        :exchange-rates="exchangeRates"
         @back-to-list="handleReturnToList"
+      />
+    </div>
+
+    <div v-else-if="currentView === 'edit-form'">
+      <InvoiceFormEdit
+        :invoice-id="selectedInvoiceId"
+        :is-edit-mode="true"
+        :exchange-rates="exchangeRates"
+        @back-to-list="handleReturnToList"
+        @invoice-saved="handleReturnToList"
       />
     </div>
   </div>

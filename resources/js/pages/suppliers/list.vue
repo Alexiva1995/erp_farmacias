@@ -2,6 +2,7 @@
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
+import SupplierDiscountEditDialog from "@/components/dialogs/SupplierDiscountEditDialog.vue";
 import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
@@ -22,9 +23,11 @@ const orderBy = ref();
 const searchQuery = ref("");
 
 const laboratories = ref([]);
-const laboratoryLinks = ref([])
-const pendingInvoices = ref({})
+const laboratoryLinks = ref([]);
+const pendingInvoices = ref({});
 const discountRules = ref([]);
+const paymentRules = ref([]);
+const supplierDiscount = ref([]);
 
 const isLoadingFilters = ref(false);
 
@@ -33,15 +36,14 @@ const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
 const isPaymentRuleDialogVisible = ref(false);
 const isSupplierLaboratoryDialogVisible = ref(false);
-const isPendingInvoicesDialogVisible = ref(false)
-const isSupplierDiscountRuleDialogVisible = ref(false)
+const isPendingInvoicesDialogVisible = ref(false);
+const isSupplierDiscountRuleDialogVisible = ref(false);
+const isSupplierDiscountDialogVisible = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse] = await Promise.all([
-      axios.get("/laboratories"),
-    ]);
+    const [labResponse] = await Promise.all([axios.get("/laboratories")]);
     laboratories.value = labResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
@@ -78,32 +80,60 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`)
-  laboratoryLinks.value = data.laboratory_links
-}
+  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
+  laboratoryLinks.value = data.laboratory_links;
+};
 
 const fetchDiscountRules = async () => {
   try {
-    const { data } = await axios.get(`/supplier-laboratories/${currentSupplier.value.id}/discount-rules`)
-    discountRules.value = data.discount_rules
+    const { data } = await axios.get(
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`
+    );
+    discountRules.value = data.discount_rules;
   } catch (error) {
-    toast.error('Error al cargar las reglas de descuento')
+    toast.error("Error al cargar las reglas de descuento");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const fetchPendingInvoices = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/pending-invoices`)
-    pendingInvoices.value = data.pending_invoices
+    const { data } = await axios.get(
+      `/suppliers/${currentSupplier.value.id}/pending-invoices`
+    );
+    pendingInvoices.value = data.pending_invoices;
   } catch (error) {
-    toast.error('Error al cargar facturas pendientes')
+    toast.error("Error al cargar facturas pendientes");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
+
+const fetchPaymentRules = async () => {
+  try {
+    const { data } = await axios.get(
+      `/suppliers/${currentSupplier.value.id}/payment-rules`
+    );
+    paymentRules.value = data.payment_rules;
+  } catch (error) {
+    toast.error("Error al cargar las reglas de pronto pago");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const fetchSupplierDiscount = async () => {
+  try {
+    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
+    supplierDiscount.value = data.supplier_discount;
+  } catch (error) {
+    toast.error("Error al cargar los descuentos");
+  } finally {
+    loading.value = false;
+  }
+};
 
 onMounted(() => {
   fetchSelectOptions();
@@ -128,40 +158,36 @@ const handleAddSupplier = () => {
 };
 
 const handleSaveSupplier = async (supplierFormData) => {
-    const isNewSupplier = !currentSupplier.value.id;
-    const url = isNewSupplier
-    ? "/suppliers"
-    : `/suppliers/${currentSupplier.value.id}`;
+  const isNewSupplier = !currentSupplier.value.id;
+  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
 
-    const payloadKeys = Object.keys(supplierFormData)
-    if (!isNewSupplier && payloadKeys.length === 0) {
-      toast.info("No se realizaron cambios en el proveedor.")
-      return
+  const payloadKeys = Object.keys(supplierFormData);
+  if (!isNewSupplier && payloadKeys.length === 0) {
+    toast.info("No se realizaron cambios en el proveedor.");
+    return;
+  }
+
+  try {
+    const payload = { ...supplierFormData };
+
+    if (!isNewSupplier) {
+      payload._method = "PUT";
     }
 
-    try {
-        const payload = { ...supplierFormData }
+    await axios.post(url, payload);
 
-        if (!isNewSupplier) {
-            payload._method = "PUT"
-        }
-
-        await axios.post(url, payload);
-
-        toast.success(
-            `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
-        );
-        isEditDialogVisible.value = false;
-        await fetchSuppliers();
-    } catch (error) {
-        if (error.response && error.response.status === 422) {
-            supplierFormErrors.value = error.response.data.errors;
-            toast.error("Por favor, corrige los errores en el formulario.");
-        } else {
-            console.error("Error al guardar/crear el proveedor:", error);
-            toast.error("Hubo un error al guardar el proveedor.");
-        }
+    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
+    isEditDialogVisible.value = false;
+    await fetchSuppliers();
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      supplierFormErrors.value = error.response.data.errors;
+      toast.error("Por favor, corrige los errores en el formulario.");
+    } else {
+      console.error("Error al guardar/crear el proveedor:", error);
+      toast.error("Hubo un error al guardar el proveedor.");
     }
+  }
 };
 
 const handleEditSupplier = (supplier) => {
@@ -193,55 +219,62 @@ const handleDeleteSupplier = async (id) => {
   }
 };
 
-const handleCheckSupplierApi = async () => {
+const handleCheckSupplierApi = async (supplier) => {
   try {
-    const { data } = await axios.get('/suppliers/check-health')
+    const { data } = await axios.get("/suppliers/check-health"); //`/suppliers/${supplier.id}/check-health`
 
-    if (data.status === 'ok') {
-      const fallas = Object.entries(data.results).filter(([verb, status]) => status !== 'OK')
+    if (data.status === "ok") {
+      const fallas = Object.entries(data.results).filter(
+        ([verb, status]) => status !== "OK"
+      );
       if (fallas.length === 0) {
-        toast.success('La API de proveedores está 100% operativa ✅')
+        toast.success(`API de ${supplier.name} está 100% operativa ✅`);
       } else {
-        const fallosList = fallas.map(([verb, status]) => `${verb}: ${status}`).join(', ')
-        toast.warning(`Fallas detectadas en: ${fallosList}`)
+        const fallosList = fallas
+          .map(([verb, status]) => `${verb}: ${status}`)
+          .join(", ");
+        toast.warning(`Fallas detectadas en ${supplier.name}: ${fallosList}`);
       }
     } else {
-      toast.error('Respuesta inesperada del backend')
+      toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
     }
   } catch (error) {
-    console.error('Error en verificación de API:', error)
-    toast.error('No se pudo verificar la API')
+    console.error(`Error al verificar API de ${supplier.name}:`, error);
+    toast.error(`No se pudo verificar la API de ${supplier.name}`);
   }
-}
+};
 
-const handlePaymentRule = (supplier) => {
+const handlePaymentRule = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
   isPaymentRuleDialogVisible.value = true;
+
+  loading.value = true;
+  await fetchPaymentRules();
 };
 
 const handleSavePaymentRule = async (paymentRuleFormData) => {
-    const isNewSupplier = !currentSupplier.value.id;
-    const url = `/suppliers/${currentSupplier.value.id}/payment-rule`
-    try {
-        const payload = { ...paymentRuleFormData }
+  const isNewSupplier = !currentSupplier.value.id;
+  const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
+  try {
+    const payload = { ...paymentRuleFormData };
 
-        await axios.put(url, payload)
+    await axios.post(url, payload);
 
-        toast.success(
-            `Regla de pago ${isNewSupplier ? "creada" : "actualizada"} con éxito`
-        );
-        isPaymentRuleDialogVisible.value = false;
-        await fetchSuppliers();
-    } catch (error) {
-        if (error.response && error.response.status === 422) {
-            supplierFormErrors.value = error.response.data.errors;
-            toast.error("Por favor, corrige los errores en el formulario.");
-        } else {
-            console.error("Error al guardar/crear la regla de pago:", error);
-            toast.error("Hubo un error al guardar la regla de pago.");
-        }
+    toast.success(`Reglas de pago creadas con éxito`);
+    isPaymentRuleDialogVisible.value = false;
+
+    await fetchPaymentRules();
+    await fetchSuppliers();
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      supplierFormErrors.value = error.response.data.errors;
+      toast.error("Por favor, corrige los errores en el formulario.");
+    } else {
+      console.error("Error al guardar/crear las reglas de pago:", error);
+      toast.error("Hubo un error al guardar las reglas de pago.");
     }
+  }
 };
 
 const handleSupplierLaboratory = async (supplier) => {
@@ -249,67 +282,103 @@ const handleSupplierLaboratory = async (supplier) => {
   supplierFormErrors.value = {};
   isSupplierLaboratoryDialogVisible.value = true;
 
-  await fetchLaboratoryLinks()
+  await fetchLaboratoryLinks();
 };
 
 const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
-    const url = `/suppliers/${currentSupplier.value.id}/laboratories`
-    try {
-        const payload = { ...supplierLaboratoryFormData }
+  const url = `/suppliers/${currentSupplier.value.id}/laboratories`;
+  try {
+    const payload = { ...supplierLaboratoryFormData };
 
-        await axios.post(url, payload)
+    await axios.post(url, payload);
 
-        toast.success('Laboratorio vinculado con éxito')
+    toast.success("Laboratorio vinculado con éxito");
 
-        isSupplierLaboratoryDialogVisible.value = false;
-        await fetchLaboratoryLinks()
-        await fetchSuppliers();
-    } catch (error) {
-        if (error.response && error.response.status === 422) {
-            supplierFormErrors.value = error.response.data.errors;
-            toast.error("Por favor, corrige los errores en el formulario.");
-        } else {
-            console.error("Error al guardar/crear la regla de pago:", error);
-            toast.error("Hubo un error al guardar la regla de pago.");
-        }
+    isSupplierLaboratoryDialogVisible.value = false;
+    await fetchLaboratoryLinks();
+    await fetchSuppliers();
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      supplierFormErrors.value = error.response.data.errors;
+      toast.error("Por favor, corrige los errores en el formulario.");
+    } else {
+      console.error("Error al guardar/crear la regla de pago:", error);
+      toast.error("Hubo un error al guardar la regla de pago.");
     }
+  }
 };
 
 const handleSupplierPendingInvoices = async (supplier) => {
   currentSupplier.value = { ...supplier };
   isPendingInvoicesDialogVisible.value = true;
 
-  await fetchPendingInvoices()
+  await fetchPendingInvoices();
 };
 
 const handleSupplierDiscountRule = async (supplier) => {
-  currentSupplier.value = { ...supplier }
-  isSupplierDiscountRuleDialogVisible.value = true
+  currentSupplier.value = { ...supplier };
+  isSupplierDiscountRuleDialogVisible.value = true;
 
   loading.value = true;
-  await fetchLaboratoryLinks()
-  await fetchDiscountRules()
-}
+  await fetchLaboratoryLinks();
+  await fetchDiscountRules();
+};
 
 const handleSaveDiscountRules = async (formData) => {
   try {
-    await axios.post(`/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`, formData)
+    await axios.post(
+      `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
+      formData
+    );
 
-    toast.success('Reglas de descuento guardadas con éxito')
-    isSupplierDiscountRuleDialogVisible.value = false
+    toast.success("Reglas de descuento guardadas con éxito");
+    isSupplierDiscountRuleDialogVisible.value = false;
 
-    await fetchDiscountRules()
-    await fetchSuppliers()
+    await fetchDiscountRules();
+    await fetchSuppliers();
   } catch (error) {
     if (error.response?.status === 422) {
-      supplierFormErrors.value = error.response.data.errors
-      toast.error("Corrige los errores del formulario.")
+      supplierFormErrors.value = error.response.data.errors;
+      toast.error("Corrige los errores del formulario.");
     } else {
-      console.error("Error al guardar reglas de descuento:", error)
-      toast.error("Hubo un error al guardar las reglas.")
+      console.error("Error al guardar reglas de descuento:", error);
+      toast.error("Hubo un error al guardar las reglas.");
     }
   }
-}
+};
+
+const handleSupplierDiscount = async (supplier) => {
+  currentSupplier.value = { ...supplier };
+  supplierFormErrors.value = {};
+  isSupplierDiscountDialogVisible.value = true;
+
+  loading.value = true;
+  await fetchSupplierDiscount();
+};
+
+const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
+  const isNewSupplier = !currentSupplier.value.id;
+  const url = `/suppliers/${currentSupplier.value.id}/discounts`;
+  try {
+    const payload = { ...supplierDiscountFormData };
+
+    await axios.post(url, payload);
+
+    toast.success(`Descuentos creados con éxito`);
+    isPaymentRuleDialogVisible.value = false;
+
+    await fetchSupplierDiscount();
+    await fetchSuppliers();
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      supplierFormErrors.value = error.response.data.errors;
+      toast.error("Por favor, corrige los errores en el formulario.");
+    } else {
+      console.error("Error al guardar/crear los descuentos:", error);
+      toast.error("Hubo un error al guardar los descuentos.");
+    }
+  }
+};
 
 const clearFormErrors = () => {
   supplierFormErrors.value = {};
@@ -344,7 +413,6 @@ const updateTableOptions = (options) => {
       @clear="handleClearFilters"
       @sort="handleSort"
       @add-supplier="handleAddSupplier"
-      @check-supplier-api="handleCheckSupplierApi"
     />
 
     <SupplierTable
@@ -360,6 +428,8 @@ const updateTableOptions = (options) => {
       @supplier-laboratory="handleSupplierLaboratory"
       @supplier-pending-invoices="handleSupplierPendingInvoices"
       @supplier-discount-rule="handleSupplierDiscountRule"
+      @check-supplier-api="handleCheckSupplierApi"
+      @supplier-discount="handleSupplierDiscount"
     />
 
     <SupplierEditDialog
@@ -373,6 +443,8 @@ const updateTableOptions = (options) => {
     <PaymentRuleEditDialog
       v-model="isPaymentRuleDialogVisible"
       :supplier="currentSupplier"
+      :payment-rules="paymentRules"
+      :loading="loading"
       :errors="supplierFormErrors"
       @save="handleSavePaymentRule"
       @clear-errors="clearFormErrors"
@@ -401,6 +473,16 @@ const updateTableOptions = (options) => {
       :discount-rules="discountRules"
       :loading="loading"
       @save="handleSaveDiscountRules"
+      @clear-errors="clearFormErrors"
+    />
+
+    <SupplierDiscountEditDialog
+      v-model="isSupplierDiscountDialogVisible"
+      :supplier="currentSupplier"
+      :supplier-discount="supplierDiscount"
+      :loading="loading"
+      :errors="supplierFormErrors"
+      @save="handleSaveSupplierDiscount"
       @clear-errors="clearFormErrors"
     />
   </div>

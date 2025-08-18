@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +57,7 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::delete('/products/{product}', [ProductController::class, 'destroy']);
 Route::get('/products/export', [ProductController::class, 'export']);
 Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
+Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
 
 // Rutas de Grupos de Productos
 Route::get('/groups', [GroupController::class, 'index']);
@@ -72,6 +74,8 @@ Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
+Route::get('/product/{product}', [ResourceController::class, 'findProductById']);
+Route::get('/exchange-rates', [ResourceController::class, 'getExchangeRates']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
@@ -147,10 +151,33 @@ Route::prefix('inventory')->group(function () {
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
 
-// Rutas de TPV / Cotizaciones (provenientes de 4.0-TPV)
-Route::get('/quotation', [QuotationController::class, 'index']);
-Route::get('/quotation/{product}', [QuotationController::class, 'show']);
-Route::post('/quotations', [QuotationController::class, 'store']);
+// Rutas de TPV (provenientes de 4.0-TPV)
+Route::prefix("tpv")->group(function () {
+    // Rutas de Cotizaciones
+    Route::get('/quotation', [QuotationController::class, 'index']);
+    Route::get('/quotation/{product}', [QuotationController::class, 'show']);
+    Route::post('/quotations', [QuotationController::class, 'store']);
+    Route::get('/quotations/{quotationId}/products', [QuotationController::class, 'showProducts']);
+
+    // Rutas de Pedidos Usuarios
+    Route::get('/order', [OrderController::class, 'index']);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
+    Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
+    Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
+    Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
+    Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+
+    // Rutas de Pedidos General
+    Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
+    Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
+    Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
+    Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
+    Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+});
+
 
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
@@ -265,10 +292,13 @@ Route::prefix("finances")->group(function () {
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
     Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
-    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
+    Route::post('/{supplier}/payment-rules', [SupplierController::class, 'storePaymentRules']);
+    Route::get('/{supplier}/payment-rules', [SupplierController::class, 'getPaymentRules']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
     Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+    Route::post('/{supplier}/discounts', [SupplierController::class, 'storeDiscounts']);
+    Route::get('/{supplier}/discounts', [SupplierController::class, 'getDiscounts']);
 });
 
 Route::prefix("supplier-laboratories")->group(function () {
@@ -277,9 +307,24 @@ Route::prefix("supplier-laboratories")->group(function () {
 });
 
 //Invoices
-Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
-Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
-Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
-Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
+Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('/for-order', 'indexForOrder')->name('forOrder');
+    Route::get('/{invoice}/details', 'getDetails')->name('details');
+    Route::post('/{invoice}/approve', [InvoiceController::class, 'approve']);
+    Route::post('/{invoice}/reject', [InvoiceController::class, 'reject']);
+    Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+    Route::put('/{invoice}/data', [InvoiceController::class, 'updateData']);
+    Route::post('/{invoice}/approve', 'approve')->name('approve');
+    Route::get('/{invoice}', 'show')->name('show');
+    Route::put('/{invoice}', 'update')->name('update');
+    Route::delete('/{invoice}', 'destroy')->name('destroy');
+});
+Route::prefix("suppliers-ia-order-assistant")->group(function () {
+    Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
+    Route::prefix("generate-order")->group(function () {
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+    });
+});
