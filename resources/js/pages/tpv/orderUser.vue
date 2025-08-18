@@ -25,6 +25,7 @@ const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
+const isStrictSearch = ref(true);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -103,6 +104,7 @@ const fetchProducts = async () => {
      ...(currentGroupId.value !== null && {
             groupId: currentGroupId.value,
         }),
+    isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -148,6 +150,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    isStrictSearch,
     currentGroupId,
   ],
   () => {
@@ -237,6 +240,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  isStrictSearch.value = true;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -927,6 +931,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
