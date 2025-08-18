@@ -8,7 +8,6 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-// ... (las refs se mantienen igual) ...
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
 const invoices = ref([]);
@@ -28,7 +27,10 @@ const orderBy = ref();
 const isApproveModalVisible = ref(false);
 const invoiceToApprove = ref(null);
 const availableDiscounts = ref([]);
+const availablePaymentRules = ref([]);
 const isApproving = ref(false);
+const invoiceDetails = ref([]);
+const exchangeRates = ref([]);
 
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
@@ -40,6 +42,17 @@ const fetchSuppliers = async () => {
     toast.error("No se pudieron cargar los proveedores.");
   } finally {
     isLoadingFilters.value = false;
+  }
+};
+
+const fetchExchangeRates = async () => {
+  try {
+    const response = await axios.get("/finances/exchange-rates");
+    exchangeRates.value = response.data.data ?? response.data ?? [];
+  } catch (error) {
+    console.error("Error al cargar los tipos de cambio:", error);
+    toast.error("No se pudieron cargar los tipos de cambio.");
+    exchangeRates.value = [];
   }
 };
 
@@ -73,6 +86,21 @@ const fetchInvoices = async () => {
   }
 };
 
+const fetchPaymentRulesForSupplier = async (supplierId) => {
+  if (!supplierId) {
+    availablePaymentRules.value = [];
+    return;
+  }
+  try {
+    const response = await axios.get(`/suppliers/${supplierId}/payment-rules`);
+    availablePaymentRules.value = response.data.data || response.data || [];
+  } catch (error) {
+    console.error("Error al obtener las reglas de pago del proveedor:", error);
+    toast.error("No se pudieron cargar las reglas de pago del proveedor.");
+    availablePaymentRules.value = [];
+  }
+};
+
 const fetchDiscountsForSupplier = async (supplierId) => {
   if (!supplierId) {
     availableDiscounts.value = [];
@@ -80,7 +108,7 @@ const fetchDiscountsForSupplier = async (supplierId) => {
   }
   try {
     const response = await axios.get(`/suppliers/${supplierId}/discounts`);
-    availableDiscounts.value = response.data.data || [];
+    availableDiscounts.value = response.data.supplier_discount || [];
   } catch (error) {
     console.error("Error al obtener los descuentos del proveedor:", error);
     toast.error("No se pudieron cargar los descuentos del proveedor.");
@@ -120,6 +148,7 @@ watch(
 );
 
 onMounted(() => {
+  fetchExchangeRates();
   fetchSuppliers();
   fetchInvoices();
 });
@@ -140,13 +169,11 @@ const handleClearFilters = () => {
 };
 
 const handleViewDetails = (invoice) => {
-  console.log("Cambiando a la vista de detalle para la factura:", invoice.id);
   selectedInvoiceId.value = invoice.id;
   currentView.value = "detail";
 };
 
 const handleReturnToList = () => {
-  console.log("Volviendo a la lista de facturas");
   selectedInvoiceId.value = null;
   currentView.value = "list";
   fetchInvoices();
@@ -154,22 +181,81 @@ const handleReturnToList = () => {
 
 const handleApproveInvoice = async (invoice) => {
   invoiceToApprove.value = invoice;
-  await fetchDiscountsForSupplier(invoice.supplier_id);
-  isApproveModalVisible.value = true;
+  isApproving.value = true;
+
+  availableDiscounts.value = [];
+  availablePaymentRules.value = [];
+  invoiceDetails.value = [];
+
+  try {
+    const promises = [
+      axios
+        .get(`/suppliers/${invoice.supplier_id}/discounts`)
+        .then((response) => {
+          availableDiscounts.value = response.data.supplier_discount || [];
+        })
+        .catch((error) => {
+          console.warn(
+            "No se pudieron cargar los descuentos del proveedor:",
+            error
+          );
+          availableDiscounts.value = [];
+        }),
+
+      axios
+        .get(`/suppliers/${invoice.supplier_id}/payment-rules`)
+        .then((response) => {
+          availablePaymentRules.value =
+            response.data.payment_rules ||
+            response.data.data ||
+            response.data ||
+            [];
+        })
+        .catch((error) => {
+          console.warn(
+            "No se pudieron cargar las reglas de pago del proveedor:",
+            error
+          );
+          availablePaymentRules.value = [];
+        }),
+
+      axios.get(`/invoices/${invoice.id}/details`).then((response) => {
+        invoiceDetails.value = response.data.data || [];
+      }),
+    ];
+
+    await Promise.all(promises);
+
+    isApproveModalVisible.value = true;
+  } catch (error) {
+    console.error(
+      "Error crítico al preparar la aprobación de la factura:",
+      error
+    );
+    toast.error("No se pudieron cargar los detalles de la factura.");
+  } finally {
+    isApproving.value = false;
+  }
 };
 
-const confirmApproval = async ({ invoiceId, discountId }) => {
+const confirmApproval = async ({
+  invoiceId,
+  discountId,
+  paymentRuleId,
+  returnItems,
+}) => {
   isApproving.value = true;
-  console.log("Enviando al backend:", { invoiceId, discountId });
 
   const payload = {
-    discount_rule_id: discountId,
+    supplier_discount_id: discountId,
+    payment_rule_id: paymentRuleId,
+    return_item_ids: returnItems,
   };
 
   try {
     await axios.post(`/invoices/${invoiceId}/approve`, payload);
 
-    toast.success("Factura aprobada con éxito.");
+    toast.success("Factura aprobada con éxito (con posibles devoluciones).");
     isApproveModalVisible.value = false;
     fetchInvoices();
   } catch (error) {
@@ -183,29 +269,38 @@ const confirmApproval = async ({ invoiceId, discountId }) => {
 };
 
 const handleRejectInvoice = async (invoice) => {
-  const { value: reason } = await Swal.fire({
+  const result = await Swal.fire({
     title: "Rechazar Factura",
-    text: `Estás a punto de RECHAZAR la factura N° ${invoice.invoice_number}.`,
-    input: "textarea",
-    inputLabel: "Motivo del rechazo",
-    inputPlaceholder: "Escribe el motivo aquí...",
-    inputAttributes: {
-      "aria-label": "Escribe el motivo aquí",
-    },
+    text: `¿Estás seguro de que deseas RECHAZAR la factura N° ${invoice.invoice_number}?`,
+    icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, rechazar",
     cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
     reverseButtons: true,
-    inputValidator: (value) => {
-      if (!value) {
-        return "¡Necesitas escribir un motivo para el rechazo!";
-      }
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
     },
   });
 
-  if (reason) {
+  if (result.isConfirmed) {
     try {
-      await axios.post(`/invoices/${invoice.id}/reject`, { reason });
+      await axios.post(`/invoices/${invoice.id}/reject`, {
+        reason: "Factura rechazada desde la interfaz",
+      });
       toast.success("Factura rechazada con éxito.");
       fetchInvoices();
     } catch (error) {
@@ -221,6 +316,7 @@ const closeApproveModal = () => {
   isApproveModalVisible.value = false;
   invoiceToApprove.value = null;
   availableDiscounts.value = [];
+  availablePaymentRules.value = [];
 };
 </script>
 
@@ -244,6 +340,7 @@ const closeApproveModal = () => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        :exchange-rates="exchangeRates"
         actions-mode="approval"
         @update:options="updateTableOptions"
         @edit-invoice="handleViewDetails"
@@ -255,13 +352,19 @@ const closeApproveModal = () => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        :exchange-rates="exchangeRates"
         @back-to-list="handleReturnToList"
+        mode="read-only"
       />
     </div>
+
     <ApproveInvoiceModal
       v-model="isApproveModalVisible"
       :invoice="invoiceToApprove"
       :discounts="availableDiscounts"
+      :payment-rules="availablePaymentRules"
+      :details="invoiceDetails"
+      :exchange-rates="exchangeRates"
       :loading="isApproving"
       @confirm="confirmApproval"
     />

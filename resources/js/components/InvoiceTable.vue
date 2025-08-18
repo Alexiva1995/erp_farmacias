@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   invoices: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -6,11 +8,13 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   actionsMode: { type: String, default: "default" },
+  exchangeRates: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
   "update:options",
   "edit-invoice",
+  "edit-invoice-form",
   "delete-invoice",
   "approve-invoice",
   "reject-invoice",
@@ -27,13 +31,69 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
+const getExchangeRate = (currency) => {
+  if (!currency || currency === "USD") return 1;
+
+  const currencyMapping = {
+    Bs: "BS",
+    BS: "BS",
+    COP: "COP",
+    USD: "USD",
+  };
+
+  const mappedCurrency = currencyMapping[currency] || currency;
+  const rate = props.exchangeRates.find(
+    (rate) => rate.currency_code === mappedCurrency
+  );
+
+  return rate ? parseFloat(rate.rate) : 1;
+};
+
+const convertAmount = (usdAmount, targetCurrency) => {
+  if (!targetCurrency || targetCurrency === "USD") {
+    return usdAmount;
+  }
+
+  const rate = getExchangeRate(targetCurrency);
+
+  return usdAmount * rate;
+};
+
 const formatCurrency = (value, currency) => {
+  const currencyMap = {
+    BS: "VES",
+    Bs: "VES",
+    COP: "COP",
+    USD: "USD",
+  };
+
+  const mappedCurrency = currencyMap[currency] || currency;
+
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
-    currency: currency,
+    currency: mappedCurrency,
     minimumFractionDigits: 2,
   }).format(value);
 };
+
+const processedInvoices = computed(() => {
+  return props.invoices.map((invoice) => {
+    const convertedTotal = convertAmount(
+      invoice.total_amount,
+      invoice.currency
+    );
+    const convertedDebt = convertAmount(
+      invoice.outstanding_debt,
+      invoice.currency
+    );
+
+    return {
+      ...invoice,
+      converted_total_amount: convertedTotal,
+      converted_outstanding_debt: convertedDebt,
+    };
+  });
+});
 
 const resolveStatusVariant = (status) => {
   const statusMap = {
@@ -56,7 +116,7 @@ const resolveStatusVariant = (status) => {
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
-      :items="props.invoices"
+      :items="processedInvoices"
       :items-length="props.totalInvoices"
       :loading="props.loading"
       class="text-no-wrap"
@@ -67,27 +127,35 @@ const resolveStatusVariant = (status) => {
       </template>
 
       <template #item.total_amount="{ item }">
-        <span class="font-weight-medium">
-          {{
-            formatCurrency(
-              item.total_amount,
-              item.currency === "Bs" ? "VES" : item.currency
-            )
-          }}
-        </span>
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium">
+            {{ formatCurrency(item.converted_total_amount, item.currency) }}
+          </span>
+          <span
+            v-if="item.currency !== 'USD'"
+            class="text-caption text-medium-emphasis"
+          >
+            {{ formatCurrency(item.total_amount, "USD") }}
+          </span>
+        </div>
       </template>
 
       <template #item.outstanding_debt="{ item }">
-        <span
-          :class="item.outstanding_debt > 0 ? 'text-error' : 'text-success'"
-        >
-          {{
-            formatCurrency(
-              item.outstanding_debt,
-              item.currency === "Bs" ? "VES" : item.currency
-            )
-          }}
-        </span>
+        <div class="d-flex flex-column">
+          <span
+            :class="item.outstanding_debt > 0 ? 'text-error' : 'text-success'"
+            class="font-weight-medium"
+          >
+            {{ formatCurrency(item.converted_outstanding_debt, item.currency) }}
+          </span>
+          <span
+            v-if="item.currency !== 'USD'"
+            :class="item.outstanding_debt > 0 ? 'text-error' : 'text-success'"
+            class="text-caption text-medium-emphasis"
+          >
+            {{ formatCurrency(item.outstanding_debt, "USD") }}
+          </span>
+        </div>
       </template>
 
       <template #item.status="{ item }">
@@ -133,13 +201,30 @@ const resolveStatusVariant = (status) => {
           </VTooltip>
         </div>
 
-        <div v-else>
-          <IconBtn @click="emit('edit-invoice', item)">
-            <VIcon icon="tabler-edit" />
-          </IconBtn>
-          <IconBtn @click="emit('delete-invoice', item.id)">
-            <VIcon icon="tabler-trash" />
-          </IconBtn>
+        <div v-else class="d-flex">
+          <VTooltip text="Editar Factura">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="emit('edit-invoice-form', item)">
+                <VIcon icon="tabler-edit" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Ver Productos">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="emit('edit-invoice', item)">
+                <VIcon icon="tabler-package" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Eliminar">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="emit('delete-invoice', item.id)">
+                <VIcon icon="tabler-trash" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
     </VDataTableServer>
