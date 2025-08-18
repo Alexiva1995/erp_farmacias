@@ -35,6 +35,7 @@ watch(
         ...lot,
         expiration_date: formattedDate,
         location: lot.location || "",
+        // Marcar lotes con cantidad 0 como eliminados
         _markedForDeletion: parseInt(lot.quantity) === 0,
       };
     });
@@ -44,6 +45,7 @@ watch(
 
 const currentLotsSum = computed(() => {
   return editableLots.value.reduce((sum, lot) => {
+    // No contar lotes marcados para eliminación o con cantidad 0
     if (lot._markedForDeletion || parseInt(lot.quantity) === 0) {
       return sum;
     }
@@ -66,6 +68,7 @@ const availableStock = computed(() => {
 });
 
 const canSave = computed(() => {
+  // Verificar que todos los lotes activos (no marcados para eliminación y con cantidad > 0) tengan datos válidos
   const activeLots = editableLots.value.filter(
     (lot) => !lot._markedForDeletion && parseInt(lot.quantity) > 0
   );
@@ -81,6 +84,7 @@ const canSave = computed(() => {
     );
   });
 
+  // El stock debe coincidir exactamente
   const stockValid = currentLotsSum.value === props.productStock;
 
   return allLotsValid && stockValid;
@@ -89,6 +93,7 @@ const canSave = computed(() => {
 const validateLotQuantity = (lot, index) => {
   const quantity = parseInt(lot.quantity);
 
+  // Permitir cantidad 0 (se considera como marcado para eliminación)
   if (quantity === 0) {
     lot._markedForDeletion = true;
     delete errors.value[`quantity_${index}`];
@@ -97,12 +102,14 @@ const validateLotQuantity = (lot, index) => {
     lot._markedForDeletion = false;
   }
 
+  // Si no es 0, debe ser mayor que 0
   if (isNaN(quantity) || quantity < 0) {
     errors.value[`quantity_${index}`] =
       "La cantidad debe ser mayor o igual a 0";
     return false;
   }
 
+  // Validar que no exceda el stock disponible
   if (hasStockDiscrepancy.value) {
     const otherLotsSum = editableLots.value.reduce(
       (sum, otherLot, otherIndex) => {
@@ -129,7 +136,9 @@ const validateLotQuantity = (lot, index) => {
 };
 
 const validateLot = (lot, index) => {
+  // Si el lote está marcado para eliminación (cantidad 0), no validar otros campos
   if (lot._markedForDeletion || parseInt(lot.quantity) === 0) {
+    // Limpiar errores para lotes marcados para eliminación
     delete errors.value[`lot_number_${index}`];
     delete errors.value[`expiration_date_${index}`];
     delete errors.value[`unit_cost_${index}`];
@@ -204,12 +213,15 @@ const removeLot = (index) => {
   const lot = editableLots.value[index];
 
   if (lot.id > 0) {
+    // Lote existente: marcar para "eliminación" (quantity = 0)
     lot._markedForDeletion = true;
     lot.quantity = 0;
   } else {
+    // Lote nuevo: eliminar completamente del array
     editableLots.value.splice(index, 1);
   }
 
+  // Limpiar errores relacionados
   Object.keys(errors.value).forEach((key) => {
     if (key.endsWith(`_${index}`)) {
       delete errors.value[key];
@@ -220,6 +232,7 @@ const removeLot = (index) => {
 const restoreLot = (index) => {
   const lot = editableLots.value[index];
   lot._markedForDeletion = false;
+  // Si el lote tenía quantity = 0, restaurarlo con cantidad 1
   if (parseInt(lot.quantity) === 0) {
     lot.quantity = 1;
   }
@@ -235,18 +248,20 @@ const onSave = () => {
     }
   });
 
+  // Validar que el stock total coincida exactamente
   if (currentLotsSum.value !== props.productStock) {
     errors.value.total_stock = `La cantidad total (${currentLotsSum.value}) debe ser igual al stock del producto (${props.productStock})`;
     allValid = false;
   }
 
   if (allValid) {
+    // Preparar datos para envío
     const lotsToSave = editableLots.value.map((lot) => ({
       ...lot,
+      // Convertir cantidad 0 a null para lotes marcados para eliminación
       quantity: lot._markedForDeletion ? 0 : lot.quantity,
     }));
 
-    console.log("Datos de lotes a enviar:", lotsToSave);
     emit("save", lotsToSave);
   }
 };

@@ -43,7 +43,6 @@ const fetchSelectOptions = async () => {
     const labResponse = await axios.get("/laboratories");
     laboratories.value = labResponse.data;
   } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
   } finally {
     isLoadingFilters.value = false;
@@ -75,7 +74,6 @@ const fetchProductLots = async () => {
     productLots.value = response.data?.data.data || [];
     totalProductLots.value = response.data?.data.total || 0;
   } catch (error) {
-    console.error("Error al obtener los lotes:", error);
     toast.error("No se pudieron cargar los lotes.");
   } finally {
     loading.value = false;
@@ -148,7 +146,6 @@ const handleAddLot = async () => {
     availableSuppliers.value = suppliersResponse.data.data;
     isCreateDialogVisible.value = true;
   } catch (error) {
-    console.error("Error al obtener datos para el modal:", error);
     toast.error("No se pudieron cargar los datos para crear el lote.");
   } finally {
     isLoadingDialogData.value = false;
@@ -162,8 +159,6 @@ const handleCreateLot = async (lotData) => {
     isCreateDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
-    console.error("Error al crear el lote:", error);
-
     if (error.response && error.response.status === 422) {
       const errors = error.response.data.errors;
       if (errors && errors.quantity && errors.quantity[0]) {
@@ -220,11 +215,8 @@ const handleEditLot = async (lotToEdit) => {
       }
     }
 
-    console.log("Lotes cargados para edición:", lotsForEditing.value);
     isEditDialogVisible.value = true;
   } catch (error) {
-    console.error("Error al preparar la edición del lote:", error);
-
     if (error.response?.status === 404) {
       toast.error("No se encontraron lotes para este producto.");
     } else {
@@ -249,8 +241,6 @@ const handleUpdateLot = async (lotsToSave) => {
     isEditDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
-    console.error("Error al guardar los cambios de los lotes:", error);
-
     if (error.response && error.response.status === 422) {
       const errorData = error.response.data;
 
