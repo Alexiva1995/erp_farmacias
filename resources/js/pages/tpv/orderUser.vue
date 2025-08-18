@@ -171,7 +171,6 @@ onMounted(() => {
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
-
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
@@ -638,6 +637,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
       );
     } else {
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
+      console.log(itemToAdd)
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }

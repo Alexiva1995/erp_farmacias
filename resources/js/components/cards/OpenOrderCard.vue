@@ -119,6 +119,23 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
+const getProductPriceSinIva = (product, currency) => {
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+
+  let priceSinIva = basePrice;
+  if (currency === "COP") {
+    priceSinIva = roundUpToNearestHundred(priceSinIva);
+  }
+  return priceSinIva;
+};
+
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -127,15 +144,30 @@ const getProductPrice = (product, currency) => {
   } else if (currency === "COP") {
     basePrice = product.price_cop || 0;
   } else {
-    // Default to USD price
     basePrice = product.price || 0;
   }
-
   let priceWithIva = basePrice * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
   return priceWithIva;
+};
+
+const getIva = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+  let Iva = basePrice * taxRate;
+  if (currency === "COP") {
+    Iva = roundUpToNearestHundred(Iva);
+  }
+  return Iva;
 };
 
 const handleClickProductItem = (productId, currentQuantity) => {
@@ -186,7 +218,7 @@ const fetchQuotationProducts = async (id) => {
 </script>
 <template>
   <VCard class="mb-6">
-    <VCardItem>
+    <VCardItem style="padding-top: 5px;">
       <VCardTitle>{{ clientName }} {{ Identidad }}</VCardTitle>
       <template #append>
         <VMenu>
@@ -224,7 +256,7 @@ const fetchQuotationProducts = async (id) => {
 
     <VRow>
       <VCol cols="6">
-        <VCardItem>
+        <VCardItem class="py-1">
           <VCardTitle>Productos</VCardTitle>
           <template #append>
             <VChip
@@ -244,7 +276,7 @@ const fetchQuotationProducts = async (id) => {
         </VCardItem>
       </VCol>
       <VCol cols="6">
-        <VCardText>
+        <VCardText class="py-1">
           <VRow>
             <VCol cols="6">
               <AppTextField
@@ -315,7 +347,10 @@ const fetchQuotationProducts = async (id) => {
                   <span class="text-body-1">
                     {{
                       formatCurrency(
-                        getProductPrice(product, props.selectedDisplayCurrency),
+                        getProductPriceSinIva(
+                          product,
+                          props.selectedDisplayCurrency
+                        ),
                         props.selectedDisplayCurrency
                       )
                     }}
@@ -327,7 +362,7 @@ const fetchQuotationProducts = async (id) => {
                   <span class="text-body-1">
                     {{
                       formatCurrency(
-                        getProductPrice(product, props.selectedDisplayCurrency),
+                        getIva(product, props.selectedDisplayCurrency),
                         props.selectedDisplayCurrency
                       )
                     }}
@@ -352,206 +387,44 @@ const fetchQuotationProducts = async (id) => {
       </div>
     </VCardText>
 
-        <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
-          <VDivider class="mt-auto" />
-          <h4 class="text-h4 text-center">Monto Total</h4>
-          <div class="text-h4 text-success">
-            {{ formattedTotalQuotation }}
-          </div>
-        </VCardActions>
+    <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
+      <VDivider class="mt-auto" />
+      <h4 class="text-h4 text-center">Monto Total</h4>
+      <div class="text-h4 text-success">
+        {{ formattedTotalQuotation }}
+      </div>
+    </VCardActions>
 
-<VCardActions class="pa-4 d-flex flex-wrap gap-1">
-       <VRow>
-    <VCol cols="2">
-      <VBtn
-        color="secondary"
-        variant="outlined"
-        @click="hadleCancelarOrder"
-        block
-        >Cancelar</VBtn
-      >
-    </VCol>
-    <VCol cols="2">
-      <VBtn
-        color="primary"
-        variant="flat"
-        @click="handleCompleteOrder"
-        block
-        >Completar</VBtn
-      >
-    </VCol>
-    <VCol cols="2">
-      <VBtn
-        color="primary"
-        variant="flat"
-        @click="handleCompleteOrder"
-        block
-        >Reservar</VBtn
-      >
-    </VCol>
-  </VRow>
-        </VCardActions>
-
-
-    <VRow>
-      <VCol cols="6">
-        <VCardText class="flex-grow-1 d-flex flex-column mt-6">
-          <VList class="card-list mb-6" density="compact" nav>
-            <VListItem
-              v-for="item in breakdownItems"
-              :key="item.title"
-              class="rounded-0"
-            >
-              <VListItemTitle class="font-weight-medium">{{
-                item.title
-              }}</VListItemTitle>
-              <template #append>
-                <div class="d-flex align-center">
-                  <span class="me-3 text-medium-emphasis">{{
-                    formatCurrency(item.amount, props.selectedDisplayCurrency)
-                  }}</span>
-                </div>
-              </template>
-            </VListItem>
-          </VList>
-        </VCardText>
-
-        <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
-          <VDivider class="mt-auto" />
-          <h4 class="text-h4 text-center">Monto Total</h4>
-          <div class="text-h4 text-success">
-            {{ formattedTotalQuotation }}
-          </div>
-        </VCardActions>
-      </VCol>
-
-      <VCol cols="6">
-        <VCardItem>
-          <VCardTitle>Productos</VCardTitle>
-          <template #append>
-            <VChip
-              label
-              :color="chipColor"
-              variant="tonal"
-              density="default"
-              size="small"
-              draggable="false"
-              class="ms-auto"
-            >
-              <span class="font-weight-medium">{{
-                totalSelectedQuantity
-              }}</span>
-            </VChip>
-          </template>
-        </VCardItem>
-
-        <VCardText>
-          <AppTextField
-            v-model="quotationId"
-            placeholder="ID de la cotización"
-            clearable
-            class="flex-grow-1 mb-2"
-          >
-            <template #append-inner>
-              <VBtn
-                icon
-                variant="text"
-                color="primary"
-                size="small"
-                @click="fetchQuotationProducts(quotationId)"
-                :disabled="!quotationId"
-              >
-                <VIcon icon="tabler-plus" />
-              </VBtn>
-            </template>
-          </AppTextField>
-          <VDivider class="mt-auto" />
-
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Código de Barra"
-            clearable
-            @update:model-value="emit('update:searchQuery', $event)"
-            class="flex-grow-1"
-          />
-          <VDivider class="mt-auto" />
-        </VCardText>
-
-        <VCardText>
-          <div
-            class="scrollable-list-container"
-            :class="{ 'show-scroll': props.orderProducts.length > 2 }"
-          >
-            <VList class="card-list" density="compact" nav>
-              <VListItem
-                v-for="product in props.orderProducts"
-                :key="product.id"
-                class="rounded-0"
-                @click="
-                  handleClickProductItem(
-                    product.product_id,
-                    product.selectedQuantity
-                  )
-                "
-                :class="{ 'cursor-pointer': true }"
-              >
-                <template #prepend>
-                  <span>{{ product.selectedQuantity }} x</span>
-                </template>
-
-                <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                  product.title
-                }}</VListItemTitle>
-                <VListItemSubtitle class="mx-2"
-                  >{{ product.active_ingredient }}
-                  {{ product.laboratory }}</VListItemSubtitle
-                >
-
-                <template #append>
-                  <div class="d-flex align-center">
-                    <span class="text-body-1 me-2">{{
-                      formatCurrency(
-                        getProductPrice(
-                          product,
-                          props.selectedDisplayCurrency
-                        ) * product.selectedQuantity,
-                        props.selectedDisplayCurrency
-                      )
-                    }}</span>
-                  </div>
-                </template>
-              </VListItem>
-            </VList>
-          </div>
-        </VCardText>
-
-        <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
+    <VCardActions class="pa-4 d-flex flex-wrap gap-1" style="padding-bottom: 5px;">
+      <VRow>
+        <VCol cols="2">
           <VBtn
             color="secondary"
             variant="outlined"
             @click="hadleCancelarOrder"
-            class="flex-grow-1"
+            block
             >Cancelar</VBtn
           >
+        </VCol>
+        <VCol cols="2">
           <VBtn
             color="primary"
             variant="flat"
             @click="handleCompleteOrder"
-            class="flex-grow-1"
+            block
             >Completar</VBtn
           >
-        </VCardActions>
-      </VCol>
-    </VRow>
+        </VCol>
+        <VCol cols="2">
+          <VBtn
+            color="success"
+            variant="flat"
+            @click="handleCompleteOrder"
+            block
+            >Reservar</VBtn
+          >
+        </VCol>
+      </VRow>
+    </VCardActions>
   </VCard>
 </template>
-<style scoped>
-.scrollable-list-container {
-  max-height: 95px;
-  overflow-y: hidden;
-  transition: overflow-y 0.3s ease-in-out;
-}
-.scrollable-list-container.show-scroll {
-  overflow-y: auto;
-}
-</style>
