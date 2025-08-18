@@ -29,19 +29,12 @@ class InvoiceQueryService
         if ($request->filled('supplierId')) {
             $query->where('supplier_id', $request->supplierId);
         }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'Loaded');
-        }
-
         if ($request->filled('startDate')) {
-            $query->whereDate('exp_date', '>=', $request->startDate);
+            $query->whereDate('received_date', '>=', $request->startDate);
         }
 
         if ($request->filled('endDate')) {
-            $query->whereDate('exp_date', '<=', $request->endDate);
+            $query->whereDate('received_date', '<=', $request->endDate);
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {

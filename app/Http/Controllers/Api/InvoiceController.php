@@ -66,10 +66,17 @@ class InvoiceController extends Controller
             'exempt_amount' => 'nullable|numeric|min:0',
             'taxable_base' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric|min:0',
-            'exchange_rate' => 'required|numeric|gt:0',
             'total_amount' => 'required|numeric|gt:0',
-            'total_usd' => 'required|numeric|gt:0',
         ];
+        $currency = $request->input('currency');
+
+        if ($currency !== 'USD') {
+            $rules['exchange_rate'] = 'required|numeric|gt:0';
+            $rules['total_usd'] = 'nullable|numeric|gt:0';
+        } else {
+            $rules['exchange_rate'] = 'nullable|numeric|gt:0';
+            $rules['total_usd'] = 'nullable|numeric|gt:0';
+        }
 
         $validator = Validator::make($request->all(), $rules);
 
@@ -180,7 +187,6 @@ class InvoiceController extends Controller
             'supplier_id' => 'required|exists:suppliers,id',
             'invoice_number' => 'required|string|max:50',
             'control_number' => 'required|string|max:50',
-            'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
             'exp_date' => 'required|date',
             'payment_date' => 'nullable|date|after_or_equal:exp_date',
             'received_date' => 'required|date',
@@ -188,10 +194,17 @@ class InvoiceController extends Controller
             'exempt_amount' => 'nullable|numeric|min:0',
             'taxable_base' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric|min:0',
-            'exchange_rate' => 'required|numeric|gt:0',
             'total_amount' => 'required|numeric|gt:0',
-            'total_usd' => 'required|numeric|gt:0',
         ];
+        $currency = $request->input('currency');
+
+        if ($currency !== 'USD') {
+            $rules['exchange_rate'] = 'required|numeric|gt:0';
+            $rules['total_usd'] = 'nullable|numeric|gt:0';
+        } else {
+            $rules['exchange_rate'] = 'nullable|numeric|gt:0';
+            $rules['total_usd'] = 'nullable|numeric|gt:0';
+        }
 
         $validator = Validator::make($request->all(), $rules);
 

@@ -27,28 +27,39 @@ const currencyOptions = [
 ];
 
 const suppliers = ref([]);
-const discountRules = ref([]);
 const loading = ref(false);
 const loadingSuppliers = ref(false);
-const loadingRules = ref(false);
 
 onMounted(() => {
   fetchSuppliers();
 });
 
-watch(
-  () => formData.value.supplier_id,
-  (newSupplierId) => {
-    formData.value.discount_rule_id = null;
-    discountRules.value = [];
+const shouldShowExchangeRate = computed(() => {
+  return formData.value.currency === "Bs" || formData.value.currency === "COP";
+});
 
-    if (newSupplierId) {
-      fetchDiscountRules(newSupplierId);
+watch(
+  () => formData.value.currency,
+  (newCurrency) => {
+    if (newCurrency === "USD") {
+      formData.value.exchange_rate = 0;
     }
   }
 );
 
-const calculatedTotalBs = computed(() => {
+const calculatedTaxAmount = computed(() => {
+  const base = Number(formData.value.taxable_base) || 0;
+  return (base * 0.16).toFixed(2);
+});
+
+watch(
+  () => formData.value.taxable_base,
+  () => {
+    formData.value.tax_amount = calculatedTaxAmount.value;
+  }
+);
+
+const calculatedTotalAmount = computed(() => {
   const excento = Number(formData.value.exempt_amount) || 0;
   const base = Number(formData.value.taxable_base) || 0;
   const impuesto = Number(formData.value.tax_amount) || 0;
@@ -62,7 +73,7 @@ watch(
     formData.value.tax_amount,
   ],
   () => {
-    formData.value.total_amount = calculatedTotalBs.value;
+    formData.value.total_amount = calculatedTotalAmount.value;
   }
 );
 
@@ -96,21 +107,6 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchDiscountRules = async (supplierId) => {
-  loadingRules.value = true;
-  try {
-    const response = await axios.get(`/suppliers/${supplierId}/discount-rules`);
-    discountRules.value = response.data.map((rule) => ({
-      ...rule,
-      description: `${rule.days} días con un descuento de ${rule.descPorcentaje}%`,
-    }));
-  } catch (error) {
-    console.error("Error al obtener las reglas de descuento:", error);
-  } finally {
-    loadingRules.value = false;
-  }
-};
-
 const handleSubmit = async () => {
   loading.value = true;
   try {
@@ -139,7 +135,7 @@ const handleCancel = () => {
     <VCardText>
       <VForm @submit.prevent="handleSubmit">
         <VRow>
-          <VCol cols="12" md="6">
+          <VCol cols="12" md="4">
             <VAutocomplete
               v-model="formData.supplier_id"
               :items="suppliers"
@@ -150,13 +146,13 @@ const handleCancel = () => {
               placeholder="Busque un proveedor"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="4">
             <VTextField
               v-model="formData.invoice_number"
               label="N° de factura"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="4">
             <VTextField
               v-model="formData.control_number"
               label="N° de Control"
@@ -165,41 +161,7 @@ const handleCancel = () => {
         </VRow>
 
         <VRow>
-          <VCol cols="12" md="6">
-            <VSelect
-              v-model="formData.discount_rule_id"
-              :items="discountRules"
-              :loading="loadingRules"
-              :disabled="!formData.supplier_id"
-              item-title="description"
-              item-value="id"
-              label="Regla de Descuento (Pronto Pago)"
-              placeholder="Seleccione una regla"
-              clearable
-            />
-          </VCol>
-        </VRow>
-
-        <VDivider class="my-4" />
-
-        <VRow>
-          <VCol cols="12" md="3">
-            <VSelect
-              v-model="formData.currency"
-              :items="currencyOptions"
-              label="Moneda de la Factura"
-              item-title="title"
-              item-value="value"
-            />
-          </VCol>
-          <VCol cols="12" md="3">
-            <VTextField
-              v-model.number="formData.exchange_rate"
-              label="Tasa de Cambio"
-              type="number"
-            />
-          </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model="formData.exp_date"
               label="Fecha de Vencimiento"
@@ -207,7 +169,7 @@ const handleCancel = () => {
               placeholder="YYYY-MM-DD"
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model="formData.payment_date"
               label="F. Límite de Pago"
@@ -215,7 +177,7 @@ const handleCancel = () => {
               placeholder="YYYY-MM-DD"
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model="formData.received_date"
               label="F. de Recibo"
@@ -225,8 +187,22 @@ const handleCancel = () => {
           </VCol>
         </VRow>
 
+        <VDivider class="my-4" />
+
         <VRow>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="4">
+            <VSelect
+              v-model="formData.currency"
+              :items="currencyOptions"
+              label="Moneda de la Factura"
+              item-title="title"
+              item-value="value"
+            />
+          </VCol>
+        </VRow>
+
+        <VRow>
+          <VCol cols="12" md="2">
             <VTextField
               v-model.number="formData.exempt_amount"
               label="Monto Excento IVA"
@@ -234,7 +210,7 @@ const handleCancel = () => {
               :prefix="formData.currency"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VTextField
               v-model.number="formData.taxable_base"
               label="Base Imponible 16%"
@@ -242,28 +218,38 @@ const handleCancel = () => {
               :prefix="formData.currency"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VTextField
               v-model.number="formData.tax_amount"
               label="Impuesto 16%"
               type="number"
               :prefix="formData.currency"
+              readonly
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VTextField
               v-model.number="formData.total_amount"
               label="Total Factura"
               type="number"
               :prefix="formData.currency"
+              readonly
             />
           </VCol>
-          <VCol cols="12" md="3" offset-md="9">
+          <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
+            <VTextField
+              v-model.number="formData.exchange_rate"
+              label="Tasa de Cambio"
+              type="number"
+            />
+          </VCol>
+          <VCol cols="12" md="2">
             <VTextField
               v-model.number="formData.total_usd"
-              label="Total de Referencia (USD)"
+              label="Total Referencia (USD)"
               type="number"
               prefix="$"
+              readonly
             />
           </VCol>
         </VRow>
@@ -271,18 +257,29 @@ const handleCancel = () => {
     </VCardText>
 
     <VCardActions class="pa-4 px-6">
-      <VSpacer />
-      <VBtn color="secondary" variant="outlined" @click="handleCancel">
-        Cancelar
-      </VBtn>
-      <VBtn
-        color="primary"
-        variant="flat"
-        :loading="loading"
-        @click="handleSubmit"
-      >
-        Registrar
-      </VBtn>
+      <VRow>
+        <VCol cols="6">
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            @click="handleCancel"
+            block
+          >
+            Cancelar
+          </VBtn>
+        </VCol>
+        <VCol cols="6">
+          <VBtn
+            color="primary"
+            variant="flat"
+            :loading="loading"
+            @click="handleSubmit"
+            block
+          >
+            Registrar
+          </VBtn>
+        </VCol>
+      </VRow>
     </VCardActions>
   </VCard>
 </template>

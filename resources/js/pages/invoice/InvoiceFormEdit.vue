@@ -41,33 +41,76 @@ const loadingSuppliers = ref(false);
 const loadingRules = ref(false);
 const loadingInvoice = ref(false);
 
-const getExchangeRate = (currency) => {
-  if (!currency || currency === "USD") return 1;
+const shouldShowExchangeRate = computed(() => {
+  return formData.value.currency === "Bs" || formData.value.currency === "COP";
+});
 
-  const currencyMapping = { Bs: "BS", COP: "COP" };
-  const mappedCurrency = currencyMapping[currency] || currency;
-  const rate = props.exchangeRates.find(
-    (r) => r.currency_code === mappedCurrency
-  );
-  return rate ? parseFloat(rate.rate) : 1;
-};
+const calculatedTaxAmount = computed(() => {
+  const base = Number(formData.value.taxable_base) || 0;
+  return (base * 0.16).toFixed(2);
+});
 
-const convertAmount = (usdAmount, targetCurrency) => {
-  if (!targetCurrency || targetCurrency === "USD" || !usdAmount) {
-    return usdAmount;
+watch(
+  () => formData.value.taxable_base,
+  () => {
+    formData.value.tax_amount = calculatedTaxAmount.value;
   }
-  const rate = getExchangeRate(targetCurrency);
-  return parseFloat((usdAmount * rate).toFixed(2));
-};
+);
 
-const convertAmountToUSD = (localAmount, fromCurrency) => {
-  if (!fromCurrency || fromCurrency === "USD" || !localAmount) {
-    return localAmount;
+const calculatedTotalAmount = computed(() => {
+  const excento = Number(formData.value.exempt_amount) || 0;
+  const base = Number(formData.value.taxable_base) || 0;
+  const impuesto = Number(formData.value.tax_amount) || 0;
+  return (excento + base + impuesto).toFixed(2);
+});
+
+watch(
+  () => [
+    formData.value.exempt_amount,
+    formData.value.taxable_base,
+    formData.value.tax_amount,
+  ],
+  () => {
+    formData.value.total_amount = calculatedTotalAmount.value;
   }
-  const rate = getExchangeRate(fromCurrency);
-  if (rate === 0) return 0;
-  return parseFloat((localAmount / rate).toFixed(2));
-};
+);
+
+const calculatedTotalUsd = computed(() => {
+  const totalAmount = Number(formData.value.total_amount) || 0;
+  const currency = formData.value.currency;
+  const exchangeRate = Number(formData.value.exchange_rate) || 0;
+
+  if (currency === "USD") {
+    return totalAmount.toFixed(2);
+  }
+
+  if (exchangeRate > 0) {
+    return (totalAmount / exchangeRate).toFixed(2);
+  }
+
+  return "0.00";
+});
+
+watch(
+  () => [
+    formData.value.total_amount,
+    formData.value.currency,
+    formData.value.exchange_rate,
+  ],
+  () => {
+    formData.value.total_usd = calculatedTotalUsd.value;
+  },
+  { deep: true }
+);
+
+watch(
+  () => formData.value.currency,
+  (newCurrency) => {
+    if (newCurrency === "USD") {
+      formData.value.exchange_rate = 0;
+    }
+  }
+);
 
 const getCurrencySymbol = computed(() => {
   const symbolMap = {
@@ -96,48 +139,12 @@ watch(
   }
 );
 
-const calculatedTotalAmount = computed(() => {
-  const excento = Number(formData.value.exempt_amount) || 0;
-  const base = Number(formData.value.taxable_base) || 0;
-  const impuesto = Number(formData.value.tax_amount) || 0;
-  return parseFloat((excento + base + impuesto).toFixed(2));
-});
-
-watch(
-  () => [
-    formData.value.exempt_amount,
-    formData.value.taxable_base,
-    formData.value.tax_amount,
-  ],
-  () => {
-    formData.value.total_amount = calculatedTotalAmount.value;
-  }
-);
-
-const calculatedTotalUsd = computed(() => {
-  const totalLocal = Number(formData.value.total_amount) || 0;
-  return convertAmountToUSD(totalLocal, formData.value.currency);
-});
-
-watch(
-  () => [
-    formData.value.total_amount,
-    formData.value.currency,
-    props.exchangeRates,
-  ],
-  () => {
-    formData.value.total_usd = calculatedTotalUsd.value;
-  },
-  { deep: true }
-);
-
 const fetchInvoiceData = async () => {
   loadingInvoice.value = true;
   try {
     const response = await axios.get(`/invoices/${props.invoiceId}`);
     const invoice = response.data.data;
 
-    const targetCurrency = invoice.currency;
     formData.value = {
       supplier_id: invoice.supplier_id,
       invoice_number: invoice.invoice_number,
@@ -147,10 +154,10 @@ const fetchInvoiceData = async () => {
       received_date: invoice.received_date,
       currency: invoice.currency,
       discount_rule_id: invoice.discount_rule_id,
-      exempt_amount: convertAmount(invoice.exempt_amount, targetCurrency),
-      taxable_base: convertAmount(invoice.taxable_base, targetCurrency),
-      tax_amount: convertAmount(invoice.tax_amount, targetCurrency),
-      total_amount: convertAmount(invoice.total_amount, targetCurrency),
+      exempt_amount: invoice.exempt_amount,
+      taxable_base: invoice.taxable_base,
+      tax_amount: invoice.tax_amount,
+      total_amount: invoice.total_amount,
       exchange_rate: invoice.exchange_rate,
       total_usd: invoice.total_usd,
     };
@@ -198,13 +205,8 @@ const fetchDiscountRules = async (supplierId) => {
 const handleSubmit = async () => {
   loading.value = true;
 
-  const currency = formData.value.currency;
   const payload = {
     ...formData.value,
-    exempt_amount: convertAmountToUSD(formData.value.exempt_amount, currency),
-    taxable_base: convertAmountToUSD(formData.value.taxable_base, currency),
-    tax_amount: convertAmountToUSD(formData.value.tax_amount, currency),
-    total_amount: convertAmountToUSD(formData.value.total_amount, currency),
   };
 
   try {
@@ -250,7 +252,7 @@ const handleCancel = () => {
       <VCardText>
         <VForm @submit.prevent="handleSubmit">
           <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VAutocomplete
                 v-model="formData.supplier_id"
                 :items="suppliers"
@@ -261,13 +263,13 @@ const handleCancel = () => {
                 placeholder="Busque un proveedor"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.invoice_number"
                 label="N° de factura"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.control_number"
                 label="N° de Control"
@@ -276,41 +278,7 @@ const handleCancel = () => {
           </VRow>
 
           <VRow>
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="formData.discount_rule_id"
-                :items="discountRules"
-                :loading="loadingRules"
-                :disabled="!formData.supplier_id"
-                item-title="description"
-                item-value="id"
-                label="Regla de Descuento (Pronto Pago)"
-                placeholder="Seleccione una regla"
-                clearable
-              />
-            </VCol>
-          </VRow>
-
-          <VDivider class="my-4" />
-
-          <VRow>
-            <VCol cols="12" md="3">
-              <VSelect
-                v-model="formData.currency"
-                :items="currencyOptions"
-                label="Moneda de la Factura"
-                item-title="title"
-                item-value="value"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model.number="formData.exchange_rate"
-                label="Tasa de Cambio"
-                type="number"
-              />
-            </VCol>
-            <VCol cols="12" md="2">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.exp_date"
                 label="Fecha de Vencimiento"
@@ -318,7 +286,7 @@ const handleCancel = () => {
                 placeholder="YYYY-MM-DD"
               />
             </VCol>
-            <VCol cols="12" md="2">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.payment_date"
                 label="F. Límite de Pago"
@@ -326,7 +294,7 @@ const handleCancel = () => {
                 placeholder="YYYY-MM-DD"
               />
             </VCol>
-            <VCol cols="12" md="2">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.received_date"
                 label="F. de Recibo"
@@ -336,8 +304,22 @@ const handleCancel = () => {
             </VCol>
           </VRow>
 
+          <VDivider class="my-4" />
+
           <VRow>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="formData.currency"
+                :items="currencyOptions"
+                label="Moneda de la Factura"
+                item-title="title"
+                item-value="value"
+              />
+            </VCol>
+          </VRow>
+
+          <VRow>
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.exempt_amount"
                 label="Monto Excento IVA"
@@ -345,7 +327,7 @@ const handleCancel = () => {
                 :prefix="getCurrencySymbol"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.taxable_base"
                 label="Base Imponible 16%"
@@ -353,26 +335,35 @@ const handleCancel = () => {
                 :prefix="getCurrencySymbol"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.tax_amount"
                 label="Impuesto 16%"
                 type="number"
                 :prefix="getCurrencySymbol"
+                readonly
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.total_amount"
                 label="Total Factura"
                 type="number"
                 :prefix="getCurrencySymbol"
+                readonly
               />
             </VCol>
-            <VCol cols="12" md="3" offset-md="9">
+            <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
+              <VTextField
+                v-model.number="formData.exchange_rate"
+                label="Tasa de Cambio"
+                type="number"
+              />
+            </VCol>
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.total_usd"
-                label="Total de Referencia (USD)"
+                label="Total Referencia (USD)"
                 type="number"
                 prefix="$"
                 readonly
@@ -383,18 +374,29 @@ const handleCancel = () => {
       </VCardText>
 
       <VCardActions class="pa-4 px-6">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="handleCancel">
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          :loading="loading"
-          @click="handleSubmit"
-        >
-          {{ isEditMode ? "Actualizar" : "Registrar" }}
-        </VBtn>
+        <VRow>
+          <VCol cols="6">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              @click="handleCancel"
+              block
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6">
+            <VBtn
+              color="primary"
+              variant="flat"
+              :loading="loading"
+              @click="handleSubmit"
+              block
+            >
+              {{ isEditMode ? "Actualizar" : "Registrar" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </div>

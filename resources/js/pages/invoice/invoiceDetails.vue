@@ -9,7 +9,6 @@ import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
-  exchangeRates: { type: Array, default: () => [] },
   mode: { type: String, default: "editable" },
 });
 const emit = defineEmits(["back-to-list"]);
@@ -48,52 +47,35 @@ const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
 
-const getExchangeRate = (currency) => {
-  if (!currency || currency === "USD") return 1;
-
-  const currencyMapping = {
-    Bs: "BS",
-    BS: "BS",
-    COP: "COP",
-    USD: "USD",
-  };
-
-  const mappedCurrency = currencyMapping[currency] || currency;
-  const rate = props.exchangeRates.find(
-    (rate) => rate.currency_code === mappedCurrency
-  );
-
-  return rate ? parseFloat(rate.rate) : 1;
-};
-
-const convertAmount = (usdAmount, targetCurrency) => {
-  if (!targetCurrency || targetCurrency === "USD") {
-    return usdAmount;
-  }
-
-  const rate = getExchangeRate(targetCurrency);
-  return usdAmount * rate;
-};
-
 const processedInvoiceDetails = computed(() => {
-  if (!invoice.value) return invoiceDetails.value;
+  if (!invoice.value || !invoiceDetails.value) return [];
 
   return invoiceDetails.value.map((detail) => {
-    const convertedUnitCost = convertAmount(
-      detail.unit_cost,
-      invoice.value.currency
-    );
-    const convertedTotalCost = convertAmount(
-      detail.total_cost || detail.quantity * detail.unit_cost,
-      invoice.value.currency
-    );
+    const unitCost = detail.unit_cost || 0;
+    const totalCost = detail.total_cost || (detail.quantity || 0) * unitCost;
+
+    const rate = parseFloat(invoice.value.exchange_rate);
+    const isUsd = invoice.value.currency === "USD";
+    const hasValidRate = rate && rate > 0;
+
+    const unitCostUsd = isUsd || !hasValidRate ? unitCost : unitCost / rate;
+    const totalCostUsd = isUsd || !hasValidRate ? totalCost : totalCost / rate;
 
     return {
       ...detail,
-      converted_unit_cost: convertedUnitCost,
-      converted_total_cost: convertedTotalCost,
+      unit_cost: unitCost,
+      total_cost: totalCost,
+      unit_cost_usd: unitCostUsd,
+      total_cost_usd: totalCostUsd,
     };
   });
+});
+
+const totalDetailsAmount = computed(() => {
+  return processedInvoiceDetails.value.reduce(
+    (total, item) => total + item.total_cost,
+    0
+  );
 });
 
 onMounted(async () => {
@@ -128,7 +110,7 @@ const fetchInvoiceData = async (id) => {
 const fetchInvoiceDetails = async (id) => {
   loadingDetails.value = true;
   try {
-    const response = await axios.get(`/invoices/${id}/suggested-details`);
+    const response = await axios.get(`/invoices/${id}/details`);
     invoiceDetails.value = response.data.data ?? [];
   } catch (error) {
     console.error("Error al cargar los detalles de la factura:", error);
@@ -449,35 +431,6 @@ const getCurrencySymbol = () => {
   return symbolMap[invoice.value.currency] || "Bs.";
 };
 
-const getFormattedAmount = (fieldModel, value) => {
-  if (!invoice.value) return value;
-
-  if (fieldModel === "exchange_rate") {
-    return formatNumber(value);
-  } else if (fieldModel === "total_usd") {
-    return new Intl.NumberFormat("es-VE", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } else {
-    const convertedValue = convertAmount(value, invoice.value.currency);
-    return formatCurrency(convertedValue);
-  }
-};
-
-const totalLoadedConverted = computed(() => {
-  if (!invoice.value) return 0;
-
-  const totalUSD = processedInvoiceDetails.value.reduce(
-    (total, item) => total + (item.quantity || 0) * (item.unit_cost || 0),
-    0
-  );
-
-  return convertAmount(totalUSD, invoice.value.currency);
-});
-
 const detailsHeaders = [
   { title: "Descripción", key: "product.name", sortable: false, width: "25%" },
   {
@@ -553,8 +506,8 @@ const detailsHeaders = [
         <div>
           <strong>Factura en {{ invoice.currency }}</strong>
           <div class="text-caption mt-1">
-            Los montos se muestran convertidos desde USD usando el tipo de
-            cambio actual
+            Se muestra el equivalente en USD calculado con la tasa de la factura
+            ({{ formatNumber(invoice.exchange_rate) }})
           </div>
         </div>
       </VAlert>
@@ -680,7 +633,7 @@ const detailsHeaders = [
                 {{ invoice.currency }}. Total Cargado
               </span>
               <VChip color="error" label>
-                {{ formatCurrency(totalLoadedConverted) }}
+                {{ formatCurrency(totalDetailsAmount) }}
               </VChip>
             </div>
 
@@ -757,13 +710,13 @@ const detailsHeaders = [
                 />
                 <div v-else class="d-flex flex-column align-end">
                   <span class="font-weight-medium">
-                    {{ formatCurrency(item.converted_unit_cost) }}
+                    {{ formatCurrency(item.unit_cost) }}
                   </span>
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
                   >
-                    {{ formatCurrency(item.unit_cost, "USD") }}
+                    {{ formatCurrency(item.unit_cost_usd, "USD") }}
                   </span>
                 </div>
               </template>
@@ -775,28 +728,20 @@ const detailsHeaders = [
                 >
                   <span>{{
                     formatCurrency(
-                      convertAmount(
-                        (editedDetailData.quantity || 0) *
-                          (editedDetailData.unit_cost || 0),
-                        invoice.currency
-                      )
+                      (editedDetailData.quantity || 0) *
+                        (editedDetailData.unit_cost || 0)
                     )
                   }}</span>
                 </div>
                 <div v-else class="d-flex flex-column align-end">
                   <span class="font-weight-medium">
-                    {{ formatCurrency(item.converted_total_cost) }}
+                    {{ formatCurrency(item.total_cost) }}
                   </span>
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
                   >
-                    {{
-                      formatCurrency(
-                        (item.quantity || 0) * (item.unit_cost || 0),
-                        "USD"
-                      )
-                    }}
+                    {{ formatCurrency(item.total_cost_usd, "USD") }}
                   </span>
                 </div>
               </template>
@@ -829,37 +774,49 @@ const detailsHeaders = [
 
           <VCardText class="totals-section">
             <div class="totals-list">
-              <div
-                v-for="field in [
-                  {
-                    label: 'Monto Total Excento de IVA',
-                    model: 'exempt_amount',
-                  },
-                  {
-                    label: 'Base Imponible segun Alicuota 16 %',
-                    model: 'taxable_base',
-                  },
-                  {
-                    label: 'Impuesto segun Alicuota 16 %',
-                    model: 'tax_amount',
-                  },
-                  {
-                    label: 'Total Factura',
-                    model: 'total_amount',
-                    class: 'font-weight-bold',
-                  },
-                  { label: 'Tasa BCV', model: 'exchange_rate' },
-                  { label: 'Total USD', model: 'total_usd' },
-                ]"
-                :key="field.model"
-                class="total-item-row"
-              >
+              <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
-                  >{{ field.label }}:</span
+                  >Monto Total Excento de IVA:</span
                 >
-                <span :class="['text-h6 ms-2', field.class]">
-                  {{ getFormattedAmount(field.model, invoice[field.model]) }}
-                </span>
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.exempt_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Base Imponible segun Alicuota 16 %:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.taxable_base)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Impuesto segun Alicuota 16 %:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.tax_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Total Factura:</span
+                >
+                <span class="text-h6 ms-2 font-weight-bold">{{
+                  formatCurrency(invoice.total_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span>
+                <span class="text-h6 ms-2">{{
+                  formatNumber(invoice.exchange_rate)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled">Total USD:</span>
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.total_usd, "USD")
+                }}</span>
               </div>
             </div>
           </VCardText>
