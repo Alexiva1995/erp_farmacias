@@ -102,6 +102,7 @@ Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot'
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
 Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
+Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);
 
 Route::get('/products/count', [InventoryCycleController::class, 'getProductCount']);
 Route::post('/products/count/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
@@ -160,7 +161,7 @@ Route::prefix("tpv")->group(function () {
 
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
-    Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
     Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
@@ -308,8 +309,8 @@ Route::prefix("supplier-laboratories")->group(function () {
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
     Route::prefix("generate-order")->group(function () {
-        Route::post("/creat",                    [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-        Route::post("/products-to-request",      [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
     });
 });
 

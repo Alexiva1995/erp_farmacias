@@ -35,6 +35,7 @@ const lotsForEditing = ref([]);
 const productNameToEdit = ref("");
 const productIdToEdit = ref(null);
 const productStockToEdit = ref(0);
+const isLoadingEditData = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -181,6 +182,8 @@ const handleCreateLot = async (lotData) => {
 };
 
 const handleEditLot = async (lotToEdit) => {
+  isLoadingEditData.value = true;
+
   try {
     const product = lotToEdit.product;
 
@@ -188,36 +191,47 @@ const handleEditLot = async (lotToEdit) => {
     productIdToEdit.value = product.id;
     productStockToEdit.value = product.stock;
 
-    lotsForEditing.value = productLots.value.filter(
-      (lot) => lot.product.id === product.id
-    );
+    const [lotsResponse, stockResponse] = await Promise.all([
+      axios.get(`/lots/product/${product.id}`),
+      axios.get(`/lots/available-stock/${product.id}`),
+    ]);
 
-    try {
-      const stockResponse = await axios.get(
-        `/lots/available-stock/${product.id}`
-      );
-      const stockInfo = stockResponse.data.data;
+    lotsForEditing.value = lotsResponse.data?.data?.data || [];
 
-      if (stockInfo.product_stock !== productStockToEdit.value) {
-        productStockToEdit.value = stockInfo.product_stock;
-      }
+    const stockInfo = stockResponse.data.data;
+    if (stockInfo.product_stock !== productStockToEdit.value) {
+      productStockToEdit.value = stockInfo.product_stock;
+    }
 
-      if (stockInfo.has_discrepancy && stockInfo.available_stock > 0) {
+    if (stockInfo.has_discrepancy) {
+      const lotsSum = stockInfo.lots_sum;
+      const productStock = stockInfo.product_stock;
+
+      if (lotsSum < productStock) {
         toast.info(
           `Este producto tiene ${stockInfo.available_stock} unidades disponibles para asignar en lotes.`
         );
+      } else if (lotsSum > productStock) {
+        toast.warning(
+          `Este producto tiene ${
+            lotsSum - productStock
+          } unidades de exceso en lotes. El stock del producto es ${productStock}.`
+        );
       }
-    } catch (stockError) {
-      console.warn(
-        "No se pudo obtener información actualizada de stock:",
-        stockError
-      );
     }
 
+    console.log("Lotes cargados para edición:", lotsForEditing.value);
     isEditDialogVisible.value = true;
   } catch (error) {
     console.error("Error al preparar la edición del lote:", error);
-    toast.error("No se pudo abrir el editor de lotes.");
+
+    if (error.response?.status === 404) {
+      toast.error("No se encontraron lotes para este producto.");
+    } else {
+      toast.error("No se pudo abrir el editor de lotes.");
+    }
+  } finally {
+    isLoadingEditData.value = false;
   }
 };
 
@@ -288,6 +302,7 @@ const handleUpdateLot = async (lotsToSave) => {
       :loading="loading"
       :items-per-page="itemsPerPage"
       :page="page"
+      :edit-loading="isLoadingEditData"
       @update:options="updateTableOptions"
       @edit-lot="handleEditLot"
     />
