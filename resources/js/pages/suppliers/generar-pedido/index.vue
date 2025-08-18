@@ -24,10 +24,12 @@ const module=reactive({
   deltalleOrder:[],
 })
 
+let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
+
 
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
-const groups= ref(JSON.parse(route.query.groups));// grupos
+const groups= ref(gruposList);// grupos
 const laboratoryId= ref(route.query.laboratoryId);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
