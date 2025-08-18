@@ -6,7 +6,7 @@ const props= defineProps({
 })
 
 const productosTable = computed(() => {
-  return props.list?.filter(pro => pro.increase == false) || [];
+  return props.list?.filter(pro => pro.increase == false && pro.tolerance == 20) || [];
 });
 </script>
 
@@ -51,12 +51,12 @@ const productosTable = computed(() => {
           </td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
-            {{ item.product.unit_cost }}
+            {{ parseFloat(item.product.unit_cost).toFixed(2) }}
           </td>
           <td>{{ item.product.stock }}</td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
-            {{ item.productSupplier.unit_cost }}
+            {{ parseFloat(item.productSupplier.unit_cost).toFixed(2) }}
           </td>
           <td class="row">
             <VTextField

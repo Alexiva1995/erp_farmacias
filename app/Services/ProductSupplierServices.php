@@ -113,7 +113,7 @@ class ProductSupplierServices implements ProductSupplier
             $unitCostProductSupplier = (float)$replenishTheProduct["productSupplier"]->unit_cost;
 
             // si el prducto tiene un rango de precion entre el 0 o 4 manejamos un 20%
-            if ($unitCostProductSupplier > 0 || $unitCostProductSupplier < 4) {
+            if ($unitCostProductSupplier > 0 && $unitCostProductSupplier <= 4) {
                 $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 20);
                 $replenishTheProduct["purchasingOpportunity"] = $this->checkPurchaseOpportunity($replenishTheProduct["percentageIncrease"], 0);
                 $replenishTheProduct["tolerance"] = 20;

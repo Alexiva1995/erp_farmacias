@@ -299,7 +299,8 @@ async function realizarCompra(){
             >
               <VCol> <span>Total:</span> </VCol>
               <VCol class="text-end">
-                <VIcon icon="tabler-currency-dollar" /> {{ TOTAL_ORDER }}
+                <VIcon icon="tabler-currency-dollar" />
+                {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
               </VCol>
             </VRow>
           </VCard>
