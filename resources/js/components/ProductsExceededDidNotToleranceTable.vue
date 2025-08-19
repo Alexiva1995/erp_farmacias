@@ -6,7 +6,7 @@ const props= defineProps({
 })
 
 const productosTable = computed(() => {
-  return props.list?.filter(pro => pro.increase == false && pro.tolerance == 20) || [];
+  return props.list?.filter(pro => pro.increase == false) || [];
 });
 </script>
 
