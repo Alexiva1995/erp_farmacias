@@ -16,6 +16,10 @@ export default [
       {
         title: 'IA Assistence de Pedidos',
         to: 'suppliers-supplieriaorderassistant',
+      },
+      {
+        title: 'IA Assistance Report',
+        to: 'suppliers-supplieriaorderassistantreport',
       }
     ],
   },

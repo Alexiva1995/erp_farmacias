@@ -14,6 +14,11 @@ class ProductServices implements Product
         protected ProductRepository $productRepository
     ) {}
 
+    public function consultProduct(): Collection
+    {
+        return $this->productRepository->consultarTodosLosProductOrdenaPor();
+    }
+
     public function filtrarStock(array $filtros): LengthAwarePaginator
     {
         return $this->productRepository->filtrarProductforStocktWithPaginate($filtros, $filtros["itemsPerPage"]);

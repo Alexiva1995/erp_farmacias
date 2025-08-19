@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 class ProductRepository
 {
 
+    public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
+    {
+        return Product::query()->orderBy($sortBy, $orderBy)->get();
+    }
+
     public function builerFiltrarProductforStock($filtros): Builder
     {
 
@@ -392,6 +397,9 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
+    /**
+     * estas consultas el
+     */
     public function builerFiltrarProductForIaOrderAssistantTypeSales($filtros): Builder
     {
         // solicitar = stock - ventas individuales

@@ -10,6 +10,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 interface Product
 {
 
+    public function consultProduct(): Collection;
     public function filtrarStock(array $filtros): LengthAwarePaginator;
     public function filtrarStockWithoutPaginate(array $filtros): Collection;
     public function exportExcel(array $filtros): StockProductExport;
