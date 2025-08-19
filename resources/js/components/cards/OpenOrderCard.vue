@@ -76,6 +76,7 @@ const emit = defineEmits([
   "remove-item",
   "cancelar-order",
   "open-buys-modal",
+  "reserve-order",
   "add-quotation-products",
 ]);
 
@@ -199,7 +200,20 @@ const handleCompleteOrder = () => {
 };
 
 const handleTReserveOrder = () => {
- // emit("open-buys-modal");
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea Reservar la Orden!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      emit("reserve-order");
+    }
+  });
 };
 
 const fetchQuotationProducts = async (id) => {
@@ -398,36 +412,32 @@ const fetchQuotationProducts = async (id) => {
       </div>
     </VCardActions>
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-1" style="padding-bottom: 5px;">
-      <VRow>
-        <VCol cols="2">
+    <VCardActions class="p-4 d-flex justify-space-between w-50" style="padding-bottom: 5px;">
+   
           <VBtn
             color="secondary"
             variant="outlined"
             @click="hadleCancelarOrder"
-            block
+            class="w-50"
             >Cancelar</VBtn
           >
-        </VCol>
-        <VCol cols="2">
+
           <VBtn
             color="primary"
             variant="flat"
             @click="handleCompleteOrder"
-            block
+            class="w-50"
+            
             >Completar</VBtn
           >
-        </VCol>
-        <VCol cols="2">
           <VBtn
             color="success"
             variant="flat"
             @click="handleTReserveOrder"
-            block
+            class="w-50"
+            
             >Reservar</VBtn
           >
-        </VCol>
-      </VRow>
     </VCardActions>
   </VCard>
 </template>

@@ -101,9 +101,9 @@ const fetchProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-     ...(currentGroupId.value !== null && {
-            groupId: currentGroupId.value,
-        }),
+    ...(currentGroupId.value !== null && {
+      groupId: currentGroupId.value,
+    }),
     isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
@@ -295,7 +295,7 @@ const verifyClient = async (identification) => {
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
-    console.log(responseData)
+    console.log(responseData);
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -437,10 +437,10 @@ const totalOrderAmount = computed(() => {
 
 const myCalculatedTotal = computed(() => {
   let valor = totalProductsAmount.value + totalIVAAmount.value;
-    if (selectedDisplayCurrency.value === 'COP') {
-      return roundUpToNearestHundred(valor);
-   }
-    return parseFloat(valor.toFixed(2));
+  if (selectedDisplayCurrency.value === "COP") {
+    return roundUpToNearestHundred(valor);
+  }
+  return parseFloat(valor.toFixed(2));
 });
 
 const totalIVAAmount = computed(() => {
@@ -502,7 +502,10 @@ const updateOrderTotalsInBackend = async () => {
     return;
   }
 
-  let total = selectedDisplayCurrency.value == 'COP' ? roundUpToNearestHundred(totalOrderAmount.value) : totalOrderAmount.value
+  let total =
+    selectedDisplayCurrency.value == "COP"
+      ? roundUpToNearestHundred(totalOrderAmount.value)
+      : totalOrderAmount.value;
 
   try {
     const payload = {
@@ -641,7 +644,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
       );
     } else {
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
-      console.log(itemToAdd)
+      console.log(itemToAdd);
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }
@@ -755,24 +758,45 @@ const cancelarOrder = async () => {
   }
 };
 
-const openBuysModal = () => {
-    showBuysModal.value = true;
+const reserverOrder = async () => {
+  try {
+
+  
+  } catch (error) {
+    console.error(
+      "Error al reservar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al reservar la orden. Inténtalo de nuevo.";
+    toast.error(errorMessage);
+  }
 };
 
+const openBuysModal = () => {
+  showBuysModal.value = true;
+};
 
 const closeBuysModal = () => {
-    showBuysModal.value = false;
+  showBuysModal.value = false;
 };
 
-const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,changeAmountUSD, switchStates) => {
-
+const handleBuysCompletion = async (
+  orderId,
+  paymentsData,
+  credit,
+  changeAmount,
+  changeAmountUSD,
+  switchStates
+) => {
   try {
     const payload = {
       order_id: orderId,
       payments: paymentsData,
-      total_amount: myCalculatedTotal.value, 
-      currency: selectedDisplayCurrency.value, 
-      client_id: selectedClient.value?.id, 
+      total_amount: myCalculatedTotal.value,
+      currency: selectedDisplayCurrency.value,
+      client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
       balance_used: switchStates.balance_switch,
       generate_invoice: switchStates.invoice_switch,
@@ -781,7 +805,10 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       changeAmountUSD: changeAmountUSD,
     };
 
-    const response = await axios.post(`/tpv/orders/${orderId}/complete`, payload);
+    const response = await axios.post(
+      `/tpv/orders/${orderId}/complete`,
+      payload
+    );
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
 
@@ -790,46 +817,58 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       creditAmountForPrint.value = myCalculatedTotal.value;
       creditForPrint.value = credit;
       await fetchProducts();
-      showBuysModal.value = false; 
+      showBuysModal.value = false;
       isPrinting.value = true;
       await nextTick();
       const printContents = document.getElementById("orderPrint");
       if (printContents) {
-      const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
-      const styleSheets = document.styleSheets;
-      for (let i = 0; i < styleSheets.length; i++) {
-        const sheet = styleSheets[i];
-        try {
-          if (sheet.cssRules) {
-            let cssText = '';
-            for (let j = 0; j < sheet.cssRules.length; j++) {
-              cssText += sheet.cssRules[j].cssText;
+        const printWindow = window.open("", "", "height=600,width=800");
+        printWindow.document.write(
+          "<html><head><title>Farmacia Barrio Sucre</title>"
+        );
+        const styleSheets = document.styleSheets;
+        for (let i = 0; i < styleSheets.length; i++) {
+          const sheet = styleSheets[i];
+          try {
+            if (sheet.cssRules) {
+              let cssText = "";
+              for (let j = 0; j < sheet.cssRules.length; j++) {
+                cssText += sheet.cssRules[j].cssText;
+              }
+              printWindow.document.write(`<style>${cssText}</style>`);
+            } else if (sheet.href) {
+              printWindow.document.write(
+                `<link rel="stylesheet" href="${sheet.href}">`
+              );
             }
-            printWindow.document.write(`<style>${cssText}</style>`);
-          } else if (sheet.href) {
-            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          } catch (e) {
+            console.warn(
+              "No se pudo acceder a la hoja de estilo:",
+              sheet.href || sheet,
+              e
+            );
           }
-        } catch (e) {
-          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
         }
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(printContents.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      } else {
+        console.warn(
+          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        );
+        window.print();
       }
-      printWindow.document.write("</head><body>");
-      printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
     } else {
-      console.warn("Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
-      window.print();
+      toast.error(
+        `Error inesperado al finalizar la compra: ${
+          response.data.message || "Intente de nuevo."
+        }`
+      );
     }
-
-    }else{
-      toast.error(`Error inesperado al finalizar la compra: ${response.data.message || 'Intente de nuevo.'}`);  
-    }
-
 
     setTimeout(() => {
       isPrinting.value = false;
@@ -843,10 +882,14 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
       clientIdentification.value = "";
       creditForPrint.value = false;
     }, 500);
-
   } catch (error) {
-    console.error("Error al finalizar la compra:", error.response ? error.response.data : error.message);
-    const errorMessage = error.response?.data?.message || "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
+    console.error(
+      "Error al finalizar la compra:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
     toast.error(errorMessage);
     isPrinting.value = false;
     paymentsForPrint.value = [];
@@ -856,9 +899,8 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
   }
 };
 
-
 const fetchGroupProducts = async (groupId) => {
-    if (!groupId) {
+  if (!groupId) {
     toast.info("Este producto no pertenece a un grupo.");
     if (currentGroupId.value !== null) {
       currentGroupId.value = null;
@@ -868,7 +910,7 @@ const fetchGroupProducts = async (groupId) => {
   currentGroupId.value = groupId;
 };
 const handleBackFromGroupView = () => {
-    currentGroupId.value = null;
+  currentGroupId.value = null;
 };
 
 const handleAddQuotationProducts = async (productsFromQuotation) => {
@@ -915,6 +957,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         @update-quantity="updateOrderItemQuantity"
         @remove-item="removeOrderItem"
         @cancelar-order="cancelarOrder"
+        @reserve-order="reserverOrder"
         @open-buys-modal="openBuysModal"
         @add-quotation-products="handleAddQuotationProducts"
       />
@@ -937,7 +980,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
-      @back="handleBackFromGroupView" 
+      @back="handleBackFromGroupView"
     >
     </OrderFilters>
 
@@ -963,19 +1006,20 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
       @clearErrorForm="clearFormErrors"
     />
 
-
     <BuysModal
-            v-model:is-dialog-visible="showBuysModal"
-            :order-products="orderItems"
-            :order-data="openOrderData"
-            :total-amount="myCalculatedTotal"
-            :selected-currency="selectedDisplayCurrency"
-            @modal-closed="closeBuysModal"
-            @purchase-completed="handleBuysCompletion"
-        />
+      v-model:is-dialog-visible="showBuysModal"
+      :order-products="orderItems"
+      :order-data="openOrderData"
+      :total-amount="myCalculatedTotal"
+      :selected-currency="selectedDisplayCurrency"
+      @modal-closed="closeBuysModal"
+      @purchase-completed="handleBuysCompletion"
+    />
 
-
-     <div id="orderPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
+    <div
+      id="orderPrint"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
       <OrderTicket
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
@@ -988,6 +1032,5 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         :credit="creditForPrint"
       />
     </div>
-
   </div>
 </template>
