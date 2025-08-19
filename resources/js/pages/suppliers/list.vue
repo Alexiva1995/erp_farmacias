@@ -225,18 +225,10 @@ const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
-    const { data } = await axios.get(`/suppliers/${supplier.id}/connection`);
-
-    if (data.status === "ok") {
-      toast.success(
-        `Se añadieron ${data.count_product} productos y ${data.count_invoice} facturas del proveedor ${supplier.name}`
-      );
-    } else {
-      toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
-    }
+    toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
+    await axios.get(`/suppliers/${supplier.id}/connection`);    
   } catch (error) {
-    console.error(`Error al verificar API de ${supplier.name}:`, error);
-    toast.error(`No se pudo verificar la API de ${supplier.name}`);
+    toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
   } finally {
     checkingApiSupplierId.value = null;
   }
