@@ -4,6 +4,10 @@ const props = defineProps({
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
   stock: String,
+  selectedLaboratory: String,
+  selectedGroup: String,
+  laboratories: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -11,6 +15,8 @@ const emit = defineEmits([
   "update:tipo_de_filtracion",
   "update:lapso_de_tiempo",
   "update:stock",
+  "update:selectedLaboratory",
+  "update:selectedGroup",
   "clear",
   "generarPedido",
 ]);
@@ -44,6 +50,31 @@ const stockOpciones = [
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
+            :model-value="props.selectedLaboratory"
+            :items="props.laboratories"
+            label="Laboratorio"
+            placeholder="Escribe para buscar un laboratorio"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:selectedLaboratory', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
+            :model-value="props.selectedGroup"
+            :items="props.groups"
+            label="Grupos"
+            placeholder="Escribe para buscar un grupo"
+            item-title="name"
+            item-value="id"
+            clearable
+            multiple="true"
+            @update:model-value="emit('update:selectedGroup', $event)"
+          />
+        </VCol>
         <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.tipo_de_vista"

@@ -65,6 +65,7 @@ Route::post('/groups', [GroupController::class, 'store']);
 Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+Route::get('/groups/consult-all', [GroupController::class, 'consultAll']);
 
 
 // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
