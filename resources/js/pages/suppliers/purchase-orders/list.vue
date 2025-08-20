@@ -15,6 +15,7 @@ const itemsPerPage = ref(10);
 const totalPurchaseOrders = ref(0);
 
 const isEditDialogVisible = ref(false);
+const isShowDialogVisible = ref(false);
 
 const fetchSuppliers = async () => {
   try {
@@ -79,6 +80,11 @@ const handleEditPurchaseOrder = (purchaseOrder) => {
   isEditDialogVisible.value = true;
 };
 
+const handleShowPurchaseOrder = (purchaseOrder) => {
+  currentPurchaseOrder.value = { ...purchaseOrder };
+  isShowDialogVisible.value = true;
+};
+
 const handleDeletePurchaseOrderDetail = async (purchaseOrderDetailId) => {
   try {
     await axios.delete(`/suppliers/purchase-orders/details/${purchaseOrderDetailId}`);
@@ -140,9 +146,11 @@ const handleSaveDetails = async (detailsData) => {
       :errors="formErrors"
       @clearErrors="handleClearErrors"
       @delete-detail="handleDeletePurchaseOrderDetail"
-      @update-details="handleUpdatePurchaseOrderDetails"
       @save="handleSaveDetails"
     />
+
+    <PurchaseOrderShowDialog v-model="isShowDialogVisible" :purchaseOrder="currentPurchaseOrder" />
+
     <PurchaseOrdersFilter
       v-model:selectedSupplier="selectedSupplier"
       :suppliers="suppliers"
@@ -158,6 +166,7 @@ const handleSaveDetails = async (detailsData) => {
       @update:options="updateTableOptions"
       @edit-purchaseOrder="handleEditPurchaseOrder"
       @delete-purchaseOrder="handleDeletePurchaseOrder"
+      @show-purchaseOrder="handleShowPurchaseOrder"
     />
   </div>
 </template>

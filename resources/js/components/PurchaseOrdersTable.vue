@@ -7,7 +7,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "delete-purchaseOrder"]);
+const emit = defineEmits(["update:options", "delete-purchaseOrder", "show-purchaseOrder"]);
 
 const headers = [
   { title: "Id", key: "id", sortable: true },
@@ -66,7 +66,7 @@ const headers = [
         </VTooltip>
         <VTooltip text="Ver Órden de Compra" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-supplier', item)">
+            <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)">
               <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>

@@ -300,6 +300,7 @@ Route::prefix("suppliers")->group(function () {
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
+    Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
     Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
     Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
     Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);

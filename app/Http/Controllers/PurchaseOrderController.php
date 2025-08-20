@@ -6,6 +6,7 @@ use App\AutoOrderDetailStatus;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
 use App\Repository\AutoOrdersRepository;
+use Auth;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
@@ -44,5 +45,12 @@ class PurchaseOrderController extends Controller
             "data" => $paginated->items(),
             "total" => $paginated->total(),
         ]);
+    }
+
+    public function getExportData(AutoOrder $autoOrder)
+    {
+        $data = $this->autoOrdersRepository->getExportableData($autoOrder);
+
+        return response()->json(["data" => $data]);
     }
 }

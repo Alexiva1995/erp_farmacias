@@ -156,4 +156,16 @@ class AutoOrdersRepository
 
         return $this->applyFilters($query, $filters);
     }
+
+    public function getExportableData(AutoOrder $autoOrder)
+    {
+        $query = DB::table("auto_order_details")
+            ->select(["products.name as product_name", "auto_order_details.*"])
+            ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->where("auto_order_details.order_id", $autoOrder->id)
+            ->get();
+
+        return $query;
+    }
 }

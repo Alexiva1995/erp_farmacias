@@ -130,6 +130,7 @@ declare module 'vue' {
     PurchaseOrderHistoryDialog: typeof import('./resources/js/components/dialogs/PurchaseOrderHistoryDialog.vue')['default']
     PurchaseOrderHistoryTable: typeof import('./resources/js/components/PurchaseOrderHistoryTable.vue')['default']
     PurchaseOrdersFilter: typeof import('./resources/js/components/PurchaseOrdersFilter.vue')['default']
+    PurchaseOrderShowDialog: typeof import('./resources/js/components/dialogs/PurchaseOrderShowDialog.vue')['default']
     PurchaseOrdersTable: typeof import('./resources/js/components/PurchaseOrdersTable.vue')['default']
     QuotationCard: typeof import('./resources/js/components/cards/QuotationCard.vue')['default']
     QuotationFilters: typeof import('./resources/js/components/QuotationFilters.vue')['default']
