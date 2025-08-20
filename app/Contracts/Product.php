@@ -18,4 +18,8 @@ interface Product
     public function filtrarIaOrderAssistantTypeAverageWithoutPaginate(array $filtros): Collection;
     public function filtrarIaOrderAssistantTypeSales(array $filtros): LengthAwarePaginator;
     public function filtrarIaOrderAssistantTypeSalesWithoutPaginate(array $filtros): Collection;
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate(array $filtros): LengthAwarePaginator;
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate(array $filtros): Collection;
+    public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator;
+    public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection;
 }

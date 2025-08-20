@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\Product;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use DateTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,53 @@ class SupplierIaAssistantReportController extends Controller
     ) {}
 
 
-    public function filtrarPaginate(Request $request) {}
+    public function filtrarPaginate(Request $request): JsonResponse
+    {
+        $filtros = [
+            "itemsPerPage"      => $request->itemsPerPage,
+            "page"              => $request->page,
+            "tipo_filtracion"   => $request->tipo_filtracion,
+            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+        ];
+
+        if ($request->filled("product")) {
+            $filtros["product"] = $request->product;
+        }
+
+        if ($request->filled("is_colombia")) {
+            $filtros["is_colombia"] = $request->is_colombia;
+        }
+
+        if ($request->filled("laboratoryId")) {
+            $filtros["laboratoryId"] = $request->laboratoryId;
+        }
+
+        if ($request->filled("orderBy") && $request->filled("sortBy")) {
+            $filtros["orderBy"] = $request->orderBy;
+            $filtros["sortBy"] = $request->sortBy;
+        }
+
+        if ($request->filled("lapso_de_tiempo")) {
+            $dateToday = new DateTime("now");
+            $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
+            $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
+            $previousDate = new DateTime("now");
+            $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
+            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d");
+        }
+
+        $respuestaConsulta = null;
+
+        if ($filtros["tipo_filtracion"] == "average") {
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
+        }
+        if ($filtros["tipo_filtracion"] == "sales") {
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
+        }
+
+        return ApiResponse::success($respuestaConsulta, "ok", 200);
+    }
 
     public function consultProduct(): JsonResponse
     {

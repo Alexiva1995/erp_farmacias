@@ -54,4 +54,24 @@ class ProductServices implements Product
     {
         return $this->productRepository->filtrarProductforIaOrderAssistantTypeSalesWithoutPaginate($filtros);
     }
+
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate(array $filtros): LengthAwarePaginator
+    {
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithPaginate($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate(array $filtros): Collection
+    {
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
+    }
+
+    public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection
+    {
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSelesWithoutPaginate($filtros);
+    }
+
+    public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator
+    {
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros, $filtros["itemsPerPage"]);
+    }
 }

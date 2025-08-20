@@ -1,5 +1,6 @@
 <script setup>
 const props = defineProps({
+  checkColombia: { type: Boolean, required: true },
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
   laboratories: { type: Array, default: () => [] },
@@ -11,8 +12,8 @@ const emit = defineEmits([
   "update:lapso_de_tiempo",
   "update:selectedLaboratory",
   "update:selectProducts",
+  "update:checkColombia",
   "clear",
-  "consultar",
 ]);
 
 const tipoFiltracionOpcion = [
@@ -63,19 +64,6 @@ const lapsoDeTiempoOpciones = [
           >
           </VAutocomplete>
         </VCol>
-        <!-- <VCol cols="12" sm="6" md="4">
-          <VAutocomplete
-            :model-value="props.selectedGroup"
-            :items="props.groups"
-            label="Grupos"
-            placeholder="Escribe para buscar un grupo"
-            item-title="name"
-            item-value="id"
-            clearable
-            multiple="true"
-            @update:model-value="emit('update:selectedGroup', $event)"
-          />
-        </VCol> -->
         <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.tipo_de_filtracion"
@@ -92,6 +80,13 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:lapso_de_tiempo', $event)"
           />
         </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <v-checkbox
+            :model-value="props.checkColombia"
+            label="Colombia"
+            @update:model-value="emit('update:checkColombia', $event)"
+          ></v-checkbox>
+        </VCol>
       </VRow>
     </VCardText>
 
@@ -103,9 +98,6 @@ const lapsoDeTiempoOpciones = [
       </VBtn>
 
       <VSpacer />
-      <VBtn color="success" variant="flat" @click="emit('consultar')">
-        Generar Pedido
-      </VBtn>
     </VCardActions>
   </VCard>
 </template>
