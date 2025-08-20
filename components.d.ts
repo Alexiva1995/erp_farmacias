@@ -127,6 +127,8 @@ declare module 'vue' {
     PsychotropicsRecipeDialoge: typeof import('./resources/js/components/dialogs/PsychotropicsRecipeDialoge.vue')['default']
     PsychotropicsTable: typeof import('./resources/js/components/PsychotropicsTable.vue')['default']
     PurchaseOrderEditDialog: typeof import('./resources/js/components/dialogs/PurchaseOrderEditDialog.vue')['default']
+    PurchaseOrderHistoryDialog: typeof import('./resources/js/components/dialogs/PurchaseOrderHistoryDialog.vue')['default']
+    PurchaseOrderHistoryTable: typeof import('./resources/js/components/PurchaseOrderHistoryTable.vue')['default']
     PurchaseOrdersFilter: typeof import('./resources/js/components/PurchaseOrdersFilter.vue')['default']
     PurchaseOrdersTable: typeof import('./resources/js/components/PurchaseOrdersTable.vue')['default']
     QuotationCard: typeof import('./resources/js/components/cards/QuotationCard.vue')['default']

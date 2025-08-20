@@ -27,4 +27,16 @@ class PurchaseOrderDetailController extends Controller
     {
         return $this->autoOrderDetailsRepository->deleteDetail($autoOrderDetail);
     }
+
+    public function getPurchaseOrderDetailsHistory(AutoOrder $autoOrder, Request $request)
+    {
+        $filters = $request->query();
+        $filters["id"] = $autoOrder->id;
+        $paginated = $this->autoOrderDetailsRepository->orderHistory($filters);
+
+        return response()->json([
+            "data" => $paginated->items(),
+            "total" => $paginated->total(),
+        ]);
+    }
 }

@@ -2,34 +2,49 @@
 
 namespace App\Repository;
 
+use App\AutoOrderDetailStatus;
 use App\Models\AutoOrder;
-use App\Models\AutoOrderDetail;
-use App\Models\ProductSupplier;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class AutoOrdersRepository
 {
+    public function baseQuery()
+    {
+        return AutoOrder::query()
+            ->select(["auto_orders.*", "suppliers.name as supplier_name"])
+            ->join("suppliers", "auto_orders.supplier_id", "=", "suppliers.id")
+            ->when($filters["selectedSupplier"] ?? null, function ($q, $supplierId) {
+                return $q->where("supplier_id", $supplierId);
+            });
+    }
+
+    public function applyFilters($query, array $filters = [])
+    {
+        $perPage = $filters["itemsPerPage"];
+        $supplierId = $filters["selectedSupplier"] ?? null;
+
+        if ($supplierId) {
+            $query->where("supplier_id", $supplierId);
+        }
+
+        return $query->paginate($perPage);
+    }
+
     public function create(array $datos): ?AutoOrder
     {
         $record = AutoOrder::create($datos);
         return $record;
     }
 
-    public function getAll(array $filters = [], int $perPage = 10): LengthAwarePaginator
+    public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $perPage = (int) ($filters["itemsPerPage"] ?? $perPage);
+        $filters["itemsPerPage"] ??= 10;
 
-        $query = AutoOrder::query()
-            ->with(["supplier"])
-            ->when($filters["selectedSupplier"] ?? null, function ($q, $supplierId) {
-                return $q->where("supplier_id", $supplierId);
-            });
+        $query = $this->baseQuery();
 
-        return $query
-            ->paginate($perPage)
-            ->through(fn($record) => [...$record->toArray(), "supplier_name" => $record->supplier->name ?? null]);
+        return $this->applyFilters($query, $filters);
     }
 
     public function delete(AutoOrder $autoOrder)
@@ -115,5 +130,30 @@ class AutoOrdersRepository
                 "count" => 0,
             ];
         }
+    }
+
+    public function getHistory(array $filters = [])
+    {
+        $filters["itemsPerPage"] ??= 10;
+
+        $stats = DB::table("auto_order_details")
+            ->select([
+                "order_id",
+                DB::raw(
+                    "ROUND(100.0 * SUM(status = " .
+                        AutoOrderDetailStatus::ARRIVED->value .
+                        ") / NULLIF(COUNT(*), 0), 2) AS percentage",
+                ),
+            ])
+            ->groupBy("order_id");
+
+        $query = AutoOrder::query()
+            ->select(["auto_orders.*", "suppliers.name as supplier_name", "stats.percentage as percentage_arrived"])
+            ->join("suppliers", "suppliers.id", "=", "auto_orders.supplier_id")
+            ->leftJoinSub($stats, "stats", fn($join) => $join->on("stats.order_id", "=", "auto_orders.id"))
+            ->where("auto_orders.status", 1)
+            ->orderByDesc("auto_orders.created_at");
+
+        return $this->applyFilters($query, $filters);
     }
 }

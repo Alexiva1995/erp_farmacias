@@ -302,8 +302,10 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
     Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
     Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
+    Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);
     Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
+    Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
 });
 
 Route::prefix("supplier-laboratories")->group(function () {

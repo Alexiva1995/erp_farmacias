@@ -1,14 +1,6 @@
 <script setup>
-import PurchaseOrdersFilters from "@/components/PurchaseOrdersFilter.vue";
-import SupplierTable from "@/components/SupplierTable.vue";
-import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
-import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
-import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
-import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
-import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingInvoicesDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
 const currentPurchaseOrder = ref({});

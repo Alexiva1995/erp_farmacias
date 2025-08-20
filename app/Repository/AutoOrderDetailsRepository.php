@@ -2,9 +2,7 @@
 
 namespace App\Repository;
 
-use App\Models\AutoOrder;
 use App\Models\AutoOrderDetail;
-use Illuminate\Support\Facades\DB;
 
 class AutoOrderDetailsRepository
 {
@@ -32,5 +30,20 @@ class AutoOrderDetailsRepository
         $autoOrder->decrement("total_amount", $autoOrderDetail->subtotal);
         $autoOrderDetail->delete();
         return response()->json(["message" => "Eliminado"]);
+    }
+
+    public function orderHistory(array $data)
+    {
+        $id = $data["id"];
+        $perPage = $data["perPage"] ?? 10;
+
+        $results = AutoOrderDetail::query()
+            ->select(["auto_order_details.*", "products.name as product_name"])
+            ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->where("auto_order_details.order_id", $id)
+            ->paginate($perPage);
+
+        return $results;
     }
 }

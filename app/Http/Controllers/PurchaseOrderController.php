@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AutoOrderDetailStatus;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
 use App\Repository\AutoOrdersRepository;
@@ -32,5 +33,16 @@ class PurchaseOrderController extends Controller
         $result = $this->autoOrdersRepository->update($autoOrder, $request->all());
 
         return response()->json($result);
+    }
+
+    public function getPurchaseOrderHistory(Request $request)
+    {
+        $filters = $request->query();
+        $paginated = $this->autoOrdersRepository->getHistory($filters);
+
+        return response()->json([
+            "data" => $paginated->items(),
+            "total" => $paginated->total(),
+        ]);
     }
 }

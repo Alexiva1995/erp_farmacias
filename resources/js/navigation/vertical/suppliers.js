@@ -21,6 +21,10 @@ export default [
         title: "Ordenes de Compra",
         to: "suppliers-purchase-orders-list",
       },
+      {
+        title: "Historial de Ordenes de Compra",
+        to: "suppliers-purchase-orders-history-list",
+      },
     ],
   },
 ];
