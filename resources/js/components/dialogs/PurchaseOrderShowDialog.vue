@@ -67,6 +67,7 @@ const handleExport = async () => {
       supplier: props.purchaseOrder.supplier_name,
       total_quantity: props.purchaseOrder.total_quantity,
       total_cost: props.purchaseOrder.total_amount,
+      id: id.value,
     };
 
     pdfPurchaseOrderGenerator(payload);

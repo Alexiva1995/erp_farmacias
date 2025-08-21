@@ -78,11 +78,22 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Enviar Órden de Compra" location="top">
+        <VTooltip text="Contactar Proveedor" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-supplier', item)">
-              <VIcon icon="tabler-send" />
-            </IconBtn>
+            <VBtn
+              icon
+              :disabled="!item.phone"
+              :href="
+                item.phone
+                  ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${item.id}%2A`
+                  : undefined
+              "
+              target="_blank"
+              variant="text"
+              v-bind="props"
+            >
+              <VIcon :icon="item.phone ? 'tabler-phone-ringing' : 'tabler-phone-off'" />
+            </VBtn>
           </template>
         </VTooltip>
       </template>

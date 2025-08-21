@@ -13,7 +13,7 @@ class AutoOrdersRepository
     public function baseQuery()
     {
         return AutoOrder::query()
-            ->select(["auto_orders.*", "suppliers.name as supplier_name"])
+            ->select(["auto_orders.*", "suppliers.name as supplier_name", "suppliers.sales_phone as phone"])
             ->join("suppliers", "auto_orders.supplier_id", "=", "suppliers.id")
             ->when($filters["selectedSupplier"] ?? null, function ($q, $supplierId) {
                 return $q->where("supplier_id", $supplierId);
@@ -160,9 +160,15 @@ class AutoOrdersRepository
     public function getExportableData(AutoOrder $autoOrder)
     {
         $query = DB::table("auto_order_details")
-            ->select(["products.name as product_name", "auto_order_details.*"])
+            ->select([
+                DB::raw("CONCAT(products.name, ' ', laboratories.name) as product_name"),
+                "auto_order_details.*",
+                "product_suppliers.cod_supplier as cod",
+                "product_suppliers.unit_cost as unit_cost_bs",
+            ])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
             ->where("auto_order_details.order_id", $autoOrder->id)
             ->get();
 
