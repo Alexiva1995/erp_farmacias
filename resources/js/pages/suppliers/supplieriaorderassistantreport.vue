@@ -104,6 +104,96 @@ const updateTableOptionsTable = options => {
   orderBy.value = options.sortBy[0]?.order
 }
 
+async function filtrarSinPaginar(dataFiltro){
+  let respuestaApi = await axios.post(`/suppliers-ia-assistant-report/filtrar-without-paginate`,dataFiltro)
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  console.log("respues api => ",respuestaApi)
+
+  return [...respuestaApi.data.data]
+}
+
+async function generarPdf(){
+//  alert("desuwa")
+  let filtros={
+    orderBy:orderBy.value,
+    sortBy:sortBy.value,
+    product:selectProducts.value,
+    laboratoryId:selectedLaboratory.value,
+    is_colombia:checkColombia.value,
+    lapso_de_tiempo:lapso_de_tiempo.value,
+    tipo_filtracion:tipo_de_filtracion.value,
+    stock:stock.value,
+  }
+
+  let respuestaApi=await filtrarSinPaginar(filtros)
+
+    if(respuestaApi.length==0){
+    toast.info("No hay data para generar un reporte")
+    return null;
+  }
+
+  console.log("data pdf => ",respuestaApi)
+
+  pdfProductsAssistantReportGenerator(respuestaApi)
+}
+
+async function exportarExcel(formato){
+
+  try{
+      let params={
+        orderBy:orderBy.value,
+        sortBy:sortBy.value,
+        product:selectProducts.value,
+        laboratoryId:selectedLaboratory.value,
+        is_colombia:checkColombia.value,
+        lapso_de_tiempo:lapso_de_tiempo.value,
+        tipo_filtracion:tipo_de_filtracion.value,
+        stock:stock.value,
+        formato
+    }
+
+    let respuestaApi = await axios.post(
+      '/suppliers-ia-assistant-report/exportar/excel',
+      params,  // Tus parámetros como objeto
+      {
+        responseType: 'blob',
+        headers: {
+          'Content-Type': 'application/json',  // Asegura el envío correcto de los parámetros
+        }
+      }
+    );
+
+    console.log("res => ",respuestaApi)
+
+    if(respuestaApi.status!=200){
+      toast.success("Error al filtrar los datos")
+    }
+    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = respuestaApi.headers["content-disposition"];
+    let fileName = `assistant-report.${formato}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error al exportar los datos:", error);
+  }
+
+}
+
 
 onMounted(async () => {
   loading.value=true
@@ -137,6 +227,8 @@ onMounted(async () => {
       :tipo_de_filtracion="tipo_de_filtracion"
       :lapso_de_tiempo="lapso_de_tiempo"
       @clear="handleClearFilters"
+      @export-pdf="generarPdf"
+      @export-excel="exportarExcel"
     />
     <SupplierAssistantReportTable
       :products="statuModule.items"

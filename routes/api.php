@@ -316,8 +316,10 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
 });
 
 Route::prefix("suppliers-ia-assistant-report")->group(function () {
-    Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
-    Route::get('/consult-products',  [SupplierIaAssistantReportController::class, 'consultProduct']);
+    Route::post('/filtrar-paginate',            [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+    Route::post('/filtrar-without-paginate',    [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+    Route::post('/exportar/excel',              [SupplierIaAssistantReportController::class, 'exportarExcel']);
+    Route::get('/consult-products',             [SupplierIaAssistantReportController::class, 'consultProduct']);
 });
 
 Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');

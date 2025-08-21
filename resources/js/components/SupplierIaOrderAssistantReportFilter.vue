@@ -14,6 +14,8 @@ const emit = defineEmits([
   "update:selectProducts",
   "update:checkColombia",
   "clear",
+  "export-excel",
+  "export-pdf",
 ]);
 
 const tipoFiltracionOpcion = [
@@ -98,6 +100,32 @@ const lapsoDeTiempoOpciones = [
       </VBtn>
 
       <VSpacer />
+      <VMenu>
+        <template #activator="{ props: menuProps }">
+          <VBtn
+            color="success"
+            variant="flat"
+            prepend-icon="tabler-upload"
+            v-bind="menuProps"
+          >
+            Exportar
+          </VBtn>
+        </template>
+        <VList>
+          <VListItem @click="emit('export-excel', 'xlsx')">
+            <template #prepend>
+              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+            </template>
+            <VListItemTitle class="text-success">Excel</VListItemTitle>
+          </VListItem>
+          <VListItem @click="emit('export-pdf')">
+            <template #prepend>
+              <VIcon icon="tabler-file-type-pdf" class="me-2" />
+            </template>
+            <VListItemTitle>PDF</VListItemTitle>
+          </VListItem>
+        </VList>
+      </VMenu>
     </VCardActions>
   </VCard>
 </template>

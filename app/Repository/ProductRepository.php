@@ -667,6 +667,22 @@ class ProductRepository
                 THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
+            // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
+            DB::raw('(
+                SELECT COALESCE(MIN(unit_cost), 0)
+                FROM product_lots 
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+            ) AS cost_min'),
+            //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
+            DB::raw('(
+                SELECT COALESCE(MAX(unit_cost), 0)
+                FROM product_lots 
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+            ) AS cost_max'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -838,6 +854,22 @@ class ProductRepository
             ) 
             ),0)* 100 AS preferencia_product'),
             DB::raw(' stock - ' . $ventasIndividualDelProducto . '  AS solicitar'),
+            // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
+            DB::raw('(
+                SELECT COALESCE(MIN(unit_cost), 0)
+                FROM product_lots 
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+            ) AS cost_min'),
+            //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
+            DB::raw('(
+                SELECT COALESCE(MAX(unit_cost), 0)
+                FROM product_lots 
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+            ) AS cost_max'),
         ];
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');

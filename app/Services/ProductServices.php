@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Product;
+use App\Exports\AssistantReportProductExport;
 use App\Exports\StockProductExport;
 use App\Repository\ProductRepository;
 use Illuminate\Database\Eloquent\Collection;
@@ -73,5 +74,17 @@ class ProductServices implements Product
     public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator
     {
         return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros, $filtros["itemsPerPage"]);
+    }
+
+    public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport
+    {
+        $query = null;
+        if ($filtros["tipo_filtracion"] == "average") {
+            $query = $this->productRepository->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
+        }
+        if ($filtros["tipo_filtracion"] == "sales") {
+            $query = $this->productRepository->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
+        }
+        return new AssistantReportProductExport($query);
     }
 }
