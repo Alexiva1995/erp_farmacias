@@ -1,13 +1,15 @@
 <script setup>
+import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue";
+import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
-import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
+  mode: { type: String, default: "editable" },
 });
 const emit = defineEmits(["back-to-list"]);
 
@@ -18,6 +20,8 @@ const loading = ref(true);
 const loadingDetails = ref(true);
 const isEditMode = ref(false);
 const isSaving = ref(false);
+
+const isReadOnly = computed(() => props.mode === "read-only");
 
 const editingDetailId = ref(null);
 const editedDetailData = ref({});
@@ -32,12 +36,47 @@ const productSortBy = ref();
 const productOrderBy = ref();
 const laboratories = ref([]);
 const origins = ref([]);
+const categories = ref([]);
 const isLoadingFilters = ref(false);
 
 const isEditDialogVisible = ref(false);
+const isBarcodeModalVisible = ref(false);
+const isProductSearchVisible = ref(false);
+const searchingBarcode = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
-const categories = ref([]);
+const barcodeModalRef = ref(null);
+
+const processedInvoiceDetails = computed(() => {
+  if (!invoice.value || !invoiceDetails.value) return [];
+
+  return invoiceDetails.value.map((detail) => {
+    const unitCost = detail.unit_cost || 0;
+    const totalCost = detail.total_cost || (detail.quantity || 0) * unitCost;
+
+    const rate = parseFloat(invoice.value.exchange_rate);
+    const isUsd = invoice.value.currency === "USD";
+    const hasValidRate = rate && rate > 0;
+
+    const unitCostUsd = isUsd || !hasValidRate ? unitCost : unitCost / rate;
+    const totalCostUsd = isUsd || !hasValidRate ? totalCost : totalCost / rate;
+
+    return {
+      ...detail,
+      unit_cost: unitCost,
+      total_cost: totalCost,
+      unit_cost_usd: unitCostUsd,
+      total_cost_usd: totalCostUsd,
+    };
+  });
+});
+
+const totalDetailsAmount = computed(() => {
+  return processedInvoiceDetails.value.reduce(
+    (total, item) => total + item.total_cost,
+    0
+  );
+});
 
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
@@ -47,11 +86,9 @@ onMounted(async () => {
 });
 
 watch(isEditMode, (newVal) => {
-  if (newVal) {
-    if (laboratories.value.length === 0) fetchProductSelectOptions();
-    fetchProducts();
-  } else {
+  if (!newVal) {
     cancelEditingDetail();
+    isProductSearchVisible.value = false;
   }
 });
 
@@ -69,10 +106,11 @@ const fetchInvoiceData = async (id) => {
     loading.value = false;
   }
 };
+
 const fetchInvoiceDetails = async (id) => {
   loadingDetails.value = true;
   try {
-    const response = await axios.get(`/invoices/${id}/suggested-details`);
+    const response = await axios.get(`/invoices/${id}/details`);
     invoiceDetails.value = response.data.data ?? [];
   } catch (error) {
     console.error("Error al cargar los detalles de la factura:", error);
@@ -155,6 +193,8 @@ const updateProductTableOptions = (options) => {
 };
 
 const toggleEditMode = (enable) => {
+  if (isReadOnly.value) return;
+
   isEditMode.value = enable;
   if (!enable) {
     formData.value = JSON.parse(JSON.stringify(invoice.value));
@@ -169,17 +209,62 @@ const addProductToInvoice = (product) => {
 
   if (existingDetail) {
     existingDetail.quantity += 1;
+    startEditingDetail(existingDetail);
+    toast.info(
+      `Producto "${product.name}" ya existe. Editando para completar campos.`
+    );
   } else {
-    invoiceDetails.value.push({
+    const newDetail = {
       id: -Math.floor(Math.random() * 1000),
       product: { id: product.id, name: product.name },
-      quantity: 1,
-      unit_cost: product.unit_cost,
-    });
+      quantity: 0,
+      unit_cost: 0,
+      lot_number: "",
+      expiration_date: null,
+      location: "",
+    };
+
+    invoiceDetails.value.push(newDetail);
+
+    startEditingDetail(newDetail);
+
+    toast.success(
+      `Producto "${product.name}" agregado. Complete los campos obligatorios.`
+    );
   }
 };
 
 const handleAddProduct = () => {
+  isBarcodeModalVisible.value = true;
+};
+
+const handleSearchBarcode = async (barcode) => {
+  searchingBarcode.value = true;
+  try {
+    const response = await axios.get(`/products/search-by-barcode`, {
+      params: { barcode },
+    });
+
+    if (response.data.data) {
+      barcodeModalRef.value?.handleProductFound(response.data.data);
+    } else {
+      barcodeModalRef.value?.handleProductNotFound();
+    }
+  } catch (error) {
+    console.error("Error al buscar producto por código de barras:", error);
+    barcodeModalRef.value?.handleProductNotFound();
+  } finally {
+    searchingBarcode.value = false;
+  }
+};
+
+const handleShowProductSearch = () => {
+  isProductSearchVisible.value = true;
+  if (laboratories.value.length === 0) fetchProductSelectOptions();
+  fetchProducts();
+};
+
+const handleAddNewProduct = () => {
   currentProduct.value = {};
   productFormErrors.value = {};
   isEditDialogVisible.value = true;
@@ -197,7 +282,9 @@ const handleSaveProduct = async (productFormData) => {
 
     toast.success("Producto creado con éxito");
     isEditDialogVisible.value = false;
-    await fetchProducts();
+    if (isProductSearchVisible.value) {
+      await fetchProducts();
+    }
   } catch (error) {
     if (error.response && error.response.status === 422) {
       productFormErrors.value = error.response.data.errors;
@@ -221,11 +308,45 @@ const startEditingDetail = (detail) => {
 };
 
 const saveEditingDetail = () => {
+  if (
+    !editedDetailData.value.quantity ||
+    editedDetailData.value.quantity <= 0
+  ) {
+    toast.error("La cantidad debe ser mayor a 0");
+    return;
+  }
+
+  if (
+    !editedDetailData.value.unit_cost ||
+    editedDetailData.value.unit_cost <= 0
+  ) {
+    toast.error("El costo por unidad debe ser mayor a 0");
+    return;
+  }
+
+  if (!editedDetailData.value.lot_number?.trim()) {
+    toast.error("El número de lote es obligatorio");
+    return;
+  }
+
+  if (!editedDetailData.value.expiration_date) {
+    toast.error("La fecha de vencimiento es obligatoria");
+    return;
+  }
+
+  if (!editedDetailData.value.location?.trim()) {
+    toast.error("La localización es obligatoria");
+    return;
+  }
+
   const detailIndex = invoiceDetails.value.findIndex(
     (d) => d.id === editingDetailId.value
   );
   if (detailIndex !== -1) {
+    editedDetailData.value.total_cost =
+      editedDetailData.value.quantity * editedDetailData.value.unit_cost;
     invoiceDetails.value[detailIndex] = { ...editedDetailData.value };
+    toast.success("Producto actualizado correctamente");
   }
   cancelEditingDetail();
 };
@@ -275,110 +396,183 @@ const formatNumber = (value) => {
   }).format(value);
 };
 
+const formatCurrency = (value, currency = null) => {
+  if (typeof value !== "number") return value;
+
+  const targetCurrency = currency || invoice.value?.currency;
+
+  const currencyMap = {
+    BS: "VES",
+    Bs: "VES",
+    COP: "COP",
+    USD: "USD",
+  };
+
+  const mappedCurrency = currencyMap[targetCurrency] || "VES";
+
+  return new Intl.NumberFormat("es-VE", {
+    style: "currency",
+    currency: mappedCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+const getCurrencySymbol = () => {
+  if (!invoice.value?.currency) return "Bs.";
+
+  const symbolMap = {
+    BS: "Bs.",
+    Bs: "Bs.",
+    USD: "$",
+    COP: "COP$",
+  };
+
+  return symbolMap[invoice.value.currency] || "Bs.";
+};
+
 const detailsHeaders = [
-  { title: "Descripción", key: "product.name", sortable: false, width: "50%" },
-  { title: "Unidades", key: "quantity", align: "end", sortable: false },
+  { title: "Descripción", key: "product.name", sortable: false, width: "25%" },
+  {
+    title: "N° Lote",
+    key: "lot_number",
+    align: "center",
+    sortable: false,
+    width: "12%",
+  },
+  {
+    title: "F. Vencimiento",
+    key: "expiration_date",
+    align: "center",
+    sortable: false,
+    width: "12%",
+  },
+  {
+    title: "Localización",
+    key: "location",
+    align: "center",
+    sortable: false,
+    width: "12%",
+  },
+  {
+    title: "Unidades",
+    key: "quantity",
+    align: "end",
+    sortable: false,
+    width: "10%",
+  },
   {
     title: "Costo por Unidad",
     key: "unit_cost",
     align: "end",
     sortable: false,
+    width: "12%",
   },
-  { title: "Costo Total", key: "total_cost", align: "end", sortable: false },
+  {
+    title: "Costo Total",
+    key: "total_cost",
+    align: "end",
+    sortable: false,
+    width: "12%",
+  },
   {
     title: "Acciones",
     key: "actions",
     sortable: false,
     align: "center",
-    width: "120px",
+    width: "5%",
   },
 ];
 </script>
 
 <template>
   <div>
-    <!-- Pantalla de Carga -->
     <div v-if="loading" class="text-center pa-10">
       <VProgressCircular indeterminate color="primary" size="64" />
       <p class="mt-4 text-h6">Cargando datos de la factura...</p>
     </div>
 
     <div v-else-if="invoice">
-      <!-- 1. VCard Principal de la Factura -->
+      <VAlert
+        v-if="invoice.currency !== 'USD'"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        <template #prepend>
+          <VIcon icon="tabler-info-circle" />
+        </template>
+        <div>
+          <strong>Factura en {{ invoice.currency }}</strong>
+          <div class="text-caption mt-1">
+            Se muestra el equivalente en USD calculado con la tasa de la factura
+            ({{ formatNumber(invoice.exchange_rate) }})
+          </div>
+        </div>
+      </VAlert>
+
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent="handleUpdate">
-          <!-- Cabecera -->
           <VCardText class="header-section">
+            <VRow align="center" justify="space-between" class="mb-4">
+              <VCol cols="auto">
+                <VBtn
+                  icon="tabler-arrow-left"
+                  variant="text"
+                  @click="emit('back-to-list')"
+                />
+              </VCol>
+              <VCol cols="auto">
+                <VBtn
+                  v-if="!isEditMode && !isReadOnly"
+                  @click="toggleEditMode(true)"
+                  color="primary"
+                  variant="tonal"
+                >
+                  Editar
+                </VBtn>
+              </VCol>
+            </VRow>
+
             <VRow align="start" justify="space-between">
               <VCol cols="12" md="auto">
-                <div class="d-flex align-center">
-                  <VBtn
-                    icon="tabler-arrow-left"
-                    variant="text"
-                    class="me-2"
-                    @click="emit('back-to-list')"
-                  />
-                  <div>
-                    <h1 class="font-weight-bold text-primary">
-                      {{ invoice.supplier.name }}
-                    </h1>
-                    <div class="d-flex align-center mt-2">
-                      <span class="text-subtitle-1 font-weight-medium me-2"
-                        >N° DE CONTROL</span
-                      >
-                      <span
-                        v-if="!isEditMode"
-                        class="text-h6 font-weight-bold text-error"
-                        >{{ invoice.control_number }}</span
-                      >
-                      <VTextField
-                        v-else
-                        v-model="formData.control_number"
-                        density="compact"
-                        hide-details
-                        variant="outlined"
-                        class="editable-field"
-                      />
-                    </div>
+                <div>
+                  <h1 class="font-weight-bold text-primary">
+                    {{ invoice.supplier.name }}
+                  </h1>
+                  <div class="d-flex align-center mt-2">
+                    <span class="text-subtitle-1 font-weight-medium me-2">
+                      N° DE CONTROL
+                    </span>
+                    <span class="text-h6 font-weight-bold text-error">
+                      {{ invoice.control_number }}
+                    </span>
                   </div>
                 </div>
               </VCol>
-              <VCol cols="12" md="auto" class="text-md-end mt-4 mt-md-0">
-                <div class="d-flex justify-end mb-4">
-                  <VBtn
-                    v-if="!isEditMode"
-                    @click="toggleEditMode(true)"
-                    color="primary"
-                    variant="tonal"
-                    >Editar</VBtn
-                  >
-                </div>
+              <VCol cols="12" md="auto" class="text-md-end">
                 <div class="d-flex align-center justify-md-end">
-                  <span class="text-h6 font-weight-medium me-2"
-                    >FACTURA N°</span
-                  >
+                  <span class="text-subtitle-1 font-weight-medium me-2">
+                    FACTURA N°
+                  </span>
                   <span
-                    v-if="!isEditMode"
-                    class="text-h5 font-weight-bold text-error"
-                    >{{ invoice.invoice_number }}</span
+                    class="text-h4 font-weight-bold text-error"
+                    style="font-size: 2rem !important"
                   >
-                  <VTextField
-                    v-else
-                    v-model="formData.invoice_number"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    class="editable-field"
-                  />
+                    {{ invoice.invoice_number }}
+                  </span>
                 </div>
               </VCol>
             </VRow>
           </VCardText>
-          <!-- Sección de Fechas -->
+
+          <VDivider />
+
           <VCardText class="dates-section">
             <VRow>
               <VCol
-                v-for="dateField in [
+                v-for="(dateField, index) in [
                   'exp_date',
                   'payment_date',
                   'received_date',
@@ -386,7 +580,11 @@ const detailsHeaders = [
                 :key="dateField"
                 cols="12"
                 md="4"
-                class="text-center"
+                :class="{
+                  'text-start': index === 0,
+                  'text-center': index === 1,
+                  'text-end': index === 2,
+                }"
               >
                 <p class="text-subtitle-2 text-disabled">
                   {{
@@ -397,43 +595,92 @@ const detailsHeaders = [
                     }[dateField]
                   }}
                 </p>
-                <p
-                  v-if="!isEditMode"
-                  class="text-body-1 font-weight-medium mt-1"
-                >
+                <p class="text-body-1 font-weight-medium mt-1">
                   {{ formData[dateField] }}
                 </p>
-                <AppDateTimePicker
-                  v-else
-                  v-model="formData[dateField]"
-                  density="compact"
-                  class="mt-1"
-                />
               </VCol>
             </VRow>
           </VCardText>
-          <!-- Tabla de Productos de la Factura -->
+
+          <VDivider />
+
           <VCardText class="products-section">
             <div class="d-flex align-center mb-4">
               <span class="text-h6 font-weight-medium">Productos</span>
+              <VChip color="primary" variant="outlined" class="ms-2">
+                {{ processedInvoiceDetails.length }} productos
+              </VChip>
               <VIcon
                 icon="tabler-info-circle"
                 size="20"
                 class="ms-2 text-disabled"
               />
               <VSpacer />
-              <span class="text-body-1 me-2">Bs. Total Cargado</span>
-              <VChip color="error" label>{{
-                formatNumber(invoice.total_amount)
-              }}</VChip>
+
+              <VBtn
+                v-if="isEditMode"
+                color="primary"
+                variant="flat"
+                size="small"
+                class="me-3"
+                @click="handleAddProduct"
+              >
+                <VIcon icon="tabler-plus" class="me-2" />
+                Agregar Producto
+              </VBtn>
+
+              <span class="text-body-1 me-2 text-error font-weight-medium">
+                {{ invoice.currency }}. Total Cargado
+              </span>
+              <VChip color="error" label>
+                {{ formatCurrency(totalDetailsAmount) }}
+              </VChip>
             </div>
+
             <VDataTable
               :headers="detailsHeaders"
-              :items="invoiceDetails"
+              :items="processedInvoiceDetails"
               :loading="loadingDetails"
               :hide-default-footer="true"
               class="invoice-products-table"
             >
+              <template #item.lot_number="{ item }">
+                <VTextField
+                  v-if="item.id === editingDetailId"
+                  v-model="editedDetailData.lot_number"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  class="editable-cell"
+                  placeholder="Ingrese lote"
+                />
+                <span v-else>{{ item.lot_number || "-" }}</span>
+              </template>
+
+              <template #item.expiration_date="{ item }">
+                <AppDateTimePicker
+                  v-if="item.id === editingDetailId"
+                  v-model="editedDetailData.expiration_date"
+                  density="compact"
+                  class="editable-cell"
+                  placeholder="F. Vencimiento"
+                />
+                <span v-else>{{ item.expiration_date || "-" }}</span>
+              </template>
+
+              <template #item.location="{ item }">
+                <VTextField
+                  v-if="item.id === editingDetailId"
+                  v-model="editedDetailData.location"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  class="editable-cell"
+                  placeholder="Localización"
+                />
+                <span v-else>{{ item.location || "-" }}</span>
+              </template>
+
               <template #item.quantity="{ item }">
                 <VTextField
                   v-if="item.id === editingDetailId"
@@ -443,9 +690,11 @@ const detailsHeaders = [
                   hide-details
                   variant="outlined"
                   class="editable-cell"
+                  min="1"
                 />
                 <span v-else>{{ item.quantity }}</span>
               </template>
+
               <template #item.unit_cost="{ item }">
                 <VTextField
                   v-if="item.id === editingDetailId"
@@ -456,19 +705,47 @@ const detailsHeaders = [
                   hide-details
                   variant="outlined"
                   class="editable-cell"
+                  min="0"
+                  :prefix="getCurrencySymbol()"
                 />
-                <span v-else>{{ formatNumber(item.unit_cost) }}</span>
+                <div v-else class="d-flex flex-column align-end">
+                  <span class="font-weight-medium">
+                    {{ formatCurrency(item.unit_cost) }}
+                  </span>
+                  <span
+                    v-if="invoice.currency !== 'USD'"
+                    class="text-caption text-medium-emphasis"
+                  >
+                    {{ formatCurrency(item.unit_cost_usd, "USD") }}
+                  </span>
+                </div>
               </template>
+
               <template #item.total_cost="{ item }">
-                <span v-if="item.id === editingDetailId">{{
-                  formatNumber(
-                    editedDetailData.quantity * editedDetailData.unit_cost
-                  )
-                }}</span>
-                <span v-else>{{
-                  formatNumber(item.quantity * item.unit_cost)
-                }}</span>
+                <div
+                  v-if="item.id === editingDetailId"
+                  class="d-flex flex-column align-end"
+                >
+                  <span>{{
+                    formatCurrency(
+                      (editedDetailData.quantity || 0) *
+                        (editedDetailData.unit_cost || 0)
+                    )
+                  }}</span>
+                </div>
+                <div v-else class="d-flex flex-column align-end">
+                  <span class="font-weight-medium">
+                    {{ formatCurrency(item.total_cost) }}
+                  </span>
+                  <span
+                    v-if="invoice.currency !== 'USD'"
+                    class="text-caption text-medium-emphasis"
+                  >
+                    {{ formatCurrency(item.total_cost_usd, "USD") }}
+                  </span>
+                </div>
               </template>
+
               <template #item.actions="{ item }">
                 <div v-if="isEditMode">
                   <div v-if="item.id === editingDetailId" class="d-flex">
@@ -492,100 +769,115 @@ const detailsHeaders = [
               <template #bottom></template>
             </VDataTable>
           </VCardText>
-          <!-- Sección de Totales -->
+
+          <VDivider />
+
           <VCardText class="totals-section">
-            <VDivider v-if="!isEditMode" class="mb-6" />
-            <VRow>
-              <VCol
-                v-for="field in [
-                  {
-                    label: 'Monto Total Excento de IVA',
-                    model: 'exempt_amount',
-                  },
-                  {
-                    label: 'Base Imponible segun Alicuota 16 %',
-                    model: 'taxable_base',
-                  },
-                  {
-                    label: 'Impuesto segun Alicuota 16 %',
-                    model: 'tax_amount',
-                  },
-                  {
-                    label: 'Total Factura',
-                    model: 'total_amount',
-                    class: 'font-weight-bold',
-                  },
-                ]"
-                :key="field.model"
-                cols="12"
-                md="3"
-                class="text-center total-item"
-              >
-                <p class="text-subtitle-2 text-disabled">{{ field.label }}</p>
-                <p v-if="!isEditMode" :class="field.class" class="text-h6 mt-1">
-                  {{ formatNumber(invoice[field.model]) }}
-                </p>
-                <VTextField
-                  v-else
-                  v-model.number="formData[field.model]"
-                  type="number"
-                  density="compact"
-                  variant="outlined"
-                  class="mt-1"
-                />
-              </VCol>
-            </VRow>
-            <VRow class="justify-center mt-4">
-              <VCol
-                v-for="field in [
-                  { label: 'Tasa BCV', model: 'exchange_rate' },
-                  { label: 'Total USD', model: 'total_usd' },
-                ]"
-                :key="field.model"
-                cols="12"
-                md="3"
-                class="text-center total-item"
-              >
-                <p class="text-subtitle-2 text-disabled">{{ field.label }}</p>
-                <p v-if="!isEditMode" :class="field.class" class="text-h6 mt-1">
-                  {{ formatNumber(invoice[field.model]) }}
-                </p>
-                <VTextField
-                  v-else
-                  v-model.number="formData[field.model]"
-                  type="number"
-                  density="compact"
-                  variant="outlined"
-                  class="mt-1"
-                />
-              </VCol>
-            </VRow>
+            <div class="totals-list">
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Monto Total Excento de IVA:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.exempt_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Base Imponible segun Alicuota 16 %:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.taxable_base)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Impuesto segun Alicuota 16 %:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.tax_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Total Factura:</span
+                >
+                <span class="text-h6 ms-2 font-weight-bold">{{
+                  formatCurrency(invoice.total_amount)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span>
+                <span class="text-h6 ms-2">{{
+                  formatNumber(invoice.exchange_rate)
+                }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled">Total USD:</span>
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.total_usd, "USD")
+                }}</span>
+              </div>
+            </div>
           </VCardText>
-          <!-- Botón de Acción Final -->
+
+          <VDivider />
+
           <VCardActions class="pa-6">
-            <VSpacer />
-            <VBtn
-              v-if="isEditMode"
-              color="error"
-              variant="text"
-              @click="toggleEditMode(false)"
-              >Cancelar</VBtn
-            >
-            <VBtn
-              :loading="isSaving"
-              @click="handleUpdate"
-              size="large"
-              color="primary"
-            >
-              {{ isEditMode ? "Guardar Cambios" : "Finalizar Factura" }}
-            </VBtn>
+            <div v-if="!isReadOnly" class="d-flex ga-3 w-100">
+              <VBtn
+                v-if="isEditMode"
+                color="error"
+                variant="outlined"
+                size="large"
+                class="flex-1-1"
+                @click="toggleEditMode(false)"
+              >
+                Cancelar
+              </VBtn>
+              <VBtn
+                :loading="isSaving"
+                @click="handleUpdate"
+                size="large"
+                color="primary"
+                variant="flat"
+                :class="isEditMode ? 'flex-1-1' : 'w-100'"
+              >
+                {{ isEditMode ? "Guardar Productos" : "Finalizar Factura" }}
+              </VBtn>
+            </div>
+
+            <div v-else class="d-flex w-100">
+              <VBtn
+                @click="emit('back-to-list')"
+                size="large"
+                color="primary"
+                variant="tonal"
+                class="w-100"
+              >
+                Volver a la Lista
+              </VBtn>
+            </div>
           </VCardActions>
         </VForm>
       </VCard>
 
-      <!-- 2. Sección de Búsqueda de Productos (condicional y externa) -->
-      <div v-if="isEditMode" class="product-search-section">
-        <h4 class="text-h4 mb-4">Añadir Productos a la Factura</h4>
+      <div
+        v-if="isEditMode && isProductSearchVisible"
+        class="product-search-section"
+      >
+        <div class="d-flex align-center justify-space-between mb-4">
+          <h4 class="text-h4">Buscar Productos en Catálogo</h4>
+          <VBtn
+            variant="text"
+            color="error"
+            @click="isProductSearchVisible = false"
+          >
+            <VIcon icon="tabler-x" class="me-2" />
+            Cerrar Búsqueda
+          </VBtn>
+        </div>
+
         <ProductFilters
           v-model:searchQuery="productSearchQuery"
           :laboratories="laboratories"
@@ -593,7 +885,7 @@ const detailsHeaders = [
           :loading="isLoadingFilters"
           mode="minimal"
           @clear="productSearchQuery = ''"
-          @add-product="handleAddProduct"
+          @add-product="handleAddNewProduct"
         />
         <ProductTable
           :products="products"
@@ -606,6 +898,17 @@ const detailsHeaders = [
           @add-product-to-invoice="addProductToInvoice"
         />
       </div>
+
+      <BarcodeSearchModal
+        ref="barcodeModalRef"
+        v-model="isBarcodeModalVisible"
+        :loading="searchingBarcode"
+        @search-barcode="handleSearchBarcode"
+        @show-product-search="handleShowProductSearch"
+        @add-new-product="handleAddNewProduct"
+        @add-product-to-invoice="addProductToInvoice"
+      />
+
       <ProductEditDialog
         v-model="isEditDialogVisible"
         :product="currentProduct"
@@ -629,6 +932,9 @@ const detailsHeaders = [
   .editable-field {
     max-width: 150px;
   }
+  .editable-field-large {
+    max-width: 200px;
+  }
   .dates-section,
   .totals-section {
     padding-top: 24px;
@@ -649,7 +955,28 @@ const detailsHeaders = [
     }
   }
 }
+
 .editable-cell {
-  min-width: 100px;
+  min-width: 120px;
+}
+
+.flex-1-1 {
+  flex: 1 1 50%;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.totals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.total-item-row {
+  display: flex;
+  align-items: center;
 }
 </style>

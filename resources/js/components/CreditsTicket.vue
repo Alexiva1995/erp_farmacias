@@ -1,28 +1,19 @@
 <script setup>
 import { computed } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { useAuthStore } from "@/stores/auth";
 import { formatDateTime } from "@/utils/formatDateTime";
 
 const props = defineProps({
-  orderData: {
+  creditsData: {
     type: Object,
     default: () => ({}),
   },
-  totalAmount: {
-    type: Number,
-    default: 0,
-  },
   selectedCurrency: {
     type: String,
-    default: "COP",
-  },
-  orderProducts: {
-    type: Array,
-    default: () => [],
+    default: "USD",
   },
   baseUrl: {
     type: String,
@@ -36,35 +27,16 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-  creditAmount: {
-    type: Number,
-    default: 0,
-  },
-  credit: {
-    type: Boolean,
-    default: false,
-  },
 });
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-const getItemPriceByCurrency = (item, currency) => {
-  const taxRate = item.taxRate || 0;
-  let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = item.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = item.price_cop || 0;
-  } else {
-    basePrice = item.price || 0;
-  }
-  let priceWithIva = basePrice * (1 + taxRate);
-  if (currency === "COP") {
-    priceWithIva = roundUpToNearestHundred(priceWithIva);
-  }
-  return priceWithIva;
-};
+const today = new Date();
+
+const userUsername = computed(() => {
+  return currentUser.value?.username || "N/A";
+});
 
 const logoSrc = computed(() => {
   return BASE64_LOGO_DATA;
@@ -86,7 +58,6 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       { label: "Efectivo", value: "cash_usd" },
       { label: "Binance", value: "binance" },
       { label: "PayPal", value: "paypal" },
-      { label: "Crédito", value: "credit" },
     ],
   };
 
@@ -98,7 +69,6 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       return foundMethod.label;
     }
   }
-  // Si no se encuentra en la moneda específica, busca en todas (como en BuysModal)
   for (const key in paymentMethodsByCurrency) {
     const methods = paymentMethodsByCurrency[key];
     const foundMethod = methods.find((m) => m.value === methodValue);
@@ -108,6 +78,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   }
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
+
 const showChangeAmount = computed(() => {
   return props.changeAmount > 0;
 });
@@ -136,33 +107,32 @@ const showChangeAmount = computed(() => {
         <span class="headerPrint">ZONA POSTAL 5020</span>
       </div>
       <div class="ticket-header d-flex justify-space-between align-start mt-2">
-        <span class="font-weight-bold tituloAzulPrint"
-          >Order N° {{ orderData.id }}</span
-        >
+        <span class="font-weight-bold tituloAzulPrint"></span>
         <div class="text-right d-flex flex-column align-end">
           <p class="text-black font-weight-regular mb-0 textoPrint">
-            Fecha: {{ formatDateTime(props.orderData.created_at, "date") }}
-            {{ formatDateTime(props.orderData.created_at, "time") }}
+            Fecha: {{ formatDateTime(today, "date") }}
+            {{ formatDateTime(today, "time") }}
           </p>
         </div>
       </div>
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint">Cajero:</span>
-        <span>{{ orderData.seller.username }}</span>
+        <span>{{ userUsername }}</span>
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint">Cliente:</span>
         <span class="textoPrint"
-          >{{ orderData.client.name }} {{ orderData.client.last_name }}</span
+          >{{ creditsData?.client?.name }}
+          {{ creditsData?.client?.last_name }}</span
         >
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint">Documento:</span>
         <span class="textoPrint"
-          >{{ orderData.client.identification_type }}
-          {{ orderData.client.identification }}</span
+          >{{ creditsData?.client?.identification_type }}
+          {{ creditsData?.client?.identification }}</span
         >
       </div>
 
@@ -184,25 +154,17 @@ const showChangeAmount = computed(() => {
       </div>
 
       <div class="ticket-body mt-2">
-        <div v-for="item in orderProducts" :key="item.id" class="ticket-item">
-          <span class="ticket-item-qty">{{ item.selectedQuantity }}x</span>
-          <span class="ticket-item-name">{{ item.title }}</span>
-          <span class="ticket-item-total">
-            {{
-              formatCurrency(
-                getItemPriceByCurrency(item, selectedCurrency) *
-                  item.selectedQuantity,
-                selectedCurrency
-              )
-            }}
-          </span>
+        <div class="ticket-item">
+          <span class="ticket-item-qty"></span>
+          <span class="ticket-item-name">Créditos</span>
+          <span class="ticket-item-total">{{formatCurrency(parseFloat(creditsData.total_pending_amount), props.selectedCurrency)}}</span>
         </div>
         <hr />
+
         <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
+          <span class="font-weight-bold tituloAzulPrint">TOTAL:</span>
           <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(totalAmount, selectedCurrency) }}
-          </span>
+          {{ creditsData.total_pending_amount }} {{ props.selectedCurrency }}</span>
         </div>
 
         <div class="ticket-total d-flex flex-wrap justify-space-between">
@@ -221,16 +183,6 @@ const showChangeAmount = computed(() => {
         </div>
 
         <div
-          v-if="credit"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">{{ "CRÉDITO" }}:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(creditAmount, selectedCurrency) }}
-          </span>
-        </div>
-
-        <div
           v-if="showChangeAmount"
           class="ticket-total d-flex justify-space-between align-center"
         >
@@ -240,9 +192,8 @@ const showChangeAmount = computed(() => {
           </span>
         </div>
       </div>
-
       <p class="font-weight-bold text-center text-success">
-        ¡GRACIAS POR SU COMPRA!
+        ¡GRACIAS POR PREFERIRNOS!
       </p>
     </VCard>
   </div>

@@ -21,7 +21,7 @@ const productosTable = computed(() => {
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>cantidad</th>
+          <th>Sugerencia</th>
           <th>Stock Pro.</th>
           <th>Costo Unit.</th>
         </tr>
@@ -45,6 +45,6 @@ const productosTable = computed(() => {
         </tr>
       </tbody>
     </VTable>
-    <div v-else class="text-center mb-5">Cargando datos...</div>
+    <div v-else class="text-center mb-5">No hay productos que mostrar...</div>
   </VCard>
 </template>

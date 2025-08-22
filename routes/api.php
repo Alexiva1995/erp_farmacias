@@ -26,7 +26,9 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +59,7 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::delete('/products/{product}', [ProductController::class, 'destroy']);
 Route::get('/products/export', [ProductController::class, 'export']);
 Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
+Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
 
 // Rutas de Grupos de Productos
 Route::get('/groups', [GroupController::class, 'index']);
@@ -64,6 +67,7 @@ Route::post('/groups', [GroupController::class, 'store']);
 Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+Route::get('/groups/consult-all', [GroupController::class, 'consultAll']);
 
 
 // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
@@ -160,7 +164,7 @@ Route::prefix("tpv")->group(function () {
 
     // Rutas de Pedidos Usuarios
     Route::get('/order', [OrderController::class, 'index']);
-    Route::get("/order/client/{Identification}",[OrderController::class, "consultByIdentification"]);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
     Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
@@ -175,6 +179,10 @@ Route::prefix("tpv")->group(function () {
     Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
     Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
     Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+
+    Route::get('/credits', [CreditsController::class, 'index']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
 
 
@@ -305,17 +313,24 @@ Route::prefix("supplier-laboratories")->group(function () {
     Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
 });
 
+//Invoices
+Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('/for-order', 'indexForOrder')->name('forOrder');
+    Route::get('/{invoice}/details', 'getDetails')->name('details');
+    Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+    Route::put('/{invoice}/data', 'updateData')->name('updateData');
+    Route::post('/{invoice}/approve', 'approve')->name('approve');
+    Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::get('/{invoice}', 'show')->name('show');
+    Route::put('/{invoice}', 'update')->name('update');
+    Route::delete('/{invoice}', 'destroy')->name('destroy');
+});
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
     Route::prefix("generate-order")->group(function () {
-        Route::post("/creat",                    [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-        Route::post("/products-to-request",      [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
     });
 });
-
-Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
-Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
-Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
-Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
