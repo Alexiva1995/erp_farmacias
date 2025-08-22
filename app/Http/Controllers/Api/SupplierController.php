@@ -7,11 +7,12 @@ use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
-use App\Services\Suppliers\SupplierHealthService;
+use App\Services\Suppliers\SupplierConnectionService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
 use App\Models\Supplier;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -24,9 +25,8 @@ class SupplierController extends Controller
      */
     public function __construct(
         private SupplierQueryService $supplierQueryService,
-        private SupplierActionService $supplierActionService
-    ) {
-    }
+        private SupplierActionService $supplierActionService,
+    ) {}
 
     /**
      * Display a listing of the suppliers.
@@ -37,14 +37,20 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         $query = $this->supplierQueryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = $request->input("itemsPerPage", 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                "data" => $items,
+                "total" => $items->count(),
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            "data" => $paginatedResult->items(),
+            "total" => $paginatedResult->total(),
+        ]);
     }
 
     /**
@@ -54,12 +60,17 @@ class SupplierController extends Controller
      */
     public function store(StoreSupplierRequest $request)
     {
-        $supplier = $this->supplierActionService->createSupplier($request->validated());
+        $supplier = $this->supplierActionService->createSupplier(
+            $request->validated(),
+        );
 
-        return response()->json([
-            'message' => 'Proveedor creado con éxito.',
-            'supplier' => $supplier
-        ], 201);
+        return response()->json(
+            [
+                "message" => "Proveedor creado con éxito.",
+                "supplier" => $supplier,
+            ],
+            201,
+        );
     }
 
     /**
@@ -70,12 +81,18 @@ class SupplierController extends Controller
      */
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
-        $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
+        $updatedSupplier = $this->supplierActionService->updateSupplier(
+            $supplier,
+            $request->validated(),
+        );
 
-        return response()->json([
-            'message' => 'Proveedor actualizado con éxito.',
-            'supplier' => $updatedSupplier
-        ], 200);
+        return response()->json(
+            [
+                "message" => "Proveedor actualizado con éxito.",
+                "supplier" => $updatedSupplier,
+            ],
+            200,
+        );
     }
 
     /**
@@ -91,19 +108,29 @@ class SupplierController extends Controller
     }
 
     /**
-     * Summary of checkApiHealth
-     * @param \App\Services\Suppliers\SupplierHealthService $healthService
+     * Summary of connectionServiceSupplier
+     * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function checkApiHealth(SupplierHealthService $healthService)
-    {
-        $results = $healthService->check();
+    public function connectionServiceSupplier(
+        SupplierConnectionService $connectionService,
+        Supplier $supplier,
+    ) {
+        $results = $connectionService->fetchData(
+            $supplier->connections->first(),
+        );
 
-        if (isset($results['error'])) {
-            return response()->json(['status' => 'error', 'results' => $results], 500);
-        }
+        $result = $this->supplierQueryService->storeSupplierConnectionData(
+            $supplier,
+            $results,
+        );
 
-        return response()->json(['status' => 'ok', 'results' => $results]);
+        $status = $result ? "ok" : "error";
+
+        return response()->json(
+            ["status" => $status, "count" => count($results)],
+            $status === "error" ? 500 : 200,
+        );
     }
 
     /**
@@ -148,13 +175,18 @@ class SupplierController extends Controller
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
-    {
-        $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
+    public function storeLaboratory(
+        StoreSupplierLaboratoryRequest $request,
+        Supplier $supplier,
+    ) {
+        $link = $this->supplierActionService->attachLaboratory(
+            $supplier,
+            $request->validated(),
+        );
 
         return response()->json([
-            'message' => 'Laboratorio vinculado con éxito.',
-            'laboratory_link' => $link->load('laboratory'),
+            "message" => "Laboratorio vinculado con éxito.",
+            "laboratory_link" => $link->load("laboratory"),
         ]);
     }
 
@@ -168,7 +200,7 @@ class SupplierController extends Controller
     {
         $links = $this->supplierQueryService->getLaboratories($supplier);
 
-        return response()->json(['laboratory_links' => $links]);
+        return response()->json(["laboratory_links" => $links]);
     }
 
     /**
@@ -179,8 +211,43 @@ class SupplierController extends Controller
      */
     public function getPendingInvoices(Supplier $supplier)
     {
-        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate($supplier);
-        return response()->json(['pending_invoices' => $grouped]);
+        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate(
+            $supplier,
+        );
+        return response()->json(["pending_invoices" => $grouped]);
+    }
+
+    public function getDiscounts(Supplier $supplier)
+    {
+        $discounts = $this->supplierQueryService->getDiscounts($supplier);
+
+        return response()->json(["supplier_discount" => $discounts]);
+    }
+
+    public function storeDiscounts(
+        StoreDiscountsRequest $request,
+        Supplier $supplier,
+    ) {
+        $validated = $request->validated();
+
+        $createdDiscounts = [];
+
+        foreach ($validated["discounts"] as $rule) {
+            $discountData = [
+                "name" => $rule["name"],
+                "discount_percentage" => $rule["discount_percentage"],
+            ];
+
+            $createdDiscounts[] = $this->supplierActionService->createDiscount(
+                $supplier,
+                $discountData,
+            );
+        }
+
+        return response()->json([
+            "message" => "Descuentos registrados correctamente.",
+            "discounts" => $createdDiscounts,
+        ]);
     }
 
     public function getDiscounts(Supplier $supplier)
