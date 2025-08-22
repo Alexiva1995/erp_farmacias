@@ -76,6 +76,7 @@ const currentUser = computed(() => authStore.user);
 
 const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
+const reservedOrderData = ref(null);
 
 const orderItems = ref([]);
 
@@ -194,9 +195,9 @@ onMounted(async () => {
   try {
     const response = await axios.get("/tpv/order/seller/my-open-order");
     if (response.data.data && response.data.data.order) {
-      openOrderData.value = response.data.data.order;
-      console.log(openOrderData);
-      selectedClient.value = response.data.data.order.client;
+      openOrderData.value = response.data.data.order.pending_order;
+      reservedOrderData.value = response.data.data.order.reserved_order;
+      selectedClient.value = response.data.data.order.pending_order.client;
       hasOpenOrder.value = true;
       if (openOrderData.value.currency) {
         selectedDisplayCurrency.value =
@@ -212,6 +213,7 @@ onMounted(async () => {
     } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
+      reservedOrderData.value = null;
       selectedClient.value = null;
       orderItems.value = [];
     }
@@ -761,9 +763,10 @@ const cancelarOrder = async () => {
 const reserverOrder = async () => {
   try {
     const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-    openOrderData.value = response.data.data.order;
-    selectedClient.value = response.data.data.order.client;
-    if (response.data.data.order.details) {
+    openOrderData.value = response.data.data.order.pending_order;
+    reservedOrderData.value = response.data.data.order.reserved_order;
+    selectedClient.value = response.data.data.order.pending_order.client;
+    if (response.data.data.order.pending_order.details) {
       orderItems.value = newOrderData.details.map((item) =>
         formatOrderItemForFrontend(item)
       );
@@ -783,6 +786,7 @@ const reserverOrder = async () => {
       error.response?.data?.message ||
       "Error al reservar la orden. Inténtalo de nuevo.";
     toast.error(errorMessage);
+    reservedOrderData.value = null;
   }
 };
 
@@ -948,6 +952,10 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
   toast.success("Productos de la cotización agregados al pedido.");
   await fetchProducts();
 };
+
+const showReserverOrder = () => {
+    console.log('visualizar la orden reservada');
+}
 </script>
 <template>
   <div>
@@ -960,6 +968,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         v-model:searchQuery="barcodeSearchQuery"
         :order-products="orderItems"
         :order="openOrderData"
+        :order-reserved="reservedOrderData"
         :total-products-amount="totalProductsAmount"
         :total-iva-amount="totalIVAAmount"
         :total-order-amount="totalOrderAmount"
@@ -972,6 +981,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         @reserve-order="reserverOrder"
         @open-buys-modal="openBuysModal"
         @add-quotation-products="handleAddQuotationProducts"
+        @show-reserved-order="showReserverOrder"
       />
     </div>
     <div v-else>

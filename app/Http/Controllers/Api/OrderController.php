@@ -80,10 +80,12 @@ class OrderController extends Controller
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
+
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
+
             if ($openOrder) {
                 return ApiResponse::success([
-                    'order' => $openOrder->toArray()
+                    'order' => $openOrder,
                 ], "Orden abierta de vendedor encontrada.", 200);
             } else {
                 return ApiResponse::success([
@@ -291,7 +293,9 @@ class OrderController extends Controller
 
         try {
             $order = $this->orderActionService->reserveAndNewOrder($order,$sellerId);
-            return ApiResponse::success('Orden reservada exitosamente.', ['order' => $order]);
+            return ApiResponse::success('Orden reservada exitosamente.', [
+            'order' => $order
+            ]);
         } catch (\Exception $e) {
             Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
             return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);

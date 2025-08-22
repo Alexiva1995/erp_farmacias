@@ -46,10 +46,34 @@ class OrderActionService
         }
     }
 
-    public function getMyOpenOrder(int $sellerId): ?Order
+    public function getMyOpenOrder(int $sellerId): array
     {
         try {
-            $openOrder = Order::where('seller_id', $sellerId)
+
+            $withRelations = [
+            'client',
+            'seller',
+            'details' => function ($query) {
+                $query->with([
+                    'product' => function ($q) {
+                        $q->with('laboratory')
+                          ->withSum('lots', 'quantity');
+                    }
+                ]);
+            }
+        ];
+
+          $openOrder = Order::where('seller_id', $sellerId)
+            ->where('status', Order::PENDING)
+            ->with($withRelations)
+            ->first();
+
+            $reservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->with($withRelations)
+            ->first();
+
+           /* $openOrder = Order::where('seller_id', $sellerId)
                 ->where('status', Order::PENDING)
                 ->with([
                     'client',
@@ -63,8 +87,27 @@ class OrderActionService
                         ]);
                     }
                 ])
-                ->first();
-            return $openOrder;
+                ->first();*/
+               
+           /* $reservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->with([
+                'client',
+                'seller',
+                'details' => function ($query) {
+                    $query->with([
+                        'product' => function ($q) {
+                            $q->with('laboratory')->withSum('lots', 'quantity as valid_stock_sum');
+                        }
+                    ]);
+                }
+            ])
+            ->first();*/
+        
+             return [
+            'pending_order' => $openOrder,
+            'reserved_order' => $reservedOrder
+            ];
         } catch (\Exception $e) {
             Log::error('Error en getMyOpenOrder para seller_id: ' . $sellerId . ' - ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -451,7 +494,7 @@ class OrderActionService
         }
     }
 
-    public function reserveAndNewOrder(Order $order,$sellerId): Order
+    public function reserveAndNewOrder(Order $order,$sellerId): array
     {
           DB::beginTransaction();
         try {
@@ -477,9 +520,12 @@ class OrderActionService
 
             DB::commit();
             Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
-            return $newOrder;
+             return [
+            'existing_reserved_order' => $order,
+            'new_order' => $newOrder
+            ];
         } catch (\Throwable $e) {
-            
+
             DB::rollBack();
             Log::error('Error al reservar la orden: ' . $e->getMessage(), [
                 'order_id' => $order->id,

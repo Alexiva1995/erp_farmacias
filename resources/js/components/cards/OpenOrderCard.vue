@@ -52,6 +52,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+   orderReserved: {
+    type: Object,
+    default: null,
+  },
 });
 
 const quotationId = ref("");
@@ -78,6 +82,7 @@ const emit = defineEmits([
   "open-buys-modal",
   "reserve-order",
   "add-quotation-products",
+  "show-reserved-order"
 ]);
 
 const chipColor = "primary";
@@ -233,6 +238,11 @@ const fetchQuotationProducts = async (id) => {
     quotationId.value = "";
   }
 };
+
+const handleReserved = () => {
+     emit('show-reserved-order');
+};
+
 </script>
 <template>
   <VCard class="mb-6">
@@ -412,13 +422,12 @@ const fetchQuotationProducts = async (id) => {
       </div>
     </VCardActions>
 
-    <VCardActions class="p-4 d-flex justify-space-between w-50" style="padding-bottom: 5px;">
+    <VCardActions class="p-4 d-flex flex-wrap gap-4">
    
           <VBtn
             color="secondary"
             variant="outlined"
             @click="hadleCancelarOrder"
-            class="w-50"
             >Cancelar</VBtn
           >
 
@@ -426,18 +435,26 @@ const fetchQuotationProducts = async (id) => {
             color="primary"
             variant="flat"
             @click="handleCompleteOrder"
-            class="w-50"
-            
+         
             >Completar</VBtn
           >
           <VBtn
             color="success"
             variant="flat"
             @click="handleTReserveOrder"
-            class="w-50"
-            
+        
             >Reservar</VBtn
           >
+        <VSpacer />
+
+        <VSpacer />
+          <VBtn  v-if="props.orderReserved"
+        color="primary"
+        prepend-icon="tabler-arrow-back"
+        @click="handleReserved"
+      >
+        Order Reservada
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>
