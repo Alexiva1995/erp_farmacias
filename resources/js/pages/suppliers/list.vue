@@ -40,6 +40,8 @@ const isPendingInvoicesDialogVisible = ref(false);
 const isSupplierDiscountRuleDialogVisible = ref(false);
 const isSupplierDiscountDialogVisible = ref(false);
 
+const checkingApiSupplierId = ref(null);
+
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
@@ -220,27 +222,15 @@ const handleDeleteSupplier = async (id) => {
 };
 
 const handleCheckSupplierApi = async (supplier) => {
-  try {
-    const { data } = await axios.get("/suppliers/check-health"); //`/suppliers/${supplier.id}/check-health`
+  checkingApiSupplierId.value = supplier.id;
 
-    if (data.status === "ok") {
-      const fallas = Object.entries(data.results).filter(
-        ([verb, status]) => status !== "OK"
-      );
-      if (fallas.length === 0) {
-        toast.success(`API de ${supplier.name} está 100% operativa ✅`);
-      } else {
-        const fallosList = fallas
-          .map(([verb, status]) => `${verb}: ${status}`)
-          .join(", ");
-        toast.warning(`Fallas detectadas en ${supplier.name}: ${fallosList}`);
-      }
-    } else {
-      toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
-    }
+  try {
+    toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
+    await axios.get(`/suppliers/${supplier.id}/connection`);    
   } catch (error) {
-    console.error(`Error al verificar API de ${supplier.name}:`, error);
-    toast.error(`No se pudo verificar la API de ${supplier.name}`);
+    toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
+  } finally {
+    checkingApiSupplierId.value = null;
   }
 };
 
@@ -421,6 +411,7 @@ const updateTableOptions = (options) => {
       :total-supplier="totalSupplier"
       :items-per-page="itemsPerPage"
       :page="page"
+      :checking-api-id="checkingApiSupplierId"
       @update:options="updateTableOptions"
       @edit-supplier="handleEditSupplier"
       @delete-supplier="handleDeleteSupplier"
