@@ -36,7 +36,9 @@ const groupBy = [{ key: 'supplier.name' }]
       </template>
       <template #item.totalPorveedor="{ item }">
         <VIcon icon="tabler-currency-dollar" />
-        {{ item.reponer * item.productSupplier.unit_cost }}
+        {{
+          item.reponer * parseFloat(item.productSupplier.unit_cost).toFixed(2)
+        }}
       </template>
     </v-data-table-virtual>
   </VCard>
