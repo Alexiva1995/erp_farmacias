@@ -127,12 +127,7 @@ class SupplierController extends Controller
     public function getConnectionStatus()
     {
         $userId = auth()->id() ?? 1;
-        $statuses = SupplierConnectionStatus::with('supplier')
-            ->where('user_id', $userId)
-            ->whereIn('status', ['completed', 'failed'])
-            ->where('created_at', '>=', now()->subMinutes(10)) // últimos 10 min
-            ->latest()
-            ->get();
+        $statuses = $this->supplierQueryService->getRecentConnectionStatusesForUser($userId);
 
         return response()->json(['statuses' => $statuses]);
     }

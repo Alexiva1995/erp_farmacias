@@ -5,6 +5,7 @@ namespace App\Services\Suppliers;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\SupplierConnectionStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -205,5 +206,15 @@ class SupplierQueryService
             report($e);
             return false;
         }
+    }
+
+    public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
+    {
+        return SupplierConnectionStatus::with('supplier')
+            ->where('user_id', $userId)
+            ->whereIn('status', ['completed', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes($minutes))
+            ->latest()
+            ->get();
     }
 }
