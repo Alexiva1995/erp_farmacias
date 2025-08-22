@@ -2,8 +2,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function pdfProductsAssistantReportGenerator(data) {
-     const doc = new jsPDF();
+    // Cambiar a orientación horizontal ('landscape')
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [350, 297] // [ancho, alto] - 400mm de ancho (casi el doble de A4)
+    });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     
     // 1. Logo (opcional - elimina si no necesitas)
     try {
@@ -80,7 +86,7 @@ export default function pdfProductsAssistantReportGenerator(data) {
         }
     ]);
     
-    // 5. Generar tabla
+    // 5. Generar tabla - Ajustar para orientación horizontal
     autoTable(doc, {
         startY: headerY + 20,
         head: headers,
@@ -95,26 +101,27 @@ export default function pdfProductsAssistantReportGenerator(data) {
             fillColor: [245, 245, 245] // Gris claro para filas alternas
         },
         styles: {
-            fontSize: 8, // Tamaño más pequeño para acomodar más columnas
-            cellPadding: 2,
+            fontSize: 9, // Puedes aumentar un poco el tamaño ya que hay más espacio
+            cellPadding: 3,
             overflow: 'linebreak'
         },
+        // Ajustar anchos de columna para aprovechar el espacio horizontal
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },  // #
-            1: { cellWidth: 15, halign: 'center' },  // ID
-            2: { cellWidth: 40 },                    // Producto
-            3: { cellWidth: 30 },                    // Laboratorio
-            4: { cellWidth: 20, halign: 'right' },   // Costo Min
-            5: { cellWidth: 20, halign: 'right' },   // Costo Max
-            6: { cellWidth: 20, halign: 'right' },   // Costo
-            7: { cellWidth: 15, halign: 'center' },  // Ventas
-            8: { cellWidth: 15, halign: 'center' },  // Stock
-            9: { cellWidth: 25, halign: 'right' },   // Promedio Ventas
-            10: { cellWidth: 20, halign: 'right' }   // Análisis
+            0: { cellWidth: 15, halign: 'center' },  // #
+            1: { cellWidth: 20, halign: 'center' },  // ID
+            2: { cellWidth: 60 },                    // Producto (más ancho)
+            3: { cellWidth: 40 },                    // Laboratorio (más ancho)
+            4: { cellWidth: 25, halign: 'right' },   // Costo Min
+            5: { cellWidth: 25, halign: 'right' },   // Costo Max
+            6: { cellWidth: 25, halign: 'right' },   // Costo
+            7: { cellWidth: 20, halign: 'center' },  // Ventas
+            8: { cellWidth: 20, halign: 'center' },  // Stock
+            9: { cellWidth: 30, halign: 'right' },   // Promedio Ventas
+            10: { cellWidth: 25, halign: 'right' }   // Análisis
         },
-        margin: { left: 10, right: 10 },
+        margin: { left: 14, right: 14 },
         pageBreak: 'auto',
-        tableWidth: 'wrap'
+        tableWidth: 'auto'
     });
     
     // 6. Pie de página
@@ -125,7 +132,7 @@ export default function pdfProductsAssistantReportGenerator(data) {
         doc.text(
             `Página ${i} de ${pageCount}`,
             pageWidth / 2,
-            doc.internal.pageSize.height - 10,
+            pageHeight - 10, // Usar pageHeight en lugar del valor fijo
             { align: 'center' }
         );
     }
@@ -133,5 +140,4 @@ export default function pdfProductsAssistantReportGenerator(data) {
     // 7. Guardar PDF
     const fileName = `Productos_${today.toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
-
 }
