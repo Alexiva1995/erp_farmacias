@@ -206,14 +206,4 @@ class SupplierQueryService
             return false;
         }
     }
-
-    public function getPaymentRules(Supplier $supplier): Collection
-    {
-        return $supplier->paymentRules()->get();
-    }
-    
-    public function getDiscounts(Supplier $supplier): Collection
-    {
-        return $supplier->discounts()->get();
-    }
 }
