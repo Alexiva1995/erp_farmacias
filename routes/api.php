@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CreditsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -174,6 +175,10 @@ Route::prefix("tpv")->group(function () {
     Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
     Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
     Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+
+    Route::get('/credits', [CreditsController::class, 'index']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
 
 
