@@ -93,9 +93,9 @@ class Supplier extends Model
         return $this->hasMany(SuppliersConfigProduct::class);
     }
 
-    public function paymentRule()
+    public function paymentRules()
     {
-        return $this->hasOne(PaymentRule::class);
+        return $this->hasMany(PaymentRule::class);
     }
 
     public function invoices()
@@ -126,5 +126,15 @@ class Supplier extends Model
     public function getDebtAttribute(): float
     {
         return $this->invoices->sum->outstanding_debt;
+    }
+
+    public function discounts()
+    {
+        return $this->hasMany(SupplierDiscount::class);
+    }
+  
+    public function connections()
+    {
+        return $this->hasMany(SupplierConnection::class);
     }
 }

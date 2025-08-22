@@ -9,14 +9,18 @@ export default [
       },
     },
     children: [
-        {
-            title: 'Facturas',
-            to: 'invoice-invoices',
-        },
-        {
-            title: 'Registrar Facturas',
-            to: 'invoice-register',
-        },
+      {
+        title: 'Registrar Facturas',
+        to: 'invoice-register',
+      },
+      {
+        title: 'Facturas Cargadas',
+        to: 'invoice-invoices',
+      },
+      {
+        title: 'Facturas por ordenar',
+        to: 'invoice-invoice-for-order',
+      },
     ],
   }, 
 ]

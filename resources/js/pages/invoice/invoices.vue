@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
+import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -20,7 +21,6 @@ const isLoadingFilters = ref(false);
 
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
-const selectedStatus = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
@@ -51,7 +51,6 @@ const fetchInvoices = async () => {
     orderBy: orderBy.value,
     q: searchQuery.value,
     supplierId: selectedSupplier.value,
-    status: selectedStatus.value,
     startDate: startDate.value,
     endDate: endDate.value,
   };
@@ -81,7 +80,6 @@ watch(
     orderBy,
     searchQuery,
     selectedSupplier,
-    selectedStatus,
     startDate,
     endDate,
   ],
@@ -95,7 +93,12 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedSupplier, selectedStatus, startDate, endDate],
+  [
+    searchQuery,
+    selectedSupplier,
+    /* Se elimina `selectedStatus` */ startDate,
+    endDate,
+  ],
   () => {
     if (page.value !== 1) {
       page.value = 1;
@@ -118,19 +121,21 @@ const updateTableOptions = (options) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
-  selectedStatus.value = null;
   startDate.value = null;
   endDate.value = null;
 };
 
 const handleEditInvoice = (invoice) => {
-  console.log("Cambiando a la vista de detalle para la factura:", invoice.id);
   selectedInvoiceId.value = invoice.id;
   currentView.value = "detail";
 };
 
+const handleEditInvoiceForm = (invoice) => {
+  selectedInvoiceId.value = invoice.id;
+  currentView.value = "edit-form";
+};
+
 const handleReturnToList = () => {
-  console.log("Volviendo a la lista de facturas");
   selectedInvoiceId.value = null;
   currentView.value = "list";
   fetchInvoices();
@@ -184,7 +189,6 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedSupplier="selectedSupplier"
-        v-model:selectedStatus="selectedStatus"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
         :suppliers="suppliers"
@@ -200,6 +204,7 @@ const handleDeleteInvoice = async (id) => {
         :page="page"
         @update:options="updateTableOptions"
         @edit-invoice="handleEditInvoice"
+        @edit-invoice-form="handleEditInvoiceForm"
         @delete-invoice="handleDeleteInvoice"
       />
     </div>
@@ -208,6 +213,15 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
         @back-to-list="handleReturnToList"
+      />
+    </div>
+
+    <div v-else-if="currentView === 'edit-form'">
+      <InvoiceFormEdit
+        :invoice-id="selectedInvoiceId"
+        :is-edit-mode="true"
+        @back-to-list="handleReturnToList"
+        @invoice-saved="handleReturnToList"
       />
     </div>
   </div>

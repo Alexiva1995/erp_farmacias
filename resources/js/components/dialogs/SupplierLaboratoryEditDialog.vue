@@ -76,14 +76,15 @@
                         />
                     </VCol>
                     <VCol cols="12" md="6">
-                        <VSelect
+                        <VAutocomplete
                             v-model="formData.laboratory_id"
-                            label="Laboratorio"
                             :items="props.laboratories"
+                            label="Laboratorio"
+                            placeholder="Escribe para buscar un laboratorio"
                             item-title="name"
                             item-value="id"
-                            variant="outlined"
                             clearable
+                            variant="outlined"
                             :error-messages="formErrors.laboratory_id"
                         />
                     </VCol>
@@ -102,6 +103,22 @@
                     density="compact"
                     no-data-text="Este proveedor no tiene laboratorios asociados."
                 >
+                    <template #item.phone="{ item }">
+                        <VTooltip text="Contactar por WhatsApp" location="top">
+                            <template #activator="{ props }">
+                                <VBtn
+                                    icon
+                                    :disabled="!item.phone"
+                                    :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}` : undefined"
+                                    target="_blank"
+                                    variant="text"
+                                    v-bind="props"
+                                >
+                                    <VIcon :icon="item.phone ? 'tabler-phone-call' : 'tabler-phone-off'" />
+                                </VBtn>
+                            </template>
+                        </VTooltip>
+                    </template>
                 </VDataTable>
             </VForm>
         </VCardText>

@@ -17,7 +17,8 @@ class ProductController extends Controller
     public function __construct(
         private ProductQueryService $productQueryService,
         private ProductActionService $productActionService
-    ) {}
+    ) {
+    }
 
     public function index(Request $request)
     {
@@ -88,5 +89,22 @@ class ProductController extends Controller
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+    public function searchByBarcode(Request $request)
+    {
+        $request->validate([
+            'barcode' => 'required|string'
+        ]);
+        $query = $this->productQueryService->searchBarcodeProduct($request);
+        if ($query) {
+            return response()->json([
+                'data' => $query,
+                'message' => 'Producto encontrado'
+            ]);
+        }
+        return response()->json([
+            'data' => null,
+            'message' => 'Producto no encontrado'
+        ], 404);
     }
 }
