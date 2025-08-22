@@ -75,7 +75,7 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-             //$sellerId = Auth::id();
+            //$sellerId = Auth::id();
             $sellerId = 3; //para realizar pruebas
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
@@ -254,8 +254,8 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
-  
-     public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
+
+    public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
@@ -271,5 +271,30 @@ class OrderController extends Controller
         $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
-     }
+    }
+
+    public function reserveOrder(Order $order): JsonResponse
+    {
+        //$sellerId = Auth::id();
+        $sellerId = 3; //para realizar pruebas
+        $existingReservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->first();
+
+        if ($existingReservedOrder) {
+            return ApiResponse::error('Ya tienes una orden reservada.', 409);
+        }
+
+        if ($order->status !== 'Pending') {
+            return ApiResponse::error('Solo se pueden reservada órdenes abiertas.', 400);
+        }
+
+        try {
+            $order = $this->orderActionService->reserveAndNewOrder($order,$sellerId);
+            return ApiResponse::success('Orden reservada exitosamente.', ['order' => $order]);
+        } catch (\Exception $e) {
+            Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);
+        }
+    }
 }

@@ -760,8 +760,20 @@ const cancelarOrder = async () => {
 
 const reserverOrder = async () => {
   try {
+    const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
+    openOrderData.value = response.data.data.order;
+    selectedClient.value = response.data.data.order.client;
+    if (response.data.data.order.details) {
+      orderItems.value = newOrderData.details.map((item) =>
+        formatOrderItemForFrontend(item)
+      );
+    } else {
+      orderItems.value = [];
+    }
 
-  
+    hasOpenOrder.value = true;
+    toast.success("Orden reservada exitosamente.");
+    return response.data.data.order;
   } catch (error) {
     console.error(
       "Error al reservar la orden:",

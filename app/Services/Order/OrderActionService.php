@@ -50,7 +50,7 @@ class OrderActionService
     {
         try {
             $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status', 'Pending')
+                ->where('status', Order::PENDING)
                 ->with([
                     'client',
                     'seller',
@@ -215,7 +215,7 @@ class OrderActionService
     {
         DB::beginTransaction();
         try {
-            $order->status = 'abandoned';
+            $order->status = Order::ABANDONED;
             $order->save();
             DB::commit();
             Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
@@ -277,7 +277,7 @@ class OrderActionService
     {
         DB::beginTransaction();
         try {
-            $orderId->status = 'Completed';
+            $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
 
@@ -366,11 +366,11 @@ class OrderActionService
             }
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
-            $current_cash = CashClosing::where('status', 'open')->where('seller_id', $orderId->seller_id)->first();
+            $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
             if (!isset($current_cash)) {
                 $current_cash = CashClosing::create([
                     'seller_id' => $orderId->seller_id,
-                    'status' =>  'open',
+                    'status' =>  CashClosing::OPEN,
                     'closing_date' => Carbon::now(),
                 ]);
             }
@@ -445,6 +445,44 @@ class OrderActionService
             DB::rollBack();
             Log::error('Error al completar la orden: ' . $e->getMessage(), [
                 'order_id' => $orderId->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function reserveAndNewOrder(Order $order,$sellerId): Order
+    {
+          DB::beginTransaction();
+        try {
+            $order->status = Order::RESERVED;
+            $order->save();
+            $openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
+                ->where('status', CashClosing::OPEN)
+                ->first();
+
+            if (!$openCashRegisterClosing) {
+                throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
+            } 
+
+                $data['client_id'] = $order->client_id;
+                $data['seller_id'] = $sellerId;
+                $data['cash_closing_id'] = $openCashRegisterClosing->id;
+                $data['total_amount'] =  0;
+                $data['money_returns'] =  0;
+                $data['payment_methods'] = null;
+
+            $newOrder = Order::create($data);
+            $newOrder->load('seller', 'client');
+
+            DB::commit();
+            Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
+            return $newOrder;
+        } catch (\Throwable $e) {
+            
+            DB::rollBack();
+            Log::error('Error al reservar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
