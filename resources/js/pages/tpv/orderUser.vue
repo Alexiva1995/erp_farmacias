@@ -11,6 +11,7 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { useAuthStore } from "@/stores/auth";
 import OrderTicket from "@/components/OrderTicket.vue";
+import ReservedOrderModal from "@/components/dialogs/ReservedOrderModal.vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -76,7 +77,9 @@ const currentUser = computed(() => authStore.user);
 
 const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
+
 const reservedOrderData = ref(null);
+const showReservedOrderModal = ref(false);
 
 const orderItems = ref([]);
 
@@ -954,7 +957,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 };
 
 const showReserverOrder = () => {
-    console.log('visualizar la orden reservada');
+  showReservedOrderModal.value = true;
 }
 </script>
 <template>
@@ -1053,6 +1056,14 @@ const showReserverOrder = () => {
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
       />
+
+
+
+      <ReservedOrderModal
+      v-model:is-dialog-visible="showReservedOrderModal"
+      :order="reservedOrderData"
+    />
+
     </div>
   </div>
 </template>
