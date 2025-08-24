@@ -48,6 +48,7 @@ declare module 'vue-router/auto-routes' {
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'suppliers-generar-pedido': RouteRecordInfo<'suppliers-generar-pedido', '/suppliers/generar-pedido', Record<never, never>, Record<never, never>>,
     'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
+    'suppliers-price-comparision-list': RouteRecordInfo<'suppliers-price-comparision-list', '/suppliers/price-comparision/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-history-list': RouteRecordInfo<'suppliers-purchase-orders-history-list', '/suppliers/purchase-orders/history/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-list': RouteRecordInfo<'suppliers-purchase-orders-list', '/suppliers/purchase-orders/list', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistant': RouteRecordInfo<'suppliers-supplieriaorderassistant', '/suppliers/supplieriaorderassistant', Record<never, never>, Record<never, never>>,
