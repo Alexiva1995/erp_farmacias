@@ -7,12 +7,12 @@ use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
-use App\Services\Suppliers\SupplierConnectionService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
+use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
-use Illuminate\Support\Facades\DB;
+use App\Models\SupplierConnectionStatus;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -109,32 +109,32 @@ class SupplierController extends Controller
 
     /**
      * Summary of connectionServiceSupplier
-     * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
     public function connectionServiceSupplier(
-        SupplierConnectionService $connectionService,
         Supplier $supplier,
     ) {
-        $results = $connectionService->fetchData(
-            $supplier->connections->first(),
-        );
+        $userId = auth()->id() ?? 1;
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $result = $this->supplierQueryService->storeSupplierConnectionData(
-            $supplier,
-            $results,
-        );
+        return response()->json(['status' => 'queued']);
+    }
 
-        $status = $result ? "ok" : "error";
+    /**
+     * Get the connection statuses for the authenticated user.
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
+    public function getConnectionStatus()
+    {
+        $userId = auth()->id() ?? 1;
+        $statuses = SupplierConnectionStatus::with('supplier')
+            ->where('user_id', $userId)
+            ->whereIn('status', ['completed', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes(10)) // últimos 10 min
+            ->latest()
+            ->get();
 
-        return response()->json(
-            [
-                "status" => $status, 
-                "count_product" => count($results['products']),
-                "count_invoice" => count($results['invoices']),
-            ],
-            $status === "error" ? 500 : 200,
-        );
+        return response()->json(['statuses' => $statuses]);
     }
 
     /**

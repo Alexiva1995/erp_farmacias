@@ -138,7 +138,7 @@
         "path": "Existencia/inventario.txt",
         "pasv": true,
         "has_header": false,
-        "invoice_path": null,
+        "invoice_path": "Facturas/3226",
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
@@ -175,6 +175,85 @@
             "7": {
                 "file_field": "stock_disponible",
                 "type": "integer"
+            }
+        },
+        "invoice_structure": {
+            "separator": ";",
+            "decimal_separator": ".",
+            "decimals": 2,
+            "header": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "integer"
+                },
+                "2": {
+                    "field": "control_number",
+                    "type": "string"
+                },
+                "3": {
+                    "field": "exp_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "8": {
+                    "field": "total_amount",
+                    "type": "decimal"
+                },
+                "13": {
+                    "field": "tax_amount",
+                    "type": "decimal"
+                }
+            },
+            "lines": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "fact_num",
+                    "type": "integer"
+                },
+                "2": {
+                    "field": "numcon",
+                    "type": "string"
+                },
+                "3": {
+                    "field": "codigo_producto",
+                    "type": "string"
+                },
+                "4": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "5": {
+                    "field": "descripcion_producto",
+                    "type": "string"
+                },
+                "6": {
+                    "field": "quantity",
+                    "type": "integer"
+                },
+                "10": {
+                    "field": "unit_cost",
+                    "type": "decimal"
+                },
+                "11": {
+                    "field": "lot_number",
+                    "type": "string"
+                },
+                "12": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "13": {
+                    "field": "porcentaje_iva",
+                    "type": "decimal"
+                }
             }
         }
     },
@@ -307,6 +386,40 @@
             "15": {
                 "file_field": "CantBonifica",
                 "type": "decimal"
+            }
+        }
+    },
+    {
+        "supplier_id": "23",
+        "type": "api",
+        "host": "http://www.cobeca.com:8080/pedidofl/api/Login",
+        "port": null,
+        "username": "f31373",
+        "password": "eyJpdiI6IlEzMnR6cmUydFhEWFZndGNnNnA1Nmc9PSIsInZhbHVlIjoiSHZ3Z2FHWUZlc21yVm5VS0toR3cxdz09IiwibWFjIjoiMzU1MDQxZDg4OTI4NjMzN2IwZGU3YzUwZDFmNzdhNDVkZTdiZjBkOTQ0NTcwNDY3Y2M3ZGMyZTc1MGUzOGQwNCIsInRhZyI6IiJ9",
+        "path": "http://www.cobeca.com:8080/pedidofl/api/Articulos?cod_drogueria=3",
+        "pasv": false,
+        "has_header": false,
+        "invoice_path": null,
+        "structure": {
+            "0": {
+                "file_field": "cod_barras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "1": {
+                "file_field": "desc_articulo",
+                "type": "string",
+                "target": "name"
+            },
+            "2": {
+                "file_field": "fecha_Expire_ned",
+                "type": "date",
+                "target": "expiration"
+            },
+            "3": {
+                "file_field": "monto_final",
+                "type": "decimal",
+                "target": "unit_cost"
             }
         }
     }
