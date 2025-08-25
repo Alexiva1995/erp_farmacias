@@ -293,12 +293,23 @@ class OrderController extends Controller
 
         try {
             $order = $this->orderActionService->reserveAndNewOrder($order,$sellerId);
-            return ApiResponse::success('Orden reservada exitosamente.', [
-            'order' => $order
-            ]);
+            return ApiResponse::success($order, 'Orden reservada exitosamente.',200);
         } catch (\Exception $e) {
             Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
             return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function reserveAddOrder(Order $order): JsonResponse
+    {
+         try {
+            //$sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+            $order = $this->orderActionService->reserveAndAddOrder($order,$sellerId);
+            return ApiResponse::success($order, 'Orden agregada exitosamente.',200);
+        } catch (\Exception $e) {
+            Log::error('Error al agregar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
         }
     }
 }

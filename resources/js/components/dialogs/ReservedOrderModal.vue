@@ -13,7 +13,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible", "modal-closed"]);
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "add-reserved-order"]);
 
 const dialogVisible = computed({
   get: () => props.isDialogVisible,
@@ -76,6 +76,10 @@ const getProductPrice = (product, currency) => {
   }
   return priceWithIva;
 };
+
+const handleAddOrder = () => {
+  emit('add-reserved-order', props.order.id);
+}
 </script>
 
 <template>
@@ -154,6 +158,26 @@ const getProductPrice = (product, currency) => {
           </p>
         </div>
       </VCardText>
+
+
+      <VCardActions class="p-4 d-flex justify-space-between w-50 mx-auto">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="closeModal"
+           class="w-50"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="handleAddOrder"
+          class="w-50"
+        >Agregar orden
+        </VBtn>
+      </VCardActions>
+
     </VCard>
   </VDialog>
 </template>

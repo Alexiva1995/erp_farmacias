@@ -198,6 +198,7 @@ onMounted(async () => {
   try {
     const response = await axios.get("/tpv/order/seller/my-open-order");
     if (response.data.data && response.data.data.order) {
+      console.log(response.data.data.order)
       openOrderData.value = response.data.data.order.pending_order;
       reservedOrderData.value = response.data.data.order.reserved_order;
       selectedClient.value = response.data.data.order.pending_order.client;
@@ -206,8 +207,8 @@ onMounted(async () => {
         selectedDisplayCurrency.value =
           openOrderData.value.currency.toUpperCase();
       }
-      if (response.data.data.order.details) {
-        orderItems.value = response.data.data.order.details.map((item) =>
+      if (openOrderData.value.details) {
+        orderItems.value = openOrderData.value.details.map((item) =>
           formatOrderItemForFrontend(item)
         );
       } else {
@@ -766,11 +767,14 @@ const cancelarOrder = async () => {
 const reserverOrder = async () => {
   try {
     const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-    openOrderData.value = response.data.data.order.pending_order;
-    reservedOrderData.value = response.data.data.order.reserved_order;
-    selectedClient.value = response.data.data.order.pending_order.client;
+    const { pending_order, reserved_order } = response.data.data.order;
+
+    openOrderData.value = pending_order;
+    reservedOrderData.value = reserved_order;
+    selectedClient.value = pending_order.client;
+
     if (response.data.data.order.pending_order.details) {
-      orderItems.value = newOrderData.details.map((item) =>
+      orderItems.value = response.data.data.order.pending_order.details.map((item) =>
         formatOrderItemForFrontend(item)
       );
     } else {
@@ -785,11 +789,25 @@ const reserverOrder = async () => {
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
-    const errorMessage =
-      error.response?.data?.message ||
-      "Error al reservar la orden. Inténtalo de nuevo.";
+
+    if (error.response.data.message.includes("Ya tienes una orden reservada")) {
+     try {
+        const checkResponse = await axios.get("/tpv/order/seller/my-open-order");
+        if (checkResponse.data.data) {
+          openOrderData.value = checkResponse.data.data.order.pending_order;
+          reservedOrderData.value = checkResponse.data.data.order.reserved_order;
+          toast.info("La orden ya estaba reservada. La orden abierta se mantiene.");
+          return;
+        }
+      } catch (checkError) {
+        console.error("Error al verificar el estado de las órdenes:", checkError);
+      }
+    }
+     console.error(
+      "Error al reservar la orden:",
+      error.response ? error.response.data : error.message
+    );
     toast.error(errorMessage);
-    reservedOrderData.value = null;
   }
 };
 
@@ -959,6 +977,39 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 const showReserverOrder = () => {
   showReservedOrderModal.value = true;
 }
+
+const addReserverOrder = async (idOrder) => {
+ try {
+    const response = await axios.patch(`/tpv/order/${idOrder}/reserveAdd`);
+    const { pending_order, reserved_order } = response.data.data;
+
+    openOrderData.value = pending_order;
+    reservedOrderData.value = reserved_order;
+    selectedClient.value = pending_order.client;
+
+    console.log(openOrderData.value);
+    if (openOrderData.value.details) {
+      orderItems.value = openOrderData.value.details.map((item) =>
+        formatOrderItemForFrontend(item)
+      );
+    } else {
+      orderItems.value = [];
+    }
+    hasOpenOrder.value = true;
+    await nextTick();
+    toast.success("Orden agregada exitosamente.");
+    showReservedOrderModal.value = false;
+    return response.data.data.order;
+
+  } catch (error) {
+     console.error(
+      "Error al agregar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    toast.error(errorMessage);
+  }
+
+}
 </script>
 <template>
   <div>
@@ -1062,6 +1113,7 @@ const showReserverOrder = () => {
       <ReservedOrderModal
       v-model:is-dialog-visible="showReservedOrderModal"
       :order="reservedOrderData"
+      @add-reserved-order="addReserverOrder"
     />
 
     </div>

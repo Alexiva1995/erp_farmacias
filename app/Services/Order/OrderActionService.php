@@ -534,4 +534,43 @@ class OrderActionService
             throw $e;
         }
     }
+
+     public function reserveAndAddOrder(Order $order,$sellerId): array
+    {
+        DB::beginTransaction();
+        try {
+
+            $orderOpen = Order::where('seller_id', $sellerId)
+                ->where('status', Order::PENDING)
+                ->first();
+
+            if (!$orderOpen) {
+                throw new \Exception("No hay una orden abierta para este vendedor.");
+            }
+
+            $orderOpen->status = Order::RESERVED;
+            $order->status = Order::PENDING;
+
+            $orderOpen->save(); 
+            $order->save();
+
+            $orderOpen->load('seller', 'client', 'details.product');
+            $order->load('seller', 'client', 'details.product');
+
+            DB::commit();
+            Log::info("Orden agregada exitosamente.", ['order_id' => $order->id]);
+            return [
+            'reserved_order' => $orderOpen,
+            'pending_order' => $order,
+            ];
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+            Log::error('Error al agregar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
 }
