@@ -128,7 +128,11 @@ class SupplierController extends Controller
         $status = $result ? "ok" : "error";
 
         return response()->json(
-            ["status" => $status, "count" => count($results)],
+            [
+                "status" => $status, 
+                "count_product" => count($results['products']),
+                "count_invoice" => count($results['invoices']),
+            ],
             $status === "error" ? 500 : 200,
         );
     }
@@ -247,34 +251,6 @@ class SupplierController extends Controller
         return response()->json([
             "message" => "Descuentos registrados correctamente.",
             "discounts" => $createdDiscounts,
-        ]);
-    }
-
-    public function getDiscounts(Supplier $supplier)
-    {
-        $discounts = $this->supplierQueryService->getDiscounts($supplier);
-
-        return response()->json(['supplier_discount' => $discounts]);
-    }
-
-    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
-    {
-        $validated = $request->validated();
-
-        $createdDiscounts = [];
-
-        foreach ($validated['discounts'] as $rule) {
-            $discountData = [
-                'name' =>  $rule['name'],
-                'discount_percentage' => $rule['discount_percentage'],
-            ];
-
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
-        }
-
-        return response()->json([
-            'message' => 'Descuentos registrados correctamente.',
-            'discounts' => $createdDiscounts,
         ]);
     }
 }
