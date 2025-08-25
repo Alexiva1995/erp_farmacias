@@ -8,6 +8,7 @@ use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
 use App\Repository\ProductLotsRepository;
 use App\Repository\ProductSupplierRepository;
+use DateTime;
 use Illuminate\Database\Eloquent\Collection;
 
 class ProductSupplierServices implements ProductSupplier
@@ -189,7 +190,10 @@ class ProductSupplierServices implements ProductSupplier
             $lote = $this->productLotsRepository->checkTheLotWithTheLowestPrice($producto["product"], $producto["supplier"]);
             if ($lote) {
                 if ((float)$producto["productSupplier"]->unit_cost < (float)$lote->unit_cost) {
+                    $dateLot = new DateTime($lote->created_at);
                     $producto["checkUniquePurchaseOpportunity"] = true;
+                    $producto["cost_lot"] = $lote->unit_cost;
+                    $producto["cost_lot_data"] = $dateLot->format("d-m-Y");
                     $productos[$index] = $producto;
                     $productosConOportunidad[] = $productos[$index];
                 }
