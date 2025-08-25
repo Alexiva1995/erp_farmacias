@@ -18,7 +18,7 @@ class ProductLotsRepository
         $consulta = ProductLot::query()
             ->where("product_id", "=", $product->id)
             ->where("supplier_id", "=", $supplier->id)
-            ->orderBy("unit_cost", "DESC")
+            ->orderBy("unit_cost", "ASC")
             ->first();
         return $consulta;
     }
