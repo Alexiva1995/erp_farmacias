@@ -182,7 +182,7 @@ Route::prefix("tpv")->group(function () {
 
     Route::get('/credits', [CreditsController::class, 'index']);
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
-     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
+    Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
 
 
@@ -318,12 +318,12 @@ Route::prefix("supplier-laboratories")->group(function () {
 Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/', 'store')->name('store');
-    Route::get('/for-order', 'indexForOrder')->name('forOrder');
     Route::get('/{invoice}/details', 'getDetails')->name('details');
     Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
     Route::put('/{invoice}/data', 'updateData')->name('updateData');
     Route::post('/{invoice}/approve', 'approve')->name('approve');
     Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
     Route::put('/{invoice}', 'update')->name('update');
     Route::delete('/{invoice}', 'destroy')->name('destroy');

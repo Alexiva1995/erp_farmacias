@@ -26,7 +26,8 @@ class SupplierController extends Controller
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService,
-    ) {}
+    ) {
+    }
 
     /**
      * Display a listing of the suppliers.
@@ -147,7 +148,7 @@ class SupplierController extends Controller
 
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                'days' =>  $rule['days'],
+                'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
 

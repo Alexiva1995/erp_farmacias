@@ -23,9 +23,9 @@ class SupplierQueryService
     private function getBaseQuery(): Builder
     {
         return Supplier::query()
-                        ->withoutTrashed()
-                        ->select('suppliers.*')
-                        ->with(['latestScore', 'paymentRules']);
+            ->withoutTrashed()
+            ->select('suppliers.*')
+            ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -133,9 +133,7 @@ class SupplierQueryService
             ->with(["payments" => fn($q) => $q->where("status", "unpaid")])
             ->get()
             ->flatMap(function ($invoice) {
-                return $invoice->payments->map(function ($payment) use (
-                    $invoice,
-                ) {
+                return $invoice->payments->map(function ($payment) use ($invoice, ) {
                     return [
                         "id" => $invoice->id,
                         "invoice_number" => $invoice->invoice_number,
@@ -165,9 +163,9 @@ class SupplierQueryService
 
             $uniqueProducts = collect($products)
                 ->groupBy(fn($row) => is_null($row["product_id"])
-                        ? Str::uuid()
-                        : $row["product_id"] . "-" . $row["supplier_id"])
-                ->map(fn ($group) => $group->sortBy("unit_cost")->first())
+                    ? Str::uuid()
+                    : $row["product_id"] . "-" . $row["supplier_id"])
+                ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
                 ->toArray();
 
@@ -182,7 +180,7 @@ class SupplierQueryService
                 InvoiceDetail::whereIn('invoice_id', $supplier->invoices()->pluck('id'))->delete();
                 $supplier->invoices()->delete();
                 foreach ($invoices as $invoice) {
-                    $header = $invoice['header'];                    
+                    $header = $invoice['header'];
                     $lines = $invoice['lines'];
 
                     $invoiceModel = $supplier->invoices()->create([
