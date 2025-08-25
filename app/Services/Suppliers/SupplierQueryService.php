@@ -20,9 +20,9 @@ class SupplierQueryService
     private function getBaseQuery(): Builder
     {
         return Supplier::query()
-                        ->withoutTrashed()
-                        ->select('suppliers.*')
-                        ->with(['latestScore', 'paymentRules']);
+            ->withoutTrashed()
+            ->select('suppliers.*')
+            ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -130,9 +130,7 @@ class SupplierQueryService
             ->with(["payments" => fn($q) => $q->where("status", "unpaid")])
             ->get()
             ->flatMap(function ($invoice) {
-                return $invoice->payments->map(function ($payment) use (
-                    $invoice,
-                ) {
+                return $invoice->payments->map(function ($payment) use ($invoice, ) {
                     return [
                         "id" => $invoice->id,
                         "invoice_number" => $invoice->invoice_number,
@@ -181,15 +179,5 @@ class SupplierQueryService
             report($e);
             return false;
         }
-    }
-
-    public function getPaymentRules(Supplier $supplier): Collection
-    {
-        return $supplier->paymentRules()->get();
-    }
-    
-    public function getDiscounts(Supplier $supplier): Collection
-    {
-        return $supplier->discounts()->get();
     }
 }

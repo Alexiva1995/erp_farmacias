@@ -21,7 +21,10 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->invoiceQueryService->getFilteredQuery($request);
+        if (!$request->has('status')) {
+            $request->merge(['status' => ['pending']]);
+        }
+        $query = $this->invoiceQueryService->getInvoicesQuery($request);
 
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
@@ -261,5 +264,56 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
+    }
+    public function indexForLocation(Request $request)
+    {
+        $query = $this->invoiceQueryService->getForLocationQuery($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+
+    public function updateLocations(Request $request, Invoice $invoice)
+    {
+        $rules = [
+            'details' => 'required|array',
+            'details.*.id' => 'required|integer|exists:invoice_details,id',
+            'details.*.location' => 'required|string|max:100',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        try {
+            $updatedInvoice = $this->invoiceActionService->updateInvoiceLocations($invoice, $validator->validated());
+
+            return response()->json([
+                'message' => 'Ubicaciones actualizadas con éxito.',
+                'invoice' => $updatedInvoice
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+    public function indexOrdered(Request $request)
+    {
+        $query = $this->invoiceQueryService->getForApprovalQuery($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
+        $paginatedResult = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 }
