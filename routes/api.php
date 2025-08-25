@@ -26,7 +26,9 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -65,6 +67,7 @@ Route::post('/groups', [GroupController::class, 'store']);
 Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+Route::get('/groups/consult-all', [GroupController::class, 'consultAll']);
 
 
 // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
@@ -176,6 +179,10 @@ Route::prefix("tpv")->group(function () {
     Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
     Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
     Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+
+    Route::get('/credits', [CreditsController::class, 'index']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+    Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
 
 
@@ -291,7 +298,8 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
-    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
+    Route::get('/{supplier}/connection', [SupplierController::class, 'connectionServiceSupplier']);
+    Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
     Route::post('/{supplier}/payment-rules', [SupplierController::class, 'storePaymentRules']);
     Route::get('/{supplier}/payment-rules', [SupplierController::class, 'getPaymentRules']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
@@ -310,12 +318,12 @@ Route::prefix("supplier-laboratories")->group(function () {
 Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/', 'store')->name('store');
-    Route::get('/for-order', 'indexForOrder')->name('forOrder');
     Route::get('/{invoice}/details', 'getDetails')->name('details');
     Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
     Route::put('/{invoice}/data', 'updateData')->name('updateData');
     Route::post('/{invoice}/approve', 'approve')->name('approve');
     Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
     Route::put('/{invoice}', 'update')->name('update');
     Route::delete('/{invoice}', 'destroy')->name('destroy');

@@ -54,6 +54,7 @@ const fetchInvoices = async () => {
     supplierId: selectedSupplier.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    status: "to_order",
   };
 
   Object.keys(params).forEach(
@@ -61,7 +62,7 @@ const fetchInvoices = async () => {
   );
 
   try {
-    const response = await axios.get("/invoices/for-order", { params });
+    const response = await axios.get("/invoices", { params });
     invoices.value = response.data.data;
     totalInvoices.value = response.data.total;
   } catch (error) {

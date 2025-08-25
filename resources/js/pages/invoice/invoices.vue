@@ -53,6 +53,7 @@ const fetchInvoices = async () => {
     supplierId: selectedSupplier.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    status: "pending",
   };
 
   Object.keys(params).forEach(
