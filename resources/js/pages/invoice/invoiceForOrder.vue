@@ -1,33 +1,34 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
-
+import ApproveInvoiceModal from "@/components/dialogs/ApproveInvoiceModal.vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
-import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
-
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
-
 const invoices = ref([]);
 const totalInvoices = ref(0);
 const loading = ref(false);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
-
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
-
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
+const isApproveModalVisible = ref(false);
+const invoiceToApprove = ref(null);
+const availableDiscounts = ref([]);
+const availablePaymentRules = ref([]);
+const isApproving = ref(false);
+const invoiceDetails = ref([]);
 
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
@@ -60,7 +61,7 @@ const fetchInvoices = async () => {
   );
 
   try {
-    const response = await axios.get("/invoices", { params });
+    const response = await axios.get("/invoices/for-order", { params });
     invoices.value = response.data.data;
     totalInvoices.value = response.data.total;
   } catch (error) {
@@ -96,7 +97,7 @@ watch(
   [
     searchQuery,
     selectedSupplier,
-    /* Se elimina `selectedStatus` */ startDate,
+    /* se elimina selectedStatus */ startDate,
     endDate,
   ],
   () => {
@@ -125,14 +126,9 @@ const handleClearFilters = () => {
   endDate.value = null;
 };
 
-const handleEditInvoice = (invoice) => {
+const handleViewDetails = (invoice) => {
   selectedInvoiceId.value = invoice.id;
   currentView.value = "detail";
-};
-
-const handleEditInvoiceForm = (invoice) => {
-  selectedInvoiceId.value = invoice.id;
-  currentView.value = "edit-form";
 };
 
 const handleReturnToList = () => {
@@ -141,28 +137,112 @@ const handleReturnToList = () => {
   fetchInvoices();
 };
 
-const handleDeleteInvoice = async (id) => {
+const handleApproveInvoice = async (invoice) => {
+  invoiceToApprove.value = invoice;
+  isApproving.value = true;
+
+  availableDiscounts.value = [];
+  availablePaymentRules.value = [];
+  invoiceDetails.value = [];
+
+  try {
+    const promises = [
+      axios
+        .get(`/suppliers/${invoice.supplier_id}/discounts`)
+        .then((response) => {
+          availableDiscounts.value = response.data.supplier_discount || [];
+        })
+        .catch((error) => {
+          console.warn(
+            "No se pudieron cargar los descuentos del proveedor:",
+            error
+          );
+          availableDiscounts.value = [];
+        }),
+      axios
+        .get(`/suppliers/${invoice.supplier_id}/payment-rules`)
+        .then((response) => {
+          availablePaymentRules.value =
+            response.data.payment_rules ||
+            response.data.data ||
+            response.data ||
+            [];
+        })
+        .catch((error) => {
+          console.warn(
+            "No se pudieron cargar las reglas de pago del proveedor:",
+            error
+          );
+          availablePaymentRules.value = [];
+        }),
+      axios.get(`/invoices/${invoice.id}/details`).then((response) => {
+        invoiceDetails.value = response.data.data || [];
+      }),
+    ];
+
+    await Promise.all(promises);
+
+    isApproveModalVisible.value = true;
+  } catch (error) {
+    console.error(
+      "Error crítico al preparar la aprobación de la factura:",
+      error
+    );
+    toast.error("No se pudieron cargar los detalles de la factura.");
+  } finally {
+    isApproving.value = false;
+  }
+};
+
+const confirmApproval = async ({
+  invoiceId,
+  discountId,
+  paymentRuleId,
+  returnItems,
+}) => {
+  isApproving.value = true;
+
+  const payload = {
+    supplier_discount_id: discountId,
+    payment_rule_id: paymentRuleId,
+    return_item_ids: returnItems,
+  };
+
+  try {
+    await axios.post(`/invoices/${invoiceId}/approve`, payload);
+    toast.success("Factura aprobada con éxito (con posibles devoluciones).");
+    isApproveModalVisible.value = false;
+    fetchInvoices();
+  } catch (error) {
+    console.error(`Error al aprobar la factura ${invoiceId}:`, error);
+    toast.error(
+      error.response?.data?.message || "No se pudo aprobar la factura."
+    );
+  } finally {
+    isApproving.value = false;
+  }
+};
+
+const handleRejectInvoice = async (invoice) => {
   const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de esta factura!",
+    title: "Rechazar Factura",
+    text: `¿Estás seguro de que deseas RECHAZAR la factura N° ${invoice.invoice_number}?`,
     icon: "warning",
     showCancelButton: true,
+    confirmButtonText: "Sí, rechazar",
     cancelButtonText: "Cancelar",
-    confirmButtonText: "Sí, eliminar",
+    confirmButtonColor: "#d33",
     reverseButtons: true,
     didOpen: () => {
       const actions = Swal.getActions();
       const confirmButton = Swal.getConfirmButton();
       const cancelButton = Swal.getCancelButton();
-
       actions.style.display = "flex";
       actions.style.gap = "10px";
       actions.style.width = "100%";
       actions.style.padding = "0 20px";
-
       confirmButton.style.flex = "1";
       confirmButton.style.width = "50%";
-
       cancelButton.style.flex = "1";
       cancelButton.style.width = "50%";
     },
@@ -170,16 +250,25 @@ const handleDeleteInvoice = async (id) => {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(`/invoices/${id}`);
-      toast.success("Factura eliminada con éxito.");
+      await axios.post(`/invoices/${invoice.id}/reject`, {
+        reason: "Factura rechazada desde la interfaz",
+      });
+      toast.success("Factura rechazada con éxito.");
       fetchInvoices();
     } catch (error) {
-      console.error(`Error al borrar la factura ${id}:`, error);
+      console.error(`Error al rechazar la factura ${invoice.id}:`, error);
       toast.error(
-        error.response?.data?.message || "No se pudo eliminar la factura."
+        error.response?.data?.message || "No se pudo rechazar la factura."
       );
     }
   }
+};
+
+const closeApproveModal = () => {
+  isApproveModalVisible.value = false;
+  invoiceToApprove.value = null;
+  availableDiscounts.value = [];
+  availablePaymentRules.value = [];
 };
 </script>
 
@@ -202,10 +291,11 @@ const handleDeleteInvoice = async (id) => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        actions-mode="approval"
         @update:options="updateTableOptions"
-        @edit-invoice="handleEditInvoice"
-        @edit-invoice-form="handleEditInvoiceForm"
-        @delete-invoice="handleDeleteInvoice"
+        @edit-invoice="handleViewDetails"
+        @approve-invoice="handleApproveInvoice"
+        @reject-invoice="handleRejectInvoice"
       />
     </div>
 
@@ -213,16 +303,18 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
         @back-to-list="handleReturnToList"
+        mode="read-only"
       />
     </div>
 
-    <div v-else-if="currentView === 'edit-form'">
-      <InvoiceFormEdit
-        :invoice-id="selectedInvoiceId"
-        :is-edit-mode="true"
-        @back-to-list="handleReturnToList"
-        @invoice-saved="handleReturnToList"
-      />
-    </div>
+    <ApproveInvoiceModal
+      v-model="isApproveModalVisible"
+      :invoice="invoiceToApprove"
+      :discounts="availableDiscounts"
+      :payment-rules="availablePaymentRules"
+      :details="invoiceDetails"
+      :loading="isApproving"
+      @confirm="confirmApproval"
+    />
   </div>
 </template>

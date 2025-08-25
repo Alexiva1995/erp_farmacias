@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
 use App\Contracts\Order as OrderContract;
 
-
 class OrderController extends Controller
 {
 
@@ -75,8 +74,10 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-             $sellerId = Auth::id();
-            //$sellerId = 3; //para realizar pruebas
+
+           //  $sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+            
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
@@ -254,7 +255,8 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
-  
+
+
      public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
     {
         $filtros = [
@@ -272,4 +274,5 @@ class OrderController extends Controller
 
         return ApiResponse::success($repuesta, "OK", 200);
      }
+
 }

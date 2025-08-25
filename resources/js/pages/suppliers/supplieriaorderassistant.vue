@@ -18,6 +18,8 @@ const statuModule= reactive({
   items:[],
 })
 
+const groups = ref([]);
+const laboratories = ref([]);
 
 const loading = ref(false);
 
@@ -25,6 +27,9 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
+
+const selectedLaboratory = ref();
+const selectedGroup= ref();
 
 const tipo_de_vista= ref(false);// grupo o individual
 const tipo_de_filtracion= ref("sales");// promedio o ventas
@@ -36,11 +41,15 @@ const handleClearFilters = () => {
   tipo_de_filtracion.value = "sales";
   lapso_de_tiempo.value = "3 month";
   stock.value = "all";
+  selectedLaboratory.value = "";
+  selectedGroup.value = [];
 };
 
 
 async function consultarProductosConPaginacion(){
   let data ={
+    "laboratoryId":selectedLaboratory.value,
+    "groups":selectedGroup.value,
     "tipo_vista":tipo_de_vista.value,
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
@@ -81,6 +90,8 @@ const updateTableOptionsTable = options => {
 
 
 watch([
+  selectedLaboratory,
+  selectedGroup,
   tipo_de_vista,
   tipo_de_filtracion,
   lapso_de_tiempo,
@@ -101,12 +112,29 @@ function generarPedido(){
     query:{
       "tipo_filtracion":tipo_de_filtracion.value,
       "lapso_de_tiempo":lapso_de_tiempo.value,
+      "laboratoryId":selectedLaboratory.value,
+      "groups":JSON.stringify(selectedGroup.value),
       // "stock":stock.value,
     }
   })
 }
 
+async function consultarLaboratorios(){
+  let respuesta=await axios.get("/laboratories")
+  laboratories.value = respuesta.data;
+}
+async function consultarGruposProductos(){
+  let respuestaApi=await axios.get("/groups/consult-all")
+  if(respuestaApi.status!=200){
+    toast.success("Error al filtrar los datos")
+  }
+  console.log("grupos => ",respuestaApi.data.data)
+  groups.value = [...respuestaApi.data.data];
+}
+
 onMounted(async () => {
+  await consultarGruposProductos()
+  await consultarLaboratorios()
   await actualizarTabla()
 
 })
@@ -114,10 +142,14 @@ onMounted(async () => {
 <template>
   <div>
     <SupplierIaOrderAssistantFilter
+      v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedGroup="selectedGroup"
       v-model:tipo_de_vista="tipo_de_vista"
       v-model:tipo_de_filtracion="tipo_de_filtracion"
       v-model:lapso_de_tiempo="lapso_de_tiempo"
       v-model:stock="stock"
+      :groups="groups"
+      :laboratories="laboratories"
       :tipo_de_filtracion="tipo_de_filtracion"
       :tipo_de_vista="tipo_de_vista"
       :lapso_de_tiempo="lapso_de_tiempo"

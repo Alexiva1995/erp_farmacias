@@ -125,6 +125,13 @@ class ProductQueryService
         return $query;
     }
 
+    public function searchBarcodeProduct(Request $request)
+    {
+        $product = Product::where('barcode', $request->barcode)
+            ->with(['laboratory', 'origin', 'category'])
+            ->first();
+        return $product;
+    }
     /**
      * Método público principal que obtiene el constructor de consultas preparado.
      */
