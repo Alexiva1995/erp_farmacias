@@ -63,8 +63,16 @@ class SupplierConnectionService
         $invoiceResults = [];
         if (!empty($connection->invoice_path)) {
             $files = ftp_nlist($ftp, $connection->invoice_path);
+            $filter = $connection->invoice_structure['filter'] ?? null;
+
+            $startsWith = $filter['starts_with'] ?? '';
+            $endsWith = $filter['ends_with'] ?? '.txt';
+            $files = array_filter($files, function ($file) use ($startsWith, $endsWith) {
+                $name = basename($file);
+                return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
+            });
+
             foreach ($files as $filePath) {
-                if (!str_ends_with($filePath, '.txt')) continue;
                 $tempInvoice = tempnam(sys_get_temp_dir(), 'inv_');
 
                 if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
@@ -277,8 +285,32 @@ class SupplierConnectionService
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
             "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
-            "date" => \DateTime::createFromFormat($meta["format"] ?? "Y-m-d", $value)?->format("Y-m-d"),
+            "date" => $this->parseDate($value, $meta["format"] ?? null),
             default => $value,
         };
+    }
+
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+        if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
+            return null;
+        }
+
+        $formats = array_filter([
+            $preferredFormat,
+            "Y-m-d",
+            "d/m/Y",
+            "d-m-Y",
+            "m/d/Y",
+            "Ymd",
+        ]);
+
+        foreach ($formats as $format) {
+            $date = \DateTime::createFromFormat($format, $value);
+            if ($date && $date->format($format) === $value) {
+                return $date->format("Y-m-d");
+            }
+        }
+
+        return null;
     }
 }
