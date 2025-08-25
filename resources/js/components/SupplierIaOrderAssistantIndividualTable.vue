@@ -12,6 +12,7 @@ const emit = defineEmits(["update:options"]);
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory.name", sortable: false },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "stock", sortable: true },
@@ -34,7 +35,7 @@ const headers = [
         : 0,
   },
   {
-    title: "Solicitar ",
+    title: "Análisis",
     key: "solicitar",
     sortable: true,
     value: (item) =>
@@ -74,6 +75,11 @@ const headers = [
             }}</span>
           </div>
         </div>
+      </template>
+      <template #item.solicitar="{ item }">
+        <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
+          >{{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}</span
+        >
       </template>
     </VDataTableServer>
   </VCard>

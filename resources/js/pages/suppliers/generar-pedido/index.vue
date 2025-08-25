@@ -27,12 +27,16 @@ const module=reactive({
 
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
+const groups= ref(JSON.parse(route.query.groups));// grupos
+const laboratoryId= ref(route.query.laboratoryId);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
 async function generarPedido(){
   let data ={
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
+    "groups":groups.value,
+    "laboratoryId":laboratoryId.value,
     // "stock":stock.value,
   }
   let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`,data)
@@ -233,18 +237,24 @@ async function realizarCompra(){
       :index-navegacion="indexNavegacion"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
-    <VCard title="" class="mb-6" v-if="indexNavegacion == 1">
+    <VCard
+      :title="`PRODUCTOS EXCEDIERON LA TOLERANCIA DE COSTO (${
+        module.productoFallas.filter((pro) => pro.increase == true).length
+      })`"
+      class="mb-6"
+      v-if="indexNavegacion == 1"
+    >
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="productos que no excedieron la tolerancia"
+      title="PRODUCTOS QUE NO EXCEDIERON LA TOLERANCIA DE COSTO"
       class="mb-6"
       v-if="indexNavegacion == 2"
     >
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="Oportunidades Unicas de Mercado"
+      title="OPORTUNIDADES UNICA DE MERCADO"
       class="mb-6"
       v-if="indexNavegacion == 3"
     >
@@ -262,7 +272,7 @@ async function realizarCompra(){
           md="12"
           lg="9"
         >
-          <VCard title="Detalles de la Orden" class="">
+          <VCard title="DETALLES DE LA ORDEN" class="">
             <OrderProductListTable :list="module.deltalleOrder" />
           </VCard>
         </VCol>

@@ -351,7 +351,6 @@ const handleCompletePurchase = () => {
       currentProgress.value = 100;
     }
   } else {
-
     emit(
       "purchase-completed",
       props.orderData.id,
@@ -465,7 +464,10 @@ const changeAmount = computed(() => {
       )
     );
   } else {
-    return Math.max(0, roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount));
+    return Math.max(
+      0,
+      roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
+    );
   }
 });
 
@@ -507,23 +509,22 @@ const changeAmountInUSD = computed(() => {
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-
 const changeAmountInCOP = computed(() => {
   // Primero, obtenemos el vuelto en la moneda de la orden
   const vueltoEnMonedaOrden = changeAmount.value;
-  
+
   // Si la moneda de la orden ya es COP, no hacemos nada.
   if (props.selectedCurrency === "COP") {
     return vueltoEnMonedaOrden;
   }
-  
+
   // Si no es COP, la convertimos.
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     return roundUpToNearestHundred(vueltoConvertido); // Aplicamos el redondeo para COP
   }
-  
+
   // En caso de que no haya tasa de cambio, devolvemos 0.
   return 0;
 });
@@ -746,25 +747,25 @@ watch(balanceSwitch, (newVal) => {
           </div>
 
           <VTextField
-        v-if="payment.method === 'balance'"
-        :model-value="payment.amount.toFixed(2)"
-        label="Monto del pago"
-        :placeholder="getPlaceholderText(index, payment)"
-        type="text"
-        class="my-4"
-        readonly
-        :persistent-hint="true"
-        hint="Monto del saldo no editable."
-      />
+            v-if="payment.method === 'balance'"
+            :model-value="payment.amount.toFixed(2)"
+            label="Monto del pago"
+            :placeholder="getPlaceholderText(index, payment)"
+            type="text"
+            class="my-4"
+            readonly
+            :persistent-hint="true"
+            hint="Monto del saldo no editable."
+          />
 
-      <VTextField
-        v-else-if="payment.method && payment.method !== 'credit'"
-        v-model.number="payment.amount"
-        label="Monto del pago"
-        :placeholder="getPlaceholderText(index, payment)"
-        type="number"
-        class="my-4"
-      />
+          <VTextField
+            v-else-if="payment.method && payment.method !== 'credit'"
+            v-model.number="payment.amount"
+            label="Monto del pago"
+            :placeholder="getPlaceholderText(index, payment)"
+            type="number"
+            class="my-4"
+          />
 
           <VTextField
             v-if="payment.method && isTransferMethod(payment.method)"
@@ -812,7 +813,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, 'COP') }}
+            {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
@@ -962,7 +963,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, 'COP') }}
+            {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 

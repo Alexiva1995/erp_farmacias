@@ -243,6 +243,18 @@ class ProductRepository
                 AND o.status = "Completed"
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
+            // Agregar esta línea para sumar los sales_average por group_id
+            DB::raw('SUM(sales_average) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
+            DB::raw('(CASE 
+                WHEN SUM(sales_average) OVER (PARTITION BY group_id) > 0 
+                THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
+                ELSE 0 
+                END) * 100 AS preferencia_product'),
+            // DB::raw('(
+            //     SELECT COALESCE(SUM(p2.sales_average), 0)
+            //     FROM products p2
+            //     WHERE p2.group_id = products.group_id
+            // ) AS group_sales_average_sum'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -276,7 +288,7 @@ class ProductRepository
         $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
 
         // calculando preferencia formula: promedio_calculado * 100 = preferencia de producto
-        $columnas[] = DB::raw('(' . $promedio_calculado . ') * 100 AS preferencia_product');
+        // $columnas[] = DB::raw('(' . $promedio_calculado . ') * 100 AS preferencia_product');
 
         // calcular solicitar
         $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS solicitar');
@@ -320,6 +332,12 @@ class ProductRepository
 
         if (array_key_exists("laboratoryId", $filtros)) {
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
+        }
+
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
         }
 
 
@@ -530,6 +548,11 @@ class ProductRepository
             $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
+        }
 
         // if (array_key_exists("expProd", $filtros)) {
         //     if ($filtros["expProd"] == true) {

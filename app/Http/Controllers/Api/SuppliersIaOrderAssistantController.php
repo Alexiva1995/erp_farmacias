@@ -50,6 +50,14 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["stock"] = $request->stock;
         }
 
+        if ($request->filled("laboratoryId")) {
+            $filtros["laboratoryId"] = $request->laboratoryId;
+        }
+
+        if ($request->filled("groups")) {
+            $filtros["groups"] = $request->groups;
+        }
+
 
         if ($request->filled("lapso_de_tiempo")) {
             $dateToday = new DateTime("now");
@@ -86,6 +94,8 @@ class SuppliersIaOrderAssistantController extends Controller
         $filtrosFallas = [
             "tipo_filtracion"   => $request->tipo_filtracion,
             "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "laboratoryId"      => $request->laboratoryId,
+            "groups"            => $request->groups,
             "stock"             => "fallas",
         ];
 
@@ -122,6 +132,8 @@ class SuppliersIaOrderAssistantController extends Controller
             "previousDate"      => null,
             "orderBy"      => "asc",
             "sortBy"      => "stock",
+            "laboratoryId"      => $request->laboratoryId,
+            "groups"            => $request->groups,
         ];
 
         $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d");
