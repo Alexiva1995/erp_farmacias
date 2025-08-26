@@ -11,9 +11,12 @@ class DiscountRule extends Model
 
     protected $fillable = [
         'supplier_laboratory_id',
+        'scale_type',
         'min_amount',
         'min_quantity',
         'discount_percentage',
+        'max_amount',
+        'max_quantity',
     ];
 
     public function supplierLaboratory()

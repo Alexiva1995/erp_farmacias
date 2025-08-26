@@ -11,6 +11,7 @@ const props = defineProps({
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  addLotLoading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -294,7 +295,13 @@ watch(
 
       <VSpacer />
 
-      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add-lot')">
+      <VBtn
+        color="primary"
+        prepend-icon="tabler-plus"
+        @click="emit('add-lot')"
+        :loading="props.addLotLoading"
+        :disabled="props.addLotLoading"
+      >
         Agregar Lote
       </VBtn>
     </VCardActions>

@@ -45,12 +45,22 @@ class ProductQueryService
             $query->where('laboratory_id', $filters['laboratoryId']);
         }
 
+        if (!empty($filters['is_psychotropic'])) {
+            $query->where('psychotropic', $filters['is_psychotropic']);
+        }
+
         if (!empty($filters['originId'])) {
             $query->where('origin_id', $filters['originId']);
         }
 
         if (!empty($filters['groupId'])) {
             $query->where('group_id', $filters['groupId']);
+        }
+        // filtro de profitability is_locked
+        if (!empty($filters['lockedValue'])) {
+            $query->whereHas('profitability', function ($query) use ($filters) {
+                $query->where("is_locked", $filters['lockedValue']);
+            });
         }
 
         $hasStock = $filters['hasStock'] ?? null;
@@ -130,6 +140,8 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'lockedValue' => $request->lockedValue, // <- para el filtro de profitability.is_locked
+            'is_psychotropic' => $request->is_psychotropic,
         ];
 
         $this->applyFilters($query, $filters);

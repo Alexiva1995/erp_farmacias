@@ -26,8 +26,12 @@ export default [
         to: 'inventory-traceability',
       },
       {
-        title: 'Inventario Ciclicos',
-        to: 'inventory-cyclic',
+        title: 'Psicotropicos',
+        to: 'inventory-psychotropics',
+      },
+      {
+        title: 'Control de Stock',
+        to: 'inventory-stock',
       }
     ],
   }, 
