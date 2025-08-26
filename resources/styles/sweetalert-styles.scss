@@ -61,3 +61,7 @@
     background-color: rgba(var(--v-theme-error), 0.1) !important;
   }
 }
+
+.swal2-container {
+  z-index: 9999 !important;
+}

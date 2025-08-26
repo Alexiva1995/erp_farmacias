@@ -28,7 +28,9 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -53,12 +55,14 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 // Rutas de Productos
-Route::get("/products", [ProductController::class, "index"]);
-Route::put("/products/{product}", [ProductController::class, "updateProducts"]);
-Route::post("/products", [ProductController::class, "store"]);
-Route::delete("/products/{product}", [ProductController::class, "destroy"]);
-Route::get("/products/export", [ProductController::class, "export"]);
-Route::delete("/products/{product}/unassign-group", [ProductController::class, "unassignProductFromGroup"]);
+
+Route::get('/products', [ProductController::class, 'index']);
+Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+Route::get('/products/export', [ProductController::class, 'export']);
+Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
+Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
 
 // Rutas de Grupos de Productos
 Route::get("/groups", [GroupController::class, "index"]);
@@ -164,20 +168,26 @@ Route::prefix("tpv")->group(function () {
     // Rutas de Pedidos Usuarios
     Route::get("/order", [OrderController::class, "index"]);
     Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
-    Route::post("/orders", [OrderController::class, "store"]);
-    Route::get("/order/seller/my-open-order", [OrderController::class, "getMyOpenOrder"]);
-    Route::post("/orders/{order}/items", [OrderController::class, "storeOrderItem"]);
-    Route::patch("/orders/{order}", [OrderController::class, "updateOrderTotals"]);
-    Route::delete("/orders/{order}/items/{item}", [OrderController::class, "deleteOrderDetail"]);
-    Route::patch("/orders/{order}/abandon", [OrderController::class, "abandonOrder"]);
-    Route::post("/orders/{orderId}/complete", [OrderController::class, "completeOrder"]);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
+    Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
+    Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
+    Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
+    Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+    Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
+    Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
 
     // Rutas de Pedidos General
-    Route::get("/orders/cancelled", [OrderController::class, "getCancelledOrder"]);
-    Route::get("/orders/completed", [OrderController::class, "getcompletedOrder"]);
-    Route::get("/orders/all", [OrderController::class, "getAllOrder"]);
-    Route::get("/orders/abandoned", [OrderController::class, "getAbandonedOrder"]);
-    Route::get("/orders/{orderId}/print", [OrderController::class, "getCPrintOrder"]);
+    Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
+    Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
+    Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
+    Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
+    Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+
+    Route::get('/credits', [CreditsController::class, 'index']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+    Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
 
 // Rutas de Trazabilidad (provenientes de develop)
@@ -288,7 +298,6 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
 Route::prefix("suppliers")->group(function () {
-
     Route::get('/{supplier}/connection', [SupplierController::class, 'connectionServiceSupplier']);
     Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
     Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
@@ -308,15 +317,29 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
     Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
+    Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
+}
 
-
-});
 
 Route::prefix("supplier-laboratories")->group(function () {
     Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
     Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
 });
 
+//Invoices
+Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('/{invoice}/details', 'getDetails')->name('details');
+    Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+    Route::put('/{invoice}/data', 'updateData')->name('updateData');
+    Route::post('/{invoice}/approve', 'approve')->name('approve');
+    Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+    Route::get('/{invoice}', 'show')->name('show');
+    Route::put('/{invoice}', 'update')->name('update');
+    Route::delete('/{invoice}', 'destroy')->name('destroy');
+});
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
     Route::prefix("generate-order")->group(function () {
@@ -327,12 +350,3 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         ]);
     });
 });
-
-Route::get("/invoices", [InvoiceController::class, "index"])->name("invoices.index");
-Route::get("/invoices/{invoice}", [InvoiceController::class, "show"])->name("invoices.show");
-Route::put("/invoices/{invoice}", [InvoiceController::class, "update"])->name("invoices.update");
-Route::delete("/invoices/{invoice}", [InvoiceController::class, "destroy"])->name("invoices.destroy");
-Route::post("/invoices", [InvoiceController::class, "store"])->name("invoices.store");
-Route::get("/invoices/{invoice}/suggested-details", [InvoiceController::class, "getSuggestedDetails"])->name(
-    "invoices.suggested-details",
-);

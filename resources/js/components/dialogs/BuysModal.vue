@@ -46,7 +46,7 @@ const dialogVisible = computed({
 });
 
 const currentProgress = ref(0);
-const progressStages = [0, 50, 100];
+const progressStages = [0, 100];
 const currentStageIndex = ref(0);
 
 const balanceSwitch = ref(false);
@@ -301,7 +301,7 @@ const handleCompletePurchase = () => {
     }
   });
 
-  if (currentProgress.value === 50 && payments.value[0].method !== "credit") {
+  if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
     let finalRemainingAmount = remainingAmount.value;
     if (Math.abs(finalRemainingAmount) < tolerance) {
       finalRemainingAmount = 0;
@@ -351,7 +351,6 @@ const handleCompletePurchase = () => {
       currentProgress.value = 100;
     }
   } else {
-
     emit(
       "purchase-completed",
       props.orderData.id,
@@ -402,6 +401,23 @@ watch(
   }
 );
 
+const getProductPriceSinIva = (product, currency) => {
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+
+  let priceSinIva = basePrice;
+  if (currency === "COP") {
+    priceSinIva = roundUpToNearestHundred(priceSinIva);
+  }
+  return priceSinIva;
+};
+
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -417,6 +433,23 @@ const getProductPrice = (product, currency) => {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
   return priceWithIva;
+};
+
+const getIva = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+  let Iva = basePrice * taxRate;
+  if (currency === "COP") {
+    Iva = roundUpToNearestHundred(Iva);
+  }
+  return Iva;
 };
 
 const hasCreditPayment = computed(() => {
@@ -465,7 +498,10 @@ const changeAmount = computed(() => {
       )
     );
   } else {
-    return Math.max(0, roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount));
+    return Math.max(
+      0,
+      roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
+    );
   }
 });
 
@@ -507,23 +543,22 @@ const changeAmountInUSD = computed(() => {
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-
 const changeAmountInCOP = computed(() => {
   // Primero, obtenemos el vuelto en la moneda de la orden
   const vueltoEnMonedaOrden = changeAmount.value;
-  
+
   // Si la moneda de la orden ya es COP, no hacemos nada.
   if (props.selectedCurrency === "COP") {
     return vueltoEnMonedaOrden;
   }
-  
+
   // Si no es COP, la convertimos.
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     return roundUpToNearestHundred(vueltoConvertido); // Aplicamos el redondeo para COP
   }
-  
+
   // En caso de que no haya tasa de cambio, devolvemos 0.
   return 0;
 });
@@ -592,10 +627,11 @@ watch(balanceSwitch, (newVal) => {
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="500px">
+  <VDialog v-model="dialogVisible">
     <VCard>
       <VCardTitle class="d-flex align-center">
-        <span class="headline">Compra</span>
+        <span class="headline me-2">Compra </span>
+        <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
           <VIcon>tabler-x</VIcon>
@@ -613,9 +649,6 @@ watch(balanceSwitch, (newVal) => {
         <div class="d-flex flex-wrap justify-space-between">
           <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
             Detalles de compra
-          </p>
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Métodos de pago
           </p>
           <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
             Ticke de compra
@@ -663,37 +696,50 @@ watch(balanceSwitch, (newVal) => {
 
               <template #append>
                 <div class="d-flex align-center">
-                  <span class="text-body-1 me-2">{{
-                    formatCurrency(
-                      getProductPrice(product, props.selectedCurrency) *
-                        product.selectedQuantity,
-                      props.selectedCurrency
-                    )
-                  }}</span>
+                  <div class="d-flex flex-column align-end me-4">
+                    <span class="text-body-2 text-medium-emphasis">Precio</span>
+                    <span class="text-body-1 me-2">{{
+                      formatCurrency(
+                        getProductPriceSinIva(product, props.selectedCurrency) *
+                          product.selectedQuantity,
+                        props.selectedCurrency
+                      )
+                    }}</span>
+                  </div>
+
+                  <div class="d-flex flex-column align-end me-4">
+                    <span class="text-body-2 text-medium-emphasis">IVA</span>
+                    <span class="text-body-1">
+                      {{
+                        formatCurrency(
+                          getIva(product, props.selectedCurrency),
+                          props.selectedCurrency
+                        )
+                      }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex flex-column align-end">
+                    <span class="text-body-2 text-medium-emphasis">Total</span>
+                    <span class="text-body-1 me-2 font-weight-bold">
+                      {{
+                        formatCurrency(
+                          getProductPrice(product, props.selectedCurrency),
+                          props.selectedCurrency
+                        )
+                      }}
+                    </span>
+                  </div>
                 </div>
               </template>
             </VListItem>
           </VList>
         </div>
         <VDivider />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-4">
-            {{
-              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
-            }}
-          </p>
-        </div>
-      </VCardText>
 
-      <VCardText v-else-if="currentProgress === 50">
-        <div class="d-flex flex-wrap justify-space-between">
+        <div class="d-flex flex-wrap justify-space-between mt-4">
           <span>Saldo {{ props.orderData.client?.balance || "0.00" }}</span>
           <VSwitch v-model="balanceSwitch" />
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <span>Factura</span>
-          <VSwitch v-model="invoiceSwitch" />
         </div>
         <VDivider class="my-4" />
 
@@ -702,20 +748,26 @@ watch(balanceSwitch, (newVal) => {
           :key="index"
           class="payment-block"
         >
-          <p class="font-weight-bold text-h6 mt-4">
-            Método de Pago #{{ index + 1 }}
-            <span v-if="index > 0"> ({{ payment.currency }})</span>
-          </p>
 
-          <VSelect
-            v-if="index > 0"
-            v-model="payment.currency"
-            :items="currencies"
-            item-title="label"
-            item-value="value"
-            label="Moneda del Pago"
-            class="mt-4"
-          />
+        <div class="d-flex align-center flex-wrap">
+    <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
+      Método de Pago #{{ index + 1 }}
+    </p>
+
+    <VCol cols="12" md="2" class="pa-0">
+  <VSelect
+    v-if="index > 0"
+    v-model="payment.currency"
+    :items="currencies"
+    item-title="label"
+    item-value="value"
+    label="Moneda del Pago"
+    density="compact"
+    hide-details
+    class="mt-4"
+  />
+</VCol>
+  </div>
 
           <div class="my-4" v-if="payment.method !== 'balance'">
             <VRadioGroup v-model="payment.method" inline>
@@ -745,42 +797,70 @@ watch(balanceSwitch, (newVal) => {
             </VRadioGroup>
           </div>
 
-          <VTextField
-        v-if="payment.method === 'balance'"
-        :model-value="payment.amount.toFixed(2)"
-        label="Monto del pago"
-        :placeholder="getPlaceholderText(index, payment)"
-        type="text"
-        class="my-4"
-        readonly
-        :persistent-hint="true"
-        hint="Monto del saldo no editable."
-      />
+          <div
+            class="payment-block"
+            v-if="payment.method !== 'balance' && payment.method !== 'credit'"
+          >
+            <VRow>
+              <VCol
+                :cols="isTransferMethod(payment.method) ? 12 : 6"
+                :md="isTransferMethod(payment.method) ? 6 : 6"
+              >
+                <VTextField
+                  v-model.number="payment.amount"
+                  label="Monto del pago"
+                  :placeholder="getPlaceholderText(index, payment)"
+                  type="number"
+                  class="my-4"
+                  :persistent-hint="true"
+                >
+                <template #details>
+                  <span class="text-error text-left">
+                    {{ getPlaceholderText(index, payment) }}
+                  </span>
+                </template>
+                </VTextField>
+              </VCol>
 
-      <VTextField
-        v-else-if="payment.method && payment.method !== 'credit'"
-        v-model.number="payment.amount"
-        label="Monto del pago"
-        :placeholder="getPlaceholderText(index, payment)"
-        type="number"
-        class="my-4"
-      />
+              <VCol v-if="isTransferMethod(payment.method)" cols="12" md="6">
+                <VTextField
+                  v-model="payment.reference"
+                  label="Número de Referencia"
+                  placeholder="Ingresa el número de referencia del pago"
+                  class="my-4"
+                />
+              </VCol>
+            </VRow>
+          </div>
 
-          <VTextField
-            v-if="payment.method && isTransferMethod(payment.method)"
-            v-model="payment.reference"
-            label="Número de Referencia"
-            placeholder="Ingresa el número de referencia del pago"
-            class="m-2"
-          />
 
-          <VTextField
-            v-if="payment.method === 'credit'"
-            :model-value="formatCurrency(remainingAmount, payment.currency)"
-            label="Monto del crédito"
+  <VRow v-if="payment.method === 'balance'" class="mt-4" justify="start">
+            <VCol cols="12" sm="6">
+              <VTextField
+            :model-value="payment.amount.toFixed(2)"
+            label="Monto del pago"
+            :placeholder="getPlaceholderText(index, payment)"
+            type="text"
+            class="my-4"
             readonly
-            class="mt-4"
+            :persistent-hint="true"
+            hint="Monto del saldo no editable."
           />
+            </VCol>
+          </VRow>
+          
+         
+
+          <VRow v-if="payment.method === 'credit'" class="mt-4" justify="start">
+            <VCol cols="12" sm="6">
+              <VTextField
+                :model-value="formatCurrency(remainingAmount, payment.currency)"
+                label="Monto del crédito"
+                readonly
+              />
+            </VCol>
+          </VRow>
+
           <VDivider class="mt-4" />
         </div>
 
@@ -812,7 +892,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, 'COP') }}
+            {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
@@ -828,6 +908,10 @@ watch(balanceSwitch, (newVal) => {
       </VCardText>
 
       <VCardText v-else-if="currentProgress === 100">
+      <div class="d-flex justify-center">
+
+      <div style='width:"50%";'>
+
         <div class="text-center">
           <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
         </div>
@@ -962,20 +1046,22 @@ watch(balanceSwitch, (newVal) => {
         >
           <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
           <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, 'COP') }}
+            {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
         <p class="font-weight-bold text-center text-success">
           ¡GRACIAS POR SU COMPRA!
         </p>
+        </div>
+</div>
       </VCardText>
-      <VCardActions class="p-4 d-flex flex-wrap justify-space-between">
+      <VCardActions class="p-4 d-flex justify-space-between w-50 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeModal"
-          class="flex-grow-1"
+           class="w-50"
         >
           Cancelar
         </VBtn>
@@ -983,7 +1069,7 @@ watch(balanceSwitch, (newVal) => {
           color="primary"
           variant="flat"
           @click="handleCompletePurchase"
-          class="flex-grow-1"
+          class="w-50"
         >
           {{ continueButtonText }}
         </VBtn>
@@ -994,7 +1080,7 @@ watch(balanceSwitch, (newVal) => {
 
 <style scoped>
 .scrollable-list-container {
-  max-height: 95px;
+  max-height: 200px;
   overflow-y: hidden;
   transition: overflow-y 0.3s ease-in-out;
 }
