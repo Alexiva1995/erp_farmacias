@@ -64,7 +64,7 @@ const fetchSuppliers = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -221,20 +221,12 @@ const handleDeleteSupplier = async (id) => {
 
 const handleCheckSupplierApi = async (supplier) => {
   try {
-    const { data } = await axios.get("/suppliers/check-health"); //`/suppliers/${supplier.id}/check-health`
+    const { data } = await axios.get(`/suppliers/${supplier.id}/connection`); //`/suppliers/${supplier.id}/check-health`
 
     if (data.status === "ok") {
-      const fallas = Object.entries(data.results).filter(
-        ([verb, status]) => status !== "OK"
+      toast.success(
+        `Se añadieron ${data.count} productos del proveedor ${supplier.name}`,
       );
-      if (fallas.length === 0) {
-        toast.success(`API de ${supplier.name} está 100% operativa ✅`);
-      } else {
-        const fallosList = fallas
-          .map(([verb, status]) => `${verb}: ${status}`)
-          .join(", ");
-        toast.warning(`Fallas detectadas en ${supplier.name}: ${fallosList}`);
-      }
     } else {
       toast.error(`Respuesta inesperada de la API de ${supplier.name}`);
     }
@@ -391,7 +383,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery], () => {

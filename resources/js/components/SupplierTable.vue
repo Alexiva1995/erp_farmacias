@@ -136,7 +136,7 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Verificar Conexión API" location="top">
+        <VTooltip text="Conexión API" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('check-supplier-api', item)">
               <VIcon icon="tabler-api" />
