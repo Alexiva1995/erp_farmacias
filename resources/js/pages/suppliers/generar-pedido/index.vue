@@ -71,9 +71,31 @@ onMounted(async () => {
 
 function actualizarIndexNavegacion(payload){
   indexNavegacion.value=payload
+  if(payload==3){
+    // seleccionarProductosParaElDetalle()
+    module.productosOportunidadUnica=actualizarCantidadAReponerProductosEnFalla([...module.productoFallas],[...module.productosOportunidadUnica])
+  }
   if(payload==4){
     seleccionarProductosParaElDetalle()
   }
+}
+
+function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosConOportunidadUnica){
+  for (let index = 0; index < productosEnFalla.length; index++) {
+    let productEnFalla= productosEnFalla[index];
+
+    for (let index2 = 0; index < productosConOportunidadUnica.length; index2++) {
+      let productConOportunidadUnica = productosConOportunidadUnica[index2];
+      if(productEnFalla.productSupplier.id==productConOportunidadUnica.productSupplier.id){
+        productConOportunidadUnica.reponer=productEnFalla.reponer
+      }
+      productosConOportunidadUnica[index2]=productConOportunidadUnica
+
+    }
+
+  }
+  return productosConOportunidadUnica
+
 }
 
 function seleccionarProductosParaElDetalle(){
@@ -90,6 +112,7 @@ function seleccionarProductosParaElDetalle(){
 
 }
 
+// esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
 function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
@@ -106,7 +129,7 @@ function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProduct
     const producto = productosEnFalla[index];
     let buscarSiTieneOportunidadUnica=listaDeProductosOportunidaUnica.find(productUnique => producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id)
     if(buscarSiTieneOportunidadUnica){
-      if(buscarSiTieneOportunidadUnica.reponer>producto.reponer){
+      if(buscarSiTieneOportunidadUnica.reponer > producto.reponer || buscarSiTieneOportunidadUnica.reponer < producto.reponer){
         productosEnFalla[index]=buscarSiTieneOportunidadUnica
       }
     }
