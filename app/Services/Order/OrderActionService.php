@@ -46,11 +46,35 @@ class OrderActionService
         }
     }
 
-    public function getMyOpenOrder(int $sellerId): ?Order
+    public function getMyOpenOrder(int $sellerId): array
     {
         try {
-            $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status', 'Pending')
+
+            $withRelations = [
+            'client',
+            'seller',
+            'details' => function ($query) {
+                $query->with([
+                    'product' => function ($q) {
+                        $q->with('laboratory')
+                          ->withSum('lots', 'quantity');
+                    }
+                ]);
+            }
+        ];
+
+          $openOrder = Order::where('seller_id', $sellerId)
+            ->where('status', Order::PENDING)
+            ->with($withRelations)
+            ->first();
+
+            $reservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->with($withRelations)
+            ->first();
+
+           /* $openOrder = Order::where('seller_id', $sellerId)
+                ->where('status', Order::PENDING)
                 ->with([
                     'client',
                     'seller',
@@ -63,8 +87,27 @@ class OrderActionService
                         ]);
                     }
                 ])
-                ->first();
-            return $openOrder;
+                ->first();*/
+               
+           /* $reservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->with([
+                'client',
+                'seller',
+                'details' => function ($query) {
+                    $query->with([
+                        'product' => function ($q) {
+                            $q->with('laboratory')->withSum('lots', 'quantity as valid_stock_sum');
+                        }
+                    ]);
+                }
+            ])
+            ->first();*/
+        
+             return [
+            'pending_order' => $openOrder,
+            'reserved_order' => $reservedOrder
+            ];
         } catch (\Exception $e) {
             Log::error('Error en getMyOpenOrder para seller_id: ' . $sellerId . ' - ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -215,7 +258,7 @@ class OrderActionService
     {
         DB::beginTransaction();
         try {
-            $order->status = 'abandoned';
+            $order->status = Order::ABANDONED;
             $order->save();
             DB::commit();
             Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
@@ -273,11 +316,11 @@ class OrderActionService
         return $fiscalexist;
     }
 
-    public function complete(Order $orderId, Request $request): bool
+    public function complete(Order $orderId, Request $request, $sellerId): array
     {
         DB::beginTransaction();
         try {
-            $orderId->status = 'Completed';
+            $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
 
@@ -366,11 +409,11 @@ class OrderActionService
             }
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
-            $current_cash = CashClosing::where('status', 'open')->where('seller_id', $orderId->seller_id)->first();
+            $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
             if (!isset($current_cash)) {
                 $current_cash = CashClosing::create([
                     'seller_id' => $orderId->seller_id,
-                    'status' =>  'open',
+                    'status' =>  CashClosing::OPEN,
                     'closing_date' => Carbon::now(),
                 ]);
             }
@@ -439,12 +482,113 @@ class OrderActionService
             $current_cash->total_cop += $total_cop;
             $current_cash->total_usd += $total_usd;
             $current_cash->update();
+
+
+            $reservedOrder = Order::where('seller_id', $sellerId)
+                ->where('status', Order::RESERVED)
+                ->first();
+
+            
+            $newPendingOrder = null;
+
+            if ($reservedOrder) {
+                $reservedOrder->status = Order::PENDING;
+                $reservedOrder->save();
+                $reservedOrder->load('seller', 'client', 'details.product');
+                $newPendingOrder = $reservedOrder;
+            }
+
+
             DB::commit();
-            return true;
+            return [
+                'order' => $newPendingOrder,
+            ];
+
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al completar la orden: ' . $e->getMessage(), [
                 'order_id' => $orderId->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function reserveOrder(Order $order,$sellerId): array
+    {
+          DB::beginTransaction();
+        try {
+            $order->status = Order::RESERVED;
+            $order->save();
+            /*$openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
+                ->where('status', CashClosing::OPEN)
+                ->first();
+
+            if (!$openCashRegisterClosing) {
+                throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
+            } 
+
+                $data['client_id'] = $order->client_id;
+                $data['seller_id'] = $sellerId;
+                $data['cash_closing_id'] = $openCashRegisterClosing->id;
+                $data['total_amount'] =  0;
+                $data['money_returns'] =  0;
+                $data['payment_methods'] = null;
+
+            $newOrder = Order::create($data);
+            $newOrder->load('seller', 'client', 'details.product');*/
+            $order->load('seller', 'client', 'details.product');
+
+            DB::commit();
+            Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
+             return [
+            'reserved_order' => $order,
+            //'pending_order' => $newOrder
+            ];
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+            Log::error('Error al reservar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+     public function reserveAndAddOrder(Order $order,$sellerId): array
+    {
+        DB::beginTransaction();
+        try {
+
+            $orderOpen = Order::where('seller_id', $sellerId)
+                ->where('status', Order::PENDING)
+                ->first();
+
+            if (!$orderOpen) {
+                throw new \Exception("No hay una orden abierta para este vendedor.");
+            }
+
+            $orderOpen->status = Order::RESERVED;
+            $order->status = Order::PENDING;
+
+            $orderOpen->save(); 
+            $order->save();
+
+            $orderOpen->load('seller', 'client', 'details.product');
+            $order->load('seller', 'client', 'details.product');
+
+            DB::commit();
+            Log::info("Orden agregada exitosamente.", ['order_id' => $order->id]);
+            return [
+            'reserved_order' => $orderOpen,
+            'pending_order' => $order,
+            ];
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+            Log::error('Error al agregar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
