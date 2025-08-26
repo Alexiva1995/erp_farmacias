@@ -26,7 +26,7 @@ const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
-const isStrictSearch = ref(true);
+const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -246,7 +246,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
-  isStrictSearch.value = true;
+  isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
