@@ -377,7 +377,7 @@ const handleReserved = () => {
             <template #append>
               <div class="d-flex align-center">
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-caption text-medium-emphasis">Precio</span>
+                  <span  v-if="index === 0" class="text-caption text-medium-emphasis">Precio</span>
                   <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
@@ -391,7 +391,7 @@ const handleReserved = () => {
                   </span>
                 </div>
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-caption text-medium-emphasis">IVA</span>
+                  <span v-if="index === 0" class="text-caption text-medium-emphasis">IVA</span>
                   <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
@@ -402,7 +402,7 @@ const handleReserved = () => {
                   </span>
                 </div>
                 <div class="d-flex flex-column align-end">
-                  <span class="text-caption text-medium-emphasis">Total</span>
+                  <span v-if="index === 0" class="text-caption text-medium-emphasis">Total</span>
                   <span class="text-body-1 me-2 font-weight-bold text-black">
                     {{
                       formatCurrency(
