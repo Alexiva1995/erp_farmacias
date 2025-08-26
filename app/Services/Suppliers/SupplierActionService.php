@@ -4,6 +4,7 @@ namespace App\Services\Suppliers;
 
 use App\Models\Supplier;
 use App\Models\PaymentRule;
+use App\Models\SupplierDiscount;
 use App\Models\SupplierLaboratory;
 
 class SupplierActionService
@@ -52,9 +53,9 @@ class SupplierActionService
      * @param array $validatedData
      * @return PaymentRule
      */
-    public function updatePaymentRule(Supplier $supplier, array $validatedData): PaymentRule
+    public function createPaymentRule(Supplier $supplier, array $data): PaymentRule
     {
-        return $supplier->paymentRule()->updateOrCreate([], $validatedData);
+        return $supplier->paymentRules()->create( $data);
     }
 
     /**
@@ -67,5 +68,10 @@ class SupplierActionService
     public function attachLaboratory(Supplier $supplier, array $validatedData): SupplierLaboratory
     {
         return $supplier->laboratoryLinks()->create($validatedData);
+    }
+
+    public function createDiscount(Supplier $supplier, array $data): SupplierDiscount
+    {
+        return $supplier->discounts()->create( $data);
     }
 }
