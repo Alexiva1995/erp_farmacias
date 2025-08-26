@@ -10,14 +10,16 @@ class ProductSupplier extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id',
-        'supplier_id',
-        'barcode_match',
-        'name',
-        'laboratory',
-        'expiration',
-        'unit_cost',
-        'connection_date',
+        "product_id",
+        "supplier_id",
+        "barcode_match",
+        "name",
+        "laboratory",
+        "expiration",
+        "unit_cost",
+        "unit_cost_usd",
+        "connection_date",
+        "cod_supplier",
     ];
 
     public function product()
@@ -32,6 +34,6 @@ class ProductSupplier extends Model
 
     public function autoOrderDetails()
     {
-        return $this->hasMany(AutoOrderDetail::class, 'product_suppliers_id');
+        return $this->hasMany(AutoOrderDetail::class, "product_suppliers_id");
     }
 }
