@@ -180,7 +180,12 @@ class OrderController extends Controller
         }
 
         try {
-            $this->orderActionService->complete($orderId, $request);
+            //$sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+
+            $result = $this->orderActionService->complete($orderId, $request, $sellerId);
+            return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
+
         } catch (\Exception $e) {
             Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
@@ -292,7 +297,7 @@ class OrderController extends Controller
         }
 
         try {
-            $order = $this->orderActionService->reserveAndNewOrder($order,$sellerId);
+            $order = $this->orderActionService->reserveOrder($order,$sellerId);
             return ApiResponse::success($order, 'Orden reservada exitosamente.',200);
         } catch (\Exception $e) {
             Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);

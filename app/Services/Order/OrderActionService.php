@@ -316,7 +316,7 @@ class OrderActionService
         return $fiscalexist;
     }
 
-    public function complete(Order $orderId, Request $request): bool
+    public function complete(Order $orderId, Request $request, $sellerId): array
     {
         DB::beginTransaction();
         try {
@@ -482,8 +482,28 @@ class OrderActionService
             $current_cash->total_cop += $total_cop;
             $current_cash->total_usd += $total_usd;
             $current_cash->update();
+
+
+            $reservedOrder = Order::where('seller_id', $sellerId)
+                ->where('status', Order::RESERVED)
+                ->first();
+
+            
+            $newPendingOrder = null;
+
+            if ($reservedOrder) {
+                $reservedOrder->status = Order::PENDING;
+                $reservedOrder->save();
+                $reservedOrder->load('seller', 'client', 'details.product');
+                $newPendingOrder = $reservedOrder;
+            }
+
+
             DB::commit();
-            return true;
+            return [
+                'order' => $newPendingOrder,
+            ];
+
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al completar la orden: ' . $e->getMessage(), [
@@ -494,13 +514,13 @@ class OrderActionService
         }
     }
 
-    public function reserveAndNewOrder(Order $order,$sellerId): array
+    public function reserveOrder(Order $order,$sellerId): array
     {
           DB::beginTransaction();
         try {
             $order->status = Order::RESERVED;
             $order->save();
-            $openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
+            /*$openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
                 ->where('status', CashClosing::OPEN)
                 ->first();
 
@@ -516,13 +536,14 @@ class OrderActionService
                 $data['payment_methods'] = null;
 
             $newOrder = Order::create($data);
-            $newOrder->load('seller', 'client');
+            $newOrder->load('seller', 'client', 'details.product');*/
+            $order->load('seller', 'client', 'details.product');
 
             DB::commit();
             Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
              return [
-            'existing_reserved_order' => $order,
-            'new_order' => $newOrder
+            'reserved_order' => $order,
+            //'pending_order' => $newOrder
             ];
         } catch (\Throwable $e) {
 

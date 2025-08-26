@@ -114,7 +114,8 @@ class OrderQueryService
             if ($isStrictSearch) {
                 $subQuery->where('name', 'like', "%{$searchTerm}%")
                          ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
-                         ->orWhere('barcode', 'like', "%{$searchTerm}%");
+                         ->orWhere('barcode', 'like', $searchTerm)
+                         ->orWhere('id', 'like', $searchTerm);
             } else {
                 $words = explode(' ', $searchTerm);
                 foreach ($words as $word) {

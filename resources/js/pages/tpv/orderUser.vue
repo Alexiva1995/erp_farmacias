@@ -767,36 +767,44 @@ const cancelarOrder = async () => {
 const reserverOrder = async () => {
   try {
     const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-    const { pending_order, reserved_order } = response.data.data.order;
 
-    openOrderData.value = pending_order;
-    reservedOrderData.value = reserved_order;
-    selectedClient.value = pending_order.client;
+     if (!response.data.data || !response.data.data.pending_order) {
+            throw new Error("Respuesta de API inválida. No se pudo obtener la orden pendiente.");
+        }
 
-    if (response.data.data.order.pending_order.details) {
-      orderItems.value = response.data.data.order.pending_order.details.map((item) =>
+      hasOpenOrder.value = false;
+      openOrderData.value = null;
+      selectedClient.value = null;
+      orderItems.value = [];
+
+    //openOrderData.value = response.data.data.pending_order;
+    reservedOrderData.value = response.data.data.reserved_order;
+    //selectedClient.value = openOrderData.value.client;
+
+    /*if (openOrderData.value.details) {
+      orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
       );
     } else {
       orderItems.value = [];
-    }
+    }*/
 
     hasOpenOrder.value = true;
     toast.success("Orden reservada exitosamente.");
-    return response.data.data.order;
+    showReserverOrder;
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
 
-    if (error.response.data.message.includes("Ya tienes una orden reservada")) {
+    if (error.response?.data?.message.includes("Ya tienes una orden reservada")) {
      try {
         const checkResponse = await axios.get("/tpv/order/seller/my-open-order");
         if (checkResponse.data.data) {
           openOrderData.value = checkResponse.data.data.order.pending_order;
           reservedOrderData.value = checkResponse.data.data.order.reserved_order;
-          toast.info("La orden ya estaba reservada. La orden abierta se mantiene.");
+          toast.info("Ya hay una orden reservada. La orden abierta se mantiene.");
           return;
         }
       } catch (checkError) {
@@ -848,14 +856,15 @@ const handleBuysCompletion = async (
     );
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
-
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = myCalculatedTotal.value;
       creditForPrint.value = credit;
+      clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
       isPrinting.value = true;
+
       await nextTick();
       const printContents = document.getElementById("orderPrint");
       if (printContents) {
@@ -899,6 +908,25 @@ const handleBuysCompletion = async (
         );
         window.print();
       }
+
+
+      if (response.data.data.order) {
+                hasOpenOrder.value = true;
+                openOrderData.value = response.data.data.order;
+                selectedClient.value = openOrderData.value.client;
+                reservedOrderData.value = null;
+                orderItems.value = openOrderData.value.details.map((item) =>
+                    formatOrderItemForFrontend(item)
+                );
+            } else {
+                hasOpenOrder.value = false;
+                openOrderData.value = null;
+                selectedClient.value = null;
+                orderItems.value = [];
+                reservedOrderData.value = null;
+                clientIdentification.value = "";
+            }
+
     } else {
       toast.error(
         `Error inesperado al finalizar la compra: ${
@@ -909,7 +937,7 @@ const handleBuysCompletion = async (
 
     setTimeout(() => {
       isPrinting.value = false;
-      paymentsForPrint.value = [];
+      /*paymentsForPrint.value = [];
       hasOpenOrder.value = false;
       openOrderData.value = null;
       selectedClient.value = null;
@@ -917,7 +945,7 @@ const handleBuysCompletion = async (
       changeAmountForPrint.value = 0;
       creditAmountForPrint.value = 0;
       clientIdentification.value = "";
-      creditForPrint.value = false;
+      creditForPrint.value = false;*/
     }, 500);
   } catch (error) {
     console.error(
