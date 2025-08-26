@@ -31,8 +31,9 @@ class UpdateSupplierRequest extends FormRequest
             'credit_days' => 'sometimes|numeric|min:0',
             'dispatch_days' => 'sometimes|array|min:1',
             'dispatch_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
-            'order_days' => 'sometimes|array|min:1',
-            'order_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
+            'order_days' => 'required|array|min:1',
+            'order_days.*' => 'array|min:1',
+            'order_days.*.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
             'payment_method' => 'sometimes|in:Bs,Divisas',
             'cash_payment' => 'sometimes|boolean',
             'charges_igtf' => 'sometimes|boolean'
@@ -67,8 +68,10 @@ class UpdateSupplierRequest extends FormRequest
             'dispatch_days.min' => 'Debes seleccionar al menos un día de despacho.',
             'dispatch_days.*.in' => 'Uno o más días seleccionados no son válidos.',
 
-            'order_days.min' => 'Debes seleccionar al menos un día de pedido.',
-            'order_days.*.in' => 'Uno o más días seleccionados no son válidos.',
+            'order_days.required'      => 'Debes asignar días de pedido.',
+            'order_days.*.array'       => 'El formato de días de pedido es inválido.',
+            'order_days.*.min'         => 'Cada día de despacho debe tener al menos un día de pedido.',
+            'order_days.*.*.in'        => 'Uno o más días seleccionados no son válidos.',
 
             'payment_method.*.in' => 'El método de pago seleccionado no es válido.',
 

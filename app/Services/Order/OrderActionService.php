@@ -468,10 +468,10 @@ class OrderActionService
 
             if (isset($request->changeAmountUSD)) {
                 $current_cash->usd_cash -= $request->changeAmountUSD;
-            }
-
-            if (isset($request->changeAmount)) {
+            }else{
+                if (isset($request->changeAmount)) {
                 $current_cash->cop_cash -= $request->changeAmount;
+                }
             }
 
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;

@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
 use App\Contracts\Order as OrderContract;
 
-
 class OrderController extends Controller
 {
 
@@ -317,4 +316,5 @@ class OrderController extends Controller
             return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
         }
     }
+
 }
