@@ -80,7 +80,32 @@ class Invoice extends Model
     {
         return $this->hasMany(PsychotropicControl::class);
     }
+    public function returns()
+    {
+        return $this->hasMany(InvoiceReturn::class);
+    }
 
+    public function isApproved(): bool
+    {
+        return $this->status === 'ordered';
+    }
+
+    public function canBeApproved(): bool
+    {
+        return $this->status === 'to_order';
+    }
+    public function getTotalReturns(): float
+    {
+        return $this->returns()->sum('amount_refunded');
+    }
+
+    /**
+     * Obtiene la cantidad total de productos devueltos
+     */
+    public function getTotalReturnedQuantity(): float
+    {
+        return $this->returns()->sum('quantity');
+    }
     public function getOutstandingDebtAttribute(): float
     {
         // Suma de pagos registrados
