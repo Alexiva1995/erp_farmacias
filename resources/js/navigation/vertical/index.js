@@ -1,9 +1,10 @@
-import appsAndPages from './apps-and-pages'
-import charts from './charts'
-import dashboard from './dashboard'
-import forms from './forms'
+import crm from './crm'
+import finances from './finances'
+import fiscal from './fiscal'
 import inventory from './inventory'
-import others from './others'
-import uiElements from './ui-elements'
+import lot from './lot'
+import tpv from './tpv'
 
-export default [...dashboard, ...inventory, ...appsAndPages, ...uiElements, ...forms, ...charts, ...others]
+// Se han combinado los módulos de ambas ramas.
+// Ahora se exportan 'inventory', 'lot', 'tpv' y 'crm'.
+export default [...inventory, ...lot, ...tpv, ...crm, ...fiscal, ...finances]

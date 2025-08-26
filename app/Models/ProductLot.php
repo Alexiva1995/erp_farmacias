@@ -29,9 +29,12 @@ class ProductLot extends Model
         'expiration_date',
         'quantity',
         'location',
-        'cost_price',
+        'unit_cost',
+        'amount_usd'
     ];
-
+    protected $casts = [
+        'expiration_date' => 'datetime',
+    ];
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      *
@@ -52,5 +55,20 @@ class ProductLot extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function expirations()
+    {
+        return $this->hasMany(Expiration::class, 'product_lot_id');
+    }
+
+    public function productCounts()
+    {
+        return $this->hasMany(ProductCount::class);
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
     }
 }

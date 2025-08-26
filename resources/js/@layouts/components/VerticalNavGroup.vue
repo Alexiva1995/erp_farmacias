@@ -1,5 +1,5 @@
 <script setup>
-import { TransitionGroup } from 'vue'
+import { computed, TransitionGroup } from 'vue'
 import { layoutConfig } from '@layouts'
 import {
   TransitionExpand,
@@ -13,7 +13,21 @@ import {
   isNavGroupActive,
   openGroups,
 } from '@layouts/utils'
+const iconComponent = computed(() => {
+  const { icon } = props.item
+  if (typeof icon === 'object' && icon.is) {
+    return icon.is
+  }
+  return layoutConfig.app.iconRenderer || 'div'
+})
 
+const iconProps = computed(() => {
+  const { icon } = props.item
+  if (typeof icon === 'object' && icon.is) {
+    return icon.props
+  }
+  return icon
+})
 const props = defineProps({
   item: {
     type: null,
@@ -134,16 +148,9 @@ watch(configStore.isVerticalNavMini(isVerticalNavHovered), val => {
       class="nav-group-label"
       @click="isGroupOpen = !isGroupOpen"
     >
-      <component
-        v-if="item.icon && item.icon.is"
-        :is="item.icon.is"
-        v-bind="item.icon.props"
-        class="nav-item-icon"
-      />
       <Component
-        v-else-if="item.icon"
-        :is="layoutConfig.app.iconRenderer || 'div'"
-        v-bind="item.icon"
+        :is="iconComponent"
+        v-bind="iconProps || layoutConfig.verticalNav.defaultNavItemIconProps"
         class="nav-item-icon"
       />
 

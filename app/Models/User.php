@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,9 +19,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'username',
         'email',
-        'password',
+        'password_hash',
+        'is_active',
+        'token_login',
+        'remember_token'
     ];
 
     /**
@@ -29,8 +33,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
+        'password_hash'
     ];
 
     /**
@@ -41,8 +44,77 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password_hash' => 'hashed',
         ];
+    }
+
+    public function cashClosings()
+    {
+        return $this->hasMany(CashClosing::class, 'seller_id');
+    }
+
+    public function ordersSold()
+    {
+        return $this->hasMany(Order::class, 'seller_id');
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function fiscalHistories()
+    {
+        return $this->hasMany(FiscalHistory::class);
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class, 'created_by');
+    }
+
+    public function reviewedCounts() // supervisor_id
+    {
+        return $this->hasMany(ProductCount::class, 'supervisor_id');
+    }
+
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class);
+    }
+
+    public function payrollDetails()
+    {
+        return $this->hasMany(PayrollDetail::class);
+    }
+
+    public function invoicePayments()
+    {
+        return $this->hasMany(InvoicePayment::class, 'payment_by');
+    }
+
+    public function uploadedInvoices()
+    {
+        return $this->hasMany(Invoice::class, 'uploaded_by');
+    }
+
+    public function registeredInvoices()
+    {
+        return $this->hasMany(Invoice::class, 'registered_by');
+    }
+
+    public function orderedInvoices()
+    {
+        return $this->hasMany(Invoice::class, 'ordered_by');
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function psychotropicControls()
+    {
+        return $this->hasMany(PsychotropicControl::class);
     }
 }
