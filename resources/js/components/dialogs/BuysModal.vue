@@ -1037,7 +1037,7 @@ watch(balanceSwitch, (newVal) => {
           </div>
         </div>
       </VCardText>
-      <VCardActions class="p-4 d-flex justify-start w-50 ">
+      <VCardActions class="p-4 d-flex justify-space-between w-100 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
