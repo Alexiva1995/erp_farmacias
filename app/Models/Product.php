@@ -65,9 +65,9 @@ class Product extends Model
         'is_colombian_origin' => 'boolean',
         'psychotropic' => 'boolean',
         'is_deleted' => 'boolean',
+        'sale_price' => 'float',
         // Puedes añadir más casts aquí si es necesario, por ejemplo:
         // 'unit_cost' => 'decimal:2',
-        // 'sale_price' => 'decimal:2',
     ];
 
 

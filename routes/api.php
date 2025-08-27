@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
@@ -25,6 +26,9 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CreditsController;
+use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -55,6 +59,7 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::delete('/products/{product}', [ProductController::class, 'destroy']);
 Route::get('/products/export', [ProductController::class, 'export']);
 Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
+Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
 
 // Rutas de Grupos de Productos
 Route::get('/groups', [GroupController::class, 'index']);
@@ -62,6 +67,7 @@ Route::post('/groups', [GroupController::class, 'store']);
 Route::get('/groups/search', [GroupController::class, 'search']);
 Route::put('/groups/{group}', [GroupController::class, 'update']);
 Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+Route::get('/groups/consult-all', [GroupController::class, 'consultAll']);
 
 
 // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
@@ -71,6 +77,8 @@ Route::get('/categories', [ResourceController::class, 'getCategories']);
 Route::get('/suppliers', [ResourceController::class, 'getSuppliers']);
 Route::get('/products/all', [ResourceController::class, 'getAllProducts']);
 Route::get('/barcode/{barcode}', [ResourceController::class, 'findProductByBarcode']);
+Route::get('/product/{product}', [ResourceController::class, 'findProductById']);
+Route::get('/exchange-rates', [ResourceController::class, 'getExchangeRates']);
 
 // Rutas de Expiraciones
 Route::get('/products/expirations', [ExpirationController::class, 'index']);
@@ -98,6 +106,7 @@ Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot'
 Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
 Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
 Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
+Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);
 
 Route::get('/products/count', [InventoryCycleController::class, 'getProductCount']);
 Route::post('/products/count/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
@@ -116,22 +125,15 @@ Route::prefix('inventory')->group(function () {
     Route::post('/cycle/create', [InventoryCycleController::class, 'createCycle']);
 
     Route::prefix('count')->group(function () {
-        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount'])
-            ->name('inventory.count.store');
-
         Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
         Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
         Route::post('/invoice-count/{productId}', [InventoryCycleController::class, 'storeInvoiceCount']);
-
         Route::get('/invoice-details-to-count', [InventoryCycleController::class, 'getInvoiceDetailsToCount']);
 
-        Route::post('/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
-
-        Route::get('/', [InventoryCycleController::class, 'getProductCount'])
-            ->name('inventory.counts.index');
-
-        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction'])
-            ->name('inventory.counts.action');
+        Route::get('/', [InventoryCycleController::class, 'getProductCount']);
+        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
+        Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
+        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
     });
 
     // Estadísticas y reportes (funcionalidad futura)
@@ -146,10 +148,39 @@ Route::prefix('inventory')->group(function () {
 Route::post('/adjustments/{product}/validate-barcode', [InventoryAdjustmentController::class, 'validateBarcode']);
 Route::post('/adjustments/process-count', [InventoryAdjustmentController::class, 'processCount']);
 
-// Rutas de TPV / Cotizaciones (provenientes de 4.0-TPV)
-Route::get('/quotation', [QuotationController::class, 'index']);
-Route::get('/quotation/{product}', [QuotationController::class, 'show']);
-Route::post('/quotations', [QuotationController::class, 'store']);
+// Rutas de TPV (provenientes de 4.0-TPV)
+Route::prefix("tpv")->group(function () {
+    // Rutas de Cotizaciones
+    Route::get('/quotation', [QuotationController::class, 'index']);
+    Route::get('/quotation/{product}', [QuotationController::class, 'show']);
+    Route::post('/quotations', [QuotationController::class, 'store']);
+    Route::get('/quotations/{quotationId}/products', [QuotationController::class, 'showProducts']);
+
+    // Rutas de Pedidos Usuarios
+    Route::get('/order', [OrderController::class, 'index']);
+    Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
+    Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
+    Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
+    Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
+    Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+    Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
+    Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
+
+    // Rutas de Pedidos General
+    Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
+    Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
+    Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
+    Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
+    Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+
+    Route::get('/credits', [CreditsController::class, 'index']);
+    Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
+    Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
+});
+
 
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix('sales/report')->controller(TraceabilityController::class)->group(function () {
@@ -263,14 +294,40 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
 Route::prefix("suppliers")->group(function () {
-    Route::get('/check-health', [SupplierController::class, 'checkApiHealth']);
-    Route::put('/{supplier}/payment-rule', [SupplierController::class, 'updatePaymentRule']);
+    Route::get('/{supplier}/connection', [SupplierController::class, 'connectionServiceSupplier']);
+    Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
+    Route::post('/{supplier}/payment-rules', [SupplierController::class, 'storePaymentRules']);
+    Route::get('/{supplier}/payment-rules', [SupplierController::class, 'getPaymentRules']);
     Route::post('/{supplier}/laboratories', [SupplierController::class, 'storeLaboratory']);
     Route::get('/{supplier}/laboratories', [SupplierController::class, 'getLaboratoryLinks']);
     Route::get('/{supplier}/pending-invoices', [SupplierController::class, 'getPendingInvoices']);
+    Route::post('/{supplier}/discounts', [SupplierController::class, 'storeDiscounts']);
+    Route::get('/{supplier}/discounts', [SupplierController::class, 'getDiscounts']);
 });
 
 Route::prefix("supplier-laboratories")->group(function () {
     Route::get('/{supplier}/discount-rules', [SupplierLaboratoryController::class, 'getDiscountRules']);
     Route::post('/{lab}/discount-rules', [SupplierLaboratoryController::class, 'storeDiscountRule']);
+});
+
+//Invoices
+Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('/{invoice}/details', 'getDetails')->name('details');
+    Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+    Route::put('/{invoice}/data', 'updateData')->name('updateData');
+    Route::post('/{invoice}/approve', 'approve')->name('approve');
+    Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+    Route::get('/{invoice}', 'show')->name('show');
+    Route::put('/{invoice}', 'update')->name('update');
+    Route::delete('/{invoice}', 'destroy')->name('destroy');
+});
+Route::prefix("suppliers-ia-order-assistant")->group(function () {
+    Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
+    Route::prefix("generate-order")->group(function () {
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+    });
 });

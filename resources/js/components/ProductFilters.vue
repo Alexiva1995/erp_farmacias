@@ -13,6 +13,8 @@ const props = defineProps({
   origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   mode: { type: String, default: "products" },
+  showAddButton: { type: Boolean, default: true },
+  addButtonText: { type: String, default: "Añadir Producto" },
 });
 
 const emit = defineEmits([
@@ -343,11 +345,22 @@ watch(
         </VMenu>
 
         <VBtn
+          v-if="props.showAddButton"
           color="primary"
           prepend-icon="tabler-plus"
           @click="emit('add-product')"
         >
-          Añadir Producto
+          {{ props.addButtonText }}
+        </VBtn>
+      </template>
+      <template v-else-if="mode === 'minimal'">
+        <VBtn
+          v-if="props.showAddButton"
+          color="primary"
+          prepend-icon="tabler-plus"
+          @click="emit('add-product')"
+        >
+          {{ props.addButtonText }}
         </VBtn>
       </template>
     </VCardActions>
