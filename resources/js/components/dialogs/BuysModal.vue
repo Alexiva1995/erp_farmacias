@@ -638,24 +638,6 @@ watch(balanceSwitch, (newVal) => {
         </VBtn>
       </VCardTitle>
       <VDivider />
-
-      <div class="demo-space-y px-4 pt-4">
-        <VProgressLinear
-          v-model="currentProgress"
-          color="primary"
-          height="10"
-          rounded
-        />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Detalles de compra
-          </p>
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Ticke de compra
-          </p>
-        </div>
-      </div>
-
       <VCardText v-if="currentProgress === 0">
         <div class="d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6">Total de productos:</p>
