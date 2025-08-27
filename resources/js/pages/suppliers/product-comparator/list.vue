@@ -116,12 +116,14 @@ const handleShowDiscountAndPaymentRules = (supplier) => {
   isShowSupplierDiscountAndPaymentRulesDialogActive.value = true;
 };
 
-const handleCheckSupplierApi = async (supplier) => {
+const handleCheckSupplierApi = async (supplier, { discount, payment }) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
     toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
-    await axios.get(`/suppliers/${supplier.id}/connection`);
+    await axios.get(`/suppliers/${supplier.id}/connection`, {
+      params: { payment, discount },
+    });
 
     startPolling();
   } catch (error) {
@@ -144,6 +146,7 @@ const handleClearFilters = () => {
       :selectedSupplier="selectedSupplier"
       :enableDiscounts="enableDiscounts"
       :enablePaymentRules="enablePaymentRules"
+      @request-update="handleCheckSupplierApi"
     />
 
     <VCard title="Listados" class="mb-6">

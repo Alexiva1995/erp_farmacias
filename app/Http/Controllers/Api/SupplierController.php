@@ -106,10 +106,12 @@ class SupplierController extends Controller
      * Summary of connectionServiceSupplier
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function connectionServiceSupplier(Supplier $supplier)
+    public function connectionServiceSupplier(Supplier $supplier, Request $request)
     {
         $userId = auth()->id() ?? 1;
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
+        $discount = $request->boolean("discount", false);
+        $payment = $request->boolean("payment", false);
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $discount, $payment);
 
         return response()->json(["status" => "queued"]);
     }

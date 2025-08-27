@@ -20,6 +20,8 @@ class ProductSupplier extends Model
         "unit_cost_usd",
         "connection_date",
         "cod_supplier",
+        "unit_cost_with_discount",
+        "unit_cost_usd_with_discount",
     ];
 
     public function product()

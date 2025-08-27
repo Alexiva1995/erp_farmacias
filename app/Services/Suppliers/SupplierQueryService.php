@@ -245,4 +245,59 @@ class SupplierQueryService
 
         return $paginated;
     }
+
+    public function addDiscountsToProducts(Supplier $supplier, array $flags)
+    {
+        $supplierId = $supplier->id;
+        \Log::info("Descuentos", [
+            "discount" => $flags["discount"],
+            "payment" => $flags["payment"],
+        ]);
+
+        try {
+            DB::transaction(function () use ($supplierId, $flags) {
+                $tables = [];
+                if ($flags["discount"] ?? false) {
+                    $tables[] =
+                        "SELECT discount_percentage / 100 AS rate FROM supplier_discounts WHERE supplier_id = ?";
+                }
+                if ($flags["payment"] ?? false) {
+                    $tables[] = "SELECT discount_percentage /100 AS rate FROM payment_rules WHERE supplier_id = ?";
+                }
+
+                if (empty($tables)) {
+                    return;
+                }
+
+                $sql =
+                    "SELECT COALESCE(EXP(SUM(LN(1 - rate))), 1) FROM (" .
+                    implode(" UNION ALL ", $tables) .
+                    ") AS rules";
+
+                $params = array_fill(0, count($tables), $supplierId);
+
+                $factor = DB::scalar($sql, $params);
+
+                \Log::info("% Descuento: ", ["factor" => $factor]);
+
+                if ($factor === null) {
+                    return;
+                }
+
+                try {
+                    DB::update(
+                        'UPDATE product_suppliers
+                         SET unit_cost_with_discount    = ROUND(unit_cost     * ?, 2),
+                             unit_cost_usd_with_discount = ROUND(unit_cost_usd * ?, 2)
+                         WHERE supplier_id = ?',
+                        [$factor, $factor, $supplierId],
+                    );
+                } catch (\Throwable $e) {
+                    \Log::error($e);
+                }
+            });
+        } catch (\Throwable $e) {
+            \Log::error($e);
+        }
+    }
 }

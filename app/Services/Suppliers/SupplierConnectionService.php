@@ -6,9 +6,11 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Str;
 
 class SupplierConnectionService
 {
@@ -173,6 +175,8 @@ class SupplierConnectionService
                 "connection_date" => $now,
                 "laboratory" => null,
                 "product_id" => null,
+                "unit_cost_with_discount" => null,
+                "unit_cost_usd_with_discount" => null,
             ];
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);

@@ -19,7 +19,12 @@ class ProcessSupplierConnectionJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public Supplier $supplier, public int $userId) {}
+    public function __construct(
+        public Supplier $supplier,
+        public int $userId,
+        public ?bool $discountsEnable,
+        public ?bool $paymentsEnable,
+    ) {}
 
     /**
      * Execute the job.
@@ -37,6 +42,10 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         try {
             $results = $connectionService->fetchData($supplierConnection);
             $queryService->storeSupplierConnectionData($this->supplier, $results);
+            $queryService->addDiscountsToProducts($this->supplier, [
+                "discount" => $this->discountsEnable,
+                "payment" => $this->paymentsEnable,
+            ]);
 
             $supplierConnection->update(["last_connection" => now()->today()]);
 

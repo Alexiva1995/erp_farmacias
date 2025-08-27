@@ -10,7 +10,7 @@ const props = defineProps({
   enablePaymentRules: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:modalValue"]);
+const emit = defineEmits(["update:modalValue", "request-update"]);
 
 const localEnableDiscounts = ref(props.enableDiscounts);
 const localEnablePaymentRules = ref(props.enablePaymentRules);
@@ -31,15 +31,9 @@ watch(
   { deep: true, immediate: true },
 );
 
-const discountPage = ref(1);
-const discountItemsPerPage = ref(10);
-const discountTotalPages = ref(0);
 const discounts = ref([]);
 const discountLoading = ref(false);
 
-const paymentRulesPage = ref(1);
-const paymentRulesItemsPerPage = ref(10);
-const paymentRulesTotalPages = ref(0);
 const paymentRules = ref([]);
 const paymentRuleLoading = ref(false);
 
@@ -51,47 +45,17 @@ watch(
   () => props.selectedSupplier,
   (selectedSupplier) => {
     if (selectedSupplier?.id) {
-      discountPage.value = 1;
-      paymentRulesPage.value = 1;
       Promise.all([fetchSupplierDiscounts(selectedSupplier.id), fetchSupplierPayments(selectedSupplier.id)]);
     }
   },
   { deep: true, immediate: true },
 );
 
-watch([paymentRulesPage, discountItemsPerPage], () => {
-  if (props.selectedSupplier?.id) {
-    fetchSupplierDiscounts(props.selectedSupplier.id);
-  }
-});
-
-watch([discountPage, paymentRulesItemsPerPage], () => {
-  if (props.selectedSupplier?.id) {
-    fetchSupplierPayments(props.selectedSupplier.id);
-  }
-});
-
-const discountHeaders = [
-  { title: "Nombre", key: "name", sortable: false },
-  { title: "% De Descuento", key: "laboratory", sortable: false },
-];
-
-const paymentRulesHeaders = [
-  { title: "Días", key: "days", sortable: false },
-  { title: "% De Descuento", key: "discount_percentage", sortable: false },
-];
-
 const fetchSupplierDiscounts = async (id) => {
   try {
     discountLoading.value = true;
-    const { data } = await axios.get(`/suppliers/${id}/discounts`, {
-      params: {
-        page: discountPage.value,
-        perPage: discountItemsPerPage.value,
-      },
-    });
-    discounts.value = data.data;
-    discountTotalPages.value = data.total;
+    const { data } = await axios.get(`/suppliers/${id}/discounts`);
+    discounts.value = data.supplier_discount;
   } catch (error) {
     console.error(error);
     toast.error("Error al obtener los descuentos del proveedor.");
@@ -103,14 +67,8 @@ const fetchSupplierDiscounts = async (id) => {
 const fetchSupplierPayments = async (id) => {
   try {
     paymentRuleLoading.value = true;
-    const { data } = await axios.get(`/suppliers/${id}/payment-rules`, {
-      params: {
-        page: paymentRulesPage.value,
-        perPage: paymentRulesItemsPerPage.value,
-      },
-    });
-    paymentRules.value = data.data;
-    paymentRulesTotalPages.value = data.total;
+    const { data } = await axios.get(`/suppliers/${id}/payment-rules`);
+    paymentRules.value = data.payment_rules;
   } catch (error) {
     console.error(error);
     toast.error("Error al obtener las reglas de pronto pago del proveedor.");
@@ -132,14 +90,13 @@ const formatDate = (dateString) => {
   }
 };
 
-const updateDiscountsTableOptions = (options) => {
-  discountPage.value = options.page;
-  discountItemsPerPage.value = options.itemsPerPage;
-};
+const submitForm = async () => {
+  emit("request-update", props.selectedSupplier, {
+    discount: localEnableDiscounts.value,
+    payment: localEnablePaymentRules.value,
+  });
 
-const updatePaymentRulesTableOptions = (options) => {
-  paymentRulesPage.value = options.page;
-  paymentRulesItemsPerPage.value = options.itemsPerPage;
+  closeModal();
 };
 </script>
 
@@ -185,6 +142,28 @@ const updatePaymentRulesTableOptions = (options) => {
 
         <VRow>
           <VCol>
+            <span class="text-h6">Pronto Pago</span>
+          </VCol>
+          <VCol>
+            <VSwitch v-model="localEnablePaymentRules" label="Activar Pronto Pago" :inset="true" />
+          </VCol>
+        </VRow>
+
+        <VDataTable
+          :headers="[
+            { title: 'Días', key: 'days' },
+            { title: '% de Descuento', key: 'discount_percentage' },
+          ]"
+          :items="paymentRules"
+          density="compact"
+          no-data-text="No hay reglas registradas para este proveedor."
+          :hide-default-footer="true"
+        />
+
+        <div class="my-8" />
+
+        <VRow>
+          <VCol>
             <span class="text-h6">Descuentos</span>
           </VCol>
           <VCol>
@@ -192,50 +171,23 @@ const updatePaymentRulesTableOptions = (options) => {
           </VCol>
         </VRow>
 
-        <VDataTableServer
-          :headers="discountHeaders"
+        <VDataTable
+          :headers="[
+            { title: 'Nombre', key: 'name' },
+            { title: '% de Descuento', key: 'discount_percentage' },
+          ]"
           :items="discounts"
-          :loading="discountLoading"
           density="compact"
-          class="mt-4 rounded-lg"
-          no-data-text="Este proveedor no tiene descuentos registrados."
-          :items-per-page="discountItemsPerPage"
-          :page="discountPage"
-          :server-items-length="discountTotalPages"
-          :items-length="discountTotalPages"
-          @update:options="updateDiscountsTableOptions"
-        />
-
-        <div class="my-8" />
-
-        <VRow>
-          <VCol>
-            <span class="text-h6">Pronto Pago</span>
-          </VCol>
-          <VCol>
-            <VSwitch v-model="localEnablePaymentRules" label="Activar Pronto Pago" :inset="true" />
-          </VCol>
-        </VRow>
-        <VDataTableServer
-          :headers="paymentRulesHeaders"
-          :items="paymentRules"
-          :loading="loading"
-          density="compact"
-          class="mt-4 rounded-lg"
-          no-data-text="Este proveedor no tiene reglas de pronto pago registradas."
-          :items-per-page="paymentRulesItemsPerPage"
-          :page="paymentRulesPage"
-          :server-items-length="paymentRulesTotalPages"
-          :items-length="paymentRulesTotalPages"
-          @update:options="updatePaymentRulesTableOptions"
+          no-data-text="No hay descuentos registrados para este proveedor."
+          :hide-default-footer="true"
         />
       </VSheet>
 
       <VDivider />
 
       <VCardActions class="pa-4">
-        <VBtn color="secondary" variant="outlined" @click="closeDialog" class="flex-grow-1 w-0 mr-4"> Cerrar </VBtn>
-        <VBtn color="primary" variant="flat" @click="closeDialog" class="flex-grow-1 w-0"> Aceptar </VBtn>
+        <VBtn color="secondary" variant="outlined" @click="closeDialog" class="flex-grow-1 w-0 mr-4"> Cancelar </VBtn>
+        <VBtn color="primary" variant="flat" @click="submitForm" class="flex-grow-1 w-0"> Solicitar </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
