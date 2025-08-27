@@ -19,31 +19,22 @@ const handleView = (orderId) => {
   emit('view-order', orderId);
 }
 
-// Función para obtener la moneda y el monto total
 const getPaymentSummary = (payments) => {
-    // Si no hay pagos, retornamos valores por defecto
     if (!payments || payments.length === 0) {
         return { totalAmount: 0, currency: 'N/A' };
     }
 
-    // Calcula el monto total
     const totalAmount = payments.reduce((acc, current) => acc + (current.amount || 0), 0);
-
-    // Determina la moneda principal. Puedes usar la moneda del primer pago o la que prefieras.
     const currency = payments[0].currency || 'N/A';
-    
     return { totalAmount, currency };
 };
 
-// Función para obtener el ícono de expansión
 const expansionIcon = (expanded) => {
     return expanded ? 'tabler-chevron-up' : 'tabler-chevron-down';
 };
 
-// Array para controlar las filas expandidas manualmente
 const expandedRows = ref([]);
 
-// Función para alternar la expansión de una fila
 const toggleExpand = (itemId) => {
   const index = expandedRows.value.indexOf(itemId);
   if (index === -1) {

@@ -6,6 +6,7 @@ use App\Models\GroupsProduct;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class GroupQueryService
 {
@@ -60,5 +61,13 @@ class GroupQueryService
         }
 
         return $query->where('name', 'like', $searchTerm)->first();
+    }
+
+    /**
+     * consultar todos los grupos ordenados por nombre
+     */
+    public function consultAll(): Collection
+    {
+        return GroupsProduct::query()->orderBy("name", "ASC")->get();
     }
 }

@@ -23,6 +23,9 @@ class CashClosing extends Model
         'cop_cash', 'cop_transfer', 'cop_conversion', 'cop_spare',
         'usd_transfer', 'usd_cash', 'usd_paypal', 'usd_binance', 'usd_conversion', 'usd_credit', 'usd_balance',
         'usd_delivered', 'cop_delivered', 'bs_delivered',
+        'bs_card_payment_credit', 'bs_cash_payment_credit', 'bs_transfer_payment_credit', 'bs_mobile_payment_credit',
+        'cop_cash_payment_credit', 'cop_transfer_payment_credit', 'cop_conversion_payment_credit',
+        'usd_transfer_payment_credit', 'usd_cash_payment_credit', 'usd_paypal_payment_credit', 'usd_binance_payment_credit',
     ];
 
     public function seller()

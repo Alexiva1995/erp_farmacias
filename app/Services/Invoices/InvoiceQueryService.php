@@ -12,15 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceQueryService
 {
-    /**
-     * Construye una consulta filtrada para las facturas.
-     *
-     * @param Request $request
-     * @return Builder
-     */
-    public function getFilteredQuery(Request $request): Builder
+    public function getInvoicesQuery(Request $request): Builder
     {
         $query = Invoice::query()->with('supplier');
+
+        if ($request->filled('status')) {
+            $statuses = is_array($request->status) ? $request->status : [$request->status];
+            $query->whereIn('status', $statuses);
+        }
 
         if ($request->filled('q')) {
             $query->where(function ($q) use ($request) {
@@ -36,18 +35,16 @@ class InvoiceQueryService
             $query->where('supplier_id', $request->supplierId);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'Loaded');
+        $dateColumn = 'exp_date';
+        if ($request->input('status') && in_array('pending', (array) $request->input('status'))) {
+            $dateColumn = 'received_date';
         }
 
         if ($request->filled('startDate')) {
-            $query->whereDate('exp_date', '>=', $request->startDate);
+            $query->whereDate($dateColumn, '>=', $request->startDate);
         }
-
         if ($request->filled('endDate')) {
-            $query->whereDate('exp_date', '<=', $request->endDate);
+            $query->whereDate($dateColumn, '<=', $request->endDate);
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
@@ -64,30 +61,49 @@ class InvoiceQueryService
 
         return $query;
     }
+
+    public function getInvoiceDetails(Invoice $invoice): Collection
+    {
+        return $invoice->details()->with(['product.laboratory'])->get();
+    }
+
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
     {
-        $configuredProducts = SuppliersConfigProduct::query()
-            ->where('supplier_id', $invoice->supplier_id)
-            ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
-            ->select(
-                'products.id as product_id',
-                'products.name as product_name',
-                'suppliers_config_products.price as supplier_price'
-            )
-            ->get();
-        return $configuredProducts->map(function ($productData) {
-            return [
-                'id' => 'new-' . $productData->product_id,
-                'invoice_id' => null,
-                'product' => [
-                    'id' => $productData->product_id,
-                    'name' => $productData->product_name,
-                ],
-                'quantity' => 1,
-                'unit_cost' => $productData->supplier_price,
-            ];
-        });
+        if ($invoice->details()->exists()) {
+
+            return $invoice->details()->with(['product.laboratory'])->get();
+
+        } else {
+
+            $configuredProducts = SuppliersConfigProduct::query()
+                ->where('supplier_id', $invoice->supplier_id)
+                ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'suppliers_config_products.price as supplier_price'
+                )
+                ->get();
+
+            return $configuredProducts->map(function ($productData) {
+                return [
+                    'id' => 'new-' . $productData->product_id,
+                    'invoice_id' => null,
+                    'product' => [
+                        'id' => $productData->product_id,
+                        'name' => $productData->product_name,
+                    ],
+                    'quantity' => 1,
+                    'unit_cost' => $productData->supplier_price,
+                    'lot_number' => null,
+                    'expiration_date' => null,
+                    'location' => null,
+                    'total_cost' => $productData->supplier_price,
+                ];
+            });
+        }
     }
+
     public function getInvoiceById(Invoice $invoice): Invoice
     {
         $invoice->load(['supplier', 'discountRule']);
