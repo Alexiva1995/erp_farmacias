@@ -653,73 +653,73 @@ watch(balanceSwitch, (newVal) => {
             <span class="font-weight-medium">{{ totalSelectedQuantity }}</span>
           </VChip>
         </div>
-          <VList class="card-list no-space-list" density="compact" nav>
-            <VListItem
-              v-for="(product, index) in props.orderProducts"
-              :key="product.id"
-              class="rounded-0 cursor-pointer"
-            >
-              <VListItemTitle class="mx-2 d-flex align-center">{{
-                product.title
-              }}</VListItemTitle>
-              <VListItemSubtitle class="mx-1"
-                >{{ product.active_ingredient }}
-                {{ product.laboratory ? `- ${product.laboratory}` : "" }}
-                {{ product.selectedQuantity }}X
-              </VListItemSubtitle>
+        <VList class="card-list no-space-list" density="compact" nav>
+          <VListItem
+            v-for="(product, index) in props.orderProducts"
+            :key="product.id"
+            class="rounded-0 cursor-pointer"
+          >
+            <VListItemTitle class="mx-2 d-flex align-center">{{
+              product.title
+            }}</VListItemTitle>
+            <VListItemSubtitle class="mx-1"
+              >{{ product.active_ingredient }}
+              {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+              {{ product.selectedQuantity }}X
+            </VListItemSubtitle>
 
-              <template #append>
-                <div class="d-flex align-center">
-                  <div class="d-flex flex-column align-end me-4">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >Precio</span
-                    >
-                    <span class="text-body-1 font-weight-regular">{{
+            <template #append>
+              <div class="d-flex align-center">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Precio</span
+                  >
+                  <span class="text-body-1 font-weight-regular">{{
+                    formatCurrency(
+                      getProductPriceSinIva(product, props.selectedCurrency) *
+                        product.selectedQuantity,
+                      props.selectedCurrency
+                    )
+                  }}</span>
+                </div>
+
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >IVA</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
+                    {{
                       formatCurrency(
-                        getProductPriceSinIva(product, props.selectedCurrency) *
-                          product.selectedQuantity,
+                        getIva(product, props.selectedCurrency),
                         props.selectedCurrency
                       )
-                    }}</span>
-                  </div>
-
-                  <div class="d-flex flex-column align-end me-4">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >IVA</span
-                    >
-                    <span class="text-body-1 font-weight-regular">
-                      {{
-                        formatCurrency(
-                          getIva(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
-                  </div>
-
-                  <div class="d-flex flex-column align-end">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >Total</span
-                    >
-                    <span class="text-body-1 me-2 font-weight-bold text-black">
-                      {{
-                        formatCurrency(
-                          getProductPrice(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
-                  </div>
+                    }}
+                  </span>
                 </div>
-              </template>
-            </VListItem>
-          </VList>
+
+                <div class="d-flex flex-column align-end">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
+                  <span class="text-body-1 me-2 font-weight-bold text-black">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedCurrency),
+                        props.selectedCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </VListItem>
+        </VList>
         <VDivider />
 
         <div class="d-flex flex-wrap justify-space-between mt-4">
@@ -736,6 +736,19 @@ watch(balanceSwitch, (newVal) => {
             <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
               Método de Pago #{{ index + 1 }}
             </p>
+
+            <div class="d-flex justify-center mt-4">
+              <VBtn
+                v-if="index === 0"
+                variant="text"
+                color="primary"
+                @click="addPaymentBlock"
+                :disabled="!canAddPaymentBlock"
+              >
+                <VIcon start icon="tabler-plus" />
+                Agregar otro método de pago
+              </VBtn>
+            </div>
 
             <VCol cols="12" md="2" class="pa-0">
               <VSelect
@@ -844,18 +857,6 @@ watch(balanceSwitch, (newVal) => {
               />
             </VCol>
           </VRow>
-        </div>
-
-        <div class="d-flex justify-center mt-4">
-          <VBtn
-            variant="text"
-            color="primary"
-            @click="addPaymentBlock"
-            :disabled="!canAddPaymentBlock"
-          >
-            <VIcon start icon="tabler-plus" />
-            Agregar otro método de pago
-          </VBtn>
         </div>
 
         <VDivider />
