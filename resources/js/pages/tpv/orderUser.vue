@@ -834,6 +834,9 @@ const handleBuysCompletion = async (
   switchStates
 ) => {
   try {
+
+  const balanceUsed = paymentsData.some(payment => payment.type === 'balance');
+
     const payload = {
       order_id: orderId,
       payments: paymentsData,
@@ -841,7 +844,7 @@ const handleBuysCompletion = async (
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
-      balance_used: switchStates.balance_switch,
+      balance_used: balanceUsed,
       generate_invoice: switchStates.invoice_switch,
       credit: credit,
       changeAmount: changeAmount,
@@ -935,15 +938,6 @@ const handleBuysCompletion = async (
 
     setTimeout(() => {
       isPrinting.value = false;
-      /*paymentsForPrint.value = [];
-      hasOpenOrder.value = false;
-      openOrderData.value = null;
-      selectedClient.value = null;
-      orderItems.value = [];
-      changeAmountForPrint.value = 0;
-      creditAmountForPrint.value = 0;
-      clientIdentification.value = "";
-      creditForPrint.value = false;*/
     }, 500);
   } catch (error) {
     console.error(

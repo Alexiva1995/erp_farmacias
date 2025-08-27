@@ -49,7 +49,6 @@ const currentProgress = ref(0);
 const progressStages = [0, 100];
 const currentStageIndex = ref(0);
 
-const balanceSwitch = ref(false);
 const invoiceSwitch = ref(false);
 
 const changeAmountUSD = ref(0);
@@ -85,6 +84,7 @@ const paymentMethodsByCurrency = {
     { label: "Binance", value: "binance" },
     { label: "PayPal", value: "paypal" },
     { label: "Crédito", value: "credit" },
+    { label: "Saldo", value: "balance" },
   ],
 };
 
@@ -105,7 +105,7 @@ function roundToTwoDecimalPlaces(num) {
 
 const getPaymentMethodLabel = (methodValue, currency) => {
   if (methodValue === "balance") {
-    return "Saldo del Cliente";
+    return "Saldo";
   }
 
   if (!methodValue) return "N/A";
@@ -359,7 +359,6 @@ const handleCompletePurchase = () => {
       changeAmountInCOP.value,
       changeAmountInUSD.value,
       {
-        balance_switch: balanceSwitch.value,
         invoice_switch: invoiceSwitch.value,
       }
     );
@@ -379,7 +378,6 @@ const resetProgress = () => {
       currency: props.selectedCurrency,
     },
   ];
-  balanceSwitch.value = false;
   invoiceSwitch.value = false;
 };
 
@@ -572,58 +570,46 @@ const showChangeAmount = computed(() => {
   return hasRelevantCashPayment && changeAmount.value > 0;
 });
 
-watch(balanceSwitch, (newVal) => {
-  if (newVal) {
-    if (payments.value[0] && payments.value[0].method !== "balance") {
-      payments.value[0].amount = null;
-    }
 
-    const clientBalance = props.orderData.client?.balance || 0;
-    if (clientBalance <= 0) {
-      toast.error("El cliente no tiene saldo disponible.");
-      balanceSwitch.value = false;
-      return;
-    }
+watch(
+  () => payments.value[0].method,
+  (newVal, oldVal) => {
+    if (newVal === "balance") {
+      const clientBalance = props.orderData.client?.balance || 0;
+      if (clientBalance <= 0) {
+        toast.error("El cliente no tiene saldo disponible.");
+        payments.value[0].method = null;
+        return;
+      }
+      let remainingAmountInOrderCurrency = remainingAmount.value;
+      let rateToUSD;
+      if (props.selectedCurrency === "USD") {
+        rateToUSD = 1;
+      } else {
+        rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+      }
 
-    let remainingAmountInOrderCurrency = remainingAmount.value;
+      if (!rateToUSD) {
+        toast.error(
+          `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
+        );
+        payments.value[0].method = null;
+        return;
+      }
 
-    let rateToUSD;
-    if (props.selectedCurrency === "USD") {
-      rateToUSD = 1;
+      const remainingAmountInUSD = remainingAmountInOrderCurrency / rateToUSD;
+      const amountToUse = Math.min(remainingAmountInUSD, clientBalance);
+      const formattedAmount = parseFloat(amountToUse.toFixed(2));
+      payments.value[0].amount = formattedAmount;
+      payments.value[0].currency = "USD";
     } else {
-      rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+      payments.value[0].amount = null;
+      payments.value[0].currency = props.selectedCurrency;
     }
+  },
+  { deep: true }
+);
 
-    if (!rateToUSD) {
-      toast.error(
-        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
-      );
-      balanceSwitch.value = false;
-      return;
-    }
-
-    const remainingAmountInUSD = remainingAmountInOrderCurrency / rateToUSD;
-    const amountToUse = Math.min(remainingAmountInUSD, clientBalance);
-    const formattedAmount = parseFloat(amountToUse.toFixed(2));
-    const balancePayment = {
-      method: "balance",
-      amount: formattedAmount,
-      currency: "USD",
-      reference: "",
-    };
-    payments.value.unshift(balancePayment);
-  } else {
-    payments.value = payments.value.filter((p) => p.method !== "balance");
-    if (payments.value.length === 0) {
-      payments.value.push({
-        method: null,
-        amount: null,
-        reference: null,
-        currency: props.selectedCurrency,
-      });
-    }
-  }
-});
 </script>
 
 <template>
@@ -721,12 +707,6 @@ watch(balanceSwitch, (newVal) => {
           </VListItem>
         </VList>
         <VDivider />
-
-        <div class="d-flex flex-wrap justify-space-between mt-4">
-          <span>Saldo {{ props.orderData.client?.balance || "0.00" }}</span>
-          <VSwitch v-model="balanceSwitch" />
-        </div>
-
         <div
           v-for="(payment, index) in payments"
           :key="index"
@@ -734,7 +714,7 @@ watch(balanceSwitch, (newVal) => {
         >
           <div class="d-flex align-center flex-wrap">
             <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
-              Método de Pago #{{ index + 1 }}
+              Método de Pago #{{ index + 1 }} {{props.orderData.client?.balance}}
             </p>
 
             <div class="d-flex justify-center mt-4">
@@ -772,9 +752,6 @@ watch(balanceSwitch, (newVal) => {
                   v-for="method in (
                     paymentMethodsByCurrency[payment.currency] || []
                   ).filter((m) => {
-                    if (index === 0 && payment.currency === 'USD') {
-                      return true;
-                    }
                     if (
                       index === 0 &&
                       payment.currency !== 'USD' &&
@@ -782,9 +759,14 @@ watch(balanceSwitch, (newVal) => {
                     ) {
                       return false;
                     }
+                    if (m.value === 'balance') {
+                      return index === 0 && payment.currency === 'USD' && props.orderData.client?.balance > 0;
+                    }
                     if (index > 0 && m.value === 'credit') {
                       return false;
                     }
+
+                    
                     return true;
                   })"
                   :key="method.value"

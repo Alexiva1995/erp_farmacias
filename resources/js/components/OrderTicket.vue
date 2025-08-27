@@ -87,6 +87,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       { label: "Binance", value: "binance" },
       { label: "PayPal", value: "paypal" },
       { label: "Crédito", value: "credit" },
+      { label: "Saldo", value: "balance" },
     ],
   };
 
