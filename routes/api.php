@@ -297,6 +297,8 @@ Route::prefix("suppliers")->group(function () {
     Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
     Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
     Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {

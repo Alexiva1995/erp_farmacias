@@ -38,11 +38,7 @@ class SupplierQueryService
                 $subQuery
                     ->where("suppliers.name", "like", $searchTerm)
                     ->orWhere("suppliers.sales_phone", "like", $searchTerm)
-                    ->orWhere(
-                        "suppliers.collections_phone",
-                        "like",
-                        $searchTerm,
-                    )
+                    ->orWhere("suppliers.collections_phone", "like", $searchTerm)
                     ->orWhere("suppliers.id", "like", $searchTerm);
             });
         }
@@ -53,11 +49,8 @@ class SupplierQueryService
     /**
      * Applies sorting to the supplier query.
      */
-    private function applySorting(
-        Builder $query,
-        ?string $sortBy,
-        string $orderBy,
-    ): Builder {
+    private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
         if (empty($sortBy)) {
             return $query->orderBy("suppliers.name", "asc");
         }
@@ -103,11 +96,7 @@ class SupplierQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->applySorting(
-            $query,
-            $request->input("sortBy"),
-            $request->input("orderBy", "asc"),
-        );
+        $this->applySorting($query, $request->input("sortBy"), $request->input("orderBy", "asc"));
 
         return $query;
     }
@@ -123,18 +112,15 @@ class SupplierQueryService
     /**
      * Retrieves unpaid invoices grouped by payment date for a given supplier.
      */
-    public function getUnpaidInvoicesByDate(
-        Supplier $supplier,
-    ): SupportCollection {
+    public function getUnpaidInvoicesByDate(Supplier $supplier): SupportCollection
+    {
         return Invoice::query()
             ->where("supplier_id", $supplier->id)
             ->whereHas("payments", fn($q) => $q->where("status", "unpaid"))
             ->with(["payments" => fn($q) => $q->where("status", "unpaid")])
             ->get()
             ->flatMap(function ($invoice) {
-                return $invoice->payments->map(function ($payment) use (
-                    $invoice,
-                ) {
+                return $invoice->payments->map(function ($payment) use ($invoice) {
                     return [
                         "id" => $invoice->id,
                         "invoice_number" => $invoice->invoice_number,
@@ -159,14 +145,16 @@ class SupplierQueryService
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
         try {
-            $products = $data['products'] ?? [];
-            $invoices = $data['invoices'] ?? [];
+            $products = $data["products"] ?? [];
+            $invoices = $data["invoices"] ?? [];
 
             $uniqueProducts = collect($products)
-                ->groupBy(fn($row) => is_null($row["product_id"])
+                ->groupBy(
+                    fn($row) => is_null($row["product_id"])
                         ? Str::uuid()
-                        : $row["product_id"] . "-" . $row["supplier_id"])
-                ->map(fn ($group) => $group->sortBy("unit_cost")->first())
+                        : $row["product_id"] . "-" . $row["supplier_id"],
+                )
+                ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
                 ->toArray();
 
@@ -178,24 +166,28 @@ class SupplierQueryService
                 }
 
                 // Guardar facturas
-                InvoiceDetail::whereIn('invoice_id', $supplier->invoices()->pluck('id'))->delete();
+                InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
                 $supplier->invoices()->delete();
                 foreach ($invoices as $invoice) {
-                    $header = $invoice['header'];                    
-                    $lines = $invoice['lines'];
+                    $header = $invoice["header"];
+                    $lines = $invoice["lines"];
 
-                    $invoiceModel = $supplier->invoices()->create([
-                        ...Arr::only($header, Invoice::FILLABLEHEADER),
-                        'uploaded_by' => auth()->id() ?? 1,
-                        'registered_by' => auth()->id() ?? 1,
-                    ]);
+                    $invoiceModel = $supplier
+                        ->invoices()
+                        ->create([
+                            ...Arr::only($header, Invoice::FILLABLEHEADER),
+                            "uploaded_by" => auth()->id() ?? 1,
+                            "registered_by" => auth()->id() ?? 1,
+                        ]);
 
-                    $details = collect($lines)->map(function ($line) use ($invoiceModel) {
-                        return [
-                            ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
-                            'invoice_id' => $invoiceModel->id,
-                        ];
-                    })->toArray();
+                    $details = collect($lines)
+                        ->map(function ($line) use ($invoiceModel) {
+                            return [
+                                ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
+                                "invoice_id" => $invoiceModel->id,
+                            ];
+                        })
+                        ->toArray();
 
                     $invoiceModel->details()->createMany($details);
                 }
@@ -205,5 +197,52 @@ class SupplierQueryService
             report($e);
             return false;
         }
+    }
+
+    public function getSupplierConnections(Request $request)
+    {
+        $filters = $request->query();
+        $perPage = $filters["perPage"] ?? 10;
+        $selectedSupplier = $filters["selectedSupplier"] ?? null;
+
+        $paginated = DB::table("suppliers")
+            ->select(
+                "suppliers.name as name",
+                "suppliers.id",
+                DB::raw(
+                    "COALESCE(supplier_connections.last_connection, 'No se ha establecido conexión') as last_connection",
+                ),
+                DB::raw("UPPER(COALESCE(supplier_connections.type, 'No registrado')) as type"),
+            )
+            ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
+            ->when($selectedSupplier, function ($query) use ($selectedSupplier) {
+                $query->where("suppliers.id", $selectedSupplier);
+            })
+            ->paginate($perPage);
+
+        return $paginated;
+    }
+
+    public function getSupplierProducts(Supplier $supplier, Request $request)
+    {
+        $filters = $request->query();
+        $perPage = $filters["perPage"] ?? 10;
+
+        $paginated = DB::table("product_suppliers")
+            ->select(
+                DB::raw("COALESCE(product_suppliers.product_id, 'N/A') as product_id"),
+                DB::raw("COALESCE(product_suppliers.laboratory, 'N/A') as laboratory"),
+                "product_suppliers.id",
+                "product_suppliers.unit_cost",
+                "product_suppliers.unit_cost_usd",
+                DB::raw("COALESCE(products.name, 'N/A') as name"),
+            )
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->where("product_suppliers.supplier_id", "=", $supplier->id)
+            ->orderByRaw("CASE WHEN COALESCE(products.name, 'N/A') = 'N/A' THEN 1 ELSE 0 END")
+            ->orderBy("name", "asc")
+            ->paginate($perPage);
+
+        return $paginated;
     }
 }

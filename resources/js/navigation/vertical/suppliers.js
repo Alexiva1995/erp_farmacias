@@ -25,6 +25,10 @@ export default [
         title: "Historial de Ordenes de Compra",
         to: "suppliers-purchase-orders-history-list",
       },
+      {
+        title: "Comparador de Productos",
+        to: "suppliers-product-comparator-list",
+      },
     ],
   },
 ];

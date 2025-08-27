@@ -19,42 +19,39 @@ class ProcessSupplierConnectionJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(
-        public Supplier $supplier,
-        public int $userId
-    ) {}
+    public function __construct(public Supplier $supplier, public int $userId) {}
 
     /**
      * Execute the job.
      */
-    public function handle(
-        SupplierConnectionService $connectionService,
-        SupplierQueryService $queryService
-    ): void
+    public function handle(SupplierConnectionService $connectionService, SupplierQueryService $queryService): void
     {
         $status = SupplierConnectionStatus::create([
-            'supplier_id' => $this->supplier->id,
-            'user_id' => $this->userId,
-            'status' => 'processing',
+            "supplier_id" => $this->supplier->id,
+            "user_id" => $this->userId,
+            "status" => "processing",
         ]);
 
+        $supplierConnection = $this->supplier->connections->first();
+
         try {
-            $results = $connectionService->fetchData($this->supplier->connections->first());
+            $results = $connectionService->fetchData($supplierConnection);
             $queryService->storeSupplierConnectionData($this->supplier, $results);
 
+            $supplierConnection->update(["last_connection" => now()->today()]);
+
             $status->update([
-                'status' => 'completed',
-                'message' => 'Conexión procesada correctamente',
-                'count_product' => count($results['products']),
-                'count_invoice' => count($results['invoices']),
+                "status" => "completed",
+                "message" => "Conexión procesada correctamente",
+                "count_product" => count($results["products"]),
+                "count_invoice" => count($results["invoices"]),
             ]);
         } catch (\Throwable $e) {
+            \Log::error($e);
             $status->update([
-                'status' => 'failed',
-                'message' => $e->getMessage(),
+                "status" => "failed",
+                "message" => $e->getMessage(),
             ]);
         }
-
-
     }
 }
