@@ -172,6 +172,8 @@ Route::prefix("tpv")->group(function () {
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
     Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
     Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+    Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
+    Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
 
     // Rutas de Pedidos General
     Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
@@ -325,7 +327,8 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
     Route::post('/{invoice}/reject', 'reject')->name('reject');
     Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
-    Route::put('/{invoice}', 'update')->name('update');
+    Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
+    Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
     Route::delete('/{invoice}', 'destroy')->name('destroy');
 });
 Route::prefix("suppliers-ia-order-assistant")->group(function () {

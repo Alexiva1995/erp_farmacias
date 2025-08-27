@@ -87,25 +87,24 @@ class InvoiceActionService
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }
-
-    public function updateInvoice(Invoice $invoice, array $data): Invoice
+    public function saveInvoiceDetails(Invoice $invoice, array $data): Invoice
     {
-        if (!in_array($invoice->status, ['pending', 'loaded'])) {
-            throw new Exception("Solo se pueden finalizar los detalles de una factura en estado 'pendiente' o 'cargada'.");
+        // Solo se puede guardar el progreso en facturas pendientes
+        if ($invoice->status !== 'pending') {
+            throw new Exception("Solo se puede guardar el progreso en facturas con estado 'pendiente'.");
         }
 
         return DB::transaction(function () use ($invoice, $data) {
-            $mergedInvoiceData = array_merge($invoice->toArray(), $data['invoice']);
-            $totalUSD = $this->calculateTotalUSD($mergedInvoiceData);
-            $updateData = array_merge($data['invoice'], [
-                'total_usd' => $totalUSD,
-                'status' => 'loaded'
-            ]);
+            // Actualizamos los datos de la cabecera de la factura (como el descuento de proveedor)
+            $invoice->update($data['invoice']);
 
-            $invoice->update($updateData);
+            // 1. Borramos los detalles Y las devoluciones existentes para esta factura.
+            // Esto asegura que cada guardado sea un reflejo fiel del estado actual del frontend.
             $invoice->details()->delete();
-            $currency = $mergedInvoiceData['currency'];
-            $rate = (float) ($mergedInvoiceData['exchange_rate'] ?? 0);
+            $invoice->returns()->delete();
+
+            $currency = $invoice->currency;
+            $rate = (float) ($invoice->exchange_rate ?? 0);
 
             if ($currency !== 'USD' && $rate <= 0) {
                 throw new Exception("La tasa de cambio para la moneda {$currency} debe ser mayor a 0.");
@@ -116,6 +115,7 @@ class InvoiceActionService
                     continue;
                 }
 
+                // Es el costo unitario en la moneda de la factura (ej. Bs)
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $unitCostUSD = $unitCostInInvoiceCurrency;
 
@@ -123,87 +123,94 @@ class InvoiceActionService
                     $unitCostUSD = round($unitCostInInvoiceCurrency / $rate, 2);
                 }
 
-                $totalCostUSD = round($detail['quantity'] * $unitCostUSD, 2);
-
-                $invoice->details()->create([
-                    'product_id' => $detail['product']['id'],
-                    'quantity' => $detail['quantity'],
-                    'unit_cost' => $unitCostUSD,
-                    'total_cost' => $totalCostUSD,
-                    'lot_number' => $detail['lot_number'],
-                    'expiration_date' => $detail['expiration_date'],
-                    'location' => $detail['location'],
-                ]);
+                // 2. Bifurcamos la lógica: ¿Es una devolución o un detalle normal?
+                if (isset($detail['is_return']) && $detail['is_return'] === true) {
+                    // Si es una devolución, lo creamos en la tabla de devoluciones
+                    InvoiceReturn::create([
+                        'invoice_id' => $invoice->id,
+                        'product_id' => $detail['product']['id'],
+                        'quantity' => $detail['quantity'],
+                        'amount_refunded' => round($detail['quantity'] * $unitCostUSD, 2), // Guardamos el monto en USD
+                        'return_date' => Carbon::today(),
+                    ]);
+                } else {
+                    // Si NO es una devolución, lo creamos en la tabla de detalles
+                    $totalCostUSD = round($detail['quantity'] * $unitCostUSD, 2);
+                    $invoice->details()->create([
+                        'product_id' => $detail['product']['id'],
+                        'quantity' => $detail['quantity'],
+                        'unit_cost' => $unitCostUSD,
+                        'total_cost' => $totalCostUSD,
+                        'lot_number' => $detail['lot_number'],
+                        'expiration_date' => $detail['expiration_date'],
+                        'location' => $detail['location'],
+                        'tax_enabled' => $detail['tax_enabled'] ?? false,
+                    ]);
+                }
             }
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            // Devolvemos la factura actualizada con sus relaciones.
+            // El frontend deberá cargar ambas relaciones (`details` y `returns`) para reconstruir la tabla.
+            return $invoice->fresh(['details.product', 'supplier', 'returns.product']);
         });
     }
+    public function finalizeInvoice(Invoice $invoice): Invoice
+    {
+        if ($invoice->status !== 'pending') {
+            throw new Exception("Solo se pueden finalizar facturas en estado 'pendiente'.");
+        }
 
+        $invoice->update(['status' => 'loaded']);
+
+        return $invoice->fresh(['details.product', 'supplier']);
+    }
     public function approveInvoice(Invoice $invoice, array $data): Invoice
     {
-        if ($invoice->status !== 'to_order') {
-            throw new Exception("Solo se pueden aprobar facturas en estado 'por ordenar'.");
+        if ($invoice->status !== 'loaded') {
+            throw new Exception("Solo se pueden aprobar facturas en estado 'cargada'.");
         }
 
         return DB::transaction(function () use ($invoice, $data) {
 
-            $returnItemIds = $data['return_item_ids'] ?? [];
-
-            $supplierDiscount = null;
+            $updateData = ['status' => 'to_order'];
             $paymentRule = null;
-
-            if (!empty($data['supplier_discount_id'])) {
-                $supplierDiscount = SupplierDiscount::findOrFail($data['supplier_discount_id']);
-            }
 
             if (!empty($data['payment_rule_id'])) {
                 $paymentRule = PaymentRule::findOrFail($data['payment_rule_id']);
+                $discountPercentage = $paymentRule->discount_percentage;
+
+                $discountAmount = ($invoice->total_amount * $discountPercentage) / 100;
+                $updateData['total_amount_discount'] = $invoice->total_amount - $discountAmount;
+                $updateData['payment_rule_id'] = $paymentRule->id;
+
+                foreach ($invoice->details as $detail) {
+                    $originalUnitCost = $detail->unit_cost;
+
+                    $discountAmountDetail = ($originalUnitCost * $discountPercentage) / 100;
+                    $finalUnitCost = $originalUnitCost - $discountAmountDetail;
+
+                    $detail->update([
+                        'unit_cost' => $finalUnitCost,
+                        'total_cost' => $finalUnitCost * $detail->quantity,
+                    ]);
+                }
             }
 
-            foreach ($invoice->details as $detail) {
-
-                if (in_array($detail->id, $returnItemIds)) {
-                    $this->createInvoiceReturn($detail, $invoice);
-                    continue;
-                }
-
-                $finalUnitCost = $detail->unit_cost;
-                $totalDiscountPercentage = 0;
-
-                if ($supplierDiscount) {
-                    $totalDiscountPercentage += $supplierDiscount->discount_percentage;
-                }
-
-                if ($paymentRule) {
-                    $totalDiscountPercentage += $paymentRule->discount_percentage;
-                }
-
-                if ($totalDiscountPercentage > 0) {
-                    $discountAmount = ($finalUnitCost * $totalDiscountPercentage) / 100;
-                    $finalUnitCost = $finalUnitCost - $discountAmount;
-                }
-
-                $this->createProductLot($detail, $finalUnitCost, $invoice);
-            }
-
-            $updateData = [
-                'status' => 'ordered'
-            ];
             $invoice->update($updateData);
+
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }
 
-    public function rejectInvoice(Invoice $invoice, string $reason): Invoice
+    public function rejectInvoice(Invoice $invoice): Invoice
     {
         if ($invoice->status !== 'loaded') {
             throw new Exception("Solo se pueden rechazar facturas en estado 'cargada'.");
         }
 
-        return DB::transaction(function () use ($invoice, $reason) {
+        return DB::transaction(function () use ($invoice) {
             $invoice->update([
-                'status' => 'loaded'
+                'status' => 'pending'
             ]);
 
             return $invoice->fresh(['details.product', 'supplier']);
@@ -302,17 +309,20 @@ class InvoiceActionService
     public function updateInvoiceLocations(Invoice $invoice, array $data): Invoice
     {
         if ($invoice->status !== 'to_order') {
-            throw new Exception("Solo se pueden ubicar productos en facturas con estado 'por ordenar'.");
+            throw new Exception("Solo se pueden ubicar productos en facturas con estado 'ordenada'.");
         }
 
         return DB::transaction(function () use ($invoice, $data) {
             foreach ($data['details'] as $detailData) {
                 $detail = InvoiceDetail::find($detailData['id']);
+
                 if ($detail && $detail->invoice_id === $invoice->id) {
                     $detail->update(['location' => $detailData['location']]);
+                    $this->createProductLot($detail, $detail->unit_cost, $invoice);
                 }
             }
-            $invoice->update(['status' => 'to_order']);
+
+            $invoice->update(['status' => 'ordered']);
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }
