@@ -6,6 +6,7 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
   stockStatusFilter: [Boolean, null],
+  isStrictSearch: Boolean,
 });
 
 const emit = defineEmits([
@@ -13,6 +14,7 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:stockStatusFilter",
+  "update:isStrictSearch",
   "clear",
   "back",
 ]);
@@ -20,6 +22,7 @@ const emit = defineEmits([
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
+  { title: "Todos", value: null },
 ];
 
 const sortOptions = [
@@ -86,6 +89,11 @@ const handleBack = () => {
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
+          />
+          <VCheckbox
+            label="Búsqueda Estricta"
+            :model-value="props.isStrictSearch"
+            @update:model-value="emit('update:isStrictSearch', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">

@@ -5,6 +5,7 @@ namespace App\Services\Invoices;
 use App\Models\DiscountRule;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\InvoiceReturn;
 use App\Models\PaymentRule;
 use App\Models\ProductLot;
@@ -35,7 +36,7 @@ class InvoiceActionService
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
-                'status' => 'loaded',
+                'status' => 'pending',
                 'registered_by' => 1,
                 'uploaded_by' => 1
             ];
@@ -57,6 +58,10 @@ class InvoiceActionService
 
     public function updateInvoiceData(Invoice $invoice, array $data): Invoice
     {
+        if (!in_array($invoice->status, ['pending', 'loaded'])) {
+            throw new Exception("Solo se pueden actualizar los datos de una factura en estado 'pendiente' o 'cargada'.");
+        }
+
         return DB::transaction(function () use ($invoice, $data) {
             $totalUSD = $this->calculateTotalUSD($data);
 
@@ -85,12 +90,16 @@ class InvoiceActionService
 
     public function updateInvoice(Invoice $invoice, array $data): Invoice
     {
+        if (!in_array($invoice->status, ['pending', 'loaded'])) {
+            throw new Exception("Solo se pueden finalizar los detalles de una factura en estado 'pendiente' o 'cargada'.");
+        }
+
         return DB::transaction(function () use ($invoice, $data) {
             $mergedInvoiceData = array_merge($invoice->toArray(), $data['invoice']);
             $totalUSD = $this->calculateTotalUSD($mergedInvoiceData);
             $updateData = array_merge($data['invoice'], [
                 'total_usd' => $totalUSD,
-                'status' => 'to_order'
+                'status' => 'loaded'
             ]);
 
             $invoice->update($updateData);
@@ -134,7 +143,7 @@ class InvoiceActionService
     public function approveInvoice(Invoice $invoice, array $data): Invoice
     {
         if ($invoice->status !== 'to_order') {
-            throw new Exception("Solo se pueden aprobar facturas en estado 'to_order'.");
+            throw new Exception("Solo se pueden aprobar facturas en estado 'por ordenar'.");
         }
 
         return DB::transaction(function () use ($invoice, $data) {
@@ -188,12 +197,11 @@ class InvoiceActionService
 
     public function rejectInvoice(Invoice $invoice, string $reason): Invoice
     {
-        if ($invoice->status !== 'to_order') {
-            throw new Exception("Solo se pueden rechazar facturas en estado 'to_order'.");
+        if ($invoice->status !== 'loaded') {
+            throw new Exception("Solo se pueden rechazar facturas en estado 'cargada'.");
         }
 
         return DB::transaction(function () use ($invoice, $reason) {
-
             $invoice->update([
                 'status' => 'loaded'
             ]);
@@ -228,9 +236,6 @@ class InvoiceActionService
         ]);
     }
 
-    /**
-     * Calcula el total en USD usando la tasa de cambio ingresada por el usuario
-     */
     private function calculateTotalUSD(array $data): float
     {
         $currency = $data['currency'];
@@ -249,10 +254,6 @@ class InvoiceActionService
         return round($totalAmount / $rate, 2);
     }
 
-    /**
-     * Mantuve este método por si se necesita en otras partes del sistema
-     * donde sí se requiera conversión completa a USD
-     */
     private function convertInvoiceDataToUSD(array $data): array
     {
         $currency = $data['currency'];
@@ -297,5 +298,22 @@ class InvoiceActionService
         }
 
         return (float) $exchangeRate->rate;
+    }
+    public function updateInvoiceLocations(Invoice $invoice, array $data): Invoice
+    {
+        if ($invoice->status !== 'to_order') {
+            throw new Exception("Solo se pueden ubicar productos en facturas con estado 'por ordenar'.");
+        }
+
+        return DB::transaction(function () use ($invoice, $data) {
+            foreach ($data['details'] as $detailData) {
+                $detail = InvoiceDetail::find($detailData['id']);
+                if ($detail && $detail->invoice_id === $invoice->id) {
+                    $detail->update(['location' => $detailData['location']]);
+                }
+            }
+            $invoice->update(['status' => 'to_order']);
+            return $invoice->fresh(['details.product', 'supplier']);
+        });
     }
 }
