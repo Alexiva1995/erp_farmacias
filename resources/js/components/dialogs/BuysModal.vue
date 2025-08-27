@@ -765,96 +765,100 @@ watch(balanceSwitch, (newVal) => {
             </VCol>
           </div>
 
-          <div class="my-4" v-if="payment.method !== 'balance'">
-            <VRadioGroup v-model="payment.method" inline>
-              <VRadio
-                v-for="method in (
-                  paymentMethodsByCurrency[payment.currency] || []
-                ).filter((m) => {
-                  if (index === 0 && payment.currency === 'USD') {
+          <VRow class="py-2">
+            <VCol cols="12" md="6">
+              <VRadioGroup v-model="payment.method" inline>
+                <VRadio
+                  v-for="method in (
+                    paymentMethodsByCurrency[payment.currency] || []
+                  ).filter((m) => {
+                    if (index === 0 && payment.currency === 'USD') {
+                      return true;
+                    }
+                    if (
+                      index === 0 &&
+                      payment.currency !== 'USD' &&
+                      m.value === 'credit'
+                    ) {
+                      return false;
+                    }
+                    if (index > 0 && m.value === 'credit') {
+                      return false;
+                    }
                     return true;
-                  }
-                  if (
-                    index === 0 &&
-                    payment.currency !== 'USD' &&
-                    m.value === 'credit'
-                  ) {
-                    return false;
-                  }
-                  if (index > 0 && m.value === 'credit') {
-                    return false;
-                  }
-                  return true;
-                })"
-                :key="method.value"
-                :label="method.label"
-                :value="method.value"
-              />
-            </VRadioGroup>
-          </div>
-
-          <div
-            class="payment-block"
-            v-if="payment.method !== 'balance' && payment.method !== 'credit'"
-          >
-            <VRow>
-              <VCol
-                :cols="isTransferMethod(payment.method) ? 12 : 6"
-                :md="isTransferMethod(payment.method) ? 6 : 6"
-              >
-                <VTextField
-                  v-model.number="payment.amount"
-                  label="Monto del pago"
-                  :placeholder="getPlaceholderText(index, payment)"
-                  type="number"
-                  class="my-4"
-                  :persistent-hint="true"
-                >
-                  <template #details>
-                    <span class="text-error text-left">
-                      {{ getPlaceholderText(index, payment) }}
-                    </span>
-                  </template>
-                </VTextField>
-              </VCol>
-
-              <VCol v-if="isTransferMethod(payment.method)" cols="12" md="6">
-                <VTextField
-                  v-model="payment.reference"
-                  label="Número de Referencia"
-                  placeholder="Ingresa el número de referencia del pago"
-                  class="my-4"
+                  })"
+                  :key="method.value"
+                  :label="method.label"
+                  :value="method.value"
                 />
-              </VCol>
-            </VRow>
-          </div>
-
-          <VRow
-            v-if="payment.method === 'balance'"
-            class="mt-4"
-            justify="start"
-          >
-            <VCol cols="12" sm="6">
-              <VTextField
-                :model-value="payment.amount.toFixed(2)"
-                label="Monto del pago"
-                :placeholder="getPlaceholderText(index, payment)"
-                type="text"
-                class="my-4"
-                readonly
-                :persistent-hint="true"
-                hint="Monto del saldo no editable."
-              />
+              </VRadioGroup>
             </VCol>
-          </VRow>
+            <VCol cols="12" md="6">
+              <VRow
+                class="payment-block"
+                v-if="
+                  payment.method !== 'balance' && payment.method !== 'credit'
+                "
+              >
+                <VCol
+                  :cols="isTransferMethod(payment.method) ? 12 : 6"
+                  :md="isTransferMethod(payment.method) ? 6 : 6"
+                >
+                  <VTextField
+                    v-model.number="payment.amount"
+                    label="Monto del pago"
+                    :placeholder="getPlaceholderText(index, payment)"
+                    type="number"
+                    class="p-2"
+                    :persistent-hint="true"
+                  >
+                    <template #details>
+                      <span class="text-error text-left">
+                        {{ getPlaceholderText(index, payment) }}
+                      </span>
+                    </template>
+                  </VTextField>
+                </VCol>
 
-          <VRow v-if="payment.method === 'credit'" class="mt-4" justify="start">
-            <VCol cols="12" sm="6">
-              <VTextField
-                :model-value="formatCurrency(remainingAmount, payment.currency)"
-                label="Monto del crédito"
-                readonly
-              />
+                <VCol v-if="isTransferMethod(payment.method)" cols="12" md="6">
+                  <VTextField
+                    v-model="payment.reference"
+                    label="Número de Referencia"
+                    placeholder="Ingresa el número de referencia del pago"
+                    class="p-2"
+                  />
+                </VCol>
+              </VRow>
+
+              <VRow
+                v-if="payment.method === 'balance'"
+              >
+                <VCol cols="12" sm="6">
+                  <VTextField
+                    :model-value="payment.amount.toFixed(2)"
+                    label="Monto del pago"
+                    :placeholder="getPlaceholderText(index, payment)"
+                    type="text"
+                    class="p-2"
+                    readonly
+                    :persistent-hint="true"
+                    hint="Monto del saldo no editable."
+                  />
+                </VCol>
+              </VRow>
+
+              <VRow
+                v-if="payment.method === 'credit'"
+              >
+                <VCol cols="12" sm="6">
+                  <VTextField
+                    :model-value="formatCurrency(remainingAmount, payment.currency)"
+                    label="Monto del crédito"
+                    class="p-2"
+                    readonly
+                  />
+                </VCol>
+              </VRow>
             </VCol>
           </VRow>
         </div>
@@ -902,7 +906,8 @@ watch(balanceSwitch, (newVal) => {
               </span>
               <div class="text-end">
                 <span class="d-block font-weight-bold text-h6 mt-4">
-                   {{ formatDateTime(props.orderData.created_at, "date") }} {{ formatDateTime(props.orderData.created_at, "time") }}
+                  {{ formatDateTime(props.orderData.created_at, "date") }}
+                  {{ formatDateTime(props.orderData.created_at, "time") }}
                 </span>
               </div>
             </div>
