@@ -125,22 +125,15 @@ Route::prefix('inventory')->group(function () {
     Route::post('/cycle/create', [InventoryCycleController::class, 'createCycle']);
 
     Route::prefix('count')->group(function () {
-        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount'])
-            ->name('inventory.count.store');
-
         Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
         Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
         Route::post('/invoice-count/{productId}', [InventoryCycleController::class, 'storeInvoiceCount']);
-
         Route::get('/invoice-details-to-count', [InventoryCycleController::class, 'getInvoiceDetailsToCount']);
 
-        Route::post('/{countId}/process', [InventoryCycleController::class, 'processCountAction']);
-
-        Route::get('/', [InventoryCycleController::class, 'getProductCount'])
-            ->name('inventory.counts.index');
-
-        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction'])
-            ->name('inventory.counts.action');
+        Route::get('/', [InventoryCycleController::class, 'getProductCount']);
+        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
+        Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
+        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
     });
 
     // Estadísticas y reportes (funcionalidad futura)
