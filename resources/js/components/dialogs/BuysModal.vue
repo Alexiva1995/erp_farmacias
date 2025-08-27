@@ -616,7 +616,7 @@ watch(
   <VDialog v-model="dialogVisible">
     <VCard>
       <VCardTitle class="d-flex align-center">
-        <span class="headline me-2">Compra </span>
+        <span class="text-h5 font-weight-bold px-2">Compra  </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
@@ -626,7 +626,7 @@ watch(
       <VDivider />
       <VCardText v-if="currentProgress === 0">
         <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6">Total de productos:</p>
+          <p class="text-h6 font-weight-medium mb-4">Total de productos:</p>
           <VChip
             label
             :color="chipColor"
@@ -713,11 +713,11 @@ watch(
           class="payment-block"
         >
           <div class="d-flex align-center flex-wrap">
-            <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
-              Método de Pago #{{ index + 1 }} {{props.orderData.client?.balance}}
+            <p class="font-weight-medium text-h6 mt-2 mb-0 me-4">
+              Método de Pago #{{ index + 1 }}
             </p>
 
-            <div class="d-flex justify-center mt-4">
+            <div class="d-flex justify-center mt-2">
               <VBtn
                 v-if="index === 0"
                 variant="text"
@@ -846,31 +846,30 @@ watch(
         </div>
 
         <VDivider />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-4">
+        <div class="d-flex flex-wrap justify-space-between px-2 py-2">
+          <p class="text-h6 font-weight-medium">Total a pagar:</p>
+          <p class="text-h6 font-weight-medium">
             {{
               formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
             }}
           </p>
         </div>
 
-        <div
-          v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between"
+        <div v-if="showChangeAmount"
+          class="d-flex flex-wrap justify-space-between px-2 py-2"
         >
-          <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
-          <p class="font-weight-bold text-h6 mt-2">
+          <p class="text-h6 font-weight-medium">Monto Devuelto:</p>
+          <p class="text-h6 font-weight-medium">
             {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
         <div
           v-if="remainingAmount > 0"
-          class="d-flex flex-wrap justify-space-between"
+          class="d-flex flex-wrap justify-space-between px-2 py-2"
         >
-          <p class="font-weight-bold text-h6">Monto Restante:</p>
-          <p class="font-weight-bold text-h6 text-error">
+          <p class="text-h6 font-weight-medium">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
         </div>
@@ -1024,7 +1023,7 @@ watch(
           </div>
         </div>
       </VCardText>
-      <VCardActions class="p-4 d-flex justify-space-between w-100 mx-auto">
+      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
