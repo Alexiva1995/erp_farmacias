@@ -902,10 +902,7 @@ watch(balanceSwitch, (newVal) => {
               </span>
               <div class="text-end">
                 <span class="d-block font-weight-bold text-h6 mt-4">
-                  Fecha {{ formatDateTime(props.orderData.created_at, "date") }}
-                </span>
-                <span class="d-block font-weight-bold text-h6">
-                  {{ formatDateTime(props.orderData.created_at, "time") }}
+                   {{ formatDateTime(props.orderData.created_at, "date") }} {{ formatDateTime(props.orderData.created_at, "time") }}
                 </span>
               </div>
             </div>

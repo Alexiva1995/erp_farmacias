@@ -141,8 +141,7 @@ const showChangeAmount = computed(() => {
         >
         <div class="text-right d-flex flex-column align-end">
           <p class="text-black font-weight-regular mb-0 textoPrint">
-            Fecha: {{ formatDateTime(props.orderData.created_at, "date") }}
-            {{ formatDateTime(props.orderData.created_at, "time") }}
+            {{ formatDateTime(props.orderData.created_at, "date") }} {{ formatDateTime(props.orderData.created_at, "time") }}
           </p>
         </div>
       </div>
