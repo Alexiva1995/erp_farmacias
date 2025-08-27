@@ -67,7 +67,7 @@ const emit = defineEmits([
   "open-buys-modal",
   "reserve-order",
   "add-quotation-products",
-  "show-reserved-order",
+  "add-reserved-order",
 ]);
 
 const quotationId = ref("");
@@ -245,7 +245,7 @@ const fetchQuotationProducts = async (id) => {
 };
 
 const handleReserved = () => {
-  emit("show-reserved-order");
+  emit("add-reserved-order");
 };
 
 watch(
@@ -372,7 +372,6 @@ watch(
         >
           <VListItem
             class="rounded-0 cursor-pointer py-2"
-            
           >
             <VListItemTitle class="font-weight-medium me-4 mx-2">
               {{ product.title }}
@@ -482,12 +481,22 @@ watch(
           CANCELAR
         </VBtn>
         <VBtn
+          v-if="!props.orderReserved"
           color="success"
           variant="flat"
           class="flex-grow-1"
           @click="handleTReserveOrder"
         >
           RESERVAR
+        </VBtn>
+         <VBtn
+          v-if="props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleReserved"
+        >
+          RESERVADA
         </VBtn>
         <VBtn
           color="primary"
@@ -496,15 +505,6 @@ watch(
           @click="handleCompleteOrder"
         >
           COMPLETAR
-        </VBtn>
-        <VBtn
-          v-if="props.orderReserved"
-          color="primary"
-          prepend-icon="tabler-arrow-back"
-          class="flex-grow-1"
-          @click="handleReserved"
-        >
-          Order Reservada
         </VBtn>
       </div>
       <div class="d-flex align-center">
