@@ -325,7 +325,8 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
     Route::post('/{invoice}/reject', 'reject')->name('reject');
     Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
-    Route::put('/{invoice}', 'update')->name('update');
+    Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
+    Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
     Route::delete('/{invoice}', 'destroy')->name('destroy');
 });
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
