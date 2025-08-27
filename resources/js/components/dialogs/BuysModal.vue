@@ -671,34 +671,30 @@ watch(balanceSwitch, (newVal) => {
             <span class="font-weight-medium">{{ totalSelectedQuantity }}</span>
           </VChip>
         </div>
-
-        <div
-          class="scrollable-list-container"
-          :class="{ 'show-scroll': props.orderProducts.length > 2 }"
-        >
-          <VList class="card-list" density="compact" nav>
+          <VList class="card-list no-space-list" density="compact" nav>
             <VListItem
-              v-for="product in props.orderProducts"
+              v-for="(product, index) in props.orderProducts"
               :key="product.id"
-              class="rounded-0"
+              class="rounded-0 cursor-pointer"
             >
-              <template #prepend>
-                <span>{{ product.selectedQuantity }} x</span>
-              </template>
-
-              <VListItemTitle class="font-weight-medium me-4 mx-2">{{
+              <VListItemTitle class="mx-2 d-flex align-center">{{
                 product.title
               }}</VListItemTitle>
-              <VListItemSubtitle class="mx-2"
+              <VListItemSubtitle class="mx-1"
                 >{{ product.active_ingredient }}
-                {{ product.laboratory }}</VListItemSubtitle
-              >
+                {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+                {{ product.selectedQuantity }}X
+              </VListItemSubtitle>
 
               <template #append>
                 <div class="d-flex align-center">
                   <div class="d-flex flex-column align-end me-4">
-                    <span class="text-body-2 text-medium-emphasis">Precio</span>
-                    <span class="text-body-1 me-2">{{
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >Precio</span
+                    >
+                    <span class="text-body-1 font-weight-regular">{{
                       formatCurrency(
                         getProductPriceSinIva(product, props.selectedCurrency) *
                           product.selectedQuantity,
@@ -708,8 +704,12 @@ watch(balanceSwitch, (newVal) => {
                   </div>
 
                   <div class="d-flex flex-column align-end me-4">
-                    <span class="text-body-2 text-medium-emphasis">IVA</span>
-                    <span class="text-body-1">
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >IVA</span
+                    >
+                    <span class="text-body-1 font-weight-regular">
                       {{
                         formatCurrency(
                           getIva(product, props.selectedCurrency),
@@ -720,8 +720,12 @@ watch(balanceSwitch, (newVal) => {
                   </div>
 
                   <div class="d-flex flex-column align-end">
-                    <span class="text-body-2 text-medium-emphasis">Total</span>
-                    <span class="text-body-1 me-2 font-weight-bold">
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >Total</span
+                    >
+                    <span class="text-body-1 me-2 font-weight-bold text-black">
                       {{
                         formatCurrency(
                           getProductPrice(product, props.selectedCurrency),
@@ -734,40 +738,37 @@ watch(balanceSwitch, (newVal) => {
               </template>
             </VListItem>
           </VList>
-        </div>
         <VDivider />
 
         <div class="d-flex flex-wrap justify-space-between mt-4">
           <span>Saldo {{ props.orderData.client?.balance || "0.00" }}</span>
           <VSwitch v-model="balanceSwitch" />
         </div>
-        <VDivider class="my-4" />
 
         <div
           v-for="(payment, index) in payments"
           :key="index"
           class="payment-block"
         >
+          <div class="d-flex align-center flex-wrap">
+            <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
+              Método de Pago #{{ index + 1 }}
+            </p>
 
-        <div class="d-flex align-center flex-wrap">
-    <p class="font-weight-bold text-h6 mt-4 mb-0 me-4">
-      Método de Pago #{{ index + 1 }}
-    </p>
-
-    <VCol cols="12" md="2" class="pa-0">
-  <VSelect
-    v-if="index > 0"
-    v-model="payment.currency"
-    :items="currencies"
-    item-title="label"
-    item-value="value"
-    label="Moneda del Pago"
-    density="compact"
-    hide-details
-    class="mt-4"
-  />
-</VCol>
-  </div>
+            <VCol cols="12" md="2" class="pa-0">
+              <VSelect
+                v-if="index > 0"
+                v-model="payment.currency"
+                :items="currencies"
+                item-title="label"
+                item-value="value"
+                label="Moneda del Pago"
+                density="compact"
+                hide-details
+                class="mt-4"
+              />
+            </VCol>
+          </div>
 
           <div class="my-4" v-if="payment.method !== 'balance'">
             <VRadioGroup v-model="payment.method" inline>
@@ -814,11 +815,11 @@ watch(balanceSwitch, (newVal) => {
                   class="my-4"
                   :persistent-hint="true"
                 >
-                <template #details>
-                  <span class="text-error text-left">
-                    {{ getPlaceholderText(index, payment) }}
-                  </span>
-                </template>
+                  <template #details>
+                    <span class="text-error text-left">
+                      {{ getPlaceholderText(index, payment) }}
+                    </span>
+                  </template>
                 </VTextField>
               </VCol>
 
@@ -833,23 +834,24 @@ watch(balanceSwitch, (newVal) => {
             </VRow>
           </div>
 
-
-  <VRow v-if="payment.method === 'balance'" class="mt-4" justify="start">
+          <VRow
+            v-if="payment.method === 'balance'"
+            class="mt-4"
+            justify="start"
+          >
             <VCol cols="12" sm="6">
               <VTextField
-            :model-value="payment.amount.toFixed(2)"
-            label="Monto del pago"
-            :placeholder="getPlaceholderText(index, payment)"
-            type="text"
-            class="my-4"
-            readonly
-            :persistent-hint="true"
-            hint="Monto del saldo no editable."
-          />
+                :model-value="payment.amount.toFixed(2)"
+                label="Monto del pago"
+                :placeholder="getPlaceholderText(index, payment)"
+                type="text"
+                class="my-4"
+                readonly
+                :persistent-hint="true"
+                hint="Monto del saldo no editable."
+              />
             </VCol>
           </VRow>
-          
-         
 
           <VRow v-if="payment.method === 'credit'" class="mt-4" justify="start">
             <VCol cols="12" sm="6">
@@ -860,8 +862,6 @@ watch(balanceSwitch, (newVal) => {
               />
             </VCol>
           </VRow>
-
-          <VDivider class="mt-4" />
         </div>
 
         <div class="d-flex justify-center mt-4">
@@ -908,160 +908,161 @@ watch(balanceSwitch, (newVal) => {
       </VCardText>
 
       <VCardText v-else-if="currentProgress === 100">
-      <div class="d-flex justify-center">
-
-      <div style='width:"50%";'>
-
-        <div class="text-center">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6 mt-4">
-            Orden N° {{ props.orderData.id }}
-          </span>
-          <div class="text-end">
-            <span class="d-block font-weight-bold text-h6 mt-4">
-              Fecha {{ formatDateTime(props.orderData.created_at, "date") }}
-            </span>
-            <span class="d-block font-weight-bold text-h6">
-              {{ formatDateTime(props.orderData.created_at, "time") }}
-            </span>
-          </div>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cajero </span>
-          <span class="font-weight-bold text-h6">
-            {{ props.orderData.seller?.username || "N/A" }}
-          </span>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cedula </span>
-          <span class="font-weight-bold text-h6">
-            {{ props.orderData.client?.identification_type || "N/A" }}
-            {{ props.orderData.client?.identification || "N/A" }}
-          </span>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cliente </span>
-          <span class="font-weight-bold text-h6">
-            {{ props.orderData.client.name }}
-            {{ props.orderData.client.last_name }}
-          </span>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6">Métodos de Pago</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1"
-            >
-              <span
-                >{{
-                  getPaymentMethodLabel(payment.method, payment.currency)
-                }}
-                ({{ payment.currency }})</span
-              >
-            </p>
-          </div>
-        </div>
-
-        <div
-          class="scrollable-list-container"
-          :class="{ 'show-scroll': props.orderProducts.length > 2 }"
-        >
-          <VList class="card-list" density="compact" nav>
-            <VListItem
-              v-for="product in props.orderProducts"
-              :key="product.id"
-              class="rounded-0"
-            >
-              <template #prepend>
-                <span>{{ product.selectedQuantity }} x</span>
-              </template>
-
-              <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                product.title
-              }}</VListItemTitle>
-              <VListItemSubtitle class="mx-2"
-                >{{ product.active_ingredient }}
-                {{ product.laboratory }}</VListItemSubtitle
-              >
-
-              <template #append>
-                <div class="d-flex align-center">
-                  <span class="text-body-1 me-2">{{
-                    formatCurrency(
-                      getProductPrice(product, props.selectedCurrency) *
-                        product.selectedQuantity,
-                      props.selectedCurrency
-                    )
-                  }}</span>
-                </div>
-              </template>
-            </VListItem>
-          </VList>
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-2">
-            {{
-              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
-            }}
-          </p>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2">Pago:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1"
-            >
-              <span>
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
+        <div class="d-flex justify-center">
+          <div style="width: '50%'">
+            <div class="text-center">
+              <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
+            </div>
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6 mt-4">
+                Orden N° {{ props.orderData.id }}
               </span>
+              <div class="text-end">
+                <span class="d-block font-weight-bold text-h6 mt-4">
+                  Fecha {{ formatDateTime(props.orderData.created_at, "date") }}
+                </span>
+                <span class="d-block font-weight-bold text-h6">
+                  {{ formatDateTime(props.orderData.created_at, "time") }}
+                </span>
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cajero </span>
+              <span class="font-weight-bold text-h6">
+                {{ props.orderData.seller?.username || "N/A" }}
+              </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cedula </span>
+              <span class="font-weight-bold text-h6">
+                {{ props.orderData.client?.identification_type || "N/A" }}
+                {{ props.orderData.client?.identification || "N/A" }}
+              </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cliente </span>
+              <span class="font-weight-bold text-h6">
+                {{ props.orderData.client.name }}
+                {{ props.orderData.client.last_name }}
+              </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6">Métodos de Pago</p>
+              <div class="text-end">
+                <p
+                  v-for="(payment, pIndex) in payments"
+                  :key="`ticket-payment-${pIndex}`"
+                  class="font-weight-bold my-1"
+                >
+                  <span
+                    >{{
+                      getPaymentMethodLabel(payment.method, payment.currency)
+                    }}
+                    ({{ payment.currency }})</span
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <VList class="card-list" density="compact" nav>
+                <VListItem
+                  v-for="product in props.orderProducts"
+                  :key="product.id"
+                  class="rounded-0"
+                >
+                  <template #prepend>
+                    <span>{{ product.selectedQuantity }} x</span>
+                  </template>
+
+                  <VListItemTitle class="font-weight-medium me-4 mx-2">{{
+                    product.title
+                  }}</VListItemTitle>
+                  <VListItemSubtitle class="mx-2"
+                    >{{ product.active_ingredient }}
+                    {{ product.laboratory }}</VListItemSubtitle
+                  >
+
+                  <template #append>
+                    <div class="d-flex align-center">
+                      <span class="text-body-1 me-2">{{
+                        formatCurrency(
+                          getProductPrice(product, props.selectedCurrency) *
+                            product.selectedQuantity,
+                          props.selectedCurrency
+                        )
+                      }}</span>
+                    </div>
+                  </template>
+                </VListItem>
+              </VList>
+            </div>
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
+              <p class="font-weight-bold text-h6 mt-2">
+                {{
+                  formatCurrency(
+                    roundedTotalAmountToPay,
+                    props.selectedCurrency
+                  )
+                }}
+              </p>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6 mt-2">Pago:</p>
+              <div class="text-end">
+                <p
+                  v-for="(payment, pIndex) in payments"
+                  :key="`ticket-payment-${pIndex}`"
+                  class="font-weight-bold my-1"
+                >
+                  <span>
+                    {{ formatCurrency(payment.amount || 0, payment.currency) }}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div
+              v-if="hasCreditPayment"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="font-weight-bold text-h6">Crédito:</p>
+              <p class="font-weight-bold text-h6">
+                {{
+                  formatCurrency(
+                    roundedTotalAmountToPay,
+                    props.selectedCurrency
+                  )
+                }}
+              </p>
+            </div>
+            <div
+              v-if="showChangeAmount"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
+              <p class="font-weight-bold text-h6 mt-2">
+                {{ formatCurrency(changeAmountInCOP, "COP") }}
+              </p>
+            </div>
+
+            <p class="font-weight-bold text-center text-success">
+              ¡GRACIAS POR SU COMPRA!
             </p>
           </div>
         </div>
-        <div
-          v-if="hasCreditPayment"
-          class="d-flex flex-wrap justify-space-between"
-        >
-          <p class="font-weight-bold text-h6">Crédito:</p>
-          <p class="font-weight-bold text-h6">
-            {{
-              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
-            }}
-          </p>
-        </div>
-        <div
-          v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between"
-        >
-          <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
-          <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, "COP") }}
-          </p>
-        </div>
-
-        <p class="font-weight-bold text-center text-success">
-          ¡GRACIAS POR SU COMPRA!
-        </p>
-        </div>
-</div>
       </VCardText>
       <VCardActions class="p-4 d-flex justify-space-between w-50 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeModal"
-           class="w-50"
+          class="w-50"
         >
           Cancelar
         </VBtn>
@@ -1079,12 +1080,12 @@ watch(balanceSwitch, (newVal) => {
 </template>
 
 <style scoped>
-.scrollable-list-container {
-  max-height: 200px;
-  overflow-y: hidden;
-  transition: overflow-y 0.3s ease-in-out;
+.card-list .v-list-item:not(:last-child) {
+  padding-block: 4px !important;
+  padding-block-end: 0 !important;
 }
-.scrollable-list-container.show-scroll {
-  overflow-y: auto;
+
+.v-list .v-list-item--nav:not(:only-child) {
+  margin-block-end: 0 !important;
 }
 </style>
