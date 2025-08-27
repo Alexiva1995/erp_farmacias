@@ -59,6 +59,8 @@ const payments = ref([
     amount: null,
     reference: null,
     currency: props.selectedCurrency,
+    debounceTimeout: null,
+    inputAmount: null, 
   },
 ]);
 
@@ -236,6 +238,8 @@ const addPaymentBlock = () => {
       amount: null,
       reference: null,
       currency: props.selectedCurrency,
+      debounceTimeout: null,
+      inputAmount: null,
     });
   } else {
     toast.error("El monto total ya ha sido cubierto.");
@@ -376,6 +380,8 @@ const resetProgress = () => {
       amount: null,
       reference: null,
       currency: props.selectedCurrency,
+      debounceTimeout: null,
+      inputAmount: null,
     },
   ];
   invoiceSwitch.value = false;
@@ -601,32 +607,42 @@ watch(
       const amountToUse = Math.min(remainingAmountInUSD, clientBalance);
       const formattedAmount = parseFloat(amountToUse.toFixed(2));
       payments.value[0].amount = formattedAmount;
+      payments.value[0].inputAmount = formattedAmount;
       payments.value[0].currency = "USD";
     } else {
       payments.value[0].amount = null;
+      payments.value[0].inputAmount = null;
       payments.value[0].currency = props.selectedCurrency;
     }
   },
   { deep: true }
 );
 
+
+const updateDebouncedAmount = (payment, newValue) => {
+  clearTimeout(payment.debounceTimeout);
+  payment.debounceTimeout = setTimeout(() => {
+    payment.amount = Number(newValue);
+  }, 1000);
+};
+
 </script>
 
 <template>
   <VDialog v-model="dialogVisible">
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold px-2">Compra  </span>
+      <VCardTitle class="d-flex align-center p-2">
+        <span class="text-h5 font-weight-bold pr-1">Compra  </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-      <VDivider />
+      <VDivider/>
       <VCardText v-if="currentProgress === 0">
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="text-h6 font-weight-medium mb-4">Total de productos:</p>
+        <div class="d-flex justify-space-between mb-0 pb-0">
+          <p class="text-h6 font-weight-medium">Total de productos:</p>
           <VChip
             label
             :color="chipColor"
@@ -639,7 +655,8 @@ watch(
             <span class="font-weight-medium">{{ totalSelectedQuantity }}</span>
           </VChip>
         </div>
-        <VList class="card-list no-space-list" density="compact" nav>
+        <VCardText class="px-2 pb-2 pt-0 mt-0 bg-grey-lighten-2">
+        <VList class="card-list no-space-list ma-0" density="compact" nav>
           <VListItem
             v-for="(product, index) in props.orderProducts"
             :key="product.id"
@@ -706,7 +723,8 @@ watch(
             </template>
           </VListItem>
         </VList>
-        <VDivider />
+          </VCardText>
+         <VDivider/>
         <div
           v-for="(payment, index) in payments"
           :key="index"
@@ -787,7 +805,8 @@ watch(
                   :md="isTransferMethod(payment.method) ? 6 : 6"
                 >
                   <VTextField
-                    v-model.number="payment.amount"
+                    :model-value="payment.inputAmount"
+                    @input="updateDebouncedAmount(payment, $event.target.value)"
                     label="Monto del pago"
                     :placeholder="getPlaceholderText(index, payment)"
                     type="number"
