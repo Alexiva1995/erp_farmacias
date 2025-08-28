@@ -21,9 +21,9 @@ const headers = [
 
 const authStore = useAuthStore();
 //const isAdmin = computed(() => authStore.user?.id === 3);
-const isAdmin = computed(() => 3 === 3);
+//const isAdmin = computed(() => 3 === 3);
 
-const toggleCreditStatus = async (item, newValue) => {
+/*const toggleCreditStatus = async (item, newValue) => {
   try {
     const newStatus = newValue ? 'Paid' : 'Active';
      const requestData = {
@@ -39,7 +39,7 @@ const toggleCreditStatus = async (item, newValue) => {
     item.status = newValue ? 'Active' : 'Paid'; 
     toast.error("Error al actualizar el estado del crédito.");
   }
-};
+};*/
 
 </script>
 
@@ -70,7 +70,6 @@ const toggleCreditStatus = async (item, newValue) => {
           :model-value="!!item.is_paid" 
           @update:model-value="newValue => toggleCreditStatus(item, newValue)"
         />
-
         </div>
   </template>
 
