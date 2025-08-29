@@ -1,20 +1,21 @@
 <?php
 
-
 namespace App\Services;
 
 use App\Contracts\AutoOrder;
 use App\Models\AutoOrder as ModelsAutoOrder;
+use App\Models\Supplier;
 use App\Repository\AutoOrderDetailsRepository;
 use App\Repository\AutoOrdersRepository;
 use DateTime;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Request;
 
 class AutoOrderServices implements AutoOrder
 {
-
     public function __construct(
         protected AutoOrdersRepository $autoOrdersRepository,
-        protected AutoOrderDetailsRepository $autoOrderDetailsRepository
+        protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
     ) {}
 
     public function create(array $order): ModelsAutoOrder
@@ -38,7 +39,6 @@ class AutoOrderServices implements AutoOrder
         foreach ($orders as $key => $order) {
             $listAutoOrders[] = $this->create($order);
         }
-
 
         return $listAutoOrders;
     }
