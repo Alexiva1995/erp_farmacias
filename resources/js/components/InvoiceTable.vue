@@ -79,27 +79,20 @@ const processedInvoices = computed(() => {
 
       <template #item.actions="{ item }">
         <div v-if="props.actionsMode === 'approval'">
-          <VTooltip text="Aprobar Factura"
-            ><template #activator="{ props }"
-              ><IconBtn
+          <VTooltip text="Revisar y Aprobar">
+            <template #activator="{ props }">
+              <VBtn
                 v-bind="props"
-                color="success"
-                @click="emit('approve-invoice', item)"
-                ><VIcon icon="tabler-thumb-up" /></IconBtn></template
-          ></VTooltip>
-          <VTooltip text="Rechazar Factura"
-            ><template #activator="{ props }"
-              ><IconBtn
-                v-bind="props"
-                color="error"
-                @click="emit('reject-invoice', item)"
-                ><VIcon icon="tabler-thumb-down" /></IconBtn></template
-          ></VTooltip>
-          <VTooltip text="Ver Detalles"
-            ><template #activator="{ props }"
-              ><IconBtn v-bind="props" @click="emit('view-details', item)"
-                ><VIcon icon="tabler-eye" /></IconBtn></template
-          ></VTooltip>
+                color="primary"
+                variant="tonal"
+                size="small"
+                @click="emit('edit-invoice', item)"
+              >
+                <VIcon icon="tabler-eye" class="me-2" />
+                Revisar
+              </VBtn>
+            </template>
+          </VTooltip>
         </div>
 
         <div v-else-if="props.actionsMode === 'location'">

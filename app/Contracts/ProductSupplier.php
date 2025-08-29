@@ -26,4 +26,6 @@ interface ProductSupplier
     public function checkTolerance(array $replenishTheProducts): array;
 
     public function obtainProductsWithUniqueMarketOpportunities(array $productos): array;
+
+    public function getTheLowestLotCost(Collection $productos): array;
 }
