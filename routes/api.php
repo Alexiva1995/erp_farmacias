@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 
 
@@ -318,7 +319,7 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
     Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
     Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
-}
+});
 
 
 Route::prefix("supplier-laboratories")->group(function () {
@@ -350,3 +351,17 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         ]);
     });
 });
+
+Route::prefix("suppliers-ia-assistant-report")->group(function () {
+    Route::post('/filtrar-paginate',            [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+    Route::post('/filtrar-without-paginate',    [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+    Route::post('/exportar/excel',              [SupplierIaAssistantReportController::class, 'exportarExcel']);
+    Route::get('/consult-products',             [SupplierIaAssistantReportController::class, 'consultProduct']);
+});
+
+Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
