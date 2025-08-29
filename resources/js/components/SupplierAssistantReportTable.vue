@@ -20,7 +20,7 @@ const headers = [
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "stock", sortable: true },
   {
-    title: "Promedio de ventas",
+    title: "Prom.",
     key: "promedio_calculado",
     sortable: true,
     value: (item) =>

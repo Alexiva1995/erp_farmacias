@@ -45,7 +45,6 @@ declare module 'vue' {
     CompanyFormDialoge: typeof import('./resources/js/components/dialogs/CompanyFormDialoge.vue')['default']
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
-    copy: typeof import('./resources/js/components/SupplierIaOrderAssistantFilter copy.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
     CustomCheckboxes: typeof import('./resources/js/@core/components/app-form-elements/CustomCheckboxes.vue')['default']
     CustomCheckboxesWithIcon: typeof import('./resources/js/@core/components/app-form-elements/CustomCheckboxesWithIcon.vue')['default']
