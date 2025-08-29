@@ -99,6 +99,16 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock"             => "fallas",
         ];
 
+
+        if ($request->filled("laboratoryId")) {
+            $filtrosFallas["laboratoryId"] = $request->laboratoryId;
+        }
+
+        if ($request->filled("groups")) {
+            $filtrosFallas["groups"] = $request->groups;
+        }
+
+
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
@@ -130,11 +140,17 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
-            "orderBy"      => "asc",
-            "sortBy"      => "stock",
-            "laboratoryId"      => $request->laboratoryId,
-            "groups"            => $request->groups,
+            "orderBy"           => "asc",
+            "sortBy"            => "stock",
         ];
+
+        if ($request->filled("laboratoryId")) {
+            $filtrosConExistencia["laboratoryId"] = $request->laboratoryId;
+        }
+
+        if ($request->filled("groups")) {
+            $filtrosConExistencia["groups"] = $request->groups;
+        }
 
         $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d");
         $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
@@ -171,5 +187,53 @@ class SuppliersIaOrderAssistantController extends Controller
         $listAutoOrders = $this->autoOrder->createMultiple($request->orders);
 
         return ApiResponse::success($listAutoOrders, "ok", 200);
+    }
+
+    public function consultarProductosSinProveedor(Request $request): JsonResponse
+    {
+
+        $dateToday = new DateTime("now");
+
+        $productos = null;
+        $filtros = [
+            "tipo_filtracion"   => $request->tipo_filtracion,
+            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            // "lapso_de_tiempo"   => "1 year",
+            "stock"             => "all",
+            "dateToday"         => null,
+            "previousDate"      => null,
+            "sin_proveedor"     => true,
+            "orderBy"           => "asc",
+            "sortBy"            => "name",
+
+        ];
+
+
+        // if ($request->filled("laboratoryId")) {
+        //     $filtros["laboratoryId"] = $request->laboratoryId;
+        // }
+
+        // if ($request->filled("groups")) {
+        //     $filtros["groups"] = $request->groups;
+        // }
+
+
+        if ($request->filled("lapso_de_tiempo")) {
+            $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
+            $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
+            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["previousDate"] = $this->generarPreviousDate($filtros["tiempo"], $filtros["tipo_de_tiempo"]);
+        }
+
+
+        if ($filtros["tipo_filtracion"] == "average") {
+            $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+        }
+        if ($filtros["tipo_filtracion"] == "sales") {
+            $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
+        }
+        $productos = $this->productSupplier->getTheLowestLotCost($productos);
+
+        return ApiResponse::success($productos, "ok", 200);
     }
 }

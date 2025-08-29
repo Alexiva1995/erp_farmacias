@@ -2,7 +2,6 @@
 const props = defineProps({
   searchQuery: String,
   selectedSupplier: [Number, String, null],
-  selectedStatus: [String, null],
   startDate: [String, null],
   endDate: [String, null],
   suppliers: { type: Array, default: () => [] },
@@ -12,25 +11,17 @@ const props = defineProps({
 const emit = defineEmits([
   "update:searchQuery",
   "update:selectedSupplier",
-  "update:selectedStatus",
   "update:startDate",
   "update:endDate",
   "clear",
 ]);
-
-const statusOptions = [
-  { title: "Pendiente", value: "Pendiente" },
-  { title: "Pagada", value: "Pagada" },
-  { title: "Vencida", value: "Vencida" },
-  { title: "Anulada", value: "Anulada" },
-];
 </script>
 
 <template>
   <VCard title="Filtros de Facturas" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" md="6">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por N° Factura, Control..."
@@ -38,7 +29,7 @@ const statusOptions = [
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" md="6">
           <VAutocomplete
             :model-value="props.selectedSupplier"
             :items="props.suppliers"
@@ -50,27 +41,18 @@ const statusOptions = [
             @update:model-value="emit('update:selectedSupplier', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            :model-value="props.selectedStatus"
-            label="Estado de la Factura"
-            :items="statusOptions"
-            clearable
-            @update:model-value="emit('update:selectedStatus', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" md="6">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Fecha de Recibo Desde"
             clearable
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" md="6">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Fecha de Recibo Hasta"
             clearable
             @update:model-value="emit('update:endDate', $event)"
           />

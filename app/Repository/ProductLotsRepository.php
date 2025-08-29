@@ -18,7 +18,16 @@ class ProductLotsRepository
         $consulta = ProductLot::query()
             ->where("product_id", "=", $product->id)
             ->where("supplier_id", "=", $supplier->id)
-            ->orderBy("unit_cost", "DESC")
+            ->orderBy("unit_cost", "ASC")
+            ->first();
+        return $consulta;
+    }
+
+    public function checkTheLotWithTheLowestPriceOnlyProduct(Product $product): Model | null
+    {
+        $consulta = ProductLot::query()
+            ->where("product_id", "=", $product->id)
+            ->orderBy("unit_cost", "ASC")
             ->first();
         return $consulta;
     }

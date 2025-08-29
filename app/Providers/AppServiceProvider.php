@@ -27,6 +27,7 @@ use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
@@ -57,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->when(OrderController::class) // Cuando el OrderController
             ->needs(Client::class)               // necesite una instancia de Client
-            ->give(ClientServices::class); 
+            ->give(ClientServices::class);
 
         $this->app->when(CompanyController::class)
             ->needs(Company::class)
@@ -91,6 +92,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(SuppliersIaOrderAssistantController::class)
             ->needs(AutoOrder::class)
             ->give(AutoOrderServices::class);
+
+        $this->app->when(SupplierIaAssistantReportController::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
     }
 
     /**

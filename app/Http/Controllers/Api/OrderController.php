@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
 use App\Contracts\Order as OrderContract;
 
-
 class OrderController extends Controller
 {
 
@@ -75,15 +74,17 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-             $sellerId = Auth::id();
-            //$sellerId = 3; //para realizar pruebas
+            //$sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
+
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
+
             if ($openOrder) {
                 return ApiResponse::success([
-                    'order' => $openOrder->toArray()
+                    'order' => $openOrder,
                 ], "Orden abierta de vendedor encontrada.", 200);
             } else {
                 return ApiResponse::success([
@@ -178,7 +179,12 @@ class OrderController extends Controller
         }
 
         try {
-            $this->orderActionService->complete($orderId, $request);
+            //$sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+
+            $result = $this->orderActionService->complete($orderId, $request, $sellerId);
+            return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
+
         } catch (\Exception $e) {
             Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
@@ -254,8 +260,8 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
-  
-     public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
+
+    public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
@@ -271,5 +277,44 @@ class OrderController extends Controller
         $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
-     }
+    }
+
+    public function reserveOrder(Order $order): JsonResponse
+    {
+        //$sellerId = Auth::id();
+        $sellerId = 3; //para realizar pruebas
+        $existingReservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->first();
+
+        if ($existingReservedOrder) {
+            return ApiResponse::error('Ya tienes una orden reservada.', 409);
+        }
+
+        if ($order->status !== 'Pending') {
+            return ApiResponse::error('Solo se pueden reservada órdenes abiertas.', 400);
+        }
+
+        try {
+            $order = $this->orderActionService->reserveOrder($order,$sellerId);
+            return ApiResponse::success($order, 'Orden reservada exitosamente.',200);
+        } catch (\Exception $e) {
+            Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function reserveAddOrder(Order $order): JsonResponse
+    {
+         try {
+            //$sellerId = Auth::id();
+            $sellerId = 3; //para realizar pruebas
+            $order = $this->orderActionService->reserveAndAddOrder($order,$sellerId);
+            return ApiResponse::success($order, 'Orden agregada exitosamente.',200);
+        } catch (\Exception $e) {
+            Log::error('Error al agregar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
 }

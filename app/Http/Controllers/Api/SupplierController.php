@@ -30,7 +30,8 @@ class SupplierController extends Controller
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService,
-    ) {}
+    ) {
+    }
 
     /**
      * Display a listing of the suppliers.
@@ -125,12 +126,7 @@ class SupplierController extends Controller
     public function getConnectionStatus()
     {
         $userId = auth()->id() ?? 1;
-        $statuses = SupplierConnectionStatus::with("supplier")
-            ->where("user_id", $userId)
-            ->whereIn("status", ["completed", "failed"])
-            ->where("created_at", ">=", now()->subMinutes(10)) // últimos 10 min
-            ->latest()
-            ->get();
+        $statuses = $this->supplierQueryService->getRecentConnectionStatusesForUser($userId);
 
         return response()->json(["statuses" => $statuses]);
     }
@@ -148,18 +144,18 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
-        foreach ($validated["rules"] as $rule) {
+        foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                "days" => $rule["days"],
-                "discount_percentage" => $rule["discount_percentage"],
+                'days' => $rule['days'],
+                'discount_percentage' => $rule['discount_percentage'],
             ];
 
             $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
 
         return response()->json([
-            "message" => "Reglas registradas correctamente.",
-            "rules" => $createdRules,
+            'message' => 'Reglas registradas correctamente.',
+            'rules' => $createdRules,
         ]);
     }
 
@@ -167,7 +163,7 @@ class SupplierController extends Controller
     {
         $rules = $this->supplierQueryService->getPaymentRules($supplier);
 
-        return response()->json(["payment_rules" => $rules]);
+        return response()->json(['payment_rules' => $rules]);
     }
 
     /**
