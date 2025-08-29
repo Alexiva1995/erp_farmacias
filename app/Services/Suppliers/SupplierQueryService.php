@@ -155,8 +155,8 @@ class SupplierQueryService
             $uniqueProducts = collect($products)
                 ->groupBy(
                     fn($row) => is_null($row["product_id"])
-                        ? Str::uuid()
-                        : $row["product_id"] . "-" . $row["supplier_id"],
+                    ? Str::uuid()
+                    : $row["product_id"] . "-" . $row["supplier_id"],
                 )
                 ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
@@ -342,8 +342,8 @@ class SupplierQueryService
             ->first();
 
         $unitCost = $product->unit_cost_usd;
-        $subtotal = $unitCost * $quantity;
-        $finalCost = $discount ? $product->unit_cost_usd : $product->unit_cost_usd_with_discount;
+        $finalCost = $product->unit_cost_usd_with_discount;
+        $subtotal = ($discount ? $finalCost : $unitCost) * $quantity;
 
         if (isset($order)) {
             $order->details()->create([
@@ -356,14 +356,14 @@ class SupplierQueryService
 
             $order->increment("total_items", 1);
             $order->increment("total_quantity", $quantity);
-            $order->increment("total_amount", $quantity * $finalCost);
+            $order->increment("total_amount", $subtotal);
         } else {
             $payload = [
                 "supplier_id" => $product->supplier_id,
                 "order_date" => now()->today(),
                 "total_items" => 1,
                 "total_quantity" => $quantity,
-                "total_amount" => $quantity * $finalCost,
+                "total_amount" => $subtotal,
             ];
             $order = AutoOrder::create($payload);
 
