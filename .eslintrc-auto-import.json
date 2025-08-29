@@ -371,6 +371,8 @@
     "useDataTable": true,
     "useCyclicTable": true,
     "pdfStockProductsGenerator": true,
-    "pdfProductsWithoutSuppliersGenerator": true
+    "pdfProductsWithoutSuppliersGenerator": true,
+    "pdfPurchaseOrderGenerator": true,
+    "pdfProductsAssistantReportGenerator": true
   }
 }

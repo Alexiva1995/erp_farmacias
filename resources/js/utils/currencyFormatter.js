@@ -28,7 +28,7 @@ export const formatCurrency = (value, currency) => {
     currencySymbol = ' USD';
   } else {
     locale = 'en-US';
-    currencySymbol = ' USD';
+    currencySymbol = '';
   }
 
 

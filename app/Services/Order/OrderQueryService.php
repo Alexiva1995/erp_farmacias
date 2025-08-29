@@ -12,55 +12,55 @@ use Carbon\Carbon;
 class OrderQueryService
 {
 
-      private function getBaseQuery($valor): Builder
+    private function getBaseQuery($valor): Builder
     {
-        if($valor=='Completed'){
+        if ($valor == 'Completed') {
             $start = now()->startOfDay();
             $end = now()->endOfDay();
-            return Order::query()->where('status',$valor)->whereBetween('order_date', [$start, $end])->with('client','seller');
-        }else if ($valor=='all'){
-            return Order::query()->with('client','seller');
+            return Order::query()->where('status', $valor)->whereBetween('order_date', [$start, $end])->with('client', 'seller');
+        } else if ($valor == 'all') {
+            return Order::query()->with('client', 'seller');
         }
-        
-        return Order::query()->where('status',$valor)->with('client','seller');
+
+        return Order::query()->where('status', $valor)->with('client', 'seller');
     }
 
 
-private function applyFilters(Builder $query, array $filters): Builder
-{
-    if (!empty($filters['id'])) {
-        $query->where('id', $filters['id']);
-    }
+    private function applyFilters(Builder $query, array $filters): Builder
+    {
+        if (!empty($filters['id'])) {
+            $query->where('id', $filters['id']);
+        }
 
-    if (!empty($filters['q'])) {
-        $searchTerm = "%{$filters['q']}%";
-        
-        $query->where(function ($subQuery) use ($searchTerm) {
-            // Búsqueda en la relación 'client' por identificación
-            $subQuery->whereHas('client', function ($clientQuery) use ($searchTerm) {
-                $clientQuery->where('identification', 'like', $searchTerm);
+        if (!empty($filters['q'])) {
+            $searchTerm = "%{$filters['q']}%";
+
+            $query->where(function ($subQuery) use ($searchTerm) {
+                // Búsqueda en la relación 'client' por identificación
+                $subQuery->whereHas('client', function ($clientQuery) use ($searchTerm) {
+                    $clientQuery->where('identification', 'like', $searchTerm);
+                });
+
+                // Búsqueda en la relación 'seller' por username
+                $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
+                    $sellerQuery->where('username', 'like', $searchTerm);
+                });
             });
+        }
 
-            // Búsqueda en la relación 'seller' por username
-            $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
-                $sellerQuery->where('username', 'like', $searchTerm);
-            });
-        });
-    }
+        if (!empty($filters['currency'])) {
+            $query->where('currency', $filters['currency']);
+        }
 
-    if (!empty($filters['currency'])) {
-        $query->where('currency', $filters['currency']);
-    }
+        if (!empty($filters['state'])) {
+            $query->where('status', $filters['state']);
+        }
 
-    if (!empty($filters['state'])) {
-        $query->where('status', $filters['state']);
-    }
+        if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
+            $startDate = !empty($filters['start_date']) ? Carbon::parse($filters['start_date'])->startOfDay() : null;
+            $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
 
-    if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
-         $startDate = !empty($filters['start_date']) ? Carbon::parse($filters['start_date'])->startOfDay() : null;
-        $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
-
-          if ($startDate && $endDate) {
+            if ($startDate && $endDate) {
                 $query->whereBetween('order_date', [$startDate, $endDate]);
             } elseif ($startDate) {
                 $query->where('order_date', '>=', $startDate);
@@ -69,13 +69,13 @@ private function applyFilters(Builder $query, array $filters): Builder
             }
         }
 
-    return $query;
-}
+        return $query;
+    }
 
-      public function getFilteredQuery(Request $request, $valor): Builder
+    public function getFilteredQuery(Request $request, $valor): Builder
     {
         $query = $this->getBaseQuery($valor);
-          $filters = [
+        $filters = [
             'id' => $request->id,
             'q' => $request->q,
             'currency' => $request->currency,
@@ -89,17 +89,17 @@ private function applyFilters(Builder $query, array $filters): Builder
 
 
 
-     private function getBaseQueryProduct(): Builder
+    private function getBaseQueryProduct(): Builder
     {
         return Product::query()->select(
             'products.*'
         )
-        ->with([
-            'laboratory',
-            'origin',
-            'group',
-        ])
-        ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
+            ->with([
+                'laboratory',
+                'origin',
+                'group',
+            ])
+            ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
     }
 
 
@@ -107,11 +107,25 @@ private function applyFilters(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm)
-                    ->orWhere('barcode', 'like', $searchTerm);
-            });
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+            
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+            
+            if ($isStrictSearch) {
+                $subQuery->where('name', 'like', "%{$searchTerm}%")
+                         ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                         ->orWhere('barcode', 'like', $searchTerm)
+                         ->orWhere('id', 'like', $searchTerm);
+            } else {
+                $words = explode(' ', $searchTerm);
+                foreach ($words as $word) {
+                    $subQuery->where(function ($wordQuery) use ($word) {
+                        $wordQuery->where('name', 'like', "%{$word}%")
+                                  ->orWhere('active_ingredient', 'like', "%{$word}%");
+                    });
+                }
+            }
+        });
         }
 
         if (!empty($filters['laboratoryId'])) {
@@ -129,13 +143,13 @@ private function applyFilters(Builder $query, array $filters): Builder
         $hasStock = $filters['hasStock'] ?? null;
         if ($hasStock === true) {
             $query->groupBy('products.id')
-                  ->havingRaw('valid_stock_sum > 0');
+                ->havingRaw('valid_stock_sum > 0');
         } elseif ($hasStock === false) {
             $query->groupBy('products.id')
-                  ->havingRaw('valid_stock_sum <= 0');
+                ->havingRaw('valid_stock_sum <= 0');
         }
 
-          if (!empty($filters['groupId'])) {
+        if (!empty($filters['groupId'])) {
             $query->where('group_id', $filters['groupId']);
         }
 
@@ -163,7 +177,7 @@ private function applyFilters(Builder $query, array $filters): Builder
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'sales_average':
-            return $query->orderBy('products.sales_average', $orderBy);
+                return $query->orderBy('products.sales_average', $orderBy);
 
             case 'id':
             case 'name':
@@ -185,6 +199,7 @@ private function applyFilters(Builder $query, array $filters): Builder
             'originId' => $request->originId,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'groupId' => $request->get('groupId'),
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $this->applyFiltersProduct($query, $filters);
