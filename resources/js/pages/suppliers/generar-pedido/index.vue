@@ -276,7 +276,7 @@ async function realizarCompra(){
    toast.success("Compra realizada con exito")
    let productosSinPorveedor= await consultarProductosSinProveedor()
    pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
-  //  router.push("/suppliers/supplieriaorderassistant")
+   router.push("/suppliers/purchase-orders/list")
 }
 
 async function consultarProductosSinProveedor(){
