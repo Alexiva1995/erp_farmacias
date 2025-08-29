@@ -6,6 +6,7 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
 import Swal from 'sweetalert2';
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -84,7 +85,7 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
   for (let index = 0; index < productosEnFalla.length; index++) {
     let productEnFalla= productosEnFalla[index];
 
-    for (let index2 = 0; index < productosConOportunidadUnica.length; index2++) {
+    for (let index2 = 0; index2 < productosConOportunidadUnica.length; index2++) {
       let productConOportunidadUnica = productosConOportunidadUnica[index2];
       if(productEnFalla.productSupplier.id==productConOportunidadUnica.productSupplier.id){
         productConOportunidadUnica.reponer=productEnFalla.reponer
@@ -273,7 +274,28 @@ async function realizarCompra(){
     return
   }
    toast.success("Compra realizada con exito")
-   router.push("/suppliers/supplieriaorderassistant")
+   let productosSinPorveedor= await consultarProductosSinProveedor()
+   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+  //  router.push("/suppliers/supplieriaorderassistant")
+}
+
+async function consultarProductosSinProveedor(){
+
+  let data={
+    "tipo_filtracion":tipo_de_filtracion.value,
+    "lapso_de_tiempo":lapso_de_tiempo.value,
+    // "groups":groups.value,
+    // "laboratoryId":laboratoryId.value,
+  }
+
+  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier",data)
+  if(response.status!=200){
+    toast.error("Error al generar el reporte de de productos sin proveedor")
+    return
+  }
+  toast.success("Reporte Generado")
+  console.log("data => ",response.data.data)
+  return [...response.data.data]
 }
 
 

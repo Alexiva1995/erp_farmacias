@@ -309,8 +309,9 @@ Route::prefix("supplier-laboratories")->group(function () {
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post('/filtrar-paginate', [SuppliersIaOrderAssistantController::class, 'filtrarPaginate']);
     Route::prefix("generate-order")->group(function () {
-        Route::post("/creat",                    [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-        Route::post("/products-to-request",      [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/creat",                     [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request",       [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
     });
 });
 

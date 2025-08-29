@@ -202,4 +202,19 @@ class ProductSupplierServices implements ProductSupplier
 
         return $productosConOportunidad;
     }
+
+    public function getTheLowestLotCost(Collection $productos): array
+    {
+        $productosConOportunidad = [];
+        for ($index = 0; $index < count($productos); $index++) {
+            # code...
+            $producto = $productos[$index];
+
+            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($producto);
+            $producto->lote = $lote;
+            $productosConOportunidad[] = $producto;
+        }
+
+        return $productosConOportunidad;
+    }
 }
