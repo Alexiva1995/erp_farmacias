@@ -560,7 +560,7 @@ const updateDebouncedAmount = (payment, newValue) => {
 
       <VCardText v-else-if="currentProgress === 100">
         <div class="d-flex justify-center">
-          <div class="w-40">
+          <div class="w-33">
             <div class="text-center">
               <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
             </div>
