@@ -8,7 +8,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "show-products", "update-products", "show-discount-and-payment-rules"]);
+const emit = defineEmits(["update:options", "show-products", "update-products"]);
 
 const headers = [
   { title: "Id", key: "id", sortable: false },
@@ -70,11 +70,7 @@ const headers = [
         </VTooltip>
         <VTooltip text="Actualizar Productos" location="top">
           <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              :disabled="checkingApiId === item.id"
-              @click="emit('show-discount-and-payment-rules', item)"
-            >
+            <IconBtn v-bind="props" :disabled="checkingApiId === item.id" @click="emit('update-products', item)">
               <VIcon
                 :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'"
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"

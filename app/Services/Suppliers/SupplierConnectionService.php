@@ -195,9 +195,15 @@ class SupplierConnectionService
                         if (is_numeric($value)) {
                             $newValue = number_format((float) $value, 2, ".", "");
 
+                            if ($meta["target"] === "quantity") {
+                                $entry[$meta["target"]] = $newValue;
+                                break;
+                            }
+
                             // Si ya tiene el precio en bs y usd
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
+                                break;
                             } else {
                                 // Precio en bs calcula con la tasa  usd del dia
                                 if ($meta["currency"] === "usd") {
@@ -208,6 +214,8 @@ class SupplierConnectionService
                                         "",
                                     );
                                     $entry["unit_cost_usd"] = $newValue;
+
+                                    break;
                                 } else {
                                     // Obtiene el equivalente de bs en usd
                                     $entry[$meta["target"]] = $newValue;
@@ -217,6 +225,8 @@ class SupplierConnectionService
                                         ".",
                                         "",
                                     );
+
+                                    break;
                                 }
                             }
                         } else {

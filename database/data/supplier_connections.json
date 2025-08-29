@@ -47,7 +47,8 @@
       },
       "7": {
         "file_field": "stock_disponible",
-        "type": "integer"
+        "type": "integer",
+        "target": "quantity"
       }
     },
     "invoice_structure": {
@@ -178,7 +179,8 @@
       },
       "7": {
         "file_field": "stock_disponible",
-        "type": "integer"
+        "type": "integer",
+        "target": "quantity"
       }
     }
   },
@@ -230,7 +232,8 @@
       },
       "7": {
         "file_field": "stock_disponible",
-        "type": "integer"
+        "type": "integer",
+        "target": "quantity"
       }
     }
   },
@@ -263,7 +266,8 @@
       },
       "3": {
         "file_field": "exisMerida",
-        "type": "decimal"
+        "type": "decimal",
+        "target": "quantity"
       },
       "4": {
         "file_field": "exisCaracas",

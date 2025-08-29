@@ -5,12 +5,17 @@ import { onMounted, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
-const loading = ref(false);
+const laboratories = ref([]);
+const products = ref([]);
+const loadingSuppliers = ref(false);
+const loadingProducts = ref(false);
+const loadingLaboratories = ref(false);
+const quantityErrors = reactive({});
 
 const selectedSupplier = ref(null);
 const searchedSupplier = ref(null);
+const searchedLaboratory = ref(null);
 
-const enablePaymentRules = ref(false);
 const enableDiscounts = ref(false);
 
 const isShowSupplierProductsDialogActive = ref(false);
@@ -24,24 +29,62 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const totalSupplierConnections = ref(0);
 
+const productsPage = ref(1);
+const productsItemPerPage = ref(10);
+const productsTotal = ref(0);
+
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/available-suppliers");
-    suppliers.value = response.data.data;
+    const { data } = await axios.get("/available-suppliers");
+    suppliers.value = data.data;
   } catch (error) {
     console.error("Hubo un error al obtener los proveedores:", error);
     toast.error("Error al obtener los proveedores.");
   } finally {
-    loading.value = false;
+    loadingSuppliers.value = false;
+  }
+};
+
+const fetchLaboratories = async () => {
+  try {
+    const { data } = await axios.get("/suppliers/available-laboratories");
+    laboratories.value = data;
+  } catch (error) {
+    console.error("Hubo un error al obtener los laboratorios:", error);
+    toast.error("Error al obtener los laboratorios.");
+  } finally {
+    loadingLaboratories.value = false;
+  }
+};
+
+const fetchProducts = async () => {
+  const params = {
+    page: productsPage.value,
+    perPage: productsItemPerPage.value,
+    supplierId: searchedSupplier.value,
+    laboratoryId: searchedLaboratory.value,
+  };
+
+  Object.keys(params).forEach((key) => (params[key] === null || params[key] === "") && delete params[key]);
+
+  try {
+    const { data } = await axios.get("/suppliers/available-products", { params });
+    products.value = data.data;
+    productsTotal.value = data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener los productos:", error);
+    toast.error("Error al obtener los productos.");
+  } finally {
+    loadingProducts.value = false;
   }
 };
 
 const fetchSupplierConnections = async () => {
-  loading.value = true;
+  loadingSuppliers.value = true;
   const params = {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    selectedSupplier: searchedSupplier.value,
+    selectedSupplier: selectedSupplier.value,
   };
 
   Object.keys(params).forEach((key) => (params[key] === null || params[key] === "") && delete params[key]);
@@ -54,7 +97,7 @@ const fetchSupplierConnections = async () => {
     console.error("Hubo un error al obtener las órdenes de compra:", error);
     toast.error("Error al obtener las órdenes de compra.");
   } finally {
-    loading.value = false;
+    loadingSuppliers.value = false;
   }
 };
 
@@ -89,21 +132,56 @@ const stopPolling = () => {
 onMounted(() => {
   fetchSuppliers();
   fetchSupplierConnections();
+  fetchProducts();
+  fetchLaboratories();
 });
 
-let debounceTimer;
+let supplierDebounceTimer;
 watch(
   [page, itemsPerPage, selectedSupplier, searchedSupplier],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchSupplierConnections(), 300);
+    clearTimeout(supplierDebounceTimer);
+    supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 300);
   },
   { deep: true },
 );
 
+let productDebounceTimer;
+watch(
+  [productsPage, productsItemPerPage],
+  () => {
+    clearTimeout(productDebounceTimer);
+    productDebounceTimer = setTimeout(() => fetchProducts(), 300);
+  },
+  { deep: true },
+);
+
+watch(
+  [searchedSupplier, searchedLaboratory],
+  () => {
+    fetchProducts();
+  },
+  {
+    deep: true,
+  },
+);
+
+const handleSearchSupplier = (supplier) => {
+  searchedSupplier.value = supplier;
+};
+
+const handleSearchLaboratory = (laboratory) => {
+  searchedLaboratory.value = laboratory;
+};
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
+};
+
+const updateProductsTableOptions = (options) => {
+  productsPage.value = options.page;
+  productsItemPerPage.value = options.itemsPerPage;
 };
 
 const handleShowProducts = (supplier) => {
@@ -111,19 +189,12 @@ const handleShowProducts = (supplier) => {
   isShowSupplierProductsDialogActive.value = true;
 };
 
-const handleShowDiscountAndPaymentRules = (supplier) => {
-  selectedSupplier.value = supplier;
-  isShowSupplierDiscountAndPaymentRulesDialogActive.value = true;
-};
-
-const handleCheckSupplierApi = async (supplier, { discount, payment }) => {
+const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
     toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
-    await axios.get(`/suppliers/${supplier.id}/connection`, {
-      params: { payment, discount },
-    });
+    await axios.get(`/suppliers/${supplier.id}/connection`);
 
     startPolling();
   } catch (error) {
@@ -133,21 +204,38 @@ const handleCheckSupplierApi = async (supplier, { discount, payment }) => {
   }
 };
 
-const handleClearFilters = () => {
+const handleClearSuppliersFilters = () => {
+  selectedSupplier.value = null;
+};
+
+const handleClearProductsFilters = () => {
   searchedSupplier.value = null;
+  searchedLaboratory.value = null;
+};
+
+const handleAddItemToAutoOrder = async (product) => {
+  quantityErrors[product.id] = null;
+  const form = new FormData();
+  form.append("productId", product.id);
+  form.append("quantity", product.quantity);
+  form.append("discount", enableDiscounts.value);
+
+  try {
+    await axios.post("/suppliers/add-product-to-order", form);
+    toast.success(`Se añadieron ${product.quantity} productos al pedido del día`);
+  } catch (error) {
+    if (error.response?.status === 422) {
+      quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
+    }
+    console.error("Hubo un error al enviar la petición:", error);
+    toast.error("Error al añadir productos al pedido del día.");
+  }
 };
 </script>
 
 <template>
   <div>
     <ShowSupplierProductsDialog v-model="isShowSupplierProductsDialogActive" :selectedSupplier="selectedSupplier" />
-    <ShowSupplierDiscountAndPaymentRulesDialog
-      v-model="isShowSupplierDiscountAndPaymentRulesDialogActive"
-      :selectedSupplier="selectedSupplier"
-      :enableDiscounts="enableDiscounts"
-      :enablePaymentRules="enablePaymentRules"
-      @request-update="handleCheckSupplierApi"
-    />
 
     <VCard title="Listados" class="mb-6">
       <VCardText>
@@ -160,12 +248,10 @@ const handleClearFilters = () => {
 
     <VTabsWindow v-model="tab">
       <VTabsWindowItem value="suppliers">
-        <ProductsComparisionFilter
-          v-model:selectedSupplier="searchedSupplier"
-          v-model:enable-payment-rules="enablePaymentRules"
-          v-model:enable-discounts="enableDiscounts"
+        <ProductsComparisionSuppliersFilter
+          v-model:selectedSupplier="selectedSupplier"
           :suppliers="suppliers"
-          @clear="handleClearFilters"
+          @clear="handleClearSuppliersFilters"
         />
 
         <ProductComparisionTable
@@ -177,8 +263,31 @@ const handleClearFilters = () => {
           :checking-api-id="checkingApiSupplierId"
           @update:options="updateTableOptions"
           @show-products="handleShowProducts"
-          @show-discount-and-payment-rules="handleShowDiscountAndPaymentRules"
           @update-products="handleCheckSupplierApi"
+        />
+      </VTabsWindowItem>
+
+      <VTabsWindowItem value="products">
+        <ProductsComparisionProductsFilter
+          v-model:enable-discounts="enableDiscounts"
+          :suppliers="suppliers"
+          :laboratories="laboratories"
+          :selected-laboratory="searchedLaboratory"
+          :selected-supplier="searchedSupplier"
+          @clear="handleClearProductsFilters"
+          @update:selectedLaboratory="handleSearchLaboratory"
+          @update:selectedSupplier="handleSearchSupplier"
+        />
+
+        <ProductComparisionProductsTable
+          :products="products"
+          :loading="loading"
+          :total-products="productsTotal"
+          :items-per-page="itemsPerPage"
+          :page="productsPage"
+          :quantity-errors="quantityErrors"
+          @update:options="updateProductsTableOptions"
+          @send-product="handleAddItemToAutoOrder"
         />
       </VTabsWindowItem>
     </VTabsWindow>

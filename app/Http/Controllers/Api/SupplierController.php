@@ -10,6 +10,7 @@ use App\Services\Suppliers\SupplierActionService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
+use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use App\Models\SupplierConnectionStatus;
@@ -109,9 +110,7 @@ class SupplierController extends Controller
     public function connectionServiceSupplier(Supplier $supplier, Request $request)
     {
         $userId = auth()->id() ?? 1;
-        $discount = $request->boolean("discount", false);
-        $payment = $request->boolean("payment", false);
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $discount, $payment);
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
         return response()->json(["status" => "queued"]);
     }
@@ -256,5 +255,29 @@ class SupplierController extends Controller
             "data" => $results->items(),
             "total" => $results->total(),
         ]);
+    }
+
+    public function getProducts(Request $request)
+    {
+        $results = $this->supplierQueryService->getProducts($request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getLaboratories(Request $request)
+    {
+        $results = $this->supplierQueryService->getAvailableLaboratories($request);
+
+        return response()->json($results);
+    }
+
+    public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
+    {
+        $results = $this->supplierQueryService->addProductToOrder($request);
+
+        return response()->json(200);
     }
 }

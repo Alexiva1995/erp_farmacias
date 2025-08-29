@@ -1,13 +1,14 @@
 <script setup>
 const props = defineProps({
   selectedSupplier: [Number, String, null],
+  selectedLaboratory: [Number, String, null],
   suppliers: { type: Array, default: () => [] },
-  enableDiscounts: { type: Boolean, default: false },
-  enablePaymentRules: { type: Boolean, default: false },
+  laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  enableDiscounts: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:selectedSupplier", "update:enableDiscounts", "update:enablePaymentRules", "clear"]);
+const emit = defineEmits(["update:selectedSupplier", "update:selectedLaboratory", "clear"]);
 </script>
 
 <template>
@@ -28,19 +29,24 @@ const emit = defineEmits(["update:selectedSupplier", "update:enableDiscounts", "
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
-          <VSwitch
-            :model-value="props.enableDiscounts"
-            label="Activar Descuentos"
-            :inset="true"
-            @update:model-value="emit('update:enableDiscounts', $event)"
+          <VAutocomplete
+            :model-value="props.selectedLaboratory"
+            :items="props.laboratories"
+            :loading="props.loading"
+            label="Laboratorios"
+            placeholder="Escribe para buscar un laboratorio"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
           <VSwitch
-            :model-value="props.enablePaymentRules"
-            label="Activar Pronto Pago"
+            :model-value="props.enableDiscounts"
+            label="Activar Descuento"
             :inset="true"
-            @update:model-value="emit('update:enablePaymentRules', $event)"
+            @update:model-value="emit('update:enableDiscounts', $event)"
           />
         </VCol>
       </VRow>

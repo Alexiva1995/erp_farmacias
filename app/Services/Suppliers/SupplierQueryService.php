@@ -2,9 +2,13 @@
 
 namespace App\Services\Suppliers;
 
+use App\Models\AutoOrder;
+use App\Models\Laboratory;
+use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -246,37 +250,25 @@ class SupplierQueryService
         return $paginated;
     }
 
-    public function addDiscountsToProducts(Supplier $supplier, array $flags)
+    public function addDiscountsToProducts(Supplier $supplier): void
     {
         $supplierId = $supplier->id;
-        \Log::info("Descuentos", [
-            "discount" => $flags["discount"],
-            "payment" => $flags["payment"],
-        ]);
 
         try {
-            DB::transaction(function () use ($supplierId, $flags) {
-                $tables = [];
-                if ($flags["discount"] ?? false) {
-                    $tables[] =
-                        "SELECT discount_percentage / 100 AS rate FROM supplier_discounts WHERE supplier_id = ?";
-                }
-                if ($flags["payment"] ?? false) {
-                    $tables[] = "SELECT discount_percentage /100 AS rate FROM payment_rules WHERE supplier_id = ?";
-                }
-
-                if (empty($tables)) {
-                    return;
-                }
-
-                $sql =
-                    "SELECT COALESCE(EXP(SUM(LN(1 - rate))), 1) FROM (" .
-                    implode(" UNION ALL ", $tables) .
-                    ") AS rules";
-
-                $params = array_fill(0, count($tables), $supplierId);
-
-                $factor = DB::scalar($sql, $params);
+            DB::transaction(function () use ($supplierId) {
+                $factor = DB::scalar(
+                    "SELECT COALESCE(EXP(SUM(LN(1 - rate))), 1)
+                              FROM (
+                                    SELECT discount_percentage / 100 AS rate
+                                      FROM supplier_discounts
+                                     WHERE supplier_id = ?
+                                     UNION ALL
+                                    SELECT discount_percentage / 100
+                                      FROM payment_rules
+                                     WHERE supplier_id = ?
+                                   ) AS x",
+                    [$supplierId, $supplierId],
+                );
 
                 \Log::info("% Descuento: ", ["factor" => $factor]);
 
@@ -284,20 +276,108 @@ class SupplierQueryService
                     return;
                 }
 
-                try {
-                    DB::update(
-                        'UPDATE product_suppliers
-                         SET unit_cost_with_discount    = ROUND(unit_cost     * ?, 2),
-                             unit_cost_usd_with_discount = ROUND(unit_cost_usd * ?, 2)
-                         WHERE supplier_id = ?',
-                        [$factor, $factor, $supplierId],
-                    );
-                } catch (\Throwable $e) {
-                    \Log::error($e);
-                }
+                DB::update(
+                    'UPDATE product_suppliers
+                       SET unit_cost_with_discount    = ROUND(unit_cost     * ?, 2),
+                           unit_cost_usd_with_discount = ROUND(unit_cost_usd * ?, 2)
+                     WHERE supplier_id = ?',
+                    [$factor, $factor, $supplierId],
+                );
             });
         } catch (\Throwable $e) {
             \Log::error($e);
         }
+    }
+
+    public function getProducts(Request $request)
+    {
+        $laboratoryId = $request->query("laboratoryId");
+        $supplierId = $request->query("supplierId");
+        $perPage = $request->query("perPage", 10) ?? 10;
+
+        $laboratory = Laboratory::select("name")->where("id", $laboratoryId)->first() ?? null;
+
+        $results = ProductSupplier::query()
+            ->select([
+                "product_suppliers.id as id",
+                DB::raw("CONCAT(product_suppliers.name, ' ', suppliers.name) as name"),
+                "product_suppliers.unit_cost as unit_cost_bs",
+                "product_suppliers.unit_cost_usd as unit_cost_usd",
+                DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
+                DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
+            ])
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
+            ->when($supplierId, function ($query) use ($supplierId) {
+                $query->where("supplier_id", $supplierId);
+            })
+            ->when($laboratoryId, function ($query) use ($laboratory) {
+                $query->where("laboratory", $laboratory->name);
+            })
+            ->orderBy("name", "asc")
+            ->paginate($perPage);
+
+        return $results;
+    }
+
+    public function getAvailableLaboratories()
+    {
+        $results = Laboratory::query()
+            ->select(["id", "name"])
+            ->orderBy("name", "asc")
+            ->get();
+
+        return $results;
+    }
+
+    public function addProductToOrder(StoreProductIntoautoOrderRequest $request)
+    {
+        $productId = $request->productId;
+        $quantity = $request->quantity;
+        $discount = $request->boolean("discount");
+        $product = ProductSupplier::find($productId);
+
+        $order = AutoOrder::orderByDesc("created_at")
+            ->whereDate("created_at", now()->today())
+            ->first();
+
+        $unitCost = $product->unit_cost_usd;
+        $subtotal = $unitCost * $quantity;
+        $finalCost = $discount ? $product->unit_cost_usd : $product->unit_cost_usd_with_discount;
+
+        if (isset($order)) {
+            $order->details()->create([
+                "product_suppliers_id" => $productId,
+                "quantity" => $quantity,
+                "unit_cost" => $unitCost,
+                "subtotal" => $subtotal,
+                "final_cost" => $finalCost,
+            ]);
+
+            $order->increment("total_items", 1);
+            $order->increment("total_quantity", $quantity);
+            $order->increment("total_amount", $quantity * $finalCost);
+        } else {
+            $payload = [
+                "supplier_id" => $product->supplier_id,
+                "order_date" => now()->today(),
+                "total_items" => 1,
+                "total_quantity" => $quantity,
+                "total_amount" => $quantity * $finalCost,
+            ];
+            $order = AutoOrder::create($payload);
+
+            $order->details()->create([
+                "product_suppliers_id" => $productId,
+                "quantity" => $quantity,
+                "unit_cost" => $unitCost,
+                "subtotal" => $subtotal,
+                "final_cost" => $finalCost,
+            ]);
+        }
+
+        $product->decrement("quantity", $quantity);
+
+        return true;
     }
 }

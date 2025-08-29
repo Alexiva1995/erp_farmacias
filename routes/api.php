@@ -299,6 +299,9 @@ Route::prefix("suppliers")->group(function () {
     Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
     Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
     Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
