@@ -417,32 +417,17 @@ const changeAmountInUSD = computed(() => {
 });
 </script>
 <template>
-  <VDialog v-model="dialogVisible" max-width="500px">
+  <VDialog v-model="dialogVisible">
     <VCard>
       <VCardTitle class="d-flex align-center">
-        <span class="headline">Créditos</span>
+        <span class="headline me-2">Créditos</span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <div class="demo-space-y px-4 pt-4">
-        <VProgressLinear
-          v-model="currentProgress"
-          color="primary"
-          height="10"
-          rounded
-        />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Métodos de pago
-          </p>
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Ticke de pago de créditos
-          </p>
-        </div>
-      </div>
+
       <VCardText v-if="currentProgress === 0">
         <div
           v-for="(payment, index) in payments"
