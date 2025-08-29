@@ -9,5 +9,4 @@ interface AutoOrder
 {
     public function create(array $order): ModelsAutoOrder;
     public function createMultiple(array $orders): array;
-    public function getAll(array $filters = []): LengthAwarePaginator;
 }
