@@ -72,37 +72,6 @@ class OrderActionService
             ->where('status', 'Reserved')
             ->with($withRelations)
             ->first();
-
-           /* $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status', Order::PENDING)
-                ->with([
-                    'client',
-                    'seller',
-                    'details' => function ($query) {
-                        $query->with([
-                            'product' => function ($q) {
-                                $q->with('laboratory')
-                                    ->withSum('lots', 'quantity');
-                            }
-                        ]);
-                    }
-                ])
-                ->first();*/
-               
-           /* $reservedOrder = Order::where('seller_id', $sellerId)
-            ->where('status', 'Reserved')
-            ->with([
-                'client',
-                'seller',
-                'details' => function ($query) {
-                    $query->with([
-                        'product' => function ($q) {
-                            $q->with('laboratory')->withSum('lots', 'quantity as valid_stock_sum');
-                        }
-                    ]);
-                }
-            ])
-            ->first();*/
         
              return [
             'pending_order' => $openOrder,

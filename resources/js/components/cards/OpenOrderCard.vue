@@ -4,7 +4,7 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import Swal from "sweetalert2";
-import { computed, defineProps, ref } from "vue";
+import { computed, defineProps, ref, watch } from "vue";
 
 const props = defineProps({
   orderProducts: {
@@ -67,7 +67,7 @@ const emit = defineEmits([
   "open-buys-modal",
   "reserve-order",
   "add-quotation-products",
-  "show-reserved-order",
+  "add-reserved-order",
 ]);
 
 const quotationId = ref("");
@@ -89,8 +89,6 @@ const chipColor = "primary";
 
 const breakdownItems = computed(() => {
   let ivaAmount = props.totalIvaAmount;
-
-  // Aplica el redondeo solo si la moneda es 'COP'
   if (props.selectedDisplayCurrency === "COP") {
     ivaAmount = roundUpToNearestHundred(props.totalIvaAmount);
   }
@@ -106,7 +104,6 @@ const formattedTotalQuotation = computed(() => {
   if (props.selectedDisplayCurrency === "COP") {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
   }
-
   return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
 
@@ -137,7 +134,7 @@ const getProductPriceSinIva = (product, currency) => {
     basePrice = product.price || 0;
   }
 
-  let priceSinIva = basePrice;
+  let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
     priceSinIva = roundUpToNearestHundred(priceSinIva);
   }
@@ -155,7 +152,7 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let priceWithIva = basePrice * (1 + taxRate);
+  let priceWithIva = (basePrice * product.selectedQuantity) * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
@@ -173,7 +170,7 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let Iva = basePrice * taxRate;
+  let Iva = (basePrice * product.selectedQuantity) * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
@@ -248,8 +245,26 @@ const fetchQuotationProducts = async (id) => {
 };
 
 const handleReserved = () => {
-  emit("show-reserved-order");
+  emit("add-reserved-order");
 };
+
+watch(
+  () => props.orderProducts,
+  (newProducts) => {
+    newProducts.forEach((product) => {
+      if (product.selectedQuantity > product.availableQuantity) {
+        emit("update-quantity", {
+          productId: product.product_id,
+          quantity: product.availableQuantity,
+        });
+        toast.warning(
+          `La cantidad de "${product.title}" se ha ajustado al stock máximo disponible: ${product.availableQuantity}.`
+        );
+      }
+    });
+  },
+  { deep: true }
+);
 </script>
 
 <template>
@@ -357,27 +372,54 @@ const handleReserved = () => {
         >
           <VListItem
             class="rounded-0 cursor-pointer py-2"
-            @click="
-              handleClickProductItem(
-                product.product_id,
-                product.selectedQuantity
-              )
-            "
           >
-            <template #prepend>
-              <span>{{ product.selectedQuantity }} x</span>
-            </template>
             <VListItemTitle class="font-weight-medium me-4 mx-2">
               {{ product.title }}
             </VListItemTitle>
-            <VListItemSubtitle class="mx-2">
+            <VListItemSubtitle class="mx-2 d-flex align-center">
               {{ product.active_ingredient }}
               {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+              <div class="d-flex align-center ms-2">
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="
+              handleClickProductItem(
+                product.product_id,
+                product.selectedQuantity)
+            "
+                >
+                  <VIcon icon="tabler-minus" />
+                </VBtn>
+               <VTextField
+                  v-model.number="product.selectedQuantity"
+                  variant="outlined"
+                  density="compact"
+                  single-line
+                  hide-details
+                  class="mx-1"
+                  style="width: 50px; text-align: center"
+                />
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="$emit('update-quantity', { productId: product.product_id, quantity: product.selectedQuantity + 1 })"
+                  :disabled="product.selectedQuantity >= product.availableQuantity"
+                >
+                  <VIcon icon="tabler-plus" />
+                </VBtn>
+              </div>
             </VListItemSubtitle>
             <template #append>
               <div class="d-flex align-center">
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-caption text-medium-emphasis">Precio</span>
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Precio</span
+                  >
                   <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
@@ -391,7 +433,11 @@ const handleReserved = () => {
                   </span>
                 </div>
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-caption text-medium-emphasis">IVA</span>
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >IVA</span
+                  >
                   <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
@@ -402,7 +448,11 @@ const handleReserved = () => {
                   </span>
                 </div>
                 <div class="d-flex flex-column align-end">
-                  <span class="text-caption text-medium-emphasis">Total</span>
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
                   <span class="text-body-1 me-2 font-weight-bold text-black">
                     {{
                       formatCurrency(
@@ -431,12 +481,22 @@ const handleReserved = () => {
           CANCELAR
         </VBtn>
         <VBtn
+          v-if="!props.orderReserved"
           color="success"
           variant="flat"
           class="flex-grow-1"
           @click="handleTReserveOrder"
         >
           RESERVAR
+        </VBtn>
+         <VBtn
+          v-if="props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleReserved"
+        >
+          RESERVADA
         </VBtn>
         <VBtn
           color="primary"
@@ -445,15 +505,6 @@ const handleReserved = () => {
           @click="handleCompleteOrder"
         >
           COMPLETAR
-        </VBtn>
-        <VBtn
-          v-if="props.orderReserved"
-          color="primary"
-          prepend-icon="tabler-arrow-back"
-          class="flex-grow-1"
-          @click="handleReserved"
-        >
-          Order Reservada
         </VBtn>
       </div>
       <div class="d-flex align-center">
