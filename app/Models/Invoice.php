@@ -21,6 +21,7 @@ class Invoice extends Model
         'taxable_base',
         'tax_amount',
         'total_amount',
+        'total_amount_discount',
         'exchange_rate',
         'total_usd',
         'status',
@@ -37,7 +38,7 @@ class Invoice extends Model
         'total_amount',
     ];
 
-    protected $fillableFromHeader  = self::FILLABLEHEADER;
+    protected $fillableFromHeader = self::FILLABLEHEADER;
 
     protected $appends = ['outstanding_debt'];
 
