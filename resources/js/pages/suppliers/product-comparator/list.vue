@@ -12,6 +12,7 @@ const loadingProducts = ref(false);
 const loadingLaboratories = ref(false);
 const quantityErrors = reactive({});
 
+const supplierOption = ref(null);
 const selectedSupplier = ref(null);
 const searchedSupplier = ref(null);
 const searchedLaboratory = ref(null);
@@ -19,7 +20,7 @@ const searchedLaboratory = ref(null);
 const enableDiscounts = ref(false);
 
 const isShowSupplierProductsDialogActive = ref(false);
-const isShowSupplierDiscountAndPaymentRulesDialogActive = ref(false);
+const isShowImportFileDialogActive = ref(false);
 
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
@@ -185,7 +186,7 @@ const updateProductsTableOptions = (options) => {
 };
 
 const handleShowProducts = (supplier) => {
-  selectedSupplier.value = supplier;
+  supplierOption.value = supplier;
   isShowSupplierProductsDialogActive.value = true;
 };
 
@@ -231,11 +232,17 @@ const handleAddItemToAutoOrder = async (product) => {
     toast.error("Error al añadir productos al pedido del día.");
   }
 };
+
+const handleShowImportProductsDialog = (supplier) => {
+  supplierOption.value = supplier;
+  isShowImportFileDialogActive.value = true;
+};
 </script>
 
 <template>
   <div>
-    <ShowSupplierProductsDialog v-model="isShowSupplierProductsDialogActive" :selectedSupplier="selectedSupplier" />
+    <ShowSupplierProductsDialog v-model="isShowSupplierProductsDialogActive" :selectedSupplier="supplierOption" />
+    <ShowImportProductsFileDialog v-model="isShowImportFileDialogActive" :selectedSupplier="supplierOption" />
 
     <VCard title="Listados" class="mb-6">
       <VCardText>
@@ -264,6 +271,7 @@ const handleAddItemToAutoOrder = async (product) => {
           @update:options="updateTableOptions"
           @show-products="handleShowProducts"
           @update-products="handleCheckSupplierApi"
+          @load-products="handleShowImportProductsDialog"
         />
       </VTabsWindowItem>
 

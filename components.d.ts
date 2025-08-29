@@ -149,6 +149,7 @@ declare module 'vue' {
     SectionAutoOrderIa: typeof import('./resources/js/components/SectionAutoOrderIa.vue')['default']
     ShareProjectDialog: typeof import('./resources/js/components/dialogs/ShareProjectDialog.vue')['default']
     Shortcuts: typeof import('./resources/js/@core/components/Shortcuts.vue')['default']
+    ShowImportProductsFileDialog: typeof import('./resources/js/components/dialogs/ShowImportProductsFileDialog.vue')['default']
     ShowSupplierDiscountAndPaymentRules: typeof import('./resources/js/components/dialogs/ShowSupplierDiscountAndPaymentRules.vue')['default']
     ShowSupplierDiscountAndPaymentRulesDialog: typeof import('./resources/js/components/dialogs/ShowSupplierDiscountAndPaymentRulesDialog.vue')['default']
     ShowSupplierProductsDialog: typeof import('./resources/js/components/dialogs/ShowSupplierProductsDialog.vue')['default']

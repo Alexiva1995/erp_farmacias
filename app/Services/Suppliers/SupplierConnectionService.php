@@ -6,11 +6,9 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Str;
 
 class SupplierConnectionService
 {

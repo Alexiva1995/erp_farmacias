@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\SupplierImport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
+use App\Http\Requests\GetDataFromSupplierFileRequest;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
@@ -15,6 +17,7 @@ use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use App\Models\SupplierConnectionStatus;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierController extends Controller
 {
@@ -279,5 +282,19 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->addProductToOrder($request);
 
         return response()->json(200);
+    }
+
+    public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
+    {
+        $userId = auth()->id() ?? 1;
+
+        $validated = $request->validated();
+        unset($validated["file"]);
+
+        $path = $request->file("file")->store("temp", ["disk" => "local"]);
+
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
+
+        return response()->json(["status" => "queued"]);
     }
 }

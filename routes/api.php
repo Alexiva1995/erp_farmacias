@@ -5,14 +5,14 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
-use App\Http\Controllers\api\ExchangeRateController;
+// use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TraceabilityController;
-use App\Http\Controllers\Auth\LoginController;
+// use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
@@ -41,16 +41,16 @@ use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 |
 */
 // Rutas de autenticación
-Route::post("/login", [LoginController::class, "login"]);
-Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
+// Route::post("/login", [LoginController::class, "login"]);
+// Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
 // Rutas protegidas que requieren autenticación (Sanctum)
-Route::middleware("auth:sanctum")->group(function () {
-    Route::get("/user", function (Request $request) {
-        return $request->user();
-    });
-    Route::post("/logout", [LoginController::class, "logout"]);
-});
+// Route::middleware("auth:sanctum")->group(function () {
+//     Route::get("/user", function (Request $request) {
+//         return $request->user();
+//     });
+//     Route::post("/logout", [LoginController::class, "logout"]);
+// });
 
 // Rutas de Productos
 Route::get("/products", [ProductController::class, "index"]);
@@ -276,13 +276,13 @@ Route::prefix("finances")->group(function () {
     });
 
     // exchange rates
-    Route::prefix("exchange-rates")->group(function () {
-        Route::get("/", [ExchangeRateController::class, "consultAll"]);
-        Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
-        Route::post("/store", [ExchangeRateController::class, "store"]);
-        Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
-        Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
-    });
+    // Route::prefix("exchange-rates")->group(function () {
+    //     Route::get("/", [ExchangeRateController::class, "consultAll"]);
+    //     Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
+    //     Route::post("/store", [ExchangeRateController::class, "store"]);
+    //     Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
+    //     Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+    // });
 });
 
 // Rutas de Proveedores
@@ -302,6 +302,7 @@ Route::prefix("suppliers")->group(function () {
     Route::get("available-products", [SupplierController::class, "getProducts"]);
     Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
     Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
