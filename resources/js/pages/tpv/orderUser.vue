@@ -11,7 +11,6 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { useAuthStore } from "@/stores/auth";
 import OrderTicket from "@/components/OrderTicket.vue";
-import ReservedOrderModal from "@/components/dialogs/ReservedOrderModal.vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -26,7 +25,7 @@ const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
-const isStrictSearch = ref(true);
+const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -79,7 +78,6 @@ const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
 
 const reservedOrderData = ref(null);
-const showReservedOrderModal = ref(false);
 
 const orderItems = ref([]);
 
@@ -246,7 +244,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
-  isStrictSearch.value = true;
+  isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -791,7 +789,7 @@ const reserverOrder = async () => {
 
     hasOpenOrder.value = true;
     toast.success("Orden reservada exitosamente.");
-    showReserverOrder;
+
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
@@ -836,6 +834,9 @@ const handleBuysCompletion = async (
   switchStates
 ) => {
   try {
+
+  const balanceUsed = paymentsData.some(payment => payment.type === 'balance');
+
     const payload = {
       order_id: orderId,
       payments: paymentsData,
@@ -843,7 +844,7 @@ const handleBuysCompletion = async (
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
-      balance_used: switchStates.balance_switch,
+      balance_used: balanceUsed,
       generate_invoice: switchStates.invoice_switch,
       credit: credit,
       changeAmount: changeAmount,
@@ -937,15 +938,6 @@ const handleBuysCompletion = async (
 
     setTimeout(() => {
       isPrinting.value = false;
-      /*paymentsForPrint.value = [];
-      hasOpenOrder.value = false;
-      openOrderData.value = null;
-      selectedClient.value = null;
-      orderItems.value = [];
-      changeAmountForPrint.value = 0;
-      creditAmountForPrint.value = 0;
-      clientIdentification.value = "";
-      creditForPrint.value = false;*/
     }, 500);
   } catch (error) {
     console.error(
@@ -1002,20 +994,15 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
   await fetchProducts();
 };
 
-const showReserverOrder = () => {
-  showReservedOrderModal.value = true;
-}
-
-const addReserverOrder = async (idOrder) => {
+const addReserverOrder = async () => {
  try {
-    const response = await axios.patch(`/tpv/order/${idOrder}/reserveAdd`);
+    const response = await axios.patch(`/tpv/order/${reservedOrderData.value.id}/reserveAdd`);
     const { pending_order, reserved_order } = response.data.data;
 
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-    console.log(openOrderData.value);
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
@@ -1026,7 +1013,6 @@ const addReserverOrder = async (idOrder) => {
     hasOpenOrder.value = true;
     await nextTick();
     toast.success("Orden agregada exitosamente.");
-    showReservedOrderModal.value = false;
     return response.data.data.order;
 
   } catch (error) {
@@ -1063,7 +1049,7 @@ const addReserverOrder = async (idOrder) => {
         @reserve-order="reserverOrder"
         @open-buys-modal="openBuysModal"
         @add-quotation-products="handleAddQuotationProducts"
-        @show-reserved-order="showReserverOrder"
+        @add-reserved-order="addReserverOrder"
       />
     </div>
     <div v-else>
@@ -1135,14 +1121,6 @@ const addReserverOrder = async (idOrder) => {
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
       />
-
-
-
-      <ReservedOrderModal
-      v-model:is-dialog-visible="showReservedOrderModal"
-      :order="reservedOrderData"
-      @add-reserved-order="addReserverOrder"
-    />
 
     </div>
   </div>

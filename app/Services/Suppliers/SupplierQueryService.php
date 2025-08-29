@@ -4,12 +4,15 @@ namespace App\Services\Suppliers;
 
 use App\Models\Supplier;
 use App\Models\Invoice;
-
+use App\Models\InvoiceDetail;
+use App\Models\SupplierConnectionStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SupplierQueryService
@@ -20,9 +23,9 @@ class SupplierQueryService
     private function getBaseQuery(): Builder
     {
         return Supplier::query()
-                        ->withoutTrashed()
-                        ->select('suppliers.*')
-                        ->with(['latestScore', 'paymentRules']);
+            ->withoutTrashed()
+            ->select('suppliers.*')
+            ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -130,9 +133,7 @@ class SupplierQueryService
             ->with(["payments" => fn($q) => $q->where("status", "unpaid")])
             ->get()
             ->flatMap(function ($invoice) {
-                return $invoice->payments->map(function ($payment) use (
-                    $invoice,
-                ) {
+                return $invoice->payments->map(function ($payment) use ($invoice, ) {
                     return [
                         "id" => $invoice->id,
                         "invoice_number" => $invoice->invoice_number,
@@ -157,23 +158,45 @@ class SupplierQueryService
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
         try {
-            $unique = collect($data)
-                ->groupBy(function ($row) {
-                    return is_null($row["product_id"])
-                        ? Str::uuid()
-                        : $row["product_id"] . "-" . $row["supplier_id"];
-                })
-                ->map(function ($group) {
-                    return $group->sortBy("unit_cost")->first();
-                })
+            $products = $data['products'] ?? [];
+            $invoices = $data['invoices'] ?? [];
+
+            $uniqueProducts = collect($products)
+                ->groupBy(fn($row) => is_null($row["product_id"])
+                    ? Str::uuid()
+                    : $row["product_id"] . "-" . $row["supplier_id"])
+                ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
                 ->toArray();
 
-            DB::transaction(function () use ($supplier, $unique) {
+            DB::transaction(function () use ($supplier, $uniqueProducts, $invoices) {
+                // Guardar productos
                 $supplier->productSuppliers()->delete();
-
-                foreach (array_chunk($unique, 500) as $chunk) {
+                foreach (array_chunk($uniqueProducts, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
+                }
+
+                // Guardar facturas
+                InvoiceDetail::whereIn('invoice_id', $supplier->invoices()->pluck('id'))->delete();
+                $supplier->invoices()->delete();
+                foreach ($invoices as $invoice) {
+                    $header = $invoice['header'];
+                    $lines = $invoice['lines'];
+
+                    $invoiceModel = $supplier->invoices()->create([
+                        ...Arr::only($header, Invoice::FILLABLEHEADER),
+                        'uploaded_by' => auth()->id() ?? 1,
+                        'registered_by' => auth()->id() ?? 1,
+                    ]);
+
+                    $details = collect($lines)->map(function ($line) use ($invoiceModel) {
+                        return [
+                            ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
+                            'invoice_id' => $invoiceModel->id,
+                        ];
+                    })->toArray();
+
+                    $invoiceModel->details()->createMany($details);
                 }
             });
             return true;
@@ -183,13 +206,13 @@ class SupplierQueryService
         }
     }
 
-    public function getPaymentRules(Supplier $supplier): Collection
+    public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
     {
-        return $supplier->paymentRules()->get();
-    }
-    
-    public function getDiscounts(Supplier $supplier): Collection
-    {
-        return $supplier->discounts()->get();
+        return SupplierConnectionStatus::with('supplier')
+            ->where('user_id', $userId)
+            ->whereIn('status', ['completed', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes($minutes))
+            ->latest()
+            ->get();
     }
 }

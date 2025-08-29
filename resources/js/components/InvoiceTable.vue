@@ -7,7 +7,10 @@ const props = defineProps({
   totalInvoices: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  actionsMode: { type: String, default: "default" },
+  actionsMode: {
+    type: String,
+    default: "default",
+  },
 });
 
 const emit = defineEmits([
@@ -17,6 +20,8 @@ const emit = defineEmits([
   "delete-invoice",
   "approve-invoice",
   "reject-invoice",
+  "locate-products",
+  "view-details",
 ]);
 
 const headers = [
@@ -30,15 +35,8 @@ const headers = [
 ];
 
 const formatCurrency = (value, currency) => {
-  const currencyMap = {
-    BS: "VES",
-    Bs: "VES",
-    COP: "COP",
-    USD: "USD",
-  };
-
+  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
   const mappedCurrency = currencyMap[currency] || currency;
-
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: mappedCurrency,
@@ -47,11 +45,7 @@ const formatCurrency = (value, currency) => {
 };
 
 const processedInvoices = computed(() => {
-  return props.invoices.map((invoice) => {
-    return {
-      ...invoice,
-    };
-  });
+  return props.invoices.map((invoice) => ({ ...invoice }));
 });
 </script>
 
@@ -70,77 +64,87 @@ const processedInvoices = computed(() => {
       <template #item.supplier\.name="{ item }">
         <span class="font-weight-medium">{{ item.supplier.name }}</span>
       </template>
-
       <template #item.total_amount="{ item }">
         <div class="d-flex flex-column">
-          <span class="font-weight-medium">
-            {{ formatCurrency(item.total_amount, item.currency) }}
-          </span>
+          <span class="font-weight-medium">{{
+            formatCurrency(item.total_amount, item.currency)
+          }}</span>
           <span
             v-if="item.currency !== 'USD'"
             class="text-caption text-medium-emphasis"
+            >{{ formatCurrency(item.total_usd, "USD") }}</span
           >
-            {{ formatCurrency(item.total_usd, "USD") }}
-          </span>
         </div>
       </template>
+
       <template #item.actions="{ item }">
         <div v-if="props.actionsMode === 'approval'">
-          <VTooltip text="Aprobar Factura">
-            <template #activator="{ props }">
-              <IconBtn
+          <VTooltip text="Aprobar Factura"
+            ><template #activator="{ props }"
+              ><IconBtn
                 v-bind="props"
                 color="success"
                 @click="emit('approve-invoice', item)"
-              >
-                <VIcon icon="tabler-thumb-up" />
-              </IconBtn>
-            </template>
-          </VTooltip>
-          <VTooltip text="Rechazar Factura">
-            <template #activator="{ props }">
-              <IconBtn
+                ><VIcon icon="tabler-thumb-up" /></IconBtn></template
+          ></VTooltip>
+          <VTooltip text="Rechazar Factura"
+            ><template #activator="{ props }"
+              ><IconBtn
                 v-bind="props"
                 color="error"
                 @click="emit('reject-invoice', item)"
-              >
-                <VIcon icon="tabler-thumb-down" />
+                ><VIcon icon="tabler-thumb-down" /></IconBtn></template
+          ></VTooltip>
+          <VTooltip text="Ver Detalles"
+            ><template #activator="{ props }"
+              ><IconBtn v-bind="props" @click="emit('view-details', item)"
+                ><VIcon icon="tabler-eye" /></IconBtn></template
+          ></VTooltip>
+        </div>
+
+        <div v-else-if="props.actionsMode === 'location'">
+          <VBtn
+            color="primary"
+            variant="tonal"
+            size="small"
+            @click="emit('locate-products', item)"
+            ><VIcon icon="tabler-map-pin" class="me-2" />Ubicar Productos</VBtn
+          >
+        </div>
+
+        <div v-else-if="props.actionsMode === 'ordered'">
+          <VTooltip text="Ver Detalles">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="emit('view-details', item)">
+                <VIcon icon="tabler-eye" />
               </IconBtn>
             </template>
           </VTooltip>
-          <VTooltip text="Ver Detalles">
+          <VTooltip text="Descargar Boucher (Próximamente)">
             <template #activator="{ props }">
-              <IconBtn v-bind="props" @click="emit('edit-invoice', item)">
-                <VIcon icon="tabler-eye" />
+              <IconBtn v-bind="props">
+                <VIcon icon="tabler-download" />
               </IconBtn>
             </template>
           </VTooltip>
         </div>
 
         <div v-else class="d-flex">
-          <VTooltip text="Editar Factura">
-            <template #activator="{ props }">
-              <IconBtn v-bind="props" @click="emit('edit-invoice-form', item)">
-                <VIcon icon="tabler-edit" />
-              </IconBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip text="Ver Productos">
-            <template #activator="{ props }">
-              <IconBtn v-bind="props" @click="emit('edit-invoice', item)">
-                <VIcon icon="tabler-package" />
-              </IconBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip text="Eliminar">
-            <template #activator="{ props }">
-              <IconBtn v-bind="props" @click="emit('delete-invoice', item.id)">
-                <VIcon icon="tabler-trash" />
-              </IconBtn>
-            </template>
-          </VTooltip>
+          <VTooltip text="Editar Factura"
+            ><template #activator="{ props }"
+              ><IconBtn v-bind="props" @click="emit('edit-invoice-form', item)"
+                ><VIcon icon="tabler-edit" /></IconBtn></template
+          ></VTooltip>
+          <VTooltip text="Ver Productos"
+            ><template #activator="{ props }"
+              ><IconBtn v-bind="props" @click="emit('edit-invoice', item)"
+                ><VIcon icon="tabler-package" /></IconBtn></template
+          ></VTooltip>
+          <VTooltip text="Eliminar"
+            ><template #activator="{ props }"
+              ><IconBtn v-bind="props" @click="emit('delete-invoice', item.id)"
+                ><VIcon icon="tabler-trash" /></IconBtn></template
+          ></VTooltip>
         </div>
       </template>
     </VDataTableServer>

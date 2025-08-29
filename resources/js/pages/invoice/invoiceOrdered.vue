@@ -1,14 +1,10 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
-
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
-import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
-
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
@@ -42,7 +38,7 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchInvoices = async () => {
+const fetchOrderedInvoices = async () => {
   loading.value = true;
   const params = {
     page: page.value,
@@ -53,7 +49,7 @@ const fetchInvoices = async () => {
     supplierId: selectedSupplier.value,
     startDate: startDate.value,
     endDate: endDate.value,
-    status: "pending",
+    status: "ordered",
   };
 
   Object.keys(params).forEach(
@@ -61,12 +57,13 @@ const fetchInvoices = async () => {
   );
 
   try {
+    // Reutilizamos el endpoint que ya filtra por status 'ordered'
     const response = await axios.get("/invoices", { params });
     invoices.value = response.data.data;
     totalInvoices.value = response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener las facturas:", error);
-    toast.error("Error al obtener las facturas.");
+    toast.error("Error al obtener las facturas finalizadas.");
   } finally {
     loading.value = false;
   }
@@ -87,29 +84,15 @@ watch(
   () => {
     if (currentView.value === "list") {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => fetchInvoices(), 300);
+      debounceTimer = setTimeout(() => fetchOrderedInvoices(), 300);
     }
   },
   { deep: true }
 );
 
-watch(
-  [
-    searchQuery,
-    selectedSupplier,
-    /* Se elimina `selectedStatus` */ startDate,
-    endDate,
-  ],
-  () => {
-    if (page.value !== 1) {
-      page.value = 1;
-    }
-  }
-);
-
 onMounted(() => {
   fetchSuppliers();
-  fetchInvoices();
+  fetchOrderedInvoices();
 });
 
 const updateTableOptions = (options) => {
@@ -126,66 +109,30 @@ const handleClearFilters = () => {
   endDate.value = null;
 };
 
-const handleEditInvoice = (invoice) => {
+const handleViewDetails = (invoice) => {
   selectedInvoiceId.value = invoice.id;
   currentView.value = "detail";
-};
-
-const handleEditInvoiceForm = (invoice) => {
-  selectedInvoiceId.value = invoice.id;
-  currentView.value = "edit-form";
 };
 
 const handleReturnToList = () => {
   selectedInvoiceId.value = null;
   currentView.value = "list";
-  fetchInvoices();
-};
-
-const handleDeleteInvoice = async (id) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de esta factura!",
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Sí, eliminar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await axios.delete(`/invoices/${id}`);
-      toast.success("Factura eliminada con éxito.");
-      fetchInvoices();
-    } catch (error) {
-      console.error(`Error al borrar la factura ${id}:`, error);
-      toast.error(
-        error.response?.data?.message || "No se pudo eliminar la factura."
-      );
-    }
-  }
+  fetchOrderedInvoices();
 };
 </script>
 
 <template>
   <div>
+    <VRow>
+      <VCol cols="12">
+        <h4 class="text-h4">Facturas Finalizadas</h4>
+        <p>
+          Consulta el historial de facturas que ya han sido aprobadas y
+          procesadas.
+        </p>
+      </VCol>
+    </VRow>
+
     <div v-if="currentView === 'list'">
       <InvoiceFilters
         v-model:searchQuery="searchQuery"
@@ -203,26 +150,17 @@ const handleDeleteInvoice = async (id) => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        actionsMode="ordered"
         @update:options="updateTableOptions"
-        @edit-invoice="handleEditInvoice"
-        @edit-invoice-form="handleEditInvoiceForm"
-        @delete-invoice="handleDeleteInvoice"
+        @view-details="handleViewDetails"
       />
     </div>
 
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        mode="read-only"
         @back-to-list="handleReturnToList"
-      />
-    </div>
-
-    <div v-else-if="currentView === 'edit-form'">
-      <InvoiceFormEdit
-        :invoice-id="selectedInvoiceId"
-        :is-edit-mode="true"
-        @back-to-list="handleReturnToList"
-        @invoice-saved="handleReturnToList"
       />
     </div>
   </div>

@@ -250,11 +250,6 @@ class ProductRepository
                 THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
-            // DB::raw('(
-            //     SELECT COALESCE(SUM(p2.sales_average), 0)
-            //     FROM products p2
-            //     WHERE p2.group_id = products.group_id
-            // ) AS group_sales_average_sum'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado

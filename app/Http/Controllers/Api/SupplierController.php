@@ -7,12 +7,12 @@ use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
-use App\Services\Suppliers\SupplierConnectionService;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
+use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
-use Illuminate\Support\Facades\DB;
+use App\Models\SupplierConnectionStatus;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -26,7 +26,8 @@ class SupplierController extends Controller
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService,
-    ) {}
+    ) {
+    }
 
     /**
      * Display a listing of the suppliers.
@@ -109,28 +110,27 @@ class SupplierController extends Controller
 
     /**
      * Summary of connectionServiceSupplier
-     * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
     public function connectionServiceSupplier(
-        SupplierConnectionService $connectionService,
         Supplier $supplier,
     ) {
-        $results = $connectionService->fetchData(
-            $supplier->connections->first(),
-        );
+        $userId = auth()->id() ?? 1;
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $result = $this->supplierQueryService->storeSupplierConnectionData(
-            $supplier,
-            $results,
-        );
+        return response()->json(['status' => 'queued']);
+    }
 
-        $status = $result ? "ok" : "error";
+    /**
+     * Get the connection statuses for the authenticated user.
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
+    public function getConnectionStatus()
+    {
+        $userId = auth()->id() ?? 1;
+        $statuses = $this->supplierQueryService->getRecentConnectionStatusesForUser($userId);
 
-        return response()->json(
-            ["status" => $status, "count" => count($results)],
-            $status === "error" ? 500 : 200,
-        );
+        return response()->json(['statuses' => $statuses]);
     }
 
     /**
@@ -148,7 +148,7 @@ class SupplierController extends Controller
 
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                'days' =>  $rule['days'],
+                'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
 
@@ -247,34 +247,6 @@ class SupplierController extends Controller
         return response()->json([
             "message" => "Descuentos registrados correctamente.",
             "discounts" => $createdDiscounts,
-        ]);
-    }
-
-    public function getDiscounts(Supplier $supplier)
-    {
-        $discounts = $this->supplierQueryService->getDiscounts($supplier);
-
-        return response()->json(['supplier_discount' => $discounts]);
-    }
-
-    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
-    {
-        $validated = $request->validated();
-
-        $createdDiscounts = [];
-
-        foreach ($validated['discounts'] as $rule) {
-            $discountData = [
-                'name' =>  $rule['name'],
-                'discount_percentage' => $rule['discount_percentage'],
-            ];
-
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
-        }
-
-        return response()->json([
-            'message' => 'Descuentos registrados correctamente.',
-            'discounts' => $createdDiscounts,
         ]);
     }
 }

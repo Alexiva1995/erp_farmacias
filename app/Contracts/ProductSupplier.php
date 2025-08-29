@@ -15,7 +15,7 @@ interface ProductSupplier
 
     public function calculatePercentageDifferenceIncrease(float $myPrice, float $supplierPrice): float;
 
-    public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): Bool;
+    public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): Bool | null;
 
     public function checkPurchaseOpportunity(float $percentageIncrease, float $maximumPercentageMaximo): Bool;
 
