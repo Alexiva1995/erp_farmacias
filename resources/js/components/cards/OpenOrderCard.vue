@@ -1,10 +1,10 @@
 <script setup>
-import { defineProps, computed, ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import Swal from "sweetalert2";
-import { toast } from "@/plugins/sweetalert";
-import axios from "@/plugins/axios";
+import { computed, defineProps, ref, watch } from "vue";
 
 const props = defineProps({
   orderProducts: {
@@ -52,11 +52,23 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-   orderReserved: {
+  orderReserved: {
     type: Object,
     default: null,
   },
 });
+
+const emit = defineEmits([
+  "update:searchQuery",
+  "currency-changed",
+  "update-quantity",
+  "remove-item",
+  "cancelar-order",
+  "open-buys-modal",
+  "reserve-order",
+  "add-quotation-products",
+  "add-reserved-order",
+]);
 
 const quotationId = ref("");
 
@@ -73,24 +85,10 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const emit = defineEmits([
-  "update:searchQuery",
-  "currency-changed",
-  "update-quantity",
-  "remove-item",
-  "cancelar-order",
-  "open-buys-modal",
-  "reserve-order",
-  "add-quotation-products",
-  "show-reserved-order"
-]);
-
 const chipColor = "primary";
 
 const breakdownItems = computed(() => {
   let ivaAmount = props.totalIvaAmount;
-
-  // Aplica el redondeo solo si la moneda es 'COP'
   if (props.selectedDisplayCurrency === "COP") {
     ivaAmount = roundUpToNearestHundred(props.totalIvaAmount);
   }
@@ -122,6 +120,7 @@ const totalSelectedQuantity = computed(() => {
       total += quantity;
     }
   });
+
   return total;
 });
 
@@ -135,10 +134,11 @@ const getProductPriceSinIva = (product, currency) => {
     basePrice = product.price || 0;
   }
 
-  let priceSinIva = basePrice;
+  let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
     priceSinIva = roundUpToNearestHundred(priceSinIva);
   }
+
   return priceSinIva;
 };
 
@@ -152,10 +152,11 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let priceWithIva = basePrice * (1 + taxRate);
+  let priceWithIva = (basePrice * product.selectedQuantity) * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
+
   return priceWithIva;
 };
 
@@ -169,10 +170,11 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let Iva = basePrice * taxRate;
+  let Iva = (basePrice * product.selectedQuantity) * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
+
   return Iva;
 };
 
@@ -183,6 +185,7 @@ const handleClickProductItem = (productId, currentQuantity) => {
     emit("remove-item", productId);
   }
 };
+
 const hadleCancelarOrder = () => {
   Swal.fire({
     title: "¿Estás seguro?",
@@ -226,12 +229,14 @@ const fetchQuotationProducts = async (id) => {
   try {
     const response = await axios.get(`/tpv/quotations/${id}/products`);
     const quotationData = response.data;
+
     emit("add-quotation-products", quotationData.products);
     toast.success("Productos de la cotización cargados exitosamente.");
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
       "Error de red o cotización no encontrada.";
+
     toast.error(errorMessage);
     console.error("Error fetching quotation:", error);
   } finally {
@@ -240,14 +245,34 @@ const fetchQuotationProducts = async (id) => {
 };
 
 const handleReserved = () => {
-     emit('show-reserved-order');
+  emit("add-reserved-order");
 };
 
+watch(
+  () => props.orderProducts,
+  (newProducts) => {
+    newProducts.forEach((product) => {
+      if (product.selectedQuantity > product.availableQuantity) {
+        emit("update-quantity", {
+          productId: product.product_id,
+          quantity: product.availableQuantity,
+        });
+        toast.warning(
+          `La cantidad de "${product.title}" se ha ajustado al stock máximo disponible: ${product.availableQuantity}.`
+        );
+      }
+    });
+  },
+  { deep: true }
+);
 </script>
+
 <template>
   <VCard class="mb-6">
-    <VCardItem style="padding-top: 5px;">
-      <VCardTitle>{{ clientName }} {{ Identidad }}</VCardTitle>
+    <VCardItem class="py-2">
+      <VCardTitle class="text-h4">
+        {{ clientName }} {{ Identidad }}
+      </VCardTitle>
       <template #append>
         <VMenu>
           <template #activator="{ props: menuProps }">
@@ -257,17 +282,15 @@ const handleReserved = () => {
               variant="tonal"
               density="default"
               size="small"
-              class="mx-auto"
+              class="ms-2"
               v-bind="menuProps"
             >
               <span>{{ props.selectedDisplayCurrency }}</span>
-
               <template #append>
                 <VIcon icon="tabler-chevron-down" size="16" />
               </template>
             </VBtn>
           </template>
-
           <VList>
             <VListItem
               v-for="currencyOption in availableCurrency"
@@ -282,36 +305,35 @@ const handleReserved = () => {
       </template>
     </VCardItem>
 
-    <VRow>
-      <VCol cols="6">
-        <VCardItem class="py-1">
-          <VCardTitle>Productos</VCardTitle>
-          <template #append>
-            <VChip
-              label
-              :color="chipColor"
-              variant="tonal"
-              density="default"
-              size="small"
-              draggable="false"
-              class="ms-auto"
-            >
-              <span class="font-weight-medium">{{
-                totalSelectedQuantity
-              }}</span>
-            </VChip>
-          </template>
-        </VCardItem>
-      </VCol>
-      <VCol cols="6">
-        <VCardText class="py-1">
-          <VRow>
-            <VCol cols="6">
+    <VCardText class="py-2">
+      <VRow>
+        <VCol cols="12" md="6" class="d-flex align-center">
+          <VCardItem class="py-2 px-0">
+            <VCardTitle class="text-h6"> Productos </VCardTitle>
+            <template #append>
+              <VChip
+                label
+                :color="chipColor"
+                variant="tonal"
+                density="default"
+                size="small"
+                draggable="false"
+              >
+                <span class="font-weight-medium">
+                  {{ totalSelectedQuantity }}</span
+                >
+              </VChip>
+            </template>
+          </VCardItem>
+        </VCol>
+        <VCol cols="12" md="6" class="d-flex align-center">
+          <VRow class="flex-grow-1">
+            <VCol cols="12" sm="6">
               <AppTextField
                 v-model="quotationId"
                 placeholder="ID de la cotización"
                 clearable
-                class="flex-grow-1 mb-2"
+                class="py-1"
               >
                 <template #append-inner>
                   <VBtn
@@ -319,59 +341,86 @@ const handleReserved = () => {
                     variant="text"
                     color="primary"
                     size="small"
-                    @click="fetchQuotationProducts(quotationId)"
                     :disabled="!quotationId"
+                    @click="fetchQuotationProducts(quotationId)"
                   >
                     <VIcon icon="tabler-plus" />
                   </VBtn>
                 </template>
               </AppTextField>
             </VCol>
-            <VCol cols="6">
+            <VCol cols="12" sm="6">
               <AppTextField
                 :model-value="props.searchQuery"
                 placeholder="Código de Barra"
                 clearable
+                class="py-1"
                 @update:model-value="emit('update:searchQuery', $event)"
-                class="flex-grow-1"
               />
             </VCol>
           </VRow>
-        </VCardText>
-      </VCol>
-    </VRow>
+        </VCol>
+      </VRow>
+    </VCardText>
+    <VDivider />
 
-    <VCardText>
-      <div>
-        <VList class="card-list" density="compact" nav>
+    <VCardText class="py-2 bg-grey-lighten-4">
+      <VList class="card-list" density="compact" nav>
+        <template
+          v-for="(product, index) in props.orderProducts"
+          :key="product.id"
+        >
           <VListItem
-            v-for="product in props.orderProducts"
-            :key="product.id"
-            class="rounded-0"
-            @click="
+            class="rounded-0 cursor-pointer py-2"
+          >
+            <VListItemTitle class="font-weight-medium me-4 mx-2">
+              {{ product.title }}
+            </VListItemTitle>
+            <VListItemSubtitle class="mx-2 d-flex align-center">
+              {{ product.active_ingredient }}
+              {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+              <div class="d-flex align-center ms-2">
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="
               handleClickProductItem(
                 product.product_id,
-                product.selectedQuantity
-              )
+                product.selectedQuantity)
             "
-            :class="{ 'cursor-pointer': true }"
-          >
-            <template #prepend>
-              <span>{{ product.selectedQuantity }} x</span>
-            </template>
-
-            <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-              product.title
-            }}</VListItemTitle>
-            <VListItemSubtitle class="mx-2"
-              >{{product.active_ingredient}} {{ product.laboratory ? `- ${product.laboratory}` : '' }}</VListItemSubtitle
-            >
-
+                >
+                  <VIcon icon="tabler-minus" />
+                </VBtn>
+               <VTextField
+                  v-model.number="product.selectedQuantity"
+                  variant="outlined"
+                  density="compact"
+                  single-line
+                  hide-details
+                  class="mx-1"
+                  style="width: 50px; text-align: center"
+                />
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="$emit('update-quantity', { productId: product.product_id, quantity: product.selectedQuantity + 1 })"
+                  :disabled="product.selectedQuantity >= product.availableQuantity"
+                >
+                  <VIcon icon="tabler-plus" />
+                </VBtn>
+              </div>
+            </VListItemSubtitle>
             <template #append>
               <div class="d-flex align-center">
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-body-2 text-medium-emphasis">Precio</span>
-                  <span class="text-body-1">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Precio</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
                         getProductPriceSinIva(
@@ -383,10 +432,13 @@ const handleReserved = () => {
                     }}
                   </span>
                 </div>
-
                 <div class="d-flex flex-column align-end me-4">
-                  <span class="text-body-2 text-medium-emphasis">IVA</span>
-                  <span class="text-body-1">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >IVA</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
                     {{
                       formatCurrency(
                         getIva(product, props.selectedDisplayCurrency),
@@ -395,10 +447,13 @@ const handleReserved = () => {
                     }}
                   </span>
                 </div>
-
                 <div class="d-flex flex-column align-end">
-                  <span class="text-body-2 text-medium-emphasis">Total</span>
-                  <span class="text-body-1 me-2 font-weight-bold">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
+                  <span class="text-body-1 me-2 font-weight-bold text-black">
                     {{
                       formatCurrency(
                         getProductPrice(product, props.selectedDisplayCurrency),
@@ -410,51 +465,63 @@ const handleReserved = () => {
               </div>
             </template>
           </VListItem>
-        </VList>
-      </div>
+        </template>
+      </VList>
     </VCardText>
+    <VDivider class="mt-auto" />
 
-    <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
-      <VDivider class="mt-auto" />
-      <h4 class="text-h4 text-center">Monto Total</h4>
-      <div class="text-h4 text-success">
-        {{ formattedTotalQuotation }}
+    <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
+      <div class="d-flex flex-wrap gap-4 flex-grow-1">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          class="flex-grow-1"
+          @click="hadleCancelarOrder"
+        >
+          CANCELAR
+        </VBtn>
+        <VBtn
+          v-if="!props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleTReserveOrder"
+        >
+          RESERVAR
+        </VBtn>
+         <VBtn
+          v-if="props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleReserved"
+        >
+          RESERVADA
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleCompleteOrder"
+        >
+          COMPLETAR
+        </VBtn>
       </div>
-    </VCardActions>
-
-    <VCardActions class="p-4 d-flex flex-wrap gap-4">
-   
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            @click="hadleCancelarOrder"
-            >Cancelar</VBtn
-          >
-
-          <VBtn
-            color="primary"
-            variant="flat"
-            @click="handleCompleteOrder"
-         
-            >Completar</VBtn
-          >
-          <VBtn
-            color="success"
-            variant="flat"
-            @click="handleTReserveOrder"
-        
-            >Reservar</VBtn
-          >
-        <VSpacer />
-
-        <VSpacer />
-          <VBtn  v-if="props.orderReserved"
-        color="primary"
-        prepend-icon="tabler-arrow-back"
-        @click="handleReserved"
-      >
-        Order Reservada
-      </VBtn>
+      <div class="d-flex align-center">
+        <h4 class="text-h4 me-2">Monto Total</h4>
+        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+      </div>
     </VCardActions>
   </VCard>
 </template>
+
+<style scoped>
+.card-list .v-list-item:not(:last-child) {
+  padding-block: 4px !important;
+  padding-block-end: 0 !important;
+}
+
+.v-list .v-list-item--nav:not(:only-child) {
+  margin-block-end: 0 !important;
+}
+</style>

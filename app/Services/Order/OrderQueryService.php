@@ -121,7 +121,10 @@ class OrderQueryService
                 foreach ($words as $word) {
                     $subQuery->where(function ($wordQuery) use ($word) {
                         $wordQuery->where('name', 'like', "%{$word}%")
-                                  ->orWhere('active_ingredient', 'like', "%{$word}%");
+                                  ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                  ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                     $labQuery->where('name', 'like', "%{$word}%");
+                                 });
                     });
                 }
             }

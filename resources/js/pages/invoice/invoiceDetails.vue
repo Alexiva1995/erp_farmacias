@@ -16,12 +16,16 @@ const emit = defineEmits(["back-to-list"]);
 const invoice = ref(null);
 const invoiceDetails = ref([]);
 const formData = ref({});
+const locationData = ref([]);
 const loading = ref(true);
 const loadingDetails = ref(true);
-const isEditMode = ref(false);
 const isSaving = ref(false);
 
+const isEditableMode = computed(() => props.mode === "editable");
+const isLocationMode = computed(() => props.mode === "location");
 const isReadOnly = computed(() => props.mode === "read-only");
+
+const isEditMode = ref(false);
 
 const editingDetailId = ref(null);
 const editedDetailData = ref({});
@@ -71,13 +75,6 @@ const processedInvoiceDetails = computed(() => {
   });
 });
 
-const totalDetailsAmount = computed(() => {
-  return processedInvoiceDetails.value.reduce(
-    (total, item) => total + item.total_cost,
-    0
-  );
-});
-
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
   if (invoice.value) {
@@ -86,7 +83,7 @@ onMounted(async () => {
 });
 
 watch(isEditMode, (newVal) => {
-  if (!newVal) {
+  if (isEditableMode.value && !newVal) {
     cancelEditingDetail();
     isProductSearchVisible.value = false;
   }
@@ -97,7 +94,9 @@ const fetchInvoiceData = async (id) => {
   try {
     const response = await axios.get(`/invoices/${id}`);
     invoice.value = response.data.data;
-    formData.value = JSON.parse(JSON.stringify(invoice.value));
+    if (isEditableMode.value) {
+      formData.value = JSON.parse(JSON.stringify(invoice.value));
+    }
   } catch (error) {
     console.error("Error al cargar la factura:", error);
     toast.error("No se pudo cargar la información de la factura.");
@@ -112,6 +111,12 @@ const fetchInvoiceDetails = async (id) => {
   try {
     const response = await axios.get(`/invoices/${id}/details`);
     invoiceDetails.value = response.data.data ?? [];
+    if (isLocationMode.value) {
+      locationData.value = invoiceDetails.value.map((d) => ({
+        id: d.id,
+        location: d.location,
+      }));
+    }
   } catch (error) {
     console.error("Error al cargar los detalles de la factura:", error);
     toast.error("No se pudieron cargar los productos de la factura.");
@@ -193,7 +198,7 @@ const updateProductTableOptions = (options) => {
 };
 
 const toggleEditMode = (enable) => {
-  if (isReadOnly.value) return;
+  if (isReadOnly.value || isLocationMode.value) return;
 
   isEditMode.value = enable;
   if (!enable) {
@@ -217,17 +222,14 @@ const addProductToInvoice = (product) => {
     const newDetail = {
       id: -Math.floor(Math.random() * 1000),
       product: { id: product.id, name: product.name },
-      quantity: 0,
+      quantity: 1,
       unit_cost: 0,
       lot_number: "",
       expiration_date: null,
-      location: "",
+      location: "Por Asignar",
     };
-
     invoiceDetails.value.push(newDetail);
-
     startEditingDetail(newDetail);
-
     toast.success(
       `Producto "${product.name}" agregado. Complete los campos obligatorios.`
     );
@@ -244,7 +246,6 @@ const handleSearchBarcode = async (barcode) => {
     const response = await axios.get(`/products/search-by-barcode`, {
       params: { barcode },
     });
-
     if (response.data.data) {
       barcodeModalRef.value?.handleProductFound(response.data.data);
     } else {
@@ -272,14 +273,10 @@ const handleAddNewProduct = () => {
 
 const handleSaveProduct = async (productFormData) => {
   const url = "/products";
-
   try {
     await axios.post(url, productFormData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
-
     toast.success("Producto creado con éxito");
     isEditDialogVisible.value = false;
     if (isProductSearchVisible.value) {
@@ -315,27 +312,19 @@ const saveEditingDetail = () => {
     toast.error("La cantidad debe ser mayor a 0");
     return;
   }
-
   if (
     !editedDetailData.value.unit_cost ||
-    editedDetailData.value.unit_cost <= 0
+    editedDetailData.value.unit_cost < 0
   ) {
-    toast.error("El costo por unidad debe ser mayor a 0");
+    toast.error("El costo por unidad debe ser 0 o mayor");
     return;
   }
-
   if (!editedDetailData.value.lot_number?.trim()) {
     toast.error("El número de lote es obligatorio");
     return;
   }
-
   if (!editedDetailData.value.expiration_date) {
     toast.error("La fecha de vencimiento es obligatoria");
-    return;
-  }
-
-  if (!editedDetailData.value.location?.trim()) {
-    toast.error("La localización es obligatoria");
     return;
   }
 
@@ -344,7 +333,8 @@ const saveEditingDetail = () => {
   );
   if (detailIndex !== -1) {
     editedDetailData.value.total_cost =
-      editedDetailData.value.quantity * editedDetailData.value.unit_cost;
+      (editedDetailData.value.quantity || 0) *
+      (editedDetailData.value.unit_cost || 0);
     invoiceDetails.value[detailIndex] = { ...editedDetailData.value };
     toast.success("Producto actualizado correctamente");
   }
@@ -358,7 +348,6 @@ const cancelEditingDetail = () => {
 
 const handleUpdate = async () => {
   isSaving.value = true;
-
   const payload = {
     invoice: formData.value,
     details: invoiceDetails.value,
@@ -366,23 +355,43 @@ const handleUpdate = async () => {
 
   try {
     const response = await axios.put(`/invoices/${props.invoiceId}`, payload);
-
     toast.success(response.data.message || "Factura actualizada con éxito.");
-
-    invoice.value = response.data.invoice;
-    formData.value = JSON.parse(JSON.stringify(response.data.invoice));
-    invoiceDetails.value = response.data.invoice.details;
-
-    isEditMode.value = false;
     emit("back-to-list");
   } catch (error) {
-    if (error.response && error.response.status === 422) {
-      toast.error("Datos inválidos. Por favor, revisa el formulario.");
-    } else {
-      toast.error(
-        error.response?.data?.message || "No se pudo actualizar la factura."
-      );
-    }
+    toast.error(
+      error.response?.data?.message || "No se pudo actualizar la factura."
+    );
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const handleSaveLocations = async () => {
+  const hasEmptyLocation = locationData.value.some(
+    (d) =>
+      !d.location ||
+      d.location.trim() === "" ||
+      d.location.trim() === "Por Asignar"
+  );
+  if (hasEmptyLocation) {
+    toast.error("Por favor, asigne una localización a todos los productos.");
+    return;
+  }
+
+  isSaving.value = true;
+  const payload = { details: locationData.value };
+
+  try {
+    const response = await axios.put(
+      `/invoices/${props.invoiceId}/locations`,
+      payload
+    );
+    toast.success(response.data.message || "Ubicaciones guardadas con éxito.");
+    emit("back-to-list");
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "No se pudieron guardar las ubicaciones."
+    );
   } finally {
     isSaving.value = false;
   }
@@ -398,18 +407,9 @@ const formatNumber = (value) => {
 
 const formatCurrency = (value, currency = null) => {
   if (typeof value !== "number") return value;
-
   const targetCurrency = currency || invoice.value?.currency;
-
-  const currencyMap = {
-    BS: "VES",
-    Bs: "VES",
-    COP: "COP",
-    USD: "USD",
-  };
-
+  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
   const mappedCurrency = currencyMap[targetCurrency] || "VES";
-
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: mappedCurrency,
@@ -420,14 +420,7 @@ const formatCurrency = (value, currency = null) => {
 
 const getCurrencySymbol = () => {
   if (!invoice.value?.currency) return "Bs.";
-
-  const symbolMap = {
-    BS: "Bs.",
-    Bs: "Bs.",
-    USD: "$",
-    COP: "COP$",
-  };
-
+  const symbolMap = { BS: "Bs.", Bs: "Bs.", USD: "$", COP: "COP$" };
   return symbolMap[invoice.value.currency] || "Bs.";
 };
 
@@ -462,7 +455,7 @@ const detailsHeaders = [
     width: "10%",
   },
   {
-    title: "Costo por Unidad",
+    title: "Costo Unitario",
     key: "unit_cost",
     align: "end",
     sortable: false,
@@ -500,9 +493,7 @@ const detailsHeaders = [
         density="compact"
         class="mb-4"
       >
-        <template #prepend>
-          <VIcon icon="tabler-info-circle" />
-        </template>
+        <template #prepend><VIcon icon="tabler-info-circle" /></template>
         <div>
           <strong>Factura en {{ invoice.currency }}</strong>
           <div class="text-caption mt-1">
@@ -513,7 +504,11 @@ const detailsHeaders = [
       </VAlert>
 
       <VCard class="invoice-detail-card mb-6">
-        <VForm @submit.prevent="handleUpdate">
+        <VForm
+          @submit.prevent="
+            isLocationMode ? handleSaveLocations() : handleUpdate()
+          "
+        >
           <VCardText class="header-section">
             <VRow align="center" justify="space-between" class="mb-4">
               <VCol cols="auto">
@@ -525,7 +520,7 @@ const detailsHeaders = [
               </VCol>
               <VCol cols="auto">
                 <VBtn
-                  v-if="!isEditMode && !isReadOnly"
+                  v-if="isEditableMode && !isEditMode"
                   @click="toggleEditMode(true)"
                   color="primary"
                   variant="tonal"
@@ -534,7 +529,6 @@ const detailsHeaders = [
                 </VBtn>
               </VCol>
             </VRow>
-
             <VRow align="start" justify="space-between">
               <VCol cols="12" md="auto">
                 <div>
@@ -542,31 +536,29 @@ const detailsHeaders = [
                     {{ invoice.supplier.name }}
                   </h1>
                   <div class="d-flex align-center mt-2">
-                    <span class="text-subtitle-1 font-weight-medium me-2">
-                      N° DE CONTROL
-                    </span>
-                    <span class="text-h6 font-weight-bold text-error">
-                      {{ invoice.control_number }}
-                    </span>
+                    <span class="text-subtitle-1 font-weight-medium me-2"
+                      >N° DE CONTROL</span
+                    >
+                    <span class="text-h6 font-weight-bold text-error">{{
+                      invoice.control_number
+                    }}</span>
                   </div>
                 </div>
               </VCol>
               <VCol cols="12" md="auto" class="text-md-end">
                 <div class="d-flex align-center justify-md-end">
-                  <span class="text-subtitle-1 font-weight-medium me-2">
-                    FACTURA N°
-                  </span>
+                  <span class="text-subtitle-1 font-weight-medium me-2"
+                    >FACTURA N°</span
+                  >
                   <span
                     class="text-h4 font-weight-bold text-error"
                     style="font-size: 2rem !important"
+                    >{{ invoice.invoice_number }}</span
                   >
-                    {{ invoice.invoice_number }}
-                  </span>
                 </div>
               </VCol>
             </VRow>
           </VCardText>
-
           <VDivider />
 
           <VCardText class="dates-section">
@@ -596,29 +588,22 @@ const detailsHeaders = [
                   }}
                 </p>
                 <p class="text-body-1 font-weight-medium mt-1">
-                  {{ formData[dateField] }}
+                  {{ invoice[dateField] }}
                 </p>
               </VCol>
             </VRow>
           </VCardText>
-
           <VDivider />
 
           <VCardText class="products-section">
             <div class="d-flex align-center mb-4">
               <span class="text-h6 font-weight-medium">Productos</span>
-              <VChip color="primary" variant="outlined" class="ms-2">
-                {{ processedInvoiceDetails.length }} productos
-              </VChip>
-              <VIcon
-                icon="tabler-info-circle"
-                size="20"
-                class="ms-2 text-disabled"
-              />
+              <VChip color="primary" variant="outlined" class="ms-2"
+                >{{ invoiceDetails.length }} productos</VChip
+              >
               <VSpacer />
-
               <VBtn
-                v-if="isEditMode"
+                v-if="isEditableMode && isEditMode"
                 color="primary"
                 variant="flat"
                 size="small"
@@ -628,13 +613,6 @@ const detailsHeaders = [
                 <VIcon icon="tabler-plus" class="me-2" />
                 Agregar Producto
               </VBtn>
-
-              <span class="text-body-1 me-2 text-error font-weight-medium">
-                {{ invoice.currency }}. Total Cargado
-              </span>
-              <VChip color="error" label>
-                {{ formatCurrency(totalDetailsAmount) }}
-              </VChip>
             </div>
 
             <VDataTable
@@ -646,7 +624,7 @@ const detailsHeaders = [
             >
               <template #item.lot_number="{ item }">
                 <VTextField
-                  v-if="item.id === editingDetailId"
+                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model="editedDetailData.lot_number"
                   density="compact"
                   hide-details
@@ -659,7 +637,7 @@ const detailsHeaders = [
 
               <template #item.expiration_date="{ item }">
                 <AppDateTimePicker
-                  v-if="item.id === editingDetailId"
+                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model="editedDetailData.expiration_date"
                   density="compact"
                   class="editable-cell"
@@ -668,22 +646,22 @@ const detailsHeaders = [
                 <span v-else>{{ item.expiration_date || "-" }}</span>
               </template>
 
-              <template #item.location="{ item }">
+              <template #item.location="{ item, index }">
                 <VTextField
-                  v-if="item.id === editingDetailId"
-                  v-model="editedDetailData.location"
+                  v-if="isLocationMode"
+                  v-model="locationData[index].location"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
-                  placeholder="Localización"
+                  placeholder="Ej: A-01-B"
                 />
                 <span v-else>{{ item.location || "-" }}</span>
               </template>
 
               <template #item.quantity="{ item }">
                 <VTextField
-                  v-if="item.id === editingDetailId"
+                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.quantity"
                   type="number"
                   density="compact"
@@ -697,7 +675,7 @@ const detailsHeaders = [
 
               <template #item.unit_cost="{ item }">
                 <VTextField
-                  v-if="item.id === editingDetailId"
+                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.unit_cost"
                   type="number"
                   step="0.01"
@@ -709,67 +687,53 @@ const detailsHeaders = [
                   :prefix="getCurrencySymbol()"
                 />
                 <div v-else class="d-flex flex-column align-end">
-                  <span class="font-weight-medium">
-                    {{ formatCurrency(item.unit_cost) }}
-                  </span>
+                  <span class="font-weight-medium">{{
+                    formatCurrency(item.unit_cost, invoice.currency)
+                  }}</span>
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
+                    >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
                   >
-                    {{ formatCurrency(item.unit_cost_usd, "USD") }}
-                  </span>
                 </div>
               </template>
 
               <template #item.total_cost="{ item }">
-                <div
-                  v-if="item.id === editingDetailId"
-                  class="d-flex flex-column align-end"
-                >
-                  <span>{{
-                    formatCurrency(
-                      (editedDetailData.quantity || 0) *
-                        (editedDetailData.unit_cost || 0)
-                    )
+                <div class="d-flex flex-column align-end">
+                  <span class="font-weight-medium">{{
+                    formatCurrency(item.total_cost, invoice.currency)
                   }}</span>
-                </div>
-                <div v-else class="d-flex flex-column align-end">
-                  <span class="font-weight-medium">
-                    {{ formatCurrency(item.total_cost) }}
-                  </span>
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
+                    >{{ formatCurrency(item.total_cost_usd, "USD") }}</span
                   >
-                    {{ formatCurrency(item.total_cost_usd, "USD") }}
-                  </span>
                 </div>
               </template>
 
               <template #item.actions="{ item }">
-                <div v-if="isEditMode">
+                <div v-if="isEditableMode && isEditMode">
                   <div v-if="item.id === editingDetailId" class="d-flex">
-                    <IconBtn @click="saveEditingDetail">
-                      <VIcon icon="tabler-check" color="success" size="22" />
-                    </IconBtn>
-                    <IconBtn @click="cancelEditingDetail">
-                      <VIcon icon="tabler-x" color="error" size="22" />
-                    </IconBtn>
+                    <IconBtn @click="saveEditingDetail"
+                      ><VIcon icon="tabler-check" color="success" size="22"
+                    /></IconBtn>
+                    <IconBtn @click="cancelEditingDetail"
+                      ><VIcon icon="tabler-x" color="error" size="22"
+                    /></IconBtn>
                   </div>
                   <div v-else class="d-flex">
-                    <IconBtn @click="removeProductFromInvoice(item.id)">
-                      <VIcon icon="tabler-trash" size="20" />
-                    </IconBtn>
-                    <IconBtn @click="startEditingDetail(item)">
-                      <VIcon icon="tabler-edit" size="20" />
-                    </IconBtn>
+                    <IconBtn @click="removeProductFromInvoice(item.id)"
+                      ><VIcon icon="tabler-trash" size="20"
+                    /></IconBtn>
+                    <IconBtn @click="startEditingDetail(item)"
+                      ><VIcon icon="tabler-edit" size="20"
+                    /></IconBtn>
                   </div>
                 </div>
               </template>
               <template #bottom></template>
             </VDataTable>
           </VCardText>
-
           <VDivider />
 
           <VCardText class="totals-section">
@@ -777,54 +741,61 @@ const detailsHeaders = [
               <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
                   >Monto Total Excento de IVA:</span
-                >
-                <span class="text-h6 ms-2">{{
+                ><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.exempt_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
                   >Base Imponible segun Alicuota 16 %:</span
-                >
-                <span class="text-h6 ms-2">{{
+                ><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.taxable_base)
                 }}</span>
               </div>
               <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
                   >Impuesto segun Alicuota 16 %:</span
-                >
-                <span class="text-h6 ms-2">{{
+                ><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.tax_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Total Factura:</span
-                >
-                <span class="text-h6 ms-2 font-weight-bold">{{
+                <span class="text-subtitle-2 text-disabled">Total Factura:</span
+                ><span class="text-h6 ms-2 font-weight-bold">{{
                   formatCurrency(invoice.total_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span>
-                <span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span
+                ><span class="text-h6 ms-2">{{
                   formatNumber(invoice.exchange_rate)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Total USD:</span>
-                <span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Total USD:</span
+                ><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.total_usd, "USD")
                 }}</span>
               </div>
             </div>
           </VCardText>
-
           <VDivider />
 
           <VCardActions class="pa-6">
-            <div v-if="!isReadOnly" class="d-flex ga-3 w-100">
+            <div v-if="isLocationMode" class="d-flex w-100">
+              <VBtn
+                :loading="isSaving"
+                @click="handleSaveLocations"
+                size="large"
+                color="primary"
+                variant="flat"
+                class="w-100"
+              >
+                <VIcon icon="tabler-device-floppy" class="me-2" />Guardar
+                Ubicaciones
+              </VBtn>
+            </div>
+            <div v-else-if="isEditableMode" class="d-flex ga-3 w-100">
               <VBtn
                 v-if="isEditMode"
                 color="error"
@@ -832,9 +803,8 @@ const detailsHeaders = [
                 size="large"
                 class="flex-1-1"
                 @click="toggleEditMode(false)"
+                >Cancelar</VBtn
               >
-                Cancelar
-              </VBtn>
               <VBtn
                 :loading="isSaving"
                 @click="handleUpdate"
@@ -846,7 +816,6 @@ const detailsHeaders = [
                 {{ isEditMode ? "Guardar Productos" : "Finalizar Factura" }}
               </VBtn>
             </div>
-
             <div v-else class="d-flex w-100">
               <VBtn
                 @click="emit('back-to-list')"
@@ -854,71 +823,67 @@ const detailsHeaders = [
                 color="primary"
                 variant="tonal"
                 class="w-100"
+                >Volver a la Lista</VBtn
               >
-                Volver a la Lista
-              </VBtn>
             </div>
           </VCardActions>
         </VForm>
       </VCard>
 
-      <div
-        v-if="isEditMode && isProductSearchVisible"
-        class="product-search-section"
-      >
-        <div class="d-flex align-center justify-space-between mb-4">
-          <h4 class="text-h4">Buscar Productos en Catálogo</h4>
-          <VBtn
-            variant="text"
-            color="error"
-            @click="isProductSearchVisible = false"
-          >
-            <VIcon icon="tabler-x" class="me-2" />
-            Cerrar Búsqueda
-          </VBtn>
+      <template v-if="isEditableMode">
+        <div
+          v-if="isEditMode && isProductSearchVisible"
+          class="product-search-section mt-6"
+        >
+          <div class="d-flex align-center justify-space-between mb-4">
+            <h4 class="text-h4">Buscar Productos en Catálogo</h4>
+            <VBtn
+              variant="text"
+              color="error"
+              @click="isProductSearchVisible = false"
+              ><VIcon icon="tabler-x" class="me-2" />Cerrar Búsqueda</VBtn
+            >
+          </div>
+          <ProductFilters
+            v-model:searchQuery="productSearchQuery"
+            :laboratories="laboratories"
+            :origins="origins"
+            :loading="isLoadingFilters"
+            mode="minimal"
+            @clear="productSearchQuery = ''"
+            @add-product="handleAddNewProduct"
+          />
+          <ProductTable
+            :products="products"
+            :loading="loadingProducts"
+            :total-product="totalProducts"
+            :items-per-page="productItemsPerPage"
+            :page="productPage"
+            mode="add-to-invoice"
+            @update:options="updateProductTableOptions"
+            @add-product-to-invoice="addProductToInvoice"
+          />
         </div>
-
-        <ProductFilters
-          v-model:searchQuery="productSearchQuery"
-          :laboratories="laboratories"
-          :origins="origins"
-          :loading="isLoadingFilters"
-          mode="minimal"
-          @clear="productSearchQuery = ''"
-          @add-product="handleAddNewProduct"
-        />
-        <ProductTable
-          :products="products"
-          :loading="loadingProducts"
-          :total-product="totalProducts"
-          :items-per-page="productItemsPerPage"
-          :page="productPage"
-          mode="add-to-invoice"
-          @update:options="updateProductTableOptions"
+        <BarcodeSearchModal
+          ref="barcodeModalRef"
+          v-model="isBarcodeModalVisible"
+          :loading="searchingBarcode"
+          @search-barcode="handleSearchBarcode"
+          @show-product-search="handleShowProductSearch"
+          @add-new-product="handleAddNewProduct"
           @add-product-to-invoice="addProductToInvoice"
         />
-      </div>
-
-      <BarcodeSearchModal
-        ref="barcodeModalRef"
-        v-model="isBarcodeModalVisible"
-        :loading="searchingBarcode"
-        @search-barcode="handleSearchBarcode"
-        @show-product-search="handleShowProductSearch"
-        @add-new-product="handleAddNewProduct"
-        @add-product-to-invoice="addProductToInvoice"
-      />
-
-      <ProductEditDialog
-        v-model="isEditDialogVisible"
-        :product="currentProduct"
-        :laboratories="laboratories"
-        :origins="origins"
-        :categories="categories"
-        :errors="productFormErrors"
-        @save="handleSaveProduct"
-        @clear-errors="productFormErrors = {}"
-      />
+        <ProductEditDialog
+          v-model="isEditDialogVisible"
+          :product="currentProduct"
+          :laboratories="laboratories"
+          :origins="origins"
+          :categories="categories"
+          :errors="productFormErrors"
+          @save="handleSaveProduct"
+          @clear-errors="productFormErrors = {}"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -943,40 +908,34 @@ const detailsHeaders = [
   .invoice-products-table {
     border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
     border-radius: 6px;
-    .v-data-table__tr {
-      &:not(:last-child) {
-        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-      }
+    .v-data-table__tr:not(:last-child) {
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
     }
   }
-  .total-item {
-    p {
-      white-space: nowrap;
-    }
+  .total-item p {
+    white-space: nowrap;
   }
 }
-
 .editable-cell {
   min-width: 120px;
 }
-
 .flex-1-1 {
   flex: 1 1 50%;
 }
-
 .w-100 {
   width: 100%;
 }
-
 .totals-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  align-items: flex-start;
+  align-items: flex-end;
 }
-
 .total-item-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 400px;
 }
 </style>
