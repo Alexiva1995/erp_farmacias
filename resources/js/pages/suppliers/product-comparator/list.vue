@@ -237,6 +237,19 @@ const handleShowImportProductsDialog = (supplier) => {
   supplierOption.value = supplier;
   isShowImportFileDialogActive.value = true;
 };
+
+const handleDeleteSupplierProducts = async (supplier) => {
+  try {
+    const { data } = await axios.delete(`/suppliers/${supplier.id}/delete-products`);
+    if (data.status === "ok") {
+      toast.success(`Se borraron los productos del proveedor ${supplier.name}`);
+
+      fetchSupplierConnections();
+    }
+  } catch (error) {
+    toast.error("No se pudieron borrar los productos del proveedor.");
+  }
+};
 </script>
 
 <template>
@@ -272,6 +285,7 @@ const handleShowImportProductsDialog = (supplier) => {
           @show-products="handleShowProducts"
           @update-products="handleCheckSupplierApi"
           @load-products="handleShowImportProductsDialog"
+          @delete-products="handleDeleteSupplierProducts"
         />
       </VTabsWindowItem>
 

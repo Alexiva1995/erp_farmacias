@@ -297,4 +297,9 @@ class SupplierController extends Controller
 
         return response()->json(["status" => "queued"]);
     }
+
+    public function deleteProducts(Supplier $supplier)
+    {
+        return $this->supplierQueryService->deleteProducts($supplier);
+    }
 }

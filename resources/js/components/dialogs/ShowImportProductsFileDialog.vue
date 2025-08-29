@@ -55,6 +55,17 @@ const submitForm = async () => {
   try {
     toast.info(`Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`);
     await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form);
+
+    start_row.value = 1;
+    cod_supplier.value = "";
+    name.value = "";
+    barcode.value = "";
+    bs_cost.value = "";
+    usd_cost.value = "";
+    expiration.value = null;
+    quantity.value = null;
+    file.value = null;
+    closeDialog();
   } catch (error) {
     console.error(error);
     toast.error(`No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`);

@@ -380,4 +380,11 @@ class SupplierQueryService
 
         return true;
     }
+
+    public function deleteProducts(Supplier $supplier)
+    {
+        $supplier->productSuppliers()->delete();
+
+        return response()->json(["status" => "ok"]);
+    }
 }
