@@ -118,7 +118,7 @@ const stockOpciones = [
       </VBtn>
 
       <VSpacer />
-      <VBtn color="success" variant="flat" @click="emit('generarPedido')">
+      <VBtn color="primary" @click="emit('generarPedido')">
         Generar Pedido
       </VBtn>
     </VCardActions>

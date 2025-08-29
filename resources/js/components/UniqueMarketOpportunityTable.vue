@@ -25,6 +25,7 @@ const productosTable = computed(() => {
           <th>Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
+          <th>Costo Lot.</th>
           <th>Costo A.</th>
           <th>Stock A.</th>
           <th>Costo P.</th>
@@ -48,6 +49,12 @@ const productosTable = computed(() => {
           </td>
           <td>
             {{ item.product.promedio_calculado }}
+          </td>
+          <td>
+            <VIcon icon="tabler-currency-dollar" />
+            {{ parseFloat(item.cost_lot).toFixed(2) }} ({{
+              item.cost_lot_data
+            }})
           </td>
           <td>
             <VIcon icon="tabler-currency-dollar" />

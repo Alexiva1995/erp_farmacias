@@ -315,6 +315,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
+        if (array_key_exists("sin_proveedor", $filtros)) {
+            $consulta->doesntHave("productSuppliers");
+        }
+
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
                 $consulta->has("group");
@@ -533,6 +537,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
+        if (array_key_exists("sin_proveedor", $filtros)) {
+            $consulta->doesntHave("productSuppliers");
+        }
+
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
                 $consulta->has("group");
@@ -615,6 +623,17 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
+
+
+    // public function consultarProductosSinProveedor()
+    // {
+    //     $consulta = Product::query()
+    //         ->with(["laboratory", "lots", "group", "productSuppliers"])
+    //         ->doesntHave("productSuppliers")
+    //         ->get();
+
+    //     return $consulta;
+    // }
     public function builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros): Builder
     {
 
