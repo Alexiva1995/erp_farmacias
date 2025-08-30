@@ -12,51 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceQueryService
 {
-    public function getFilteredQuery(Request $request): Builder
+    public function getInvoicesQuery(Request $request): Builder
     {
         $query = Invoice::query()->with('supplier');
 
-        if ($request->filled('q')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('invoice_number', 'like', '%' . $request->q . '%')
-                    ->orWhere('control_number', 'like', '%' . $request->q . '%')
-                    ->orWhereHas('supplier', function ($supplierQuery) use ($request) {
-                        $supplierQuery->where('name', 'like', '%' . $request->q . '%');
-                    });
-            });
+        if ($request->filled('status')) {
+            $statuses = is_array($request->status) ? $request->status : [$request->status];
+            $query->whereIn('status', $statuses);
         }
-
-        if ($request->filled('supplierId')) {
-            $query->where('supplier_id', $request->supplierId);
-        }
-        if ($request->filled('startDate')) {
-            $query->whereDate('received_date', '>=', $request->startDate);
-        }
-
-        if ($request->filled('endDate')) {
-            $query->whereDate('received_date', '<=', $request->endDate);
-        }
-
-        if ($request->filled('sortBy') && $request->filled('orderBy')) {
-            if ($request->sortBy === 'supplier.name') {
-                $query->join('suppliers', 'invoices.supplier_id', '=', 'suppliers.id')
-                    ->orderBy('suppliers.name', $request->orderBy)
-                    ->select('invoices.*');
-            } else {
-                $query->orderBy($request->sortBy, $request->orderBy);
-            }
-        } else {
-            $query->orderBy('invoices.id', 'desc');
-        }
-
-        return $query;
-    }
-
-    public function getForOrderQuery(Request $request): Builder
-    {
-        $query = Invoice::query()
-            ->with('supplier')
-            ->where('status', 'to_order');
 
         if ($request->filled('q')) {
             $query->where(function ($q) use ($request) {
@@ -72,12 +35,16 @@ class InvoiceQueryService
             $query->where('supplier_id', $request->supplierId);
         }
 
-        if ($request->filled('startDate')) {
-            $query->whereDate('exp_date', '>=', $request->startDate);
+        $dateColumn = 'exp_date';
+        if ($request->input('status') && in_array('pending', (array) $request->input('status'))) {
+            $dateColumn = 'received_date';
         }
 
+        if ($request->filled('startDate')) {
+            $query->whereDate($dateColumn, '>=', $request->startDate);
+        }
         if ($request->filled('endDate')) {
-            $query->whereDate('exp_date', '<=', $request->endDate);
+            $query->whereDate($dateColumn, '<=', $request->endDate);
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
