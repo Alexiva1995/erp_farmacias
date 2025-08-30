@@ -4,13 +4,6 @@ import ReturnsOrderTable from "@/components/ReturnsOrderTable.vue";
 import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
 
-const headers = [
-  { title: 'N° Orden', key: 'id', sortable: true },
-  { title: 'Monto', key: 'total_amount', sortable: true },
-  { title: 'Producto', key: 'name',  sortable: true},
-  { title: 'Acción', key: 'action', sortable: false, width: '150px'},
-];
-
 const clientIdentification = ref("");
 const orders = ref([]);
 const totalOrder = ref(0);
@@ -62,6 +55,12 @@ const updateTableOptions = (newOptions) => {
     fetchOrders();
 };
 
+
+const handleReturnProduct = (product) => {
+  console.log('Producto a devolver:', product);
+  toast.success(`Producto ${product.name} listo para devolución.`);
+};
+
 </script>
 
 <template>
@@ -69,14 +68,13 @@ const updateTableOptions = (newOptions) => {
         v-model="clientIdentification"
         @search-order="verifyClientOrder"
       />
-
       <ReturnsOrderTable
       :orders="orders"
       :loading="loading"
       :total-order="totalOrder"
       :items-per-page="options.itemsPerPage"
       :page="options.page"
-      :headers="headers"
       @update:options="updateTableOptions"
+      @return-product="handleReturnProduct"
     />
 </template>

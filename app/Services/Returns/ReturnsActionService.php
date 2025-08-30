@@ -28,7 +28,7 @@ class ReturnsActionService
 
         $query = Order::where('client_id', $client->id)
             ->where('created_at', '>=', Carbon::now()->subHours(48))
-            ->with('client');
+            ->with('client','details.product');
 
         if (isset($options['sortBy']) && !empty($options['sortBy'])) {
             $sortBy = $options['sortBy'];
