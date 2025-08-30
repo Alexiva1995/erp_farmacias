@@ -400,7 +400,7 @@
         "path": "inventario.txt",
         "pasv": false,
         "has_header": true,
-        "invoice_path": null,
+        "invoice_path": "/",
         "structure": {
             "0": {
                 "file_field": "Codigo",
@@ -469,6 +469,70 @@
             "15": {
                 "file_field": "CantBonifica",
                 "type": "decimal"
+            }
+        },
+        "invoice_structure": {
+            "separator": ";",
+            "filter": {
+                "starts_with": "F",
+                "ends_with": ".txt"
+            },
+            "mode": "flat",
+            "header": {
+                "0": {
+                    "field": "invoice_number",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "exp_date",
+                    "type": "date"
+                },
+                "5": {
+                    "field": "tax_amount",
+                    "type": "decimal"
+                },
+                "6": {
+                    "field": "total_amount",
+                    "type": "decimal"
+                }
+            },
+            "lines": {
+                "7": {
+                    "field": "codigo_producto",
+                    "type": "string"
+                },
+                "8": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "9": {
+                    "field": "descripcion_producto",
+                    "type": "string"
+                },
+                "10": {
+                    "field": "quantity",
+                    "type": "decimal"
+                },
+                "12": {
+                    "field": "unit_cost",
+                    "type": "decimal"
+                },
+                "13": {
+                    "field": "total_cost",
+                    "type": "decimal"
+                },
+                "14": {
+                    "field": "porcentaje_iva",
+                    "type": "decimal"
+                },
+                "16": {
+                    "field": "lot_number",
+                    "type": "string"
+                },
+                "17": {
+                    "field": "expiration_date",
+                    "type": "date"
+                }
             }
         }
     },
