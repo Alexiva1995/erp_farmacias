@@ -299,7 +299,6 @@ const verifyClient = async (identification) => {
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
-    console.log(responseData);
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {

@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\Api\ReturnsController;
 
 
 /*
@@ -185,6 +186,10 @@ Route::prefix("tpv")->group(function () {
     Route::get('/credits', [CreditsController::class, 'index']);
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
+
+    // Rutas de Devolución
+    Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
+
 });
 
 
