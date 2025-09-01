@@ -6,6 +6,7 @@ use App\Contracts\Product;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use DateTime;
+use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -46,12 +47,13 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -93,12 +95,13 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -146,12 +149,13 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 

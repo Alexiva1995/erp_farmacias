@@ -11,6 +11,7 @@ use App\Models\Product as ModelsProduct;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
 use DateTime;
+use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -60,12 +61,13 @@ class SuppliersIaOrderAssistantController extends Controller
 
 
         if ($request->filled("lapso_de_tiempo")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -81,7 +83,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generateListProductoToRequest(Request $request): JsonResponse
     {
-        $dateToday = new DateTime("now");
+        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $dateToday = new DateTime("now", $timeZone);
         $respuesta = [
             // "productos" => [],
             "productosFallas" => [],
@@ -150,7 +153,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosConExistencia["groups"] = $request->groups;
         }
 
-        $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d");
+        $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d h:m:s");
         $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
 
 
@@ -174,7 +177,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generarPreviousDate($cantidad = "0", $tiempo = "days")
     {
-        $fecha = new DateTime("now");
+        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $fecha = new DateTime("now", $timeZone);
         $fecha->modify("-" . $cantidad . " " . $tiempo);
         return $fecha->format("Y-m-d");
     }
@@ -190,7 +194,8 @@ class SuppliersIaOrderAssistantController extends Controller
     public function consultarProductosSinProveedor(Request $request): JsonResponse
     {
 
-        $dateToday = new DateTime("now");
+        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $dateToday = new DateTime("now", $timeZone);
 
         $productos = null;
         $filtros = [
@@ -219,7 +224,7 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $this->generarPreviousDate($filtros["tiempo"], $filtros["tipo_de_tiempo"]);
         }
 
