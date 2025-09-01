@@ -16,7 +16,6 @@ class ReturnsController extends Controller
      public function searchOrders(Request $request)
     {
            try {
-              // Cambia $request->Identification por $request->input('identification')
               $ordersQuery = $this->returnsActionService->searchOrdersReturns(
                   $request->input('identification'), 
                   $request->all()
@@ -40,5 +39,14 @@ class ReturnsController extends Controller
           }
     }
 
+      public function returnsProduct(Request $request)
+    {
+        try {
+            $result = $this->returnsActionService->productReturn($request);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }
 

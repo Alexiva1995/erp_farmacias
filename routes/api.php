@@ -189,6 +189,7 @@ Route::prefix("tpv")->group(function () {
 
     // Rutas de Devolución
     Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
+    Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
 
 });
 
