@@ -3,7 +3,6 @@
 namespace App\Contracts;
 
 use App\Models\AutoOrder as ModelsAutoOrder;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 interface AutoOrder
 {

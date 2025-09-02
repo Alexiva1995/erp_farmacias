@@ -64,8 +64,36 @@ class InvoiceQueryService
 
     public function getInvoiceDetails(Invoice $invoice): Collection
     {
-        return $invoice->details()->with(['product.laboratory'])->get();
+        $invoice->load(['details.product.laboratory', 'returns.product.laboratory']);
+
+        $normalDetails = $invoice->details->map(function ($detail) {
+            $detail->is_return = false;
+            return $detail;
+        });
+
+        $returnDetails = $invoice->returns->map(function ($returnItem) {
+            $unitCostUSD = ($returnItem->quantity > 0)
+                ? ($returnItem->amount_refunded / $returnItem->quantity)
+                : 0;
+
+            return (object) [
+                'id' => 'return_' . $returnItem->id,
+                'product_id' => $returnItem->product_id,
+                'product' => $returnItem->product,
+                'quantity' => $returnItem->quantity,
+                'unit_cost' => $unitCostUSD,
+                'total_cost' => $returnItem->amount_refunded,
+                'lot_number' => 'N/A (Devolución)',
+                'expiration_date' => null,
+                'location' => 'N/A',
+                'tax_enabled' => $returnItem->product->iva,
+                'is_return' => true,
+            ];
+        });
+        $mergedArray = array_merge($normalDetails->all(), $returnDetails->all());
+        return collect($mergedArray);
     }
+
 
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
     {

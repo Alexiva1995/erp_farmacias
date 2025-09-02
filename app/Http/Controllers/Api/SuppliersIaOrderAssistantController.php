@@ -97,6 +97,8 @@ class SuppliersIaOrderAssistantController extends Controller
         $filtrosFallas = [
             "tipo_filtracion"   => $request->tipo_filtracion,
             "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "laboratoryId"      => $request->laboratoryId,
+            "groups"            => $request->groups,
             "stock"             => "fallas",
         ];
 

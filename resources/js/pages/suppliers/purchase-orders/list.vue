@@ -37,12 +37,14 @@ const fetchPurchaseOrders = async () => {
     selectedSupplier: selectedSupplier.value,
   };
 
-  Object.keys(params).forEach((key) => (params[key] === null || params[key] === "") && delete params[key]);
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
 
   try {
-    const response = await axios.get("/suppliers/purchase-orders", { params });
-    purchaseOrders.value = response.data.data;
-    totalPurchaseOrders.value = response.data.total;
+    const { data } = await axios.get("/suppliers/purchase-orders", { params });
+    purchaseOrders.value = data.data.data;
+    totalPurchaseOrders.value = data.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener las órdenes de compra:", error);
     toast.error("Error al obtener las órdenes de compra.");
@@ -63,7 +65,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchPurchaseOrders(), 300);
   },
-  { deep: true },
+  { deep: true }
 );
 
 const updateTableOptions = (options) => {
@@ -87,29 +89,41 @@ const handleShowPurchaseOrder = (purchaseOrder) => {
 
 const handleDeletePurchaseOrderDetail = async (purchaseOrderDetailId) => {
   try {
-    await axios.delete(`/suppliers/purchase-orders/details/${purchaseOrderDetailId}`);
+    await axios.delete(
+      `/suppliers/purchase-orders/details/${purchaseOrderDetailId}`
+    );
     toast.success("Detalle de Orden de compra eliminado correctamente.");
     isEditDialogVisible.value = false;
     currentPurchaseOrder.value = false;
     fetchPurchaseOrders();
   } catch (error) {
-    console.error("Hubo un error al eliminar el detalle de la orden de compra:", error);
+    console.error(
+      "Hubo un error al eliminar el detalle de la orden de compra:",
+      error
+    );
     toast.error("Error al eliminar el detalle de la orden de compra.");
   }
 };
 
 const handleDeletePurchaseOrder = async (purchaseOrderId) => {
   try {
-    const { data } = await axios.delete(`/suppliers/purchase-orders/${purchaseOrderId}`);
+    const { data } = await axios.delete(
+      `/suppliers/purchase-orders/${purchaseOrderId}`
+    );
 
-    if (data.status === "ok") {
+    if (data.data.status === "ok") {
       toast.success("Orden de compra eliminada correctamente.");
       fetchPurchaseOrders();
     } else {
-      toast.error(`No se pudo eliminar la orden de compra ${currentPurchaseOrder.value.id}`);
+      toast.error(
+        `No se pudo eliminar la orden de compra ${currentPurchaseOrder.value.id}`
+      );
     }
   } catch (error) {
-    console.error("Hubo un error al eliminar el detalle de la orden de compra:", error);
+    console.error(
+      "Hubo un error al eliminar el detalle de la orden de compra:",
+      error
+    );
     toast.error("Error al eliminar la orden de compra.");
   }
 };
@@ -120,11 +134,18 @@ const handleClearErrors = () => {
 
 const handleSaveDetails = async (detailsData) => {
   try {
-    const { data } = await axios.put(`/suppliers/purchase-orders/${currentPurchaseOrder.value.id}`, detailsData);
+    const { data } = await axios.put(
+      `/suppliers/purchase-orders/${currentPurchaseOrder.value.id}`,
+      detailsData
+    );
     if (data.status === "ok") {
-      toast.success(`Se actualizaron ${data.count} productos de la orden de compra ${currentPurchaseOrder.value.id}`);
+      toast.success(
+        `Se actualizaron ${data.count} productos de la orden de compra ${currentPurchaseOrder.value.id}`
+      );
     } else {
-      toast.error(`No se pudo actualizar la orden de compra ${currentPurchaseOrder.value.id}`);
+      toast.error(
+        `No se pudo actualizar la orden de compra ${currentPurchaseOrder.value.id}`
+      );
     }
     isEditDialogVisible.value = false;
     currentPurchaseOrder.value = false;
@@ -149,7 +170,10 @@ const handleSaveDetails = async (detailsData) => {
       @save="handleSaveDetails"
     />
 
-    <PurchaseOrderShowDialog v-model="isShowDialogVisible" :purchaseOrder="currentPurchaseOrder" />
+    <PurchaseOrderShowDialog
+      v-model="isShowDialogVisible"
+      :purchaseOrder="currentPurchaseOrder"
+    />
 
     <PurchaseOrdersFilter
       v-model:selectedSupplier="selectedSupplier"
