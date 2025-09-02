@@ -97,7 +97,7 @@ export default function pdfPurchaseOrderGenerator(data) {
     );
   };
 
-  data.details.forEach((detail) => {
+  data.details.data.forEach((detail) => {
     const { cod, product_name, quantity, unit_cost_bs, unit_cost } = detail;
     const total = unit_cost * quantity;
     totalValue += total;
