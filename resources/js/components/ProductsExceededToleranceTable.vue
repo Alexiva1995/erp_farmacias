@@ -57,7 +57,7 @@ const productosTable = computed(() => {
           <td>{{ item.product.stock }}</td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
-            {{ parseFloat(item.productSupplier.unit_cost).toFixed(2) }}
+            {{ parseFloat(item.productSupplier.unit_cost_usd).toFixed(2) }}
           </td>
           <td class="row">
             <VTextField
@@ -70,6 +70,5 @@ const productosTable = computed(() => {
         </tr>
       </tbody>
     </VTable>
-    <div v-else class="text-center mb-5">No hay productos que mostrar...</div>
   </VCard>
 </template>

@@ -9,7 +9,7 @@ const emit= defineEmits("eliminarItemOrden")
 const headers = [
   { title: 'Nombre',                            key: 'product.name'},
   { title: 'Cantidad',                          key: 'reponer'},
-  { title: 'Costo',                       key: 'productSupplier.unit_cost'},
+  { title: 'Costo',                             key: 'productSupplier.unit_cost_usd'},
   { title: 'Total',                             key: 'totalPorveedor',sortable:false},
   { title: 'Action',                            key: "action"},
 ];
@@ -44,7 +44,8 @@ const groupBy = [{ key: 'supplier.name' }]
       <template #item.totalPorveedor="{ item }">
         <!-- <VIcon icon="tabler-currency-dollar " /> -->
         {{
-          parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer
+          parseFloat(item.productSupplier.unit_cost_usd).toFixed(2) *
+          item.reponer
         }}
       </template>
       <template #item.action="{ item }">

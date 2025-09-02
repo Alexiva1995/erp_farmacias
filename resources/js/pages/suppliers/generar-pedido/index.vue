@@ -1,4 +1,5 @@
 <script setup lang="js">
+import LoaderComponent from "@/components/LoaderComponent.vue";
 import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
@@ -23,6 +24,7 @@ const module=reactive({
   productoFallas:[],
   productosOportunidadUnica:[],
   detalleOrder:[],
+  loadingApp:true,
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
@@ -54,6 +56,7 @@ async function generarPedido(){
 
 
 onMounted(async () => {
+  module.loadingApp=true
   let data = await generarPedido()
   data.data.productos_a_reponer=data.data.productos_a_reponer.map(a => {
     a.uuid=generateUUID()
@@ -66,6 +69,7 @@ onMounted(async () => {
   module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
   module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
+  module.loadingApp=false
 
 })
 
@@ -307,27 +311,42 @@ function eliminarItemOrden(payload){
 }
 </script>
 <template>
+  <LoaderComponent :loadingApp="module.loadingApp" />
   <div>
     <NavegationIaAutoOrder
       :index-navegacion="indexNavegacion"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
-    <VCard
-      :title="`Productos con Costo Elevado (${
-        module.productoFallas.filter((pro) => pro.increase == true).length
-      })`"
-      class="mb-6"
-      v-if="indexNavegacion == 1"
-    >
+    <VCard class="mb-6" v-if="indexNavegacion == 1">
+      <template #title>
+        Productos con Costo Elevado
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase == true).length
+          }}
+        </VChip>
+      </template>
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard
-      :title="`Productos con Costo Bajo (${
-        module.productoFallas.filter((pro) => pro.increase == false).length
-      })`"
-      class="mb-6"
-      v-if="indexNavegacion == 2"
-    >
+    <VCard class="mb-6" v-if="indexNavegacion == 2">
+      <template #title>
+        Productos con Costo Bajo
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase == false).length
+          }}
+        </VChip>
+      </template>
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
