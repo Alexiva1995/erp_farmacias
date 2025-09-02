@@ -2,6 +2,7 @@
 import CreditTable from "@/components/CreditTable.vue";
 import axios from "@/plugins/axios";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
+import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
 import { toast } from "@/plugins/sweetalert";
 import CreditsTicket from "@/components/CreditsTicket.vue";
 import { nextTick, ref, watch, onMounted } from 'vue';
@@ -24,6 +25,9 @@ const changeAmountForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 
 const selectedClient = ref(null);
+
+const showViewOrderModal = ref(false);
+
 
 const fetchCredits= async () => {
   loading.value = true;
@@ -78,13 +82,35 @@ const updateTableOptions = (options) => {
 
 const openCreditsModal = (credit) => {
     creditsData.value = credit; 
-        console.log(creditsData);
     showCreditsModal.value = true;
+};
+
+const viewOrderCreditsModal = async (credit) => {
+     let creditIds;
+    if (Array.isArray(credit.credit_ids)) {
+        creditIds = credit.credit_ids.map(id => parseInt(id));
+    } else {
+        creditIds = credit.credit_ids.split(',').map(id => parseInt(id));
+    }
+    try {
+        const response = await axios.post('/tpv/credits/details', { credit_ids: creditIds });
+        const detailedCredits = response.data;
+        creditsData.value = detailedCredits;
+        showViewOrderModal.value = true;
+    } catch (error) {
+        console.error("Error al obtener los detalles de los créditos:", error);
+        toast.error("No se pudo cargar el historial de la orden.");
+    }
 };
 
 
 const closeCreditsModal = () => {
     showCreditsModal.value = false;
+    creditsData.value = null;
+};
+
+const closeViewOrderCreditsModal = () => {
+    showViewOrderModal.value = false;
     creditsData.value = null;
 };
 
@@ -183,6 +209,7 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
       @update:options="updateTableOptions"
       @open-payment-modal="openCreditsModal"
       @reload="fetchCredits"
+      @view-order-modal="viewOrderCreditsModal"
     />
 
    <CreditsModal
@@ -192,8 +219,6 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
             @modal-closed="closeCreditsModal"
             @purchase-completed="handleCreditsCompletion"
         />
-
-
 
       <div id="CreditPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
       <CreditsTicket
@@ -205,4 +230,10 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
       />
     </div>
 
+       <CreditsViewOrderModal
+            v-if="showViewOrderModal && creditsData"
+            v-model:is-dialog-visible="showViewOrderModal"
+            :credits-data="creditsData"
+            @modal-closed="closeViewOrderCreditsModal"
+        />
 </template>
