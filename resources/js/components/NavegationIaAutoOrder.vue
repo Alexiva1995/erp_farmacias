@@ -9,7 +9,7 @@ const emit= defineEmits(['actualizarIndexNavegacion'])
 <template>
   <VCard class="mb-5" style="padding-bottom: 24px">
     <VCardTitle style="text-align: center" class="text-primary"
-      >IA ASSISTENC</VCardTitle
+      >IA ASSISTENCE</VCardTitle
     >
     <VRow align="center" justify="center">
       <VCol sm="auto" md="auto" lg="auto">
