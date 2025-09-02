@@ -77,6 +77,9 @@ onMounted(async () => {
 
 function actualizarIndexNavegacion(payload){
   indexNavegacion.value=payload
+  if(payload<=0){
+    router.push("/suppliers/supplieriaorderassistant")
+  }
   if(payload==3){
     // seleccionarProductosParaElDetalle()
     module.productosOportunidadUnica=actualizarCantidadAReponerProductosEnFalla([...module.productoFallas],[...module.productosOportunidadUnica])

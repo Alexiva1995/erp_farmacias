@@ -44,7 +44,7 @@ class StockProductExport implements FromQuery, WithHeadings, WithMapping, Should
             $product->id,
             $product->name ?? 'N/A',
             $product->total_sold_completed ?? 0,
-            $product->stock ?? 0,
+            $product->lote_quantity ?? 0,
             $product->promedio_calculado ?? 0,
             $product->preferencia_product ?? 'N/A',
             $product->diferencia_product ?? 'N/A'
