@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Services\Invoices\InvoiceActionService;
 use App\Services\Invoices\InvoiceQueryService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -25,19 +26,6 @@ class InvoiceController extends Controller
             $request->merge(['status' => ['pending']]);
         }
         $query = $this->invoiceQueryService->getInvoicesQuery($request);
-
-        $perPage = $request->input('itemsPerPage', 10);
-        $paginatedResult = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
-    }
-
-    public function indexForOrder(Request $request)
-    {
-        $query = $this->invoiceQueryService->getForOrderQuery($request);
 
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
@@ -110,10 +98,7 @@ class InvoiceController extends Controller
     public function approve(Request $request, Invoice $invoice)
     {
         $rules = [
-            'supplier_discount_id' => 'nullable|exists:supplier_discounts,id',
             'payment_rule_id' => 'nullable|exists:payment_rules,id',
-            'return_item_ids' => 'nullable|array',
-            'return_item_ids.*' => 'exists:invoice_details,id'
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -142,20 +127,10 @@ class InvoiceController extends Controller
 
     public function reject(Request $request, Invoice $invoice)
     {
-        $rules = [
-            'reason' => 'required|string|max:500'
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
 
         try {
             $rejectedInvoice = $this->invoiceActionService->rejectInvoice(
-                $invoice,
-                $validator->validated()['reason']
+                $invoice
             );
 
             return response()->json([
@@ -228,21 +203,20 @@ class InvoiceController extends Controller
         }
     }
 
-    public function update(Request $request, Invoice $invoice)
+    public function saveDetails(Request $request, Invoice $invoice)
     {
         $rules = [
             'invoice' => 'required|array',
-            'invoice.control_number' => 'required|string|max:50',
-            'invoice.invoice_number' => 'required|string|max:50',
-            'invoice.exp_date' => 'required|date',
-
+            'invoice.supplier_discount_id' => 'nullable|exists:supplier_discounts,id',
             'details' => 'present|array',
             'details.*.product.id' => 'required|integer|exists:products,id',
             'details.*.quantity' => 'required|numeric|min:1',
             'details.*.unit_cost' => 'required|numeric|min:0',
-            'details.*.lot_number' => 'required|string|max:100',
-            'details.*.expiration_date' => 'required|date',
-            'details.*.location' => 'required|string|max:100',
+            'details.*.lot_number' => ['required_if:details.*.is_return,false', 'nullable', 'string', 'max:100'],
+            'details.*.expiration_date' => ['required_if:details.*.is_return,false', 'nullable', 'date'],
+            'details.*.location' => ['required_if:details.*.is_return,false', 'nullable', 'string', 'max:100'],
+            'details.*.tax_enabled' => 'boolean',
+            'details.*.is_return' => 'boolean',
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -251,49 +225,36 @@ class InvoiceController extends Controller
             throw new ValidationException($validator);
         }
 
-        $validatedData = $validator->validated();
-
         try {
-            $updatedInvoice = $this->invoiceActionService->updateInvoice($invoice, $validatedData);
-
+            $updatedInvoice = $this->invoiceActionService->saveInvoiceDetails($invoice, $validator->validated());
             return response()->json([
-                'message' => 'Factura finalizada y actualizada con éxito.',
+                'message' => 'Progreso de la factura guardado con éxito.',
                 'invoice' => $updatedInvoice
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
-    public function indexForLocation(Request $request)
+
+    public function finalize(Request $request, Invoice $invoice)
     {
-        $query = $this->invoiceQueryService->getForLocationQuery($request);
+        try {
+            $finalizedInvoice = $this->invoiceActionService->finalizeInvoice($invoice);
 
-        $perPage = $request->input('itemsPerPage', 10);
-        $paginatedResult = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
+            return response()->json([
+                'message' => 'Factura finalizada con éxito.',
+                'invoice' => $finalizedInvoice
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     public function updateLocations(Request $request, Invoice $invoice)
     {
-        $rules = [
-            'details' => 'required|array',
-            'details.*.id' => 'required|integer|exists:invoice_details,id',
-            'details.*.location' => 'required|string|max:100',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
 
         try {
-            $updatedInvoice = $this->invoiceActionService->updateInvoiceLocations($invoice, $validator->validated());
+            $updatedInvoice = $this->invoiceActionService->updateInvoiceLocations($invoice, $request->all());
 
             return response()->json([
                 'message' => 'Ubicaciones actualizadas con éxito.',
@@ -303,17 +264,5 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
-    }
-    public function indexOrdered(Request $request)
-    {
-        $query = $this->invoiceQueryService->getForApprovalQuery($request);
-
-        $perPage = $request->input('itemsPerPage', 10);
-        $paginatedResult = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
     }
 }

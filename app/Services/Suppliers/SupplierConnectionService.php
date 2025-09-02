@@ -2,12 +2,13 @@
 
 namespace App\Services\Suppliers;
 
-use App\Jobs\FetchSupplierConnectionData;
+use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
 
 class SupplierConnectionService
 {
@@ -33,11 +34,7 @@ class SupplierConnectionService
             throw new \Exception("No se pudo conectar al servidor FTP");
         }
 
-        $login = ftp_login(
-            $ftp,
-            $connection->username,
-            FtpCrypt::decrypt($connection->password),
-        );
+        $login = ftp_login($ftp, $connection->username, FtpCrypt::decrypt($connection->password));
 
         if (!$login) {
             throw new \Exception("Credenciales inválidas");
@@ -49,11 +46,7 @@ class SupplierConnectionService
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
         if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
             $content = file_get_contents($tempFile);
-            $content_encoded = mb_convert_encoding(
-                $content,
-                "UTF-8",
-                "ISO-8859-1",
-            ); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
             $productData = $this->parseDynamicContent($content_encoded, $connection);
         } else {
             throw new \Exception("No se pudo guardar los productos");
@@ -75,7 +68,10 @@ class SupplierConnectionService
             });
 
             foreach ($files as $filePath) {
-                $tempInvoice = tempnam(sys_get_temp_dir(), 'inv_');
+                if (!str_ends_with($filePath, ".txt")) {
+                    continue;
+                }
+                $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $invoiceContent = file_get_contents($tempInvoice);
@@ -91,8 +87,8 @@ class SupplierConnectionService
         ftp_close($ftp);
 
         return [
-            'products' => $productData ?? [],
-            'invoices' => $invoiceResults,
+            "products" => $productData ?? [],
+            "invoices" => $invoiceResults,
         ];
     }
 
@@ -116,15 +112,18 @@ class SupplierConnectionService
             $response = Http::withHeaders([
                 "autorizacion" => $token,
             ])
-                ->timeout(600)
+                ->timeout(1000)
                 ->get($connection->path);
 
             if ($response->successful()) {
-                return $response->json();
+                $productData = $this->parseDynamicContent($response->json(), $connection);
+                return $productData;
             } else {
                 throw new \Exception("La petición a la API falló");
             }
         } catch (\Exception $e) {
+            Log::alert("Supplier connection service");
+            Log::error($e);
             throw new \Exception("No se pudo establecer la conexión");
         }
     }
@@ -144,8 +143,27 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
+        $usdCurrency = ExchangeRate::where("currency_code", "USD")
+            ->whereDate("created_at", \Carbon\Carbon::today())
+            ->first();
+
+        if (!isset($usdCurrency)) {
+            $exitCode = Artisan::call("app:update-exchange-rate");
+
+            if ($exitCode === 0) {
+                $usdCurrency = ExchangeRate::where("currency_code", "USD")
+                    ->whereDate("created_at", \Carbon\Carbon::today())
+                    ->first();
+            } else {
+                \Log::error("Failed to fetch exchange rate");
+                throw new \Exception("No se pudo guardar la tasa del día USD");
+            }
+        }
+
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
+        \Log::info("Data structure: ");
+        \Log::info(explode(";", $lines[0]));
         foreach ($lines as $line) {
             $cols = explode(";", $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
@@ -154,7 +172,13 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use ($structure, $now, $supplierId, $products) {
+        $result = collect($lines)->map(function (string $line) use (
+            $structure,
+            $now,
+            $usdCurrency,
+            $supplierId,
+            $products,
+        ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -163,8 +187,11 @@ class SupplierConnectionService
                 "connection_date" => $now,
                 "laboratory" => null,
                 "product_id" => null,
+                "unit_cost_with_discount" => null,
+                "unit_cost_usd_with_discount" => null,
             ];
 
+            $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
 
             foreach ($table_structure as $index => $meta) {
@@ -177,7 +204,46 @@ class SupplierConnectionService
                         break;
 
                     case "decimal":
-                        $entry[$meta["target"]] = is_numeric($value) ? number_format((float) $value, 2, ".", "") : null;
+                        if (is_numeric($value)) {
+                            $newValue = number_format((float) $value, 2, ".", "");
+
+                            if ($meta["target"] === "quantity") {
+                                $entry[$meta["target"]] = $newValue;
+                                break;
+                            }
+
+                            // Si ya tiene el precio en bs y usd
+                            if ($hasUnitCostUsd) {
+                                $entry[$meta["target"]] = $newValue;
+                                break;
+                            } else {
+                                // Precio en bs calcula con la tasa  usd del dia
+                                if ($meta["currency"] === "usd") {
+                                    $entry[$meta["target"]] = number_format(
+                                        (float) ($newValue * $usdCurrency->rate),
+                                        2,
+                                        ".",
+                                        "",
+                                    );
+                                    $entry["unit_cost_usd"] = $newValue;
+
+                                    break;
+                                } else {
+                                    // Obtiene el equivalente de bs en usd
+                                    $entry[$meta["target"]] = $newValue;
+                                    $entry["unit_cost_usd"] = number_format(
+                                        (float) ($newValue / $usdCurrency->rate),
+                                        2,
+                                        ".",
+                                        "",
+                                    );
+
+                                    break;
+                                }
+                            }
+                        } else {
+                            $entry[$meta["target"]] = null;
+                        }
                         break;
 
                     case "date":
@@ -238,7 +304,7 @@ class SupplierConnectionService
             }
         }
 
-        $products = Product::whereIn('barcode', array_unique($barcodes))->get()->keyBy('barcode');
+        $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
 
         $mode = $structure['mode'] ?? 'grouped';
 
@@ -336,7 +402,8 @@ class SupplierConnectionService
         return $invoices;
     }
 
-    private function castValue(string $raw, array $meta): mixed {
+    private function castValue(string $raw, array $meta): mixed
+    {
         $value = trim($raw);
 
         return match ($meta["type"]) {

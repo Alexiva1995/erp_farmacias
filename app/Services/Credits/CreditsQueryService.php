@@ -36,6 +36,7 @@ class CreditsQueryService
 
   public function getFilteredQuery(Request $request): Builder
     {
+
          $query = $this->getBaseQuery()
             ->select('client_id')
             ->selectRaw('SUM(pending_amount) as total_pending_amount')
