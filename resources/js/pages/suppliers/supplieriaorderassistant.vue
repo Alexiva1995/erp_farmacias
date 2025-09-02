@@ -41,7 +41,7 @@ const handleClearFilters = () => {
   tipo_de_filtracion.value = "sales";
   lapso_de_tiempo.value = "3 month";
   stock.value = "all";
-  selectedLaboratory.value = "";
+  selectedLaboratory.value = [];
   selectedGroup.value = [];
 };
 
@@ -112,7 +112,7 @@ function generarPedido(){
     query:{
       "tipo_filtracion":tipo_de_filtracion.value,
       "lapso_de_tiempo":lapso_de_tiempo.value,
-      "laboratoryId":selectedLaboratory.value,
+      "laboratoryId":JSON.stringify(selectedLaboratory.value),
       "groups":JSON.stringify(selectedGroup.value),
       // "stock":stock.value,
     }
