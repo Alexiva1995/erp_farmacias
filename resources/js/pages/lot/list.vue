@@ -218,6 +218,7 @@ const handleSaveLot = (lotData) => {
       v-model:endDate="endDate"
       :laboratories="laboratories"
       :loading="isLoadingFilters"
+      :add-lot-loading="isLoadingDialogData"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"

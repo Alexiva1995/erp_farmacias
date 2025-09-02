@@ -370,6 +370,9 @@
     "pdfDoctorsGenerator": true,
     "useDataTable": true,
     "useCyclicTable": true,
-    "pdfStockProductsGenerator": true
+    "pdfStockProductsGenerator": true,
+    "pdfPurchaseOrderGenerator": true,
+    "pdfProductsWithoutSuppliersGenerator": true,
+    "pdfProductsAssistantReportGenerator": true
   }
 }

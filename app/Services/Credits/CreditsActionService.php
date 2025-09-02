@@ -86,6 +86,10 @@ class CreditsActionService
                     $montoAplicado = min($montoRestantePagoActual, $saldoPendiente);
 
                     $credito->pending_amount -= $montoAplicado;
+
+                    if ($credito->pending_amount <= 0) {
+                        $credito->status = 'Paid';
+                    }
                     $credito->save();
                     $montoRestantePagoActual -= $montoAplicado;
 
