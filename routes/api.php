@@ -56,7 +56,6 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 // Rutas de Productos
-
 Route::get('/products', [ProductController::class, 'index']);
 Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
 Route::post('/products', [ProductController::class, 'store']);
@@ -190,7 +189,6 @@ Route::prefix("tpv")->group(function () {
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 });
-
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix("sales/report")
     ->controller(TraceabilityController::class)
@@ -299,7 +297,8 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
 Route::prefix("suppliers")->group(function () {
-    Route::get('/{supplier}/connection', [SupplierController::class, 'connectionServiceSupplier']);
+    Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+    Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
     Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
     Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
     Route::post("/{supplier}/laboratories", [SupplierController::class, "storeLaboratory"]);
@@ -307,6 +306,13 @@ Route::prefix("suppliers")->group(function () {
     Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
     Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
     Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
+    Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
@@ -318,7 +324,6 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
     Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
-    Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
 });
 
 
@@ -344,6 +349,7 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
     Route::prefix("generate-order")->group(function () {
+
         Route::post("/creat",                     [SuppliersIaOrderAssistantController::class, "generarOrden"]);
         Route::post("/products-to-request",        [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
         Route::post("/products-without-supplier",  [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
@@ -363,3 +369,4 @@ Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('i
 Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
+
