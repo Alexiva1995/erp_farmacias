@@ -11,6 +11,7 @@ export default function pdfPurchaseOrderGenerator(data) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const xPosition = (pageWidth - LOGO_WIDTH) / 2;
 
+  console.log(data)
   try {
     doc.addImage(LOGO, "PNG", xPosition, 15, LOGO_WIDTH, LOGO_HEIGHT);
   } catch (error) {
@@ -97,7 +98,7 @@ export default function pdfPurchaseOrderGenerator(data) {
     );
   };
 
-  data.details.forEach((detail) => {
+  data.details.data.forEach((detail) => {
     const { cod, product_name, quantity, unit_cost_bs, unit_cost } = detail;
     const total = unit_cost * quantity;
     totalValue += total;
