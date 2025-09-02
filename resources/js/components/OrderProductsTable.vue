@@ -14,15 +14,15 @@ const inputQuantities = ref(new Map());
 const emit = defineEmits(['update:options', 'add-product',"view-group-products"]);
 
 const headers = [
-  { title: "id", key: "id", sortable: true },
-  { title: "Stock", key: "valid_stock_sum", sortable: true },
+  { title: "id", key: "id", sortable: true},
+  { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: '55px'},
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: 'Precio en USD', key: 'sale_price', sortable: true },
-  { title: 'Precio en Bs', key: 'price_bs', sortable: true},
-  { title: 'Precio en COP', key: 'price_cop', sortable: true },
-  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'  },
-  { title: 'Acción', key: 'actions', sortable: false},
+  { title: 'USD', key: 'sale_price', sortable: true },
+  { title: 'Bs', key: 'price_bs', sortable: true},
+  { title: 'COP', key: 'price_cop', sortable: true },
+  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, maxWidth: '130px'  },
+  { title: 'Acción', key: 'actions', sortable: false, maxWidth: '95px'},
 ];
 
 const calculatePriceWithIVA = (basePrice, product) => {
@@ -36,7 +36,7 @@ const calculatePriceWithIVA = (basePrice, product) => {
 
 const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
   const priceWithIVA = calculatePriceWithIVA(basePrice, product);
-  return formatCurrency(roundUpToNearestHundred(priceWithIVA), 'COP');
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA));
 };
 
 
@@ -106,17 +106,20 @@ const handleViewGroupProducts = (product) => {
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
-      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium">{{ item.valid_stock_sum }}</span></template>
+      <template #item.valid_stock_sum="{ item }">
+    <span class="font-weight-medium text-no-wrap">{{ item.valid_stock_sum }}</span>
+</template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.name }}</span>
             <span class="text-sm text-disabled">{{ item.active_ingredient }}</span>
+          <span class="text-sm text-disabled">{{ item.origin?.name}}</span>
           </div>
         </div>
       </template>
-       <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item), 'USD')}}</span></template>
-      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), 'BS') }}</span></template>
+       <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item))}}</span></template>
+      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}</span></template>
       <template #item.price_cop="{ item }"><span class="font-weight-medium">{{calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}</span></template>
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">

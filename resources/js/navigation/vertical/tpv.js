@@ -23,6 +23,10 @@ export default [
         to: 'tpv-order-user',
        // meta: { roles: ['user'] }
       },
+      {
+        title: 'Creditos',
+        to: 'tpv-credit',
+      },
     ],
   },
 ]

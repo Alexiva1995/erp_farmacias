@@ -6,8 +6,9 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
 import Swal from 'sweetalert2';
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 const route= useRoute()
@@ -21,13 +22,15 @@ const module=reactive({
   dataProductos:{},
   productoFallas:[],
   productosOportunidadUnica:[],
-  deltalleOrder:[],
+  detalleOrder:[],
 })
+
+let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
 
 
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
-const groups= ref(JSON.parse(route.query.groups));// grupos
+const groups= ref(gruposList);// grupos
 const laboratoryId= ref(route.query.laboratoryId);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
@@ -69,25 +72,48 @@ onMounted(async () => {
 
 function actualizarIndexNavegacion(payload){
   indexNavegacion.value=payload
+  if(payload==3){
+    // seleccionarProductosParaElDetalle()
+    module.productosOportunidadUnica=actualizarCantidadAReponerProductosEnFalla([...module.productoFallas],[...module.productosOportunidadUnica])
+  }
   if(payload==4){
     seleccionarProductosParaElDetalle()
   }
+}
+
+function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosConOportunidadUnica){
+  for (let index = 0; index < productosEnFalla.length; index++) {
+    let productEnFalla= productosEnFalla[index];
+
+    for (let index2 = 0; index2 < productosConOportunidadUnica.length; index2++) {
+      let productConOportunidadUnica = productosConOportunidadUnica[index2];
+      if(productEnFalla.productSupplier.id==productConOportunidadUnica.productSupplier.id){
+        productConOportunidadUnica.reponer=productEnFalla.reponer
+      }
+      productosConOportunidadUnica[index2]=productConOportunidadUnica
+
+    }
+
+  }
+  return productosConOportunidadUnica
+
 }
 
 function seleccionarProductosParaElDetalle(){
   // TODO: falta obtener los productos que no estan en falla
   // lo que se puede hacer es hacer comparar la lista productosEnFalla y los que coincidan eliminarlos de la otra lista (trabajar con una copia) y solo dejar los que no coincidan
   // luego uniar las dos listas y eso si guardarlo en un estado
-  module.deltalleOrder=[]
+  module.detalleOrder=[]
   let productosEnFalla=verificarSiHayProductosEnFallaEnLaLista([...module.productoFallas],[...module.productosOportunidadUnica])
   // console.log("productos en falla que puedan ser que tenga una oportunidad unica =>",productosEnFalla)
   let productosSinFallas=removerProductosConProveedores([...productosEnFalla],[...module.productosOportunidadUnica])
   // console.log("productos con oportunidad unica de mercado sin falla =>",productosSinFallas)
   let detalles = [...productosEnFalla,...productosSinFallas]
-  module.deltalleOrder=detalles
+  module.detalleOrder=detalles
 
 }
 
+// esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
 function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
@@ -104,7 +130,7 @@ function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProduct
     const producto = productosEnFalla[index];
     let buscarSiTieneOportunidadUnica=listaDeProductosOportunidaUnica.find(productUnique => producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id)
     if(buscarSiTieneOportunidadUnica){
-      if(buscarSiTieneOportunidadUnica.reponer>producto.reponer){
+      if(buscarSiTieneOportunidadUnica.reponer > producto.reponer || buscarSiTieneOportunidadUnica.reponer < producto.reponer){
         productosEnFalla[index]=buscarSiTieneOportunidadUnica
       }
     }
@@ -123,9 +149,31 @@ function generateUUID() {
 
 
 const TOTAL_ORDER= computed(() => {
-  let listaSubTotales=module.deltalleOrder.map(de => de.reponer*de.productSupplier.unit_cost)
+  let listaSubTotales=module.detalleOrder.map(de => de.reponer*de.productSupplier.unit_cost)
   const total=listaSubTotales.reduce((acumulador, valorActual) => acumulador + valorActual, 0)
-  return (module.deltalleOrder.length>0)?total:0
+  return (module.detalleOrder.length>0)?total:0
+})
+
+const LISTA_PORVEEDORES_TOTAL= computed(() => {
+  let keyHashIdProveedor={}
+  for (let index = 0; index < module.detalleOrder.length; index++) {
+    const item =  module.detalleOrder[index];
+    if(!keyHashIdProveedor[item.supplier.id]){
+      keyHashIdProveedor[item.supplier.id]={
+        name:item.supplier.name,
+        total: parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer,
+      }
+    }
+    else{
+       keyHashIdProveedor[item.supplier.id].total=keyHashIdProveedor[item.supplier.id].total+(parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer)
+    }
+  }
+  let lista=[]
+  for (const key in keyHashIdProveedor) {
+    lista.push(keyHashIdProveedor[key])
+  }
+  return lista
+
 })
 
 
@@ -135,14 +183,12 @@ async function confirmarCompra(){
     text: "",
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Sí',
-    cancelButtonText: 'No, ¡Cancelar!',
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar',
     buttonsStyling: false,
     customClass: {
-      // confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
-      // cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2',
       confirmButton: 'v-btn v-btn--elevated v-theme--light bg-success v-btn--density-default v-btn--size-default v-btn--variant-elevated',
-      cancelButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated mx-2'
     },
     reverseButtons: true,
   });
@@ -216,7 +262,7 @@ function formatiarData(data){
 }
 
 async function realizarCompra(){
-  let orders=formatiarData([...module.deltalleOrder])
+  let orders=formatiarData([...module.detalleOrder])
   const DATA={
     orders
   }
@@ -228,7 +274,35 @@ async function realizarCompra(){
     return
   }
    toast.success("Compra realizada con exito")
-   router.push("/suppliers/supplieriaorderassistant")
+   let productosSinPorveedor= await consultarProductosSinProveedor()
+   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+   router.push("/suppliers/purchase-orders/list")
+}
+
+async function consultarProductosSinProveedor(){
+
+  let data={
+    "tipo_filtracion":tipo_de_filtracion.value,
+    "lapso_de_tiempo":lapso_de_tiempo.value,
+    // "groups":groups.value,
+    // "laboratoryId":laboratoryId.value,
+  }
+
+  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier",data)
+  if(response.status!=200){
+    toast.error("Error al generar el reporte de de productos sin proveedor")
+    return
+  }
+  toast.success("Reporte Generado")
+  console.log("data => ",response.data.data)
+  return [...response.data.data]
+}
+
+
+function eliminarItemOrden(payload){
+  console.log("payload => ",payload)
+
+  module.detalleOrder=module.detalleOrder.filter(itemOrder => itemOrder.uuid!=payload.uuid)
 }
 </script>
 <template>
@@ -238,7 +312,7 @@ async function realizarCompra(){
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
     <VCard
-      :title="`PRODUCTOS EXCEDIERON LA TOLERANCIA DE COSTO (${
+      :title="`Productos con Costo Elevado (${
         module.productoFallas.filter((pro) => pro.increase == true).length
       })`"
       class="mb-6"
@@ -247,14 +321,16 @@ async function realizarCompra(){
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="PRODUCTOS QUE NO EXCEDIERON LA TOLERANCIA DE COSTO"
+      :title="`Productos con Costo Bajo (${
+        module.productoFallas.filter((pro) => pro.increase == false).length
+      })`"
       class="mb-6"
       v-if="indexNavegacion == 2"
     >
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="OPORTUNIDADES UNICA DE MERCADO"
+      title="Oportunidades de Mercado"
       class="mb-6"
       v-if="indexNavegacion == 3"
     >
@@ -272,8 +348,11 @@ async function realizarCompra(){
           md="12"
           lg="9"
         >
-          <VCard title="DETALLES DE LA ORDEN" class="">
-            <OrderProductListTable :list="module.deltalleOrder" />
+          <VCard title="IA Detalle" class="">
+            <OrderProductListTable
+              :list="module.detalleOrder"
+              @eliminar-item-orden="eliminarItemOrden"
+            />
           </VCard>
         </VCol>
         <VCol
@@ -285,30 +364,51 @@ async function realizarCompra(){
           md="12"
           lg="3"
         >
-          <VCard
-            title="Detalles del precio"
-            class="mb-5"
-            style="padding-bottom: 24px"
-          >
-            <VRow
-              class="text-lg"
-              align-content="space-between"
-              style="padding-left: 24px; padding-right: 24px"
-            >
-              <VCol> <span>Total:</span> </VCol>
-              <VCol class="text-end">
-                <VIcon icon="tabler-currency-dollar" /> {{ TOTAL_ORDER }}
-              </VCol>
-            </VRow>
-          </VCard>
           <VBtn
             color="primary"
             variant="flat"
-            class="w-100"
+            class="w-100 mb-5"
             @click="confirmarCompra"
           >
-            Realizar Compra
+            Generar
           </VBtn>
+          <VCard
+            title="Detalles del precio"
+            class=""
+            style="padding-bottom: 24px"
+          >
+            <VContainer>
+              <VRow
+                class="text-lg"
+                align-content="space-between"
+                style="padding-left: 24px; padding-right: 24px"
+              >
+                <VCol> <span>Total:</span> </VCol>
+                <VCol class="text-end">
+                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
+                  <VIcon icon="tabler-currency-dollar" />
+                </VCol>
+              </VRow>
+            </VContainer>
+
+            <VDivider />
+            <VContainer v-if="LISTA_PORVEEDORES_TOTAL.length > 0">
+              <VRow
+                v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
+                class="text-lg"
+                align-content="space-between"
+                style="padding-left: 24px; padding-right: 24px"
+              >
+                <VCol class="">
+                  <span>{{ totalesProveedores.name }}:</span>
+                </VCol>
+                <VCol class="text-end">
+                  {{ totalesProveedores.total.toFixed(2) }}
+                  <VIcon icon="tabler-currency-dollar" />
+                </VCol>
+              </VRow>
+            </VContainer>
+          </VCard>
         </VCol>
       </VRow>
     </div>

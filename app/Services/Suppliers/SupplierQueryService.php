@@ -9,6 +9,7 @@ use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
+use App\Models\SupplierConnectionStatus
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -27,8 +28,8 @@ class SupplierQueryService
     {
         return Supplier::query()
             ->withoutTrashed()
-            ->select("suppliers.*")
-            ->with(["latestScore", "paymentRules"]);
+            ->select('suppliers.*')
+            ->with(['latestScore', 'paymentRules']);
     }
 
     /**
@@ -173,25 +174,21 @@ class SupplierQueryService
                 InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
                 $supplier->invoices()->delete();
                 foreach ($invoices as $invoice) {
-                    $header = $invoice["header"];
-                    $lines = $invoice["lines"];
+                    $header = $invoice['header'];
+                    $lines = $invoice['lines'];
 
-                    $invoiceModel = $supplier
-                        ->invoices()
-                        ->create([
-                            ...Arr::only($header, Invoice::FILLABLEHEADER),
-                            "uploaded_by" => auth()->id() ?? 1,
-                            "registered_by" => auth()->id() ?? 1,
-                        ]);
+                    $invoiceModel = $supplier->invoices()->create([
+                        ...Arr::only($header, Invoice::FILLABLEHEADER),
+                        'uploaded_by' => auth()->id() ?? 1,
+                        'registered_by' => auth()->id() ?? 1,
+                    ]);
 
-                    $details = collect($lines)
-                        ->map(function ($line) use ($invoiceModel) {
-                            return [
-                                ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
-                                "invoice_id" => $invoiceModel->id,
-                            ];
-                        })
-                        ->toArray();
+                    $details = collect($lines)->map(function ($line) use ($invoiceModel) {
+                        return [
+                            ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
+                            'invoice_id' => $invoiceModel->id,
+                        ];
+                    })->toArray();
 
                     $invoiceModel->details()->createMany($details);
                 }
@@ -386,5 +383,14 @@ class SupplierQueryService
         $supplier->productSuppliers()->delete();
 
         return response()->json(["status" => "ok"]);
+
+    public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
+    {
+        return SupplierConnectionStatus::with('supplier')
+            ->where('user_id', $userId)
+            ->whereIn('status', ['completed', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes($minutes))
+            ->latest()
+            ->get();
     }
 }

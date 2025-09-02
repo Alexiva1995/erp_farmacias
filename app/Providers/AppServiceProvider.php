@@ -29,6 +29,7 @@ use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
@@ -98,6 +99,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(PurchaseOrderController::class)
             ->needs(PurchaseOrder::class)
             ->give(PurchaseOrderServices::class);
+        $this->app->when(SupplierIaAssistantReportController::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
     }
 
     /**
