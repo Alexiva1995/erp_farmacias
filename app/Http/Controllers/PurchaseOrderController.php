@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\AutoOrderDetailStatus;
+use App\Contracts\PurchaseOrder;
+use App\Helpers\ApiResponse;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
-use App\Repository\AutoOrdersRepository;
-use Auth;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
-    public function __construct(protected AutoOrdersRepository $autoOrdersRepository) {}
+    public function __construct(protected PurchaseOrder $purchaseOrder)
+    {
+    }
 
     public function getPurchaseOrders(Request $request)
     {
         $filters = $request->query();
-        $paginated = $this->autoOrdersRepository->getAll($filters);
+        $paginated = $this->purchaseOrder->getAll($filters);
 
-        return response()->json([
+        return ApiResponse::success([
             "data" => $paginated->items(),
             "total" => $paginated->total(),
         ]);
@@ -26,12 +27,21 @@ class PurchaseOrderController extends Controller
 
     public function destroy(AutoOrder $autoOrder)
     {
-        return $this->autoOrdersRepository->delete($autoOrder);
+        $result = $this->purchaseOrder->delete($autoOrder);
+
+        return $result
+            ? ApiResponse::success(['status' => 'ok'])
+            : ApiResponse::error(['status' => 'error']);
     }
 
     public function updateDetails(AutoOrder $autoOrder, UpdateAutoOrderDetailsRequest $request)
     {
-        $result = $this->autoOrdersRepository->update($autoOrder, $request->all());
+        $data = $request->all();
+        if (empty($data)) {
+            return ApiResponse::error(["status" => "error"], 'No hay datos proporcionados', 200);
+        }
+
+        $result = $this->purchaseOrder->update($autoOrder, $data);
 
         return response()->json($result);
     }
@@ -39,7 +49,7 @@ class PurchaseOrderController extends Controller
     public function getPurchaseOrderHistory(Request $request)
     {
         $filters = $request->query();
-        $paginated = $this->autoOrdersRepository->getHistory($filters);
+        $paginated = $this->purchaseOrder->getHistory($filters);
 
         return response()->json([
             "data" => $paginated->items(),
@@ -49,8 +59,8 @@ class PurchaseOrderController extends Controller
 
     public function getExportData(AutoOrder $autoOrder)
     {
-        $data = $this->autoOrdersRepository->getExportableData($autoOrder);
+        $data = $this->purchaseOrder->getExportableData($autoOrder);
 
-        return response()->json(["data" => $data]);
+        return ApiResponse::success(["data" => $data]);
     }
 }
