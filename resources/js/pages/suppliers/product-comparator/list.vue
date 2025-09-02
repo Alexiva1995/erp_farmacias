@@ -289,17 +289,30 @@ const handleDeleteSupplierProducts = async (supplier) => {
           <VTab value="suppliers"> Proveedores </VTab>
           <VTab value="products"> Productos </VTab>
         </VTabs>
-      </VCardText>
-    </VCard>
 
-    <VTabsWindow v-model="tab">
-      <VTabsWindowItem value="suppliers">
         <ProductsComparisionSuppliersFilter
+          v-if="tab === 'suppliers'"
           v-model:selectedSupplier="selectedSupplier"
           :suppliers="suppliers"
           @clear="handleClearSuppliersFilters"
         />
 
+        <ProductsComparisionProductsFilter
+          v-if="tab === 'products'"
+          v-model:enable-discounts="enableDiscounts"
+          :suppliers="suppliers"
+          :laboratories="laboratories"
+          :selected-laboratory="searchedLaboratory"
+          :selected-supplier="searchedSupplier"
+          @clear="handleClearProductsFilters"
+          @update:selectedLaboratory="handleSearchLaboratory"
+          @update:selectedSupplier="handleSearchSupplier"
+        />
+      </VCardText>
+    </VCard>
+
+    <VTabsWindow v-model="tab">
+      <VTabsWindowItem value="suppliers">
         <ProductComparisionTable
           :supplierConnections="supplierConnections"
           :loading="loading"
@@ -316,17 +329,6 @@ const handleDeleteSupplierProducts = async (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <ProductsComparisionProductsFilter
-          v-model:enable-discounts="enableDiscounts"
-          :suppliers="suppliers"
-          :laboratories="laboratories"
-          :selected-laboratory="searchedLaboratory"
-          :selected-supplier="searchedSupplier"
-          @clear="handleClearProductsFilters"
-          @update:selectedLaboratory="handleSearchLaboratory"
-          @update:selectedSupplier="handleSearchSupplier"
-        />
-
         <ProductComparisionProductsTable
           :products="products"
           :loading="loading"
