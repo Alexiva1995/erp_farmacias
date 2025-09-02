@@ -26,9 +26,9 @@ export default [
         to: "suppliers-purchase-orders-history-list",
       },
       {
-        title: 'IA Assistance Report',
-        to: 'suppliers-supplieriaorderassistantreport',
-      }
+        title: "Comparador de Productos",
+        to: "suppliers-product-comparator-list",
+      },
     ],
   },
 ];

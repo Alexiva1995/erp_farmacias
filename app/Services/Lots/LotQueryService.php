@@ -13,8 +13,13 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory', 'supplier'])
-            ->where('quantity', '>', 0);
+            ->with(['product.laboratory', 'supplier']);
+
+        if ($request->has('productId') && !empty($request->productId)) {
+            $query->where('product_id', $request->productId);
+        } else {
+            $query->where('quantity', '>', 0);
+        }
 
         if ($request->has('search') && !empty($request->search)) {
             $searchTerm = $request->search;
@@ -108,7 +113,6 @@ class LotQueryService
     public function getProductsWithoutLot()
     {
         return Product::with('laboratory')
-
             ->orderBy('name', 'asc')
             ->get();
     }

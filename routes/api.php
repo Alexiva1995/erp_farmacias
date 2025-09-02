@@ -56,7 +56,6 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 // Rutas de Productos
-
 Route::get('/products', [ProductController::class, 'index']);
 Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
 Route::post('/products', [ProductController::class, 'store']);
@@ -106,12 +105,13 @@ Route::post("/donations", [DonationController::class, "create"]);
 Route::get("/donations/month/{month}/data", [DonationController::class, "getMonthlyDonationData"]);
 
 // Rutas de Lotes de Productos
-Route::resource("product-lots", LotController::class)->except(["create", "edit"]);
-Route::get("/product-without-lots", [LotController::class, "productsWithInconsistentStock"]);
-Route::get("/products-without-lots", [LotController::class, "productsWithoutLot"]);
-Route::get("/available-suppliers", [LotController::class, "availableSuppliers"]);
-Route::post("/product-lots/batch-update", [LotController::class, "batchUpdate"]);
-Route::get("lots/available-stock/{productId}", [LotController::class, "getAvailableStock"]);
+Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
+Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
+Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
+Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
+Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
+Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);
 
 Route::get("/products/count", [InventoryCycleController::class, "getProductCount"]);
 Route::post("/products/count/{countId}/process", [InventoryCycleController::class, "processCountAction"]);
@@ -130,22 +130,16 @@ Route::prefix("inventory")->group(function () {
 
     Route::post("/cycle/create", [InventoryCycleController::class, "createCycle"]);
 
-    Route::prefix("count")->group(function () {
-        Route::post("{product}", [InventoryCycleController::class, "storeProductCount"])->name("inventory.count.store");
+    Route::prefix('count')->group(function () {
+        Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
+        Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
+        Route::post('/invoice-count/{productId}', [InventoryCycleController::class, 'storeInvoiceCount']);
+        Route::get('/invoice-details-to-count', [InventoryCycleController::class, 'getInvoiceDetailsToCount']);
 
-        Route::get("/invoices/count", [InventoryCycleController::class, "getInvoiceCount"]);
-        Route::post("/invoices/{countId}/process", [InventoryCycleController::class, "processInvoiceCountAction"]);
-        Route::post("/invoice-count/{productId}", [InventoryCycleController::class, "storeInvoiceCount"]);
-
-        Route::get("/invoice-details-to-count", [InventoryCycleController::class, "getInvoiceDetailsToCount"]);
-
-        Route::post("/{countId}/process", [InventoryCycleController::class, "processCountAction"]);
-
-        Route::get("/", [InventoryCycleController::class, "getProductCount"])->name("inventory.counts.index");
-
-        Route::post("{count}/action", [InventoryCycleController::class, "processCountAction"])->name(
-            "inventory.counts.action",
-        );
+        Route::get('/', [InventoryCycleController::class, 'getProductCount']);
+        Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
+        Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
+        Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
     });
 
     // Estadísticas y reportes (funcionalidad futura)
@@ -189,8 +183,8 @@ Route::prefix("tpv")->group(function () {
     Route::get('/credits', [CreditsController::class, 'index']);
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
+    Route::post('/credits/details', [CreditsController::class, 'showDetails']);
 });
-
 // Rutas de Trazabilidad (provenientes de develop)
 Route::prefix("sales/report")
     ->controller(TraceabilityController::class)
@@ -299,7 +293,8 @@ Route::prefix("finances")->group(function () {
 // Rutas de Proveedores
 Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
 Route::prefix("suppliers")->group(function () {
-    Route::get('/{supplier}/connection', [SupplierController::class, 'connectionServiceSupplier']);
+    Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+    Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
     Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
     Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
     Route::post("/{supplier}/laboratories", [SupplierController::class, "storeLaboratory"]);
@@ -307,6 +302,13 @@ Route::prefix("suppliers")->group(function () {
     Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
     Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
     Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
+    Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
@@ -318,7 +320,6 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
     Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
-    Route::get('/supplier-connection-statuses', [SupplierController::class, 'getConnectionStatus']);
 });
 
 
@@ -345,17 +346,17 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
     Route::prefix("generate-order")->group(function () {
-        Route::post("/creat",                     [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-        Route::post("/products-to-request",        [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
-        Route::post("/products-without-supplier",  [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
     });
 });
 
 Route::prefix("suppliers-ia-assistant-report")->group(function () {
-    Route::post('/filtrar-paginate',            [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
-    Route::post('/filtrar-without-paginate',    [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
-    Route::post('/exportar/excel',              [SupplierIaAssistantReportController::class, 'exportarExcel']);
-    Route::get('/consult-products',             [SupplierIaAssistantReportController::class, 'consultProduct']);
+    Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+    Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+    Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+    Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
 });
 
 Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
@@ -364,3 +365,4 @@ Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('i
 Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
+
