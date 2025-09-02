@@ -41,7 +41,7 @@ class LotActionService
 
     public function deleteLot(ProductLot $productLot)
     {
-        $productLot->delete();
+        $productLot->update(['quantity' => 0]);
     }
 
     public function batchUpdateLots(array $data)
@@ -58,44 +58,64 @@ class LotActionService
                 return ['errors' => ['product' => 'Producto no encontrado.']];
             }
 
-            $existingLotsIds = collect($lotsData)->pluck('id')->filter()->toArray();
-            $currentLotsSum = ProductLot::where('product_id', $productId)
-                ->whereNotIn('id', $existingLotsIds)
-                ->sum('quantity');
-
-            $newTotalQuantity = $currentLotsSum;
+            $lotsToUpdate = [];
+            $lotsToCreate = [];
+            $lotsToDelete = [];
 
             foreach ($lotsData as $index => $lotData) {
                 $isNew = !isset($lotData['id']) || $lotData['id'] <= 0;
+                $isMarkedForDeletion = isset($lotData['quantity']) && (int) $lotData['quantity'] === 0;
 
-                $rules = $isNew ? [
-                    'lot_number' => 'required|string|max:255',
-                    'quantity' => 'required|integer|min:0',
-                    'expiration_date' => 'required|date',
-                    'unit_cost' => 'nullable|numeric|min:0',
-                    'location' => 'nullable|string|max:100',
+                if ($isNew && !$isMarkedForDeletion) {
+                    $lotsToCreate[] = ['index' => $index, 'data' => $lotData];
+                } elseif (!$isNew && $isMarkedForDeletion) {
+                    $lotsToDelete[] = ['index' => $index, 'data' => $lotData];
+                } elseif (!$isNew && !$isMarkedForDeletion) {
+                    $lotsToUpdate[] = ['index' => $index, 'data' => $lotData];
+                }
+            }
+            $currentExistingLotsSum = ProductLot::where('product_id', $productId)->sum('quantity');
+            $deletedQuantity = 0;
+            foreach ($lotsToDelete as $lot) {
+                $existingLot = ProductLot::find($lot['data']['id']);
+                if ($existingLot) {
+                    $deletedQuantity += $existingLot->quantity;
+                }
+            }
+            $newTotalQuantity = $currentExistingLotsSum - $deletedQuantity;
+            foreach ($lotsToUpdate as $lot) {
+                $existingLot = ProductLot::find($lot['data']['id']);
+                if ($existingLot) {
+                    $newTotalQuantity = $newTotalQuantity - $existingLot->quantity + (int) $lot['data']['quantity'];
+                }
+            }
+            foreach ($lotsToCreate as $lot) {
+                $newTotalQuantity += (int) $lot['data']['quantity'];
+            }
+            if ($newTotalQuantity !== $product->stock) {
+                $errors['stock'] = "La cantidad total de lotes ({$newTotalQuantity}) debe ser igual al stock del producto ({$product->stock}).";
+            }
+            $allLotsToValidate = array_merge($lotsToCreate, $lotsToUpdate);
 
-                ] : [
+            foreach ($allLotsToValidate as $lotItem) {
+                $index = $lotItem['index'];
+                $lotData = $lotItem['data'];
+                $isNew = !isset($lotData['id']) || $lotData['id'] <= 0;
+
+                $rules = [
                     'lot_number' => 'required|string|max:255',
+                    'quantity' => 'required|integer|min:1',
                     'expiration_date' => 'required|date',
-                    'quantity' => 'required|integer|min:0',
-                    'unit_cost' => 'required|numeric|min:0',
+                    'unit_cost' => $isNew ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
                     'location' => 'nullable|string|max:100',
                 ];
 
                 $validator = Validator::make($lotData, $rules);
 
                 if ($validator->fails()) {
-                    $errors["lote_{$index}"] = $validator->errors();
+                    $errors["lote_{$index}"] = $validator->errors()->toArray();
                     continue;
                 }
-
-                $validatedData = $validator->validated();
-                $newTotalQuantity += $validatedData['quantity'];
-            }
-
-            if ($currentLotsSum < $product->stock && $newTotalQuantity > $product->stock) {
-                $errors['stock'] = "La cantidad total de lotes ({$newTotalQuantity}) no puede exceder el stock del producto ({$product->stock}).";
             }
 
             if (!empty($errors)) {
@@ -103,37 +123,40 @@ class LotActionService
                 return ['errors' => $errors];
             }
 
-            foreach ($lotsData as $index => $lotData) {
-                $isNew = !isset($lotData['id']) || $lotData['id'] <= 0;
-                $validatedData = Validator::make($lotData, $isNew ? [
-                    'lot_number' => 'required|string|max:255',
-                    'quantity' => 'required|integer|min:0',
-                    'expiration_date' => 'required|date',
-                    'unit_cost' => 'nullable|numeric|min:0',
-                    'location' => 'nullable|string|max:100',
-                ] : [
-                    'lot_number' => 'required|string|max:255',
-                    'expiration_date' => 'required|date',
-                    'quantity' => 'required|integer|min:0',
-                    'unit_cost' => 'required|numeric|min:0',
-                    'location' => 'nullable|string|max:100',
-                ])->validated();
-
-                if ($isNew) {
-                    ProductLot::create([
-                        'product_id' => $productId,
-                        'lot_number' => $validatedData['lot_number'],
-                        'quantity' => $validatedData['quantity'],
-                        'expiration_date' => $validatedData['expiration_date'],
-                        'unit_cost' => $validatedData['unit_cost'] ?? null,
-                        'location' => $validatedData['location'] ?? null,
+            foreach ($lotsToDelete as $lotItem) {
+                $lotData = $lotItem['data'];
+                $productLot = ProductLot::find($lotData['id']);
+                if ($productLot) {
+                    $productLot->update([
+                        'quantity' => 0
                     ]);
-                } else {
-                    $productLot = ProductLot::find($lotData['id']);
-                    if ($productLot) {
-                        $productLot->update($validatedData);
-                    }
                 }
+            }
+
+            foreach ($lotsToUpdate as $lotItem) {
+                $lotData = $lotItem['data'];
+                $productLot = ProductLot::find($lotData['id']);
+                if ($productLot) {
+                    $productLot->update([
+                        'lot_number' => $lotData['lot_number'],
+                        'quantity' => $lotData['quantity'],
+                        'expiration_date' => $lotData['expiration_date'],
+                        'unit_cost' => $lotData['unit_cost'],
+                        'location' => $lotData['location'] ?? null,
+                    ]);
+                }
+            }
+
+            foreach ($lotsToCreate as $lotItem) {
+                $lotData = $lotItem['data'];
+                ProductLot::create([
+                    'product_id' => $productId,
+                    'lot_number' => $lotData['lot_number'],
+                    'quantity' => $lotData['quantity'],
+                    'expiration_date' => $lotData['expiration_date'],
+                    'unit_cost' => $lotData['unit_cost'] ?? null,
+                    'location' => $lotData['location'] ?? null,
+                ]);
             }
 
             DB::commit();
