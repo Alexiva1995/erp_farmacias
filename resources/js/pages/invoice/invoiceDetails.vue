@@ -148,6 +148,23 @@ const totalWithDiscount = computed(() => {
   return invoice.value.total_amount - discountAmount;
 });
 
+const editableDetailsTaxAmount = computed(() => {
+  if (!processedInvoiceDetails.value) return 0;
+  return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
+    if (currentDetail.tax_enabled) {
+      return accumulator + (currentDetail.tax_amount || 0);
+    }
+    return accumulator;
+  }, 0);
+});
+
+const isTaxAmountMismatch = computed(() => {
+  if (!invoice.value) return false;
+  const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0;
+  if (invoiceTaxAmount === 0) return false;
+  return Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount) > 0.01;
+});
+
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
   if (invoice.value) {
@@ -177,21 +194,14 @@ const toggleReturnItem = (itemToToggle) => {
     const item = invoiceDetails.value[index];
     item.is_return = !item.is_return;
     if (item.is_return) {
-      item.lot_number = "N/A (Devolución)";
-      item.expiration_date = null;
       item.location = "N/A";
-      if (editingDetailId.value === item.id) {
-        cancelEditingDetail();
-      }
+      startEditingDetail(item);
     } else {
-      item.lot_number = "";
-      item.expiration_date = null;
       item.location = "Por Asignar";
       startEditingDetail(item);
     }
   }
 };
-
 const isItemReturned = (item) => {
   return !!item.is_return;
 };
@@ -270,37 +280,11 @@ const handleSaveProgress = async () => {
     toast.success(response.data.message || "Progreso guardado.");
     invoice.value = response.data.invoice;
     await fetchInvoiceDetails(props.invoiceId);
+
+    isEditMode.value = false;
   } catch (error) {
     toast.error(
       error.response?.data?.message || "No se pudo guardar el progreso."
-    );
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleFinalizeInvoice = async () => {
-  if (isTotalMismatch.value) {
-    toast.error(
-      `El total de productos (${formatCurrency(
-        editableDetailsTotal.value,
-        invoice.value.currency
-      )}) debe ser exactamente igual al total de la factura (${formatCurrency(
-        invoice.value.total_amount,
-        invoice.value.currency
-      )}).`
-    );
-    return;
-  }
-  await handleSaveProgress();
-  loading.value = true;
-  try {
-    const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
-    toast.success(response.data.message || "Factura finalizada con éxito.");
-    emit("back-to-list");
-  } catch (error) {
-    toast.error(
-      error.response?.data?.message || "No se pudo finalizar la factura."
     );
   } finally {
     loading.value = false;
@@ -425,7 +409,7 @@ const addProductToInvoice = (product) => {
       lot_number: "",
       expiration_date: null,
       location: "Por Asignar",
-      tax_enabled: !!product.iva,
+      tax_enabled: invoiceHasIva.value ? !!product.iva : false,
       is_return: false,
     };
     invoiceDetails.value.push(newDetail);
@@ -434,6 +418,13 @@ const addProductToInvoice = (product) => {
 };
 
 const toggleTax = (detailToToggle) => {
+  if (!invoiceHasIva.value) {
+    toast.warning(
+      "Esta factura no permite productos con IVA según su configuración fiscal."
+    );
+    return;
+  }
+
   const index = invoiceDetails.value.findIndex(
     (d) => d.id === detailToToggle.id
   );
@@ -526,22 +517,35 @@ const saveEditingDetail = () => {
     toast.error("El costo por unidad debe ser 0 o mayor");
     return;
   }
-  if (!editedDetailData.value.is_return) {
-    if (!editedDetailData.value.lot_number?.trim()) {
-      toast.error("El número de lote es obligatorio");
-      return;
-    }
-    if (!editedDetailData.value.expiration_date) {
-      toast.error("La fecha de vencimiento es obligatoria");
-      return;
-    }
+
+  if (!editedDetailData.value.lot_number?.trim()) {
+    const itemType = editedDetailData.value.is_return
+      ? "devolución"
+      : "producto";
+    toast.error(`El número de lote es obligatorio para este ${itemType}`);
+    return;
   }
+  if (!editedDetailData.value.expiration_date) {
+    const itemType = editedDetailData.value.is_return
+      ? "devolución"
+      : "producto";
+    toast.error(`La fecha de vencimiento es obligatoria para este ${itemType}`);
+    return;
+  }
+
   const detailIndex = invoiceDetails.value.findIndex(
     (d) => d.id === editingDetailId.value
   );
   if (detailIndex !== -1) {
     invoiceDetails.value[detailIndex] = { ...editedDetailData.value };
-    toast.success("Producto actualizado correctamente");
+    const itemType = editedDetailData.value.is_return
+      ? "devolución"
+      : "producto";
+    toast.success(
+      `${
+        itemType.charAt(0).toUpperCase() + itemType.slice(1)
+      } actualizado correctamente`
+    );
   }
   cancelEditingDetail();
 };
@@ -621,6 +625,64 @@ const getCurrencySymbol = () => {
   const symbolMap = { BS: "Bs.", Bs: "Bs.", USD: "$", COP: "COP$" };
   return symbolMap[invoice.value.currency] || "Bs.";
 };
+const isNearExpiration = (item) => {
+  if (!item.expiration_date) return false;
+
+  const expirationDate = new Date(item.expiration_date);
+  const today = new Date();
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(today.getMonth() + 6);
+
+  return expirationDate <= sixMonthsFromNow;
+};
+const invoiceHasIva = computed(() => {
+  if (!invoice.value) return false;
+  const taxableBase = parseFloat(invoice.value.taxable_base) || 0;
+  const taxAmount = parseFloat(invoice.value.tax_amount) || 0;
+  return taxableBase > 0 || taxAmount > 0;
+});
+
+const handleFinalizeInvoice = async () => {
+  if (isTotalMismatch.value) {
+    toast.error(
+      `El total de productos (${formatCurrency(
+        editableDetailsTotal.value,
+        invoice.value.currency
+      )}) debe ser exactamente igual al total de la factura (${formatCurrency(
+        invoice.value.total_amount,
+        invoice.value.currency
+      )}).`
+    );
+    return;
+  }
+
+  if (isTaxAmountMismatch.value) {
+    toast.error(
+      `El monto de IVA de los productos (${formatCurrency(
+        editableDetailsTaxAmount.value,
+        invoice.value.currency
+      )}) debe ser igual al IVA de la factura (${formatCurrency(
+        invoice.value.tax_amount,
+        invoice.value.currency
+      )}).`
+    );
+    return;
+  }
+
+  await handleSaveProgress();
+  loading.value = true;
+  try {
+    const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
+    toast.success(response.data.message || "Factura finalizada con éxito.");
+    emit("back-to-list");
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "No se pudo finalizar la factura."
+    );
+  } finally {
+    loading.value = false;
+  }
+};
 
 const detailsHeaders = [
   {
@@ -687,7 +749,6 @@ const detailsHeaders = [
   },
 ];
 </script>
-
 <template>
   <div>
     <div v-if="loading" class="text-center pa-10">
@@ -712,7 +773,22 @@ const detailsHeaders = [
           </div>
         </div>
       </VAlert>
-
+      <VAlert
+        v-if="!invoiceHasIva"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        <template #prepend><VIcon icon="tabler-info-circle" /></template>
+        <div>
+          <strong>Factura sin IVA</strong>
+          <div class="text-caption mt-1">
+            Esta factura no incluye IVA según su configuración fiscal. Los
+            productos agregados no podrán tener IVA aplicado.
+          </div>
+        </div>
+      </VAlert>
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
           <VCardText class="header-section">
@@ -813,8 +889,10 @@ const detailsHeaders = [
               <div class="d-flex align-center ga-4">
                 <div class="text-right d-flex align-center">
                   <VTooltip
-                    v-if="isTotalMismatch && isEditMode"
-                    text="El total de los productos debe ser igual al total de la factura."
+                    v-if="
+                      (isTotalMismatch || isTaxAmountMismatch) && isEditMode
+                    "
+                    text="Hay discrepancias en los totales que deben corregirse antes de finalizar."
                   >
                     <template #activator="{ props }">
                       <VIcon
@@ -829,12 +907,15 @@ const detailsHeaders = [
                     >Total Cargado</span
                   >
                   <VChip
-                    :color="isTotalMismatch && isEditMode ? 'warning' : 'error'"
+                    :color="
+                      (isTotalMismatch || isTaxAmountMismatch) && isEditMode
+                        ? 'warning'
+                        : 'error'
+                    "
                     label
-                    >{{
-                      formatCurrency(editableDetailsTotal, invoice.currency)
-                    }}</VChip
                   >
+                    {{ formatCurrency(editableDetailsTotal, invoice.currency) }}
+                  </VChip>
                 </div>
                 <VBtn
                   v-if="isEditableMode && isEditMode"
@@ -857,47 +938,75 @@ const detailsHeaders = [
               class="invoice-products-table"
             >
               <template #item.product_name_with_tax="{ item }">
-                <span :class="{ 'returned-item': isItemReturned(item) }">{{
-                  item.product_name_with_tax
-                }}</span>
+                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
+                  <span :class="{ 'returned-item': isItemReturned(item) }">
+                    {{ item.product_name_with_tax }}
+                  </span>
+                  <VTooltip v-if="isNearExpiration(item)" location="top">
+                    <template #activator="{ props }">
+                      <VIcon
+                        v-bind="props"
+                        icon="tabler-alert-triangle"
+                        color="warning"
+                        size="16"
+                        class="ms-2"
+                      />
+                    </template>
+                    <span
+                      >Producto próximo a vencer (menos de 6 meses). Considere
+                      marcarlo como devolución.</span
+                    >
+                  </VTooltip>
+                </div>
               </template>
 
-              <template #item.lot_number="{ item }"
-                ><VTextField
-                  v-if="
-                    isEditableMode &&
-                    item.id === editingDetailId &&
-                    !isItemReturned(item)
-                  "
-                  v-model="editedDetailData.lot_number"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="editable-cell"
-                  placeholder="Ingrese lote"
-                /><span
-                  v-else
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.lot_number || "-" }}</span
-                ></template
-              >
-              <template #item.expiration_date="{ item }"
-                ><AppDateTimePicker
-                  v-if="
-                    isEditableMode &&
-                    item.id === editingDetailId &&
-                    !isItemReturned(item)
-                  "
-                  v-model="editedDetailData.expiration_date"
-                  density="compact"
-                  class="editable-cell"
-                  placeholder="F. Vencimiento"
-                /><span
-                  v-else
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.expiration_date || "-" }}</span
-                ></template
-              >
+              <template #item.lot_number="{ item }">
+                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
+                  <VTextField
+                    v-if="isEditableMode && item.id === editingDetailId"
+                    v-model="editedDetailData.lot_number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    class="editable-cell"
+                    :placeholder="
+                      item.is_return ? 'Lote (Devolución)' : 'Ingrese lote'
+                    "
+                  />
+                  <span
+                    v-else
+                    :class="{ 'returned-item': isItemReturned(item) }"
+                  >
+                    {{ item.lot_number || "-" }}
+                  </span>
+                </div>
+              </template>
+
+              <template #item.expiration_date="{ item }">
+                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
+                  <AppDateTimePicker
+                    v-if="isEditableMode && item.id === editingDetailId"
+                    v-model="editedDetailData.expiration_date"
+                    density="compact"
+                    class="editable-cell"
+                    :placeholder="
+                      item.is_return
+                        ? 'F. Venc. (Devolución)'
+                        : 'F. Vencimiento'
+                    "
+                  />
+                  <span
+                    v-else
+                    :class="{
+                      'returned-item': isItemReturned(item),
+                      'text-warning':
+                        isNearExpiration(item) && !isItemReturned(item),
+                    }"
+                  >
+                    {{ item.expiration_date || "-" }}
+                  </span>
+                </div>
+              </template>
               <template #item.location="{ item, index }">
                 <VTextField
                   v-if="isLocationMode && !isItemReturned(item)"
@@ -1012,14 +1121,35 @@ const detailsHeaders = [
                             size="20" /></IconBtn></template
                     ></VTooltip>
                     <VTooltip
-                      :text="item.tax_enabled ? 'Quitar IVA' : 'Agregar IVA'"
-                      ><template #activator="{ props }"
-                        ><IconBtn v-bind="props" @click="toggleTax(item)"
-                          ><VIcon
-                            :color="item.tax_enabled ? 'success' : 'default'"
+                      :text="
+                        !invoiceHasIva
+                          ? 'Factura sin IVA - No se puede agregar IVA a productos'
+                          : item.tax_enabled
+                          ? 'Quitar IVA'
+                          : 'Agregar IVA'
+                      "
+                    >
+                      <template #activator="{ props }">
+                        <IconBtn
+                          v-bind="props"
+                          @click="toggleTax(item)"
+                          :disabled="!invoiceHasIva"
+                          :class="{ 'disabled-button': !invoiceHasIva }"
+                        >
+                          <VIcon
+                            :color="
+                              !invoiceHasIva
+                                ? 'disabled'
+                                : item.tax_enabled
+                                ? 'success'
+                                : 'default'
+                            "
                             icon="tabler-receipt-tax"
-                            size="20" /></IconBtn></template
-                    ></VTooltip>
+                            size="20"
+                          />
+                        </IconBtn>
+                      </template>
+                    </VTooltip>
                     <IconBtn @click="removeProductFromInvoice(item.id)"
                       ><VIcon icon="tabler-trash" size="20"
                     /></IconBtn>
@@ -1039,9 +1169,54 @@ const detailsHeaders = [
               <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
                   >Monto Total Excento de IVA:</span
-                ><span class="text-h6 ms-2">{{
+                >
+                <span class="text-h6 ms-2">{{
                   formatCurrency(invoice.exempt_amount)
                 }}</span>
+              </div>
+              <div class="total-item-row">
+                <span class="text-subtitle-2 text-disabled"
+                  >Base Imponible segun Alicuota 16 %:</span
+                >
+                <span class="text-h6 ms-2">{{
+                  formatCurrency(invoice.taxable_base)
+                }}</span>
+              </div>
+
+              <div class="total-item-row">
+                <div class="d-flex align-center">
+                  <VTooltip
+                    v-if="isTaxAmountMismatch && isEditMode"
+                    text="El monto de IVA calculado debe coincidir con el configurado en la factura."
+                  >
+                    <template #activator="{ props }">
+                      <VIcon
+                        v-bind="props"
+                        icon="tabler-alert-circle"
+                        color="warning"
+                        class="me-2"
+                      />
+                    </template>
+                  </VTooltip>
+                  <span class="text-subtitle-2 text-disabled"
+                    >Impuesto segun Alicuota 16 %:</span
+                  >
+                </div>
+                <div class="d-flex flex-column align-end">
+                  <span class="text-h6">{{
+                    formatCurrency(invoice.tax_amount)
+                  }}</span>
+                  <span
+                    v-if="isEditMode"
+                    class="text-caption"
+                    :class="{ 'text-warning': isTaxAmountMismatch }"
+                  >
+                    Calculado:
+                    {{
+                      formatCurrency(editableDetailsTaxAmount, invoice.currency)
+                    }}
+                  </span>
+                </div>
               </div>
               <div class="total-item-row">
                 <span class="text-subtitle-2 text-disabled"
