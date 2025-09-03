@@ -66,10 +66,14 @@ const fetchProducts = async () => {
     laboratoryId: searchedLaboratory.value,
   };
 
-  Object.keys(params).forEach((key) => (params[key] === null || params[key] === "") && delete params[key]);
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
 
   try {
-    const { data } = await axios.get("/suppliers/available-products", { params });
+    const { data } = await axios.get("/suppliers/available-products", {
+      params,
+    });
     products.value = data.data;
     productsTotal.value = data.total;
   } catch (error) {
@@ -88,7 +92,9 @@ const fetchSupplierConnections = async () => {
     selectedSupplier: selectedSupplier.value,
   };
 
-  Object.keys(params).forEach((key) => (params[key] === null || params[key] === "") && delete params[key]);
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
 
   try {
     const response = await axios.get("/suppliers/connections", { params });
@@ -107,7 +113,9 @@ const fetchStatuses = async () => {
     const { data } = await axios.get("/suppliers/supplier-connection-statuses");
     const newStatuses = data.statuses;
 
-    const hasFinished = newStatuses.some((s) => ["completed", "failed"].includes(s.status));
+    const hasFinished = newStatuses.some((s) =>
+      ["completed", "failed"].includes(s.status)
+    );
     if (hasFinished) {
       stopPolling();
       await fetchSupplierConnections();
@@ -144,7 +152,7 @@ watch(
     clearTimeout(supplierDebounceTimer);
     supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 300);
   },
-  { deep: true },
+  { deep: true }
 );
 
 let productDebounceTimer;
@@ -154,7 +162,7 @@ watch(
     clearTimeout(productDebounceTimer);
     productDebounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true },
+  { deep: true }
 );
 
 watch(
@@ -164,7 +172,7 @@ watch(
   },
   {
     deep: true,
-  },
+  }
 );
 
 const handleSearchSupplier = (supplier) => {
@@ -194,7 +202,9 @@ const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
-    toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
+    toast.info(
+      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
+    );
     await axios.get(`/suppliers/${supplier.id}/connection`);
 
     startPolling();
@@ -223,13 +233,21 @@ const handleAddItemToAutoOrder = async (product) => {
 
   try {
     await axios.post("/suppliers/add-product-to-order", form);
-    toast.success(`Se añadieron ${product.quantity} productos al pedido del día`);
+    toast.success(
+      `Se añadieron ${product.quantity} productos al pedido del día`
+    );
   } catch (error) {
     if (error.response?.status === 422) {
       quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
     }
+
     console.error("Hubo un error al enviar la petición:", error);
-    toast.error("Error al añadir productos al pedido del día.");
+
+    if (error.response?.status === 400) {
+      toast.error(error.response.data.message);
+    } else {
+      toast.error("Error al añadir productos al pedido del día.");
+    }
   }
 };
 
@@ -240,7 +258,9 @@ const handleShowImportProductsDialog = (supplier) => {
 
 const handleDeleteSupplierProducts = async (supplier) => {
   try {
-    const { data } = await axios.delete(`/suppliers/${supplier.id}/delete-products`);
+    const { data } = await axios.delete(
+      `/suppliers/${supplier.id}/delete-products`
+    );
     if (data.status === "ok") {
       toast.success(`Se borraron los productos del proveedor ${supplier.name}`);
 
@@ -254,8 +274,14 @@ const handleDeleteSupplierProducts = async (supplier) => {
 
 <template>
   <div>
-    <ShowSupplierProductsDialog v-model="isShowSupplierProductsDialogActive" :selectedSupplier="supplierOption" />
-    <ShowImportProductsFileDialog v-model="isShowImportFileDialogActive" :selectedSupplier="supplierOption" />
+    <ShowSupplierProductsDialog
+      v-model="isShowSupplierProductsDialogActive"
+      :selectedSupplier="supplierOption"
+    />
+    <ShowImportProductsFileDialog
+      v-model="isShowImportFileDialogActive"
+      :selectedSupplier="supplierOption"
+    />
 
     <VCard title="Listados" class="mb-6">
       <VCardText>
@@ -263,17 +289,30 @@ const handleDeleteSupplierProducts = async (supplier) => {
           <VTab value="suppliers"> Proveedores </VTab>
           <VTab value="products"> Productos </VTab>
         </VTabs>
-      </VCardText>
-    </VCard>
 
-    <VTabsWindow v-model="tab">
-      <VTabsWindowItem value="suppliers">
         <ProductsComparisionSuppliersFilter
+          v-if="tab === 'suppliers'"
           v-model:selectedSupplier="selectedSupplier"
           :suppliers="suppliers"
           @clear="handleClearSuppliersFilters"
         />
 
+        <ProductsComparisionProductsFilter
+          v-if="tab === 'products'"
+          v-model:enable-discounts="enableDiscounts"
+          :suppliers="suppliers"
+          :laboratories="laboratories"
+          :selected-laboratory="searchedLaboratory"
+          :selected-supplier="searchedSupplier"
+          @clear="handleClearProductsFilters"
+          @update:selectedLaboratory="handleSearchLaboratory"
+          @update:selectedSupplier="handleSearchSupplier"
+        />
+      </VCardText>
+    </VCard>
+
+    <VTabsWindow v-model="tab">
+      <VTabsWindowItem value="suppliers">
         <ProductComparisionTable
           :supplierConnections="supplierConnections"
           :loading="loading"
@@ -290,17 +329,6 @@ const handleDeleteSupplierProducts = async (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <ProductsComparisionProductsFilter
-          v-model:enable-discounts="enableDiscounts"
-          :suppliers="suppliers"
-          :laboratories="laboratories"
-          :selected-laboratory="searchedLaboratory"
-          :selected-supplier="searchedSupplier"
-          @clear="handleClearProductsFilters"
-          @update:selectedLaboratory="handleSearchLaboratory"
-          @update:selectedSupplier="handleSearchSupplier"
-        />
-
         <ProductComparisionProductsTable
           :products="products"
           :loading="loading"
