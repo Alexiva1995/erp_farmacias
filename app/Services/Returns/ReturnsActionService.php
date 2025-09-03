@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ReturnsActionService
 {
@@ -49,7 +50,7 @@ class ReturnsActionService
         DB::beginTransaction();
 
         try {
-            
+
             $orderData = $request->order;
             $productData = $request->product;
             $orderDetail = collect($orderData['details'])->firstWhere('product_id', $productData['id']);
@@ -63,35 +64,35 @@ class ReturnsActionService
                 throw new Exception('No se encontró el detalle del producto en la orden.');
             }
             $orderDetail = (object) $orderDetail;
-             
+
             $returnAmount = $returnsQuantity * (float)$orderDetail->unit_price_usd;
             $clientData = $orderData['client'];
-      
+
             if (!$clientData) {
                 throw new Exception('No se encontró el cliente asociado a la orden.');
             }
 
-                $lot = ProductLot::where('product_id', $productData['id'])
-                    ->where('expiration_date', '>', now())
-                    ->where('quantity', '>', 0)
-                    ->orderByDesc('expiration_date')
-                    ->first();
+            $lot = ProductLot::where('product_id', $productData['id'])
+                ->where('expiration_date', '>', now())
+                ->where('quantity', '>', 0)
+                ->orderByDesc('expiration_date')
+                ->first();
 
-                if ($lot) {
-                    $lot->quantity += $returnsQuantity;
-                    $lot->save();
-                } else {
-                    throw new Exception('No se encontró lote vigente para ese producto.');
-                }
+            if ($lot) {
+                $lot->quantity += $returnsQuantity;
+                $lot->save();
+            } else {
+                throw new Exception('No se encontró lote vigente para ese producto.');
+            }
 
-         
+
             ReturnEntry::create([
                 'order_id' => $orderData['id'],
                 'product_id' => $productData['id'],
                 'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
                 'return_date' => Carbon::now(),
-                'status' => 'Created',
+                'status' => ReturnEntry::CREATED,
             ]);
 
             DB::commit();
@@ -102,6 +103,25 @@ class ReturnsActionService
         } catch (Exception $e) {
             DB::rollBack();
             throw new Exception($e->getMessage());
+        }
+    }
+
+    public function approvedReturn(ReturnEntry $ReturnEntry): ReturnEntry
+    {
+        DB::beginTransaction();
+        try {
+            $ReturnEntry->status = ReturnEntry::APPROVED;
+            $ReturnEntry->save();
+            DB::commit();
+            Log::info("Devolución aprobada exitosamente.", ['returnEntry_id' => $ReturnEntry->id]);
+            return $ReturnEntry;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al aprobar la devolución: ' . $e->getMessage(), [
+                'returnEntry_id' => $ReturnEntry->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 }

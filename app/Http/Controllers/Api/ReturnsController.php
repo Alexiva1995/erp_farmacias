@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ReturnEntry;
 use Illuminate\Http\Request;
 use App\Services\Returns\ReturnsActionService;
 use App\Services\Returns\ReturnsQueryService;
+use App\Helpers\ApiResponse;
+use Illuminate\Support\Facades\Log;
 
 class ReturnsController extends Controller
 {
@@ -63,6 +66,23 @@ class ReturnsController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+      public function approvedReturn($returnEntryId)
+    {
+       
+        $ReturnEntry = ReturnEntry::findOrFail($returnEntryId);
+      
+        if ($ReturnEntry->status !== ReturnEntry::CREATED) {
+            return response()->json(['error' => 'Solo se pueden aprobar devoluciones creadas.'], 400);
+        }
+        try {
+            $approvedReturn = $this->returnsActionService->approvedReturn($ReturnEntry);
+            return ApiResponse::success('Devolución aprobada exitosamente.', ['return' => $approvedReturn]);
+        } catch (\Exception $e) {
+            Log::error('Error al aprobar la devolución:', ['error' => $e->getMessage(), 'returnEntry_id' => $ReturnEntry->id]);
+            return ApiResponse::error('No se pudo aprobar la devolución: ' . $e->getMessage(), 500);
+        }
+
     }
 }
 

@@ -67,6 +67,7 @@ const updateStatus = async (item) => {
     let returnId = item.id;
     await axios.patch(`/tpv/returns/${returnId}/approved`);
     toast.success("Devolución aprobada exitosamente.");
+    await fetchReturn();
  } catch (error) {
     console.error(
       "Error al aprobar la devolución:",
