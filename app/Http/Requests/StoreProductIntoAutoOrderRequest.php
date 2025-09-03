@@ -26,7 +26,7 @@ class StoreProductIntoAutoOrderRequest extends FormRequest
                         ->exists();
 
                     if (!$exists) {
-                        $fail("La cantidad solicitada no está disponible.");
+                        $fail("Cantidad no disponible.");
                     }
                 },
             ],

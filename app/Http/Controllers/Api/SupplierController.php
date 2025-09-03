@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\SupplierImport;
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
 use App\Http\Requests\GetDataFromSupplierFileRequest;
@@ -15,9 +16,7 @@ use App\Http\Requests\StoreDiscountsRequest;
 use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
-use App\Models\SupplierConnectionStatus;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierController extends Controller
 {
@@ -266,18 +265,28 @@ class SupplierController extends Controller
         ]);
     }
 
-    public function getLaboratories(Request $request)
+    public function getLaboratories()
     {
-        $results = $this->supplierQueryService->getAvailableLaboratories($request);
+        $results = $this->supplierQueryService->getAvailableLaboratories();
 
         return response()->json($results);
     }
 
     public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
     {
+        $productId = $request->productId;
+        $discount = $request->boolean("discount");
+        $product = ProductSupplier::find($productId);
+
+        if ($discount && empty($product->unit_cost_usd_with_discount)) {
+            return ApiResponse::error('Este producto no posee descuentos');
+        }
+
         $results = $this->supplierQueryService->addProductToOrder($request);
 
-        return response()->json(200);
+        return $results
+            ? ApiResponse::success()
+            : ApiResponse::error();
     }
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)

@@ -337,7 +337,9 @@ class ProductRepository
 
 
         if (array_key_exists("laboratoryId", $filtros)) {
-            $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
+            if (count($filtros["laboratoryId"]) > 0) {
+                $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
+            }
         }
 
         if (array_key_exists("groups", $filtros)) {
@@ -558,7 +560,9 @@ class ProductRepository
 
 
         if (array_key_exists("laboratoryId", $filtros)) {
-            $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
+            if (count($filtros["laboratoryId"]) > 0) {
+                $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
+            }
         }
 
         if (array_key_exists("groups", $filtros)) {
