@@ -9,7 +9,7 @@ const emit= defineEmits("eliminarItemOrden")
 const headers = [
   { title: 'Nombre',                            key: 'product.name'},
   { title: 'Cantidad',                          key: 'reponer'},
-  { title: 'Costo',                             key: 'productSupplier.unit_cost_usd'},
+  { title: 'Costo',                             key: 'precio_final_supplier'},
   { title: 'Total',                             key: 'totalPorveedor',sortable:false},
   { title: 'Action',                            key: "action"},
 ];
@@ -27,9 +27,9 @@ const groupBy = [{ key: 'supplier.name' }]
       :group-by="groupBy"
       fixed-header
     >
-      <template #item.productSupplier.unit_cost="{ item }">
+      <template #item.precio_final_supplier="{ item }">
         <!-- <VIcon icon="tabler-currency-dollar" /> -->
-        {{ parseFloat(item.productSupplier.unit_cost).toFixed(2) }}
+        {{ parseFloat(item.precio_final_supplier).toFixed(2) }}
       </template>
       <template #item.reponer="{ item }">
         <VTextField
@@ -43,10 +43,7 @@ const groupBy = [{ key: 'supplier.name' }]
       </template>
       <template #item.totalPorveedor="{ item }">
         <!-- <VIcon icon="tabler-currency-dollar " /> -->
-        {{
-          parseFloat(item.productSupplier.unit_cost_usd).toFixed(2) *
-          item.reponer
-        }}
+        {{ parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer }}
       </template>
       <template #item.action="{ item }">
         <VIcon

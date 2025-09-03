@@ -31,6 +31,7 @@ let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
 let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laboratoryId):[]
 
 
+const con_descuento= ref(route.query.con_descuento);// descuento o precio full
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
 const groups= ref(gruposList);// grupos
@@ -39,6 +40,7 @@ const laboratoryId= ref(laboratoriosList);// laboratorio
 
 async function generarPedido(){
   let data ={
+    "con_descuento":con_descuento.value,
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
     "groups":groups.value,
@@ -157,7 +159,7 @@ function generateUUID() {
 
 
 const TOTAL_ORDER= computed(() => {
-  let listaSubTotales=module.detalleOrder.map(de => de.reponer*de.productSupplier.unit_cost)
+  let listaSubTotales=module.detalleOrder.map(de => de.reponer * de.precio_final_supplier)
   const total=listaSubTotales.reduce((acumulador, valorActual) => acumulador + valorActual, 0)
   return (module.detalleOrder.length>0)?total:0
 })
@@ -169,11 +171,11 @@ const LISTA_PORVEEDORES_TOTAL= computed(() => {
     if(!keyHashIdProveedor[item.supplier.id]){
       keyHashIdProveedor[item.supplier.id]={
         name:item.supplier.name,
-        total: parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer,
+        total: parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer,
       }
     }
     else{
-       keyHashIdProveedor[item.supplier.id].total=keyHashIdProveedor[item.supplier.id].total+(parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer)
+       keyHashIdProveedor[item.supplier.id].total=keyHashIdProveedor[item.supplier.id].total+(parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer)
     }
   }
   let lista=[]
@@ -231,15 +233,15 @@ function formatiarData(data){
       let detalleProductoOrder={
         "product_suppliers_id":productSupplier.productSupplier.id,
         "quantity":productSupplier.reponer,
-        "unit_cost":productSupplier.productSupplier.unit_cost,
-        "subtotal":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "unit_cost":productSupplier.precio_final_supplier,
+        "subtotal":productSupplier.reponer * productSupplier.precio_final_supplier,
       }
 
       let orderSupplier={
         "supplier_id":productSupplier.supplier.id,
         "total_items":supplier[productSupplier.supplier.id].length,
         "total_quantity":productSupplier.reponer,
-        "total_amount":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "total_amount":productSupplier.reponer * productSupplier.precio_final_supplier,
         "details":[detalleProductoOrder],
       }
 
@@ -254,12 +256,12 @@ function formatiarData(data){
 
       orderSupplier.total_items=supplier[productSupplier.supplier.id].length
       orderSupplier.total_quantity=orderSupplier.total_quantity+productSupplier.reponer
-      orderSupplier.total_amount=orderSupplier.total_amount+(productSupplier.reponer*productSupplier.productSupplier.unit_cost)
+      orderSupplier.total_amount=orderSupplier.total_amount+(productSupplier.reponer * productSupplier.precio_final_supplier)
       let detalleProductoOrder={
         "product_suppliers_id":productSupplier.productSupplier.id,
         "quantity":productSupplier.reponer,
-        "unit_cost":productSupplier.productSupplier.unit_cost,
-        "subtotal":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "unit_cost":productSupplier.precio_final_supplier,
+        "subtotal":productSupplier.reponer * productSupplier.precio_final_supplier,
       }
       orderSupplier.details.push(detalleProductoOrder)
       orders[indexOrderSupplier]=orderSupplier
@@ -270,6 +272,7 @@ function formatiarData(data){
 }
 
 async function realizarCompra(){
+  module.loadingApp=true
   let orders=formatiarData([...module.detalleOrder])
   const DATA={
     orders
@@ -278,13 +281,17 @@ async function realizarCompra(){
 
   let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
   if(response.status!=200){
+     module.loadingApp=false
     toast.error("Error al generar al compra")
     return
   }
-   toast.success("Compra realizada con exito")
-   let productosSinPorveedor= await consultarProductosSinProveedor()
-   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
-   router.push("/suppliers/purchase-orders/list")
+  module.loadingApp=false
+  toast.success("Compra realizada con exito")
+  module.loadingApp=true
+  let productosSinPorveedor= await consultarProductosSinProveedor()
+  pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+  module.loadingApp=false
+  router.push("/suppliers/purchase-orders/list")
 }
 
 async function consultarProductosSinProveedor(){
