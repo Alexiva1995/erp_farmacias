@@ -1,6 +1,8 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import Swal from "sweetalert2";
+import { ref, watch } from "vue";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -12,7 +14,33 @@ const props = defineProps({
 const emit = defineEmits(["update:options"]);
 const expanded = ref([]);
 
-const handleReturnProduct = (product, order) => {
+watch(
+  () => props.orders,
+  (newOrders) => {
+    newOrders.forEach((order) => {
+      order.details.forEach((detail) => {
+        if (detail.returns_quantity === undefined) {
+          detail.returns_quantity = detail.quantity;
+        }
+      });
+    });
+  },
+  { immediate: true, deep: true }
+);
+
+const handleReturnProduct = (detailItem, order) => {
+  const quantity = parseFloat(detailItem.returns_quantity);
+
+if (isNaN(quantity) || quantity <= 0) {
+    toast.warning("La cantidad a devolver debe ser mayor a cero.");
+    return; 
+  }
+
+  if (quantity > detailItem.quantity) {
+    toast.warning("La cantidad a devolver no puede ser mayor que la cantidad vendida.");
+    return;
+  }
+
   Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea devolver el producto!",
@@ -24,7 +52,11 @@ const handleReturnProduct = (product, order) => {
     cancelButtonText: "Cancelar",
   }).then(async (result) => {
     if (result.isConfirmed) {
-      emit("return-product", { product, order });
+      emit("return-product", {
+        product: detailItem.product,
+        order: order,
+        returns_quantity: quantity,
+      });
     }
   });
 };
@@ -41,7 +73,7 @@ const orderItemHeaders = [
   { title: "Producto", key: "product.name" },
   { title: "Cantidad", key: "quantity" },
   { title: "Precio", key: "price" },
-  { title: "Cantidad a Devolver", key: "returns" },
+  { title: "Cantidad a Devolver", key: "returns_quantity" },
   { title: "Acción", key: "actions", sortable: false },
 ];
 </script>
@@ -71,9 +103,6 @@ const orderItemHeaders = [
         ><span class="font-weight-medium">{{
           formatCurrency(parseFloat(item.total_amount), item.currency)
         }}</span></template
-      >
-       <template #item.returns="{ item }"
-        ></template
       >
       <template #item.date="{ item }"
         ><span class="font-weight-medium">{{
@@ -155,11 +184,26 @@ const orderItemHeaders = [
                       )
                     }}
                   </template>
+                  <template #item.returns_quantity="{ item: detailItem }">
+                    <VTextField
+                      v-model="detailItem.returns_quantity"
+                      type="number"
+                      min="0"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      single-line
+                      style="max-width: 90px; min-width: 90px"
+                      class="my-2 quantity-input-field"
+                      :max="detailItem.quantity"
+                      :disabled="detailItem.quantity === 0"
+                    />
+                  </template>
                   <template #item.actions="{ item: detailItem }">
                     <VBtn
                       color="warning"
                       size="small"
-                      @click="handleReturnProduct(detailItem.product, item)"
+                      @click="handleReturnProduct(detailItem, item)"
                     >
                       Devolver
                     </VBtn>

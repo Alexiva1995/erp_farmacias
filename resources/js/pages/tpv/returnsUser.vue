@@ -56,18 +56,15 @@ const updateTableOptions = (newOptions) => {
 };
 
 
-const handleReturnProduct = async ({ product, order }) =>  {
+const handleReturnProduct = async ({ product, order, returns_quantity }) =>  {
   try {
-  
-  console.log(product);
-  console.log(order);
-
     const response = await axios.post('/tpv/returns/product', {
       product: product,
       order: order,
+      returns_quantity: returns_quantity,
     });
 
-  toast.success(`Producto ${product.product.name} devuelto.`);
+  toast.success(`Producto ${product.name} devuelto.`);
 
   } catch (error) {
     console.error("Error al devolver producto:", error.response?.data?.error);

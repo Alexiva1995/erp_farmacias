@@ -138,6 +138,7 @@ declare module 'vue' {
     QuotationTicket: typeof import('./resources/js/components/QuotationTicket.vue')['default']
     ReferAndEarnDialog: typeof import('./resources/js/components/dialogs/ReferAndEarnDialog.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
+    ReturnsOrderGeneralTable: typeof import('./resources/js/components/ReturnsOrderGeneralTable.vue')['default']
     ReturnsOrderTable: typeof import('./resources/js/components/ReturnsOrderTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

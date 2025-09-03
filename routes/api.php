@@ -188,6 +188,7 @@ Route::prefix("tpv")->group(function () {
     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
 
     // Rutas de Devolución
+    Route::get('/returns', [ReturnsController::class, 'index']);
     Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
     Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
 

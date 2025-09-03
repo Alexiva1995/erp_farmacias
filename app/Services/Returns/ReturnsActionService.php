@@ -15,31 +15,29 @@ use Illuminate\Http\Request;
 
 class ReturnsActionService
 {
-     public function __construct(private ResourceService $resourceService)
-    {
-    }
-    
+    public function __construct(private ResourceService $resourceService) {}
+
 
     public function searchOrdersReturns(string $identification, array $options): Builder
     {
         try {
-        $client = Client::where('identification', $identification)->first();
-        if (!$client) {
-            throw new Exception('No se encontró el cliente.');
-        }
+            $client = Client::where('identification', $identification)->first();
+            if (!$client) {
+                throw new Exception('No se encontró el cliente.');
+            }
 
+            $query = Order::where('client_id', $client->id)
+                ->where('created_at', '>=', Carbon::now()->subHours(48))
+                ->where('status', Order::COMPLETED)
+                ->with('client', 'details.product');
 
-        $query = Order::where('client_id', $client->id)
-            ->where('created_at', '>=', Carbon::now()->subHours(48))
-            ->with('client','details.product');
+            if (isset($options['sortBy']) && !empty($options['sortBy'])) {
+                $sortBy = $options['sortBy'];
+                $orderBy = $options['orderBy'] ?? 'asc';
+                $query->orderBy($sortBy, $orderBy);
+            }
 
-        if (isset($options['sortBy']) && !empty($options['sortBy'])) {
-            $sortBy = $options['sortBy'];
-            $orderBy = $options['orderBy'] ?? 'asc';
-            $query->orderBy($sortBy, $orderBy);
-        }
-        
-        return $query;
+            return $query;
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -48,48 +46,51 @@ class ReturnsActionService
 
     public function productReturn(Request $request)
     {
-         DB::beginTransaction();
+        DB::beginTransaction();
 
         try {
+            
             $orderData = $request->order;
             $productData = $request->product;
             $orderDetail = collect($orderData['details'])->firstWhere('product_id', $productData['id']);
+            $returnsQuantity = (int) $request->input('returns_quantity');
+
+            if ($returnsQuantity <= 0) {
+                throw new Exception('La cantidad a devolver debe ser mayor a cero.');
+            }
 
             if (!$orderDetail) {
                 throw new Exception('No se encontró el detalle del producto en la orden.');
             }
             $orderDetail = (object) $orderDetail;
-         
-            $returnAmount = $orderDetail->quantity * $orderDetail->price;
-            $client = $orderDetail->client;
-            
-            if (!$client) {
+             
+            $returnAmount = $returnsQuantity * (float)$orderDetail->unit_price_usd;
+            $clientData = $orderData['client'];
+      
+            if (!$clientData) {
                 throw new Exception('No se encontró el cliente asociado a la orden.');
             }
-            //$client->balance += $returnAmount;
-            //$client->save();
 
+                $lot = ProductLot::where('product_id', $productData['id'])
+                    ->where('expiration_date', '>', now())
+                    ->where('quantity', '>', 0)
+                    ->orderByDesc('expiration_date')
+                    ->first();
 
-              $lot = ProductLot::where('product_id', $productData->id)
-                      ->where('expiration_date', '>', now())
-                      ->where('quantity', '>', 0)
-                      ->orderByDesc('expiration_date')
-                      ->first();
+                if ($lot) {
+                    $lot->quantity += $returnsQuantity;
+                    $lot->save();
+                } else {
+                    throw new Exception('No se encontró lote vigente para ese producto.');
+                }
 
-            if ($lot) {
-                $lot->quantity += $orderDetail->quantity;
-                $lot->save();
-            }else{
-                 throw new Exception('No se encontró lote vigente para ese producto.');
-            }
-
-            
+         
             ReturnEntry::create([
-                'order_id' => $orderData->id,
-                'product_id' => $productData->id,
-                'quantity' => $orderDetail->quantity,
+                'order_id' => $orderData['id'],
+                'product_id' => $productData['id'],
+                'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
-                'return_date' => $returnAmount,
+                'return_date' => Carbon::now(),
                 'status' => 'Created',
             ]);
 
