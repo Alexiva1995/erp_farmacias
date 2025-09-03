@@ -186,12 +186,13 @@ Route::prefix("tpv")->group(function () {
     Route::get('/credits', [CreditsController::class, 'index']);
     Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
     Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
-
+    Route::post('/credits/details', [CreditsController::class, 'showDetails']);
     // Rutas de Devolución
     Route::get('/returns', [ReturnsController::class, 'index']);
     Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
     Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
     Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+    
 });
 
 

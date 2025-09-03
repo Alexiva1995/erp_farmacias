@@ -72,4 +72,18 @@ class CreditsController extends Controller
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
         }
     }
+
+     public function showDetails(Request $request)
+    {
+        $request->validate([
+            'credit_ids' => 'required|array',
+            'credit_ids.*' => 'integer|exists:credits,id',
+        ]);
+
+        $credits = Credit::with('client', 'order')
+            ->whereIn('id', $request->input('credit_ids'))
+            ->get();
+
+        return response()->json($credits);
+    }
 }
