@@ -35,6 +35,10 @@ export default [
         title: 'Devoluciones Usuario',
         to: 'tpv-returns-user',
       },
+      {
+        title: 'Devoluciones Supervisor',
+        to: 'tpv-returns-supervisor',
+      },
     ],
   },
 ]

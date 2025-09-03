@@ -6,7 +6,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
 });
-const emit = defineEmits(["update:options"]);
+const emit = defineEmits(["update:options","status"]);
 const expanded = ref([]);
 
 const headers = [
@@ -17,13 +17,14 @@ const headers = [
   { title: "Monto", key: "amount_refunded", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
   { title: "Producto", key: "product", sortable: false },
+  { title: "Estatus", key: "status", sortable: false },
+  { title: "Acción", key: "actions", sortable: false },
 ];
 
 const date = (order) => {
   const time = new Date(order);
   return time.toISOString().split("T")[0];
 };
-
 </script>
 
 <template>
@@ -55,6 +56,7 @@ const date = (order) => {
         </span>
       </template>
 
+
    <template #item.date="{ item }">
         <span>{{ date(item.return_date) }}</span>
       </template>
@@ -67,6 +69,25 @@ const date = (order) => {
           </div>
         </div>
       </template>
+
+       <template v-slot:item.status="{ item }">
+        <VChip
+          :color="item.status === 'Approved' ? 'success' : 'warning'"
+        >
+          <span v-if="item.status === 'Created'">Created</span>
+          <span v-else-if="item.status === 'Approved'">Approved</span>
+          <span v-else>{{ item.status }}</span> </VChip>
+      </template>
+
+
+         <template #item.actions="{ item }">
+        <div class="d-flex align-center gap-2">
+           <VBtn color="primary" variant="outlined" @click="emit('status', item)" >
+            Aprobar
+          </VBtn>
+        </div>
+      </template>
+
     </VDataTableServer>
   </VCard>
 </template>

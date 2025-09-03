@@ -140,6 +140,7 @@ declare module 'vue' {
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
     ReturnsOrderGeneralTable: typeof import('./resources/js/components/ReturnsOrderGeneralTable.vue')['default']
     ReturnsOrderTable: typeof import('./resources/js/components/ReturnsOrderTable.vue')['default']
+    ReturnsSupervisorTable: typeof import('./resources/js/components/ReturnsSupervisorTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ScrollToTop: typeof import('./resources/js/@core/components/ScrollToTop.vue')['default']
