@@ -59,7 +59,8 @@ const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
 
 const formattedPaymentRules = computed(() => {
-  const rules = props.paymentRules;
+  const rules = props.paymentRules.payment_rules;
+
   if (!rules || !Array.isArray(rules)) {
     return [];
   }
@@ -164,7 +165,32 @@ const isTaxAmountMismatch = computed(() => {
   if (invoiceTaxAmount === 0) return false;
   return Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount) > 0.01;
 });
+const getCostComparisonClass = (item) => {
+  if (!isApprovalMode.value) {
+    return "";
+  }
 
+  if (!item.product || typeof item.product.unit_cost === "undefined") {
+    return "";
+  }
+
+  const invoiceCost = Number(item.unit_cost);
+  const systemCost = Number(item.product.unit_cost);
+
+  if (isNaN(invoiceCost) || isNaN(systemCost) || systemCost === 0) {
+    return "";
+  }
+
+  const tolerance = 0.001;
+
+  if (invoiceCost > systemCost + tolerance) {
+    return "cost-higher";
+  } else if (invoiceCost < systemCost - tolerance) {
+    return "cost-lower";
+  }
+
+  return "";
+};
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
   if (invoice.value) {
@@ -683,6 +709,15 @@ const handleFinalizeInvoice = async () => {
     loading.value = false;
   }
 };
+const formattedSupplierDiscounts = computed(() => {
+  if (!props.supplierDiscounts || !Array.isArray(props.supplierDiscounts)) {
+    return [];
+  }
+  return props.supplierDiscounts.map((discount) => ({
+    ...discount,
+    displayText: `${discount.name} - ${discount.discount_percentage}%`,
+  }));
+});
 
 const detailsHeaders = [
   {
@@ -1053,6 +1088,42 @@ const detailsHeaders = [
                   min="0"
                   :prefix="getCurrencySymbol()"
                 />
+                <!-- INICIO DE LA MODIFICACIÓN -->
+                <VTooltip
+                  v-else-if="
+                    isApprovalMode &&
+                    item.product &&
+                    typeof item.product.unit_cost !== 'undefined'
+                  "
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <div
+                      v-bind="props"
+                      class="cost-cell d-flex flex-column align-end"
+                      :class="[
+                        getCostComparisonClass(item),
+                        { 'returned-item': isItemReturned(item) },
+                      ]"
+                    >
+                      <span class="font-weight-medium">{{
+                        formatCurrency(item.unit_cost, invoice.currency)
+                      }}</span>
+                      <span
+                        v-if="invoice.currency !== 'USD'"
+                        class="text-caption text-medium-emphasis"
+                        >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
+                      >
+                    </div>
+                  </template>
+                  <span
+                    >Costo en Sistema:
+                    {{
+                      formatCurrency(item.product.unit_cost, invoice.currency)
+                    }}</span
+                  >
+                </VTooltip>
+                <!-- FIN DE LA MODIFICACIÓN -->
                 <div
                   v-else
                   class="d-flex flex-column align-end"
@@ -1257,8 +1328,8 @@ const detailsHeaders = [
               >
                 <VSelect
                   v-model="selectedSupplierDiscountId"
-                  :items="props.supplierDiscounts"
-                  item-title="name"
+                  :items="formattedSupplierDiscounts"
+                  item-title="displayText"
                   item-value="id"
                   label="Descuento por Proveedor"
                   variant="outlined"
@@ -1477,6 +1548,40 @@ const detailsHeaders = [
   width: 100%;
   max-width: 400px;
 }
+.returned-item {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.cost-cell {
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+  min-width: 120px;
+  text-align: right;
+}
+
+.cost-higher {
+  background-color: rgba(var(--v-theme-error), 0.1);
+
+  .font-weight-medium {
+    color: rgb(var(--v-theme-error));
+  }
+  .text-caption {
+    color: rgba(var(--v-theme-error), 0.8) !important;
+  }
+}
+
+.cost-lower {
+  background-color: rgba(var(--v-theme-success), 0.1);
+
+  .font-weight-medium {
+    color: rgb(var(--v-theme-success));
+  }
+  .text-caption {
+    color: rgba(var(--v-theme-success), 0.8) !important;
+  }
+}
+
 .returned-item {
   text-decoration: line-through;
   opacity: 0.6;
