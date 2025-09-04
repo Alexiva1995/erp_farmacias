@@ -9,7 +9,7 @@ const emit= defineEmits("eliminarItemOrden")
 const headers = [
   { title: 'Nombre',                            key: 'product.name'},
   { title: 'Cantidad',                          key: 'reponer'},
-  { title: 'Costo Unit.',                       key: 'productSupplier.unit_cost'},
+  { title: 'Costo',                       key: 'productSupplier.unit_cost'},
   { title: 'Total',                             key: 'totalPorveedor',sortable:false},
   { title: 'Action',                            key: "action"},
 ];
@@ -28,12 +28,13 @@ const groupBy = [{ key: 'supplier.name' }]
       fixed-header
     >
       <template #item.productSupplier.unit_cost="{ item }">
-        <VIcon icon="tabler-currency-dollar" />
+        <!-- <VIcon icon="tabler-currency-dollar" /> -->
         {{ parseFloat(item.productSupplier.unit_cost).toFixed(2) }}
       </template>
       <template #item.reponer="{ item }">
         <VTextField
-          class="w-100"
+          class=""
+          style="width: 100px"
           type="number"
           v-model="item.reponer"
           :max="item.productSupplier.quantity"
@@ -41,7 +42,7 @@ const groupBy = [{ key: 'supplier.name' }]
         <!-- {{ item.reponer }} -->
       </template>
       <template #item.totalPorveedor="{ item }">
-        <VIcon icon="tabler-currency-dollar " />
+        <!-- <VIcon icon="tabler-currency-dollar " /> -->
         {{
           parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer
         }}

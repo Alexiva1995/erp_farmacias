@@ -26,6 +26,7 @@ class AutoOrderServices implements AutoOrder
         foreach ($order["details"] as $key => $detail) {
             # code...
             $detail["order_id"] = $autoOrder->id;
+            // $detail["final_cost"] = 0;
             $autoOrderDetail = $this->autoOrderDetailsRepository->create($detail);
         }
         $autoOrder->details;

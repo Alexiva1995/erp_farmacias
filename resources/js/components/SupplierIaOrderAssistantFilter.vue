@@ -59,6 +59,8 @@ const stockOpciones = [
             item-title="name"
             item-value="id"
             clearable
+            chips="true"
+            multiple="true"
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
@@ -71,6 +73,7 @@ const stockOpciones = [
             item-title="name"
             item-value="id"
             clearable
+            chips="true"
             multiple="true"
             @update:model-value="emit('update:selectedGroup', $event)"
           />
@@ -118,7 +121,11 @@ const stockOpciones = [
       </VBtn>
 
       <VSpacer />
-      <VBtn color="primary" @click="emit('generarPedido')">
+      <VBtn
+        prepend-icon="tabler-plus"
+        color="primary"
+        @click="emit('generarPedido')"
+      >
         Generar Pedido
       </VBtn>
     </VCardActions>

@@ -56,6 +56,7 @@ declare module 'vue-router/auto-routes' {
     'suppliers-purchase-orders-history-list': RouteRecordInfo<'suppliers-purchase-orders-history-list', '/suppliers/purchase-orders/history/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-list': RouteRecordInfo<'suppliers-purchase-orders-list', '/suppliers/purchase-orders/list', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistant': RouteRecordInfo<'suppliers-supplieriaorderassistant', '/suppliers/supplieriaorderassistant', Record<never, never>, Record<never, never>>,
+    'suppliers-supplieriaorderassistantreport': RouteRecordInfo<'suppliers-supplieriaorderassistantreport', '/suppliers/supplieriaorderassistantreport', Record<never, never>, Record<never, never>>,
     'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
