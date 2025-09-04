@@ -187,7 +187,7 @@ class ProductSupplierServices implements ProductSupplier
             # code...
             $producto = $productos[$index];
 
-            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPrice($producto["product"], $producto["supplier"]);
+            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($producto["product"], $producto["supplier"]);
             if ($lote) {
                 if ((float)$producto["productSupplier"]->unit_cost < (float)$lote->unit_cost) {
                     $dateLot = new DateTime($lote->created_at);

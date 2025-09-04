@@ -26,12 +26,13 @@ const module=reactive({
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
+let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laboratoryId):[]
 
 
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
 const groups= ref(gruposList);// grupos
-const laboratoryId= ref(route.query.laboratoryId);// laboratorio
+const laboratoryId= ref(laboratoriosList);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
 async function generarPedido(){
@@ -355,6 +356,13 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
+        <!-- order="1"
+          order-sm="1"
+          order-md="2"
+          order-lg="2"
+          sm="12"
+          md="12"
+          lg="3" -->
         <VCol
           order="1"
           order-sm="1"
@@ -364,34 +372,7 @@ function eliminarItemOrden(payload){
           md="12"
           lg="3"
         >
-          <VBtn
-            color="primary"
-            variant="flat"
-            class="w-100 mb-5"
-            @click="confirmarCompra"
-          >
-            Generar
-          </VBtn>
-          <VCard
-            title="Detalles del precio"
-            class=""
-            style="padding-bottom: 24px"
-          >
-            <VContainer>
-              <VRow
-                class="text-lg"
-                align-content="space-between"
-                style="padding-left: 24px; padding-right: 24px"
-              >
-                <VCol> <span>Total:</span> </VCol>
-                <VCol class="text-end">
-                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
-                  <VIcon icon="tabler-currency-dollar" />
-                </VCol>
-              </VRow>
-            </VContainer>
-
-            <VDivider />
+          <VCard title="Resumen" class="mb-5">
             <VContainer v-if="LISTA_PORVEEDORES_TOTAL.length > 0">
               <VRow
                 v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
@@ -399,16 +380,46 @@ function eliminarItemOrden(payload){
                 align-content="space-between"
                 style="padding-left: 24px; padding-right: 24px"
               >
-                <VCol class="">
+                <VCol class="" style="font-size: 16px">
                   <span>{{ totalesProveedores.name }}:</span>
                 </VCol>
-                <VCol class="text-end">
+                <VCol
+                  class="text-end"
+                  style="font-weight: bold; font-size: 16px"
+                >
                   {{ totalesProveedores.total.toFixed(2) }}
                   <VIcon icon="tabler-currency-dollar" />
                 </VCol>
               </VRow>
             </VContainer>
+
+            <VDivider />
+
+            <VContainer>
+              <VRow
+                class="text-lg"
+                align-content="space-between"
+                style="padding-left: 24px; padding-right: 24px"
+              >
+                <VCol> <span style="font-size: 16px">Total:</span> </VCol>
+                <VCol
+                  class="text-end"
+                  style="font-weight: bold; font-size: 16px"
+                >
+                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
+                  <VIcon icon="tabler-currency-dollar" />
+                </VCol>
+              </VRow>
+            </VContainer>
           </VCard>
+          <VBtn
+            color="primary"
+            variant="flat"
+            class="w-100"
+            @click="confirmarCompra"
+          >
+            Generar
+          </VBtn>
         </VCol>
       </VRow>
     </div>
