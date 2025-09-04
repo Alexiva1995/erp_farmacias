@@ -15,6 +15,8 @@ interface ExchangeRate
 
     public function consultOneBCV(): Model;
 
+     public function updateBCVDollar(): Model;
+
     //public function consultById(string $id): Model | null;
 
     public function store(array $data): Model;

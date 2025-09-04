@@ -257,6 +257,7 @@ Route::prefix("finances")->group(function () {
         Route::post("/store", [ExchangeRateController::class, "store"]);
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
         Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+        Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
     });
 });
 
