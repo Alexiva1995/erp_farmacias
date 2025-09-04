@@ -29,9 +29,9 @@ use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
+use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
-use App\Http\Controllers\ExpensesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -290,15 +290,10 @@ Route::prefix("finances")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
-        // Route::get("/",                                               [ExpensesController::class, ""]);
-        // Route::post("/create",                                        [ExpensesController::class, ""]);
-        // Route::post("/edit/{id}",                                     [ExpensesController::class, ""]);
-        // Route::post("/filter-paginate",                               [ExpensesController::class, ""]);
-        // Route::get("/recurring-expenses",                             [ExpensesController::class, ""]);
-        // Route::get("/recurring-expenses/filter-paginate"",            [ExpensesController::class, ""]);
-        // Route::post("/recurring-expenses/create",                     [ExpensesController::class, ""]);
-        // Route::post("/recurring-expenses/edit/{id}",                  [ExpensesController::class, ""]);
-        // Route::get("/pending",                                        [ExpensesController::class, ""]);
+        Route::post("/create",                                        [ExpensesController::class, "createExpense"]);
+        // Route::post("/filter-paginate",                            [ExpensesController::class, ""]);
+        // Route::post("/approved",                                   [ExpensesController::class, ""]);
+        // Route::post("/cancelled",                                  [ExpensesController::class, ""]);
     });
 });
 
