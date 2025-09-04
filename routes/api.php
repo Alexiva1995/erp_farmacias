@@ -31,7 +31,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
-
+use App\Http\Controllers\ExpensesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -288,6 +288,18 @@ Route::prefix("finances")->group(function () {
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
         Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
     });
+
+    Route::prefix("expenses")->group(function () {
+        // Route::get("/",                                               [ExpensesController::class, ""]);
+        // Route::post("/create",                                        [ExpensesController::class, ""]);
+        // Route::post("/edit/{id}",                                     [ExpensesController::class, ""]);
+        // Route::post("/filter-paginate",                               [ExpensesController::class, ""]);
+        // Route::get("/recurring-expenses",                             [ExpensesController::class, ""]);
+        // Route::get("/recurring-expenses/filter-paginate"",            [ExpensesController::class, ""]);
+        // Route::post("/recurring-expenses/create",                     [ExpensesController::class, ""]);
+        // Route::post("/recurring-expenses/edit/{id}",                  [ExpensesController::class, ""]);
+        // Route::get("/pending",                                        [ExpensesController::class, ""]);
+    });
 });
 
 // Rutas de Proveedores
@@ -365,4 +377,3 @@ Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('i
 Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
-

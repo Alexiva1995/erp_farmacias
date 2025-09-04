@@ -21,6 +21,7 @@ use App\Services\DoctorServices;
 use App\Services\LaboratoryServices;
 use App\Services\LotteryServices;
 use App\Contracts\ExchangeRate;
+use App\Contracts\Expenses;
 use App\Contracts\Order;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
@@ -31,8 +32,10 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\ExpensesController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
+use App\Services\ExpensesServices;
 use App\Services\OrderServices;
 use App\Services\ProductServices;
 
@@ -102,6 +105,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(SupplierIaAssistantReportController::class)
             ->needs(Product::class)
             ->give(ProductServices::class);
+
+        $this->app->when(ExpensesController::class)
+            ->needs(Expenses::class)
+            ->give(ExpensesServices::class);
     }
 
     /**
