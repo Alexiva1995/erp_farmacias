@@ -16,7 +16,7 @@ const emit = defineEmits(["update:options", "open-payment-modal", "reload", "vie
 const headers = [
   { title: "Nombre", key: "client_full_name", sortable: true },
   { title: "Monto", key: "total_pending_amount", sortable: true },
-  { title: "Añadir", key: "action", sortable: false },
+  { title: "Acciones", key: "action", sortable: false },
 ];
 
 const authStore = useAuthStore();
@@ -41,13 +41,13 @@ const authStore = useAuthStore();
 
       <template v-slot:item.action="{ item }">
         <div class="d-flex align-center gap-2">
-          <VBtn
-            color="primary"
-            variant="outlined"
-            @click="emit('open-payment-modal', item)"
-          >
-            Pagar
-          </VBtn>
+          
+          <VCheckbox
+            label="Pagar"
+            :model-value="item.is_paid" 
+            :disabled="item.is_paid"
+            @update:model-value="emit('open-payment-modal', item)"
+          />
           <IconBtn @click="emit('view-order-modal', item)">
             <VIcon icon="tabler-eye"
           /></IconBtn>
