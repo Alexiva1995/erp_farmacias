@@ -56,6 +56,7 @@ declare module 'vue-router/auto-routes' {
     'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
+    'tpv-promotions': RouteRecordInfo<'tpv-promotions', '/tpv/promotions', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
   }
 }

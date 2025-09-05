@@ -27,6 +27,10 @@ export default [
         title: 'Creditos',
         to: 'tpv-credit',
       },
+      {
+        title: 'Promociones',
+        to: 'tpv-promotions',
+      },
     ],
   },
 ]
