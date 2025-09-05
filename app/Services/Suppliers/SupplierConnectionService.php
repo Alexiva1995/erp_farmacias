@@ -218,7 +218,7 @@ class SupplierConnectionService
                                 break;
                             } else {
                                 // Precio en bs calcula con la tasa  usd del dia
-                                if ($meta["currency"] === "usd") {
+                                if (isset($meta["currency"]) && $meta["currency"] === "usd") {
                                     $entry[$meta["target"]] = number_format(
                                         (float) ($newValue * $usdCurrency->rate),
                                         2,
