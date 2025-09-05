@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TraceabilityController;
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -287,6 +288,11 @@ Route::prefix("finances")->group(function () {
         Route::post("/store", [ExchangeRateController::class, "store"]);
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
         Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+    });
+
+    Route::prefix('transactions')->group(function () {
+        Route::get('', [TransactionController::class, 'getAll']);
+        Route::get('/stats', [TransactionController::class, 'getByType']);
     });
 });
 
