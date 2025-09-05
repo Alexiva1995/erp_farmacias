@@ -338,17 +338,15 @@ class SupplierQueryService
             ->whereDate("created_at", now()->today())
             ->first();
 
-        $unitCost = $product->unit_cost_usd;
-        $finalCost = $product->unit_cost_usd_with_discount;
-        $subtotal = ($discount ? $finalCost : $unitCost) * $quantity;
+        $unitCost = $discount ? $product->unit_cost_usd_with_discount : $product->unit_cost_usd;
+        $subtotal = $unitCost * $quantity;
 
         if (isset($order)) {
             $order->details()->create([
                 "product_suppliers_id" => $productId,
                 "quantity" => $quantity,
                 "unit_cost" => $unitCost,
-                "subtotal" => $subtotal,
-                "final_cost" => $finalCost,
+                "subtotal" => $subtotal
             ]);
 
             $order->increment("total_items", 1);
@@ -368,8 +366,7 @@ class SupplierQueryService
                 "product_suppliers_id" => $productId,
                 "quantity" => $quantity,
                 "unit_cost" => $unitCost,
-                "subtotal" => $subtotal,
-                "final_cost" => $finalCost,
+                "subtotal" => $subtotal
             ]);
         }
 

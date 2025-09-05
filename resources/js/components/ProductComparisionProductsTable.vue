@@ -83,14 +83,22 @@ const headers = [
             variant="outlined"
             density="compact"
             hide-details="auto"
-            style="width: 80px"
+            style="width: 200px"
             :error="!!quantityErrors[item.id]"
             :error-messages="quantityErrors[item.id]"
           />
 
           <VTooltip text="Agregar al Pedido del Día" location="top">
             <template #activator="{ props: tooltipProps }">
-              <IconBtn v-bind="tooltipProps" @click="$emit('send-product', { id: item.id, quantity: getQty(item.id) })">
+              <IconBtn
+                v-bind="tooltipProps"
+                @click="
+                  $emit('send-product', {
+                    id: item.id,
+                    quantity: getQty(item.id),
+                  })
+                "
+              >
                 <VIcon icon="tabler-plus" />
               </IconBtn>
             </template>
