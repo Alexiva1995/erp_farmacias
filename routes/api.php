@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PendingPaymentsController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
@@ -288,6 +289,21 @@ Route::prefix("finances")->group(function () {
         Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
         Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
     });
+
+    // pending payments
+    Route::prefix("pending-payments")->group(function () {
+        Route::get("/", [PendingPaymentsController::class, "index"]);
+        Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
+        Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
+        Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
+        Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
+        Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
+    });
+
+    // payment history
+    Route::prefix("payment-history")->group(function () {
+        Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
+    });
 });
 
 // Rutas de Proveedores
@@ -365,4 +381,3 @@ Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('i
 Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
-
