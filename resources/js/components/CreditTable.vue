@@ -11,7 +11,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "open-payment-modal", "reload", "view-order-modal"]);
+const emit = defineEmits(["update:options", "open-payment-modal", "reload", "view-order-modal","print-order"]);
 
 const headers = [
   { title: "Nombre", key: "client_full_name", sortable: true },
@@ -51,6 +51,10 @@ const authStore = useAuthStore();
           <IconBtn @click="emit('view-order-modal', item)">
             <VIcon icon="tabler-eye"
           /></IconBtn>
+            <IconBtn
+            @click="emit('print-order', item)">
+            <VIcon icon="tabler-printer" />
+          </IconBtn>
         </div>
       </template>
     </VDataTableServer>
