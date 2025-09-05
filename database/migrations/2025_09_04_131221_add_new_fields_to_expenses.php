@@ -18,7 +18,7 @@ return new class extends Migration
                 Expense::STATUS_PENDING,
                 Expense::STATUS_APPROVED,
                 Expense::STATUS_CANCELLED,
-            ]);
+            ])->default(Expense::STATUS_PENDING);
             $table->enum("count", [
                 Expense::COUNT_EFECTIVO,
                 Expense::COUNT_TARJETA,

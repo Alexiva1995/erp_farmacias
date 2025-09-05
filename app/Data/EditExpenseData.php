@@ -23,6 +23,6 @@ class EditExpenseData extends Data
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y/m/d')]
         public DateTime     $expense_date,
         public int          $user_id,
-        // public string       $count,
+        public string       $count,
     ) {}
 }

@@ -19,7 +19,7 @@ class ExpensesServices implements Expenses
 
     public function crearGasto(array $data): Expense
     {
-        // $data
+        $data["status"] = "Pending";
         return $this->expensesRepository->createGasto($data);
     }
 

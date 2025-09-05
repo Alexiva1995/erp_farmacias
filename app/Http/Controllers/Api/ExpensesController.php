@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\Expenses;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangeStatusExpenseRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use Illuminate\Http\JsonResponse;
@@ -88,8 +89,11 @@ class ExpensesController extends Controller
         return ApiResponse::success($respuestaConsulta, "ok", 200);
     }
 
-    public function changeStatus(Request $request): JsonResponse
+    public function changeStatus(ChangeStatusExpenseRequest $request): JsonResponse
     {
-        return ApiResponse::success(null, "ok", 200);
+
+        $respuestaConsulta = $this->expenses->changeStatus($request->data->id, $request->data->status);
+
+        return ApiResponse::success($respuestaConsulta, "ok", 200);
     }
 }

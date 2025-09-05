@@ -41,18 +41,18 @@ class CreateExpenseRequest extends FormRequest
             "is_deductible"          =>    "nullable|boolean:strict",
             "expense_date"           =>    "required|date",
             "user_id"                =>    "required|numeric|exists:users,id",
-            // "count"                  =>    [
-            //     "required",
-            //     "string",
-            //     Rule::in([
-            //         Expense::COUNT_EFECTIVO,
-            //         Expense::COUNT_TARJETA,
-            //         Expense::COUNT_PAGO_MOVIL,
-            //         Expense::COUNT_TRANSFERENCIA,
-            //         Expense::COUNT_BINANCE,
-            //         Expense::COUNT_PAYPAL,
-            //     ])
-            // ],
+            "count"                  =>    [
+                "required",
+                "string",
+                Rule::in([
+                    Expense::COUNT_EFECTIVO,
+                    Expense::COUNT_TARJETA,
+                    Expense::COUNT_PAGO_MOVIL,
+                    Expense::COUNT_TRANSFERENCIA,
+                    Expense::COUNT_BINANCE,
+                    Expense::COUNT_PAYPAL,
+                ])
+            ],
         ];
     }
 
@@ -98,9 +98,9 @@ class CreateExpenseRequest extends FormRequest
             'user_id.exists' => 'El usuario seleccionado no es válido.',
 
             // Reglas para 'count'
-            // 'count.required' => 'El método de pago es obligatorio.',
-            // 'count.string' => 'El método de pago debe ser una cadena de texto.',
-            // 'count.in' => 'El método de pago seleccionado no es válido.',
+            'count.required' => 'El método de pago es obligatorio.',
+            'count.string' => 'El método de pago debe ser una cadena de texto.',
+            'count.in' => 'El método de pago seleccionado no es válido.',
         ];
     }
 
@@ -124,7 +124,7 @@ class CreateExpenseRequest extends FormRequest
             "is_deductible"           =>    $this->is_deductible,
             "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
-            // "count"                   =>    $this->count,
+            "count"                   =>    $this->count,
         ]);
     }
 }
