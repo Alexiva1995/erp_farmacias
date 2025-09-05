@@ -8,8 +8,8 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\SupplierConnectionStatus;
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
-use App\Models\SupplierConnectionStatus
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -383,6 +383,7 @@ class SupplierQueryService
         $supplier->productSuppliers()->delete();
 
         return response()->json(["status" => "ok"]);
+    }
 
     public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
     {
