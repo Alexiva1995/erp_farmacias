@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Data\CreateExpenseData;
+use App\Data\EditExpenseData;
 use App\Helpers\ApiResponse;
 use App\Models\Expense;
 use Illuminate\Contracts\Validation\Validator;
@@ -11,10 +11,11 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
-class CreateExpenseRequest extends FormRequest
+class EditExpenseRequest extends FormRequest
 {
 
-    public CreateExpenseData $data;
+
+    public EditExpenseData $data;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -32,6 +33,7 @@ class CreateExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
+            "id"                     =>    "required|numeric|exists:expenses,id",
             "name"                   =>    "required|string|max:255",
             "category_id"            =>    "required|numeric|exists:expense_categories,id",
             "amount"                 =>    "required|numeric",
@@ -59,6 +61,11 @@ class CreateExpenseRequest extends FormRequest
     public function messages(): array
     {
         return [
+            // Reglas para 'id'
+            'id.required' => 'El Id del Gasto es obligatoria.',
+            'id.numeric' => 'El Id del Gasto debe ser un valor numérico.',
+            'id.exists' => 'El Gasto seleccionado no es válida.',
+
             // Reglas para 'name'
             'name.required' => 'El nombre del gasto es obligatorio.',
             'name.string' => 'El nombre debe ser una cadena de texto.',
@@ -114,7 +121,8 @@ class CreateExpenseRequest extends FormRequest
 
     protected function passedValidation()
     {
-        $this->data = CreateExpenseData::from([
+        $this->data = EditExpenseData::from([
+            "id"                      =>    $this->id,
             "name"                    =>    $this->name,
             "category_id"             =>    $this->category_id,
             "amount"                  =>    $this->amount,

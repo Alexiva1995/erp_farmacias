@@ -8,10 +8,11 @@ use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Data;
 
-class CreateExpenseData extends Data
+class EditExpenseData extends Data
 {
 
     public function __construct(
+        public int          $id,
         public string       $name,
         public int          $category_id,
         public float        $amount,

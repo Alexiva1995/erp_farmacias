@@ -290,10 +290,10 @@ Route::prefix("finances")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
-        Route::post("/create",                                        [ExpensesController::class, "createExpense"]);
-        // Route::post("/filter-paginate",                            [ExpensesController::class, ""]);
-        // Route::post("/approved",                                   [ExpensesController::class, ""]);
-        // Route::post("/cancelled",                                  [ExpensesController::class, ""]);
+        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
     });
 });
 
