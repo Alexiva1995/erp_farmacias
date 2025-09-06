@@ -10,6 +10,8 @@ use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ExpensesController extends Controller
 {
@@ -79,6 +81,23 @@ class ExpensesController extends Controller
             $filtros["buscardor_filtro"] = $request->buscardor_filtro;
         }
 
+        if ($request->filled("category_id_filtro")) {
+            $filtros["category_id_filtro"] = $request->category_id_filtro;
+        }
+
+        if ($request->filled("currency")) {
+            $filtros["currency"] = $request->currency;
+        }
+
+        if ($request->filled("status")) {
+            $filtros["status"] = $request->status;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
@@ -87,6 +106,71 @@ class ExpensesController extends Controller
         $respuestaConsulta = $this->expenses->filterWithPaginate($filtros, $filtros["itemsPerPage"]);
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);
+    }
+
+    public function filterWithoutPaginate(Request $request): JsonResponse
+    {
+
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("category_id_filtro")) {
+            $filtros["category_id_filtro"] = $request->category_id_filtro;
+        }
+
+        if ($request->filled("currency")) {
+            $filtros["currency"] = $request->currency;
+        }
+
+        if ($request->filled("status")) {
+            $filtros["status"] = $request->status;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        $respuestaConsulta = $this->expenses->filterWithoutPaginate($filtros);
+
+        return ApiResponse::success($respuestaConsulta, "ok", 200);
+    }
+
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+
+        $filtros = [];
+
+        if ($request->filled("buscardor_filtro")) {
+            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
+        }
+
+        if ($request->filled("category_id_filtro")) {
+            $filtros["category_id_filtro"] = $request->category_id_filtro;
+        }
+
+        if ($request->filled("currency")) {
+            $filtros["currency"] = $request->currency;
+        }
+
+        if ($request->filled("status")) {
+            $filtros["status"] = $request->status;
+        }
+
+        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
+            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
+            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        $excel = $this->expenses->exportExcel($filtros);
+
+        $fileName = 'gastos-pendientes-' . now()->format('Y-m-d') . '.' . $request->formato;
+
+        return Excel::download($excel, $fileName);
     }
 
     public function changeStatus(ChangeStatusExpenseRequest $request): JsonResponse

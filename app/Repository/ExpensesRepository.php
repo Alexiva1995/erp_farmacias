@@ -54,12 +54,22 @@ class ExpensesRepository
             $consulta->where("count", "=", $filtros["count"]);
         }
 
+        if (array_key_exists("currency", $filtros)) {
+            $consulta->where("currency", "=", $filtros["currency"]);
+        }
+
         if (array_key_exists("status", $filtros)) {
             $consulta->where("status", "=", $filtros["status"]);
         }
 
-        if (array_key_exists("category_id", $filtros)) {
-            $consulta->where("category_id", "=", $filtros["category_id"]);
+        if (array_key_exists("category_id_filtro", $filtros)) {
+            $consulta->where("category_id", "=", $filtros["category_id_filtro"]);
+        }
+
+        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
+            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
+                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"] . " 00:00:00", $filtros["fechaHasta_filtro"] . " 23:59:59"]);
+            }
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {

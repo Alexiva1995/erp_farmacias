@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Expenses;
+use App\Exports\ExpenseExport;
 use App\Models\Expense;
 use App\Repository\ExpensesRepository;
 use Illuminate\Database\Eloquent\Collection;
@@ -56,5 +57,11 @@ class ExpensesServices implements Expenses
     public function changeStatus(int $id, string $status): Expense
     {
         return $this->expensesRepository->changeStatus($id, $status);
+    }
+
+    public function exportExcel(array $filtros): ExpenseExport
+    {
+        $build = $this->expensesRepository->buildFilter($filtros);
+        return new ExpenseExport($build);
     }
 }

@@ -292,9 +292,11 @@ Route::prefix("finances")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
+        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
         Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
         Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
         Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
         Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
         Route::prefix("category")->group(function () {
             Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);

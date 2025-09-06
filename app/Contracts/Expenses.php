@@ -3,6 +3,7 @@
 
 namespace App\Contracts;
 
+use App\Exports\ExpenseExport;
 use App\Models\Expense;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -26,4 +27,6 @@ interface Expenses
     public function filterWithoutPaginate(array $filtros): Collection;
 
     public function changeStatus(int $id, string $status): Expense;
+
+    public function exportExcel(array $filtros): ExpenseExport;
 }
