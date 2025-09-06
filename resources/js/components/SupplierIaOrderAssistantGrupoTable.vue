@@ -14,7 +14,7 @@ const headers = [
   { title: "Producto", key: "name", sortable: true },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
+  { title: "Stock", key: "lote_quantity", sortable: true },
   {
     title: "Preferencia",
     key: "preferencia_product",

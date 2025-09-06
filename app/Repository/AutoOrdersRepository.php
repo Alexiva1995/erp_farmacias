@@ -49,16 +49,16 @@ class AutoOrdersRepository
 
     public function delete(AutoOrder $autoOrder)
     {
-        $autoOrder->delete();
-        return response()->json(["status" => "ok"]);
+        if ($autoOrder) {
+            $autoOrder->delete();
+            return true;
+        }
+
+        return false;
     }
 
     public function update(AutoOrder $autoOrder, $data)
     {
-        if (!isset($data)) {
-            return response()->json(["status" => "error", "message" => "No hay datos proporcionados"]);
-        }
-
         $whensQty = "";
         $whensSub = "";
         $whensUpd = "";
@@ -134,15 +134,13 @@ class AutoOrdersRepository
 
     public function getHistory(array $filters = [])
     {
-        $filters["itemsPerPage"] ??= 10;
-
         $stats = DB::table("auto_order_details")
             ->select([
                 "order_id",
                 DB::raw(
                     "ROUND(100.0 * SUM(status = " .
-                        AutoOrderDetailStatus::ARRIVED->value .
-                        ") / NULLIF(COUNT(*), 0), 2) AS percentage",
+                    AutoOrderDetailStatus::ARRIVED->value .
+                    ") / NULLIF(COUNT(*), 0), 2) AS percentage",
                 ),
             ])
             ->groupBy("order_id");

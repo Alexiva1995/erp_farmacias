@@ -52,12 +52,17 @@ declare module 'vue-router/auto-routes' {
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'suppliers-generar-pedido': RouteRecordInfo<'suppliers-generar-pedido', '/suppliers/generar-pedido', Record<never, never>, Record<never, never>>,
     'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
+    'suppliers-product-comparator-list': RouteRecordInfo<'suppliers-product-comparator-list', '/suppliers/product-comparator/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-history-list': RouteRecordInfo<'suppliers-purchase-orders-history-list', '/suppliers/purchase-orders/history/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-list': RouteRecordInfo<'suppliers-purchase-orders-list', '/suppliers/purchase-orders/list', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistant': RouteRecordInfo<'suppliers-supplieriaorderassistant', '/suppliers/supplieriaorderassistant', Record<never, never>, Record<never, never>>,
+    'suppliers-supplieriaorderassistantreport': RouteRecordInfo<'suppliers-supplieriaorderassistantreport', '/suppliers/supplieriaorderassistantreport', Record<never, never>, Record<never, never>>,
     'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
+    'tpv-returns': RouteRecordInfo<'tpv-returns', '/tpv/returns', Record<never, never>, Record<never, never>>,
+    'tpv-returns-supervisor': RouteRecordInfo<'tpv-returns-supervisor', '/tpv/returnsSupervisor', Record<never, never>, Record<never, never>>,
+    'tpv-returns-user': RouteRecordInfo<'tpv-returns-user', '/tpv/returnsUser', Record<never, never>, Record<never, never>>,
   }
 }

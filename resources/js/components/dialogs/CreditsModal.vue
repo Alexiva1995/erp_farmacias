@@ -32,6 +32,8 @@ const payments = ref([
     amount: null,
     reference: null,
     currency: props.selectedCurrency,
+    debounceTimeout: null,
+    inputAmount: null,
   },
 ]);
 
@@ -151,6 +153,8 @@ const resetProgress = () => {
       amount: null,
       reference: null,
       currency: props.selectedCurrency,
+      debounceTimeout: null,
+      inputAmount: null,
     },
   ];
 };
@@ -181,6 +185,8 @@ const addPaymentBlock = () => {
       amount: null,
       reference: null,
       currency: props.selectedCurrency,
+      debounceTimeout: null,
+      inputAmount: null,
     });
   } else {
     toast.error("El monto total ya ha sido cubierto.");
@@ -314,7 +320,7 @@ const handleCompletePurchase = () => {
     const invalidPayment = payments.value.find((p) => {
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;
-      if ((Number(p.amount) <= 0 || p.amount === null)) {
+      if (Number(p.amount) <= 0 || p.amount === null) {
         return true;
       }
       return false;
@@ -374,7 +380,6 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
 
-
 const changeAmountInCOP = computed(() => {
   const vueltoEnMonedaOrden = changeAmount.value;
   if (props.selectedCurrency === "COP") {
@@ -415,99 +420,114 @@ const changeAmountInUSD = computed(() => {
   const diff = totalCashPaidInUSD - totalOrdenEnUSD;
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
+
+const updateDebouncedAmount = (payment, newValue) => {
+  clearTimeout(payment.debounceTimeout);
+  payment.debounceTimeout = setTimeout(() => {
+    payment.amount = Number(newValue);
+  }, 1000);
+};
 </script>
 <template>
-  <VDialog v-model="dialogVisible" max-width="500px">
+  <VDialog v-model="dialogVisible">
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline">Créditos</span>
+      <VCardTitle class="d-flex align-center p-2">
+        <span class="text-h5 font-weight-bold pr-1">Créditos</span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <div class="demo-space-y px-4 pt-4">
-        <VProgressLinear
-          v-model="currentProgress"
-          color="primary"
-          height="10"
-          rounded
-        />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Métodos de pago
-          </p>
-          <p class="text-center mt-2 text-subtitle-2 text-medium-emphasis">
-            Ticke de pago de créditos
-          </p>
-        </div>
-      </div>
+
       <VCardText v-if="currentProgress === 0">
         <div
           v-for="(payment, index) in payments"
           :key="index"
           class="payment-block"
         >
-          <p class="font-weight-bold text-h6 mt-4">
-            Método de Pago #{{ index + 1 }}
-            <span v-if="index > 0"> ({{ payment.currency }})</span>
-          </p>
+          <div class="d-flex align-center flex-wrap">
+            <p class="font-weight-medium text-h6 mt-2 mb-0 me-4">
+              Método de Pago #{{ index + 1 }}
+              <span v-if="index > 0"> ({{ payment.currency }})</span>
+            </p>
 
-          <VSelect
-            v-model="payment.currency"
-            :items="currencies"
-            item-title="label"
-            item-value="value"
-            label="Moneda del Pago"
-            class="mt-4"
-          />
-
-          <div class="my-4">
-            <VRadioGroup v-model="payment.method" inline>
-              <VRadio
-                v-for="method in paymentMethodsByCurrency[payment.currency] ||
-                []"
-                :key="method.value"
-                :label="method.label"
-                :value="method.value"
+            <VCol cols="12" md="2" class="pa-0">
+              <VSelect
+                v-model="payment.currency"
+                :items="currencies"
+                item-title="label"
+                item-value="value"
+                label="Moneda del Pago"
+                class="mt-4"
               />
-            </VRadioGroup>
+            </VCol>
+
+            <div class="d-flex justify-center mt-4">
+              <VBtn
+                v-if="index === 0"
+                variant="text"
+                color="primary"
+                @click="addPaymentBlock"
+                :disabled="!canAddPaymentBlock"
+              >
+                <VIcon start icon="tabler-plus" />
+                Agregar otro método de pago
+              </VBtn>
+            </div>
           </div>
 
-          <VTextField
-            v-model.number="payment.amount"
-            label="Monto del pago"
-            :placeholder="getPlaceholderText(index, payment)"
-            type="number"
-            class="my-4"
-          />
+          <VRow class="py-2">
+            <VCol cols="12" md="6">
+              <VRadioGroup v-model="payment.method" inline>
+                <VRadio
+                  v-for="method in paymentMethodsByCurrency[payment.currency] ||
+                  []"
+                  :key="method.value"
+                  :label="method.label"
+                  :value="method.value"
+                />
+              </VRadioGroup>
+            </VCol>
 
-          <VTextField
-            v-if="payment.method && isTransferMethod(payment.method)"
-            v-model="payment.reference"
-            label="Número de Referencia"
-            placeholder="Ingresa el número de referencia del pago"
-            class="m-2"
-          />
-          <VDivider class="mt-4" />
+            <VCol cols="12" md="6">
+              <VRow class="payment-block">
+                <VCol
+                  :cols="isTransferMethod(payment.method) ? 12 : 6"
+                  :md="isTransferMethod(payment.method) ? 6 : 6"
+                >
+                  <VTextField
+                    :model-value="payment.inputAmount"
+                    @input="updateDebouncedAmount(payment, $event.target.value)"
+                    label="Monto del pago"
+                    :placeholder="getPlaceholderText(index, payment)"
+                    type="number"
+                    class="p-2"
+                    :persistent-hint="true"
+                  >
+                    <template #details>
+                      <span class="text-error text-left">
+                        {{ getPlaceholderText(index, payment) }}
+                      </span>
+                    </template>
+                  </VTextField>
+                </VCol>
+                <VCol v-if="isTransferMethod(payment.method)" cols="12" md="6">
+                  <VTextField
+                    v-model="payment.reference"
+                    label="Número de Referencia"
+                    placeholder="Ingresa el número de referencia del pago"
+                    class="m-2"
+                  />
+                </VCol>
+              </VRow>
+            </VCol>
+          </VRow>
         </div>
-        <div class="d-flex justify-center mt-4">
-          <VBtn
-            variant="text"
-            color="primary"
-            @click="addPaymentBlock"
-            :disabled="!canAddPaymentBlock"
-          >
-            <VIcon start icon="tabler-plus" />
-            Agregar otro método de pago
-          </VBtn>
-        </div>
-
         <VDivider />
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-4">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-4">
+        <div class="d-flex flex-wrap justify-space-between px-2 py-2">
+          <p class="text-h6 font-weight-medium">Total a pagar:</p>
+          <p class="text-h6 font-weight-medium">
             {{
               formatCurrency(
                 parseFloat(props.creditsData.total_pending_amount),
@@ -519,135 +539,146 @@ const changeAmountInUSD = computed(() => {
 
         <div
           v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between"
+          class="d-flex flex-wrap justify-space-between px-2 py-2"
         >
-          <p class="font-weight-bold text-h6 mt-2">Monto Devuelto:</p>
-          <p class="font-weight-bold text-h6 mt-2">
+          <p class="text-h6 font-weight-medium">Monto Devuelto:</p>
+          <p class="text-h6 font-weight-medium">
             {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
         <div
           v-if="remainingAmount > 0"
-          class="d-flex flex-wrap justify-space-between"
+          class="d-flex flex-wrap justify-space-between px-2 py-2"
         >
-          <p class="font-weight-bold text-h6">Monto Restante:</p>
-          <p class="font-weight-bold text-h6 text-error">
+          <p class="text-h6 font-weight-medium">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
         </div>
       </VCardText>
 
-      <VCardText v-if="currentProgress === 100">
-        <div class="text-center">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Fecha </span>
-          <span class="font-weight-bold text-h6">
-            {{ formatDateTime(today, "date") }}
-            {{ formatDateTime(today, "time") }}
-          </span>
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cajero </span>
-          <span class="font-weight-bold text-h6">
-            {{ userUsername }}
-          </span>
-        </div>
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cedula </span>
-          <span class="font-weight-bold text-h6">
-            {{ props.creditsData.client?.identification_type || "N/A" }}
-            {{ props.creditsData.client?.identification || "N/A" }}
-          </span>
-        </div>
+      <VCardText v-else-if="currentProgress === 100">
+        <div class="d-flex justify-center">
+          <div class="w-33">
+            <div class="text-center">
+              <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
+            </div>
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6 mt-4"> </span>
+              <div class="text-end">
+                <span class="d-block font-weight-bold text-h6 mt-4">
+                  {{ formatDateTime(today, "date") }}
+                  {{ formatDateTime(today, "time") }}
+                </span>
+              </div>
+            </div>
 
-        <div class="d-flex flex-wrap justify-space-between">
-          <span class="font-weight-bold text-h6"> Cliente </span>
-          <span class="font-weight-bold text-h6">
-            {{ props.creditsData.client.name }}
-            {{ props.creditsData.client.last_name }}
-          </span>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6">Métodos de Pago</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1"
-            >
-              <span
-                >{{
-                  getPaymentMethodLabel(payment.method, payment.currency)
-                }}
-                ({{ payment.currency }})</span
-              >
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <VList class="card-list" density="compact" nav>
-            <VListItem
-              :key="props.creditsData.id"
-              class="rounded-0"
-            >
-              <VListItemTitle class="font-weight-medium me-4 mx-2">Créditos</VListItemTitle>
-              <template #append>
-                <div class="d-flex align-center">
-                  <span class="text-body-1 me-2">{{formatCurrency(parseFloat(props.creditsData.total_pending_amount), props.selectedCurrency)}}</span>
-                </div>
-              </template>
-            </VListItem>
-          </VList>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
-          <p class="font-weight-bold text-h6 mt-2">
-            {{ roundedTotalAmountToPay }} {{ props.selectedCurrency }}
-          </p>
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2">Pago:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1"
-            >
-              <span>
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cajero </span>
+              <span class="font-weight-bold text-h6">
+                {{ userUsername }}
               </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cedula </span>
+              <span class="font-weight-bold text-h6">
+                {{ props.creditsData.client?.identification_type || "N/A" }}
+                {{ props.creditsData.client?.identification || "N/A" }}
+              </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <span class="font-weight-bold text-h6"> Cliente </span>
+              <span class="font-weight-bold text-h6">
+                {{ props.creditsData.client.name }}
+                {{ props.creditsData.client.last_name }}
+              </span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6">Métodos de Pago</p>
+              <div class="text-end">
+                <p
+                  v-for="(payment, pIndex) in payments"
+                  :key="`ticket-payment-${pIndex}`"
+                  class="font-weight-bold my-1"
+                >
+                  <span
+                    >{{
+                      getPaymentMethodLabel(payment.method, payment.currency)
+                    }}
+                    ({{ payment.currency }})</span
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <VList class="card-list" density="compact" nav>
+                <VListItem :key="props.creditsData.id" class="rounded-0">
+                  <VListItemTitle class="font-weight-medium me-4 mx-2"
+                    >Créditos</VListItemTitle
+                  >
+                  <template #append>
+                    <div class="d-flex align-center">
+                      <span class="text-body-1 me-2">{{
+                        formatCurrency(
+                          parseFloat(props.creditsData.total_pending_amount),
+                          props.selectedCurrency
+                        )
+                      }}</span>
+                    </div>
+                  </template>
+                </VListItem>
+              </VList>
+            </div>
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
+              <p class="font-weight-bold text-h6 mt-2">
+                {{ roundedTotalAmountToPay }} {{ props.selectedCurrency }}
+              </p>
+            </div>
+
+            <div class="d-flex flex-wrap justify-space-between">
+              <p class="font-weight-bold text-h6 mt-2">Pago:</p>
+              <div class="text-end">
+                <p
+                  v-for="(payment, pIndex) in payments"
+                  :key="`ticket-payment-${pIndex}`"
+                  class="font-weight-bold my-1"
+                >
+                  <span>
+                    {{ formatCurrency(payment.amount || 0, payment.currency) }}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div
+              v-if="showChangeAmount"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
+              <p class="font-weight-bold text-h6 mt-2">
+                {{ formatCurrency(changeAmountInCOP, "COP") }}
+              </p>
+            </div>
+
+            <p class="font-weight-bold text-center text-success">
+              ¡GRACIAS POR PREFERIRNOS!
             </p>
           </div>
         </div>
-
-        <div
-          v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between"
-        >
-          <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
-          <p class="font-weight-bold text-h6 mt-2">
-            {{ formatCurrency(changeAmountInCOP, "COP") }}
-          </p>
-        </div>
-
-        <p class="font-weight-bold text-center text-success">
-          ¡GRACIAS POR PREFERIRNOS!
-        </p>
       </VCardText>
 
-      <VCardActions class="p-4 d-flex flex-wrap justify-space-between">
+      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeModal"
-          class="flex-grow-1"
+          class="w-50"
         >
           Cancelar
         </VBtn>
@@ -655,7 +686,7 @@ const changeAmountInUSD = computed(() => {
           color="primary"
           variant="flat"
           @click="handleCompletePurchase"
-          class="flex-grow-1"
+          class="w-50"
         >
           {{ continueButtonText }}
         </VBtn>
