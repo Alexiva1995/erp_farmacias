@@ -542,6 +542,7 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
     const payload = {
       product_id: productId,
       quantity: quantity,
+      price_usd_unit: currentItem.price,
       price_at_product: currentItem.orderPrice || currentItem.price,
       currency_at_order: selectedDisplayCurrency.value,
     };
@@ -623,6 +624,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
     const payload = {
       product_id: productDetails.id,
       quantity: newTotalQuantity,
+      price_usd_unit: productDetails.sale_price,
       price_at_product: priceInSelectedCurrency,
       tax_rate_at_order: productDetails.iva == 1 ? 0.16 : 0,
       currency_at_order: selectedDisplayCurrency.value,
