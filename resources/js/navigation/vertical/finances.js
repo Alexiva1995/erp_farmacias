@@ -17,6 +17,22 @@ export default [
         title: 'Tasa de cambio',
         to: 'finances-exchangerate',
       },
+      {
+        title: 'Gasto',
+        icon: {
+          is: 'font-awesome-icon', 
+          props: {
+            icon: ['fas', 'chart-simple'],
+            size: 'sm',
+          },
+        },
+        children: [
+          {
+            title: 'Gasto Recurrente',
+            to: 'finances-expense-recurring-expense',
+          },
+        ],
+      }
     ],
   },
 ]

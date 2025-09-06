@@ -29,9 +29,11 @@ use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
+use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\Api\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -294,8 +296,16 @@ Route::prefix("finances")->group(function () {
         Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
         Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
         Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
+        });
     });
 });
+
+Route::prefix("user")->group(function () {
+    Route::get("/",                                     [UserController::class, "getAll"]);
+});
+
 
 // Rutas de Proveedores
 Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
