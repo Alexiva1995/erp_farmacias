@@ -10,8 +10,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table("product_suppliers", function (Blueprint $table) {
-            $table->string("cod_supplier")->nullable()->change();
+        Schema::table('invoice_returns', function (Blueprint $table) {
+            $table->string('lot_number', 100)->nullable()->after('amount_refunded');
+            $table->date('expiration_date')->nullable()->after('lot_number');
         });
     }
 
@@ -20,8 +21,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table("product_suppliers", function (Blueprint $table) {
-            $table->dropColumn("cod_supplier");
+        Schema::table('invoice_returns', function (Blueprint $table) {
+            $table->dropColumn(['lot_number', 'expiration_date']);
         });
     }
 };
