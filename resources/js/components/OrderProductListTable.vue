@@ -4,11 +4,14 @@ const props= defineProps({
   list: { type: Array, required: true },
 })
 
+const emit= defineEmits("eliminarItemOrden")
+
 const headers = [
   { title: 'Nombre',                            key: 'product.name'},
   { title: 'Cantidad',                          key: 'reponer'},
-  { title: 'Costo Unit.',                       key: 'productSupplier.unit_cost'},
+  { title: 'Costo',                       key: 'productSupplier.unit_cost'},
   { title: 'Total',                             key: 'totalPorveedor',sortable:false},
+  { title: 'Action',                            key: "action"},
 ];
 
 const groupBy = [{ key: 'supplier.name' }]
@@ -24,21 +27,33 @@ const groupBy = [{ key: 'supplier.name' }]
       :group-by="groupBy"
       fixed-header
     >
+      <template #item.productSupplier.unit_cost="{ item }">
+        <!-- <VIcon icon="tabler-currency-dollar" /> -->
+        {{ parseFloat(item.productSupplier.unit_cost).toFixed(2) }}
+      </template>
       <template #item.reponer="{ item }">
-        <!-- <VTextField
-          class="w-100"
+        <VTextField
+          class=""
+          style="width: 100px"
           type="number"
           v-model="item.reponer"
-          readonly="true"
           :max="item.productSupplier.quantity"
-        /> -->
-        {{ item.reponer }}
+        />
+        <!-- {{ item.reponer }} -->
       </template>
       <template #item.totalPorveedor="{ item }">
-        <VIcon icon="tabler-currency-dollar" />
+        <!-- <VIcon icon="tabler-currency-dollar " /> -->
         {{
-          item.reponer * parseFloat(item.productSupplier.unit_cost).toFixed(2)
+          parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer
         }}
+      </template>
+      <template #item.action="{ item }">
+        <VIcon
+          icon="tabler-circle-minus"
+          size="30"
+          class="mx-auto d-block cursor-pointer"
+          @click="() => emit('eliminarItemOrden', item)"
+        />
       </template>
     </v-data-table-virtual>
   </VCard>

@@ -8,11 +8,13 @@ use App\Contracts\Company;
 use App\Contracts\Doctor;
 use App\Contracts\Laboratory;
 use App\Contracts\Lottery;
+use App\Contracts\PurchaseOrder;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
+use App\Http\Controllers\PurchaseOrderController;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
@@ -27,6 +29,7 @@ use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
@@ -35,6 +38,7 @@ use App\Services\ProductServices;
 
 use App\Services\ProductSupplierServices;
 use App\Services\ProfitabilityServices;
+use App\Services\PurchaseOrderServices;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -57,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->when(OrderController::class) // Cuando el OrderController
             ->needs(Client::class)               // necesite una instancia de Client
-            ->give(ClientServices::class); 
+            ->give(ClientServices::class);
 
         $this->app->when(CompanyController::class)
             ->needs(Company::class)
@@ -91,6 +95,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(SuppliersIaOrderAssistantController::class)
             ->needs(AutoOrder::class)
             ->give(AutoOrderServices::class);
+
+        $this->app->when(PurchaseOrderController::class)
+            ->needs(PurchaseOrder::class)
+            ->give(PurchaseOrderServices::class);
+        $this->app->when(SupplierIaAssistantReportController::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
     }
 
     /**

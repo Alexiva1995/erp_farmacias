@@ -5,28 +5,36 @@ import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
   mode: { type: String, default: "editable" },
+  supplierDiscounts: { type: Array, default: () => [] },
+  paymentRules: { type: [Array, Object], default: () => [] },
+  isSaving: { type: Boolean, default: false },
 });
-const emit = defineEmits(["back-to-list"]);
+const emit = defineEmits([
+  "back-to-list",
+  "confirm-approval",
+  "reject-invoice",
+]);
 
 const invoice = ref(null);
 const invoiceDetails = ref([]);
 const formData = ref({});
-const locationData = ref([]);
 const loading = ref(true);
 const loadingDetails = ref(true);
-const isSaving = ref(false);
 
 const isEditableMode = computed(() => props.mode === "editable");
 const isLocationMode = computed(() => props.mode === "location");
 const isReadOnly = computed(() => props.mode === "read-only");
+const isApprovalMode = computed(() => props.mode === "approval");
 
 const isEditMode = ref(false);
-
+const selectedSupplierDiscountId = ref(null);
+const selectedPaymentRuleId = ref(null);
 const editingDetailId = ref(null);
 const editedDetailData = ref({});
 
@@ -42,7 +50,6 @@ const laboratories = ref([]);
 const origins = ref([]);
 const categories = ref([]);
 const isLoadingFilters = ref(false);
-
 const isEditDialogVisible = ref(false);
 const isBarcodeModalVisible = ref(false);
 const isProductSearchVisible = ref(false);
@@ -51,28 +58,94 @@ const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
 
+const formattedPaymentRules = computed(() => {
+  const rules = props.paymentRules;
+  if (!rules || !Array.isArray(rules)) {
+    return [];
+  }
+  return rules.map((rule) => ({
+    ...rule,
+    displayText: `${rule.discount_percentage}% - ${
+      rule.name || rule.days + " Días"
+    }`,
+  }));
+});
+
 const processedInvoiceDetails = computed(() => {
   if (!invoice.value || !invoiceDetails.value) return [];
 
-  return invoiceDetails.value.map((detail) => {
-    const unitCost = detail.unit_cost || 0;
-    const totalCost = detail.total_cost || (detail.quantity || 0) * unitCost;
+  let discountPercentage = 0;
+  if (isEditableMode.value && selectedSupplierDiscountId.value) {
+    const discount = props.supplierDiscounts.find(
+      (d) => d.id === selectedSupplierDiscountId.value
+    );
+    if (discount)
+      discountPercentage = Number(discount.discount_percentage) || 0;
+  } else if (isApprovalMode.value && selectedPaymentRuleId.value) {
+    const rule = props.paymentRules.find(
+      (r) => r.id === selectedPaymentRuleId.value
+    );
+    if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
+  }
 
+  return invoiceDetails.value.map((detail) => {
+    const quantity = Number(detail.quantity) || 0;
+    const unitCost = Number(detail.unit_cost) || 0;
+    const discountAmount = unitCost * (discountPercentage / 100);
+    const discountedUnitCost = unitCost - discountAmount;
+    const baseTotal = quantity * discountedUnitCost;
+    let taxAmount = 0;
+    if (detail.tax_enabled) {
+      taxAmount = baseTotal * 0.16;
+    }
+    const finalTotal = baseTotal + taxAmount;
     const rate = parseFloat(invoice.value.exchange_rate);
     const isUsd = invoice.value.currency === "USD";
     const hasValidRate = rate && rate > 0;
-
     const unitCostUsd = isUsd || !hasValidRate ? unitCost : unitCost / rate;
-    const totalCostUsd = isUsd || !hasValidRate ? totalCost : totalCost / rate;
-
+    const totalCostUsd =
+      isUsd || !hasValidRate ? finalTotal : finalTotal / rate;
     return {
       ...detail,
-      unit_cost: unitCost,
-      total_cost: totalCost,
+      product_name_with_tax: detail.tax_enabled
+        ? `${detail.product.name} (G)`
+        : detail.product.name,
+      tax_amount: taxAmount,
+      total_cost: finalTotal,
       unit_cost_usd: unitCostUsd,
       total_cost_usd: totalCostUsd,
     };
   });
+});
+
+const editableDetailsTotal = computed(() => {
+  if (!processedInvoiceDetails.value) return 0;
+  return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
+    return accumulator + (currentDetail.total_cost || 0);
+  }, 0);
+});
+
+const isTotalMismatch = computed(() => {
+  if (!invoice.value) return false;
+  return (
+    Math.abs(editableDetailsTotal.value - invoice.value.total_amount) > 0.01
+  );
+});
+
+const totalWithDiscount = computed(() => {
+  if (!invoice.value || !selectedPaymentRuleId.value) {
+    return invoice.value?.total_amount || 0;
+  }
+  const rule = props.paymentRules.find(
+    (r) => r.id === selectedPaymentRuleId.value
+  );
+  if (!rule) {
+    return invoice.value.total_amount;
+  }
+  const discountPercentage = Number(rule.discount_percentage) || 0;
+  const discountAmount =
+    invoice.value.total_amount * (discountPercentage / 100);
+  return invoice.value.total_amount - discountAmount;
 });
 
 onMounted(async () => {
@@ -86,8 +159,42 @@ watch(isEditMode, (newVal) => {
   if (isEditableMode.value && !newVal) {
     cancelEditingDetail();
     isProductSearchVisible.value = false;
+    selectedSupplierDiscountId.value =
+      invoice.value?.supplier_discount_id || null;
   }
 });
+
+const watchProps = () => {
+  if (props.mode === "approval") {
+    selectedPaymentRuleId.value = null;
+  }
+};
+watch(() => props.mode, watchProps, { immediate: true });
+
+const toggleReturnItem = (itemToToggle) => {
+  const index = invoiceDetails.value.findIndex((d) => d.id === itemToToggle.id);
+  if (index !== -1) {
+    const item = invoiceDetails.value[index];
+    item.is_return = !item.is_return;
+    if (item.is_return) {
+      item.lot_number = "N/A (Devolución)";
+      item.expiration_date = null;
+      item.location = "N/A";
+      if (editingDetailId.value === item.id) {
+        cancelEditingDetail();
+      }
+    } else {
+      item.lot_number = "";
+      item.expiration_date = null;
+      item.location = "Por Asignar";
+      startEditingDetail(item);
+    }
+  }
+};
+
+const isItemReturned = (item) => {
+  return !!item.is_return;
+};
 
 const fetchInvoiceData = async (id) => {
   loading.value = true;
@@ -96,6 +203,8 @@ const fetchInvoiceData = async (id) => {
     invoice.value = response.data.data;
     if (isEditableMode.value) {
       formData.value = JSON.parse(JSON.stringify(invoice.value));
+      selectedSupplierDiscountId.value =
+        invoice.value.supplier_discount_id || null;
     }
   } catch (error) {
     console.error("Error al cargar la factura:", error);
@@ -110,19 +219,114 @@ const fetchInvoiceDetails = async (id) => {
   loadingDetails.value = true;
   try {
     const response = await axios.get(`/invoices/${id}/details`);
-    invoiceDetails.value = response.data.data ?? [];
-    if (isLocationMode.value) {
-      locationData.value = invoiceDetails.value.map((d) => ({
-        id: d.id,
-        location: d.location,
-      }));
-    }
+    const combinedDetailsFromApi = response.data.data ?? [];
+    const rate = parseFloat(invoice.value.exchange_rate) || 1;
+    const isUsd = invoice.value.currency === "USD";
+    invoiceDetails.value = combinedDetailsFromApi.map((detail) => {
+      const unitCostUSD = Number(detail.unit_cost) || 0;
+      let unitCostInInvoiceCurrency = unitCostUSD;
+      if (!isUsd && rate > 0) {
+        unitCostInInvoiceCurrency = unitCostUSD * rate;
+      }
+      return {
+        ...detail,
+        unit_cost: unitCostInInvoiceCurrency,
+        tax_enabled: !!detail.tax_enabled,
+        is_return: !!detail.is_return,
+      };
+    });
   } catch (error) {
     console.error("Error al cargar los detalles de la factura:", error);
     toast.error("No se pudieron cargar los productos de la factura.");
     invoiceDetails.value = [];
   } finally {
     loadingDetails.value = false;
+  }
+};
+
+const handleSaveProgress = async () => {
+  loading.value = true;
+  const payload = {
+    invoice: {
+      ...formData.value,
+      supplier_discount_id: selectedSupplierDiscountId.value,
+    },
+    details: invoiceDetails.value.map((d) => ({
+      product: { id: d.product.id },
+      quantity: d.quantity,
+      unit_cost: d.unit_cost,
+      lot_number: d.lot_number,
+      expiration_date: d.expiration_date,
+      location: d.location,
+      tax_enabled: d.tax_enabled,
+      is_return: !!d.is_return,
+    })),
+  };
+  try {
+    const response = await axios.put(
+      `/invoices/${props.invoiceId}/save-details`,
+      payload
+    );
+    toast.success(response.data.message || "Progreso guardado.");
+    invoice.value = response.data.invoice;
+    await fetchInvoiceDetails(props.invoiceId);
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "No se pudo guardar el progreso."
+    );
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleFinalizeInvoice = async () => {
+  if (isTotalMismatch.value) {
+    toast.error(
+      `El total de productos (${formatCurrency(
+        editableDetailsTotal.value,
+        invoice.value.currency
+      )}) debe ser exactamente igual al total de la factura (${formatCurrency(
+        invoice.value.total_amount,
+        invoice.value.currency
+      )}).`
+    );
+    return;
+  }
+  await handleSaveProgress();
+  loading.value = true;
+  try {
+    const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
+    toast.success(response.data.message || "Factura finalizada con éxito.");
+    emit("back-to-list");
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "No se pudo finalizar la factura."
+    );
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleConfirmApproval = () => {
+  emit("confirm-approval", {
+    paymentRuleId: selectedPaymentRuleId.value,
+  });
+};
+
+const handleReject = async () => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "Esta factura será devuelta a la lista de carga de productos.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Sí, rechazar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+  if (result.isConfirmed) {
+    emit("reject-invoice");
   }
 };
 
@@ -157,7 +361,6 @@ const fetchProducts = async () => {
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
-
   try {
     const response = await axios.get("/products", { params });
     products.value = response.data.data ?? response.data ?? [];
@@ -199,7 +402,6 @@ const updateProductTableOptions = (options) => {
 
 const toggleEditMode = (enable) => {
   if (isReadOnly.value || isLocationMode.value) return;
-
   isEditMode.value = enable;
   if (!enable) {
     formData.value = JSON.parse(JSON.stringify(invoice.value));
@@ -211,28 +413,33 @@ const addProductToInvoice = (product) => {
   const existingDetail = invoiceDetails.value.find(
     (detail) => detail.product.id === product.id
   );
-
   if (existingDetail) {
     existingDetail.quantity += 1;
     startEditingDetail(existingDetail);
-    toast.info(
-      `Producto "${product.name}" ya existe. Editando para completar campos.`
-    );
   } else {
     const newDetail = {
       id: -Math.floor(Math.random() * 1000),
-      product: { id: product.id, name: product.name },
+      product: { id: product.id, name: product.name, iva: product.iva },
       quantity: 1,
       unit_cost: 0,
       lot_number: "",
       expiration_date: null,
       location: "Por Asignar",
+      tax_enabled: !!product.iva,
+      is_return: false,
     };
     invoiceDetails.value.push(newDetail);
     startEditingDetail(newDetail);
-    toast.success(
-      `Producto "${product.name}" agregado. Complete los campos obligatorios.`
-    );
+  }
+};
+
+const toggleTax = (detailToToggle) => {
+  const index = invoiceDetails.value.findIndex(
+    (d) => d.id === detailToToggle.id
+  );
+  if (index !== -1) {
+    invoiceDetails.value[index].tax_enabled =
+      !invoiceDetails.value[index].tax_enabled;
   }
 };
 
@@ -313,28 +520,26 @@ const saveEditingDetail = () => {
     return;
   }
   if (
-    !editedDetailData.value.unit_cost ||
+    editedDetailData.value.unit_cost === null ||
     editedDetailData.value.unit_cost < 0
   ) {
     toast.error("El costo por unidad debe ser 0 o mayor");
     return;
   }
-  if (!editedDetailData.value.lot_number?.trim()) {
-    toast.error("El número de lote es obligatorio");
-    return;
+  if (!editedDetailData.value.is_return) {
+    if (!editedDetailData.value.lot_number?.trim()) {
+      toast.error("El número de lote es obligatorio");
+      return;
+    }
+    if (!editedDetailData.value.expiration_date) {
+      toast.error("La fecha de vencimiento es obligatoria");
+      return;
+    }
   }
-  if (!editedDetailData.value.expiration_date) {
-    toast.error("La fecha de vencimiento es obligatoria");
-    return;
-  }
-
   const detailIndex = invoiceDetails.value.findIndex(
     (d) => d.id === editingDetailId.value
   );
   if (detailIndex !== -1) {
-    editedDetailData.value.total_cost =
-      (editedDetailData.value.quantity || 0) *
-      (editedDetailData.value.unit_cost || 0);
     invoiceDetails.value[detailIndex] = { ...editedDetailData.value };
     toast.success("Producto actualizado correctamente");
   }
@@ -346,40 +551,33 @@ const cancelEditingDetail = () => {
   editedDetailData.value = {};
 };
 
-const handleUpdate = async () => {
-  isSaving.value = true;
-  const payload = {
-    invoice: formData.value,
-    details: invoiceDetails.value,
-  };
-
-  try {
-    const response = await axios.put(`/invoices/${props.invoiceId}`, payload);
-    toast.success(response.data.message || "Factura actualizada con éxito.");
-    emit("back-to-list");
-  } catch (error) {
-    toast.error(
-      error.response?.data?.message || "No se pudo actualizar la factura."
-    );
-  } finally {
-    isSaving.value = false;
-  }
-};
-
 const handleSaveLocations = async () => {
-  const hasEmptyLocation = locationData.value.some(
+  const hasEmptyLocation = invoiceDetails.value.some(
     (d) =>
-      !d.location ||
-      d.location.trim() === "" ||
-      d.location.trim() === "Por Asignar"
+      !d.is_return &&
+      (!d.location ||
+        d.location.trim() === "" ||
+        d.location.trim() === "Por Asignar" ||
+        d.location.trim() === "N/A")
   );
+
   if (hasEmptyLocation) {
-    toast.error("Por favor, asigne una localización a todos los productos.");
+    toast.error(
+      "Por favor, asigne una localización a todos los productos que no son devolución."
+    );
     return;
   }
 
-  isSaving.value = true;
-  const payload = { details: locationData.value };
+  loading.value = true;
+
+  const payload = {
+    details: invoiceDetails.value
+      .filter((d) => !d.is_return)
+      .map((d) => ({
+        id: d.id,
+        location: d.location,
+      })),
+  };
 
   try {
     const response = await axios.put(
@@ -393,7 +591,7 @@ const handleSaveLocations = async () => {
       error.response?.data?.message || "No se pudieron guardar las ubicaciones."
     );
   } finally {
-    isSaving.value = false;
+    loading.value = false;
   }
 };
 
@@ -425,41 +623,53 @@ const getCurrencySymbol = () => {
 };
 
 const detailsHeaders = [
-  { title: "Descripción", key: "product.name", sortable: false, width: "25%" },
+  {
+    title: "Descripción",
+    key: "product_name_with_tax",
+    sortable: false,
+    width: "25%",
+  },
   {
     title: "N° Lote",
     key: "lot_number",
     align: "center",
     sortable: false,
-    width: "12%",
+    width: "10%",
   },
   {
     title: "F. Vencimiento",
     key: "expiration_date",
     align: "center",
     sortable: false,
-    width: "12%",
+    width: "10%",
   },
   {
     title: "Localización",
     key: "location",
     align: "center",
     sortable: false,
-    width: "12%",
+    width: "10%",
   },
   {
     title: "Unidades",
     key: "quantity",
     align: "end",
     sortable: false,
-    width: "10%",
+    width: "8%",
   },
   {
     title: "Costo Unitario",
     key: "unit_cost",
     align: "end",
     sortable: false,
-    width: "12%",
+    width: "10%",
+  },
+  {
+    title: "IVA (16%)",
+    key: "tax_amount",
+    align: "end",
+    sortable: false,
+    width: "10%",
   },
   {
     title: "Costo Total",
@@ -504,11 +714,7 @@ const detailsHeaders = [
       </VAlert>
 
       <VCard class="invoice-detail-card mb-6">
-        <VForm
-          @submit.prevent="
-            isLocationMode ? handleSaveLocations() : handleUpdate()
-          "
-        >
+        <VForm @submit.prevent>
           <VCardText class="header-section">
             <VRow align="center" justify="space-between" class="mb-4">
               <VCol cols="auto">
@@ -525,6 +731,7 @@ const detailsHeaders = [
                   color="primary"
                   variant="tonal"
                 >
+                  <VIcon icon="tabler-edit" class="me-2" />
                   Editar
                 </VBtn>
               </VCol>
@@ -532,14 +739,17 @@ const detailsHeaders = [
             <VRow align="start" justify="space-between">
               <VCol cols="12" md="auto">
                 <div>
-                  <h1 class="font-weight-bold text-primary">
+                  <h1
+                    class="font-weight-bold text-primary text-h4"
+                    style="text-transform: uppercase !important"
+                  >
                     {{ invoice.supplier.name }}
                   </h1>
                   <div class="d-flex align-center mt-2">
                     <span class="text-subtitle-1 font-weight-medium me-2"
                       >N° DE CONTROL</span
                     >
-                    <span class="text-h6 font-weight-bold text-error">{{
+                    <span class="text-h4 font-weight-bold text-error">{{
                       invoice.control_number
                     }}</span>
                   </div>
@@ -550,11 +760,9 @@ const detailsHeaders = [
                   <span class="text-subtitle-1 font-weight-medium me-2"
                     >FACTURA N°</span
                   >
-                  <span
-                    class="text-h4 font-weight-bold text-error"
-                    style="font-size: 2rem !important"
-                    >{{ invoice.invoice_number }}</span
-                  >
+                  <span class="text-h4 font-weight-bold text-error">{{
+                    invoice.invoice_number
+                  }}</span>
                 </div>
               </VCol>
             </VRow>
@@ -566,8 +774,8 @@ const detailsHeaders = [
               <VCol
                 v-for="(dateField, index) in [
                   'exp_date',
-                  'payment_date',
                   'received_date',
+                  'payment_date',
                 ]"
                 :key="dateField"
                 cols="12"
@@ -581,14 +789,14 @@ const detailsHeaders = [
                 <p class="text-subtitle-2 text-disabled">
                   {{
                     {
-                      exp_date: "Fecha de Vencimiento",
-                      payment_date: "Fecha Límite Pago",
+                      exp_date: "Fecha de Emisión",
                       received_date: "Fecha de Recibo",
+                      payment_date: "Fecha de Vencimiento",
                     }[dateField]
                   }}
                 </p>
                 <p class="text-body-1 font-weight-medium mt-1">
-                  {{ invoice[dateField] }}
+                  {{ invoice[dateField] || "N/A" }}
                 </p>
               </VCol>
             </VRow>
@@ -602,17 +810,43 @@ const detailsHeaders = [
                 >{{ invoiceDetails.length }} productos</VChip
               >
               <VSpacer />
-              <VBtn
-                v-if="isEditableMode && isEditMode"
-                color="primary"
-                variant="flat"
-                size="small"
-                class="me-3"
-                @click="handleAddProduct"
-              >
-                <VIcon icon="tabler-plus" class="me-2" />
-                Agregar Producto
-              </VBtn>
+              <div class="d-flex align-center ga-4">
+                <div class="text-right d-flex align-center">
+                  <VTooltip
+                    v-if="isTotalMismatch && isEditMode"
+                    text="El total de los productos debe ser igual al total de la factura."
+                  >
+                    <template #activator="{ props }">
+                      <VIcon
+                        v-bind="props"
+                        icon="tabler-alert-circle"
+                        color="warning"
+                        class="me-2"
+                      />
+                    </template>
+                  </VTooltip>
+                  <span class="text-body-1 me-2 text-error font-weight-medium"
+                    >Total Cargado</span
+                  >
+                  <VChip
+                    :color="isTotalMismatch && isEditMode ? 'warning' : 'error'"
+                    label
+                    >{{
+                      formatCurrency(editableDetailsTotal, invoice.currency)
+                    }}</VChip
+                  >
+                </div>
+                <VBtn
+                  v-if="isEditableMode && isEditMode"
+                  color="primary"
+                  variant="flat"
+                  size="small"
+                  @click="handleAddProduct"
+                >
+                  <VIcon icon="tabler-plus" class="me-2" />
+                  Agregar Producto
+                </VBtn>
+              </div>
             </div>
 
             <VDataTable
@@ -622,45 +856,66 @@ const detailsHeaders = [
               :hide-default-footer="true"
               class="invoice-products-table"
             >
-              <template #item.lot_number="{ item }">
-                <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId"
+              <template #item.product_name_with_tax="{ item }">
+                <span :class="{ 'returned-item': isItemReturned(item) }">{{
+                  item.product_name_with_tax
+                }}</span>
+              </template>
+
+              <template #item.lot_number="{ item }"
+                ><VTextField
+                  v-if="
+                    isEditableMode &&
+                    item.id === editingDetailId &&
+                    !isItemReturned(item)
+                  "
                   v-model="editedDetailData.lot_number"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
                   placeholder="Ingrese lote"
-                />
-                <span v-else>{{ item.lot_number || "-" }}</span>
-              </template>
-
-              <template #item.expiration_date="{ item }">
-                <AppDateTimePicker
-                  v-if="isEditableMode && item.id === editingDetailId"
+                /><span
+                  v-else
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                  >{{ item.lot_number || "-" }}</span
+                ></template
+              >
+              <template #item.expiration_date="{ item }"
+                ><AppDateTimePicker
+                  v-if="
+                    isEditableMode &&
+                    item.id === editingDetailId &&
+                    !isItemReturned(item)
+                  "
                   v-model="editedDetailData.expiration_date"
                   density="compact"
                   class="editable-cell"
                   placeholder="F. Vencimiento"
-                />
-                <span v-else>{{ item.expiration_date || "-" }}</span>
-              </template>
-
+                /><span
+                  v-else
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                  >{{ item.expiration_date || "-" }}</span
+                ></template
+              >
               <template #item.location="{ item, index }">
                 <VTextField
-                  v-if="isLocationMode"
-                  v-model="locationData[index].location"
+                  v-if="isLocationMode && !isItemReturned(item)"
+                  v-model="invoiceDetails[index].location"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
                   placeholder="Ej: A-01-B"
                 />
-                <span v-else>{{ item.location || "-" }}</span>
+                <span
+                  v-else
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                  >{{ item.location || "-" }}</span
+                >
               </template>
-
-              <template #item.quantity="{ item }">
-                <VTextField
+              <template #item.quantity="{ item }"
+                ><VTextField
                   v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.quantity"
                   type="number"
@@ -669,9 +924,12 @@ const detailsHeaders = [
                   variant="outlined"
                   class="editable-cell"
                   min="1"
-                />
-                <span v-else>{{ item.quantity }}</span>
-              </template>
+                /><span
+                  v-else
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                  >{{ item.quantity }}</span
+                ></template
+              >
 
               <template #item.unit_cost="{ item }">
                 <VTextField
@@ -686,7 +944,11 @@ const detailsHeaders = [
                   min="0"
                   :prefix="getCurrencySymbol()"
                 />
-                <div v-else class="d-flex flex-column align-end">
+                <div
+                  v-else
+                  class="d-flex flex-column align-end"
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                >
                   <span class="font-weight-medium">{{
                     formatCurrency(item.unit_cost, invoice.currency)
                   }}</span>
@@ -698,8 +960,25 @@ const detailsHeaders = [
                 </div>
               </template>
 
+              <template #item.tax_amount="{ item }">
+                <div
+                  class="d-flex flex-column align-end"
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                >
+                  <span
+                    :class="{ 'font-weight-medium': item.tax_amount > 0 }"
+                    >{{
+                      formatCurrency(item.tax_amount, invoice.currency)
+                    }}</span
+                  >
+                </div>
+              </template>
+
               <template #item.total_cost="{ item }">
-                <div class="d-flex flex-column align-end">
+                <div
+                  class="d-flex flex-column align-end"
+                  :class="{ 'returned-item': isItemReturned(item) }"
+                >
                   <span class="font-weight-medium">{{
                     formatCurrency(item.total_cost, invoice.currency)
                   }}</span>
@@ -721,7 +1000,26 @@ const detailsHeaders = [
                       ><VIcon icon="tabler-x" color="error" size="22"
                     /></IconBtn>
                   </div>
-                  <div v-else class="d-flex">
+                  <div v-else class="d-flex align-center">
+                    <VTooltip text="Marcar para Devolución"
+                      ><template #activator="{ props }"
+                        ><IconBtn v-bind="props" @click="toggleReturnItem(item)"
+                          ><VIcon
+                            :color="
+                              isItemReturned(item) ? 'warning' : 'default'
+                            "
+                            icon="tabler-arrow-back-up"
+                            size="20" /></IconBtn></template
+                    ></VTooltip>
+                    <VTooltip
+                      :text="item.tax_enabled ? 'Quitar IVA' : 'Agregar IVA'"
+                      ><template #activator="{ props }"
+                        ><IconBtn v-bind="props" @click="toggleTax(item)"
+                          ><VIcon
+                            :color="item.tax_enabled ? 'success' : 'default'"
+                            icon="tabler-receipt-tax"
+                            size="20" /></IconBtn></template
+                    ></VTooltip>
                     <IconBtn @click="removeProductFromInvoice(item.id)"
                       ><VIcon icon="tabler-trash" size="20"
                     /></IconBtn>
@@ -777,6 +1075,47 @@ const detailsHeaders = [
                   formatCurrency(invoice.total_usd, "USD")
                 }}</span>
               </div>
+              <div
+                v-if="isEditableMode && isEditMode"
+                class="total-item-row mt-4"
+                style="max-width: 400px; width: 100%"
+              >
+                <VSelect
+                  v-model="selectedSupplierDiscountId"
+                  :items="props.supplierDiscounts"
+                  item-title="name"
+                  item-value="id"
+                  label="Descuento por Proveedor"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </div>
+              <div v-if="isApprovalMode" class="total-item-row mt-4">
+                <VSelect
+                  v-model="selectedPaymentRuleId"
+                  :items="formattedPaymentRules"
+                  item-title="displayText"
+                  item-value="id"
+                  label="Descuento Pronto Pago (Opcional)"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </div>
+              <div
+                v-if="isApprovalMode && selectedPaymentRuleId"
+                class="total-item-row mt-3 text-success"
+              >
+                <span class="text-subtitle-1 font-weight-medium"
+                  >Total con Descuento:</span
+                >
+                <span class="text-h5 ms-2 font-weight-bold">{{
+                  formatCurrency(totalWithDiscount, invoice.currency)
+                }}</span>
+              </div>
             </div>
           </VCardText>
           <VDivider />
@@ -784,15 +1123,37 @@ const detailsHeaders = [
           <VCardActions class="pa-6">
             <div v-if="isLocationMode" class="d-flex w-100">
               <VBtn
-                :loading="isSaving"
+                :loading="loading"
                 @click="handleSaveLocations"
                 size="large"
                 color="primary"
                 variant="flat"
                 class="w-100"
+                ><VIcon icon="tabler-device-floppy" class="me-2" />Guardar
+                Ubicaciones</VBtn
               >
-                <VIcon icon="tabler-device-floppy" class="me-2" />Guardar
-                Ubicaciones
+            </div>
+            <div v-else-if="isApprovalMode" class="d-flex ga-3 w-100">
+              <VBtn
+                :loading="props.isSaving"
+                @click="handleReject"
+                size="large"
+                color="error"
+                variant="outlined"
+                class="flex-1-1"
+              >
+                Rechazar Factura
+              </VBtn>
+              <VBtn
+                :loading="props.isSaving"
+                @click="handleConfirmApproval"
+                size="large"
+                color="success"
+                variant="flat"
+                class="flex-1-1"
+              >
+                <VIcon icon="tabler-check" class="me-2" />
+                Confirmar Aprobación
               </VBtn>
             </div>
             <div v-else-if="isEditableMode" class="d-flex ga-3 w-100">
@@ -806,15 +1167,18 @@ const detailsHeaders = [
                 >Cancelar</VBtn
               >
               <VBtn
-                :loading="isSaving"
-                @click="handleUpdate"
+                :loading="loading"
+                @click="
+                  isEditMode ? handleSaveProgress() : handleFinalizeInvoice()
+                "
                 size="large"
-                color="primary"
+                :color="isEditMode ? 'info' : 'primary'"
                 variant="flat"
                 :class="isEditMode ? 'flex-1-1' : 'w-100'"
+                >{{
+                  isEditMode ? "Guardar Progreso" : "Finalizar Factura"
+                }}</VBtn
               >
-                {{ isEditMode ? "Guardar Productos" : "Finalizar Factura" }}
-              </VBtn>
             </div>
             <div v-else class="d-flex w-100">
               <VBtn
@@ -937,5 +1301,9 @@ const detailsHeaders = [
   justify-content: space-between;
   width: 100%;
   max-width: 400px;
+}
+.returned-item {
+  text-decoration: line-through;
+  opacity: 0.6;
 }
 </style>
