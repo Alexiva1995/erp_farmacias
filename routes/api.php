@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\Api\ReturnsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -162,8 +163,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
-    });
-
+        Route::get('/returns', [ReturnsController::class, 'index']);
+        Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
+        Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
+        Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+});
     // Rutas de Trazabilidad
     Route::prefix("sales/report")->controller(TraceabilityController::class)->group(function () {
         Route::get("/", "index")->name("api.sales.report.index");

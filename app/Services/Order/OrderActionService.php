@@ -98,6 +98,7 @@ class OrderActionService
 
             $requestedQuantity = $validatedData['quantity'];
             $unitPriceAtOrder = $validatedData['price_at_product'];
+            $price_usd = $validatedData['price_usd_unit'];
 
             $orderItem = $order->details()->where('product_id', $validatedData['product_id'])->first();
 
@@ -122,10 +123,10 @@ class OrderActionService
             }
 
             if ($orderItem) {
-
                 $orderItem->quantity = $requestedQuantity;
                 $orderItem->price = $unitPriceAtOrder * $requestedQuantity;
                 $orderItem->unit_cost = $unitPriceAtOrder;
+                $orderItem->unit_price_usd = $price_usd;
                 $orderItem->save();
             } else {
                 $orderItem = $order->details()->create([
@@ -133,6 +134,7 @@ class OrderActionService
                     'quantity' => $requestedQuantity,
                     'price' => $unitPriceAtOrder * $requestedQuantity,
                     'unit_cost' => $unitPriceAtOrder,
+                    'unit_price_usd' => $price_usd,
                 ]);
             }
             DB::commit();

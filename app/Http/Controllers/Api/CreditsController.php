@@ -80,7 +80,7 @@ class CreditsController extends Controller
             'credit_ids.*' => 'integer|exists:credits,id',
         ]);
 
-        $credits = Credit::with('client', 'order')
+        $credits = Credit::with('client', 'order.details.product')
             ->whereIn('id', $request->input('credit_ids'))
             ->get();
 
