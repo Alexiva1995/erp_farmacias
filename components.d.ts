@@ -38,6 +38,7 @@ declare module 'vue' {
     CardStatisticsVerticalSimple: typeof import('./resources/js/@core/components/CardStatisticsVerticalSimple.vue')['default']
     CashCloseFilters: typeof import('./resources/js/components/CashCloseFilters.vue')['default']
     CashCloseTable: typeof import('./resources/js/components/CashCloseTable.vue')['default']
+    CashoutFilters: typeof import('./resources/js/components/CashoutFilters.vue')['default']
     ClientFormDialoge: typeof import('./resources/js/components/dialogs/ClientFormDialoge.vue')['default']
     ClientsFilters: typeof import('./resources/js/components/ClientsFilters.vue')['default']
     ClientTable: typeof import('./resources/js/components/ClientTable.vue')['default']
@@ -156,6 +157,7 @@ declare module 'vue' {
     Shortcuts: typeof import('./resources/js/@core/components/Shortcuts.vue')['default']
     ShowImportProductsFileDialog: typeof import('./resources/js/components/dialogs/ShowImportProductsFileDialog.vue')['default']
     ShowSupplierProductsDialog: typeof import('./resources/js/components/dialogs/ShowSupplierProductsDialog.vue')['default']
+    SparklineCard: typeof import('./resources/js/components/cards/SparklineCard.vue')['default']
     SupplierAssistantReportTable: typeof import('./resources/js/components/SupplierAssistantReportTable.vue')['default']
     SupplierConnectionNotifier: typeof import('./resources/js/components/SupplierConnectionNotifier.vue')['default']
     SupplierDiscountEditDialog: typeof import('./resources/js/components/dialogs/SupplierDiscountEditDialog.vue')['default']
@@ -175,10 +177,12 @@ declare module 'vue' {
     TiptapEditor: typeof import('./resources/js/@core/components/TiptapEditor.vue')['default']
     TraceabilityReportFilters: typeof import('./resources/js/components/TraceabilityReportFilters.vue')['default']
     TraceabilityReportTable: typeof import('./resources/js/components/TraceabilityReportTable.vue')['default']
+    TransactionsTable: typeof import('./resources/js/components/TransactionsTable.vue')['default']
     TwoFactorAuthDialog: typeof import('./resources/js/components/dialogs/TwoFactorAuthDialog.vue')['default']
     TwoFactorAuthModal: typeof import('./resources/js/components/TwoFactorAuthModal.vue')['default']
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

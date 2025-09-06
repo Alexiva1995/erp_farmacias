@@ -17,6 +17,10 @@ export default [
         title: 'Tasa de cambio',
         to: 'finances-exchangerate',
       },
+      {
+        title: 'Flujo de caja',
+        to: 'finances-cashout',
+      },
     ],
   },
 ]
