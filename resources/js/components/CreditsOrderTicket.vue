@@ -1,38 +1,17 @@
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch } from "vue";
-import { formatCurrency } from "@/utils/currencyFormatter";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-
+import { defineProps, defineEmits, computed, ref, watch } from "vue";
 const props = defineProps({
-  isDialogVisible: {
-    type: Boolean,
-    required: true,
-  },
   creditsData: {
     type: Object,
     default: () => ({}),
   },
-  selectedCurrency: {
-    type: String,
-    default: "USD",
-  },
 });
-
-const emit = defineEmits(["update:isDialogVisible", "modal-closed"]);
-
-const dialogVisible = computed({
-  get: () => props.isDialogVisible,
-  set: (val) => emit("update:isDialogVisible", val),
-});
-
-const closeModal = () => {
-  emit("update:isDialogVisible", false);
-  emit("modal-closed");
-};
 
 const logoSrc = computed(() => {
   return BASE64_LOGO_DATA;
 });
+
 
 const totalCredits = computed(() => {
   return props.creditsData.reduce((sum, credit) => {
@@ -47,37 +26,33 @@ const totalPendingAmount = computed(() => {
     return sum + pendingAmount;
   }, 0);
 });
+
 </script>
 <template>
-  <VDialog v-model="dialogVisible" max-width="500px">
-    <VCard>
-      <VCardTitle class="d-flex align-center p-2">
-        <span class="text-h5 font-weight-bold pr-1"></span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
-      </VCardTitle>
-      <VCardText>
-      <div class="text-center">
+  <div class="col-12 col-md-8 mx-auto">
+    <VCard variant="outlined" class="pa-2 text-start">
+    <div class="text-center pa-2 mb-2">
+        <a href="#">
           <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">J-50540695-7</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">CALLE PRINCIPAL LOCAL 05 (L5)</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">ZONA POSTAL 5020</span>
-        </div>
-        <div class="d-flex justify-space-between align-start mb-1">
+        </a>
+      </div>
+      <div class="text-center">
+        <span class="headerPrint">J-50540695-7</span>
+      </div>
+      <div class="text-center">
+        <span class="headerPrint">FARMACIA BARRIO SUCRE 2024, C.A.</span>
+      </div>
+      <div class="text-center">
+        <span class="headerPrint">CALLE PRINCIPAL LOCAL 05 (L5)</span>
+      </div>
+      <div class="text-center">
+        <span class="headerPrint">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
+      </div>
+      <div class="text-center">
+        <span class="headerPrint">ZONA POSTAL 5020</span>
+      </div>
+
+<div class="d-flex justify-space-between align-start mb-1">
           <span class="font-weight-bold text-h6">Cliente:</span>
           <span class="font-weight-bold text-h6"
             >{{ props.creditsData[0].client.name }}
@@ -91,8 +66,10 @@ const totalPendingAmount = computed(() => {
                 {{ props.creditsData[0].client.identification}}</span
           >
         </div>
-<div v-for="credit in props.creditsData" :key="credit.order.id" class="my-4">
-    <VCard>
+
+        <div v-for="credit in props.creditsData" :key="credit.order.id" class="my-1">
+
+    <div class='m-0'>
       <VCardTitle class="d-flex justify-space-between align-center">
         <span class='font-weight-bold text-h6'>Orden #{{ credit.order.id }}</span>
         <span class="text-body-2 text-medium-emphasis">
@@ -101,10 +78,7 @@ const totalPendingAmount = computed(() => {
       </VCardTitle>
       <VDivider />
       <VCardText>
-        <div
-          class="scrollable-list-container"
-          :class="{ 'show-scroll': credit.order.details.length > 2 }"
-        >
+        <div>
           <VList class="card-list" density="compact" nav>
             <VListItem
               v-for="details in credit.order.details"
@@ -115,7 +89,7 @@ const totalPendingAmount = computed(() => {
                 <span>{{ details.quantity }} x</span>
               </template>
 
-              <VListItemTitle class="font-weight-medium me-4 mx-2">
+              <VListItemTitle class="font-weight-medium me-4">
                {{ details.product.name }}
               </VListItemTitle>
 
@@ -130,9 +104,9 @@ const totalPendingAmount = computed(() => {
           </VList>
         </div>
       </VCardText>
-    </VCard>
+    </div>
   </div>
-        <hr />
+    <hr />
           <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold text-h6">TOTAL CREDITO:</span> 
           <span class="text-end font-weight-bold text-h6">{{totalCredits}} USD
@@ -144,18 +118,9 @@ const totalPendingAmount = computed(() => {
           </span>
       </div>
 
-  </VCardText>
-      <VDivider />
+      <p class="font-weight-bold text-center text-success">
+        ¡GRACIAS POR PREFERIRNOS!
+      </p>
     </VCard>
-  </VDialog>
+  </div>
 </template>
-<style scoped>
-.card-list .v-list-item:not(:last-child) {
-  padding-block: 4px !important;
-  padding-block-end: 0 !important;
-}
-
-.v-list .v-list-item--nav:not(:only-child) {
-  margin-block-end: 0 !important;
-}
-</style>

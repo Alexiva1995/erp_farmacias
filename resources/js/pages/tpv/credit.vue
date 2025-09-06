@@ -5,7 +5,7 @@ import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
 import { toast } from "@/plugins/sweetalert";
 import CreditsTicket from "@/components/CreditsTicket.vue";
-import { nextTick, ref, watch, onMounted } from 'vue';
+import { nextTick, ref, watch, onMounted } from "vue";
 
 const credits = ref([]);
 const totalCredits = ref(0);
@@ -28,8 +28,9 @@ const selectedClient = ref(null);
 
 const showViewOrderModal = ref(false);
 
+const isPrintingCreditOrder = ref(false);
 
-const fetchCredits= async () => {
+const fetchCredits = async () => {
   loading.value = true;
   const params = {
     page: page.value,
@@ -54,12 +55,7 @@ const fetchCredits= async () => {
 
 let debounceTimer;
 watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-  ],
+  [page, itemsPerPage, sortBy, orderBy],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCredits(), 300);
@@ -71,7 +67,6 @@ onMounted(() => {
   fetchCredits();
 });
 
-
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
@@ -79,52 +74,55 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-
 const openCreditsModal = (credit) => {
-    creditsData.value = credit; 
-    showCreditsModal.value = true;
+  creditsData.value = credit;
+  showCreditsModal.value = true;
 };
 
 const viewOrderCreditsModal = async (credit) => {
-     let creditIds;
-    if (Array.isArray(credit.credit_ids)) {
-        creditIds = credit.credit_ids.map(id => parseInt(id));
-    } else {
-        creditIds = credit.credit_ids.split(',').map(id => parseInt(id));
-    }
-    try {
-        const response = await axios.post('/tpv/credits/details', { credit_ids: creditIds });
-        const detailedCredits = response.data;
-        creditsData.value = detailedCredits;
-        showViewOrderModal.value = true;
-    } catch (error) {
-        console.error("Error al obtener los detalles de los créditos:", error);
-        toast.error("No se pudo cargar el historial de la orden.");
-    }
+  let creditIds;
+  if (Array.isArray(credit.credit_ids)) {
+    creditIds = credit.credit_ids.map((id) => parseInt(id));
+  } else {
+    creditIds = credit.credit_ids.split(",").map((id) => parseInt(id));
+  }
+  try {
+    const response = await axios.post("/tpv/credits/details", {
+      credit_ids: creditIds,
+    });
+    const detailedCredits = response.data;
+    creditsData.value = detailedCredits;
+    showViewOrderModal.value = true;
+  } catch (error) {
+    console.error("Error al obtener los detalles de los créditos:", error);
+    toast.error("No se pudo cargar el historial de la orden.");
+  }
 };
 
-
 const closeCreditsModal = () => {
-    showCreditsModal.value = false;
-    creditsData.value = null;
+  showCreditsModal.value = false;
+  creditsData.value = null;
 };
 
 const closeViewOrderCreditsModal = () => {
-    showViewOrderModal.value = false;
-    creditsData.value = null;
+  showViewOrderModal.value = false;
+  creditsData.value = null;
 };
 
-const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountUSD) => {
- try {
-
-  const clientId = creditsData.value?.client?.id;
+const handleCreditsCompletion = async (
+  paymentsData,
+  changeAmount,
+  changeAmountUSD
+) => {
+  try {
+    const clientId = creditsData.value?.client?.id;
 
     if (!clientId) {
       toast.error("No se pudo obtener el ID del cliente. Intente de nuevo.");
       return;
     }
 
- const payload = {
+    const payload = {
       clientId: clientId,
       payments: paymentsData,
       changeAmount: changeAmount,
@@ -132,48 +130,60 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
     };
     const response = await axios.post(`/tpv/credits/complete`, payload);
     if (response.status === 200 || response.status === 201) {
-    
-    toast.success("¡Pago finalizado y registrado con éxito!");
-    await fetchCredits(); 
+      toast.success("¡Pago finalizado y registrado con éxito!");
+      await fetchCredits();
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       isPrinting.value = true;
       await nextTick();
       const printContents = document.getElementById("CreditPrint");
       if (printContents) {
-      const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
-      const styleSheets = document.styleSheets;
-      for (let i = 0; i < styleSheets.length; i++) {
-        const sheet = styleSheets[i];
-        try {
-          if (sheet.cssRules) {
-            let cssText = '';
-            for (let j = 0; j < sheet.cssRules.length; j++) {
-              cssText += sheet.cssRules[j].cssText;
+        const printWindow = window.open("", "", "height=600,width=800");
+        printWindow.document.write(
+          "<html><head><title>Farmacia Barrio Sucre</title>"
+        );
+        const styleSheets = document.styleSheets;
+        for (let i = 0; i < styleSheets.length; i++) {
+          const sheet = styleSheets[i];
+          try {
+            if (sheet.cssRules) {
+              let cssText = "";
+              for (let j = 0; j < sheet.cssRules.length; j++) {
+                cssText += sheet.cssRules[j].cssText;
+              }
+              printWindow.document.write(`<style>${cssText}</style>`);
+            } else if (sheet.href) {
+              printWindow.document.write(
+                `<link rel="stylesheet" href="${sheet.href}">`
+              );
             }
-            printWindow.document.write(`<style>${cssText}</style>`);
-          } else if (sheet.href) {
-            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          } catch (e) {
+            console.warn(
+              "No se pudo acceder a la hoja de estilo:",
+              sheet.href || sheet,
+              e
+            );
           }
-        } catch (e) {
-          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
         }
-      }
-      printWindow.document.write("</head><body>");
-      printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(printContents.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
       } else {
-      console.warn("Elemento #CreditPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
-      window.print();
-    }
-
-    }else{
-      toast.error(`Error inesperado al finalizar el pago: ${response.data.message || 'Intente de nuevo.'}`);  
+        console.warn(
+          "Elemento #CreditPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        );
+        window.print();
+      }
+    } else {
+      toast.error(
+        `Error inesperado al finalizar el pago: ${
+          response.data.message || "Intente de nuevo."
+        }`
+      );
     }
 
     setTimeout(() => {
@@ -184,56 +194,146 @@ const handleCreditsCompletion = async (paymentsData, changeAmount, changeAmountU
       changeAmountForPrint.value = 0;
       creditAmountForPrint.value = 0;
     }, 500);
-
-
- } catch (error) {
-    console.error("Error al finalizar el pago del crédito:", error.response ? error.response.data : error.message);
-    const errorMessage = error.response?.data?.message || "Hubo un problema al procesar su pago. Por favor, intente de nuevo.";
+  } catch (error) {
+    console.error(
+      "Error al finalizar el pago del crédito:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Hubo un problema al procesar su pago. Por favor, intente de nuevo.";
     toast.error(errorMessage);
     isPrinting.value = false;
     paymentsForPrint.value;
     changeAmountForPrint.value = 0;
     creditAmountForPrint.value = 0;
   }
-}
+};
 
+const printCreditOrders = async (credit) => {
+  let creditIds;
+  if (Array.isArray(credit.credit_ids)) {
+    creditIds = credit.credit_ids.map((id) => parseInt(id));
+  } else {
+    creditIds = credit.credit_ids.split(",").map((id) => parseInt(id));
+  }
+
+  try {
+    const response = await axios.post("/tpv/credits/details", {
+      credit_ids: creditIds,
+    });
+    const detailedCredits = response.data;
+    creditsData.value = detailedCredits;
+
+    isPrintingCreditOrder.value = true;
+    await nextTick();
+    const printContents = document.getElementById("CreditOrderPrint");
+
+    if (printContents) {
+      const printWindow = window.open("", "", "height=600,width=800");
+      printWindow.document.write(
+        "<html><head><title>Farmacia Barrio Sucre</title>"
+      );
+
+      const styleSheets = document.styleSheets;
+      for (let i = 0; i < styleSheets.length; i++) {
+        const sheet = styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            let cssText = "";
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              cssText += sheet.cssRules[j].cssText;
+            }
+            printWindow.document.write(`<style>${cssText}</style>`);
+          } else if (sheet.href) {
+            printWindow.document.write(
+              `<link rel="stylesheet" href="${sheet.href}">`
+            );
+          }
+        } catch (e) {
+          console.warn(
+            "No se pudo acceder a la hoja de estilo:",
+            sheet.href || sheet,
+            e
+          );
+        }
+      }
+
+      printWindow.document.write("</head><body>");
+      printWindow.document.write(printContents.innerHTML);
+      printWindow.document.write("</body></html>");
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    } else {
+      console.warn(
+        "Elemento #CreditOrderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+      );
+      window.print();
+    }
+    setTimeout(() => {
+      isPrinting.value = false;
+      creditsData.value = null;
+    }, 500);
+  } catch (error) {
+    console.error("Error al obtener los detalles de los créditos:", error);
+    toast.error("No se pudo cargar el historial de la orden.");
+          isPrinting.value = false;
+      creditsData.value = null;
+  }
+};
 </script>
 
 <template>
-    <CreditTable
-      :credits="credits"
-      :loading="loading"
-      :total-credits="totalCredits"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @open-payment-modal="openCreditsModal"
-      @reload="fetchCredits"
-      @view-order-modal="viewOrderCreditsModal"
+  <CreditTable
+    :credits="credits"
+    :loading="loading"
+    :total-credits="totalCredits"
+    :items-per-page="itemsPerPage"
+    :page="page"
+    @update:options="updateTableOptions"
+    @open-payment-modal="openCreditsModal"
+    @reload="fetchCredits"
+    @view-order-modal="viewOrderCreditsModal"
+    @print-order="printCreditOrders"
+  />
+
+  <CreditsModal
+    v-if="showCreditsModal && creditsData"
+    v-model:is-dialog-visible="showCreditsModal"
+    :credits-data="creditsData"
+    @modal-closed="closeCreditsModal"
+    @purchase-completed="handleCreditsCompletion"
+  />
+
+  <div
+    id="CreditPrint"
+    :class="{ 'd-none': !isPrinting, 'print-container': true }"
+  >
+    <CreditsTicket
+      v-if="isPrinting && creditsData"
+      :credits-data="creditsData"
+      :payments="paymentsForPrint"
+      :change-amount="changeAmountForPrint"
+      :credit-amount="creditAmountForPrint"
     />
+  </div>
 
-   <CreditsModal
-            v-if="showCreditsModal && creditsData"
-            v-model:is-dialog-visible="showCreditsModal"
-            :credits-data="creditsData"
-            @modal-closed="closeCreditsModal"
-            @purchase-completed="handleCreditsCompletion"
-        />
+  <div
+    id="CreditOrderPrint"
+    :class="{ 'd-none': !isPrintingCreditOrder, 'print-container': true }"
+  >
+    <CreditsOrderTicket
+      v-if="isPrintingCreditOrder && creditsData"
+      :credits-data="creditsData"
+    />
+  </div>
 
-      <div id="CreditPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
-      <CreditsTicket
-        v-if="isPrinting && creditsData"
-        :credits-data="creditsData"
-        :payments="paymentsForPrint"
-        :change-amount="changeAmountForPrint"
-        :credit-amount="creditAmountForPrint"
-      />
-    </div>
-
-       <CreditsViewOrderModal
-            v-if="showViewOrderModal && creditsData"
-            v-model:is-dialog-visible="showViewOrderModal"
-            :credits-data="creditsData"
-            @modal-closed="closeViewOrderCreditsModal"
-        />
+  <CreditsViewOrderModal
+    v-if="showViewOrderModal && creditsData"
+    v-model:is-dialog-visible="showViewOrderModal"
+    :credits-data="creditsData"
+    @modal-closed="closeViewOrderCreditsModal"
+  />
 </template>

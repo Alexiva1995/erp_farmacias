@@ -34,7 +34,7 @@ export default function pdfStockProductsGenerator(data) {
         { content: index + 1, styles: { halign: 'center' } },
         product.name || 'N/A',
         { content: product.total_sold_completed || '0', styles: { halign: 'center' } },
-        { content: product.stock || '0', styles: { halign: 'center' } },
+        { content: product.lote_quantity || '0', styles: { halign: 'center' } },
         { content: product.promedio_calculado || '0', styles: { halign: 'center' } },
         { content: product.preferencia_product || 'N/A', styles: { halign: 'center' } },
         { content: product.diferencia_product || 'N/A', styles: { halign: 'center' } }

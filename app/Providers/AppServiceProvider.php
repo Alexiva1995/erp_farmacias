@@ -102,7 +102,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(PurchaseOrderController::class)
             ->needs(PurchaseOrder::class)
             ->give(PurchaseOrderServices::class);
+
         $this->app->when(SupplierIaAssistantReportController::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
+
+        $this->app->when(InventoryStockController::class)
             ->needs(Product::class)
             ->give(ProductServices::class);
 

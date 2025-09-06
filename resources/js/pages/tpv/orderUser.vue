@@ -185,7 +185,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     price: parseFloat(product.sale_price) || 0,
     price_bs: parseFloat(product.price_bs) || 0,
     price_cop: parseFloat(product.price_cop) || 0,
-    availableQuantity: parseInt(product.valid_stock_sum) || 0,
+    availableQuantity: parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
@@ -196,7 +196,6 @@ onMounted(async () => {
   try {
     const response = await axios.get("/tpv/order/seller/my-open-order");
     if (response.data.data && response.data.data.order) {
-      console.log(response.data.data.order)
       openOrderData.value = response.data.data.order.pending_order;
       reservedOrderData.value = response.data.data.order.reserved_order;
       selectedClient.value = response.data.data.order.pending_order.client;
@@ -299,7 +298,6 @@ const verifyClient = async (identification) => {
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
-    console.log(responseData);
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -389,7 +387,6 @@ const handleSaveNewClient = async (formData) => {
     }
   } catch (error) {
     toast.error("Error al crear el cliente");
-    console.log("error en el servidor => ", error);
     let errores = { ...error.response.data.data.errors };
     cargarErrores(errores);
   }
@@ -545,6 +542,7 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
     const payload = {
       product_id: productId,
       quantity: quantity,
+      price_usd_unit: currentItem.price,
       price_at_product: currentItem.orderPrice || currentItem.price,
       currency_at_order: selectedDisplayCurrency.value,
     };
@@ -602,7 +600,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
   try {
     const response = await axios.get(`/product/${productId}`);
     const productDetails = response.data;
-    const availableQuantity = productDetails.valid_stock_sum;
+    const availableQuantity = productDetails.lots_sum_quantity;
 
     const currentItemInOrder = orderItems.value.find(
       (item) => item.product_id === productId
@@ -626,6 +624,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
     const payload = {
       product_id: productDetails.id,
       quantity: newTotalQuantity,
+      price_usd_unit: productDetails.sale_price,
       price_at_product: priceInSelectedCurrency,
       tax_rate_at_order: productDetails.iva == 1 ? 0.16 : 0,
       currency_at_order: selectedDisplayCurrency.value,
@@ -641,6 +640,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
     );
 
     if (existingItemIndex !== -1) {
+        
       orderItems.value[existingItemIndex] =
         formatOrderItemForFrontend(backendOrderItem);
       toast.success(
@@ -648,7 +648,6 @@ const addProductToOrder = async ({ productId, quantity }) => {
       );
     } else {
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
-      console.log(itemToAdd);
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }
@@ -765,29 +764,11 @@ const cancelarOrder = async () => {
 const reserverOrder = async () => {
   try {
     const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-
-     if (!response.data.data || !response.data.data.pending_order) {
-            throw new Error("Respuesta de API inválida. No se pudo obtener la orden pendiente.");
-        }
-
       hasOpenOrder.value = false;
       openOrderData.value = null;
       selectedClient.value = null;
       orderItems.value = [];
-
-    //openOrderData.value = response.data.data.pending_order;
     reservedOrderData.value = response.data.data.reserved_order;
-    //selectedClient.value = openOrderData.value.client;
-
-    /*if (openOrderData.value.details) {
-      orderItems.value = openOrderData.value.details.map((item) =>
-        formatOrderItemForFrontend(item)
-      );
-    } else {
-      orderItems.value = [];
-    }*/
-
-    hasOpenOrder.value = true;
     toast.success("Orden reservada exitosamente.");
 
   } catch (error) {
@@ -1003,6 +984,7 @@ const addReserverOrder = async () => {
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
+    console.log('dentro de add reserver');
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
