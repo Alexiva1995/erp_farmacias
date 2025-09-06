@@ -73,7 +73,7 @@ export default function pdfProductsAssistantReportGenerator(data) {
             styles: { halign: 'center' }
         },
         { 
-            content: product.stock ? parseInt(product.stock) : 0,
+            content: product.lote_quantity ? parseInt(product.lote_quantity) : 0,
             styles: { halign: 'center' }
         },
         { 
