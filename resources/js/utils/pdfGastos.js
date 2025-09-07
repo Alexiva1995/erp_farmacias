@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export default function pdfGastos(data) {
+export default function pdfGastos(data, nombreArchivo="gasto") {
     console.log("datos recibidos => ", data);
     
     // Crear documento en orientación horizontal (landscape)
@@ -117,6 +117,6 @@ export default function pdfGastos(data) {
     }
     
     // 6. Guardar PDF
-    const fileName = `Reporte_Gastos_Pendientes_${today.toISOString().slice(0, 10)}.pdf`;
+    const fileName = `${nombreArchivo}_${today.toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
 }

@@ -1,8 +1,7 @@
 <script setup lang="js">
-import ExpenseFormDialoge from '@/components/dialogs/ExpenseFormDialoge.vue';
-import FiltrosGastoRecurrente from '@/components/FiltrosGastoRecurrente.vue';
+import ExpenseTable from '@/components/ExpenseTable.vue';
+import FiltrosGastos from '@/components/FiltrosGastos.vue';
 import LoaderComponent from '@/components/LoaderComponent.vue';
-import RecurringExpenseTable from '@/components/RecurringExpenseTable.vue';
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -25,38 +24,12 @@ const statuModule= reactive({
   loadingApp:false
 })
 
-const formulario= reactive({
-  id:null,
-  category_id:"",
-  amount:"",
-  amount_usd:"",
-  currency:"",
-  has_invoice:false,
-  is_deductible:false,
-  expense_date:"",
-  user_id:"",
-  count:"",
-})
-
-const formularioError= reactive({
-  id:"",
-  category_id:"",
-  amount:"",
-  amount_usd:"",
-  currency:"",
-  has_invoice:"",
-  is_deductible:"",
-  expense_date:"",
-  user_id:"",
-  count:"",
-})
-
 const buscardor_filtro= ref("");// nombre, id
 const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
-const status= ["Pending"];
+const status= ["Approved","Cancelled"];
 
 const loading = ref(false)
 
@@ -64,71 +37,6 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
-
-function insertarDatosAlFormulario(datos){
-  formulario.id=datos.id
-  formulario.category_id=datos.category_id
-  formulario.amount=datos.amount
-  formulario.amount_usd=datos.amount_usd
-  formulario.currency=datos.currency
-  formulario.has_invoice=datos.has_invoice
-  formulario.is_deductible=datos.is_deductible
-  formulario.expense_date=datos.expense_date
-  formulario.user_id=datos.user_id
-  formulario.count=datos.count
-}
-
-function limpiarDatosFormulario(){
-  formulario.id=null
-  formulario.category_id=""
-  formulario.amount=""
-  formulario.amount_usd=""
-  formulario.currency=""
-  formulario.has_invoice=false
-  formulario.is_deductible=false
-  formulario.expense_date=""
-  formulario.user_id=""
-  formulario.count=""
-}
-
-function limpiarErroresFormulario(){
-  formularioError.id=""
-  formularioError.category_id=""
-  formularioError.amount=""
-  formularioError.amount_usd=""
-  formularioError.currency=""
-  formularioError.has_invoice=false
-  formularioError.is_deductible=false
-  formularioError.expense_date=""
-  formularioError.user_id=""
-  formularioError.count=""
-}
-
-function cargarErrores(errores){
-  formularioError.id=(errores.id)?errores.id.join(", "):""
-  formularioError.category_id=(errores.identification)?errores.identification.join(", "):""
-  formularioError.amount=(errores.identification)?errores.identification.join(", "):""
-  formularioError.amount_usd=(errores.identification)?errores.identification.join(", "):""
-  formularioError.currency=(errores.identification)?errores.identification.join(", "):""
-  formularioError.has_invoice=(errores.identification)?errores.identification.join(", "):""
-  formularioError.is_deductible=(errores.identification)?errores.identification.join(", "):""
-  formularioError.expense_date=(errores.identification)?errores.identification.join(", "):""
-  formularioError.user_id=(errores.identification)?errores.identification.join(", "):""
-  formularioError.count=(errores.identification)?errores.identification.join(", "):""
-}
-
-function mostarModal(){
-  modal.statu=true
-  modal.titulo="Nuevo Gasto"
-}
-
-function cerrarModal(payload){
-  modal.statu=payload
-  limpiarDatosFormulario()
-  limpiarErroresFormulario()
-}
-
-
 
 watch(
     [
@@ -146,10 +54,6 @@ watch(
     actualizarTabla()
   }
 )
-
-function enviar(){
-  alert("hola")
-}
 
 async function consultarCategorias(){
   let respuestaApi=await axios.get("/finances/expenses/category")
@@ -222,8 +126,8 @@ async function generaPdf(){
     return
   }
   console.log("respuesta => ",respuestaApi)
-   statuModule.loadingApp=false
-  pdfGastos([...respuestaApi.data.data],"Gastos Pendientes")
+  statuModule.loadingApp=false
+  pdfGastos([...respuestaApi.data.data],"Gastos")
 }
 
 async function exportarExcel(formato){
@@ -260,7 +164,7 @@ async function exportarExcel(formato){
     link.href = url;
 
     const contentDisposition = respuestaApi.headers["content-disposition"];
-    let fileName = `gastos-pendientes.${formato}`;
+    let fileName = `gastos.${formato}`;
     if (contentDisposition) {
       const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
       if (fileNameMatch && fileNameMatch.length === 2)
@@ -293,7 +197,7 @@ onMounted(async () => {
 <template>
   <LoaderComponent :loadingApp="statuModule.loadingApp" />
   <div>
-    <FiltrosGastoRecurrente
+    <FiltrosGastos
       v-model:currency="currency"
       v-model:buscardor_filtro="buscardor_filtro"
       v-model:category_id_filtro="category_id_filtro"
@@ -303,20 +207,10 @@ onMounted(async () => {
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
-      @add="mostarModal"
-    />
-    <ExpenseFormDialoge
-      :modal-formulario="modal.statu"
-      :titulo="modal.titulo"
-      :form-data="formulario"
-      :form-error="formularioError"
-      @modal-close="cerrarModal"
-      @clear-error-form="limpiarErroresFormulario"
-      @save="enviar"
     />
     <VCard title="Gastos">
       <VDivider />
-      <RecurringExpenseTable
+      <ExpenseTable
         :items="statuModule.items"
         :total="statuModule.total"
         :loading="loading"

@@ -59,7 +59,9 @@ class ExpensesRepository
         }
 
         if (array_key_exists("status", $filtros)) {
-            $consulta->where("status", "=", $filtros["status"]);
+            if (count($filtros) > 0) {
+                $consulta->whereIn("status", $filtros["status"]);
+            }
         }
 
         if (array_key_exists("category_id_filtro", $filtros)) {
