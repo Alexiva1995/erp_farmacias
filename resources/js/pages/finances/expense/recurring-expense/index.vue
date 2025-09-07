@@ -27,10 +27,11 @@ const statuModule= reactive({
 
 const formulario= reactive({
   id:null,
+  name:"",
   category_id:"",
   amount:"",
   amount_usd:"",
-  currency:"",
+  currency:"BS",
   has_invoice:false,
   is_deductible:false,
   expense_date:"",
@@ -40,14 +41,14 @@ const formulario= reactive({
 
 const formularioError= reactive({
   id:"",
+  name:"",
   category_id:"",
   amount:"",
   amount_usd:"",
   currency:"",
   has_invoice:"",
   is_deductible:"",
-  expense_date:"",
-  user_id:"",
+  expense_date:null,
   count:"",
 })
 
@@ -67,6 +68,7 @@ const orderBy = ref()
 
 function insertarDatosAlFormulario(datos){
   formulario.id=datos.id
+  formulario.id=datos.name
   formulario.category_id=datos.category_id
   formulario.amount=datos.amount
   formulario.amount_usd=datos.amount_usd
@@ -74,12 +76,12 @@ function insertarDatosAlFormulario(datos){
   formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
   formulario.expense_date=datos.expense_date
-  formulario.user_id=datos.user_id
   formulario.count=datos.count
 }
 
 function limpiarDatosFormulario(){
   formulario.id=null
+  formulario.name=""
   formulario.category_id=""
   formulario.amount=""
   formulario.amount_usd=""
@@ -87,12 +89,12 @@ function limpiarDatosFormulario(){
   formulario.has_invoice=false
   formulario.is_deductible=false
   formulario.expense_date=""
-  formulario.user_id=""
   formulario.count=""
 }
 
 function limpiarErroresFormulario(){
   formularioError.id=""
+  formularioError.name=""
   formularioError.category_id=""
   formularioError.amount=""
   formularioError.amount_usd=""
@@ -100,12 +102,12 @@ function limpiarErroresFormulario(){
   formularioError.has_invoice=false
   formularioError.is_deductible=false
   formularioError.expense_date=""
-  formularioError.user_id=""
   formularioError.count=""
 }
 
 function cargarErrores(errores){
   formularioError.id=(errores.id)?errores.id.join(", "):""
+  formularioError.name=(errores.name)?errores.name.join(", "):""
   formularioError.category_id=(errores.identification)?errores.identification.join(", "):""
   formularioError.amount=(errores.identification)?errores.identification.join(", "):""
   formularioError.amount_usd=(errores.identification)?errores.identification.join(", "):""
@@ -113,13 +115,12 @@ function cargarErrores(errores){
   formularioError.has_invoice=(errores.identification)?errores.identification.join(", "):""
   formularioError.is_deductible=(errores.identification)?errores.identification.join(", "):""
   formularioError.expense_date=(errores.identification)?errores.identification.join(", "):""
-  formularioError.user_id=(errores.identification)?errores.identification.join(", "):""
   formularioError.count=(errores.identification)?errores.identification.join(", "):""
 }
 
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Gasto"
+  modal.titulo="Nuevo Gasto Recurrente"
 }
 
 function cerrarModal(payload){
@@ -127,8 +128,6 @@ function cerrarModal(payload){
   limpiarDatosFormulario()
   limpiarErroresFormulario()
 }
-
-
 
 watch(
     [
@@ -147,8 +146,20 @@ watch(
   }
 )
 
-function enviar(){
-  alert("hola")
+async function enviar(payload){
+  try {
+    let respuesApi=await axios.post("/finances/expenses/create",payload)
+    if(respuesApi.status==200){
+        toast.success("El gasto se a guardado correctamente")
+        cerrarModal(false)
+        await actualizarTabla()
+    }
+  } catch (error) {
+    toast.error("Error al crear el gasto")
+    console.log("error en el servidor => ",error)
+    let errores={...error.response.data.data.errors}
+    cargarErrores(errores)
+  }
 }
 
 async function consultarCategorias(){
@@ -281,6 +292,8 @@ async function exportarExcel(formato){
 
 }
 
+
+
 onMounted(async () => {
   statuModule.loadingApp=true
   formulario.user_id=1
@@ -310,6 +323,7 @@ onMounted(async () => {
       :titulo="modal.titulo"
       :form-data="formulario"
       :form-error="formularioError"
+      :categorias="statuModule.categorias"
       @modal-close="cerrarModal"
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"

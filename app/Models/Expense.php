@@ -30,6 +30,8 @@ class Expense extends Model
         'is_deductible',
         'expense_date',
         'user_id',
+        'status',
+        'count',
     ];
 
     public function category(): BelongsTo

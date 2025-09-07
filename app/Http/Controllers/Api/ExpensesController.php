@@ -24,6 +24,7 @@ class ExpensesController extends Controller
 
     public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
+        // dd($request->data->toArray());
         $expense = $this->expenses->crearGasto($request->data->toArray());
 
         return ApiResponse::success($expense, "ok");

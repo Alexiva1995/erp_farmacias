@@ -19,7 +19,7 @@ class CreateExpenseData extends Data
         public string       $currency,
         public bool|null    $has_invoice,
         public bool|null    $is_deductible,
-        #[WithCast(DateTimeInterfaceCast::class, format: 'Y/m/d')]
+        #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d')]
         public DateTime     $expense_date,
         public int          $user_id,
         public string       $count,
