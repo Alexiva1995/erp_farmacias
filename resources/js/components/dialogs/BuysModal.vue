@@ -631,7 +631,7 @@ const updateDebouncedAmount = (payment, newValue) => {
 <template>
   <VDialog v-model="dialogVisible">
     <VCard>
-      <VCardTitle class="d-flex align-center p-2">
+      <VCardTitle class="d-flex align-center">
         <span class="text-h5 font-weight-bold pr-1">Compra  </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
@@ -641,8 +641,8 @@ const updateDebouncedAmount = (payment, newValue) => {
       </VCardTitle>
       <VDivider/>
       <VCardText v-if="currentProgress === 0">
-        <div class="d-flex justify-space-between mb-0 pb-0">
-          <p class="text-h6 font-weight-medium">Total de productos:</p>
+        <div class="d-flex align-center justify-space-between">
+          <p class="text-h6 font-weight-medium mb-0">Total de productos:</p>
           <VChip
             label
             :color="chipColor"
@@ -652,11 +652,11 @@ const updateDebouncedAmount = (payment, newValue) => {
             draggable="false"
             class="ms-auto"
           >
-            <span class="font-weight-medium">{{ totalSelectedQuantity }}</span>
+            <span class="font-weight-medium mb-0">{{ totalSelectedQuantity }}</span>
           </VChip>
         </div>
         <VCardText class="px-2 pb-2 pt-0 mt-0 bg-grey-lighten-2">
-        <VList class="card-list no-space-list ma-0" density="compact" nav>
+        <VList class="card-list no-space-list mt-2 mb-0" density="compact" nav>
           <VListItem
             v-for="(product, index) in props.orderProducts"
             :key="product.id"
@@ -731,11 +731,11 @@ const updateDebouncedAmount = (payment, newValue) => {
           class="payment-block"
         >
           <div class="d-flex align-center flex-wrap">
-            <p class="font-weight-medium text-h6 mt-2 mb-0 me-4">
+            <p class="font-weight-medium text-h6 mt-2 mb-0 me-2">
               Método de Pago #{{ index + 1 }}
             </p>
 
-            <div class="d-flex justify-center mt-2">
+            <div class="d-flex justify-center mt-2 mb-0">
               <VBtn
                 v-if="index === 0"
                 variant="text"
@@ -763,7 +763,7 @@ const updateDebouncedAmount = (payment, newValue) => {
             </VCol>
           </div>
 
-          <VRow class="py-2">
+          <VRow class="pb-2">
             <VCol cols="12" md="6">
               <VRadioGroup v-model="payment.method" inline>
                 <VRadio
@@ -865,9 +865,9 @@ const updateDebouncedAmount = (payment, newValue) => {
         </div>
 
         <VDivider />
-        <div class="d-flex flex-wrap justify-space-between px-2 py-2">
-          <p class="text-h6 font-weight-medium">Total a pagar:</p>
-          <p class="text-h6 font-weight-medium">
+        <div class="d-flex align-center flex-wrap justify-space-between">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
             {{
               formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
             }}
@@ -875,20 +875,20 @@ const updateDebouncedAmount = (payment, newValue) => {
         </div>
 
         <div v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between px-2 py-2"
-        >
-          <p class="text-h6 font-weight-medium">Monto Devuelto:</p>
-          <p class="text-h6 font-weight-medium">
+          class="d-flex align-center flex-wrap justify-space-between"
+        > 
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Devuelto:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
             {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
         <div
           v-if="remainingAmount > 0"
-          class="d-flex flex-wrap justify-space-between px-2 py-2"
+          class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium">Monto Restante:</p>
-          <p class="text-h6 font-weight-medium text-error">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
         </div>

@@ -113,7 +113,6 @@ const selectCurrency = (currency) => {
 
 const totalSelectedQuantity = computed(() => {
   let total = 0;
-  console.log(props.orderProducts);
   props.orderProducts.forEach((product) => {
     const quantity = parseInt(product.selectedQuantity);
     if (!isNaN(quantity) && quantity > 0) {
@@ -365,34 +364,32 @@ watch(
     <VDivider />
 
     <VCardText class="py-2 bg-grey-lighten-4">
-      <VList class="card-list" density="compact" nav>
-        <template
-          v-for="(product, index) in props.orderProducts"
-          :key="product.id"
-        >
-          <VListItem
-            class="rounded-0 cursor-pointer py-2"
-          >
-            <VListItemTitle class="font-weight-medium me-4 mx-2">
-              {{ product.title }}
-            </VListItemTitle>
-            <VListItemSubtitle class="mx-2 d-flex align-center">
-              {{ product.active_ingredient }}
-              {{ product.laboratory ? `- ${product.laboratory}` : "" }}
-              <div class="d-flex align-center ms-2">
+      <VTable density="compact" lines="none">
+      <tbody>
+        <tr v-for="(product, index) in props.orderProducts" :key="product.id">
+          <td>  <div class="d-flex flex-column">
+                <span class="text-body-1 font-weight-medium text-high-emphasis">
+                  {{ product.title }}
+                </span>
+                <span class="text-sm text-disabled">
+                  {{ product.active_ingredient }}
+                  {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+                </span>
+              </div>
+          </td>
+          <td> <div class="d-flex align-center">
                 <VBtn
                   icon
                   size="x-small"
                   variant="text"
-                  @click="
-              handleClickProductItem(
-                product.product_id,
-                product.selectedQuantity)
-            "
+                  @click="handleClickProductItem(
+                    product.product_id,
+                    product.selectedQuantity
+                  )"
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
-               <VTextField
+                <VTextField
                   v-model.number="product.selectedQuantity"
                   variant="outlined"
                   density="compact"
@@ -410,12 +407,9 @@ watch(
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
-              </div>
-            </VListItemSubtitle>
-            <template #append>
-              <div class="d-flex align-center">
-                <div class="d-flex flex-column align-end me-4">
-                  <span
+              </div></td>
+          <td class="text-right">
+           <div class="d-flex flex-column align-end me-4"><span
                     v-if="index === 0"
                     class="text-caption text-medium-emphasis"
                     >Precio</span
@@ -432,7 +426,9 @@ watch(
                     }}
                   </span>
                 </div>
-                <div class="d-flex flex-column align-end me-4">
+          </td>
+           <td class="text-right">
+           <div class="d-flex flex-column align-end me-4">
                   <span
                     v-if="index === 0"
                     class="text-caption text-medium-emphasis"
@@ -447,13 +443,15 @@ watch(
                     }}
                   </span>
                 </div>
+          </td>
+          <td class="text-right">
                 <div class="d-flex flex-column align-end">
                   <span
                     v-if="index === 0"
                     class="text-caption text-medium-emphasis"
                     >Total</span
                   >
-                  <span class="text-body-1 me-2 font-weight-bold text-black">
+                  <span class="text-body-1 font-weight-bold text-black">
                     {{
                       formatCurrency(
                         getProductPrice(product, props.selectedDisplayCurrency),
@@ -462,11 +460,10 @@ watch(
                     }}
                   </span>
                 </div>
-              </div>
-            </template>
-          </VListItem>
-        </template>
-      </VList>
+            </td>
+        </tr>
+      </tbody>
+    </VTable>
     </VCardText>
     <VDivider class="mt-auto" />
 
@@ -516,12 +513,7 @@ watch(
 </template>
 
 <style scoped>
-.card-list .v-list-item:not(:last-child) {
-  padding-block: 4px !important;
-  padding-block-end: 0 !important;
-}
-
-.v-list .v-list-item--nav:not(:only-child) {
-  margin-block-end: 0 !important;
+.v-table__wrapper > table > tbody > tr > td {
+  border-bottom: none !important;
 }
 </style>

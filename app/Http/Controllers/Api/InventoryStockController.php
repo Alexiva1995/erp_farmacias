@@ -6,6 +6,7 @@ use App\Contracts\Product;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use DateTime;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -58,11 +59,12 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["days"] = $request->days;
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -111,11 +113,12 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["days"] = $request->days;
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -162,11 +165,12 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $dateToday = new DateTime("now");
+            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $dateToday = new DateTime("now", $timeZone);
             $filtros["days"] = (int)$request->days;
-            $previousDate = new DateTime("now");
+            $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 

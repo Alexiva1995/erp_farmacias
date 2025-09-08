@@ -25,6 +25,10 @@ export default [
         title: 'Historial de Pagos',
         to: 'finances-payment-history',
       },
+      {
+        title: 'Flujo de caja',
+        to: 'finances-cashout',
+      },
     ],
   },
 ]

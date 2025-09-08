@@ -18,6 +18,10 @@ export default [
         to: "suppliers-supplieriaorderassistant",
       },
       {
+        title: "IA Assistence Reporte",
+        to: "suppliers-supplieriaorderassistantreport",
+      },
+      {
         title: "Ordenes de Compra",
         to: "suppliers-purchase-orders-list",
       },
