@@ -48,7 +48,7 @@ declare module 'vue' {
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
-    CreditsModal: typeof import('./resources/js/components/dialogs/creditsModal.vue')['default']
+    CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
     CreditsOrderTicket: typeof import('./resources/js/components/CreditsOrderTicket.vue')['default']
     CreditsTicket: typeof import('./resources/js/components/CreditsTicket.vue')['default']
     CreditsViewOrderModal: typeof import('./resources/js/components/dialogs/CreditsViewOrderModal.vue')['default']
