@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
-use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LotController;

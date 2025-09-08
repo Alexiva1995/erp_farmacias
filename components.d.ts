@@ -191,6 +191,5 @@ declare module 'vue' {
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }
