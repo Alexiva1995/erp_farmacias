@@ -257,15 +257,6 @@ const orderItemHeaders = [
                       :disabled="detailItem.quantity === 0"
                     />
                   </template>
-                  <template #item.actions="{ item: detailItem }">
-                    <VBtn
-                      color="warning"
-                      size="small"
-                      @click="handleReturnProduct(detailItem, item)"
-                    >
-                      Devolver
-                    </VBtn>
-                  </template>
                 </VDataTable>
                 <div class="d-flex justify-end mt-4">
                   <VBtn
@@ -274,7 +265,7 @@ const orderItemHeaders = [
                     :disabled="selectedProductsToReturn[item.id].length === 0"
                     @click="handleReturnSelectedProducts(item)"
                   >
-                    Devolver Seleccionados ({{
+                    Devolver ({{
                       selectedProductsToReturn[item.id].length
                     }})
                   </VBtn>
