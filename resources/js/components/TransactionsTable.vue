@@ -19,6 +19,7 @@ const headers = [
   { title: "Descripción", key: "description", sortable: false },
   { title: "Tipo", key: "type", sortable: false },
   { title: "Monto", key: "amount", sortable: false },
+  { title: "Balance", key: "balance", sortable: false },
   { title: "Categoría", key: "category_name", sortable: false },
   { title: "Fecha", key: "transaction_date", sortable: false },
 ];
@@ -71,6 +72,17 @@ const headers = [
             }).format(item.amount)
           }}</span
         >
+      </template>
+
+      <template #item.balance="{ item }">
+        <span class="font-weight-medium">{{
+          Intl.NumberFormat("es", {
+            style: "currency",
+            currency: item.currency === "BS" ? "VES" : item.currency,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(item.balance)
+        }}</span>
       </template>
     </VDataTableServer>
   </VCard>
