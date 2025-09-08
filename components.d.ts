@@ -107,6 +107,8 @@ declare module 'vue' {
     OrderTicket: typeof import('./resources/js/components/OrderTicket.vue')['default']
     OrderViewModal: typeof import('./resources/js/components/dialogs/OrderViewModal.vue')['default']
     OrderWithPsychotropicsTable: typeof import('./resources/js/components/OrderWithPsychotropicsTable.vue')['default']
+    PackModal: typeof import('./resources/js/components/dialogs/PackModal.vue')['default']
+    PacksFilters: typeof import('./resources/js/components/PacksFilters.vue')['default']
     PackTable: typeof import('./resources/js/components/PackTable.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']
