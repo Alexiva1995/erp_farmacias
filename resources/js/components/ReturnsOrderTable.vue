@@ -13,11 +13,15 @@ const props = defineProps({
 });
 const emit = defineEmits(["update:options"]);
 const expanded = ref([]);
+const selectedProductsToReturn = ref({});
 
 watch(
   () => props.orders,
   (newOrders) => {
     newOrders.forEach((order) => {
+     if (!selectedProductsToReturn.value[order.id]) {
+        selectedProductsToReturn.value[order.id] = [];
+      }
       order.details.forEach((detail) => {
         if (detail.returns_quantity === undefined) {
           detail.returns_quantity = detail.quantity;
@@ -61,6 +65,63 @@ if (isNaN(quantity) || quantity <= 0) {
   });
 };
 
+
+const handleReturnSelectedProducts = (order) => {
+  const selected = selectedProductsToReturn.value[order.id];
+
+  if (!selected || selected.length === 0) {
+    toast.warning("Por favor, seleccione al menos un producto para devolver.");
+    return;
+  }
+
+    const itemsToReturn = selected.map((selectedItem) => {
+    const upToDateProduct = order.details.find((detail) => detail.id === selectedItem);
+    if (!upToDateProduct ||isNaN(parseFloat(upToDateProduct.returns_quantity)) ||parseFloat(upToDateProduct.returns_quantity) <= 0) {
+      toast.warning(
+        "Verifique las cantidades. Alguna cantidad a devolver no es válida."
+      );
+      return null;
+    }
+
+    if (
+      parseFloat(upToDateProduct.returns_quantity) > upToDateProduct.quantity
+    ) {
+      toast.warning(
+        `La cantidad a devolver de ${upToDateProduct.product.name} no puede ser mayor que la cantidad vendida.`
+      );
+      return null;
+    }
+    return {
+      product: upToDateProduct.product,
+      order: order,
+      returns_quantity: parseFloat(upToDateProduct.returns_quantity),
+    };
+  });
+  const validItemsToReturn = itemsToReturn.filter((item) => item !== null);
+  if (validItemsToReturn.length === 0) {
+    return;
+  }
+
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea devolver los productos seleccionados!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      console.log(validItemsToReturn);
+      validItemsToReturn.forEach((item) => {
+        emit("return-product", item);
+      });
+      selectedProductsToReturn.value[order.id] = [];
+    }
+  });
+};
+
 const headers = [
   { title: "N° Orden", key: "id", sortable: true, width: "100px" },
   { title: "Cliente", key: "client", sortable: true },
@@ -74,7 +135,6 @@ const orderItemHeaders = [
   { title: "Cantidad", key: "quantity" },
   { title: "Precio", key: "price" },
   { title: "Cantidad a Devolver", key: "returns_quantity" },
-  { title: "Acción", key: "actions", sortable: false },
 ];
 </script>
 <template>
@@ -94,27 +154,23 @@ const orderItemHeaders = [
       show-expand
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.client="{ item }"
-        ><span class="font-weight-medium"
-          >{{ item.client.name }} {{ item.client.last_name }}</span
-        ></template
-      >
-      <template #item.amount="{ item }"
-        ><span class="font-weight-medium">{{
+      <template #item.client="{ item }">
+        <span class="font-weight-medium">
+          {{ item.client.name }} {{ item.client.last_name }}
+        </span>
+      </template>
+      <template #item.amount="{ item }">
+        <span class="font-weight-medium">{{
           formatCurrency(parseFloat(item.total_amount), item.currency)
-        }}</span></template
-      >
-      <template #item.date="{ item }"
-        ><span class="font-weight-medium">{{
+        }}</span>
+      </template>
+      <template #item.date="{ item }">
+        <span class="font-weight-medium">{{
           new Date(item.created_at).toISOString().split("T")[0]
-        }}</span></template
-      >
+        }}</span>
+      </template>
       <template
-        v-slot:item.data-table-expand="{
-          internalItem,
-          isExpanded,
-          toggleExpand,
-        }"
+        v-slot:item.data-table-expand="{ internalItem, isExpanded, toggleExpand }"
       >
         <v-btn
           :append-icon="
@@ -140,36 +196,38 @@ const orderItemHeaders = [
             <VCard flat class="my-4">
               <VCardText>
                 <VDataTable
+                  v-model="selectedProductsToReturn[item.id]"
                   :headers="orderItemHeaders"
                   :items="item.details"
                   item-key="id"
                   hide-default-footer
                   class="elevation-1"
+                  show-select
                 >
                   <template #item.product.name="{ item: detailItem }">
                     <div class="d-flex align-center gap-x-4">
                       <div class="d-flex flex-column">
                         <span
                           class="text-body-1 font-weight-medium text-high-emphasis"
-                          >{{
-                            detailItem.product ? detailItem.product.name : "N/A"
-                          }}</span
                         >
+                          {{
+                            detailItem.product ? detailItem.product.name : "N/A"
+                          }}
+                        </span>
                         <span class="text-sm text-disabled">
                           {{
                             detailItem.product
                               ? detailItem.product.active_ingredient
                               : "N/A"
-                          }}</span
-                        >
-
+                          }}
+                        </span>
                         <span class="text-sm text-disabled">
                           {{
                             detailItem.product && detailItem.product.laboratory
                               ? detailItem.product.laboratory.name
                               : "N/A"
-                          }}</span
-                        >
+                          }}
+                        </span>
                       </div>
                     </div>
                   </template>
@@ -209,6 +267,18 @@ const orderItemHeaders = [
                     </VBtn>
                   </template>
                 </VDataTable>
+                <div class="d-flex justify-end mt-4">
+                  <VBtn
+                    color="warning"
+                    size="large"
+                    :disabled="selectedProductsToReturn[item.id].length === 0"
+                    @click="handleReturnSelectedProducts(item)"
+                  >
+                    Devolver Seleccionados ({{
+                      selectedProductsToReturn[item.id].length
+                    }})
+                  </VBtn>
+                </div>
               </VCardText>
             </VCard>
           </td>
