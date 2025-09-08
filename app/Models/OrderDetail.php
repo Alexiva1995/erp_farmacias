@@ -15,6 +15,7 @@ class OrderDetail extends Model
         'quantity',
         'price',
         'unit_cost',
+        'unit_price_usd',
     ];
 
     public function order(): BelongsTo

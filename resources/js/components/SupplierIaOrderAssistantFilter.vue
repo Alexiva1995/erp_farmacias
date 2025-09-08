@@ -1,5 +1,6 @@
 <script setup>
 const props = defineProps({
+  selectConDescuento: Boolean,
   tipo_de_vista: Boolean,
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
@@ -11,6 +12,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
+  "update:selectConDescuento",
   "update:tipo_de_vista",
   "update:tipo_de_filtracion",
   "update:lapso_de_tiempo",
@@ -20,6 +22,11 @@ const emit = defineEmits([
   "clear",
   "generarPedido",
 ]);
+
+const precio = [
+  { title: "Full", value: true },
+  { title: "Descuento", value: false },
+];
 
 const tipoDeVistaOpcion = [
   { title: "Grupal", value: true },
@@ -59,6 +66,8 @@ const stockOpciones = [
             item-title="name"
             item-value="id"
             clearable
+            chips="true"
+            multiple="true"
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
@@ -71,6 +80,7 @@ const stockOpciones = [
             item-title="name"
             item-value="id"
             clearable
+            chips="true"
             multiple="true"
             @update:model-value="emit('update:selectedGroup', $event)"
           />
@@ -81,6 +91,14 @@ const stockOpciones = [
             label="Tipo de vista"
             :items="tipoDeVistaOpcion"
             @update:model-value="emit('update:tipo_de_vista', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.selectConDescuento"
+            label="Precio"
+            :items="precio"
+            @update:model-value="emit('update:selectConDescuento', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
@@ -118,7 +136,11 @@ const stockOpciones = [
       </VBtn>
 
       <VSpacer />
-      <VBtn color="success" variant="flat" @click="emit('generarPedido')">
+      <VBtn
+        prepend-icon="tabler-plus"
+        color="primary"
+        @click="emit('generarPedido')"
+      >
         Generar Pedido
       </VBtn>
     </VCardActions>

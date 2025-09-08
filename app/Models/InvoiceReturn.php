@@ -13,6 +13,8 @@ class InvoiceReturn extends Model
         'quantity',
         'amount_refunded',
         'return_date',
+        'lot_number',
+        'expiration_date',
     ];
 
     protected $casts = [

@@ -69,7 +69,7 @@ export function useCyclicTable(endpointPrefix, filters) {
       const processEndpoint = endpointPrefix.replace('/products', '/count').replace('', '');
       console.log("processEndpoint:", processEndpoint);
       
-      const response = await axios.post(`${processEndpoint}/${itemId}/process`, payload);
+      const response = await axios.post(`/inventory${processEndpoint}/${itemId}/process`, payload);
       
       if (response.data.success) {
         toast.success(response.data.message);

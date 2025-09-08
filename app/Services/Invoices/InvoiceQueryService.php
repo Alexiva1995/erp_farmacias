@@ -64,8 +64,70 @@ class InvoiceQueryService
 
     public function getInvoiceDetails(Invoice $invoice): Collection
     {
-        return $invoice->details()->with(['product.laboratory'])->get();
+        $invoice->load([
+            'details.product.laboratory',
+            'returns.product.laboratory',
+            'supplier.autoOrders.details.productSupplier.product.laboratory'
+        ]);
+
+        $normalDetails = $invoice->details->map(function ($detail) {
+            $detail->is_return = false;
+            return $detail;
+        });
+
+        $returnDetails = $invoice->returns->map(function ($returnItem) {
+            $unitCostUSD = ($returnItem->quantity > 0)
+                ? ($returnItem->amount_refunded / $returnItem->quantity)
+                : 0;
+
+            return (object) [
+                'id' => 'return_' . $returnItem->id,
+                'product_id' => $returnItem->product_id,
+                'product' => $returnItem->product,
+                'quantity' => $returnItem->quantity,
+                'unit_cost' => $unitCostUSD,
+                'total_cost' => $returnItem->amount_refunded,
+                'lot_number' => $returnItem->lot_number,
+                'expiration_date' => $returnItem->expiration_date,
+                'location' => 'N/A',
+                'tax_enabled' => $returnItem->product->iva,
+                'is_return' => true,
+            ];
+        });
+
+        if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
+            $autoOrderDetails = collect();
+
+            foreach ($invoice->supplier->autoOrders as $autoOrder) {
+                foreach ($autoOrder->details as $autoOrderDetail) {
+                    if ($autoOrderDetail->productSupplier && $autoOrderDetail->productSupplier->product) {
+                        $product = $autoOrderDetail->productSupplier->product;
+
+                        $autoOrderDetails->push((object) [
+                            'id' => 'auto_' . $autoOrderDetail->id,
+                            'product_id' => $product->id,
+                            'product' => $product,
+                            'quantity' => $autoOrderDetail->quantity,
+                            'unit_cost' => $autoOrderDetail->unit_cost,
+                            'total_cost' => $autoOrderDetail->subtotal,
+                            'lot_number' => '',
+                            'location' => 'Por Asignar',
+                            'tax_enabled' => $product->iva ?? false,
+                            'is_return' => false,
+                            'expiration_date' => $autoOrderDetail->productSupplier->expiration,
+                            'auto_order_detail_id' => $autoOrderDetail->id,
+                        ]);
+                    }
+                }
+            }
+
+            return $autoOrderDetails;
+        }
+
+        $mergedArray = array_merge($normalDetails->all(), $returnDetails->all());
+        return collect($mergedArray);
     }
+
 
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
     {
