@@ -182,7 +182,7 @@ function toggleCurrency(cur) {
           >
             <VIcon icon="tabler-currency-dollar" size="40"></VIcon>
           </VAvatar>
-          <h5 class="text-h2 pt-2 mb-2">
+          <h5 class="text-h3 pt-2 mb-2">
             {{
               Intl.NumberFormat("es", { notation: "standard" }).format(
                 props.stats["total_value"] ?? 0

@@ -54,16 +54,39 @@ class TransactionRepository
       ->select([
         'transactions.*',
         'users.username as user_name',
-        'categories.name as category_name'
+        'categories.name as category_name',
       ])
       ->orderBy('transactions.transaction_date', 'desc')
-      ->orderBy('transactions.id', 'desc')
+      ->orderBy('transactions.id', 'asc')
       ->paginate($perPage);
 
-    $results->getCollection()->transform(function ($transaction) {
-      $type = $transaction->type;
-      $enum = TransactionType::tryFrom($type);
-      $transaction->type = $enum->label();
+    $openingBalances = ['USD' => 0, 'COP' => 0, 'BS' => 0];
+
+    if ($startDate) {
+      $openingBalances = $this->calculateOpeningBalances($currency, $startDate);
+    } elseif ($currentPage > 1) {
+      $currentPageFirstId = $results->getCollection()->first()?->id;
+
+      if ($currentPageFirstId) {
+        $openingBalances = $this->calculateOpeningBalances($currency, null, [$currentPageFirstId]);
+      }
+    }
+    $balances = $openingBalances;
+
+    $results->getCollection()->transform(function ($transaction) use (&$balances) {
+      $delta = $transaction->movement_type === 'IN' ? +$transaction->amount : -$transaction->amount;
+
+      match ($transaction->currency) {
+        'USD' => $balances['USD'] += $delta,
+        'COP' => $balances['COP'] += $delta,
+        'BS' => $balances['BS'] += $delta,
+      };
+
+      $transaction->balance = $balances[$transaction->currency];
+
+      $enum = TransactionType::tryFrom($transaction->type);
+      $transaction->type = $enum?->label() ?? $transaction->type;
+
       return $transaction;
     });
 
@@ -145,8 +168,6 @@ class TransactionRepository
             CASE
               WHEN transactions.currency = 'USD' THEN 
                 CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END
-              WHEN transactions.currency = 'COP' THEN 
-                CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END * COALESCE(r.rate, 1)
               ELSE 
                 CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END / NULLIF(COALESCE(r.rate, 1), 0)
             END
@@ -171,8 +192,6 @@ class TransactionRepository
             CASE
               WHEN transactions.currency = 'USD' THEN 
                 CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END
-              WHEN transactions.currency = 'COP' THEN 
-                CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END * COALESCE(r.rate, 1)
               ELSE 
                 CASE WHEN transactions.movement_type = 'IN' THEN transactions.amount ELSE -transactions.amount END / NULLIF(COALESCE(r.rate, 1), 0)
             END
@@ -180,5 +199,36 @@ class TransactionRepository
         ) as total_usd
       ")
       ->value('total_usd') ?? 0.00;
+  }
+
+  private function calculateOpeningBalances(string $currency = null, string $beforeDate = null, array $beforeIds = []): array
+  {
+    $query = Transaction::query();
+
+    if ($beforeDate) {
+      $query->where('transaction_date', '<', $beforeDate);
+    } elseif (!empty($beforeIds)) {
+      $query->where('id', '<', min($beforeIds));
+    } else {
+      return ['USD' => 0, 'COP' => 0, 'BS' => 0];
+    }
+
+    if ($currency) {
+      $query->where('currency', $currency);
+    }
+
+    $results = $query
+      ->selectRaw("
+            SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net_amount,
+            currency
+        ")
+      ->groupBy('currency')
+      ->pluck('net_amount', 'currency');
+
+    return [
+      'USD' => $results->get('USD', 0.0),
+      'COP' => $results->get('COP', 0.0),
+      'BS' => $results->get('BS', 0.0),
+    ];
   }
 }
