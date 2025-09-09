@@ -5,6 +5,7 @@ const props = defineProps({
   totalSupplier: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  checkingApiId: { type: Number, default: null },
 });
 
 const emit = defineEmits([
@@ -28,6 +29,21 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 </script>
+
+<style scoped>
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>
 
 <template>
   <VCard>
@@ -138,8 +154,15 @@ const headers = [
         </VTooltip>
         <VTooltip text="Conexión API" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('check-supplier-api', item)">
-              <VIcon icon="tabler-api" />
+            <IconBtn
+              v-bind="props"
+              :disabled="checkingApiId === item.id"
+              @click="emit('check-supplier-api', item)"
+            >
+              <VIcon
+                :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'"
+                :class="checkingApiId === item.id ? 'spin-icon' : ''"
+              />
             </IconBtn>
           </template>
         </VTooltip>

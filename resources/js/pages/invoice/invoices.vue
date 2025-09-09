@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
+import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -11,6 +12,7 @@ import Swal from "sweetalert2";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
+const selectedInvoiceSupplierId = ref(null);
 
 const invoices = ref([]);
 const totalInvoices = ref(0);
@@ -18,9 +20,11 @@ const loading = ref(false);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
 
+const supplierDiscounts = ref([]);
+const loadingDiscounts = ref(false);
+
 const searchQuery = ref("");
 const selectedSupplier = ref(null);
-const selectedStatus = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
@@ -35,7 +39,6 @@ const fetchSuppliers = async () => {
     const response = await axios.get("/suppliers");
     suppliers.value = response.data.data ?? response.data;
   } catch (error) {
-    console.error("Error al cargar proveedores:", error);
     toast.error("No se pudieron cargar los proveedores.");
   } finally {
     isLoadingFilters.value = false;
@@ -51,9 +54,9 @@ const fetchInvoices = async () => {
     orderBy: orderBy.value,
     q: searchQuery.value,
     supplierId: selectedSupplier.value,
-    status: selectedStatus.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    status: "pending",
   };
 
   Object.keys(params).forEach(
@@ -65,7 +68,6 @@ const fetchInvoices = async () => {
     invoices.value = response.data.data;
     totalInvoices.value = response.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener las facturas:", error);
     toast.error("Error al obtener las facturas.");
   } finally {
     loading.value = false;
@@ -81,7 +83,6 @@ watch(
     orderBy,
     searchQuery,
     selectedSupplier,
-    selectedStatus,
     startDate,
     endDate,
   ],
@@ -94,14 +95,11 @@ watch(
   { deep: true }
 );
 
-watch(
-  [searchQuery, selectedSupplier, selectedStatus, startDate, endDate],
-  () => {
-    if (page.value !== 1) {
-      page.value = 1;
-    }
+watch([searchQuery, selectedSupplier, startDate, endDate], () => {
+  if (page.value !== 1) {
+    page.value = 1;
   }
-);
+});
 
 onMounted(() => {
   fetchSuppliers();
@@ -118,20 +116,44 @@ const updateTableOptions = (options) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
-  selectedStatus.value = null;
   startDate.value = null;
   endDate.value = null;
 };
 
-const handleEditInvoice = (invoice) => {
-  console.log("Cambiando a la vista de detalle para la factura:", invoice.id);
+const fetchSupplierDiscounts = async (supplierId) => {
+  if (!supplierId) {
+    supplierDiscounts.value = [];
+    return;
+  }
+  loadingDiscounts.value = true;
+  try {
+    const response = await axios.get(`/suppliers/${supplierId}/discounts`);
+    supplierDiscounts.value = response.data.supplier_discount ?? [];
+  } catch (error) {
+    supplierDiscounts.value = [];
+  } finally {
+    loadingDiscounts.value = false;
+  }
+};
+
+const handleEditInvoice = async (invoice) => {
   selectedInvoiceId.value = invoice.id;
+  selectedInvoiceSupplierId.value = invoice.supplier_id;
+
+  await fetchSupplierDiscounts(invoice.supplier_id);
+
   currentView.value = "detail";
 };
 
+const handleEditInvoiceForm = (invoice) => {
+  selectedInvoiceId.value = invoice.id;
+  currentView.value = "edit-form";
+};
+
 const handleReturnToList = () => {
-  console.log("Volviendo a la lista de facturas");
   selectedInvoiceId.value = null;
+  selectedInvoiceSupplierId.value = null;
+  supplierDiscounts.value = [];
   currentView.value = "list";
   fetchInvoices();
 };
@@ -149,15 +171,12 @@ const handleDeleteInvoice = async (id) => {
       const actions = Swal.getActions();
       const confirmButton = Swal.getConfirmButton();
       const cancelButton = Swal.getCancelButton();
-
       actions.style.display = "flex";
       actions.style.gap = "10px";
       actions.style.width = "100%";
       actions.style.padding = "0 20px";
-
       confirmButton.style.flex = "1";
       confirmButton.style.width = "50%";
-
       cancelButton.style.flex = "1";
       cancelButton.style.width = "50%";
     },
@@ -169,7 +188,6 @@ const handleDeleteInvoice = async (id) => {
       toast.success("Factura eliminada con éxito.");
       fetchInvoices();
     } catch (error) {
-      console.error(`Error al borrar la factura ${id}:`, error);
       toast.error(
         error.response?.data?.message || "No se pudo eliminar la factura."
       );
@@ -184,7 +202,6 @@ const handleDeleteInvoice = async (id) => {
       <InvoiceFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedSupplier="selectedSupplier"
-        v-model:selectedStatus="selectedStatus"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
         :suppliers="suppliers"
@@ -200,6 +217,7 @@ const handleDeleteInvoice = async (id) => {
         :page="page"
         @update:options="updateTableOptions"
         @edit-invoice="handleEditInvoice"
+        @edit-invoice-form="handleEditInvoiceForm"
         @delete-invoice="handleDeleteInvoice"
       />
     </div>
@@ -207,7 +225,18 @@ const handleDeleteInvoice = async (id) => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        :supplier-discounts="supplierDiscounts"
+        mode="editable"
         @back-to-list="handleReturnToList"
+      />
+    </div>
+
+    <div v-else-if="currentView === 'edit-form'">
+      <InvoiceFormEdit
+        :invoice-id="selectedInvoiceId"
+        :is-edit-mode="true"
+        @back-to-list="handleReturnToList"
+        @invoice-saved="handleReturnToList"
       />
     </div>
   </div>

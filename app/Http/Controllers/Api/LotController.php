@@ -25,7 +25,7 @@ class LotController extends Controller
         $query = $this->lotQueryService->getFilteredQuery($request);
 
         return response()->json([
-            'data' => $query->paginate(10),
+            'data' => $query->paginate($request->get('itemsPerPage', 10)),
         ]);
     }
 
@@ -137,6 +137,39 @@ class LotController extends Controller
         return response()->json([
             'data' => $suppliers,
         ]);
+    }
+
+    /**
+     * Obtener todos los lotes de un producto específico
+     */
+    public function getProductLots(Request $request, $productId)
+    {
+        try {
+            $product = \App\Models\Product::find($productId);
+            if (!$product) {
+                return response()->json([
+                    'message' => 'Producto no encontrado.',
+                ], 404);
+            }
+
+            $lots = ProductLot::with(['product.laboratory', 'supplier'])
+                ->where('product_id', $productId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'data' => [
+                    'data' => $lots,
+                    'product' => $product,
+                    'total' => $lots->count(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al obtener los lotes del producto.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

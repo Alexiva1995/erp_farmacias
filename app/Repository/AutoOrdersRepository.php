@@ -76,10 +76,6 @@ class AutoOrdersRepository
 
     public function update(AutoOrder $autoOrder, $data)
     {
-        if (!isset($data)) {
-            return response()->json(["status" => "error", "message" => "No hay datos proporcionados"]);
-        }
-
         $whensQty = "";
         $whensSub = "";
         $whensUpd = "";
@@ -155,8 +151,6 @@ class AutoOrdersRepository
 
     public function getHistory(array $filters = [])
     {
-        $filters["itemsPerPage"] ??= 10;
-
         $stats = DB::table("auto_order_details")
             ->select([
                 "order_id",

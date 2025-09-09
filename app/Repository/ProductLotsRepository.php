@@ -22,4 +22,13 @@ class ProductLotsRepository
             ->first();
         return $consulta;
     }
+
+    public function checkTheLotWithTheLowestPriceOnlyProduct(Product $product): Model | null
+    {
+        $consulta = ProductLot::query()
+            ->where("product_id", "=", $product->id)
+            ->orderBy("unit_cost", "ASC")
+            ->first();
+        return $consulta;
+    }
 }

@@ -21,6 +21,7 @@ class Invoice extends Model
         'taxable_base',
         'tax_amount',
         'total_amount',
+        'total_amount_discount',
         'exchange_rate',
         'total_usd',
         'status',
@@ -28,6 +29,16 @@ class Invoice extends Model
         'registered_by',
         'ordered_by',
     ];
+
+    public const FILLABLEHEADER = [
+        'invoice_number',
+        'control_number',
+        'exp_date',
+        'tax_amount',
+        'total_amount',
+    ];
+
+    protected $fillableFromHeader = self::FILLABLEHEADER;
 
     protected $appends = ['outstanding_debt'];
 
@@ -80,7 +91,32 @@ class Invoice extends Model
     {
         return $this->hasMany(PsychotropicControl::class);
     }
+    public function returns()
+    {
+        return $this->hasMany(InvoiceReturn::class);
+    }
 
+    public function isApproved(): bool
+    {
+        return $this->status === 'ordered';
+    }
+
+    public function canBeApproved(): bool
+    {
+        return $this->status === 'to_order';
+    }
+    public function getTotalReturns(): float
+    {
+        return $this->returns()->sum('amount_refunded');
+    }
+
+    /**
+     * Obtiene la cantidad total de productos devueltos
+     */
+    public function getTotalReturnedQuantity(): float
+    {
+        return $this->returns()->sum('quantity');
+    }
     public function getOutstandingDebtAttribute(): float
     {
         // Suma de pagos registrados

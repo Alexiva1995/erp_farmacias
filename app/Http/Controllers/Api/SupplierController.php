@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
-use App\Services\Suppliers\SupplierConnectionService;
+use App\Http\Requests\GetDataFromSupplierFileRequest;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
+use App\Http\Requests\StoreProductIntoAutoOrderRequest;
+use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -26,7 +29,8 @@ class SupplierController extends Controller
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService,
-    ) {}
+    ) {
+    }
 
     /**
      * Display a listing of the suppliers.
@@ -60,9 +64,7 @@ class SupplierController extends Controller
      */
     public function store(StoreSupplierRequest $request)
     {
-        $supplier = $this->supplierActionService->createSupplier(
-            $request->validated(),
-        );
+        $supplier = $this->supplierActionService->createSupplier($request->validated());
 
         return response()->json(
             [
@@ -81,10 +83,7 @@ class SupplierController extends Controller
      */
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
-        $updatedSupplier = $this->supplierActionService->updateSupplier(
-            $supplier,
-            $request->validated(),
-        );
+        $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
 
         return response()->json(
             [
@@ -109,28 +108,26 @@ class SupplierController extends Controller
 
     /**
      * Summary of connectionServiceSupplier
-     * @param \App\Services\Suppliers\SupplierConnectionService $connectionService
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function connectionServiceSupplier(
-        SupplierConnectionService $connectionService,
-        Supplier $supplier,
-    ) {
-        $results = $connectionService->fetchData(
-            $supplier->connections->first(),
-        );
+    public function connectionServiceSupplier(Supplier $supplier, Request $request)
+    {
+        $userId = auth()->id() ?? 1;
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $result = $this->supplierQueryService->storeSupplierConnectionData(
-            $supplier,
-            $results,
-        );
+        return response()->json(["status" => "queued"]);
+    }
 
-        $status = $result ? "ok" : "error";
+    /**
+     * Get the connection statuses for the authenticated user.
+     * @return mixed|\Illuminate\Http\JsonResponse
+     */
+    public function getConnectionStatus()
+    {
+        $userId = auth()->id() ?? 1;
+        $statuses = $this->supplierQueryService->getRecentConnectionStatusesForUser($userId);
 
-        return response()->json(
-            ["status" => $status, "count" => count($results)],
-            $status === "error" ? 500 : 200,
-        );
+        return response()->json(["statuses" => $statuses]);
     }
 
     /**
@@ -148,7 +145,7 @@ class SupplierController extends Controller
 
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                'days' =>  $rule['days'],
+                'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
 
@@ -175,14 +172,9 @@ class SupplierController extends Controller
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storeLaboratory(
-        StoreSupplierLaboratoryRequest $request,
-        Supplier $supplier,
-    ) {
-        $link = $this->supplierActionService->attachLaboratory(
-            $supplier,
-            $request->validated(),
-        );
+    public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
+    {
+        $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
 
         return response()->json([
             "message" => "Laboratorio vinculado con éxito.",
@@ -211,9 +203,7 @@ class SupplierController extends Controller
      */
     public function getPendingInvoices(Supplier $supplier)
     {
-        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate(
-            $supplier,
-        );
+        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate($supplier);
         return response()->json(["pending_invoices" => $grouped]);
     }
 
@@ -224,10 +214,8 @@ class SupplierController extends Controller
         return response()->json(["supplier_discount" => $discounts]);
     }
 
-    public function storeDiscounts(
-        StoreDiscountsRequest $request,
-        Supplier $supplier,
-    ) {
+    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
+    {
         $validated = $request->validated();
 
         $createdDiscounts = [];
@@ -238,10 +226,7 @@ class SupplierController extends Controller
                 "discount_percentage" => $rule["discount_percentage"],
             ];
 
-            $createdDiscounts[] = $this->supplierActionService->createDiscount(
-                $supplier,
-                $discountData,
-            );
+            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
         }
 
         return response()->json([
@@ -250,31 +235,76 @@ class SupplierController extends Controller
         ]);
     }
 
-    public function getDiscounts(Supplier $supplier)
+    public function getSupplierConnections(Request $request)
     {
-        $discounts = $this->supplierQueryService->getDiscounts($supplier);
-
-        return response()->json(['supplier_discount' => $discounts]);
-    }
-
-    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
-    {
-        $validated = $request->validated();
-
-        $createdDiscounts = [];
-
-        foreach ($validated['discounts'] as $rule) {
-            $discountData = [
-                'name' =>  $rule['name'],
-                'discount_percentage' => $rule['discount_percentage'],
-            ];
-
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
-        }
+        $results = $this->supplierQueryService->getSupplierConnections($request);
 
         return response()->json([
-            'message' => 'Descuentos registrados correctamente.',
-            'discounts' => $createdDiscounts,
+            "data" => $results->items(),
+            "total" => $results->total(),
         ]);
+    }
+
+    public function getSupplierProducts(Supplier $supplier, Request $request)
+    {
+        $results = $this->supplierQueryService->getSupplierProducts($supplier, $request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getProducts(Request $request)
+    {
+        $results = $this->supplierQueryService->getProducts($request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getLaboratories()
+    {
+        $results = $this->supplierQueryService->getAvailableLaboratories();
+
+        return response()->json($results);
+    }
+
+    public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
+    {
+        $productId = $request->productId;
+        $discount = $request->boolean("discount");
+        $product = ProductSupplier::find($productId);
+
+        if ($discount && empty($product->unit_cost_usd_with_discount)) {
+            return ApiResponse::error('Este producto no posee descuentos');
+        }
+
+        $results = $this->supplierQueryService->addProductToOrder($request);
+
+        return $results
+            ? ApiResponse::success()
+            : ApiResponse::error();
+    }
+
+    public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
+    {
+        $userId = auth()->id() ?? 1;
+
+        $validated = $request->validated();
+        unset($validated["file"]);
+
+        $path = $request->file("file")->store("temp", ["disk" => "local"]);
+
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
+
+        return response()->json(["status" => "queued"]);
+    }
+
+    public function deleteProducts(Supplier $supplier)
+    {
+        return $this->supplierQueryService->deleteProducts($supplier);
     }
 }

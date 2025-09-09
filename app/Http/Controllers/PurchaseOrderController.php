@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\PurchaseOrder;
+use App\Helpers\ApiResponse;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class PurchaseOrderController extends Controller
         $filters = $request->query();
         $paginated = $this->purchaseOrder->getAll($filters);
 
-        return response()->json([
+        return ApiResponse::success([
             "data" => $paginated->items(),
             "total" => $paginated->total(),
         ]);
@@ -26,12 +27,21 @@ class PurchaseOrderController extends Controller
 
     public function destroy(AutoOrder $autoOrder)
     {
-        return $this->purchaseOrder->delete($autoOrder);
+        $result = $this->purchaseOrder->delete($autoOrder);
+
+        return $result
+            ? ApiResponse::success(['status' => 'ok'])
+            : ApiResponse::error(['status' => 'error']);
     }
 
     public function updateDetails(AutoOrder $autoOrder, UpdateAutoOrderDetailsRequest $request)
     {
-        $result = $this->purchaseOrder->update($autoOrder, $request->all());
+        $data = $request->all();
+        if (empty($data)) {
+            return ApiResponse::error(["status" => "error"], 'No hay datos proporcionados', 200);
+        }
+
+        $result = $this->purchaseOrder->update($autoOrder, $data);
 
         return response()->json($result);
     }
@@ -51,6 +61,6 @@ class PurchaseOrderController extends Controller
     {
         $data = $this->purchaseOrder->getExportableData($autoOrder);
 
-        return response()->json(["data" => $data]);
+        return ApiResponse::success(["data" => $data]);
     }
 }

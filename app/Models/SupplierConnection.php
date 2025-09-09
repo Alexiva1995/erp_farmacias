@@ -18,12 +18,16 @@ class SupplierConnection extends Model
         "pasv",
         "has_header",
         "structure",
+        "invoice_path",
+        "invoice_structure",
+        "last_connection",
     ];
 
     protected $casts = [
         "pasv" => "boolean",
         "has_header" => "boolean",
         "structure" => "array",
+        "invoice_structure" => "array",
     ];
 
     public function supplier(): BelongsTo

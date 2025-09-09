@@ -9,6 +9,13 @@ class Order extends Model
 {
     use HasFactory;
 
+    const PENDING = 'Pending';
+    const ABANDONED = 'Abandoned'; 
+    const RESERVED = 'Reserved';       
+    const CLOSED = 'closed';
+    const CANCELLED = 'Cancelled';
+    const COMPLETED = 'Completed';
+
     protected $fillable = [
         'client_id',
         'seller_id',

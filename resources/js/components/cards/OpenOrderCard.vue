@@ -1,10 +1,10 @@
 <script setup>
-import { defineProps, computed, ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import Swal from "sweetalert2";
-import { toast } from "@/plugins/sweetalert";
-import axios from "@/plugins/axios";
+import { computed, defineProps, ref, watch } from "vue";
 
 const props = defineProps({
   orderProducts: {
@@ -52,9 +52,25 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  orderReserved: {
+    type: Object,
+    default: null,
+  },
 });
 
-const quotationId = ref('');
+const emit = defineEmits([
+  "update:searchQuery",
+  "currency-changed",
+  "update-quantity",
+  "remove-item",
+  "cancelar-order",
+  "open-buys-modal",
+  "reserve-order",
+  "add-quotation-products",
+  "add-reserved-order",
+]);
+
+const quotationId = ref("");
 
 const clientName = computed(() => {
   return props.cliente
@@ -69,22 +85,10 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const emit = defineEmits([
-  "update:searchQuery",
-  "currency-changed",
-  "update-quantity",
-  "remove-item",
-  "cancelar-order",
-  "open-buys-modal",
-  "add-quotation-products",
-]);
-
 const chipColor = "primary";
 
 const breakdownItems = computed(() => {
   let ivaAmount = props.totalIvaAmount;
-
-  // Aplica el redondeo solo si la moneda es 'COP'
   if (props.selectedDisplayCurrency === "COP") {
     ivaAmount = roundUpToNearestHundred(props.totalIvaAmount);
   }
@@ -116,8 +120,27 @@ const totalSelectedQuantity = computed(() => {
       total += quantity;
     }
   });
+
   return total;
 });
+
+const getProductPriceSinIva = (product, currency) => {
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+
+  let priceSinIva = basePrice * product.selectedQuantity;
+  if (currency === "COP") {
+    priceSinIva = roundUpToNearestHundred(priceSinIva);
+  }
+
+  return priceSinIva;
+};
 
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
@@ -127,15 +150,32 @@ const getProductPrice = (product, currency) => {
   } else if (currency === "COP") {
     basePrice = product.price_cop || 0;
   } else {
-    // Default to USD price
     basePrice = product.price || 0;
   }
-
-  let priceWithIva = basePrice * (1 + taxRate);
+  let priceWithIva = (basePrice * product.selectedQuantity) * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
+
   return priceWithIva;
+};
+
+const getIva = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+  let Iva = (basePrice * product.selectedQuantity) * taxRate;
+  if (currency === "COP") {
+    Iva = roundUpToNearestHundred(Iva);
+  }
+
+  return Iva;
 };
 
 const handleClickProductItem = (productId, currentQuantity) => {
@@ -145,6 +185,7 @@ const handleClickProductItem = (productId, currentQuantity) => {
     emit("remove-item", productId);
   }
 };
+
 const hadleCancelarOrder = () => {
   Swal.fire({
     title: "¿Estás seguro?",
@@ -163,225 +204,324 @@ const hadleCancelarOrder = () => {
 };
 
 const handleCompleteOrder = () => {
-  emit('open-buys-modal');
+  emit("open-buys-modal");
 };
 
+const handleTReserveOrder = () => {
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea Reservar la Orden!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      emit("reserve-order");
+    }
+  });
+};
 
 const fetchQuotationProducts = async (id) => {
-    if (!id) return;
-    try {
-        const response = await axios.get(`/tpv/quotations/${id}/products`);
-        const quotationData = response.data;
-        emit('add-quotation-products', quotationData.products);
-        toast.success('Productos de la cotización cargados exitosamente.');
-    } catch (error) {
-        const errorMessage = error.response?.data?.message || 'Error de red o cotización no encontrada.';
-        toast.error(errorMessage);
-        console.error('Error fetching quotation:', error);
-    } finally {
-        quotationId.value = '';
-    }
+  if (!id) return;
+  try {
+    const response = await axios.get(`/tpv/quotations/${id}/products`);
+    const quotationData = response.data;
+
+    emit("add-quotation-products", quotationData.products);
+    toast.success("Productos de la cotización cargados exitosamente.");
+  } catch (error) {
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error de red o cotización no encontrada.";
+
+    toast.error(errorMessage);
+    console.error("Error fetching quotation:", error);
+  } finally {
+    quotationId.value = "";
+  }
 };
 
+const handleReserved = () => {
+  emit("add-reserved-order");
+};
+
+watch(
+  () => props.orderProducts,
+  (newProducts) => {
+    newProducts.forEach((product) => {
+      if (product.selectedQuantity > product.availableQuantity) {
+        emit("update-quantity", {
+          productId: product.product_id,
+          quantity: product.availableQuantity,
+        });
+        toast.warning(
+          `La cantidad de "${product.title}" se ha ajustado al stock máximo disponible: ${product.availableQuantity}.`
+        );
+      }
+    });
+  },
+  { deep: true }
+);
 </script>
+
 <template>
   <VCard class="mb-6">
-    <template #title>
-      <span>Cliente: {{ clientName }}</span
-      ><br />
-      <span>Identidad: {{ Identidad }}</span>
-    </template>
-    <VRow>
-      <VCol cols="6">
-        <VCardItem>
-          <VCardTitle>Factura</VCardTitle>
-          <template #append>
-            <VMenu>
-              <template #activator="{ props: menuProps }">
-                <VBtn
-                  type="button"
-                  color="primary"
-                  variant="tonal"
-                  density="default"
-                  size="small"
-                  class="mx-auto"
-                  v-bind="menuProps"
-                >
-                  <span>{{ props.selectedDisplayCurrency }}</span>
-
-                  <template #append>
-                    <VIcon icon="tabler-chevron-down" size="16" />
-                  </template>
-                </VBtn>
-              </template>
-
-              <VList>
-                <VListItem
-                  v-for="currencyOption in availableCurrency"
-                  :key="currencyOption"
-                  :value="currencyOption"
-                  @click="selectCurrency(currencyOption)"
-                >
-                  <VListItemTitle>{{ currencyOption }}</VListItemTitle>
-                </VListItem>
-              </VList>
-            </VMenu>
-          </template>
-        </VCardItem>
-
-        <VCardText class="flex-grow-1 d-flex flex-column mt-6">
-          <VList class="card-list mb-6" density="compact" nav>
-            <VListItem
-              v-for="item in breakdownItems"
-              :key="item.title"
-              class="rounded-0"
-            >
-              <VListItemTitle class="font-weight-medium">{{
-                item.title
-              }}</VListItemTitle>
-              <template #append>
-                <div class="d-flex align-center">
-                  <span class="me-3 text-medium-emphasis">{{
-                    formatCurrency(item.amount, props.selectedDisplayCurrency)
-                  }}</span>
-                </div>
-              </template>
-            </VListItem>
-          </VList>
-        </VCardText>
-         <VCardActions class="pa-6 d-flex flex-wrap justify-space-between">
-          <VDivider class="mt-auto" />
-            <h4 class="text-h4 text-center">Monto Total</h4>
-            <div class="text-h4 text-success">
-              {{ formattedTotalQuotation }}
-            </div>
-        </VCardActions>
-      </VCol>
-
-      <VCol cols="6">
-        <VCardItem>
-          <VCardTitle>Productos</VCardTitle>
-          <template #append>
-            <VChip
-              label
-              :color="chipColor"
+    <VCardItem class="py-2">
+      <VCardTitle class="text-h4">
+        {{ clientName }} {{ Identidad }}
+      </VCardTitle>
+      <template #append>
+        <VMenu>
+          <template #activator="{ props: menuProps }">
+            <VBtn
+              type="button"
+              color="primary"
               variant="tonal"
               density="default"
               size="small"
-              draggable="false"
-              class="ms-auto"
+              class="ms-2"
+              v-bind="menuProps"
             >
-              <span class="font-weight-medium">{{
-                totalSelectedQuantity
-              }}</span>
-            </VChip>
+              <span>{{ props.selectedDisplayCurrency }}</span>
+              <template #append>
+                <VIcon icon="tabler-chevron-down" size="16" />
+              </template>
+            </VBtn>
           </template>
-        </VCardItem>
+          <VList>
+            <VListItem
+              v-for="currencyOption in availableCurrency"
+              :key="currencyOption"
+              :value="currencyOption"
+              @click="selectCurrency(currencyOption)"
+            >
+              <VListItemTitle>{{ currencyOption }}</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
+      </template>
+    </VCardItem>
 
-        <VCardText>
-         <AppTextField
-            v-model="quotationId"
-            placeholder="ID de la cotización"
-            clearable
-            class="flex-grow-1 mb-2"
-          >
-          <template #append-inner>
-              <VBtn
-                icon
-                variant="text"
-                color="primary"
+    <VCardText class="py-2">
+      <VRow>
+        <VCol cols="12" md="6" class="d-flex align-center">
+          <VCardItem class="py-2 px-0">
+            <VCardTitle class="text-h6"> Productos </VCardTitle>
+            <template #append>
+              <VChip
+                label
+                :color="chipColor"
+                variant="tonal"
+                density="default"
                 size="small"
-                @click="fetchQuotationProducts(quotationId)"
-                :disabled="!quotationId"
+                draggable="false"
               >
-                <VIcon icon="tabler-plus" />
-              </VBtn>
-            </template>
-            </AppTextField>
-          <VDivider class="mt-auto" />
-        
-
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Código de Barra"
-            clearable
-            @update:model-value="emit('update:searchQuery', $event)"
-            class="flex-grow-1"
-          />
-          <VDivider class="mt-auto" />
-        </VCardText>
-
-        <VCardText>
-          <div
-            class="scrollable-list-container"
-            :class="{ 'show-scroll': props.orderProducts.length > 2 }"
-          >
-            <VList class="card-list" density="compact" nav>
-              <VListItem
-                v-for="product in props.orderProducts"
-                :key="product.id"
-                class="rounded-0"
-                @click="
-                  handleClickProductItem(
-                    product.product_id,
-                    product.selectedQuantity
-                  )
-                "
-                :class="{ 'cursor-pointer': true }"
-              >
-                <template #prepend>
-                  <span>{{ product.selectedQuantity }} x</span>
-                </template>
-
-                <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                  product.title
-                }}</VListItemTitle>
-                <VListItemSubtitle class="mx-2"
-                  >{{ product.active_ingredient }}
-                  {{ product.laboratory }}</VListItemSubtitle
+                <span class="font-weight-medium">
+                  {{ totalSelectedQuantity }}</span
                 >
+              </VChip>
+            </template>
+          </VCardItem>
+        </VCol>
+        <VCol cols="12" md="6" class="d-flex align-center">
+          <VRow class="flex-grow-1">
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="quotationId"
+                placeholder="ID de la cotización"
+                clearable
+                class="py-1"
+              >
+                <template #append-inner>
+                  <VBtn
+                    icon
+                    variant="text"
+                    color="primary"
+                    size="small"
+                    :disabled="!quotationId"
+                    @click="fetchQuotationProducts(quotationId)"
+                  >
+                    <VIcon icon="tabler-plus" />
+                  </VBtn>
+                </template>
+              </AppTextField>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                :model-value="props.searchQuery"
+                placeholder="Código de Barra"
+                clearable
+                class="py-1"
+                @update:model-value="emit('update:searchQuery', $event)"
+              />
+            </VCol>
+          </VRow>
+        </VCol>
+      </VRow>
+    </VCardText>
+    <VDivider />
 
-                <template #append>
-                  <div class="d-flex align-center">
-                    <span class="text-body-1 me-2">{{
+    <VCardText class="py-2 bg-grey-lighten-4">
+      <VList class="card-list" density="compact" nav>
+        <template
+          v-for="(product, index) in props.orderProducts"
+          :key="product.id"
+        >
+          <VListItem
+            class="rounded-0 cursor-pointer py-2"
+          >
+            <VListItemTitle class="font-weight-medium me-4 mx-2">
+              {{ product.title }}
+            </VListItemTitle>
+            <VListItemSubtitle class="mx-2 d-flex align-center">
+              {{ product.active_ingredient }}
+              {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+              <div class="d-flex align-center ms-2">
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="
+              handleClickProductItem(
+                product.product_id,
+                product.selectedQuantity)
+            "
+                >
+                  <VIcon icon="tabler-minus" />
+                </VBtn>
+               <VTextField
+                  v-model.number="product.selectedQuantity"
+                  variant="outlined"
+                  density="compact"
+                  single-line
+                  hide-details
+                  class="mx-1"
+                  style="width: 50px; text-align: center"
+                />
+                <VBtn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="$emit('update-quantity', { productId: product.product_id, quantity: product.selectedQuantity + 1 })"
+                  :disabled="product.selectedQuantity >= product.availableQuantity"
+                >
+                  <VIcon icon="tabler-plus" />
+                </VBtn>
+              </div>
+            </VListItemSubtitle>
+            <template #append>
+              <div class="d-flex align-center">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Precio</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
+                    {{
                       formatCurrency(
-                        getProductPrice(
+                        getProductPriceSinIva(
                           product,
                           props.selectedDisplayCurrency
-                        ) * product.selectedQuantity,
+                        ),
                         props.selectedDisplayCurrency
                       )
-                    }}</span>
-                  </div>
-                </template>
-              </VListItem>
-            </VList>
-          </div>
-        </VCardText>
+                    }}
+                  </span>
+                </div>
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >IVA</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
+                    {{
+                      formatCurrency(
+                        getIva(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+                <div class="d-flex flex-column align-end">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
+                  <span class="text-body-1 me-2 font-weight-bold text-black">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </VListItem>
+        </template>
+      </VList>
+    </VCardText>
+    <VDivider class="mt-auto" />
 
-        <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            @click="hadleCancelarOrder"
-            class="flex-grow-1"
-            >Cancelar</VBtn
-          >
-          <VBtn color="primary" variant="flat" @click="handleCompleteOrder" class="flex-grow-1"
-            >Completar</VBtn
-          >
-        </VCardActions>
-      </VCol>
-    </VRow>
+    <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
+      <div class="d-flex flex-wrap gap-4 flex-grow-1">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          class="flex-grow-1"
+          @click="hadleCancelarOrder"
+        >
+          CANCELAR
+        </VBtn>
+        <VBtn
+          v-if="!props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleTReserveOrder"
+        >
+          RESERVAR
+        </VBtn>
+         <VBtn
+          v-if="props.orderReserved"
+          color="success"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleReserved"
+        >
+          RESERVADA
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          class="flex-grow-1"
+          @click="handleCompleteOrder"
+        >
+          COMPLETAR
+        </VBtn>
+      </div>
+      <div class="d-flex align-center">
+        <h4 class="text-h4 me-2">Monto Total</h4>
+        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+      </div>
+    </VCardActions>
   </VCard>
 </template>
+
 <style scoped>
-.scrollable-list-container {
-  max-height: 95px;
-  overflow-y: hidden;
-  transition: overflow-y 0.3s ease-in-out;
+.card-list .v-list-item:not(:last-child) {
+  padding-block: 4px !important;
+  padding-block-end: 0 !important;
 }
-.scrollable-list-container.show-scroll {
-  overflow-y: auto;
+
+.v-list .v-list-item--nav:not(:only-child) {
+  margin-block-end: 0 !important;
 }
 </style>

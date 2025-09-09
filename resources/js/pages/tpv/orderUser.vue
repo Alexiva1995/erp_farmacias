@@ -25,6 +25,7 @@ const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
+const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -76,6 +77,8 @@ const currentUser = computed(() => authStore.user);
 const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
 
+const reservedOrderData = ref(null);
+
 const orderItems = ref([]);
 
 const showBuysModal = ref(false);
@@ -100,9 +103,10 @@ const fetchProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-     ...(currentGroupId.value !== null && {
-            groupId: currentGroupId.value,
-        }),
+    ...(currentGroupId.value !== null && {
+      groupId: currentGroupId.value,
+    }),
+    isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -148,6 +152,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    isStrictSearch,
     currentGroupId,
   ],
   () => {
@@ -171,7 +176,6 @@ onMounted(() => {
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
-
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
@@ -192,16 +196,17 @@ onMounted(async () => {
   try {
     const response = await axios.get("/tpv/order/seller/my-open-order");
     if (response.data.data && response.data.data.order) {
-      openOrderData.value = response.data.data.order;
-      console.log(openOrderData);
-      selectedClient.value = response.data.data.order.client;
+      console.log(response.data.data.order)
+      openOrderData.value = response.data.data.order.pending_order;
+      reservedOrderData.value = response.data.data.order.reserved_order;
+      selectedClient.value = response.data.data.order.pending_order.client;
       hasOpenOrder.value = true;
       if (openOrderData.value.currency) {
         selectedDisplayCurrency.value =
           openOrderData.value.currency.toUpperCase();
       }
-      if (response.data.data.order.details) {
-        orderItems.value = response.data.data.order.details.map((item) =>
+      if (openOrderData.value.details) {
+        orderItems.value = openOrderData.value.details.map((item) =>
           formatOrderItemForFrontend(item)
         );
       } else {
@@ -210,6 +215,7 @@ onMounted(async () => {
     } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
+      reservedOrderData.value = null;
       selectedClient.value = null;
       orderItems.value = [];
     }
@@ -238,6 +244,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -292,7 +299,7 @@ const verifyClient = async (identification) => {
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
-    console.log(responseData)
+    console.log(responseData);
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -434,10 +441,10 @@ const totalOrderAmount = computed(() => {
 
 const myCalculatedTotal = computed(() => {
   let valor = totalProductsAmount.value + totalIVAAmount.value;
-    if (selectedDisplayCurrency.value === 'COP') {
-      return roundUpToNearestHundred(valor);
-   }
-    return parseFloat(valor.toFixed(2));
+  if (selectedDisplayCurrency.value === "COP") {
+    return roundUpToNearestHundred(valor);
+  }
+  return parseFloat(valor.toFixed(2));
 });
 
 const totalIVAAmount = computed(() => {
@@ -499,7 +506,10 @@ const updateOrderTotalsInBackend = async () => {
     return;
   }
 
-  let total = selectedDisplayCurrency.value == 'COP' ? roundUpToNearestHundred(totalOrderAmount.value) : totalOrderAmount.value
+  let total =
+    selectedDisplayCurrency.value == "COP"
+      ? roundUpToNearestHundred(totalOrderAmount.value)
+      : totalOrderAmount.value;
 
   try {
     const payload = {
@@ -638,6 +648,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
       );
     } else {
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
+      console.log(itemToAdd);
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
     }
@@ -751,98 +762,191 @@ const cancelarOrder = async () => {
   }
 };
 
-const openBuysModal = () => {
-    showBuysModal.value = true;
+const reserverOrder = async () => {
+  try {
+    const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
+
+     if (!response.data.data || !response.data.data.pending_order) {
+            throw new Error("Respuesta de API inválida. No se pudo obtener la orden pendiente.");
+        }
+
+      hasOpenOrder.value = false;
+      openOrderData.value = null;
+      selectedClient.value = null;
+      orderItems.value = [];
+
+    //openOrderData.value = response.data.data.pending_order;
+    reservedOrderData.value = response.data.data.reserved_order;
+    //selectedClient.value = openOrderData.value.client;
+
+    /*if (openOrderData.value.details) {
+      orderItems.value = openOrderData.value.details.map((item) =>
+        formatOrderItemForFrontend(item)
+      );
+    } else {
+      orderItems.value = [];
+    }*/
+
+    hasOpenOrder.value = true;
+    toast.success("Orden reservada exitosamente.");
+
+  } catch (error) {
+    console.error(
+      "Error al reservar la orden:",
+      error.response ? error.response.data : error.message
+    );
+
+    if (error.response?.data?.message.includes("Ya tienes una orden reservada")) {
+     try {
+        const checkResponse = await axios.get("/tpv/order/seller/my-open-order");
+        if (checkResponse.data.data) {
+          openOrderData.value = checkResponse.data.data.order.pending_order;
+          reservedOrderData.value = checkResponse.data.data.order.reserved_order;
+          toast.info("Ya hay una orden reservada. La orden abierta se mantiene.");
+          return;
+        }
+      } catch (checkError) {
+        console.error("Error al verificar el estado de las órdenes:", checkError);
+      }
+    }
+     console.error(
+      "Error al reservar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    toast.error(errorMessage);
+  }
 };
 
+const openBuysModal = () => {
+  showBuysModal.value = true;
+};
 
 const closeBuysModal = () => {
-    showBuysModal.value = false;
+  showBuysModal.value = false;
 };
 
-const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,changeAmountUSD, switchStates) => {
-
+const handleBuysCompletion = async (
+  orderId,
+  paymentsData,
+  credit,
+  changeAmount,
+  changeAmountUSD,
+  switchStates
+) => {
   try {
+
+  const balanceUsed = paymentsData.some(payment => payment.type === 'balance');
+
     const payload = {
       order_id: orderId,
       payments: paymentsData,
-      total_amount: myCalculatedTotal.value, 
-      currency: selectedDisplayCurrency.value, 
-      client_id: selectedClient.value?.id, 
+      total_amount: myCalculatedTotal.value,
+      currency: selectedDisplayCurrency.value,
+      client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
-      balance_used: switchStates.balance_switch,
+      balance_used: balanceUsed,
       generate_invoice: switchStates.invoice_switch,
       credit: credit,
       changeAmount: changeAmount,
       changeAmountUSD: changeAmountUSD,
     };
 
-    const response = await axios.post(`/tpv/orders/${orderId}/complete`, payload);
+    const response = await axios.post(
+      `/tpv/orders/${orderId}/complete`,
+      payload
+    );
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
-
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = myCalculatedTotal.value;
       creditForPrint.value = credit;
+      clientIdentification.value = "";
       await fetchProducts();
-      showBuysModal.value = false; 
+      showBuysModal.value = false;
       isPrinting.value = true;
+
       await nextTick();
       const printContents = document.getElementById("orderPrint");
       if (printContents) {
-      const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
-      const styleSheets = document.styleSheets;
-      for (let i = 0; i < styleSheets.length; i++) {
-        const sheet = styleSheets[i];
-        try {
-          if (sheet.cssRules) {
-            let cssText = '';
-            for (let j = 0; j < sheet.cssRules.length; j++) {
-              cssText += sheet.cssRules[j].cssText;
+        const printWindow = window.open("", "", "height=600,width=800");
+        printWindow.document.write(
+          "<html><head><title>Farmacia Barrio Sucre</title>"
+        );
+        const styleSheets = document.styleSheets;
+        for (let i = 0; i < styleSheets.length; i++) {
+          const sheet = styleSheets[i];
+          try {
+            if (sheet.cssRules) {
+              let cssText = "";
+              for (let j = 0; j < sheet.cssRules.length; j++) {
+                cssText += sheet.cssRules[j].cssText;
+              }
+              printWindow.document.write(`<style>${cssText}</style>`);
+            } else if (sheet.href) {
+              printWindow.document.write(
+                `<link rel="stylesheet" href="${sheet.href}">`
+              );
             }
-            printWindow.document.write(`<style>${cssText}</style>`);
-          } else if (sheet.href) {
-            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          } catch (e) {
+            console.warn(
+              "No se pudo acceder a la hoja de estilo:",
+              sheet.href || sheet,
+              e
+            );
           }
-        } catch (e) {
-          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
         }
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(printContents.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      } else {
+        console.warn(
+          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        );
+        window.print();
       }
-      printWindow.document.write("</head><body>");
-      printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
+
+
+      if (response.data.data.order) {
+                hasOpenOrder.value = true;
+                openOrderData.value = response.data.data.order;
+                selectedClient.value = openOrderData.value.client;
+                reservedOrderData.value = null;
+                orderItems.value = openOrderData.value.details.map((item) =>
+                    formatOrderItemForFrontend(item)
+                );
+            } else {
+                hasOpenOrder.value = false;
+                openOrderData.value = null;
+                selectedClient.value = null;
+                orderItems.value = [];
+                reservedOrderData.value = null;
+                clientIdentification.value = "";
+            }
+
     } else {
-      console.warn("Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
-      window.print();
+      toast.error(
+        `Error inesperado al finalizar la compra: ${
+          response.data.message || "Intente de nuevo."
+        }`
+      );
     }
-
-    }else{
-      toast.error(`Error inesperado al finalizar la compra: ${response.data.message || 'Intente de nuevo.'}`);  
-    }
-
 
     setTimeout(() => {
       isPrinting.value = false;
-      paymentsForPrint.value = [];
-      hasOpenOrder.value = false;
-      openOrderData.value = null;
-      selectedClient.value = null;
-      orderItems.value = [];
-      changeAmountForPrint.value = 0;
-      creditAmountForPrint.value = 0;
-      clientIdentification.value = "";
-      creditForPrint.value = false;
     }, 500);
-
   } catch (error) {
-    console.error("Error al finalizar la compra:", error.response ? error.response.data : error.message);
-    const errorMessage = error.response?.data?.message || "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
+    console.error(
+      "Error al finalizar la compra:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
     toast.error(errorMessage);
     isPrinting.value = false;
     paymentsForPrint.value = [];
@@ -852,9 +956,8 @@ const handleBuysCompletion = async (orderId, paymentsData, credit, changeAmount,
   }
 };
 
-
 const fetchGroupProducts = async (groupId) => {
-    if (!groupId) {
+  if (!groupId) {
     toast.info("Este producto no pertenece a un grupo.");
     if (currentGroupId.value !== null) {
       currentGroupId.value = null;
@@ -864,7 +967,7 @@ const fetchGroupProducts = async (groupId) => {
   currentGroupId.value = groupId;
 };
 const handleBackFromGroupView = () => {
-    currentGroupId.value = null;
+  currentGroupId.value = null;
 };
 
 const handleAddQuotationProducts = async (productsFromQuotation) => {
@@ -890,6 +993,37 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
   toast.success("Productos de la cotización agregados al pedido.");
   await fetchProducts();
 };
+
+const addReserverOrder = async () => {
+ try {
+    const response = await axios.patch(`/tpv/order/${reservedOrderData.value.id}/reserveAdd`);
+    const { pending_order, reserved_order } = response.data.data;
+
+    openOrderData.value = pending_order;
+    reservedOrderData.value = reserved_order;
+    selectedClient.value = pending_order.client;
+
+    if (openOrderData.value.details) {
+      orderItems.value = openOrderData.value.details.map((item) =>
+        formatOrderItemForFrontend(item)
+      );
+    } else {
+      orderItems.value = [];
+    }
+    hasOpenOrder.value = true;
+    await nextTick();
+    toast.success("Orden agregada exitosamente.");
+    return response.data.data.order;
+
+  } catch (error) {
+     console.error(
+      "Error al agregar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    toast.error(errorMessage);
+  }
+
+}
 </script>
 <template>
   <div>
@@ -902,6 +1036,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         v-model:searchQuery="barcodeSearchQuery"
         :order-products="orderItems"
         :order="openOrderData"
+        :order-reserved="reservedOrderData"
         :total-products-amount="totalProductsAmount"
         :total-iva-amount="totalIVAAmount"
         :total-order-amount="totalOrderAmount"
@@ -911,8 +1046,10 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         @update-quantity="updateOrderItemQuantity"
         @remove-item="removeOrderItem"
         @cancelar-order="cancelarOrder"
+        @reserve-order="reserverOrder"
         @open-buys-modal="openBuysModal"
         @add-quotation-products="handleAddQuotationProducts"
+        @add-reserved-order="addReserverOrder"
       />
     </div>
     <div v-else>
@@ -927,12 +1064,13 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
-      @back="handleBackFromGroupView" 
+      @back="handleBackFromGroupView"
     >
     </OrderFilters>
 
@@ -958,19 +1096,20 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
       @clearErrorForm="clearFormErrors"
     />
 
-
     <BuysModal
-            v-model:is-dialog-visible="showBuysModal"
-            :order-products="orderItems"
-            :order-data="openOrderData"
-            :total-amount="myCalculatedTotal"
-            :selected-currency="selectedDisplayCurrency"
-            @modal-closed="closeBuysModal"
-            @purchase-completed="handleBuysCompletion"
-        />
+      v-model:is-dialog-visible="showBuysModal"
+      :order-products="orderItems"
+      :order-data="openOrderData"
+      :total-amount="myCalculatedTotal"
+      :selected-currency="selectedDisplayCurrency"
+      @modal-closed="closeBuysModal"
+      @purchase-completed="handleBuysCompletion"
+    />
 
-
-     <div id="orderPrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
+    <div
+      id="orderPrint"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
       <OrderTicket
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
@@ -982,7 +1121,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
       />
-    </div>
 
+    </div>
   </div>
 </template>
