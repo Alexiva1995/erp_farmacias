@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\AutoOrderDetailStatus;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
 use App\Repository\AutoOrdersRepository;
-use Auth;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
-    public function __construct(protected AutoOrdersRepository $autoOrdersRepository) {}
+    public function __construct(protected AutoOrdersRepository $autoOrdersRepository)
+    {
+    }
 
     public function getPurchaseOrders(Request $request)
     {

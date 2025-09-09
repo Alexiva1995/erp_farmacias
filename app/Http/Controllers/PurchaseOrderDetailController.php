@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 
 class PurchaseOrderDetailController extends Controller
 {
-    public function __construct(protected AutoOrderDetailsRepository $autoOrderDetailsRepository) {}
+    public function __construct(protected AutoOrderDetailsRepository $autoOrderDetailsRepository)
+    {
+    }
 
     public function getPurchaseOrderDetails(AutoOrder $autoOrder, Request $request)
     {

@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\AutoOrderDetailStatus;
 use App\Models\AutoOrder;
+use App\Models\AutoOrderDetail;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +14,28 @@ class AutoOrdersRepository
     public function baseQuery()
     {
         return AutoOrder::query()
-            ->select(["auto_orders.*", "suppliers.name as supplier_name", "suppliers.sales_phone as phone"])
-            ->join("suppliers", "auto_orders.supplier_id", "=", "suppliers.id")
-            ->when($filters["selectedSupplier"] ?? null, function ($q, $supplierId) {
-                return $q->where("supplier_id", $supplierId);
-            });
+            ->select(
+                'auto_orders.id',
+                'auto_orders.status',
+                'auto_orders.order_date',
+                'suppliers.name as supplier_name',
+                'suppliers.sales_phone as phone',
+                DB::raw('SUM(auto_order_details.quantity) as total_quantity'),
+                DB::raw('SUM(auto_order_details.subtotal) as total_amount')
+            )
+            ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('auto_order_details', 'auto_order_details.order_id', '=', 'auto_orders.id')
+            ->when(
+                $filters['selectedSupplier'] ?? null,
+                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
+            )
+            ->groupBy(
+                'auto_orders.id',
+                'auto_orders.status',
+                'auto_orders.order_date',
+                'suppliers.name',
+                'suppliers.sales_phone'
+            );
     }
 
     public function applyFilters($query, array $filters = [])
@@ -141,8 +159,8 @@ class AutoOrdersRepository
                 "order_id",
                 DB::raw(
                     "ROUND(100.0 * SUM(status = " .
-                        AutoOrderDetailStatus::ARRIVED->value .
-                        ") / NULLIF(COUNT(*), 0), 2) AS percentage",
+                    AutoOrderDetailStatus::ARRIVED->value .
+                    ") / NULLIF(COUNT(*), 0), 2) AS percentage",
                 ),
             ])
             ->groupBy("order_id");
@@ -171,6 +189,22 @@ class AutoOrdersRepository
             ->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
             ->where("auto_order_details.order_id", $autoOrder->id)
             ->get();
+
+        return $query;
+    }
+
+    public function getPurchaseOrderDetails(AutoOrder $autoOrder, $data)
+    {
+        $query = AutoOrderDetail::query()
+            ->select([
+                'product_suppliers.name as name',
+                'auto_order_details.quantity as quantity',
+                "auto_order_details.unit_cost as unit_cost",
+                "auto_order_details.subtotal as subtotal"
+            ])
+            ->leftJoin('product_suppliers', 'product_suppliers.id', '=', 'auto_order_details.product_suppliers_id')
+            ->where('auto_order_details.order_id', $autoOrder->id)
+            ->paginate($data['per_page']);
 
         return $query;
     }
