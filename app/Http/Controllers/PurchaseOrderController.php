@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\AutoOrderDetailStatus;
+use App\Contracts\PurchaseOrder;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Models\AutoOrder;
-use App\Repository\AutoOrdersRepository;
-use Auth;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
-    public function __construct(protected AutoOrdersRepository $autoOrdersRepository) {}
+    public function __construct(protected PurchaseOrder $purchaseOrder)
+    {
+    }
 
     public function getPurchaseOrders(Request $request)
     {
         $filters = $request->query();
-        $paginated = $this->autoOrdersRepository->getAll($filters);
+        $paginated = $this->purchaseOrder->getAll($filters);
 
         return response()->json([
             "data" => $paginated->items(),
@@ -26,12 +26,12 @@ class PurchaseOrderController extends Controller
 
     public function destroy(AutoOrder $autoOrder)
     {
-        return $this->autoOrdersRepository->delete($autoOrder);
+        return $this->purchaseOrder->delete($autoOrder);
     }
 
     public function updateDetails(AutoOrder $autoOrder, UpdateAutoOrderDetailsRequest $request)
     {
-        $result = $this->autoOrdersRepository->update($autoOrder, $request->all());
+        $result = $this->purchaseOrder->update($autoOrder, $request->all());
 
         return response()->json($result);
     }
@@ -39,7 +39,7 @@ class PurchaseOrderController extends Controller
     public function getPurchaseOrderHistory(Request $request)
     {
         $filters = $request->query();
-        $paginated = $this->autoOrdersRepository->getHistory($filters);
+        $paginated = $this->purchaseOrder->getHistory($filters);
 
         return response()->json([
             "data" => $paginated->items(),
@@ -49,7 +49,7 @@ class PurchaseOrderController extends Controller
 
     public function getExportData(AutoOrder $autoOrder)
     {
-        $data = $this->autoOrdersRepository->getExportableData($autoOrder);
+        $data = $this->purchaseOrder->getExportableData($autoOrder);
 
         return response()->json(["data" => $data]);
     }
