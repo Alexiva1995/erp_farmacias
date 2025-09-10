@@ -33,6 +33,10 @@ export default [
         title: 'Cierre de caja',
         to: 'finances-cash-closure',
       },
+      {
+        title: 'Cierre de caja user',
+        to: 'finances-cash-closure-user',
+      },
     ],
   },
 ]

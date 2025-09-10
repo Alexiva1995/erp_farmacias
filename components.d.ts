@@ -39,6 +39,7 @@ declare module 'vue' {
     CashCloseFilters: typeof import('./resources/js/components/CashCloseFilters.vue')['default']
     CashCloseTable: typeof import('./resources/js/components/CashCloseTable.vue')['default']
     CashoutFilters: typeof import('./resources/js/components/CashoutFilters.vue')['default']
+    CashSummary: typeof import('./resources/js/components/CashSummary.vue')['default']
     ClientFormDialoge: typeof import('./resources/js/components/dialogs/ClientFormDialoge.vue')['default']
     ClientsFilters: typeof import('./resources/js/components/ClientsFilters.vue')['default']
     ClientTable: typeof import('./resources/js/components/ClientTable.vue')['default']

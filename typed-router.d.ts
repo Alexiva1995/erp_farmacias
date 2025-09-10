@@ -31,6 +31,7 @@ declare module 'vue-router/auto-routes' {
     'cyclics-history': RouteRecordInfo<'cyclics-history', '/cyclics/history', Record<never, never>, Record<never, never>>,
     'cyclics-users': RouteRecordInfo<'cyclics-users', '/cyclics/users', Record<never, never>, Record<never, never>>,
     'finances-cash-closure': RouteRecordInfo<'finances-cash-closure', '/finances/cash-closure', Record<never, never>, Record<never, never>>,
+    'finances-cash-closure-user': RouteRecordInfo<'finances-cash-closure-user', '/finances/cash-closure-user', Record<never, never>, Record<never, never>>,
     'finances-cashout': RouteRecordInfo<'finances-cashout', '/finances/cashout', Record<never, never>, Record<never, never>>,
     'finances-exchangerate': RouteRecordInfo<'finances-exchangerate', '/finances/exchangerate', Record<never, never>, Record<never, never>>,
     'finances-payment-history': RouteRecordInfo<'finances-payment-history', '/finances/payment-history', Record<never, never>, Record<never, never>>,
