@@ -241,6 +241,9 @@ const handleClearSuppliersFilters = () => {
 const handleClearProductsFilters = () => {
   searchedSupplier.value = null;
   searchedLaboratory.value = null;
+  filterSearchQuery.value = "";
+  stockStatusFilter.value = null;
+  isStrictSearch.value = false;
 };
 
 const handleAddItemToAutoOrder = async (product) => {
