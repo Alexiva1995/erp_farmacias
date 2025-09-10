@@ -47,6 +47,73 @@ const currencies = [
   { value: "COP", label: "COP - Peso Colombiano" },
 ];
 
+// Computed properties para cálculos
+const totalInUSD = computed(() => {
+  if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
+  return selectedInvoices.value.reduce((sum, invoice) => {
+    return (
+      sum + parseFloat(invoice.total_amount_usd || invoice.total_amount || 0)
+    );
+  }, 0);
+});
+
+const suggestedAmountInLocalCurrency = computed(() => {
+  const totalUSD = totalInUSD.value;
+  const paymentCurrency = form.value.payment_currency;
+
+  if (totalUSD === 0) return 0;
+  if (paymentCurrency === "USD") return totalUSD;
+
+  const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
+  const rate = exchangeRates.value[currencyKey];
+
+  if (!rate) return 0;
+
+  return Math.round(totalUSD * rate * 100) / 100;
+});
+
+const amountInUSD = computed(() => {
+  const paymentAmount = form.value.payment_amount;
+  const paymentCurrency = form.value.payment_currency;
+
+  if (!paymentAmount || paymentAmount === 0) return 0;
+  if (paymentCurrency === "USD") return paymentAmount;
+
+  const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
+  const rate = exchangeRates.value[currencyKey];
+
+  if (!rate) return 0;
+
+  return Math.round((paymentAmount / rate) * 100) / 100;
+});
+
+const currentExchangeRate = computed(() => {
+  const paymentCurrency = form.value.payment_currency;
+
+  if (paymentCurrency === "USD") return 1.0;
+
+  const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
+  return exchangeRates.value[currencyKey] || 0;
+});
+
+// Cargar tasas de cambio desde el backend
+const fetchExchangeRates = async () => {
+  try {
+    const response = await axios.get("/api/public/exchange-rates");
+
+    if (Array.isArray(response.data)) {
+      const rates = {};
+      response.data.forEach((rate) => {
+        rates[rate.currency_code] = parseFloat(rate.rate);
+      });
+      exchangeRates.value = rates;
+    }
+  } catch (error) {
+    console.error("Error al cargar tasas de cambio:", error);
+    toast.error("Error al cargar las tasas de cambio");
+  }
+};
+
 // Cerrar modal
 const closeModal = () => {
   emit("update:modelValue", false);
@@ -92,269 +159,130 @@ const updatePaymentAmount = () => {
     return;
   }
 
-  // Calcular total en la moneda original del grupo
-  const total = selectedInvoices.value.reduce((sum, invoice) => {
-    return sum + parseFloat(invoice.total_amount);
-  }, 0);
-
-  form.value.payment_amount = total;
+  form.value.payment_amount = suggestedAmountInLocalCurrency.value;
 };
 
-// Cargar tasas de cambio
-const fetchExchangeRates = async () => {
-  try {
-    const response = await axios.get("/exchange-rates");
-
-    // El endpoint devuelve un array directo, no un objeto con success/data
-    if (Array.isArray(response.data)) {
-      exchangeRates.value = response.data.reduce((acc, rate) => {
-        acc[rate.currency_code] = parseFloat(rate.rate);
-        return acc;
-      }, {});
-    }
-  } catch (error) {
-    console.error("Error al cargar tasas de cambio:", error);
-    toast.error("Error al cargar las tasas de cambio");
-  }
-};
-
-// Actualizar monto cuando cambie la moneda
-const updateAmountForCurrency = () => {
-  if (form.value.payment_currency === "USD") {
-    // Si es USD, usar el total original
-    form.value.payment_amount = totalInOriginalCurrency.value;
-  } else {
-    // Si es otra moneda, calcular el monto sugerido
-    const rate = exchangeRates.value[form.value.payment_currency];
-    if (rate) {
-      // Redondear a 2 decimales
-      form.value.payment_amount =
-        Math.round(totalInOriginalCurrency.value * rate * 100) / 100;
-    }
-  }
-};
-
-// Calcular monto sugerido en la moneda local
-const suggestedAmountInLocalCurrency = computed(() => {
-  if (!exchangeRates.value[form.value.payment_currency]) {
-    return 0;
-  }
-
-  const rate = exchangeRates.value[form.value.payment_currency];
-
-  // Si la moneda es USD, el monto ya está en USD
-  if (form.value.payment_currency === "USD") {
-    return totalInOriginalCurrency.value;
-  }
-
-  // Para otras monedas, multiplicar por la tasa (1 USD = X moneda)
-  // Redondear a 2 decimales
-  return Math.round(totalInOriginalCurrency.value * rate * 100) / 100;
-});
-
-// Calcular monto en USD
-const amountInUSD = computed(() => {
-  if (
-    !form.value.payment_amount ||
-    !exchangeRates.value[form.value.payment_currency]
-  ) {
-    return 0;
-  }
-
-  const rate = exchangeRates.value[form.value.payment_currency];
-
-  // Si la moneda es USD, el monto ya está en USD
-  if (form.value.payment_currency === "USD") {
-    return form.value.payment_amount;
-  }
-
-  // Para otras monedas, dividir por la tasa (1 USD = X moneda)
-  // Redondear a 2 decimales
-  return Math.round((form.value.payment_amount / rate) * 100) / 100;
-});
-
-// Verificar si es pago parcial
-const isPartialPayment = computed(() => {
-  return (
-    form.value.payment_amount > 0 &&
-    form.value.payment_amount < totalInOriginalCurrency.value
-  );
-});
-
-// Monto restante
-const remainingAmount = computed(() => {
-  return totalInOriginalCurrency.value - form.value.payment_amount;
-});
-
-// Total de facturas seleccionadas en la moneda original
-const totalInOriginalCurrency = computed(() => {
-  if (selectedInvoices.value.length === 0) return 0;
-  return selectedInvoices.value.reduce((sum, invoice) => {
-    return sum + parseFloat(invoice.total_amount);
-  }, 0);
-});
-
-// Moneda original de las facturas
-const originalCurrency = computed(() => {
-  return props.paymentGroup?.currency || "USD";
-});
-
-// Información del proveedor
-const supplierInfo = computed(() => {
-  if (!props.paymentGroup) return null;
-  return {
-    name: props.paymentGroup.supplier_name,
-    paymentDate: props.paymentGroup.payment_date,
-    currency: props.paymentGroup.currency,
-    invoiceCount: props.paymentGroup.invoice_count,
-  };
-});
-
-// Formatear fecha
-const formatDate = (date) => {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("es-VE");
-};
-
-// Formatear moneda
-const formatCurrency = (amount, currency) => {
-  if (!amount) return "N/A";
-
-  // Redondear a 2 decimales
-  const roundedAmount = Math.round(amount * 100) / 100;
-
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: currency === "VES" ? "VES" : currency === "COP" ? "COP" : "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(roundedAmount);
-};
-
-// Validar formulario
-const validateForm = () => {
-  errors.value = {};
-
-  if (!form.value.payment_currency) {
-    errors.value.payment_currency = "La moneda es requerida";
-  }
-
-  if (!form.value.payment_amount || form.value.payment_amount <= 0) {
-    errors.value.payment_amount = "El monto debe ser mayor a 0";
-  }
-
-  if (!form.value.payment_date) {
-    errors.value.payment_date = "La fecha de pago es requerida";
-  }
-
-  return Object.keys(errors.value).length === 0;
-};
-
-// Upload de comprobante
-const handleFileUpload = async (file) => {
-  if (!file) return;
-
-  uploading.value = true;
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await axios.post(
-      "/finances/pending-payments/upload-receipt",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (response.data.success) {
-      form.value.photo_url = response.data.data.url;
-      toast.success("Comprobante subido exitosamente");
-    }
-  } catch (error) {
-    console.error("Error al subir comprobante:", error);
-    toast.error("Error al subir el comprobante");
-  } finally {
-    uploading.value = false;
-  }
+// Establecer monto por defecto cuando cambia la moneda
+const setDefaultAmount = () => {
+  form.value.payment_amount = suggestedAmountInLocalCurrency.value;
 };
 
 // Procesar pago
 const processPayment = async () => {
-  if (selectedInvoices.value.length === 0) {
-    toast.error("Debe seleccionar al menos una factura para procesar el pago");
-    return;
-  }
-
-  if (!validateForm()) {
-    toast.error("Por favor, corrija los errores en el formulario");
-    return;
-  }
-
   loading.value = true;
+  errors.value = {};
+
   try {
     const paymentData = {
-      invoice_ids: selectedInvoices.value.map((invoice) => invoice.id),
       payment_currency: form.value.payment_currency,
-      payment_amount: parseFloat(form.value.payment_amount),
+      payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
-      photo_url: form.value.photo_url,
       notes: form.value.notes,
+      photo_url: form.value.payment_receipt
+        ? form.value.payment_receipt.name
+        : null,
+      invoice_ids: selectedInvoices.value.map((inv) => inv.id),
     };
+
+    // console.log("Enviando datos de pago:", paymentData);
 
     const response = await axios.post(
       "/finances/pending-payments/process-payment",
       paymentData
     );
 
-    if (response.data.status === "success" || response.data.success) {
+    if (response.data.status === "success") {
       toast.success("Pago procesado exitosamente");
-      emit("payment-processed");
+      emit("payment-processed", response.data.data);
       closeModal();
     } else {
       toast.error(response.data.message || "Error al procesar el pago");
     }
   } catch (error) {
     console.error("Error al procesar pago:", error);
+    console.error("Error response:", error.response?.data);
+
     if (error.response?.data?.errors) {
       errors.value = error.response.data.errors;
+      toast.error(
+        "Error de validación: " + JSON.stringify(error.response.data.errors)
+      );
+    } else if (error.response?.data?.message) {
+      toast.error("Error: " + error.response.data.message);
+    } else {
+      toast.error("Error al procesar el pago");
     }
-    toast.error(error.response?.data?.message || "Error al procesar el pago");
   } finally {
     loading.value = false;
   }
 };
 
-// Establecer monto por defecto
-const setDefaultAmount = () => {
-  if (form.value.payment_currency === originalCurrency.value) {
-    form.value.payment_amount = totalInOriginalCurrency.value;
+// Manejar subida de archivo
+const handleFileUpload = (file) => {
+  if (file) {
+    form.value.payment_receipt = file;
   }
 };
 
+// Formatear moneda
+const formatCurrency = (amount, currency) => {
+  if (!amount) return "0.00";
+
+  // Mapear códigos de moneda a códigos válidos para Intl.NumberFormat
+  const currencyMap = {
+    Bs: "VES", // Bolívar Venezolano
+    VES: "VES", // Bolívar Venezolano
+    COP: "COP", // Peso Colombiano
+    USD: "USD", // Dólar Americano
+  };
+
+  const validCurrency = currencyMap[currency] || currency;
+
+  const formatter = new Intl.NumberFormat("es-VE", {
+    style: "currency",
+    currency: validCurrency,
+  });
+
+  return formatter.format(amount);
+};
+
+// Formatear fecha
+const formatDate = (date) => {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("es-VE");
+};
+
+// Información del proveedor
+const supplierInfo = computed(() => {
+  if (props.paymentGroup) {
+    return {
+      name: props.paymentGroup.supplier_name,
+      paymentDate: props.paymentGroup.payment_date,
+    };
+  }
+  return null;
+});
+
 // Watchers
 watch(
-  () => form.value.payment_currency,
-  () => {
-    setDefaultAmount();
-  }
-);
-
-watch(
   () => props.modelValue,
-  (newValue) => {
+  async (newValue) => {
     if (newValue) {
-      // Inicializar con todas las facturas seleccionadas por defecto
       selectedInvoices.value = [...props.invoices];
-      setDefaultAmount();
-      fetchExchangeRates();
+      await fetchExchangeRates();
+      form.value.payment_amount = suggestedAmountInLocalCurrency.value;
     }
   }
 );
 
-// Cargar datos al montar
+watch(
+  () => form.value.payment_currency,
+  () => {
+    form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+  }
+);
+
+// Lifecycle
 onMounted(() => {
   fetchExchangeRates();
 });
@@ -363,26 +291,19 @@ onMounted(() => {
 <template>
   <VDialog
     :model-value="modelValue"
-    max-width="600px"
+    max-width="1200"
     persistent
     @update:model-value="closeModal"
-    scrollable
   >
-    <VCard class="d-flex flex-column">
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center">
-        <VIcon icon="tabler-credit-card" class="me-2" />
-        <span class="text-h5 font-weight-bold">Procesar Pago</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon icon="tabler-x" />
-        </VBtn>
+    <VCard>
+      <VCardTitle class="d-flex align-center justify-space-between">
+        <span>Procesar Pago</span>
+        <VBtn icon="tabler-x" variant="text" size="small" @click="closeModal" />
       </VCardTitle>
 
       <VDivider />
 
-      <!-- Contenido -->
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText>
         <!-- Información del proveedor -->
         <div v-if="supplierInfo" class="mb-6">
           <VCard variant="tonal" color="primary">
@@ -401,9 +322,7 @@ onMounted(() => {
                     Total a Pagar
                   </div>
                   <div class="text-h6 font-weight-bold text-success">
-                    {{
-                      formatCurrency(totalInOriginalCurrency, originalCurrency)
-                    }}
+                    {{ formatCurrency(totalInUSD, "USD") }}
                   </div>
                 </VCol>
               </VRow>
@@ -422,7 +341,7 @@ onMounted(() => {
                 item-value="value"
                 label="Moneda de Pago"
                 :error-messages="errors.payment_currency"
-                @update:model-value="updateAmountForCurrency"
+                @update:model-value="setDefaultAmount"
                 required
                 :return-object="false"
               />
@@ -472,34 +391,15 @@ onMounted(() => {
             </VCol>
           </VRow>
 
-          <!-- Indicador de pago parcial -->
-          <VRow v-if="isPartialPayment">
-            <VCol cols="12">
-              <VAlert type="warning" variant="tonal" class="mb-4">
-                <template #title> Pago Parcial </template>
-                <div>
-                  <strong>Monto restante:</strong>
-                  {{ formatCurrency(remainingAmount, originalCurrency) }}
-                </div>
-                <div>
-                  <strong>Estado:</strong> Pago parcial -
-                  {{
-                    formatCurrency(form.payment_amount, form.payment_currency)
-                  }}
-                  de
-                  {{
-                    formatCurrency(totalInOriginalCurrency, originalCurrency)
-                  }}
-                </div>
-              </VAlert>
-            </VCol>
-          </VRow>
-
           <!-- Conversión a USD -->
           <VRow v-if="form.payment_currency !== 'USD'">
             <VCol cols="12">
               <VAlert type="info" variant="tonal" class="mb-4">
                 <template #title> Conversión a USD </template>
+                <div>
+                  <strong>Tasa de cambio:</strong>
+                  1 USD = {{ currentExchangeRate }} {{ form.payment_currency }}
+                </div>
                 <div>
                   <strong
                     >Monto sugerido en {{ form.payment_currency }}:</strong
@@ -523,11 +423,6 @@ onMounted(() => {
                   <strong>Equivalente en USD:</strong>
                   {{ formatCurrency(amountInUSD, "USD") }}
                 </div>
-                <div v-if="exchangeRates[form.payment_currency]">
-                  <strong>Tasa de cambio:</strong>
-                  1 USD = {{ exchangeRates[form.payment_currency] }}
-                  {{ form.payment_currency }}
-                </div>
               </VAlert>
             </VCol>
           </VRow>
@@ -536,9 +431,9 @@ onMounted(() => {
           <VRow>
             <VCol cols="12">
               <VCard variant="outlined">
-                <VCardTitle class="text-h6"
-                  >Seleccionar Facturas a Pagar</VCardTitle
-                >
+                <VCardTitle class="text-h6">
+                  Seleccionar Facturas a Pagar
+                </VCardTitle>
                 <VCardText>
                   <div class="text-caption text-medium-emphasis mb-3">
                     {{ selectedInvoices.length }} de
@@ -557,12 +452,17 @@ onMounted(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="invoice in invoices" :key="invoice.id">
+                      <tr
+                        v-for="invoice in invoices"
+                        :key="invoice.id"
+                        :class="{
+                          'bg-primary-lighten-5': isInvoiceSelected(invoice),
+                        }"
+                      >
                         <td>
                           <VCheckbox
                             :model-value="isInvoiceSelected(invoice)"
                             @change="toggleInvoiceSelection(invoice)"
-                            color="primary"
                           />
                         </td>
                         <td>{{ invoice.invoice_number }}</td>
@@ -575,28 +475,23 @@ onMounted(() => {
                           }}
                         </td>
                         <td>{{ invoice.currency }}</td>
-                        <td>{{ formatDate(invoice.exp_date) }}</td>
+                        <td>{{ formatDate(invoice.due_date) }}</td>
                       </tr>
                     </tbody>
                   </VTable>
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
 
-                  <!-- Total de facturas seleccionadas -->
-                  <div
-                    v-if="selectedInvoices.length > 0"
-                    class="mt-3 pa-3 bg-primary-lighten-5 rounded"
-                  >
-                    <div class="text-h6 text-primary">
-                      Total a Pagar:
-                      {{
-                        formatCurrency(
-                          totalInOriginalCurrency,
-                          originalCurrency
-                        )
-                      }}
-                    </div>
-                    <div class="text-caption text-medium-emphasis">
-                      {{ selectedInvoices.length }} factura(s) seleccionada(s)
-                    </div>
+          <!-- Resumen de pago -->
+          <VRow>
+            <VCol cols="12">
+              <VCard variant="tonal" color="success">
+                <VCardText>
+                  <div class="text-h6 text-primary">
+                    Total a Pagar:
+                    {{ formatCurrency(totalInUSD, "USD") }}
                   </div>
                 </VCardText>
               </VCard>
@@ -605,28 +500,27 @@ onMounted(() => {
         </VForm>
       </VCardText>
 
-      <!-- Footer -->
       <VDivider />
+
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn variant="outlined" @click="closeModal" :disabled="loading">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          @click="closeModal"
+          :disabled="loading"
+        >
           Cancelar
         </VBtn>
-        <VBtn color="success" @click="processPayment" :loading="loading">
-          <VIcon icon="tabler-credit-card" class="me-2" />
+        <VBtn
+          color="primary"
+          @click="processPayment"
+          :loading="loading"
+          :disabled="selectedInvoices.length === 0"
+        >
           Procesar Pago
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
-
-<style scoped>
-.text-medium-emphasis {
-  opacity: 0.7;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-</style>

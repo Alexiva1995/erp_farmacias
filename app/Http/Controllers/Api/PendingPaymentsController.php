@@ -13,8 +13,8 @@ use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class PendingPaymentsController extends Controller
@@ -31,7 +31,7 @@ class PendingPaymentsController extends Controller
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 'paid');
                 })
-                ->orderBy('received_date', 'asc');
+                ->orderBy('payment_date', 'asc');
 
             // Aplicar filtros si existen
             if ($request->filled('supplier_id')) {
@@ -39,17 +39,17 @@ class PendingPaymentsController extends Controller
             }
 
             if ($request->filled('start_date')) {
-                $query->whereDate('received_date', '>=', $request->start_date);
+                $query->whereDate('payment_date', '>=', $request->start_date);
             }
 
             if ($request->filled('end_date')) {
-                $query->whereDate('received_date', '<=', $request->end_date);
+                $query->whereDate('payment_date', '<=', $request->end_date);
             }
 
             $invoices = $query->get();
 
             // Log temporal para debugging
-            \Log::info('Facturas encontradas en PendingPayments:', [
+            Log::info('Facturas encontradas en PendingPayments:', [
                 'total_facturas' => $invoices->count(),
                 'facturas' => $invoices->map(function ($invoice) {
                     return [
@@ -67,24 +67,32 @@ class PendingPaymentsController extends Controller
 
             // Agrupar por proveedor y fecha de pago
             $groupedInvoices = $invoices->groupBy(function ($invoice) {
-                return $invoice->supplier_id . '_' . $invoice->received_date;
+                return $invoice->supplier_id . '_' . $invoice->payment_date;
             })->map(function ($group) {
                 $firstInvoice = $group->first();
-                $totalAmount = $group->sum('total_amount');
+
+                // Calcular total en USD para el grupo
+                $totalAmountUSD = $group->sum('total_usd');
+
+                // Calcular total en la moneda original del grupo
+                $totalAmountOriginal = $group->sum('total_amount');
 
                 return [
                     'supplier_id' => $firstInvoice->supplier_id,
                     'supplier_name' => $firstInvoice->supplier->name,
-                    'payment_date' => $firstInvoice->received_date,
+                    'payment_date' => $firstInvoice->payment_date,
                     'currency' => $firstInvoice->currency,
-                    'total_amount' => $totalAmount,
+                    'total_amount' => $totalAmountOriginal, // Monto en moneda original
+                    'total_amount_usd' => $totalAmountUSD, // Monto en USD
                     'invoice_count' => $group->count(),
                     'invoices' => $group->map(function ($invoice) {
                         return [
                             'id' => $invoice->id,
                             'invoice_number' => $invoice->invoice_number,
                             'total_amount' => $invoice->total_amount,
+                            'total_amount_usd' => $invoice->total_usd,
                             'currency' => $invoice->currency,
+                            'exchange_rate' => $invoice->exchange_rate,
                             'exp_date' => $invoice->exp_date,
                         ];
                     })
@@ -94,7 +102,7 @@ class PendingPaymentsController extends Controller
             return ApiResponse::success([
                 'pending_payments' => $groupedInvoices,
                 'total_groups' => $groupedInvoices->count(),
-                'total_amount' => $invoices->sum('total_amount')
+                'total_amount' => $invoices->sum('total_usd') // Usar total_usd en lugar de total_amount
             ], 'Facturas pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
             return ApiResponse::error('Error al obtener las facturas pendientes: ' . $e->getMessage(), 500);
@@ -148,19 +156,27 @@ class PendingPaymentsController extends Controller
      */
     public function processPayment(Request $request): JsonResponse
     {
-        $request->validate([
-            'invoice_ids' => 'required|array',
-            'invoice_ids.*' => 'exists:invoices,id',
-            'payment_currency' => 'required|in:VES,USD,COP',
-            'payment_amount' => 'required|numeric|min:0.01',
-            'payment_date' => 'required|date',
-            'photo_url' => 'nullable|string',
-            'notes' => 'nullable|string|max:500'
-        ]);
+        try {
+            $request->validate([
+                'invoice_ids' => 'required|array',
+                'invoice_ids.*' => 'exists:invoices,id',
+                'payment_currency' => 'required|in:VES,USD,COP',
+                'payment_amount' => 'required|numeric|min:0.01',
+                'payment_date' => 'required|date',
+                'photo_url' => 'nullable|string',
+                'notes' => 'nullable|string|max:500'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('ProcessPayment - Validation Error:', [
+                'errors' => $e->errors(),
+                'data' => $request->all()
+            ]);
+            return ApiResponse::error('Datos de validación incorrectos', 400, $e->errors());
+        }
 
         try {
             // Log de debug
-            \Log::info('ProcessPayment - Datos recibidos:', [
+            Log::info('ProcessPayment - Datos recibidos:', [
                 'invoice_ids' => $request->invoice_ids,
                 'payment_currency' => $request->payment_currency,
                 'payment_amount' => $request->payment_amount,
@@ -172,7 +188,7 @@ class PendingPaymentsController extends Controller
                 ->whereIn('id', $request->invoice_ids)
                 ->get();
 
-            \Log::info('ProcessPayment - Facturas encontradas:', [
+            Log::info('ProcessPayment - Facturas encontradas:', [
                 'total_facturas' => $invoices->count(),
                 'facturas' => $invoices->map(function ($invoice) {
                     return [
@@ -194,19 +210,18 @@ class PendingPaymentsController extends Controller
                 }
             }
 
-            // 2. Verificar duplicados recientes (mismo monto, misma fecha, mismas facturas)
-            $recentPayment = InvoicePayment::where('amount', $request->payment_amount)
+            // 2. Verificar duplicados (mismo monto, misma fecha, mismas facturas)
+            $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
                 ->where('payment_date', $request->payment_date)
                 ->where('payment_method', $request->payment_currency)
                 ->whereHas('invoices', function ($query) use ($request) {
                     $query->whereIn('id', $request->invoice_ids);
                 })
-                ->where('created_at', '>=', now()->subMinutes(5)) // Últimos 5 minutos
                 ->first();
 
-            if ($recentPayment) {
+            if ($duplicatePayment) {
                 return ApiResponse::error(
-                    'Ya existe un pago idéntico registrado recientemente. Por favor, verifica los datos.',
+                    'Ya existe un pago idéntico registrado para estas facturas. Por favor, verifica los datos.',
                     400
                 );
             }
@@ -239,7 +254,7 @@ class PendingPaymentsController extends Controller
                 // Redondear a 2 decimales
                 $amountUSD = round($request->payment_amount / $exchangeRate->rate, 2);
             }
-            $totalInvoiceAmount = $invoices->sum('total_amount');
+            $totalInvoiceAmount = $invoices->sum('total_usd');
 
             // 4. Crear registro en invoice_payments usando campos existentes
             // Crear JSON compacto para el campo reference (máximo 100 caracteres)
@@ -277,7 +292,7 @@ class PendingPaymentsController extends Controller
             }
 
             // 6. Actualizar facturas
-            $paymentStatus = $this->determinePaymentStatus($request->payment_amount, $totalInvoiceAmount);
+            $paymentStatus = $this->determinePaymentStatus($request->invoice_ids, $amountUSD, $totalInvoiceAmount);
             // El campo status solo acepta: 'pending', 'loaded', 'to_order', 'ordered'
             // Usamos 'ordered' para facturas completamente pagadas
             $newStatus = $paymentStatus === 'paid' ? 'ordered' : 'to_order';
@@ -365,7 +380,7 @@ class PendingPaymentsController extends Controller
 
             return ApiResponse::success($payments);
         } catch (\Exception $e) {
-            \Log::error('Error al obtener historial de pagos: ' . $e->getMessage());
+            Log::error('Error al obtener historial de pagos: ' . $e->getMessage());
             return ApiResponse::error('Error al obtener el historial de pagos', 500);
         }
     }
@@ -439,9 +454,17 @@ class PendingPaymentsController extends Controller
     /**
      * Determinar estado de pago basado en el monto pagado
      */
-    private function determinePaymentStatus($paidAmount, $totalAmount): string
+    private function determinePaymentStatus($invoiceIds, $currentPaymentUSD, $totalAmountUSD): string
     {
-        if ($paidAmount >= $totalAmount) {
+        // Obtener el total pagado anteriormente en USD para estas facturas
+        $previousPaymentsUSD = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
+            $query->whereIn('id', $invoiceIds);
+        })->sum('amount'); // amount ya está en USD según la lógica del controlador
+
+        // Calcular el total pagado incluyendo el pago actual
+        $totalPaidUSD = $previousPaymentsUSD + $currentPaymentUSD;
+
+        if ($totalPaidUSD >= $totalAmountUSD) {
             return 'paid';
         } else {
             return 'partial';
@@ -505,9 +528,9 @@ class PendingPaymentsController extends Controller
 
         // Mapeo de códigos inconsistentes a códigos estándar
         $currencyMap = [
-            'BS' => 'VES',  // Bolívares venezolanos
-            'Bs' => 'VES',  // Bolívares venezolanos (minúscula)
-            'VES' => 'VES', // Ya está correcto
+            'BS' => 'BS',   // Bolívares venezolanos
+            'Bs' => 'BS',   // Bolívares venezolanos (minúscula)
+            'VES' => 'BS',  // Mapear VES a BS (como está en la BD)
             'USD' => 'USD', // Dólares americanos
             'COP' => 'COP', // Pesos colombianos
         ];

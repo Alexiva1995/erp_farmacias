@@ -45,6 +45,9 @@ use App\Http\Controllers\Api\ReturnsController;
 Route::post("/login", [LoginController::class, "login"]);
 Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
+// Rutas públicas (no requieren autenticación ni middleware de estado)
+Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
+
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
     Route::get("/user", function (Request $request) {
@@ -77,7 +80,6 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
     Route::get("/product/{product}", [ResourceController::class, "findProductById"]);
-    Route::get("/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 
     // Rutas de Expiraciones
     Route::get("/products/expirations", [ExpirationController::class, "index"]);
