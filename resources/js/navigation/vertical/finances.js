@@ -18,6 +18,14 @@ export default [
         to: 'finances-exchangerate',
       },
       {
+        title: 'Por Pagar',
+        to: 'finances-pending-payments',
+      },
+      {
+        title: 'Historial de Pagos',
+        to: 'finances-payment-history',
+      },
+      {
         title: 'Flujo de caja',
         to: 'finances-cashout',
       },

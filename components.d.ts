@@ -49,7 +49,7 @@ declare module 'vue' {
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
-    CreditsModal: typeof import('./resources/js/components/dialogs/creditsModal.vue')['default']
+    CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
     CreditsOrderTicket: typeof import('./resources/js/components/CreditsOrderTicket.vue')['default']
     CreditsTicket: typeof import('./resources/js/components/CreditsTicket.vue')['default']
     CreditsViewOrderModal: typeof import('./resources/js/components/dialogs/CreditsViewOrderModal.vue')['default']
@@ -111,8 +111,11 @@ declare module 'vue' {
     OrderWithPsychotropicsTable: typeof import('./resources/js/components/OrderWithPsychotropicsTable.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']
+    PendingPaymentModal: typeof import('./resources/js/components/dialogs/PendingPaymentModal.vue')['default']
+    PendingPaymentsFilters: typeof import('./resources/js/components/PendingPaymentsFilters.vue')['default']
     PriceAdjustmentDialog: typeof import('./resources/js/components/dialogs/PriceAdjustmentDialog.vue')['default']
     PricingPlanDialog: typeof import('./resources/js/components/dialogs/PricingPlanDialog.vue')['default']
+    ProcessPaymentModal: typeof import('./resources/js/components/dialogs/ProcessPaymentModal.vue')['default']
     ProductComparisionProductsTable: typeof import('./resources/js/components/ProductComparisionProductsTable.vue')['default']
     ProductComparisionTable: typeof import('./resources/js/components/ProductComparisionTable.vue')['default']
     ProductCyclicTable: typeof import('./resources/js/components/ProductCyclicTable.vue')['default']
@@ -188,6 +191,5 @@ declare module 'vue' {
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

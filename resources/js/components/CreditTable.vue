@@ -41,13 +41,9 @@ const authStore = useAuthStore();
 
       <template v-slot:item.action="{ item }">
         <div class="d-flex align-center gap-2">
-          
-          <VCheckbox
-            label="Pagar"
-            :model-value="item.is_paid" 
-            :disabled="item.is_paid"
-            @update:model-value="emit('open-payment-modal', item)"
-          />
+          <IconBtn @click="emit('open-payment-modal', item)" :disabled="item.is_paid">
+            <VIcon icon="tabler-wallet"
+          /></IconBtn>
           <IconBtn @click="emit('view-order-modal', item)">
             <VIcon icon="tabler-eye"
           /></IconBtn>
