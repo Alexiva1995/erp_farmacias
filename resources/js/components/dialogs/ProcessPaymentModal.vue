@@ -48,28 +48,67 @@ const currencies = [
 ];
 
 // Computed properties para cálculos
+const totalInOriginalCurrency = computed(() => {
+  if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
+  return selectedInvoices.value.reduce((sum, invoice) => {
+    return sum + parseFloat(invoice.total_amount || 0);
+  }, 0);
+});
+
 const totalInUSD = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
   return selectedInvoices.value.reduce((sum, invoice) => {
-    return (
-      sum + parseFloat(invoice.total_amount_usd || invoice.total_amount || 0)
-    );
+    // Siempre usar total_usd de la base de datos para el "Total a Pagar"
+    return sum + parseFloat(invoice.total_amount_usd || 0);
   }, 0);
 });
 
 const suggestedAmountInLocalCurrency = computed(() => {
-  const totalUSD = totalInUSD.value;
   const paymentCurrency = form.value.payment_currency;
 
-  if (totalUSD === 0) return 0;
-  if (paymentCurrency === "USD") return totalUSD;
+  console.log("🔍 Calculando monto sugerido:");
+  console.log("- Moneda de pago:", paymentCurrency);
+  console.log("- Moneda de factura:", invoiceCurrency.value);
+  console.log("- Monto original:", totalInOriginalCurrency.value);
+  console.log("- Total en USD (de BD):", totalInUSD.value);
 
+  // Si es USD, usar el total en USD de la base de datos
+  if (paymentCurrency === "USD") {
+    console.log("✅ Usando total en USD de BD:", totalInUSD.value);
+    return totalInUSD.value;
+  }
+
+  // Si la moneda de pago es la misma que la factura, usar el monto original
+  if (
+    selectedInvoices.value.length > 0 &&
+    paymentCurrency === selectedInvoices.value[0].currency
+  ) {
+    console.log(
+      "✅ Usando monto original (misma moneda):",
+      totalInOriginalCurrency.value
+    );
+    return totalInOriginalCurrency.value;
+  }
+
+  // Para conversiones a otras monedas, usar la tasa de cambio
   const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
   const rate = exchangeRates.value[currencyKey];
 
-  if (!rate) return 0;
+  if (!rate) {
+    console.log("❌ No hay tasa de cambio para:", currencyKey);
+    return 0;
+  }
 
-  return Math.round(totalUSD * rate * 100) / 100;
+  const calculated = Math.round(totalInUSD.value * rate * 100) / 100;
+  console.log(
+    "✅ Conversión calculada:",
+    totalInUSD.value,
+    "×",
+    rate,
+    "=",
+    calculated
+  );
+  return calculated;
 });
 
 const amountInUSD = computed(() => {
@@ -96,10 +135,18 @@ const currentExchangeRate = computed(() => {
   return exchangeRates.value[currencyKey] || 0;
 });
 
+// Obtener la moneda de la factura seleccionada
+const invoiceCurrency = computed(() => {
+  if (selectedInvoices.value.length > 0) {
+    return selectedInvoices.value[0].currency;
+  }
+  return null;
+});
+
 // Cargar tasas de cambio desde el backend
 const fetchExchangeRates = async () => {
   try {
-    const response = await axios.get("/api/public/exchange-rates");
+    const response = await axios.get("/public/exchange-rates");
 
     if (Array.isArray(response.data)) {
       const rates = {};
@@ -330,6 +377,62 @@ onMounted(() => {
           </VCard>
         </div>
 
+        <!-- Selección de facturas -->
+        <VRow>
+          <VCol cols="12">
+            <VCard variant="outlined">
+              <VCardTitle class="text-h6">
+                Seleccionar Facturas a Pagar
+              </VCardTitle>
+              <VCardText>
+                <div class="text-caption text-medium-emphasis mb-3">
+                  {{ selectedInvoices.length }} de
+                  {{ invoices.length }} factura(s) seleccionada(s)
+                </div>
+
+                <!-- Tabla de facturas con checkboxes -->
+                <VTable density="compact">
+                  <thead>
+                    <tr>
+                      <th width="50">Seleccionar</th>
+                      <th>N° Factura</th>
+                      <th>Monto</th>
+                      <th>Moneda</th>
+                      <th>Fecha Vencimiento</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="invoice in invoices"
+                      :key="invoice.id"
+                      :class="{
+                        'bg-primary-lighten-5': isInvoiceSelected(invoice),
+                      }"
+                    >
+                      <td>
+                        <VCheckbox
+                          :model-value="isInvoiceSelected(invoice)"
+                          @change="toggleInvoiceSelection(invoice)"
+                        />
+                      </td>
+                      <td>{{ invoice.invoice_number }}</td>
+                      <td>
+                        {{
+                          formatCurrency(invoice.total_amount, invoice.currency)
+                        }}
+                      </td>
+                      <td>{{ invoice.currency }}</td>
+                      <td>{{ formatDate(invoice.due_date) }}</td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+
+        <VDivider class="my-6" />
+
         <!-- Formulario de pago -->
         <VForm @submit.prevent="processPayment">
           <VRow>
@@ -391,112 +494,92 @@ onMounted(() => {
             </VCol>
           </VRow>
 
-          <!-- Conversión a USD -->
-          <VRow v-if="form.payment_currency !== 'USD'">
+          <!-- Información y detalles del pago -->
+          <VRow>
             <VCol cols="12">
               <VAlert type="info" variant="tonal" class="mb-4">
-                <template #title> Conversión a USD </template>
-                <div>
-                  <strong>Tasa de cambio:</strong>
-                  1 USD = {{ currentExchangeRate }} {{ form.payment_currency }}
+                <template #title> Información y detalles del pago </template>
+
+                <!-- Para USD -->
+                <div v-if="form.payment_currency === 'USD'">
+                  <div>
+                    <strong
+                      >Monto sugerido en {{ form.payment_currency }}:</strong
+                    >
+                    {{
+                      formatCurrency(
+                        suggestedAmountInLocalCurrency,
+                        form.payment_currency
+                      )
+                    }}
+                  </div>
+                  <div>
+                    <strong
+                      >Monto ingresado en {{ form.payment_currency }}:</strong
+                    >
+                    {{
+                      formatCurrency(form.payment_amount, form.payment_currency)
+                    }}
+                  </div>
+                  <div>
+                    <strong>Total a Pagar (USD):</strong>
+                    {{ formatCurrency(totalInUSD, "USD") }}
+                  </div>
                 </div>
-                <div>
-                  <strong
-                    >Monto sugerido en {{ form.payment_currency }}:</strong
+
+                <!-- Para VES/COP -->
+                <div v-else>
+                  <div>
+                    <strong>Tasa de cambio:</strong>
+                    1 USD = {{ currentExchangeRate }}
+                    {{ form.payment_currency }}
+                  </div>
+                  <div>
+                    <strong
+                      >Monto sugerido en {{ form.payment_currency }}:</strong
+                    >
+                    {{
+                      formatCurrency(
+                        suggestedAmountInLocalCurrency,
+                        form.payment_currency
+                      )
+                    }}
+                  </div>
+                  <div>
+                    <strong
+                      >Monto ingresado en {{ form.payment_currency }}:</strong
+                    >
+                    {{
+                      formatCurrency(form.payment_amount, form.payment_currency)
+                    }}
+                  </div>
+                  <div>
+                    <strong>Equivalente en USD:</strong>
+                    {{ formatCurrency(amountInUSD, "USD") }}
+                  </div>
+
+                  <!-- Información de la factura original -->
+                  <div
+                    v-if="invoiceCurrency"
+                    class="mt-3 pa-3 bg-grey-lighten-4 rounded"
                   >
-                  {{
-                    formatCurrency(
-                      suggestedAmountInLocalCurrency,
-                      form.payment_currency
-                    )
-                  }}
-                </div>
-                <div>
-                  <strong
-                    >Monto ingresado en {{ form.payment_currency }}:</strong
-                  >
-                  {{
-                    formatCurrency(form.payment_amount, form.payment_currency)
-                  }}
-                </div>
-                <div>
-                  <strong>Equivalente en USD:</strong>
-                  {{ formatCurrency(amountInUSD, "USD") }}
+                    <div>
+                      <strong>Monto original de la factura:</strong>
+                      {{
+                        formatCurrency(totalInOriginalCurrency, invoiceCurrency)
+                      }}
+                    </div>
+                    <div>
+                      <strong>Total a Pagar (USD):</strong>
+                      {{ formatCurrency(totalInUSD, "USD") }}
+                    </div>
+                  </div>
                 </div>
               </VAlert>
             </VCol>
           </VRow>
 
-          <!-- Selección de facturas -->
-          <VRow>
-            <VCol cols="12">
-              <VCard variant="outlined">
-                <VCardTitle class="text-h6">
-                  Seleccionar Facturas a Pagar
-                </VCardTitle>
-                <VCardText>
-                  <div class="text-caption text-medium-emphasis mb-3">
-                    {{ selectedInvoices.length }} de
-                    {{ invoices.length }} factura(s) seleccionada(s)
-                  </div>
-
-                  <!-- Tabla de facturas con checkboxes -->
-                  <VTable density="compact">
-                    <thead>
-                      <tr>
-                        <th width="50">Seleccionar</th>
-                        <th>N° Factura</th>
-                        <th>Monto</th>
-                        <th>Moneda</th>
-                        <th>Fecha Vencimiento</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="invoice in invoices"
-                        :key="invoice.id"
-                        :class="{
-                          'bg-primary-lighten-5': isInvoiceSelected(invoice),
-                        }"
-                      >
-                        <td>
-                          <VCheckbox
-                            :model-value="isInvoiceSelected(invoice)"
-                            @change="toggleInvoiceSelection(invoice)"
-                          />
-                        </td>
-                        <td>{{ invoice.invoice_number }}</td>
-                        <td>
-                          {{
-                            formatCurrency(
-                              invoice.total_amount,
-                              invoice.currency
-                            )
-                          }}
-                        </td>
-                        <td>{{ invoice.currency }}</td>
-                        <td>{{ formatDate(invoice.due_date) }}</td>
-                      </tr>
-                    </tbody>
-                  </VTable>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
-
           <!-- Resumen de pago -->
-          <VRow>
-            <VCol cols="12">
-              <VCard variant="tonal" color="success">
-                <VCardText>
-                  <div class="text-h6 text-primary">
-                    Total a Pagar:
-                    {{ formatCurrency(totalInUSD, "USD") }}
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
         </VForm>
       </VCardText>
 
