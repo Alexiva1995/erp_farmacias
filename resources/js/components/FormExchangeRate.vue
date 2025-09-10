@@ -9,6 +9,8 @@ const props = defineProps({
   dateColor: { type: String, required: true },
 });
 
+const emit = defineEmits(["refresh"]);
+
 const pesos = ref()
 
 const sudmitPesos = async () => {
@@ -17,12 +19,15 @@ const sudmitPesos = async () => {
       "currency_code": "COP",
       "rate" : parseFloat(pesos.value)
     }
-    console.log(data)
+    //console.log(data)
     // Aquí podrías enviar datos como props.pesos
+    
     try {
       const response = await axios.post('/finances/exchange-rates/store', data)
-
+      
       console.log('¡Pesos enviados!', response.data)
+
+      emit("refresh")
     } catch (error) {
       console.error('Error al enviar:', error)
     }
@@ -33,12 +38,15 @@ const updateBCVDollar = async () => {
     let data = {
       "currency_code": "USD",
     }
-    console.log(data)
+    //console.log(data)
     // Aquí podrías enviar datos como props.pesos
+    
     try {
       const response = await axios.post('/finances/exchange-rates/updateBCVDollar', data)
-
+      
       console.log('¡Pesos enviados!', response.data)
+
+      emit("refresh")
     } catch (error) {
       console.error('Error al enviar:', error)
     }
