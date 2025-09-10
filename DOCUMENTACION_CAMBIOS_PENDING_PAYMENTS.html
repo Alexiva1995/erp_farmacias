@@ -648,13 +648,25 @@ axiosInstance.interceptors.request.use(
             <div class="file-structure">
 <strong>Frontend (Vue.js):</strong>
 ├── resources/js/pages/finances/pending-payments.vue
-│   └── Corrección de rutas API (/pending-payments → /finances/pending-payments)
+│   ├── Corrección de rutas API (/pending-payments → /finances/pending-payments)
+│   └── Integración de ExchangeRatesModal
 ├── resources/js/components/dialogs/ProcessPaymentModal.vue
 │   ├── Corrección de formateo de monedas (Bs → VES)
 │   ├── Corrección de URL de procesamiento (/api duplicado)
 │   ├── Corrección de validación de respuesta (success → status)
 │   ├── Mapeo correcto de códigos de moneda (VES → BS)
+│   ├── Reorganización del layout del modal
+│   ├── Mejora de cálculos de conversión (precisión exacta)
+│   ├── Interfaz diferenciada por moneda (USD vs VES/COP)
+│   ├── Eliminación de "Total a Pagar" duplicado
+│   ├── Agregado de separación visual (VDivider)
 │   └── Limpieza de logs de consola
+├── resources/js/components/dialogs/ExchangeRatesModal.vue (NUEVO)
+│   ├── Modal para mostrar tasas de cambio
+│   ├── Tabla con tasas actuales (BS, COP, USD)
+│   ├── Información de conversión detallada
+│   ├── Interfaz responsive y moderna
+│   └── Corrección de URL de API (/api duplicado)
 └── resources/js/plugins/axios.js
     ├── Eliminación de interceptor de token Bearer
     ├── Implementación de autenticación por sesión
@@ -705,6 +717,12 @@ axiosInstance.interceptors.request.use(
                     <li>✅ <strong>Responde con JSON válido</strong> en todas las peticiones API</li>
                     <li>✅ <strong>Maneja autenticación por sesión</strong> correctamente</li>
                     <li>✅ <strong>Protege contra CSRF</strong> con tokens apropiados</li>
+                    <li>✅ <strong>Layout optimizado</strong> con flujo lógico de información</li>
+                    <li>✅ <strong>Cálculos precisos</strong> - Monto sugerido = Precio exacto de factura</li>
+                    <li>✅ <strong>Interfaz diferenciada</strong> por moneda (USD vs VES/COP)</li>
+                    <li>✅ <strong>Modal de tasas de cambio</strong> para consulta fácil de conversiones</li>
+                    <li>✅ <strong>Separación visual clara</strong> entre secciones del modal</li>
+                    <li>✅ <strong>Total a Pagar exacto</strong> siempre muestra valor de la BD</li>
                 </ul>
             </div>
 
@@ -981,6 +999,126 @@ axiosInstance.interceptors.request.use(
         </div>
 
         <div class="section">
+            <h2>🎨 Fase 5: Reorganización de Interfaz y Mejoras de UX</h2>
+            <p class="subtitle">Fecha: 10 de Septiembre, 2025 - Optimización del layout del modal y cálculos de conversión</p>
+            
+            <div class="change-item">
+                <h4><span class="change-type update">UPDATE</span> Reorganización del Layout del Modal</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>❌ ANTES (Layout confuso):</h5>
+                <div class="code-block before">
+1. Información del Proveedor
+2. Formulario de Pago
+3. Información y detalles del pago
+4. Seleccionar Facturas a Pagar
+5. Total a Pagar (duplicado)
+                </div>
+                
+                <h5>✅ DESPUÉS (Layout optimizado):</h5>
+                <div class="code-block after">
+1. Información del Proveedor
+2. Seleccionar Facturas a Pagar
+3. ───────────────────────────── (Separador visual)
+4. Formulario de Pago
+5. Información y detalles del pago
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Corrección de Cálculos de Conversión</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>❌ ANTES (Cálculo impreciso):</h5>
+                <div class="code-block before">
+// Siempre calculaba desde total_usd, causando diferencias menores
+const calculated = Math.round(totalInUSD.value * rate * 100) / 100;
+                </div>
+                
+                <h5>✅ DESPUÉS (Cálculo preciso):</h5>
+                <div class="code-block after">
+// Para VES/COP: usar monto original de la factura
+if (paymentCurrency === selectedInvoices.value[0].currency) {
+  return totalInOriginalCurrency.value; // Exacto: COP 870,000.00
+}
+
+// Para USD: usar total_usd de la BD
+if (paymentCurrency === "USD") {
+  return totalInUSD.value; // Exacto: USD 217.00
+}
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type update">UPDATE</span> Mejora de Interfaz por Moneda</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>✅ Interfaz diferenciada implementada:</h5>
+                <div class="code-block after">
+<!-- Para USD -->
+<div v-if="form.payment_currency === 'USD'">
+  - Monto sugerido en USD: USD 217,00
+  - Monto ingresado en USD: USD 217,00
+  - Total a Pagar (USD): USD 217,00
+</div>
+
+<!-- Para VES/COP -->
+<div v-else>
+  - Tasa de cambio: 1 USD = 4008.92 COP
+  - Monto sugerido en COP: COP 870.000,00
+  - Monto ingresado en COP: COP 870.000,00
+  - Equivalente en USD: USD 217,00
+  - Monto original de la factura: COP 870.000,00
+  - Total a Pagar (USD): USD 217,00
+</div>
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type add">ADD</span> Modal de Tasas de Cambio</h4>
+                <div class="file-path">resources/js/components/dialogs/ExchangeRatesModal.vue</div>
+                
+                <h5>✅ Nuevo componente creado:</h5>
+                <div class="code-block after">
+// Modal para mostrar tasas de cambio desde la API
+- Botón "Exchange Rates" en pantalla principal
+- Tabla con tasas actuales (BS, COP, USD)
+- Información de conversión detallada
+- Actualización en tiempo real
+- Interfaz responsive y moderna
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Corrección de URL de API en ExchangeRatesModal</h4>
+                <div class="file-path">resources/js/components/dialogs/ExchangeRatesModal.vue</div>
+                
+                <h5>❌ ANTES (URL duplicada):</h5>
+                <div class="code-block before">
+const response = await axios.get("/api/public/exchange-rates"); // ❌ /api duplicado
+                </div>
+                
+                <h5>✅ DESPUÉS (URL correcta):</h5>
+                <div class="code-block after">
+const response = await axios.get("/public/exchange-rates"); // ✅ Sin duplicación
+                </div>
+            </div>
+
+            <div class="success-box">
+                <h3>✅ Mejoras de UX Implementadas</h3>
+                <ul>
+                    <li><strong>Layout optimizado:</strong> Flujo lógico de información</li>
+                    <li><strong>Cálculos precisos:</strong> Monto sugerido = Precio exacto de factura</li>
+                    <li><strong>Interfaz diferenciada:</strong> Campos específicos por moneda</li>
+                    <li><strong>Separación visual:</strong> VDivider entre secciones</li>
+                    <li><strong>Modal de tasas:</strong> Acceso fácil a información de conversión</li>
+                    <li><strong>Consola limpia:</strong> Sin logs innecesarios</li>
+                    <li><strong>Total a Pagar:</strong> Siempre muestra valor exacto de la BD</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>📊 Estado Final del Sistema</h2>
             
             <div class="success-box">
@@ -999,11 +1137,13 @@ axiosInstance.interceptors.request.use(
             <div class="info-box">
                 <h3>📈 Métricas de Éxito</h3>
                 <ul>
-                    <li><strong>Errores resueltos:</strong> 8 problemas técnicos principales</li>
-                    <li><strong>Archivos modificados:</strong> 8 archivos actualizados</li>
+                    <li><strong>Errores resueltos:</strong> 12 problemas técnicos principales</li>
+                    <li><strong>Archivos modificados:</strong> 9 archivos actualizados + 1 nuevo</li>
                     <li><strong>Facturas de prueba:</strong> 6 facturas creadas</li>
                     <li><strong>Casos de prueba:</strong> 6 escenarios diferentes</li>
                     <li><strong>Compatibilidad:</strong> 100% con otros módulos</li>
+                    <li><strong>Mejoras de UX:</strong> 7 optimizaciones implementadas</li>
+                    <li><strong>Componentes nuevos:</strong> 1 modal de tasas de cambio</li>
                     <li><strong>Tiempo de desarrollo:</strong> 1 día completo</li>
                 </ul>
             </div>
@@ -1023,9 +1163,10 @@ axiosInstance.interceptors.request.use(
                     <li><strong>Fase 2 - Procesamiento de pagos:</strong> 6 problemas adicionales corregidos</li>
                     <li><strong>Fase 3 - Datos de prueba:</strong> 6 facturas de prueba creadas</li>
                     <li><strong>Fase 4 - Optimización:</strong> Sistema completamente optimizado</li>
-                    <li><strong>Total de archivos modificados:</strong> 8 archivos</li>
+                    <li><strong>Fase 5 - Mejoras de UX:</strong> 7 optimizaciones de interfaz implementadas</li>
+                    <li><strong>Total de archivos modificados:</strong> 9 archivos + 1 nuevo componente</li>
                     <li><strong>Compatibilidad:</strong> 100% compatible con otros módulos</li>
-                    <li><strong>Funcionalidad:</strong> Módulo "Por Pagar" completamente operativo</li>
+                    <li><strong>Funcionalidad:</strong> Módulo "Por Pagar" completamente operativo y optimizado</li>
                 </ul>
 
                 <h4>✅ Respuesta Final sobre Cambios en Axios:</h4>
