@@ -289,6 +289,8 @@ const formatDate = (dateString) => {
               variant="elevated"
               size="default"
               label
+              class="me-2"
+              style="padding: 19px 19px 19px 19px"
             >
               <VIcon icon="tabler-refresh-dot" start />
               Ciclo Activo: {{ formatDate(activeCycle.start_date) }}
@@ -300,28 +302,28 @@ const formatDate = (dateString) => {
               prepend-icon="tabler-plus"
               :loading="isCreatingCycle"
               @click="handleCreateCycle"
+              class="me-2"
             >
               Crear Nuevo Ciclo
             </VBtn>
+            <VBtn
+              color="primary"
+              :disabled="loading || isClosing || !hasActiveCycle"
+              :loading="isClosing"
+              @click="handleCashClose"
+            >
+              <VIcon icon="tabler-lock" start />
+              Hacer Cierre de Inventario
+            </VBtn>
           </div>
+
+          <!-- Sección separada para el botón de cierre -->
+          <VCardActions class="justify-end pa-4 pt-0"> </VCardActions>
         </VCard>
       </VCol>
 
       <VCol cols="12">
         <CashCloseTable :items="counts" :loading="loading" />
-      </VCol>
-
-      <VCol cols="12" class="text-right">
-        <VBtn
-          color="primary"
-          size="large"
-          :disabled="loading || isClosing || !hasActiveCycle"
-          :loading="isClosing"
-          @click="handleCashClose"
-        >
-          <VIcon icon="tabler-lock" start />
-          Hacer Cierre de Caja
-        </VBtn>
       </VCol>
     </VRow>
   </div>
