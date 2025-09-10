@@ -291,6 +291,7 @@ class SupplierQueryService
         $supplierId = $request->query("supplierId");
         $perPage = $request->query("perPage", 10) ?? 10;
         $search = $request->query('q');
+        $originId = $request->query("originId");
         $hasStock = $request->has('hasStock')
             ? filter_var($request->query("hasStock"), FILTER_VALIDATE_BOOLEAN) : null;
         $isStrictSearch = filter_var($request->query("isStrictSearch"), FILTER_VALIDATE_BOOLEAN);
@@ -307,6 +308,7 @@ class SupplierQueryService
                 DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
                 DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
                 "product_suppliers.expiration as expiration",
+                "product_suppliers.active_ingredient as active_ingredient"
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
@@ -328,6 +330,9 @@ class SupplierQueryService
                         });
                     }
                 }
+            })
+            ->when(!empty($originId), function ($query) use ($originId) {
+                $query->where('products.origin_id', $originId);
             })
             ->when($supplierId, function ($query) use ($supplierId) {
                 $query->where("supplier_id", $supplierId);

@@ -2,7 +2,9 @@
 const props = defineProps({
   selectedSupplier: [Number, String, null],
   selectedLaboratory: [Number, String, null],
+  selectedOrigin: [Number, String, null],
   suppliers: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   enableDiscounts: { type: Boolean, default: false },
@@ -16,6 +18,7 @@ const props = defineProps({
 const emit = defineEmits([
   "update:selectedSupplier",
   "update:selectedLaboratory",
+  "update:selectedOrigin",
   "update:searchQuery",
   "update:stockStatusFilter",
   "update:isStrictSearch",
@@ -56,6 +59,17 @@ const stockOptions = [
           item-value="id"
           clearable
           @update:model-value="emit('update:selectedLaboratory', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.selectedOrigin"
+          label="Origen"
+          :items="props.origins"
+          item-title="name"
+          item-value="id"
+          clearable
+          @update:model-value="emit('update:selectedOrigin', $event)"
         />
       </VCol>
       <VCol cols="12" sm="6" md="3">

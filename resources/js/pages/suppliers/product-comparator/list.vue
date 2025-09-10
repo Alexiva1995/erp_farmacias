@@ -5,17 +5,18 @@ import { onMounted, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
+const origins = ref([]);
 const laboratories = ref([]);
 const products = ref([]);
 const loadingSuppliers = ref(false);
 const loadingProducts = ref(false);
-const loadingLaboratories = ref(false);
 const quantityErrors = reactive({});
 
 const supplierOption = ref(null);
 const selectedSupplier = ref(null);
 const searchedSupplier = ref(null);
 const searchedLaboratory = ref(null);
+const selectedOrigin = ref(null);
 const filterSearchQuery = ref("");
 const stockStatusFilter = ref(null);
 const isStrictSearch = ref(false);
@@ -40,30 +41,6 @@ const productsTotal = ref(0);
 const enableUsdAmountCol = ref(false);
 const enableDiscountCol = ref(false);
 
-const fetchSuppliers = async () => {
-  try {
-    const { data } = await axios.get("/available-suppliers");
-    suppliers.value = data.data;
-  } catch (error) {
-    console.error("Hubo un error al obtener los proveedores:", error);
-    toast.error("Error al obtener los proveedores.");
-  } finally {
-    loadingSuppliers.value = false;
-  }
-};
-
-const fetchLaboratories = async () => {
-  try {
-    const { data } = await axios.get("/suppliers/available-laboratories");
-    laboratories.value = data;
-  } catch (error) {
-    console.error("Hubo un error al obtener los laboratorios:", error);
-    toast.error("Error al obtener los laboratorios.");
-  } finally {
-    loadingLaboratories.value = false;
-  }
-};
-
 const fetchProducts = async () => {
   const params = {
     page: productsPage.value,
@@ -71,6 +48,7 @@ const fetchProducts = async () => {
     supplierId: searchedSupplier.value,
     laboratoryId: searchedLaboratory.value,
     q: filterSearchQuery.value,
+    originId: selectedOrigin.value,
     isStrictSearch: isStrictSearch.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
@@ -149,11 +127,28 @@ const stopPolling = () => {
   }
 };
 
+const fetchOptions = async () => {
+  try {
+    const [labResponse, originResponse, suppliersResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+      axios.get("/available-suppliers"),
+    ]);
+    laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
+    suppliers.value = suppliersResponse.data.data;
+  } catch (error) {
+    console.error("Hubo un error al obtener los datos para filtrar:", error);
+    toast.error("Hubo un error al obtener los datos para filtrar.");
+  } finally {
+    loadingSuppliers.value = false;
+  }
+};
+
 onMounted(() => {
-  fetchSuppliers();
+  fetchOptions();
   fetchSupplierConnections();
   fetchProducts();
-  fetchLaboratories();
 });
 
 let supplierDebounceTimer;
@@ -184,6 +179,7 @@ watch(
     filterSearchQuery,
     stockStatusFilter,
     isStrictSearch,
+    selectedOrigin,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -243,7 +239,11 @@ const handleClearProductsFilters = () => {
   searchedLaboratory.value = null;
   filterSearchQuery.value = "";
   stockStatusFilter.value = null;
+  selectedOrigin.value = null;
   isStrictSearch.value = false;
+  enableDiscounts.value = false;
+  enableUsdAmountCol.value = false;
+  enableDiscountCol.value = false;
 };
 
 const handleAddItemToAutoOrder = async (product) => {
@@ -332,11 +332,13 @@ const handleDeleteSupplierProducts = async (supplier) => {
           v-model:enable-discount-col="enableDiscountCol"
           v-model:searchQuery="filterSearchQuery"
           v-model:stockStatusFilter="stockStatusFilter"
+          v-model:selectedOrigin="selectedOrigin"
           v-model:isStrictSearch="isStrictSearch"
           :suppliers="suppliers"
           :laboratories="laboratories"
           :selected-laboratory="searchedLaboratory"
           :selected-supplier="searchedSupplier"
+          :origins="origins"
           @clear="handleClearProductsFilters"
           @update:selectedLaboratory="handleSearchLaboratory"
           @update:selectedSupplier="handleSearchSupplier"

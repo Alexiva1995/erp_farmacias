@@ -72,8 +72,17 @@ const headers = computed(() =>
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
+      <template #item.name="{ item }">
+        <div class="d-flex align-center gap-x-4">
+          <div class="d-flex flex-column">
+            <span class="text-body-1 font-weight-medium text-high-emphasis">
+              {{ item.name }}
+            </span>
+            <span class="text-sm text-disabled">
+              {{ item.active_ingredient }}
+            </span>
+          </div>
+        </div>
       </template>
 
       <template #item.unit_cost_usd="{ item }">
