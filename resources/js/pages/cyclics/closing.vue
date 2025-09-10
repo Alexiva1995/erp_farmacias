@@ -92,7 +92,7 @@ const formatCurrency = (value) => {
 const handleCashClose = async () => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: "Esta acción cerrará el ciclo de inventario activo. ¿Deseas continuar?",
+    text: "Esta acción cerrará el ciclo de inventario activo y creará automáticamente un nuevo ciclo. ¿Deseas continuar?",
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, cerrar ciclo",
@@ -119,13 +119,39 @@ const handleCashClose = async () => {
   if (!result.isConfirmed) return;
 
   isClosing.value = true;
+
   try {
-    const response = await axios.post("/inventory/cycle/close");
-    toast.success(response.data.message);
-    await fetchData();
-    await fetchCycleStatus();
-  } catch (error) {
-    toast.error(error.response?.data?.message || "Error al cerrar el ciclo.");
+    // Paso 1: Cerrar el ciclo actual
+    const closeResponse = await axios.post("/inventory/cycle/close");
+
+    // Mostrar mensaje de éxito del cierre
+    toast.success(closeResponse.data.message);
+
+    // Paso 2: Crear automáticamente un nuevo ciclo
+    try {
+      const createResponse = await axios.post("/inventory/cycle/create");
+
+      // Mostrar mensaje de éxito de la creación del nuevo ciclo
+      toast.success(
+        `Nuevo ciclo creado automáticamente: ${createResponse.data.message}`
+      );
+    } catch (createError) {
+      // Si falla la creación del nuevo ciclo, mostrar error específico
+      console.error("Error al crear el nuevo ciclo:", createError);
+      toast.error(
+        createError.response?.data?.message ||
+          "El ciclo se cerró correctamente, pero hubo un error al crear el nuevo ciclo. Por favor, créelo manualmente."
+      );
+    }
+
+    // Paso 3: Actualizar los datos y estado del ciclo
+    await Promise.all([fetchData(), fetchCycleStatus()]);
+  } catch (closeError) {
+    // Si falla el cierre del ciclo
+    console.error("Error al cerrar el ciclo:", closeError);
+    toast.error(
+      closeError.response?.data?.message || "Error al cerrar el ciclo."
+    );
   } finally {
     isClosing.value = false;
   }
@@ -263,6 +289,8 @@ const formatDate = (dateString) => {
               variant="elevated"
               size="default"
               label
+              class="me-2"
+              style="padding: 19px 19px 19px 19px"
             >
               <VIcon icon="tabler-refresh-dot" start />
               Ciclo Activo: {{ formatDate(activeCycle.start_date) }}
@@ -274,28 +302,28 @@ const formatDate = (dateString) => {
               prepend-icon="tabler-plus"
               :loading="isCreatingCycle"
               @click="handleCreateCycle"
+              class="me-2"
             >
               Crear Nuevo Ciclo
             </VBtn>
+            <VBtn
+              color="primary"
+              :disabled="loading || isClosing || !hasActiveCycle"
+              :loading="isClosing"
+              @click="handleCashClose"
+            >
+              <VIcon icon="tabler-lock" start />
+              Hacer Cierre de Inventario
+            </VBtn>
           </div>
+
+          <!-- Sección separada para el botón de cierre -->
+          <VCardActions class="justify-end pa-4 pt-0"> </VCardActions>
         </VCard>
       </VCol>
 
       <VCol cols="12">
         <CashCloseTable :items="counts" :loading="loading" />
-      </VCol>
-
-      <VCol cols="12" class="text-right">
-        <VBtn
-          color="primary"
-          size="large"
-          :disabled="loading || isClosing || !hasActiveCycle"
-          :loading="isClosing"
-          @click="handleCashClose"
-        >
-          <VIcon icon="tabler-lock" start />
-          Hacer Cierre de Caja
-        </VBtn>
       </VCol>
     </VRow>
   </div>

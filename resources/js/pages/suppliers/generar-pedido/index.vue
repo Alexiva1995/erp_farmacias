@@ -1,4 +1,5 @@
 <script setup lang="js">
+import LoaderComponent from "@/components/LoaderComponent.vue";
 import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
@@ -23,19 +24,23 @@ const module=reactive({
   productoFallas:[],
   productosOportunidadUnica:[],
   detalleOrder:[],
+  loadingApp:true,
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
+let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laboratoryId):[]
 
 
+const con_descuento= ref(route.query.con_descuento);// descuento o precio full
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
 const groups= ref(gruposList);// grupos
-const laboratoryId= ref(route.query.laboratoryId);// laboratorio
+const laboratoryId= ref(laboratoriosList);// laboratorio
 // const stock= ref(route.query.stock);// Fallas , Execeso o All
 
 async function generarPedido(){
   let data ={
+    "con_descuento":con_descuento.value,
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
     "groups":groups.value,
@@ -53,6 +58,7 @@ async function generarPedido(){
 
 
 onMounted(async () => {
+  module.loadingApp=true
   let data = await generarPedido()
   data.data.productos_a_reponer=data.data.productos_a_reponer.map(a => {
     a.uuid=generateUUID()
@@ -65,6 +71,7 @@ onMounted(async () => {
   module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
   module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
+  module.loadingApp=false
 
 })
 
@@ -72,6 +79,9 @@ onMounted(async () => {
 
 function actualizarIndexNavegacion(payload){
   indexNavegacion.value=payload
+  if(payload<=0){
+    router.push("/suppliers/supplieriaorderassistant")
+  }
   if(payload==3){
     // seleccionarProductosParaElDetalle()
     module.productosOportunidadUnica=actualizarCantidadAReponerProductosEnFalla([...module.productoFallas],[...module.productosOportunidadUnica])
@@ -149,7 +159,7 @@ function generateUUID() {
 
 
 const TOTAL_ORDER= computed(() => {
-  let listaSubTotales=module.detalleOrder.map(de => de.reponer*de.productSupplier.unit_cost)
+  let listaSubTotales=module.detalleOrder.map(de => de.reponer * de.precio_final_supplier)
   const total=listaSubTotales.reduce((acumulador, valorActual) => acumulador + valorActual, 0)
   return (module.detalleOrder.length>0)?total:0
 })
@@ -161,11 +171,11 @@ const LISTA_PORVEEDORES_TOTAL= computed(() => {
     if(!keyHashIdProveedor[item.supplier.id]){
       keyHashIdProveedor[item.supplier.id]={
         name:item.supplier.name,
-        total: parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer,
+        total: parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer,
       }
     }
     else{
-       keyHashIdProveedor[item.supplier.id].total=keyHashIdProveedor[item.supplier.id].total+(parseFloat(item.productSupplier.unit_cost).toFixed(2) * item.reponer)
+       keyHashIdProveedor[item.supplier.id].total=keyHashIdProveedor[item.supplier.id].total+(parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer)
     }
   }
   let lista=[]
@@ -223,15 +233,15 @@ function formatiarData(data){
       let detalleProductoOrder={
         "product_suppliers_id":productSupplier.productSupplier.id,
         "quantity":productSupplier.reponer,
-        "unit_cost":productSupplier.productSupplier.unit_cost,
-        "subtotal":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "unit_cost":productSupplier.precio_final_supplier,
+        "subtotal":productSupplier.reponer * productSupplier.precio_final_supplier,
       }
 
       let orderSupplier={
         "supplier_id":productSupplier.supplier.id,
         "total_items":supplier[productSupplier.supplier.id].length,
         "total_quantity":productSupplier.reponer,
-        "total_amount":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "total_amount":productSupplier.reponer * productSupplier.precio_final_supplier,
         "details":[detalleProductoOrder],
       }
 
@@ -246,12 +256,12 @@ function formatiarData(data){
 
       orderSupplier.total_items=supplier[productSupplier.supplier.id].length
       orderSupplier.total_quantity=orderSupplier.total_quantity+productSupplier.reponer
-      orderSupplier.total_amount=orderSupplier.total_amount+(productSupplier.reponer*productSupplier.productSupplier.unit_cost)
+      orderSupplier.total_amount=orderSupplier.total_amount+(productSupplier.reponer * productSupplier.precio_final_supplier)
       let detalleProductoOrder={
         "product_suppliers_id":productSupplier.productSupplier.id,
         "quantity":productSupplier.reponer,
-        "unit_cost":productSupplier.productSupplier.unit_cost,
-        "subtotal":productSupplier.reponer*productSupplier.productSupplier.unit_cost,
+        "unit_cost":productSupplier.precio_final_supplier,
+        "subtotal":productSupplier.reponer * productSupplier.precio_final_supplier,
       }
       orderSupplier.details.push(detalleProductoOrder)
       orders[indexOrderSupplier]=orderSupplier
@@ -262,6 +272,7 @@ function formatiarData(data){
 }
 
 async function realizarCompra(){
+  module.loadingApp=true
   let orders=formatiarData([...module.detalleOrder])
   const DATA={
     orders
@@ -270,13 +281,17 @@ async function realizarCompra(){
 
   let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
   if(response.status!=200){
+     module.loadingApp=false
     toast.error("Error al generar al compra")
     return
   }
-   toast.success("Compra realizada con exito")
-   let productosSinPorveedor= await consultarProductosSinProveedor()
-   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
-   router.push("/suppliers/purchase-orders/list")
+  module.loadingApp=false
+  toast.success("Compra realizada con exito")
+  module.loadingApp=true
+  let productosSinPorveedor= await consultarProductosSinProveedor()
+  pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+  module.loadingApp=false
+  router.push("/suppliers/purchase-orders/list")
 }
 
 async function consultarProductosSinProveedor(){
@@ -306,27 +321,42 @@ function eliminarItemOrden(payload){
 }
 </script>
 <template>
+  <LoaderComponent :loadingApp="module.loadingApp" />
   <div>
     <NavegationIaAutoOrder
       :index-navegacion="indexNavegacion"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
-    <VCard
-      :title="`Productos con Costo Elevado (${
-        module.productoFallas.filter((pro) => pro.increase == true).length
-      })`"
-      class="mb-6"
-      v-if="indexNavegacion == 1"
-    >
+    <VCard class="mb-6" v-if="indexNavegacion == 1">
+      <template #title>
+        Productos con Costo Elevado
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase == true).length
+          }}
+        </VChip>
+      </template>
       <ProductsExceededToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard
-      :title="`Productos con Costo Bajo (${
-        module.productoFallas.filter((pro) => pro.increase == false).length
-      })`"
-      class="mb-6"
-      v-if="indexNavegacion == 2"
-    >
+    <VCard class="mb-6" v-if="indexNavegacion == 2">
+      <template #title>
+        Productos con Costo Bajo
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase == false).length
+          }}
+        </VChip>
+      </template>
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
@@ -355,6 +385,13 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
+        <!-- order="1"
+          order-sm="1"
+          order-md="2"
+          order-lg="2"
+          sm="12"
+          md="12"
+          lg="3" -->
         <VCol
           order="1"
           order-sm="1"
@@ -364,34 +401,7 @@ function eliminarItemOrden(payload){
           md="12"
           lg="3"
         >
-          <VBtn
-            color="primary"
-            variant="flat"
-            class="w-100 mb-5"
-            @click="confirmarCompra"
-          >
-            Generar
-          </VBtn>
-          <VCard
-            title="Detalles del precio"
-            class=""
-            style="padding-bottom: 24px"
-          >
-            <VContainer>
-              <VRow
-                class="text-lg"
-                align-content="space-between"
-                style="padding-left: 24px; padding-right: 24px"
-              >
-                <VCol> <span>Total:</span> </VCol>
-                <VCol class="text-end">
-                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
-                  <VIcon icon="tabler-currency-dollar" />
-                </VCol>
-              </VRow>
-            </VContainer>
-
-            <VDivider />
+          <VCard title="Resumen" class="mb-5">
             <VContainer v-if="LISTA_PORVEEDORES_TOTAL.length > 0">
               <VRow
                 v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
@@ -399,16 +409,46 @@ function eliminarItemOrden(payload){
                 align-content="space-between"
                 style="padding-left: 24px; padding-right: 24px"
               >
-                <VCol class="">
+                <VCol class="" style="font-size: 16px">
                   <span>{{ totalesProveedores.name }}:</span>
                 </VCol>
-                <VCol class="text-end">
+                <VCol
+                  class="text-end"
+                  style="font-weight: bold; font-size: 16px"
+                >
                   {{ totalesProveedores.total.toFixed(2) }}
                   <VIcon icon="tabler-currency-dollar" />
                 </VCol>
               </VRow>
             </VContainer>
+
+            <VDivider />
+
+            <VContainer>
+              <VRow
+                class="text-lg"
+                align-content="space-between"
+                style="padding-left: 24px; padding-right: 24px"
+              >
+                <VCol> <span style="font-size: 16px">Total:</span> </VCol>
+                <VCol
+                  class="text-end"
+                  style="font-weight: bold; font-size: 16px"
+                >
+                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
+                  <VIcon icon="tabler-currency-dollar" />
+                </VCol>
+              </VRow>
+            </VContainer>
           </VCard>
+          <VBtn
+            color="primary"
+            variant="flat"
+            class="w-100"
+            @click="confirmarCompra"
+          >
+            Generar
+          </VBtn>
         </VCol>
       </VRow>
     </div>
