@@ -116,19 +116,14 @@ class InvoiceActionService
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
 
-                $unitCostUSD = $unitCostInInvoiceCurrency;
-                if ($currency !== 'USD') {
-                    $unitCostUSD = round($unitCostInInvoiceCurrency / $rate, 2);
-                }
-
-                $totalCostUSD = $quantity * $unitCostUSD;
+                $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
                 if ($taxEnabled) {
-                    $totalCostUSD = $totalCostUSD * 1.16;
+                    $totalCostInInvoiceCurrency = $totalCostInInvoiceCurrency * 1.16;
                 }
-                $totalCostUSD = round($totalCostUSD, 2);
+                $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
 
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
-                    $refundAmount = $totalCostUSD;
+                    $refundAmount = $totalCostInInvoiceCurrency;
 
                     InvoiceReturn::create([
                         'invoice_id' => $invoice->id,
@@ -143,8 +138,8 @@ class InvoiceActionService
                     $invoice->details()->create([
                         'product_id' => $productId,
                         'quantity' => $quantity,
-                        'unit_cost' => $unitCostUSD,
-                        'total_cost' => $totalCostUSD,
+                        'unit_cost' => $unitCostInInvoiceCurrency,
+                        'total_cost' => $totalCostInInvoiceCurrency,
                         'lot_number' => $detail['lot_number'],
                         'expiration_date' => $detail['expiration_date'],
                         'location' => $detail['location'],
