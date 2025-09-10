@@ -309,6 +309,7 @@ Route::prefix("suppliers")->group(function () {
     Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
     Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
+    Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {

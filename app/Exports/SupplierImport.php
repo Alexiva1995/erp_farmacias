@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormulas
 {
+    private bool $hasRun = false;
     private Collection $cleanedRows;
 
     public function __construct(
@@ -23,8 +24,10 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly ?string $qtyCol,
         private readonly string $costBsCol,
         private readonly ?string $costUsdCol,
+        private readonly ?string $activeIngredientCol,
         private readonly ?string $expirationCol,
-    ) {}
+    ) {
+    }
 
     public function startRow(): int
     {
@@ -33,6 +36,11 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
     public function collection(Collection $rows)
     {
+        if ($this->hasRun) {
+            return;
+        }
+
+        $this->hasRun = true;
         $this->cleanedRows = collect();
 
         if (
@@ -75,60 +83,80 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
         $rawRows = $rows;
 
+        $toNumber = function (string $value): ?float {
+            // a) drop everything except digits, comma, dot, Bs.F., $
+            $clean = preg_replace('/[^\d,.\$]|(?<!B)s\.F\.(?! )/i', '', $value);
+
+            // b) if any letter is left → garbage
+            if (preg_match('/[a-z]/i', $clean)) {
+                return null;
+            }
+
+            // c) only one decimal separator allowed → turn comma into dot
+            $clean = str_replace(',', '.', $clean);
+
+            // d) cast and validate
+            $float = (float) $clean;
+            return is_finite($float) ? $float : null;
+        };
+
         $rows = $rawRows
-            ->map(function ($row) use ($rows, $now, $usdCurrency) {
+            ->takeWhile(fn($row) => !empty(array_filter($row->toArray())))
+            ->map(function ($row, $index) use ($rows, $now, $usdCurrency, $toNumber) {
                 $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
                 $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));
+                $active_ingredient = trim((string) ($row[$this->colIndex($this->activeIngredientCol)] ?? ""));
                 $bar = trim((string) ($row[$this->colIndex($this->barcodeCol)] ?? ""));
-                $bs = $row[$this->colIndex($this->costBsCol)] ?? null;
-                $rowNum = $rows->search($row) + $this->startRow;
+                $bs = $toNumber($row[$this->colIndex($this->costBsCol)] ?? null);
+                $usd = $toNumber($this->costUsdCol === "null"
+                    ? $this->castToFloat($bs) / $usdCurrency->rate
+                    : $this->castToFloat($row[$this->colIndex($this->costUsdCol)] ?? null));
+                $expiration = $row[$this->colIndex($this->expirationCol)] ?? null;
 
                 if ($cod === "") {
-                    throw new \Exception(
-                        "No se pudo encontrar el código del producto en la fila {$rowNum}, verifique que la columna ({$this->codSupplierCol}) sea correcta.",
-                    );
+                    $cod = null;
                 }
 
                 if ($name === "") {
-                    throw new \Exception(
-                        "No se pudo encontrar el nombre del producto en la fila {$rowNum}, verifique que la columna ({$this->nameCol}) sea correcta.",
-                    );
+                    $name = null;
                 }
 
                 if ($bar === "") {
-                    throw new \Exception(
-                        "No se pudo encontrar el código de barras en la fila {$rowNum}, verifique que la columna ({$this->barcodeCol}) sea correcta.",
-                    );
+                    $bar = null;
                 }
 
                 if ($bs === null) {
-                    throw new \Exception(
-                        "No se pudo encontrar el coste unitario (bs) en la fila {$rowNum}, verifique que la columna ({$this->costBsCol}) sea correcta.",
-                    );
+                    $bs = 0;
                 }
 
-                return [
+                if ($expiration != null) {
+                    if (!\Datetime::createFromFormat("Y-m-d", $expiration)) {
+                        $expiration = \DateTime::createFromFormat("d/m/Y", $expiration)?->format("Y-m-d");
+                    }
+                }
+
+                $data = [
                     "cod_supplier" => $cod,
                     "name" => $this->cleanCell($name),
-                    "barcode" => $bar,
+                    "barcode_match" => $bar,
                     "quantity" => $row[$this->colIndex($this->qtyCol)] ?? null,
                     "unit_cost" => $this->castToFloat($bs),
-                    "unit_cost_usd" =>
-                        $this->costUsdCol === "null"
-                            ? $this->castToFloat($bs) / $usdCurrency->rate
-                            : $this->castToFloat($row[$this->colIndex($this->costUsdCol)] ?? null),
-                    "expiration" => $row[$this->colIndex($this->expirationCol)] ?? null,
+                    "unit_cost_usd" => $this->castToFloat($usd),
+                    "expiration" => $expiration,
                     "supplier_id" => $this->supplierId,
                     "created_at" => $now,
                     "updated_at" => $now,
                     "connection_date" => $now,
+                    'active_ingredient' => $this->cleanCell($active_ingredient),
                     "laboratory" => null,
                     "product_id" => null,
                     "unit_cost_with_discount" => null,
-                    "unit_cost_usd_with_discount" => null,
+                    "unit_cost_usd_with_discount" => null
                 ];
+
+                return $data;
             })
-            ->filter();
+            ->values();
 
         $products = Product::with("laboratory")
             ->whereIn("barcode", $rows->pluck("barcode")->unique())
@@ -136,7 +164,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             ->keyBy("barcode");
 
         $this->cleanedRows = $rows->map(function ($row) use ($products) {
-            $product = $products->get($row["barcode"]);
+            $product = $products->get($row["barcode"] ?? $row["barcode_match"]);
             return array_merge($row, [
                 "laboratory" => $product?->laboratory?->name,
                 "product_id" => $product?->id,

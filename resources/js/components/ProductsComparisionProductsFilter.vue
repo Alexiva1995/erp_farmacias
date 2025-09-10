@@ -6,32 +6,46 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   enableDiscounts: { type: Boolean, default: false },
+  enableUsdAmountCol: { type: Boolean, default: false },
+  enableDiscountCol: { type: Boolean, default: false },
+  searchQuery: { type: String, default: "" },
+  stockStatusFilter: { type: [Boolean, null], default: null },
+  isStrictSearch: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   "update:selectedSupplier",
   "update:selectedLaboratory",
+  "update:searchQuery",
+  "update:stockStatusFilter",
+  "update:isStrictSearch",
   "clear",
 ]);
+
+const stockOptions = [
+  { title: "Con Stock", value: true },
+  { title: "Sin Stock", value: false },
+  { title: "Todos", value: null },
+];
 </script>
 
 <template>
   <VCardText>
     <VRow>
-      <VCol cols="12" sm="6" md="4">
-        <VAutocomplete
-          :model-value="props.selectedSupplier"
-          :items="props.suppliers"
-          :loading="props.loading"
-          label="Proveedor"
-          placeholder="Escribe para buscar un proveedor"
-          item-title="name"
-          item-value="id"
+      <VCol cols="12" sm="6" md="3">
+        <AppTextField
+          :model-value="props.searchQuery"
+          placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
           clearable
-          @update:model-value="emit('update:selectedSupplier', $event)"
+          @update:model-value="emit('update:searchQuery', $event)"
+        />
+        <VCheckbox
+          label="Búsqueda Estricta"
+          :model-value="props.isStrictSearch"
+          @update:model-value="emit('update:isStrictSearch', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="3">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
@@ -44,12 +58,50 @@ const emit = defineEmits([
           @update:model-value="emit('update:selectedLaboratory', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.stockStatusFilter"
+          label="Estado de Stock"
+          :items="stockOptions"
+          clearable
+          @update:model-value="emit('update:stockStatusFilter', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="6" md="3">
+        <VAutocomplete
+          :model-value="props.selectedSupplier"
+          :items="props.suppliers"
+          :loading="props.loading"
+          label="Proveedor"
+          placeholder="Escribe para buscar un proveedor"
+          item-title="name"
+          item-value="id"
+          clearable
+          @update:model-value="emit('update:selectedSupplier', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="4" md="2">
         <VSwitch
           :model-value="props.enableDiscounts"
           label="Activar Descuento"
           :inset="true"
           @update:model-value="emit('update:enableDiscounts', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="4" md="2">
+        <VSwitch
+          :model-value="props.enableUsdAmountCol"
+          label="Monto en Divisas"
+          :inset="true"
+          @update:model-value="emit('update:enableUsdAmountCol', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="4" md="3">
+        <VSwitch
+          :model-value="props.enableDiscountCol"
+          label="Monto en descuento"
+          :inset="true"
+          @update:model-value="emit('update:enableDiscountCol', $event)"
         />
       </VCol>
     </VRow>

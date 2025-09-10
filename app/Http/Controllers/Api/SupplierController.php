@@ -307,4 +307,13 @@ class SupplierController extends Controller
     {
         return $this->supplierQueryService->deleteProducts($supplier);
     }
+
+    public function getSupplierFirstConnection(Supplier $supplier)
+    {
+        $result = $this->supplierQueryService->getSupplierFirstConnection($supplier);
+
+        return response()->json([
+            'data' => $result
+        ]);
+    }
 }

@@ -16,6 +16,9 @@ const supplierOption = ref(null);
 const selectedSupplier = ref(null);
 const searchedSupplier = ref(null);
 const searchedLaboratory = ref(null);
+const filterSearchQuery = ref("");
+const stockStatusFilter = ref(null);
+const isStrictSearch = ref(false);
 
 const enableDiscounts = ref(false);
 
@@ -33,6 +36,9 @@ const totalSupplierConnections = ref(0);
 const productsPage = ref(1);
 const productsItemPerPage = ref(10);
 const productsTotal = ref(0);
+
+const enableUsdAmountCol = ref(false);
+const enableDiscountCol = ref(false);
 
 const fetchSuppliers = async () => {
   try {
@@ -64,6 +70,11 @@ const fetchProducts = async () => {
     perPage: productsItemPerPage.value,
     supplierId: searchedSupplier.value,
     laboratoryId: searchedLaboratory.value,
+    q: filterSearchQuery.value,
+    isStrictSearch: isStrictSearch.value,
+    ...(stockStatusFilter.value !== null && {
+      hasStock: stockStatusFilter.value,
+    }),
   };
 
   Object.keys(params).forEach(
@@ -165,10 +176,18 @@ watch(
   { deep: true }
 );
 
+let debounceTimer;
 watch(
-  [searchedSupplier, searchedLaboratory],
+  [
+    searchedSupplier,
+    searchedLaboratory,
+    filterSearchQuery,
+    stockStatusFilter,
+    isStrictSearch,
+  ],
   () => {
-    fetchProducts();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
   {
     deep: true,
@@ -256,6 +275,11 @@ const handleShowImportProductsDialog = (supplier) => {
   isShowImportFileDialogActive.value = true;
 };
 
+const handleHideImportProductsDialog = () => {
+  supplierOption.value = {};
+  isShowImportFileDialogActive.value = false;
+};
+
 const handleDeleteSupplierProducts = async (supplier) => {
   try {
     const { data } = await axios.delete(
@@ -281,6 +305,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
     <ShowImportProductsFileDialog
       v-model="isShowImportFileDialogActive"
       :selectedSupplier="supplierOption"
+      @close-dialog="handleHideImportProductsDialog"
     />
 
     <VCard title="Listados" class="mb-6">
@@ -300,6 +325,11 @@ const handleDeleteSupplierProducts = async (supplier) => {
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
           v-model:enable-discounts="enableDiscounts"
+          v-model:enable-usd-amount-col="enableUsdAmountCol"
+          v-model:enable-discount-col="enableDiscountCol"
+          v-model:searchQuery="filterSearchQuery"
+          v-model:stockStatusFilter="stockStatusFilter"
+          v-model:isStrictSearch="isStrictSearch"
           :suppliers="suppliers"
           :laboratories="laboratories"
           :selected-laboratory="searchedLaboratory"
@@ -336,6 +366,8 @@ const handleDeleteSupplierProducts = async (supplier) => {
           :items-per-page="itemsPerPage"
           :page="productsPage"
           :quantity-errors="quantityErrors"
+          :enable-usd-amount-col="enableUsdAmountCol"
+          :enable-discount-col="enableDiscountCol"
           @update:options="updateProductsTableOptions"
           @send-product="handleAddItemToAutoOrder"
         />
