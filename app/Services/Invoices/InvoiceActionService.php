@@ -28,6 +28,7 @@ class InvoiceActionService
                 'exp_date' => $data['exp_date'],
                 'payment_date' => $data['payment_date'] ?? null,
                 'received_date' => $data['received_date'],
+                'created_invoice_date' => $data['created_invoice_date'],
                 'exempt_amount' => $data['exempt_amount'] ?? 0,
                 'taxable_base' => $data['taxable_base'] ?? 0,
                 'tax_amount' => $data['tax_amount'] ?? 0,
