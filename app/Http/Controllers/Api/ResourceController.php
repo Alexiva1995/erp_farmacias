@@ -7,11 +7,10 @@ use App\Services\Resources\ResourceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\Product;
+
 class ResourceController extends Controller
 {
-    public function __construct(private ResourceService $resourceService)
-    {
-    }
+    public function __construct(private ResourceService $resourceService) {}
 
     public function getLaboratories()
     {
@@ -66,7 +65,9 @@ class ResourceController extends Controller
 
     public function getExchangeRates(): JsonResponse
     {
+        \Log::info('getExchangeRates called');
         $rates = $this->resourceService->getAllExchangeRate();
+        \Log::info('Exchange rates data:', $rates->toArray());
         return response()->json($rates);
     }
     public function getAllProducts()

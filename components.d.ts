@@ -70,6 +70,7 @@ declare module 'vue' {
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
     EnableOneTimePasswordDialog: typeof import('./resources/js/components/dialogs/EnableOneTimePasswordDialog.vue')['default']
     ErrorHeader: typeof import('./resources/js/components/ErrorHeader.vue')['default']
+    ExchangeRatesModal: typeof import('./resources/js/components/dialogs/ExchangeRatesModal.vue')['default']
     ExpirationsFilters: typeof import('./resources/js/components/ExpirationsFilters.vue')['default']
     ExpirationsTable: typeof import('./resources/js/components/ExpirationsTable.vue')['default']
     ExpiredDetailView: typeof import('./resources/js/components/ExpiredDetailView.vue')['default']

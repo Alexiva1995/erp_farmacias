@@ -1,4 +1,5 @@
 <script setup>
+import ExchangeRatesModal from "@/components/dialogs/ExchangeRatesModal.vue";
 import PendingPaymentModal from "@/components/dialogs/PendingPaymentModal.vue";
 import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
 import PendingPaymentsFilters from "@/components/PendingPaymentsFilters.vue";
@@ -34,6 +35,7 @@ const orderBy = ref("asc");
 // Modales
 const showPaymentModal = ref(false);
 const showProcessModal = ref(false);
+const showExchangeRatesModal = ref(false);
 const selectedPaymentGroup = ref(null);
 const selectedInvoices = ref([]);
 const selectedTableInvoices = ref([]);
@@ -133,31 +135,55 @@ const fetchPendingPayments = async () => {
 // Cargar tasas de cambio
 const fetchExchangeRates = async () => {
   try {
-    const response = await axios.get("/exchange-rates");
+    const response = await axios.get("/api/public/exchange-rates");
     if (Array.isArray(response.data)) {
       exchangeRates.value = response.data.reduce((acc, rate) => {
         acc[rate.currency_code] = parseFloat(rate.rate);
         return acc;
       }, {});
+      console.log(
+        "Tasas de cambio cargadas en pending-payments:",
+        exchangeRates.value
+      );
     }
+    return true;
   } catch (error) {
     console.error("Error al cargar tasas de cambio:", error);
+    console.error("Error response:", error.response);
+    return false;
   }
 };
 
 // Convertir monto a USD
 const convertToUSD = (amount, currency) => {
+  console.log("Convirtiendo a USD:", {
+    amount,
+    currency,
+    exchangeRates: exchangeRates.value,
+  });
+
   if (currency === "USD") return parseFloat(amount);
-  if (!exchangeRates.value[currency]) return 0;
-  return (
-    Math.round((parseFloat(amount) / exchangeRates.value[currency]) * 100) / 100
-  );
+
+  // Mapear moneda para buscar la tasa de cambio
+  const currencyKey = currency === "Bs" ? "BS" : currency;
+
+  if (!exchangeRates.value[currencyKey]) {
+    console.log("No hay tasa de cambio para:", currencyKey);
+    return 0;
+  }
+
+  const result =
+    Math.round((parseFloat(amount) / exchangeRates.value[currencyKey]) * 100) /
+    100;
+  console.log("Resultado conversión:", result);
+  return result;
 };
 
 // Calcular total en USD
 const totalAmountUSD = computed(() => {
   return pendingPayments.value.reduce((sum, invoice) => {
-    return sum + convertToUSD(invoice.total_amount, invoice.currency);
+    // Usar directamente total_usd del backend
+    return sum + (parseFloat(invoice.total_amount_usd) || 0);
   }, 0);
 });
 
@@ -175,11 +201,13 @@ const currencyBreakdown = computed(() => {
     }
     breakdown[currency].count++;
     breakdown[currency].total += parseFloat(invoice.total_amount);
-    breakdown[currency].totalUSD += convertToUSD(
-      invoice.total_amount,
-      currency
-    );
+
+    // Usar directamente total_usd del backend en lugar de convertir
+    const usdAmount = parseFloat(invoice.total_amount_usd) || 0;
+
+    breakdown[currency].totalUSD += usdAmount;
   });
+
   return breakdown;
 });
 
@@ -320,6 +348,11 @@ const closeProcessModal = () => {
   selectedInvoices.value = [];
 };
 
+// Abrir modal de tasas de cambio
+const openExchangeRatesModal = () => {
+  showExchangeRatesModal.value = true;
+};
+
 // Manejar pago procesado
 const handlePaymentProcessed = () => {
   closeProcessModal();
@@ -396,11 +429,11 @@ watch(
 );
 
 // Cargar datos al montar el componente
-onMounted(() => {
-  fetchExchangeRates();
-  fetchSuppliers();
-  fetchPendingPayments();
-  fetchStatistics();
+onMounted(async () => {
+  await fetchExchangeRates();
+  await fetchSuppliers();
+  await fetchPendingPayments();
+  await fetchStatistics();
 });
 </script>
 
@@ -482,6 +515,15 @@ onMounted(() => {
       <VCardTitle class="d-flex align-center justify-space-between">
         <span>Pagos Pendientes</span>
         <div class="d-flex align-center gap-2">
+          <VBtn
+            size="small"
+            variant="outlined"
+            color="info"
+            @click="openExchangeRatesModal"
+          >
+            <VIcon icon="tabler-currency-dollar" size="small" />
+            Exchange Rates
+          </VBtn>
           <VBtn
             size="small"
             variant="outlined"
@@ -621,6 +663,9 @@ onMounted(() => {
       @close="closeProcessModal"
       @payment-processed="handlePaymentProcessed"
     />
+
+    <!-- Modal para mostrar tasas de cambio -->
+    <ExchangeRatesModal v-model="showExchangeRatesModal" />
   </div>
 </template>
 
