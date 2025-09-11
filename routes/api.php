@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\ReturnsController;
+use App\Http\Controllers\Api\CashClosureController;
 
 /*
 |--------------------------------------------------------------------------
@@ -263,6 +264,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix('transactions')->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
+        });
+
+         Route::prefix("cash-closure")->group(function () {
+            Route::get("/", [CashClosureController::class, "getCashClosure"]);
         });
     });
 

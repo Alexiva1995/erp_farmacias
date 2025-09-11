@@ -1,57 +1,165 @@
 <script setup>
-import { ref } from 'vue';
+import { ref,computed  } from 'vue';
+import { formatCurrency } from "@/utils/currencyFormatter";
+
+const props = defineProps({
+  cashClosureData: {
+    type: Object,
+    default: () => ({
+      total_usd: "0.00",
+      total_bs: "0.00",
+      total_cop: "0.00",
+      usd_credit: "0.00",
+      total_bs_in_usd: "0.00",
+      total_cop_in_usd: "0.00",
+    }),
+  },
+});
 
 const isColorDark = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  console.log(luminance);
-  return luminance < 0.8; // Si la luminancia es baja (oscuro), devuelve true
+  return luminance < 0.8;
 };
 
-const vehicleData = [
-  {
-    status: 'Total USD',
-    percentage: 39.7,
-    icon: 'tabler-currency-dollar',
-    barColor: '#D9D9D9', // Gris claro
-    rounded: 'rounded-e-0 rounded-lg'
-  },
-  {
-    status: 'Total BS',
-    percentage: 28.3,
-    icon: 'tabler-cash',
-    barColor: '#7F77E3', // Azul/Morado
-    rounded: 'rounded-0'
-  },
-  {
-    status: 'Total COP',
-    percentage: 17.4,
-    icon: 'tabler-coin',
-    barColor: '#33CCCC', // Turquesa
-    rounded: 'rounded-0'
-  },
-  {
-    status: 'Total Créditos',
-    percentage: 14.6,
-    icon: 'tabler-credit-card',
-    barColor: '#343B42', // Gris oscuro/Negro
-    rounded: 'rounded-s-0 rounded-lg'
-  },
+const menuOptions = [
+  { title: 'Cerrar Caja', value: 'closed_cash' },
 ];
 
-// Añadir 'textColorClass' dinámicamente o sobrescribir si ya existe
-vehicleData.forEach(item => {
-  item.textColorClass = isColorDark(item.barColor) ? 'text-white' : 'text-black';
+const processedCashData = computed(() => {
+  const data = props.cashClosureData;
+  const totalUsd = parseFloat(data.total_usd) || 0;
+  const totalBs = parseFloat(data.total_bs) || 0;
+  const totalBsInUSD = parseFloat(data.total_bs_in_usd) || 0;
+  const totalCop = parseFloat(data.total_cop) || 0;
+  const totalCopInUSD = parseFloat(data.total_cop_in_usd) || 0;
+  const totalCredits = parseFloat(data.usd_credit) || 0;
+
+  const grandTotal = totalUsd + data.total_bs_in_usd + data.total_cop_in_usd + totalCredits;
+
+ if (grandTotal === 0 || isNaN(grandTotal)) {
+    return {
+      hasData: false,
+      items: [
+        {
+          status: 'Sin porcentajes',
+          fullStatus: 'Sin porcentajes',
+          amount: 0,
+          amountUSD: 0,
+          icon: 'tabler-circle-off',
+          barColor: '#D9D9D9',
+          percentage: 100,
+          textColorClass: 'text-black',
+          rounded: 'rounded-lg',
+        },
+      ],
+      grandTotal: 0,
+    };
+  }
+
+  const calculatePercentage = (value) => {
+    if (grandTotal === 0) return 0;
+    return (value / grandTotal) * 100;
+  };
+
+  const colors = {
+    usd: '#D9D9D9',    
+    bs: '#7F77E3',    
+    cop: '#33CCCC',     
+    credits: '#343B42', 
+  };
+
+  const cashItems = [
+    {
+      status: 'USD',
+      currency: 'USD',
+      fullStatus: 'Total USD',
+      amount: totalUsd,
+      amountUSD: totalUsd,
+      icon: 'tabler-currency-dollar',
+      barColor: colors.usd,
+    },
+    {
+      status: 'BS',
+      currency: 'BS',
+      fullStatus: 'Total BS',
+      amount: totalBs,
+      amountUSD: totalBsInUSD,
+      icon: 'tabler-cash',
+      barColor: colors.bs,
+    },
+    {
+      status: 'COP',
+      currency: 'COP',
+      fullStatus: 'Total COP',
+      amount: totalCop,
+      amountUSD: totalCopInUSD,
+      icon: 'tabler-coin',
+      barColor: colors.cop,
+    },
+    {
+      status: 'Créd.',
+      currency: 'USD',
+      fullStatus: 'Total Créditos',
+      amount: totalCredits,
+      amountUSD: totalCredits,
+      icon: 'tabler-credit-card',
+      barColor: colors.credits,
+    },
+  ];
+
+
+  const hadleCurrency = (value) => {
+    if (grandTotal === 0) return 0;
+    return (value / grandTotal) * 100;
+  };
+
+  cashItems.forEach(item => {
+    item.percentage = calculatePercentage(item.amountUSD);
+    item.text = item.status;
+    item.textColorClass = isColorDark(item.barColor) ? 'text-white' : 'text-black';
+  });
+
+  const visibleItems = cashItems.filter(item => item.percentage > 0);
+  if (visibleItems.length > 0) {
+    visibleItems[0].rounded = 'rounded-e-0 rounded-lg';
+    visibleItems[visibleItems.length - 1].rounded = 'rounded-s-0 rounded-lg';
+    for (let i = 1; i < visibleItems.length - 1; i++) {
+      visibleItems[i].rounded = 'rounded-0';
+    }
+  }
+
+  return {
+    hasData: true,
+    items: cashItems,
+    grandTotal: grandTotal,
+  };
 });
 
-const menuOptions = [
-  { title: 'Ver Detalles', value: 'details' },
-  { title: 'Editar', value: 'edit' },
-];
-</script>
 
+// Función para formatear el monto a mostrar
+const formatAmount = (amount) => {
+  // Asegurarse de que el monto sea un número antes de formatear
+  const numAmount = parseFloat(amount);
+  if (isNaN(numAmount)) return 'N/A';
+
+  // Usar Intl.NumberFormat para un formato más robusto según la moneda y la localización.
+  // Para Venezuela (es-VE):
+  let options = {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  };
+
+  // Puedes añadir el símbolo de moneda si quieres, pero tu imagen no lo tiene en los montos.
+  // if (item.status === 'USD') options.style = 'currency'; options.currency = 'USD';
+  // else if (item.status === 'BS') options.style = 'currency'; options.currency = 'VES'; // VES es el código ISO para Bolívar Soberano
+  // else if (item.status === 'COP') options.style = 'currency'; options.currency = 'COP';
+
+  return new Intl.NumberFormat('es-VE', options).format(numAmount);
+};
+</script>
 <template>
   <VCard>
     <VCardItem>
@@ -80,16 +188,6 @@ const menuOptions = [
     </VCardItem>
 
     <VCardText>
-      <div class="d-flex justify-space-between text-caption text-high-emphasis mb-2">
-        <span
-          v-for="(item, index) in vehicleData"
-          :key="index"
-          :style="{ width: item.percentage + '%' }"
-          class="text-start"
-        >
-          {{ item.status.replace('Total ', '') }} </span>
-      </div>
-
       <VProgressLinear
         :model-value="100"
         height="46"
@@ -99,42 +197,66 @@ const menuOptions = [
         <template #default>
           <div class="d-flex w-100 h-100">
             <div
-              v-for="(item, index) in vehicleData"
-              :key="index"
+              v-if="!processedCashData.hasData"
               :style="{
-                width: item.percentage + '%',
-                backgroundColor: item.barColor,
+                width: '100%',
+                backgroundColor: processedCashData.items[0].barColor,
                 height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }"
-              :class="[item.rounded]"
+              :class="processedCashData.items[0].rounded"
             >
-              <span class="text-sm font-weight-medium" :class="item.textColorClass"> {{ item.percentage }}% </span>
+              <span class="text-sm font-weight-medium" :class="processedCashData.items[0].textColorClass">
+                {{ processedCashData.items[0].status }}
+              </span>
             </div>
+
+            <template v-else>
+              <div
+                v-for="(item, index) in processedCashData.items"
+                :key="index"
+                :style="{
+                  width: item.percentage + '%',
+                  backgroundColor: item.barColor,
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }"
+                :class="[item.rounded]"
+              >
+                <span v-if="item.percentage > 0" class="text-sm font-weight-medium" :class="item.textColorClass">
+                  {{ item.percentage.toFixed(1) }}% {{ item.status }}
+                </span>
+              </div>
+            </template>
           </div>
         </template>
       </VProgressLinear>
 
-      <div class="vehicle-details-list">
+      <div class="cash-details-list">
         <div
-          v-for="item in vehicleData"
-          :key="item.status"
+          v-for="item in processedCashData.items"
+          :key="item.fullStatus"
           class="d-flex align-center justify-space-between py-2"
         >
           <div class="d-flex align-center gap-x-2">
             <VIcon :icon="item.icon" :style="{ color: item.barColor }" size="24" />
-            <span class="text-body-1 text-high-emphasis">{{ item.status }}</span>
+            <span class="text-body-1 text-high-emphasis">{{ item.fullStatus }}</span>
           </div>
           <div class="d-flex align-center gap-x-4">
-            <span class="text-body-1">{{ item.percentage }}% </span>
+            <span class="text-body-1 text-high-emphasis">
+              {{formatCurrency(item.amount,item.currency)}}
+            </span>
           </div>
         </div>
       </div>
     </VCardText>
   </VCard>
 </template>
+
 <style scoped>
 .v-progress-linear :deep(.v-progress-linear__background) {
   display: none;
@@ -149,5 +271,4 @@ const menuOptions = [
 .v-progress-linear :deep(.text-black) {
   color: black !important;
 }
-
 </style>

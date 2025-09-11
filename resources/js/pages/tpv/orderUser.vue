@@ -984,7 +984,7 @@ const addReserverOrder = async () => {
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-    console.log('dentro de add reserver');
+ 
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
