@@ -1150,12 +1150,148 @@ const response = await axios.get("/public/exchange-rates"); // ✅ Sin duplicaci
         </div>
 
         <div class="section">
+            <h2>🔧 Fase 6: Corrección de Pagos Parciales y Campo Reference</h2>
+            <p class="subtitle">Fecha: 11 de Septiembre, 2025 - Resolución de problemas críticos de pagos parciales</p>
+            
+            <div class="warning-box">
+                <h3>⚠️ Problemas Críticos Identificados</h3>
+                <ul>
+                    <li>Facturas desaparecían de la tabla "Por Pagar" después de pagos parciales</li>
+                    <li>Campo "reference" no se guardaba en la base de datos</li>
+                    <li>Lógica incorrecta de determinación de estado de pago</li>
+                    <li>Problemas de precisión decimal en cálculos</li>
+                </ul>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Corrección de Lógica de Pagos Parciales</h4>
+                <div class="file-path">app/Http/Controllers/Api/PendingPaymentsController.php</div>
+                
+                <h5>❌ ANTES (Lógica incorrecta):</h5>
+                <div class="code-block before">
+// La función determinePaymentStatus incluía el pago actual que ya existía en BD
+$totalPaidUSD = $previousPaymentsUSD + $currentPaymentUSD;
+// Esto causaba que 900 + 300 = 1200 = total factura → marcaba como 'paid'
+                </div>
+                
+                <h5>✅ DESPUÉS (Lógica corregida):</h5>
+                <div class="code-block after">
+// Nueva función determinePaymentStatusCorrected
+private function determinePaymentStatusCorrected($invoiceIds, $currentPaymentUSD, $totalAmountUSD): string
+{
+    // Obtener solo pagos anteriores (excluyendo el actual)
+    $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
+        $query->whereIn('id', $invoiceIds);
+    })->get();
+    
+    // Calcular correctamente el estado
+    $totalPaidUSD = $previousPaymentsUSD + $currentPaymentUSD;
+    
+    if ($totalPaidUSD >= $totalAmountUSD) {
+        return 'paid';
+    } else {
+        return 'partial';
+    }
+}
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Corrección de Campo Reference</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>❌ ANTES (Campo no se enviaba):</h5>
+                <div class="code-block before">
+const paymentData = {
+  invoice_ids: selectedInvoices.value.map(inv => inv.id),
+  payment_amount: form.value.payment_amount,
+  payment_currency: form.value.payment_currency,
+  payment_date: form.value.payment_date,
+  // ❌ reference no se incluía
+};
+                </div>
+                
+                <h5>✅ DESPUÉS (Campo incluido):</h5>
+                <div class="code-block after">
+const paymentData = {
+  invoice_ids: selectedInvoices.value.map(inv => inv.id),
+  payment_amount: form.value.payment_amount,
+  payment_currency: form.value.payment_currency,
+  payment_date: form.value.payment_date,
+  reference: form.value.reference || null, // ✅ Campo incluido
+};
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Validación de Campo Reference en Backend</h4>
+                <div class="file-path">app/Http/Controllers/Api/PendingPaymentsController.php</div>
+                
+                <h5>✅ Agregado:</h5>
+                <div class="code-block after">
+$request->validate([
+    'invoice_ids' => 'required|array',
+    'invoice_ids.*' => 'exists:invoices,id',
+    'payment_amount' => 'required|numeric|min:0.01',
+    'payment_currency' => 'required|string|in:USD,VES,COP',
+    'payment_date' => 'required|date',
+    'reference' => 'nullable|string|max:100', // ✅ Validación agregada
+]);
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type fix">FIX</span> Corrección de Precisión Decimal</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>✅ Función agregada:</h5>
+                <div class="code-block after">
+// Función para redondear a 2 decimales y evitar problemas de precisión
+const roundToTwoDecimals = (value) => {
+  return parseFloat(parseFloat(value).toFixed(2));
+};
+
+// Aplicada a todos los cálculos
+const suggestedAmountInLocalCurrency = computed(() => {
+  if (!selectedInvoices.value.length) return 0;
+  return roundToTwoDecimals(/* cálculo */);
+});
+                </div>
+            </div>
+
+            <div class="change-item">
+                <h4><span class="change-type remove">REMOVE</span> Eliminación de Campo Notes</h4>
+                <div class="file-path">resources/js/components/dialogs/ProcessPaymentModal.vue</div>
+                
+                <h5>✅ Eliminado completamente:</h5>
+                <div class="code-block after">
+// Eliminado campo notes del formulario
+// Eliminado VTextarea para notas
+// Eliminado form.notes del ref
+// Eliminado generateAutomaticNotes y clearAutomaticNotes
+// Eliminado watcher de notas automáticas
+                </div>
+            </div>
+
+            <div class="success-box">
+                <h3>✅ Problemas Resueltos</h3>
+                <ul>
+                    <li><strong>Pagos parciales:</strong> Las facturas permanecen en "Por Pagar" correctamente</li>
+                    <li><strong>Campo reference:</strong> Se guarda correctamente en la base de datos</li>
+                    <li><strong>Estados de pago:</strong> Se calculan correctamente (partial/paid)</li>
+                    <li><strong>Precisión decimal:</strong> Cálculos exactos sin errores de redondeo</li>
+                    <li><strong>Interfaz limpia:</strong> Campo notes eliminado por no tener almacenamiento</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>🎯 Conclusión Final</h2>
             
             <div class="success-box">
                 <h3>🎉 Proyecto Completado Exitosamente</h3>
                 <p><strong>Estado del Proyecto:</strong> ✅ TOTALMENTE FUNCIONAL Y OPERATIVO</p>
-                <p><strong>Fecha de finalización:</strong> 10 de Septiembre, 2025</p>
+                <p><strong>Fecha de finalización:</strong> 11 de Septiembre, 2025</p>
                 
                 <h4>📈 Resumen Completo del Proyecto:</h4>
                 <ul>
@@ -1164,6 +1300,7 @@ const response = await axios.get("/public/exchange-rates"); // ✅ Sin duplicaci
                     <li><strong>Fase 3 - Datos de prueba:</strong> 6 facturas de prueba creadas</li>
                     <li><strong>Fase 4 - Optimización:</strong> Sistema completamente optimizado</li>
                     <li><strong>Fase 5 - Mejoras de UX:</strong> 7 optimizaciones de interfaz implementadas</li>
+                    <li><strong>Fase 6 - Corrección de pagos parciales:</strong> 5 problemas críticos resueltos</li>
                     <li><strong>Total de archivos modificados:</strong> 9 archivos + 1 nuevo componente</li>
                     <li><strong>Compatibilidad:</strong> 100% compatible con otros módulos</li>
                     <li><strong>Funcionalidad:</strong> Módulo "Por Pagar" completamente operativo y optimizado</li>
