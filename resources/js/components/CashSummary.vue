@@ -16,6 +16,8 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['requestCloseCash']);
+
 const isColorDark = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -139,25 +141,10 @@ const processedCashData = computed(() => {
 });
 
 
-// Función para formatear el monto a mostrar
-const formatAmount = (amount) => {
-  // Asegurarse de que el monto sea un número antes de formatear
-  const numAmount = parseFloat(amount);
-  if (isNaN(numAmount)) return 'N/A';
-
-  // Usar Intl.NumberFormat para un formato más robusto según la moneda y la localización.
-  // Para Venezuela (es-VE):
-  let options = {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  };
-
-  // Puedes añadir el símbolo de moneda si quieres, pero tu imagen no lo tiene en los montos.
-  // if (item.status === 'USD') options.style = 'currency'; options.currency = 'USD';
-  // else if (item.status === 'BS') options.style = 'currency'; options.currency = 'VES'; // VES es el código ISO para Bolívar Soberano
-  // else if (item.status === 'COP') options.style = 'currency'; options.currency = 'COP';
-
-  return new Intl.NumberFormat('es-VE', options).format(numAmount);
+const handleMenuClick = (optionValue) => {
+  if (optionValue === 'closed_cash') {
+    emit('requestCloseCash');
+  }
 };
 </script>
 <template>
@@ -178,6 +165,7 @@ const formatAmount = (amount) => {
                 v-for="(option, i) in menuOptions"
                 :key="i"
                 :value="option.value"
+                @click="handleMenuClick(option.value)"
               >
                 <VListItemTitle>{{ option.title }}</VListItemTitle>
               </VListItem>
@@ -191,8 +179,7 @@ const formatAmount = (amount) => {
       <VProgressLinear
         :model-value="100"
         height="46"
-        rounded
-        class="mb-6"
+        class="mb-6 rounded-sm"
       >
         <template #default>
           <div class="d-flex w-100 h-100">
@@ -248,7 +235,7 @@ const formatAmount = (amount) => {
           </div>
           <div class="d-flex align-center gap-x-4">
             <span class="text-body-1 text-high-emphasis">
-              {{formatCurrency(item.amount,item.currency)}}
+              {{formatCurrency(item.amount, item.currency)}}
             </span>
           </div>
         </div>
