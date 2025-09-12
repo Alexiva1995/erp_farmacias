@@ -22,6 +22,10 @@ export default [
         to: 'crm-companies',
       },
       {
+        title: 'Empleados',
+        to: 'crm-employees',
+      },
+      {
         title: 'Sorteo',
         to: 'crm-lottery',
       }

@@ -9,12 +9,14 @@ use App\Contracts\Doctor;
 use App\Contracts\Laboratory;
 use App\Contracts\Lottery;
 use App\Contracts\PurchaseOrder;
+use App\Contracts\Role;
 use App\Contracts\Transaction;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Services\ClientServices;
@@ -41,6 +43,7 @@ use App\Services\ProductServices;
 use App\Services\ProductSupplierServices;
 use App\Services\ProfitabilityServices;
 use App\Services\PurchaseOrderServices;
+use App\Services\RoleServices;
 use App\Services\TransactionServices;
 use Illuminate\Support\ServiceProvider;
 
@@ -114,6 +117,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(TransactionController::class)
             ->needs(Transaction::class)
             ->give(TransactionServices::class);
+
+        $this->app->when(RoleController::class)
+            ->needs(Role::class)
+            ->give(RoleServices::class);
     }
 
     /**
