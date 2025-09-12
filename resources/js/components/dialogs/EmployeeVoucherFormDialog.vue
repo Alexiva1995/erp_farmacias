@@ -60,7 +60,7 @@ const submitForm = async () => {
     form.append("amount", amount.value);
 
     await axios.post(
-      `/crm/employees/${props.selectedEmployee.id}/voucher`,
+      `/rrhh/employees/${props.selectedEmployee.id}/voucher`,
       form
     );
 

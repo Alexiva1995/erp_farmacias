@@ -27,7 +27,7 @@ const fetchEmployees = async () => {
       search: search.value,
       active: showActiveEmployees.value,
     };
-    const { data } = await axios.get("/crm/employees", { params });
+    const { data } = await axios.get("/rrhh/employees", { params });
     employees.value = data.data;
     totalEmployees.value = data.total;
   } catch (error) {
@@ -66,7 +66,7 @@ const handleRefreshTable = async () => {
 
 const handleFireEmployee = async (id) => {
   try {
-    const { data } = await axios.put(`/crm/employees/${id}/fire`);
+    const { data } = await axios.put(`/rrhh/employees/${id}/fire`);
 
     if (data.data.status) {
       toast.success("El empleado ha sido despedido exitosamente");
@@ -84,7 +84,7 @@ const handleDeleteEmployee = async (employee) => {
   try {
     const form = new FormData();
     form.append("_method", "DELETE");
-    await axios.post(`/crm/employees/${employee.id}`, form);
+    await axios.post(`/rrhh/employees/${employee.id}`, form);
 
     toast.success("Se eliminó el empleado exitosamente");
   } catch (error) {

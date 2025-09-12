@@ -55,7 +55,7 @@ const submitForm = async () => {
 
     if (props.selectedEmployee != null) {
       const { data } = await axios.post(
-        `/crm/employees/${props.selectedEmployee.id}`,
+        `/rrhh/employees/${props.selectedEmployee.id}`,
         form
       );
 
@@ -71,7 +71,7 @@ const submitForm = async () => {
         );
       }
     } else {
-      const { data } = await axios.post("/crm/employees", form);
+      const { data } = await axios.post("/rrhh/employees", form);
 
       if (data.data.status) {
         toast.success("Empleado registrado exitosamente");

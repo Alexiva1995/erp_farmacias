@@ -44,7 +44,7 @@ const emit = defineEmits([
         </VTooltip>
         <VTooltip text="Ver empleado" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" icon :href="'/crm/employees/' + item.id">
+            <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
               <VIcon icon="tabler-eye" :href />
             </IconBtn>
           </template>

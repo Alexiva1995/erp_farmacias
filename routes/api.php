@@ -216,6 +216,9 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
             Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
         });
+    });
+
+    Route::prefix('rrhh')->group(function () {
         Route::prefix('employees')->group(function () {
             Route::get('/', [EmployeeController::class, 'list']);
             Route::post('/', [EmployeeController::class, 'store']);

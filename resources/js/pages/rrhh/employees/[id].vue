@@ -32,7 +32,7 @@ const cv = ref(null);
 const fetchEmployee = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get(`/crm/employees/${employeeId}`);
+    const { data } = await axios.get(`/rrhh/employees/${employeeId}`);
     employee.value = {
       ...data.data,
       role_id: data.data.user.role.id,
@@ -41,7 +41,7 @@ const fetchEmployee = async () => {
   } catch (error) {
     toast.error("No se pudo obtener los datos del empleado");
 
-    router.push("/crm/employees");
+    router.push("/rrhh/employees");
   } finally {
     loading.value = false;
   }
@@ -49,7 +49,7 @@ const fetchEmployee = async () => {
 
 const fetchEmployeeVouchers = async () => {
   try {
-    const { data } = await axios.get(`/crm/employees/${employeeId}/vouchers`, {
+    const { data } = await axios.get(`/rrhh/employees/${employeeId}/vouchers`, {
       params: { perPage: itemsPerPage.value },
     });
     vouchers.value = data.data.data;
@@ -84,7 +84,7 @@ const handleDeleteVoucher = async (voucher) => {
   try {
     const form = new FormData();
     form.append("_method", "DELETE");
-    await axios.post(`/crm/employees/vouchers/${voucher.id}`, form);
+    await axios.post(`/rrhh/employees/vouchers/${voucher.id}`, form);
 
     toast.success("Se eliminó el bono del empleado");
     fetchEmployeeVouchers();
@@ -97,10 +97,10 @@ const handleDeleteEmployee = async (id) => {
   try {
     const form = new FormData();
     form.append("_method", "DELETE");
-    await axios.post(`/crm/employees/${id}`, form);
+    await axios.post(`/rrhh/employees/${id}`, form);
 
     toast.success("Se eliminó el empleado exitosamente");
-    router.push("/crm/employees");
+    router.push("/rrhh/employees");
   } catch (error) {
     toast.error("No se pudo eliminar al empleado");
   }
@@ -117,7 +117,7 @@ const handleUpdateEmployeeDocument = async () => {
     });
 
     const { data } = await axios.post(
-      `/crm/employees/${employeeId}/documents`,
+      `/rrhh/employees/${employeeId}/documents`,
       form
     );
 
@@ -163,7 +163,7 @@ const updateTableOptions = (options) => {
 const handleDownloadFile = async (file) => {
   try {
     const response = await axios.get(
-      `/crm/employees/${employeeId}/download/${file}`,
+      `/rrhh/employees/${employeeId}/download/${file}`,
       {
         responseType: "blob",
       }
