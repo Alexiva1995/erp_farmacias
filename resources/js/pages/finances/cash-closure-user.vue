@@ -9,6 +9,14 @@ const loading = ref(false);
 const cashClosure = ref([]);
 const isCloseCashModalVisible = ref(false);
 
+const closing = ref([]);
+const totalClosing = ref(0);
+const loadingClosing = ref(false);
+const page = ref(1);
+const itemsPerPage = ref(10);
+const sortBy = ref();
+const orderBy = ref();
+
 const fetchCashClosure = async () => {
   try {
     loading.value = true;
@@ -25,6 +33,7 @@ const fetchCashClosure = async () => {
 
 onMounted(() => {
   fetchCashClosure();
+  fetchClosingHistory();
 });
 
 const confirmCloseCash = async () => {
@@ -46,10 +55,33 @@ const confirmCloseCash = async () => {
 const handleRequestCloseCash = () => {
   isCloseCashModalVisible.value = true;
 };
+
+const fetchClosingHistory = async () => {
+  loadingClosing.value = true;
+  const params = {
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+  };
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+  try {
+    //const response = await axios.get("/tpv/orders/cancelled", { params });
+    closing.value = response.data.data;
+    totalClosing.value = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener los cierres:", error);
+    toast.error("Error al obtener los cierres.");
+  } finally {
+    loadingClosing.value = false;
+  }
+};
 </script>
 
 <template>
-   <div>
+  <div>
     <p v-if="loading">Cargando resumen de caja...</p>
     <p v-else-if="!cashClosure">No hay datos de cierre de caja disponibles.</p>
     <CashSummary
@@ -62,18 +94,17 @@ const handleRequestCloseCash = () => {
       v-model:isDialogVisible="isCloseCashModalVisible"
       :cashClosureData="cashClosure"
     />
-    </div>
-     <div class="mb-5"></div>
-    <VCard title="Histórico de cierre">
-      <div class="mb-2"></div>
-      <ClosingHistoryTable
-        :closing="closing"
-        :loading="loading"
-        :total-closing="totalClosing"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptions"
-      />
+  </div>
+  <div class="mb-5"></div>
+  <VCard title="Histórico de cierre">
+    <div class="mb-2"></div>
+    <ClosingHistoryTable
+      :closing="closing"
+      :loading="loadingClosing"
+      :total-closing="totalClosing"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptions"
+    />
   </VCard>
-
 </template>
