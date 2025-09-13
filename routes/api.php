@@ -268,6 +268,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
          Route::prefix("cash-closure")->group(function () {
             Route::get("/", [CashClosureController::class, "getCashClosure"]);
+            Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
         });
     });
 

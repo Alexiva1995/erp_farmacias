@@ -12,6 +12,12 @@ const headers = [
   { title: "Fecha", key: "date", sortable: true, maxWidth: '55px'},
   { title: 'Acción', key: 'actions', sortable: false, maxWidth: '95px'},
 ];
+
+const date = (order) => {
+  const time = new Date(order);
+  return time.toISOString().split("T")[0];
+};
+
 </script>
 
 <template>
@@ -26,6 +32,21 @@ const headers = [
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+       <template #item.date="{ item }">
+        <span>{{ date(item.closing_date) }}</span>
+      </template>
+        <template #item.actions="{ item }">
+        <div class="d-flex align-center gap-2">
+          <IconBtn
+            @click="handleView(item.id)">
+            <VIcon icon="tabler-eye" />
+          </IconBtn>
+          <IconBtn
+            @click="$emit('print-order', item.id)">
+            <VIcon icon="tabler-printer" />
+          </IconBtn>
+        </div>
+      </template>
 </VDataTableServer>
   </VCard>
 </template>

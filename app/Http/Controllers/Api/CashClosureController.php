@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\CashClosure\CashClosureActionService;
+use App\Services\CashClosure\CashClosureQueryService;
 
 class CashClosureController extends Controller
 {
 
     public function __construct(
         private CashClosureActionService $cashClosureActionService,
+        private CashClosureQueryService $cashClosureQueryService,
     ) {
     }
 
@@ -18,5 +20,19 @@ class CashClosureController extends Controller
     {
         $query = $this->cashClosureActionService->allCashClosing($request);
         return $query;
+    }
+
+    
+    public function  getClosingHistory(Request $request)
+    {
+        $query = $this->cashClosureQueryService->getFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 }

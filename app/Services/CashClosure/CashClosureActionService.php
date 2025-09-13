@@ -20,4 +20,5 @@ class CashClosureActionService
         }
         return $cashClosing;
     }
+
 }

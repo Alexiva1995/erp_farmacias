@@ -68,7 +68,7 @@ const fetchClosingHistory = async () => {
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    //const response = await axios.get("/tpv/orders/cancelled", { params });
+    const response = await axios.get("/finances/cash-closure/closingHistory", { params });
     closing.value = response.data.data;
     totalClosing.value = response.data.total;
   } catch (error) {
