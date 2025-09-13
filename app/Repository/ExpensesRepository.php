@@ -16,6 +16,20 @@ class ExpensesRepository
         return Expense::create($data);
     }
 
+    public function cargarFactura(array $data): Expense
+    {
+        $gasto = Expense::find($data["id"]);
+
+        $gasto->file_name = $data["file_name"];
+        $gasto->extension_file = $data["extension_file"];
+        $gasto->url_file = $data["url_file"];
+        $gasto->date_upload = $data["date_upload"];
+
+        $gasto->save();
+
+        return $gasto;
+    }
+
     public function edit(array $data): Expense | null
     {
         Expense::where("id", "=", $data["id"])->update($data);

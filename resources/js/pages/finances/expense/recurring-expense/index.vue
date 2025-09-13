@@ -37,6 +37,7 @@ const formulario= reactive({
   expense_date:"",
   user_id:"",
   count:"",
+  file_factura:null,
 })
 
 const formularioError= reactive({
@@ -50,6 +51,7 @@ const formularioError= reactive({
   is_deductible:"",
   expense_date:null,
   count:"",
+  file_factura:null,
 })
 
 const buscardor_filtro= ref("");// nombre, id
@@ -85,11 +87,12 @@ function limpiarDatosFormulario(){
   formulario.category_id=""
   formulario.amount=""
   formulario.amount_usd=""
-  formulario.currency=""
+  formulario.currency="BS"
   formulario.has_invoice=false
   formulario.is_deductible=false
   formulario.expense_date=""
   formulario.count=""
+  formulario.file_factura=null
 }
 
 function limpiarErroresFormulario(){
@@ -103,6 +106,7 @@ function limpiarErroresFormulario(){
   formularioError.is_deductible=false
   formularioError.expense_date=""
   formularioError.count=""
+  formularioError.file_factura=""
 }
 
 function cargarErrores(errores){
@@ -115,7 +119,8 @@ function cargarErrores(errores){
   formularioError.has_invoice=(errores.identification)?errores.identification.join(", "):""
   formularioError.is_deductible=(errores.identification)?errores.identification.join(", "):""
   formularioError.expense_date=(errores.identification)?errores.identification.join(", "):""
-  formularioError.count=(errores.identification)?errores.identification.join(", "):""
+  formularioError.count=(errores.count)?errores.count.join(", "):""
+  formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
 }
 
 function mostarModal(){
@@ -148,13 +153,39 @@ watch(
 
 async function enviar(payload){
   try {
+    statuModule.loadingApp=true
     let respuesApi=await axios.post("/finances/expenses/create",payload)
-    if(respuesApi.status==200){
-        toast.success("El gasto se a guardado correctamente")
+    if(respuesApi.status==200 && payload.has_invoice==false){
+      toast.success("El gasto se a guardado correctamente")
+      cerrarModal(false)
+      await actualizarTabla()
+      statuModule.loadingApp=false
+    }
+    console.log("respuesta api gasto => ",respuesApi.data.data)
+    let gasto=respuesApi.data.data
+
+    if(payload.has_invoice==true){
+      let data=new FormData()
+      data.append("id",gasto.id)
+      data.append("file_invoice",payload.file_factura)
+
+      let config= {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+
+      let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
+      if(respuesApiFileUploaa.status==200){
+        toast.success("El archivo de la factura a sido guardado correctamente")
         cerrarModal(false)
         await actualizarTabla()
+        statuModule.loadingApp=false
+      }
     }
+
   } catch (error) {
+    statuModule.loadingApp=false
     toast.error("Error al crear el gasto")
     console.log("error en el servidor => ",error)
     let errores={...error.response.data.data.errors}

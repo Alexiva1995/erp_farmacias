@@ -298,6 +298,7 @@ Route::prefix("finances")->group(function () {
         Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
         Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
         Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
         Route::prefix("category")->group(function () {
             Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
         });

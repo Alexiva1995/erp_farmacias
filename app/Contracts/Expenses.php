@@ -16,6 +16,8 @@ interface Expenses
 
     public function editarGasto(array $data): Expense;
 
+    public function cargarFactura(array $data): Expense;
+
     public function consultById(string $id): ?Expense;
 
     public function consultAll(): Collection;

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeStatusExpenseRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
+use App\Http\Requests\UploadFileInvoiceExpenseRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -180,5 +181,13 @@ class ExpensesController extends Controller
         $respuestaConsulta = $this->expenses->changeStatus($request->data->id, $request->data->status);
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);
+    }
+
+    public function uploadFileInvoice(UploadFileInvoiceExpenseRequest $request): JsonResponse
+    {
+
+        $respuestaConsulta = $this->expenses->cargarFactura($request->data->toArray());
+
+        return ApiResponse::success(null, "ok", 200);
     }
 }

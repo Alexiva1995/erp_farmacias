@@ -1,6 +1,8 @@
 <script setup lang="js">
 
 
+
+
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
@@ -36,24 +38,25 @@ function close(){
   emit("modalClose",false)
 }
 
-function generarFormData(estado){
+// function generarFormData(estado){
 
-  let formData = new FormData();
+//   let formData = new FormData();
 
-  Object.entries(estado).forEach(([key, value]) => {
-    if (value instanceof File) {
-      formData.append(key, value); // Archivo (Blob/File)
-    } else if (typeof value === 'object' && value !== null) {
-      formData.append(key, JSON.stringify(value)); // Objetos anidados
-    } else if (value === true || value === false) {
-      formData.append(key, value);
-    } else {
-      formData.append(key, value); // Strings/números
-    }
-  });
+//   Object.entries(estado).forEach(([key, value]) => {
+//     if (value instanceof File) {
+//       formData.append(key, value); // Archivo (Blob/File)
+//     } else if (typeof value === 'object' && value !== null) {
+//       formData.append(key, JSON.stringify(value)); // Objetos anidados
+//     } else if (value === true || value === false) {
+//       formData.append(key, value);
+//     } else {
+//       formData.append(key, value); // Strings/números
+//     }
+//   });
 
-  return formData
-}
+//   return formData
+// }
+
 
 function submitForm(){
   console.log("data XD => ",props.formData)
@@ -162,6 +165,22 @@ function submitForm(){
             <VCheckbox v-model="props.formData.is_deductible">
               <template v-slot:label> Es Deducible </template>
             </VCheckbox>
+          </VCol>
+          <VCol
+            cols="12"
+            sm="12"
+            md="12"
+            lg="12"
+            v-if="props.formData.has_invoice == true"
+          >
+            <v-file-input
+              v-model="props.formData.file_factura"
+              :error-messages="props.formError.file_factura"
+              accept="image/png, image/jpeg, image/jpg"
+              clearable
+              label="Factura"
+              variant="outlined"
+            />
           </VCol>
         </VRow>
       </VContainer>
