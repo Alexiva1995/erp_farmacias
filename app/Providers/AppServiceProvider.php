@@ -127,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(UserController::class)
             ->needs(User::class)
             ->give(UserServices::class);
+
         $this->app->when(InventoryStockController::class)
             ->needs(Product::class)
             ->give(ProductServices::class);
