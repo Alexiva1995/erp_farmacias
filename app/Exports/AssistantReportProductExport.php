@@ -52,7 +52,7 @@ class AssistantReportProductExport implements FromQuery, WithHeadings, WithMappi
             $product->cost_max ? number_format($product->cost_max, 2) : '0.00',
             $product->unit_cost ? number_format($product->unit_cost, 2) : '0.00',
             $product->total_sold_completed ?? 0,
-            $product->stock ?? 0,
+            $product->lote_quantity ?? 0,
             $product->promedio_calculado ? number_format($product->promedio_calculado, 2) : '0.00',
             $product->solicitar ? number_format($product->solicitar, 2) : '0.00'
         ];

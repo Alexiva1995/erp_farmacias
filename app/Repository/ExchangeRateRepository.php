@@ -32,6 +32,14 @@ class ExchangeRateRepository
         return $exhange;
     }
 
+    public function updateBCVDollar(): Model
+    {
+
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+
+        return ExchangeRate::create($data);
+    }
+
     public function store(array $data): Model
     {
         return ExchangeRate::create($data);
