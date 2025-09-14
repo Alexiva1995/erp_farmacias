@@ -86,9 +86,9 @@ class SuppliersIaOrderAssistantController extends Controller
         $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
         $dateToday = new DateTime("now", $timeZone);
         $respuesta = [
-            // "productos" => [],
+            "listaDeProductos" => [],
+            "productos" => [],
             "productosFallas" => [],
-            "productosExceso" => [],
             "productos_a_reponer" => [],
             "productos_oportunidad_unica" => [],
         ];
@@ -170,6 +170,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos, $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
+        $respuesta["listaDeProductos"] = $productos;
 
 
 

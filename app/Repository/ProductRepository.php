@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 class ProductRepository
 {
 
+    private $subConsultaParaCalcularStockPorLotes = '(SELECT quantity 
+                    FROM product_lots 
+                    WHERE product_id = products.id
+                    LIMIT 1)';
+
     public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
     {
         return Product::query()->orderBy($sortBy, $orderBy)->get();
@@ -39,12 +44,7 @@ class ProductRepository
             DB::raw('(SELECT quantity 
                     FROM product_lots 
                     WHERE product_id = products.id
-                    AND expiration_date = (
-                        SELECT MIN(expiration_date)
-                        FROM product_lots
-                        WHERE product_id = products.id
-                        AND expiration_date >= CURDATE()
-                        ) LIMIT 1) AS lote_quantity'),
+                    LIMIT 1) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -110,14 +110,7 @@ class ProductRepository
 
         // calcular demanda_ajustada con promedio_calculado
         $columnas[] =  DB::raw('COALESCE(
-                (SELECT quantity FROM product_lots 
-                WHERE product_id = products.id
-                AND expiration_date = (
-                    SELECT MIN(expiration_date)
-                    FROM product_lots
-                    WHERE product_id = products.id
-                    AND expiration_date >= CURDATE()
-                ) LIMIT 1), 0) - 
+                (' . $this->subConsultaParaCalcularStockPorLotes . '), 0) - 
                 ((' . $promedio_calculado . ') * 
                 COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
                 FROM product_lots 
@@ -227,12 +220,7 @@ class ProductRepository
             DB::raw('(SELECT quantity 
                     FROM product_lots 
                     WHERE product_id = products.id
-                    AND expiration_date = (
-                        SELECT MIN(expiration_date)
-                        FROM product_lots
-                        WHERE product_id = products.id
-                        AND expiration_date >= CURDATE()
-                        ) LIMIT 1) AS lote_quantity'),
+                    LIMIT 1) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -286,32 +274,8 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 12';
         }
 
-        // calcular diferencia_product con promedio_calculado
-        // $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
-
-        // calculando preferencia formula: promedio_calculado * 100 = preferencia de producto
-        // $columnas[] = DB::raw('(' . $promedio_calculado . ') * 100 AS preferencia_product');
-
         // calcular solicitar
-        $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS solicitar');
-
-        // calcular demanda_ajustada con promedio_calculado
-        $columnas[] =  DB::raw('COALESCE(
-                (SELECT quantity FROM product_lots 
-                WHERE product_id = products.id
-                AND expiration_date = (
-                    SELECT MIN(expiration_date)
-                    FROM product_lots
-                    WHERE product_id = products.id
-                    AND expiration_date >= CURDATE()
-                ) LIMIT 1), 0) - 
-                ((' . $promedio_calculado . ') * 
-                COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
-                FROM product_lots 
-                WHERE product_lots.product_id = products.id
-                AND expiration_date >= CURDATE()), 0)
-            ) AS demanda_ajustada');
-
+        $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
@@ -347,13 +311,6 @@ class ProductRepository
                 $consulta->whereIn("group_id", $filtros["groups"]);
             }
         }
-
-
-        // if (array_key_exists("expProd", $filtros)) {
-        //     if ($filtros["expProd"] == true) {
-        //         $consulta->having("demanda_ajustada", ">", 0);
-        //     }
-        // }
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
@@ -444,12 +401,7 @@ class ProductRepository
             DB::raw('(SELECT quantity 
                     FROM product_lots 
                     WHERE product_id = products.id
-                    AND expiration_date = (
-                        SELECT MIN(expiration_date)
-                        FROM product_lots
-                        WHERE product_id = products.id
-                        AND expiration_date >= CURDATE()
-                        ) LIMIT 1) AS lote_quantity'),
+                    LIMIT 1) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -486,7 +438,7 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
-            DB::raw(' stock - ' . $ventasIndividualDelProducto . '  AS solicitar'),
+            DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -518,23 +470,6 @@ class ProductRepository
 
         // calcular diferencia_product con promedio_calculado
         // $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
-
-        // calcular demanda_ajustada con promedio_calculado
-        $columnas[] =  DB::raw('COALESCE(
-                (SELECT quantity FROM product_lots 
-                WHERE product_id = products.id
-                AND expiration_date = (
-                    SELECT MIN(expiration_date)
-                    FROM product_lots
-                    WHERE product_id = products.id
-                    AND expiration_date >= CURDATE()
-                ) LIMIT 1), 0) - 
-                ((' . $promedio_calculado . ') * 
-                COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
-                FROM product_lots 
-                WHERE product_lots.product_id = products.id
-                AND expiration_date >= CURDATE()), 0)
-            ) AS demanda_ajustada');
 
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
@@ -570,12 +505,6 @@ class ProductRepository
                 $consulta->whereIn("group_id", $filtros["groups"]);
             }
         }
-
-        // if (array_key_exists("expProd", $filtros)) {
-        //     if ($filtros["expProd"] == true) {
-        //         $consulta->having("demanda_ajustada", ">", 0);
-        //     }
-        // }
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
@@ -660,12 +589,7 @@ class ProductRepository
             DB::raw('(SELECT quantity 
                     FROM product_lots 
                     WHERE product_id = products.id
-                    AND expiration_date = (
-                        SELECT MIN(expiration_date)
-                        FROM product_lots
-                        WHERE product_id = products.id
-                        AND expiration_date >= CURDATE()
-                        ) LIMIT 1) AS lote_quantity'),
+                    LIMIT 1) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -746,7 +670,7 @@ class ProductRepository
         }
 
         // calcular solicitar
-        $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS solicitar');
+        $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
 
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
@@ -834,12 +758,7 @@ class ProductRepository
             DB::raw('(SELECT quantity 
                     FROM product_lots 
                     WHERE product_id = products.id
-                    AND expiration_date = (
-                        SELECT MIN(expiration_date)
-                        FROM product_lots
-                        WHERE product_id = products.id
-                        AND expiration_date >= CURDATE()
-                        ) LIMIT 1) AS lote_quantity'),
+                    LIMIT 1) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -876,7 +795,7 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
-            DB::raw(' stock - ' . $ventasIndividualDelProducto . '  AS solicitar'),
+            DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
