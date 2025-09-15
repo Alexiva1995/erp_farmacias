@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
+use App\Http\Controllers\Api\FurnitureController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
@@ -60,6 +62,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/products/export', [ProductController::class, 'export']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
+    Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
 
     // Rutas de Grupos de Productos
     Route::get("/groups", [GroupController::class, "index"]);
@@ -318,6 +321,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
         Route::put('/{invoice}', 'update')->name('update');
+        Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
     });
 
     // Asistente IA
@@ -335,5 +339,21 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    });
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
+        Route::get('/balance', 'getBalance')->name('balance');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{loan}', 'update')->name('update');
+        Route::delete('/{loan}', 'destroy')->name('delete');
     });
 });
