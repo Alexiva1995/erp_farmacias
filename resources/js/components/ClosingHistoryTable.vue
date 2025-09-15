@@ -6,7 +6,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
 });
-const emit = defineEmits(["update:options"]);
+const emit = defineEmits(["update:options","print-cash","download-cash"]);
 const headers = [
   { title: "id", key: "id", sortable: true},
   { title: "Fecha", key: "date", sortable: true, maxWidth: '55px'},
@@ -38,12 +38,12 @@ const date = (order) => {
         <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
           <IconBtn
-            @click="handleView(item.id)">
-            <VIcon icon="tabler-eye" />
+            @click="emit('print-cash', item)">
+            <VIcon icon="tabler-printer" />
           </IconBtn>
           <IconBtn
-            @click="$emit('print-order', item.id)">
-            <VIcon icon="tabler-printer" />
+            @click="emit('download-cash', item)">
+            <VIcon icon="tabler-download" />
           </IconBtn>
         </div>
       </template>

@@ -269,6 +269,7 @@ Route::middleware("auth:sanctum")->group(function () {
          Route::prefix("cash-closure")->group(function () {
             Route::get("/", [CashClosureController::class, "getCashClosure"]);
             Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
+            Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
         });
     });
 

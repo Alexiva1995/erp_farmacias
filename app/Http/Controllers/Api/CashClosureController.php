@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\CashClosure\CashClosureActionService;
 use App\Services\CashClosure\CashClosureQueryService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\CashClosureExport;
 
 class CashClosureController extends Controller
 {
@@ -34,5 +37,22 @@ class CashClosureController extends Controller
         }
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+     public function generate(Request $request)
+    {
+        $request->validate([
+            'html' => 'required|string',
+            'filename' => 'required|string'
+        ]);
+
+        $html = $request->input('html');
+        $filename = $request->input('filename');
+
+        // Genera el PDF a partir del HTML recibido
+        $pdf = Pdf::loadHtml($html);
+
+        // Retorna la descarga del archivo PDF
+        return $pdf->download($filename);
     }
 }
