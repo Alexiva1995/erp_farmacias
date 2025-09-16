@@ -168,7 +168,11 @@ const closeModal = () => {
                 >Sobrante en peso:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_spare }}
+               <VTextField
+                    placeholder="Monto Sobrante"
+                    type="number"
+                    class="p-2"
+                  />
               </span>
             </div>
           </VCol>
@@ -290,12 +294,14 @@ const closeModal = () => {
           </VCol>
         </VRow>
 
-         <VDivider />
+        <VDivider />
 
         <VRow>
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Entregar Efectivo en USD:</span>
+              <span class="text-caption text-medium-emphasis"
+                >Entregar Efectivo en USD:</span
+              >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
                 {{ props.cashClosureData.usd_delivered }}
               </span>
@@ -314,7 +320,7 @@ const closeModal = () => {
         </VRow>
       </VCardText>
 
-         <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
+      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
         <VBtn
           color="secondary"
           variant="outlined"
@@ -323,12 +329,7 @@ const closeModal = () => {
         >
           Cancelar
         </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click=""
-          class="w-50"
-        >
+        <VBtn color="primary" variant="flat" @click="" class="w-50">
           Completar
         </VBtn>
       </VCardActions>
