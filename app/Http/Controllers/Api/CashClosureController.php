@@ -48,11 +48,7 @@ class CashClosureController extends Controller
 
         $html = $request->input('html');
         $filename = $request->input('filename');
-
-        // Genera el PDF a partir del HTML recibido
         $pdf = Pdf::loadHtml($html);
-
-        // Retorna la descarga del archivo PDF
         return $pdf->download($filename);
     }
 }

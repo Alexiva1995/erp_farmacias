@@ -22,6 +22,8 @@ const orderBy = ref();
 const isPrinting = ref(false);
 const cashData = ref(null);
 
+const isDownloadingPdf = ref(false);
+
 const fetchCashClosure = async () => {
   try {
     loading.value = true;
@@ -93,12 +95,19 @@ const updateTableOptions = (options) => {
 
 const printCash = async (cash) => {
   try {
-    cashData.value=cash;
+    isDownloadingPdf.value = false;
+    const cashToPrint = cash;
+    cashData.value = cashToPrint;
     isPrinting.value = true;
     await nextTick();
     const printContents = document.getElementById("CashClosurePrint");
 
-    if (printContents) {
+ if (!printContents) {
+      console.warn("Elemento #CashClosurePrint no encontrado.");
+      window.print();
+      return;
+    }
+
         const printWindow = window.open("", "", "height=600,width=800");
         printWindow.document.write(
           "<html><head><title>Farmacia Barrio Sucre</title>"
@@ -134,54 +143,43 @@ const printCash = async (cash) => {
         printWindow.print();
         printWindow.close();
 
-    }else {
-        console.warn(
-          "Elemento #CashClosurePrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-        );
-        window.print();
-      }
-
-
-      setTimeout(() => {
-      isPrinting.value = false;
-      cashData.value = null;
-    }, 500);
-
   } catch (error) {
     console.error("Error al imprimir los detalles del cierre de caja:", error);
     toast.error("No se pudo cargar los detalles del cierre de caja.");
       isPrinting.value = false;
       cashData.value = null;
+      isDownloadingPdf.value = false;
+  } finally {
+    setTimeout(() => {
+      isPrinting.value = false;
+      cashData.value = null;
+      isDownloadingPdf.value = false;
+    }, 500);
   }
 }
 
 const ticketStyles = `
-/* Estilos de Vuetify */
 .pa-2 { padding: 8px; }
-.text-start { text-align: left; }
 .text-center { text-align: center; }
-.align-start { align-items: flex-start; }
-.mt-2 { margin-top: 8px; }
-.mb-2 { margin-bottom: 8px; }
-.align-end { align-items: flex-end; }
 .text-right { text-align: right; }
-.font-weight-bold { font-weight: 700; }
-.font-weight-regular { font-weight: 400; }
-.font-weight-black { font-weight: 900; }
-.text-h6 { font-size: 1.25rem; }
-.my-1 { margin-top: 4px; margin-bottom: 4px; }
-
-/* Tus clases personalizadas */`;
+.mb-2 { margin-bottom: 8px; }`;
 
 const downloadcash = async (cash) => {
     try {
-        cashData.value = { ...cash, isPdf: true };
+    isDownloadingPdf.value = true;
+    const cashToDownload = cash;
+    cashData.value = cashToDownload;
         isPrinting.value = true;
         await nextTick();
 
         const printContents = document.getElementById("CashClosurePrint");
 
-        if (printContents) {
+          if (!printContents) {
+            console.error("Elemento 'CashClosurePrint' no encontrado.");
+            toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
+            return;
+          }
+
             const htmlContent = printContents.innerHTML;
 
             const response = await axios.post("/finances/cash-closure/generate-pdf", {
@@ -193,29 +191,28 @@ const downloadcash = async (cash) => {
 
             // 1. Obtén la URL del archivo
             const url = window.URL.createObjectURL(new Blob([response.data]));
-            
+
             // 2. Crea un enlace temporal para la descarga
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `Cierre-Caja-${cash.id}.pdf`);
-            
+
             // 3. Simula un clic para descargar y luego limpia
             document.body.appendChild(link);
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            
+
             toast.success("PDF generado y descargado con éxito.");
-        }
-    } catch (error) {
+        } catch (error) {
         console.error("Error al descargar el PDF:", error);
         toast.error("Hubo un error al generar y descargar el PDF.");
-    } finally {
+        isDownloadingPdf.value = false;
+      } finally {
         isPrinting.value = false;
         cashData.value = null;
-    }
-};
-
+      }
+  };
 </script>
 
 <template>
@@ -248,14 +245,10 @@ const downloadcash = async (cash) => {
     />
 
     <div
-    id="CashClosurePrint"
-    :class="{ 'd-none': !isPrinting, 'print-container': true }"
-  >
-    <CashClosureTicke
-      v-if="isPrinting && cashData"
-      :cash-data="cashData"
-    />
-  </div>
-
+      id="CashClosurePrint"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
+      <CashClosureTicke v-if="isPrinting && cashData" :cash-data="cashData" :isPdf="isDownloadingPdf" />
+    </div>
   </VCard>
 </template>
