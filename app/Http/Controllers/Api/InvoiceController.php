@@ -265,4 +265,19 @@ class InvoiceController extends Controller
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
+
+    public function getSupplierDebts(Request $request)
+    {
+        $supplierDebts = $this->invoiceQueryService->calculateSupplierDebts();
+
+        return response()->json([
+            'data' => [
+                'total_debts' => $supplierDebts,
+                'currency' => 'USD',
+                'calculated_at' => now()->toISOString(),
+                'description' => 'Facturas pendientes de pago a proveedores'
+            ],
+            'message' => 'Deudas con proveedores calculadas con éxito.'
+        ], 200);
+    }
 }
