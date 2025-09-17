@@ -31,7 +31,7 @@ const endDate = ref(null);
 const laboratories = ref([]);
 const origins = ref([]);
 const isLoadingFilters = ref(false);
-const lockedValue = ref()
+const lockedValue = ref(null)
 
 const editDialog = ref(false)
 const productProfitability = ref({})
@@ -65,8 +65,9 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
-    lockedValue: lockedValue.value
+    lockedValue: lockedValue.value 
   };
+  console.log(lockedValue.value)
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );

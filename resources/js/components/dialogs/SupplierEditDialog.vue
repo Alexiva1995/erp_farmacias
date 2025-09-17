@@ -313,6 +313,45 @@ watch(
               </div>
             </VCol>
           </VRow>
+
+          <VRow>
+            <VCol cols="12" md="6">
+              <VSelect
+                v-model="formData.payment_due_type"
+                :items="[
+                  { title: 'Fecha de la factura', value: 'invoice_date' },
+                  { title: 'Pronto pago', value: 'early_payment' },
+                  { title: 'Otro (personalizado)', value: 'custom' },
+                ]"
+                label="Fecha Límite de Pago"
+                variant="outlined"
+                :error-messages="formErrors.payment_due_type"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6" v-if="formData.payment_due_type === 'custom'">
+              <VTextField
+                v-model="formData.custom_due_days"
+                label="Días personalizados"
+                type="number"
+                variant="outlined"
+                :error-messages="formErrors.custom_due_days"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6">
+              <VSelect
+                v-model="formData.payment_due_reference"
+                :items="[
+                  { title: 'Fecha de emisión', value: 'issue_date' },
+                  { title: 'Fecha de recibo', value: 'receipt_date' },
+                ]"
+                label="Contar días desde"
+                variant="outlined"
+                :error-messages="formErrors.payment_due_reference"
+              />
+            </VCol>
+          </VRow>
         </VForm>
       </VCardText>
 

@@ -17,6 +17,7 @@ class InvoiceDetail extends Model
         'unit_cost',
         'total_cost',
         'location',
+        'tax_enabled'
     ];
 
     public const FILLABLEDETAILS = [
@@ -28,7 +29,7 @@ class InvoiceDetail extends Model
         'product_id',
     ];
 
-    protected $fillableDetails  = self::FILLABLEDETAILS;
+    protected $fillableDetails = self::FILLABLEDETAILS;
 
     public function invoice(): BelongsTo
     {
