@@ -424,6 +424,7 @@ class OrderActionService
                             $current_cash->bs_card += $amount;
                             break;
                         case 'cash_cop':
+
                             $current_cash->cop_cash += $amount;
                             break;
                         case 'bank_transfer':
@@ -439,12 +440,13 @@ class OrderActionService
 
             if (isset($request->changeAmountUSD)) {
                 $current_cash->usd_cash -= $request->changeAmountUSD;
-            }else{
-                if (isset($request->changeAmount)) {
-                $current_cash->cop_cash -= $request->changeAmount;
-                }
             }
-
+     
+            if (isset($request->changeAmount)) {
+                $current_cash->cop_cash -= $current_cash->cop_conversion;
+            }
+            
+             
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
             $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
             $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance + $current_cash->usd_conversion;
@@ -452,6 +454,9 @@ class OrderActionService
             $current_cash->total_bs += $total_bs;
             $current_cash->total_cop += $total_cop;
             $current_cash->total_usd += $total_usd;
+            $current_cash->usd_delivered += $current_cash->usd_cash + $current_cash->usd_conversion;
+            $current_cash->cop_delivered += $current_cash->cop_cash;
+            $current_cash->bs_delivered += $current_cash->bs_cash;
             $current_cash->update();
 
 

@@ -74,8 +74,7 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-            //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = Auth::id();
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
