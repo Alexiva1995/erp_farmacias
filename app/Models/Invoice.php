@@ -28,6 +28,7 @@ class Invoice extends Model
         'uploaded_by',
         'registered_by',
         'ordered_by',
+        'created_invoice_date'
     ];
 
     public const FILLABLEHEADER = [
