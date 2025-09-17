@@ -131,8 +131,8 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
-        $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas);
-        $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"]);
+        $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
+        $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"], $request->con_descuento);
         $respuesta["productosFallas"] = $productosFallas;
         // codigo para listar porductos que tengan oportunidad unica de mercado
         $productos = null;
@@ -167,8 +167,8 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
         // $respuesta["productos"] = $productos;
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos);
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"]);
+        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos, $request->con_descuento);
+        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
 
 

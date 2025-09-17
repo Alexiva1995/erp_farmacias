@@ -135,7 +135,13 @@ console.log(props.product);
 
         <VCardText class="d-flex">
 
-          <VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" />
+          <!--VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" /-->
+          <VTextField
+              v-model="percentage"
+              :label="props.product.percentage"
+              :placeholder="props.product.percentage"
+              type="number"
+          />
               
           <!--v-card-actions class="justify-between">
             <VBtn text="Cerrar" @click="emit('close-modal')" />

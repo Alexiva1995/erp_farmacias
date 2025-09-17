@@ -60,7 +60,7 @@ const payments = ref([
     reference: null,
     currency: props.selectedCurrency,
     debounceTimeout: null,
-    inputAmount: null, 
+    inputAmount: null,
   },
 ]);
 
@@ -433,9 +433,12 @@ const getProductPrice = (product, currency) => {
     basePrice = product.price || 0;
   }
   let priceWithIva = basePrice * (1 + taxRate);
+
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
+
+  priceWithIva = priceWithIva * product.selectedQuantity;
   return priceWithIva;
 };
 
@@ -453,6 +456,7 @@ const getIva = (product, currency) => {
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
+  Iva = Iva * product.selectedQuantity;
   return Iva;
 };
 
@@ -548,22 +552,15 @@ const changeAmountInUSD = computed(() => {
 });
 
 const changeAmountInCOP = computed(() => {
-  // Primero, obtenemos el vuelto en la moneda de la orden
   const vueltoEnMonedaOrden = changeAmount.value;
-
-  // Si la moneda de la orden ya es COP, no hacemos nada.
   if (props.selectedCurrency === "COP") {
     return vueltoEnMonedaOrden;
   }
-
-  // Si no es COP, la convertimos.
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     return roundUpToNearestHundred(vueltoConvertido); // Aplicamos el redondeo para COP
   }
-
-  // En caso de que no haya tasa de cambio, devolvemos 0.
   return 0;
 });
 
@@ -575,7 +572,6 @@ const showChangeAmount = computed(() => {
   );
   return hasRelevantCashPayment && changeAmount.value > 0;
 });
-
 
 watch(
   () => payments.value[0].method,
@@ -618,31 +614,29 @@ watch(
   { deep: true }
 );
 
-
 const updateDebouncedAmount = (payment, newValue) => {
   clearTimeout(payment.debounceTimeout);
   payment.debounceTimeout = setTimeout(() => {
     payment.amount = Number(newValue);
   }, 1000);
 };
-
 </script>
 
 <template>
   <VDialog v-model="dialogVisible">
     <VCard>
-      <VCardTitle class="d-flex align-center p-2">
-        <span class="text-h5 font-weight-bold pr-1">Compra  </span>
+      <VCardTitle class="d-flex align-center">
+        <span class="text-h5 font-weight-bold pr-1">Compra </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-      <VDivider/>
+      <VDivider />
       <VCardText v-if="currentProgress === 0">
-        <div class="d-flex justify-space-between mb-0 pb-0">
-          <p class="text-h6 font-weight-medium">Total de productos:</p>
+        <div class="d-flex align-center justify-space-between">
+          <p class="text-h6 font-weight-medium mb-0">Total de productos:</p>
           <VChip
             label
             :color="chipColor"
@@ -652,90 +646,103 @@ const updateDebouncedAmount = (payment, newValue) => {
             draggable="false"
             class="ms-auto"
           >
-            <span class="font-weight-medium">{{ totalSelectedQuantity }}</span>
+            <span class="font-weight-medium mb-0">{{
+              totalSelectedQuantity
+            }}</span>
           </VChip>
         </div>
-        <VCardText class="px-2 pb-2 pt-0 mt-0 bg-grey-lighten-2">
-        <VList class="card-list no-space-list ma-0" density="compact" nav>
-          <VListItem
-            v-for="(product, index) in props.orderProducts"
-            :key="product.id"
-            class="rounded-0 cursor-pointer"
-          >
-            <VListItemTitle class="mx-2 d-flex align-center">{{
-              product.title
-            }}</VListItemTitle>
-            <VListItemSubtitle class="mx-1"
-              >{{ product.active_ingredient }}
-              {{ product.laboratory ? `- ${product.laboratory}` : "" }}
-              {{ product.selectedQuantity }}X
-            </VListItemSubtitle>
 
-            <template #append>
-              <div class="d-flex align-center">
-                <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Precio</span
-                  >
-                  <span class="text-body-1 font-weight-regular">{{
-                    formatCurrency(
-                      getProductPriceSinIva(product, props.selectedCurrency) *
-                        product.selectedQuantity,
-                      props.selectedCurrency
-                    )
-                  }}</span>
-                </div>
+       
+          <VTable density="compact" lines="none" class="py-2">
+            <tbody>
+              <tr
+                v-for="(product, index) in props.orderProducts"
+                :key="product.id"
+              >
+                <td>
+                  <div class="d-flex flex-column">
+                    <span
+                      class="text-body-1 font-weight-medium text-high-emphasis"
+                    >
+                      {{ product.title }}
+                    </span>
+                    <span class="text-sm text-disabled">
+                      {{ product.active_ingredient }}
+                      {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+                      {{ product.selectedQuantity }} x
+                    </span>
+                  </div>
+                </td>
+                <td class="text-right">
+                  <div class="d-flex flex-column align-end me-4">
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >Precio</span
+                    >
+                    <span class="text-body-1 font-weight-regular">
+                      {{
+                        formatCurrency(
+                          getProductPriceSinIva(
+                            product,
+                            props.selectedCurrency
+                          ) * product.selectedQuantity,
+                          props.selectedCurrency
+                        )
+                      }}
+                    </span>
+                  </div>
+                </td>
+                <td class="text-right">
+                  <div class="d-flex flex-column align-end me-4">
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >IVA</span
+                    >
+                    <span class="text-body-1 font-weight-regular">
+                      {{
+                        formatCurrency(
+                          getIva(product, props.selectedCurrency),
+                          props.selectedCurrency
+                        )
+                      }}
+                    </span>
+                  </div>
+                </td>
+                <td class="text-right">
+                  <div class="d-flex flex-column align-end">
+                    <span
+                      v-if="index === 0"
+                      class="text-caption text-medium-emphasis"
+                      >Total</span
+                    >
+                    <span class="text-body-1 font-weight-bold text-black">
+                      {{
+                        formatCurrency(
+                          getProductPrice(product, props.selectedCurrency),
+                          props.selectedCurrency
+                        )
+                      }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
 
-                <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >IVA</span
-                  >
-                  <span class="text-body-1 font-weight-regular">
-                    {{
-                      formatCurrency(
-                        getIva(product, props.selectedCurrency),
-                        props.selectedCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <div class="d-flex flex-column align-end">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Total</span
-                  >
-                  <span class="text-body-1 me-2 font-weight-bold text-black">
-                    {{
-                      formatCurrency(
-                        getProductPrice(product, props.selectedCurrency),
-                        props.selectedCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-              </div>
-            </template>
-          </VListItem>
-        </VList>
-          </VCardText>
-         <VDivider/>
+        <VDivider />
         <div
           v-for="(payment, index) in payments"
           :key="index"
           class="payment-block"
         >
           <div class="d-flex align-center flex-wrap">
-            <p class="font-weight-medium text-h6 mt-2 mb-0 me-4">
+            <p class="font-weight-medium text-h6 mt-2 mb-0 me-2">
               Método de Pago #{{ index + 1 }}
             </p>
 
-            <div class="d-flex justify-center mt-2">
+            <div class="d-flex justify-center mt-2 mb-0">
               <VBtn
                 v-if="index === 0"
                 variant="text"
@@ -763,7 +770,7 @@ const updateDebouncedAmount = (payment, newValue) => {
             </VCol>
           </div>
 
-          <VRow class="py-2">
+          <VRow class="pb-2">
             <VCol cols="12" md="6">
               <VRadioGroup v-model="payment.method" inline>
                 <VRadio
@@ -778,13 +785,16 @@ const updateDebouncedAmount = (payment, newValue) => {
                       return false;
                     }
                     if (m.value === 'balance') {
-                      return index === 0 && payment.currency === 'USD' && props.orderData.client?.balance > 0;
+                      return (
+                        index === 0 &&
+                        payment.currency === 'USD' &&
+                        props.orderData.client?.balance > 0
+                      );
                     }
                     if (index > 0 && m.value === 'credit') {
                       return false;
                     }
 
-                    
                     return true;
                   })"
                   :key="method.value"
@@ -831,9 +841,7 @@ const updateDebouncedAmount = (payment, newValue) => {
                 </VCol>
               </VRow>
 
-              <VRow
-                v-if="payment.method === 'balance'"
-              >
+              <VRow v-if="payment.method === 'balance'">
                 <VCol cols="12" sm="6">
                   <VTextField
                     :model-value="payment.amount.toFixed(2)"
@@ -848,12 +856,12 @@ const updateDebouncedAmount = (payment, newValue) => {
                 </VCol>
               </VRow>
 
-              <VRow
-                v-if="payment.method === 'credit'"
-              >
+              <VRow v-if="payment.method === 'credit'">
                 <VCol cols="12" sm="6">
                   <VTextField
-                    :model-value="formatCurrency(remainingAmount, payment.currency)"
+                    :model-value="
+                      formatCurrency(remainingAmount, payment.currency)
+                    "
                     label="Monto del crédito"
                     class="p-2"
                     readonly
@@ -865,30 +873,31 @@ const updateDebouncedAmount = (payment, newValue) => {
         </div>
 
         <VDivider />
-        <div class="d-flex flex-wrap justify-space-between px-2 py-2">
-          <p class="text-h6 font-weight-medium">Total a pagar:</p>
-          <p class="text-h6 font-weight-medium">
+        <div class="d-flex align-center flex-wrap justify-space-between">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
             {{
               formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
             }}
           </p>
         </div>
 
-        <div v-if="showChangeAmount"
-          class="d-flex flex-wrap justify-space-between px-2 py-2"
+        <div
+          v-if="showChangeAmount"
+          class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium">Monto Devuelto:</p>
-          <p class="text-h6 font-weight-medium">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Devuelto:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
             {{ formatCurrency(changeAmountInCOP, "COP") }}
           </p>
         </div>
 
         <div
           v-if="remainingAmount > 0"
-          class="d-flex flex-wrap justify-space-between px-2 py-2"
+          class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium">Monto Restante:</p>
-          <p class="text-h6 font-weight-medium text-error">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
         </div>
@@ -1063,14 +1072,8 @@ const updateDebouncedAmount = (payment, newValue) => {
     </VCard>
   </VDialog>
 </template>
-
 <style scoped>
-.card-list .v-list-item:not(:last-child) {
-  padding-block: 4px !important;
-  padding-block-end: 0 !important;
-}
-
-.v-list .v-list-item--nav:not(:only-child) {
-  margin-block-end: 0 !important;
+.v-table__wrapper > table > tbody > tr > td {
+  border-bottom: none !important;
 }
 </style>

@@ -4,27 +4,43 @@ import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref } from "vue";
 
 const pollingInterval = ref(null);
-const notifiedIds = ref(new Set(JSON.parse(localStorage.getItem("notifiedSupplierStatusIds") || "[]")));
+// Mapa de IDs notificados con fecha
+const notifiedMap = ref(JSON.parse(localStorage.getItem("notifiedSupplierStatusMap") || "{}"));
 
-const saveNotifiedIds = () => {
-  localStorage.setItem("notifiedSupplierStatusIds", JSON.stringify([...notifiedIds.value]));
+// Guardar en localStorage
+const saveNotifiedMap = () => {
+  localStorage.setItem("notifiedSupplierStatusMap", JSON.stringify(notifiedMap.value));
 };
 
+// Verificar si ya fue notificado recientemente
+const isRecentlyNotified = (status) => {
+  const lastShown = notifiedMap.value[status.id];
+  if (!lastShown) return false;
+
+  const lastTimestamp = new Date(lastShown).getTime();
+  const currentTimestamp = new Date(status.created_at).getTime();
+
+  // Si el status fue creado después del último mostrado, es nuevo
+  return currentTimestamp <= lastTimestamp;
+};
+
+// Consultar estados desde el backend
 const fetchStatuses = async () => {
   try {
     const { data } = await axios.get("/suppliers/supplier-connection-statuses");
     const newStatuses = data.statuses;
 
     newStatuses.forEach((status) => {
-      if (!notifiedIds.value.has(status.id) && ["completed", "failed"].includes(status.status)) {  
+      if (!isRecentlyNotified(status) && ["completed", "failed"].includes(status.status)) {
         const msg =
           status.status === "completed"
             ? `✅ ${status.supplier.name}: ${status.count_product} productos y ${status.count_invoice} facturas procesadas`
             : `❌ ${status.supplier.name}: ${status.message}`;
 
         toast[status.status === "completed" ? "success" : "error"](msg);
-        notifiedIds.value.add(status.id);
-        saveNotifiedIds();
+
+        notifiedMap.value[status.id] = status.created_at;
+        saveNotifiedMap();
       }
     });
   } catch (error) {
@@ -32,15 +48,16 @@ const fetchStatuses = async () => {
   }
 };
 
-const cleanOldIds = () => {
-  notifiedIds.value = new Set();
-  saveNotifiedIds();
+// Limpieza automática cada 24h
+const cleanOldMap = () => {
+  notifiedMap.value = {};
+  localStorage.removeItem("notifiedSupplierStatusMap");
 };
 
-setTimeout(cleanOldIds, 24 * 60 * 60 * 1000);
+setTimeout(cleanOldMap, 24 * 60 * 60 * 1000); // 24 horas
 
 onMounted(() => {
-  pollingInterval.value = setInterval(fetchStatuses, 5000);
+  pollingInterval.value = setInterval(fetchStatuses, 5000); // cada 5 segundos
 });
 </script>
 

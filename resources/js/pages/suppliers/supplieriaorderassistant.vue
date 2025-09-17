@@ -35,8 +35,10 @@ const tipo_de_vista= ref(false);// grupo o individual
 const tipo_de_filtracion= ref("sales");// promedio o ventas
 const lapso_de_tiempo= ref("3 month");// tiempo
 const stock= ref("all");// Fallas , Execeso o All
+const con_descuento= ref(true);// Fallas , Execeso o All
 
 const handleClearFilters = () => {
+  con_descuento.value = true;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "sales";
   lapso_de_tiempo.value = "3 month";
@@ -110,6 +112,7 @@ function generarPedido(){
   route.push({
     path:"/suppliers/generar-pedido",
     query:{
+      "con_descuento":con_descuento.value,
       "tipo_filtracion":tipo_de_filtracion.value,
       "lapso_de_tiempo":lapso_de_tiempo.value,
       "laboratoryId":JSON.stringify(selectedLaboratory.value),
@@ -142,6 +145,7 @@ onMounted(async () => {
 <template>
   <div>
     <SupplierIaOrderAssistantFilter
+      v-model:selectConDescuento="con_descuento"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedGroup="selectedGroup"
       v-model:tipo_de_vista="tipo_de_vista"

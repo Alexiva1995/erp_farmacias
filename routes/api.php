@@ -5,13 +5,14 @@ use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
-use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TraceabilityController;
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -28,9 +29,11 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PendingPaymentsController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\Api\ReturnsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,13 +41,12 @@ use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 |--------------------------------------------------------------------------
 */
 
+// Rutas de autenticación
 Route::post("/login", [LoginController::class, "login"]);
 Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
-
+// Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
-
-    // Rutas de usuario y logout
     Route::get("/user", function (Request $request) {
         return $request->user();
     });
@@ -162,6 +164,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
+        Route::get('/returns', [ReturnsController::class, 'index']);
+        Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
+        Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
+        Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
     });
 
     // Rutas de Trazabilidad
@@ -198,7 +204,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/", [ClientController::class, "create"]);
             Route::get("/", [ClientController::class, "consultAll"]);
             Route::get("/{id}", [ClientController::class, "consultById"]);
-            Route::delete("/{id}", [ClientController::class, "deleteById"]);
+            Route::delete("/{id}", [CompanyController::class, "deleteById"]);
             Route::post("/edit/{id}", [ClientController::class, "edit"]);
             Route::post("/filtrar", [ClientController::class, "filtrar"]);
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
@@ -236,6 +242,27 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/store", [ExchangeRateController::class, "store"]);
             Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
             Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+            Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
+        });
+
+        // pending payments
+        Route::prefix("pending-payments")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "index"]);
+            Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
+            Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
+            Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
+            Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
+            Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
+        });
+
+        // payment history
+        Route::prefix("payment-history")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
+        });
+
+        Route::prefix('transactions')->group(function () {
+            Route::get('', [TransactionController::class, 'getAll']);
+            Route::get('/stats', [TransactionController::class, 'getByType']);
         });
     });
 
@@ -290,7 +317,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
-        Route::put('/{invoice}', 'update')->name('update'); // Añadida la ruta que faltaba
+        Route::put('/{invoice}', 'update')->name('update');
     });
 
     // Asistente IA
