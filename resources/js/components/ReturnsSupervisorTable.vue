@@ -82,7 +82,7 @@ const date = (order) => {
 
          <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
-           <VBtn color="primary" variant="outlined" @click="emit('status', item)" >
+           <VBtn color="primary" variant="outlined" @click="emit('status', item)" :disabled="item.status === 'Approved'">
             Aprobar
           </VBtn>
         </div>
