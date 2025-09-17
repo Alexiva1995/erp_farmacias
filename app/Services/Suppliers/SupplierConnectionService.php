@@ -162,8 +162,6 @@ class SupplierConnectionService
 
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
-        \Log::info("Data structure: ");
-        \Log::info(explode(";", $lines[0]));
         foreach ($lines as $line) {
             $cols = explode(";", $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
@@ -172,13 +170,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $usdCurrency,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -415,7 +407,8 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }

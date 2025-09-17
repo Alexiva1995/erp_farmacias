@@ -23,6 +23,7 @@ class ProductSupplier extends Model
         "quantity",
         "unit_cost_with_discount",
         "unit_cost_usd_with_discount",
+        "active_ingredient"
     ];
 
     public function product()
