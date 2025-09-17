@@ -329,6 +329,42 @@ Route::middleware("auth:sanctum")->group(function () {
         });
     });
 
+});
+
+// Rutas de Proveedores
+Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
+Route::prefix("suppliers")->group(function () {
+    Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+    Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
+    Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
+    Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
+    Route::post("/{supplier}/laboratories", [SupplierController::class, "storeLaboratory"]);
+    Route::get("/{supplier}/laboratories", [SupplierController::class, "getLaboratoryLinks"]);
+    Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
+    Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
+    Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
+    Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
+    Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
+});
+
+Route::prefix("suppliers/purchase-orders")->group(function () {
+    Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
+    Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
+    Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
+    Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
+    Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);
+    Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
+    Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
+    Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
+});
+
+
     Route::prefix("supplier-laboratories")->group(function () {
         Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
         Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
