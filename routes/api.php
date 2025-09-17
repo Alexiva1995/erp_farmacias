@@ -1,7 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
+
+use App\Http\Controllers\Api\EmployeeController;
+
 use App\Http\Controllers\Api\FurnitureController;
+
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -13,6 +17,7 @@ use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Auth\LoginController;
@@ -221,6 +226,24 @@ Route::middleware("auth:sanctum")->group(function () {
         });
     });
 
+    Route::prefix('rrhh')->group(function () {
+        Route::prefix('employees')->group(function () {
+            Route::get('/', [EmployeeController::class, 'list']);
+            Route::post('/', [EmployeeController::class, 'store']);
+            Route::get('/{employee}', [EmployeeController::class, 'profile']);
+            Route::get('/{employee}/vouchers', [EmployeeController::class, 'getVouchers']);
+            Route::post('/{employee}/voucher', [EmployeeController::class, 'storeVoucher']);
+            Route::delete('/{employee}', [EmployeeController::class, 'deleteEmployee']);
+            Route::put('/{employee}/documents', [EmployeeController::class, 'storeDocuments']);
+            Route::get('/{employee}/download/{file}', [EmployeeController::class, 'downloadDocument']);
+            Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
+            Route::put('/{employee}', [EmployeeController::class, 'update']);
+            Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+        });
+    });
+
+    Route::get('/roles', [RoleController::class, 'list']);
+
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
@@ -343,6 +366,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
     });
+
+
     Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
         Route::get('/value', 'getValue')->name('value');
         Route::get('/depreciation', 'getDepreciation')->name('depreciation');
@@ -359,4 +384,5 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{loan}', 'update')->name('update');
         Route::delete('/{loan}', 'destroy')->name('delete');
     });
+
 });
