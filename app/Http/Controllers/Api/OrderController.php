@@ -79,6 +79,7 @@ class OrderController extends Controller
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
 
+             
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
 
             if ($openOrder) {

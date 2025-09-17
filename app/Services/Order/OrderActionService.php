@@ -389,10 +389,6 @@ class OrderActionService
                 ]);
             }
 
-
-            $current_cash->cop_conversion += $request->changeAmount ?? null;
-            $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
-
             foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
                 $amount = $payment['amount'] ?? 0;
@@ -437,13 +433,16 @@ class OrderActionService
                 }
             }
 
-
-            if (isset($request->changeAmountUSD)) {
+           
+            if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
+                 dd($request->changeAmountUSD);
                 $current_cash->usd_cash -= $request->changeAmountUSD;
+                $current_cash->cop_conversion += $request->changeAmount ?? null;
+                $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
             }
      
             if (isset($request->changeAmount)) {
-                $current_cash->cop_cash -= $current_cash->cop_conversion;
+                $current_cash->cop_cash -= $request->changeAmount;
             }
             
              
@@ -451,12 +450,12 @@ class OrderActionService
             $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
             $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance + $current_cash->usd_conversion;
 
-            $current_cash->total_bs += $total_bs;
-            $current_cash->total_cop += $total_cop;
-            $current_cash->total_usd += $total_usd;
-            $current_cash->usd_delivered += $current_cash->usd_cash + $current_cash->usd_conversion;
-            $current_cash->cop_delivered += $current_cash->cop_cash;
-            $current_cash->bs_delivered += $current_cash->bs_cash;
+            $current_cash->total_bs = $total_bs;
+            $current_cash->total_cop = $total_cop;
+            $current_cash->total_usd = $total_usd;
+            $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
+            $current_cash->cop_delivered = $current_cash->cop_cash;
+            $current_cash->bs_delivered = $current_cash->bs_cash;
             $current_cash->update();
 
 
