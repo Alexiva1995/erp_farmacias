@@ -138,7 +138,7 @@
         "path": "Existencia/inventario.txt",
         "pasv": true,
         "has_header": false,
-        "invoice_path": "Facturas/3226",
+        "invoice_path": "Facturas/3613",
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
