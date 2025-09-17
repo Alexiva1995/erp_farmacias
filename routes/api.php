@@ -123,6 +123,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/cash-close-items", [InventoryCycleController::class, "getCashCloseItems"]);
         Route::post("/cycle/close", [InventoryCycleController::class, "closeActiveCycle"]);
         Route::post("/cycle/create", [InventoryCycleController::class, "createCycle"]);
+        Route::get('/cycle/summary', [InventoryCycleController::class, 'getCycleSummary']);
+        Route::get('/cycle/{cycleId}', [InventoryCycleController::class, 'getCycleInfo']);
         Route::prefix('count')->group(function () {
             Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
             Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
