@@ -7,13 +7,19 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "delete-purchaseOrder", "show-purchaseOrder"]);
+const emit = defineEmits([
+  "update:options",
+  "delete-purchaseOrder",
+  "show-purchaseOrder",
+]);
 
 const headers = [
-  { title: "Id", key: "id", sortable: true },
-  { title: "Proveedor", key: "supplier_name", sortable: true },
-  { title: "Unidades", key: "total_quantity", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "Id", key: "id", sortable: false },
+  { title: "Proveedor", key: "supplier_name", sortable: false },
+  { title: "Unidades", key: "total_quantity", sortable: false },
+  { title: "Monto", key: "total_amount", sortable: false },
+  { title: "Estado", key: "status", sortable: false },
+  { title: "Fecha", key: "order_date", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 </script>
@@ -45,15 +51,35 @@ const headers = [
       </template>
 
       <template #item.total_quantity="{ item }">
-        <span class="font-weight-medium">{{ item.total_quantity }}</span>
+        <span class="font-weight-medium">{{
+          Intl.NumberFormat("es", {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
+          }).format(item.total_quantity)
+        }}</span>
       </template>
 
       <template #item.total_amount="{ item }">
-        <span class="font-weight-medium">{{ item.total_amount }}</span>
+        <span class="font-weight-medium">{{
+          Intl.NumberFormat("es", {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
+          }).format(item.total_amount)
+        }}</span>
       </template>
 
       <template #item.debt="{ item }">
-        <span class="font-weight-medium">{{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}</span>
+        <span class="font-weight-medium">{{
+          item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 })
+        }}</span>
+      </template>
+
+      <template #item.status="{ item }">
+        <span
+          class="font-weight-medium"
+          :class="item.status === 0 ? 'text-error' : 'text-success'"
+          >{{ item.status === 0 ? "Pendiente" : "Compleado" }}</span
+        >
       </template>
 
       <template #item.actions="{ item }">
@@ -73,7 +99,10 @@ const headers = [
         </VTooltip>
         <VTooltip text="Eliminar Órden de Compra" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-purchaseOrder', item.id)">
+            <IconBtn
+              v-bind="props"
+              @click="emit('delete-purchaseOrder', item.id)"
+            >
               <VIcon icon="tabler-trash" />
             </IconBtn>
           </template>
@@ -85,14 +114,21 @@ const headers = [
               :disabled="!item.phone"
               :href="
                 item.phone
-                  ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${item.id}%2A`
+                  ? `https://wa.me/${item.phone.replace(
+                      /\D/g,
+                      ''
+                    )}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${
+                      item.id
+                    }%2A`
                   : undefined
               "
               target="_blank"
               variant="text"
               v-bind="props"
             >
-              <VIcon :icon="item.phone ? 'tabler-phone-ringing' : 'tabler-phone-off'" />
+              <VIcon
+                :icon="item.phone ? 'tabler-phone-ringing' : 'tabler-phone-off'"
+              />
             </VBtn>
           </template>
         </VTooltip>

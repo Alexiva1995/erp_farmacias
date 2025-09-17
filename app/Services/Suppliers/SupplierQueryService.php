@@ -29,7 +29,7 @@ class SupplierQueryService
         return Supplier::query()
             ->withoutTrashed()
             ->select('suppliers.*')
-            ->with(['latestScore', 'paymentRules']);
+            ->with(['latestScore', 'paymentRules', 'paymentDate']);
     }
 
     /**
@@ -164,13 +164,11 @@ class SupplierQueryService
                 ->toArray();
 
             DB::transaction(function () use ($supplier, $uniqueProducts, $invoices) {
-                // Guardar productos
                 $supplier->productSuppliers()->delete();
                 foreach (array_chunk($uniqueProducts, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
                 }
 
-                // Guardar facturas
                 InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
                 $supplier->invoices()->delete();
                 foreach ($invoices as $invoice) {
