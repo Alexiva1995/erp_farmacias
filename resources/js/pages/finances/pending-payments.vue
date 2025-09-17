@@ -133,31 +133,44 @@ const fetchPendingPayments = async () => {
 // Cargar tasas de cambio
 const fetchExchangeRates = async () => {
   try {
-    const response = await axios.get("/exchange-rates");
+    const response = await axios.get("/api/public/exchange-rates");
     if (Array.isArray(response.data)) {
       exchangeRates.value = response.data.reduce((acc, rate) => {
         acc[rate.currency_code] = parseFloat(rate.rate);
         return acc;
       }, {});
     }
+    return true;
   } catch (error) {
     console.error("Error al cargar tasas de cambio:", error);
+    console.error("Error response:", error.response);
+    return false;
   }
 };
 
 // Convertir monto a USD
 const convertToUSD = (amount, currency) => {
+
   if (currency === "USD") return parseFloat(amount);
-  if (!exchangeRates.value[currency]) return 0;
-  return (
-    Math.round((parseFloat(amount) / exchangeRates.value[currency]) * 100) / 100
-  );
+
+  // Mapear moneda para buscar la tasa de cambio
+  const currencyKey = currency === "Bs" ? "BS" : currency;
+
+  if (!exchangeRates.value[currencyKey]) {
+    return 0;
+  }
+
+  const result =
+    Math.round((parseFloat(amount) / exchangeRates.value[currencyKey]) * 100) /
+    100;
+  return result;
 };
 
 // Calcular total en USD
 const totalAmountUSD = computed(() => {
   return pendingPayments.value.reduce((sum, invoice) => {
-    return sum + convertToUSD(invoice.total_amount, invoice.currency);
+    // Usar directamente total_usd del backend
+    return sum + (parseFloat(invoice.total_amount_usd) || 0);
   }, 0);
 });
 
@@ -175,11 +188,13 @@ const currencyBreakdown = computed(() => {
     }
     breakdown[currency].count++;
     breakdown[currency].total += parseFloat(invoice.total_amount);
-    breakdown[currency].totalUSD += convertToUSD(
-      invoice.total_amount,
-      currency
-    );
+
+    // Usar directamente total_usd del backend en lugar de convertir
+    const usdAmount = parseFloat(invoice.total_amount_usd) || 0;
+
+    breakdown[currency].totalUSD += usdAmount;
   });
+
   return breakdown;
 });
 
@@ -396,11 +411,11 @@ watch(
 );
 
 // Cargar datos al montar el componente
-onMounted(() => {
-  fetchExchangeRates();
-  fetchSuppliers();
-  fetchPendingPayments();
-  fetchStatistics();
+onMounted(async () => {
+  await fetchExchangeRates();
+  await fetchSuppliers();
+  await fetchPendingPayments();
+  await fetchStatistics();
 });
 </script>
 

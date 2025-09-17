@@ -36,7 +36,10 @@ class Supplier extends Model
         'cash_payment',
         'charges_igtf',
         'rating',
-        'is_deleted'
+        'is_deleted',
+        'payment_due_type',
+        'custom_due_days',
+        'payment_due_reference'
     ];
 
     protected $casts = [
@@ -132,9 +135,13 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierDiscount::class);
     }
-  
+
     public function connections()
     {
         return $this->hasMany(SupplierConnection::class);
+    }
+    public function paymentDate()
+    {
+        return $this->hasOne(SupplierPaymentMethod::class);
     }
 }
