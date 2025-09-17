@@ -13,11 +13,28 @@ class AutoOrdersRepository
     public function baseQuery()
     {
         return AutoOrder::query()
-            ->select(["auto_orders.*", "suppliers.name as supplier_name", "suppliers.sales_phone as phone"])
-            ->join("suppliers", "auto_orders.supplier_id", "=", "suppliers.id")
-            ->when($filters["selectedSupplier"] ?? null, function ($q, $supplierId) {
-                return $q->where("supplier_id", $supplierId);
-            });
+            ->select(
+                'auto_orders.id',
+                'auto_orders.status',
+                'auto_orders.order_date',
+                'suppliers.name as supplier_name',
+                'suppliers.sales_phone as phone',
+                DB::raw('SUM(auto_order_details.quantity) as total_quantity'),
+                DB::raw('SUM(auto_order_details.subtotal) as total_amount')
+            )
+            ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('auto_order_details', 'auto_order_details.order_id', '=', 'auto_orders.id')
+            ->when(
+                $filters['selectedSupplier'] ?? null,
+                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
+            )
+            ->groupBy(
+                'auto_orders.id',
+                'auto_orders.status',
+                'auto_orders.order_date',
+                'suppliers.name',
+                'suppliers.sales_phone'
+            );
     }
 
     public function applyFilters($query, array $filters = [])
