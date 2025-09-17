@@ -26,16 +26,18 @@ class StoreSupplierRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'social_reason' => ['string', 'max:255'],
             'sales_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
-            'collections_phone' => ['string', 'max:50',  'regex:/^\+?\d{7,15}$/'],
+            'collections_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
             'credit_days' => ['numeric', 'min:0'],
-            'dispatch_days' => ['required','array','min:1'],
-            'dispatch_days.*' => [ 'in:monday,tuesday,wednesday,thursday,friday,saturday'],
-            'order_days'        => ['required','array','min:1'],
-            'order_days.*'      => ['array','min:1'],
-            'order_days.*.*'    => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
+            'dispatch_days' => ['required', 'array', 'min:1'],
+            'dispatch_days.*' => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
+            'order_days' => ['required', 'array', 'min:1'],
+            'order_days.*' => ['array', 'min:1'],
+            'order_days.*.*' => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
             'payment_method' => ['in:Bs,Divisas'],
             'cash_payment' => ['boolean'],
             'charges_igtf' => ['boolean'],
+            'supplier_payment_method' => 'required|string',
+            'supplier_payment_days' => 'sometimes|numeric|min:0',
             'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|integer|min:1',
             'payment_due_reference' => 'required|in:receipt_date,issue_date',
@@ -72,10 +74,10 @@ class StoreSupplierRequest extends FormRequest
             'dispatch_days.min' => 'Debes seleccionar al menos un día de despacho.',
             'dispatch_days.*.in' => 'Uno o más días seleccionados no son válidos.',
 
-            'order_days.required'      => 'Debes asignar días de pedido.',
-            'order_days.*.array'       => 'El formato de días de pedido es inválido.',
-            'order_days.*.min'         => 'Cada día de despacho debe tener al menos un día de pedido.',
-            'order_days.*.*.in'        => 'Uno o más días seleccionados no son válidos.',
+            'order_days.required' => 'Debes asignar días de pedido.',
+            'order_days.*.array' => 'El formato de días de pedido es inválido.',
+            'order_days.*.min' => 'Cada día de despacho debe tener al menos un día de pedido.',
+            'order_days.*.*.in' => 'Uno o más días seleccionados no son válidos.',
 
             'payment_method.*.in' => 'El método de pago seleccionado no es válido.',
 
@@ -87,7 +89,7 @@ class StoreSupplierRequest extends FormRequest
 
             'custom_due_days.integer' => 'Los días de vencimiento personalizado deben ser un número entero.',
             'custom_due_days.min' => 'Los días de vencimiento personalizado deben ser al menos 1.',
-            
+
             'payment_due_reference.in' => 'La referencia de vencimiento seleccionada no es válida.',
             'payment_due_reference.required' => 'La referencia de vencimiento es obligatoria.',
         ];
