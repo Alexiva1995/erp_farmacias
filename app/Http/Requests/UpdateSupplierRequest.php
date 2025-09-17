@@ -38,7 +38,10 @@ class UpdateSupplierRequest extends FormRequest
             'cash_payment' => 'sometimes|boolean',
             'charges_igtf' => 'sometimes|boolean',
             'supplier_payment_method' => 'required|string',
-            'supplier_payment_days' => 'sometimes|numeric|min:0'
+            'supplier_payment_days' => 'sometimes|numeric|min:0',
+            'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
+            'custom_due_days' => 'nullable|integer|min:1',
+            'payment_due_reference' => 'required|in:receipt_date,issue_date',
         ];
     }
 
@@ -81,6 +84,14 @@ class UpdateSupplierRequest extends FormRequest
             'charges_igtf.boolean' => 'El valor para Cobra IGTF no es válido.',
 
             'supplier_payment_method.required' => 'Debes seleccionar un método de pago.',
+            'payment_due_type.in' => 'El tipo de vencimiento seleccionado no es válido.',
+            'payment_due_type.required' => 'El tipo de vencimiento es obligatorio.',
+
+            'custom_due_days.integer' => 'Los días de vencimiento personalizado deben ser un número entero.',
+            'custom_due_days.min' => 'Los días de vencimiento personalizado deben ser al menos 1.',
+
+            'payment_due_reference.in' => 'La referencia de vencimiento seleccionada no es válida.',
+            'payment_due_reference.required' => 'La referencia de vencimiento es obligatoria.',
         ];
     }
 }
