@@ -42,7 +42,7 @@ const fetchOrders = async () => {
 const verifyClientOrder = (identification) => {
   clientIdentification.value = identification;
   if (!clientIdentification.value) {
-    toast.warning("Por favor, ingrese un número de identificación.");
+    toast.warning("Por favor, ingrese un número de identificación o N° de oden.");
     return;
   }else{
     options.value.page = 1;
@@ -72,12 +72,18 @@ const handleReturnProduct = async ({ product, order, returns_quantity }) =>  {
   } 
 };
 
+const handleClearSearch = () => {
+clientIdentification.value = '';
+  orders.value = [];    
+  totalOrder.value = 0;
+};
 </script>
 
 <template>
  <ReturnsClientCard
         v-model="clientIdentification"
         @search-order="verifyClientOrder"
+        @clear-search="handleClearSearch"
       />
       <ReturnsOrderTable
       :orders="orders"
