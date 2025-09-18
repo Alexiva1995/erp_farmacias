@@ -19,25 +19,34 @@ class ReturnsActionService
     public function __construct(private ResourceService $resourceService) {}
 
 
-    public function searchOrdersReturns(string $identification, array $options): Builder
+    public function searchOrdersReturns(string $searchTerm, array $options): Builder
     {
         try {
-            $client = Client::where('identification', $identification)->first();
-            if (!$client) {
-                throw new Exception('No se encontró el cliente.');
+
+          $query = Order::where('created_at', '>=', Carbon::now()->subHours(48))
+            ->where('status', Order::COMPLETED)
+            ->with('client', 'details.product')
+            ->where(function ($query) use ($searchTerm) {
+                $query->where('id', $searchTerm);
+                $query->orWhereHas('client', function ($q) use ($searchTerm) {
+                    $q->where('identification', $searchTerm);
+                });
+            });
+
+            $hasReturn = (clone $query);
+        if ($hasReturn->count()==1) {
+            if($hasReturn->whereHas('returns')->exists()){
+                throw new Exception('Esta orden ya tiene una devolución registrada y no puede ser modificada.');
             }
+        }
 
-            $query = Order::where('client_id', $client->id)
-                ->where('created_at', '>=', Carbon::now()->subHours(48))
-                ->where('status', Order::COMPLETED)
-                ->with('client', 'details.product');
-
+         $query->whereDoesntHave('returns');
             if (isset($options['sortBy']) && !empty($options['sortBy'])) {
                 $sortBy = $options['sortBy'];
                 $orderBy = $options['orderBy'] ?? 'asc';
                 $query->orderBy($sortBy, $orderBy);
             }
-
+            
             return $query;
         } catch (\Exception $e) {
             DB::rollBack();

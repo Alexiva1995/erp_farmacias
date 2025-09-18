@@ -18,7 +18,31 @@ export default [
         to: 'finances-exchangerate',
       },
       {
-        title: 'Por Pagar',
+        title: 'Gasto',
+        icon: {
+          is: 'font-awesome-icon', 
+          props: {
+            icon: ['fas', 'chart-simple'],
+            size: 'sm',
+          },
+        },
+        children: [
+          {
+            title: 'Gastos',
+            to: 'finances-expense-expenses',
+          },
+          {
+            title: 'Gastos Pendientes',
+            to: 'finances-expense-pending-expenses',
+          },
+          {
+            title: 'Gastos Recurrentes',
+            to: 'finances-expense-recurring-expense',
+          }
+        ],
+      },
+      {
+          title: 'Por Pagar',
         to: 'finances-pending-payments',
       },
       {
