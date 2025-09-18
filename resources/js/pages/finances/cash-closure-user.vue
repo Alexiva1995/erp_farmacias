@@ -43,22 +43,6 @@ onMounted(() => {
   fetchClosingHistory();
 });
 
-const confirmCloseCash = async () => {
-  console.log("Caja cerrada confirmada desde el padre!");
-  try {
-    //const response = await axios.post(`/finances/cash-closure/close/${cashClosure.value.id}`);
-    toast.success("Caja cerrada con éxito.");
-    isCloseCashModalVisible.value = false;
-    fetchCashClosure();
-  } catch (error) {
-    console.error("Error al cerrar la caja:", error);
-    toast.error(
-      "Error al cerrar la caja: " +
-        (error.response?.data?.message || error.message)
-    );
-  }
-};
-
 const handleRequestCloseCash = () => {
   isCloseCashModalVisible.value = true;
 };
@@ -142,7 +126,6 @@ const printCash = async (cash) => {
         printWindow.focus();
         printWindow.print();
         printWindow.close();
-
   } catch (error) {
     console.error("Error al imprimir los detalles del cierre de caja:", error);
     toast.error("No se pudo cargar los detalles del cierre de caja.");
@@ -171,15 +154,12 @@ const downloadcash = async (cash) => {
     cashData.value = cashToDownload;
         isPrinting.value = true;
         await nextTick();
-
         const printContents = document.getElementById("CashClosurePrint");
-
           if (!printContents) {
             console.error("Elemento 'CashClosurePrint' no encontrado.");
             toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
             return;
           }
-
             const htmlContent = printContents.innerHTML;
 
             const response = await axios.post("/finances/cash-closure/generate-pdf", {
@@ -188,16 +168,10 @@ const downloadcash = async (cash) => {
             }, {
                 responseType: 'blob',
             });
-
-            // 1. Obtén la URL del archivo
             const url = window.URL.createObjectURL(new Blob([response.data]));
-
-            // 2. Crea un enlace temporal para la descarga
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `Cierre-Caja-${cash.id}.pdf`);
-
-            // 3. Simula un clic para descargar y luego limpia
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -213,6 +187,24 @@ const downloadcash = async (cash) => {
         cashData.value = null;
       }
   };
+
+const handleCompleteClosure = async (data) => {
+try {
+ const payload = {
+      cierre_id: cashClosure.id,
+      total_cop: data.total_cop,
+      sobrante_en_peso: data.sobrante_en_peso,
+      entregar_efectivo_cop: data.entregar_efectivo_cop,
+    };
+    const response = await axios.post('/finances/cash-closure/close', payload);
+    toast.success("Cierre de caja completado con éxito:");
+    isCloseCashModalVisible.value = false;
+    fetchCashClosure();
+} catch (error) {
+    console.error("Error al completar el cierre de caja:", error);
+    toast.error("Error al completar el cierre de caja:");
+  }
+}
 </script>
 
 <template>
@@ -221,13 +213,14 @@ const downloadcash = async (cash) => {
     <p v-else-if="!cashClosure">No hay datos de cierre de caja disponibles.</p>
     <CashSummary
       v-else
-      :cashClosureData="cashClosure"
+      :cash-closure-data="cashClosure"
       @requestCloseCash="handleRequestCloseCash"
     />
 
     <ClosedCashClosure
       v-model:isDialogVisible="isCloseCashModalVisible"
-      :cashClosureData="cashClosure"
+      :cash-closure-data="cashClosure"
+      @complete-cash-closure="handleCompleteClosure"
     />
   </div>
   <div class="mb-5"></div>

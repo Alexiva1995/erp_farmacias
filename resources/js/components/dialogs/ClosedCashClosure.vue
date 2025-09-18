@@ -14,16 +14,41 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible"]);
+const emit = defineEmits(["update:isDialogVisible", "complete-cash-closure"]);
 
 const dialogVisible = computed({
   get: () => props.isDialogVisible,
   set: (val) => emit("update:isDialogVisible", val),
 });
 
+const sobranteCop = ref(0);
+
+const totalCopConSobrante = computed(() => {
+  const totalOriginal = parseFloat(props.cashClosureData.total_cop) || 0;
+  const sobrante = parseFloat(sobranteCop.value) || 0;
+  return totalOriginal + sobrante;
+});
+
+const totalEfectivoCopConSobrante = computed(() => {
+  const totalDeliveryCop = parseFloat(props.cashClosureData.cop_delivered) || 0;
+  const sobrantecOP = parseFloat(sobranteCop.value) || 0;
+  return totalDeliveryCop + sobrantecOP;
+});
+
 const closeModal = () => {
   emit("update:isDialogVisible", false);
 };
+
+const completeClosure = () => {
+  const closureData = {
+    total_cop: totalCopConSobrante.value,
+    sobrante_en_peso: sobranteCop.value,
+    entregar_efectivo_cop: totalEfectivoCopConSobrante.value,
+  };
+  emit("complete-cash-closure", closureData);
+  closeModal();
+};
+
 </script>
 <template>
   <VDialog v-model="dialogVisible">
@@ -42,7 +67,7 @@ const closeModal = () => {
           {{ formatCurrency(parseFloat(props.cashClosureData.total_usd)) }}
         </p>
 
-        <VRow class="py-2">
+        <VRow class="pt-2">
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Binance:</span>
@@ -80,9 +105,20 @@ const closeModal = () => {
             </div>
           </VCol>
         </VRow>
+
+         <VRow class="pb-2">
+          <VCol cols="12" sm="6" md="3">
+            <div class="d-flex flex-column">
+              <span class="text-caption text-medium-emphasis">Saldo del cliente:</span>
+              <span class="text-body-1 font-weight-medium text-high-emphasis">
+                {{ props.cashClosureData.usd_balance }}
+              </span>
+            </div>
+          </VCol>
+         </VRow> 
         <VDivider />
 
-        <p class="text-h6 font-weight-medium mb-0 p-2">
+        <p class="text-h6 font-weight-medium mb-0 pt-2">
           Total de Bs
           {{ formatCurrency(parseFloat(props.cashClosureData.total_bs)) }}
         </p>
@@ -124,10 +160,10 @@ const closeModal = () => {
           </VCol>
         </VRow>
         <VDivider />
-        <p class="text-h6 font-weight-medium mb-0">
+        <p class="text-h6 font-weight-medium mb-0 pt-2">
           Total de COP
           {{
-            formatCurrency(parseFloat(props.cashClosureData.total_cop), "COP")
+            formatCurrency(parseFloat(totalCopConSobrante), "COP")
           }}
         </p>
 
@@ -158,7 +194,7 @@ const closeModal = () => {
                 >Diferencia por cambio:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_conversion }}
+                -{{ props.cashClosureData.cop_conversion }}
               </span>
             </div>
           </VCol>
@@ -169,6 +205,7 @@ const closeModal = () => {
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
                <VTextField
+                    v-model="sobranteCop"
                     placeholder="Monto Sobrante"
                     type="number"
                     class="p-2"
@@ -178,12 +215,12 @@ const closeModal = () => {
           </VCol>
         </VRow>
         <VDivider />
-        <p class="text-h6 font-weight-medium mb-0">
+        <p class="text-h6 font-weight-medium mb-0 pt-2">
           Total de Créditos
           {{ formatCurrency(parseFloat(props.cashClosureData.usd_credit)) }}
         </p>
 
-        <VRow class="py-2">
+        <VRow class="pt-2">
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Créditos:</span>
@@ -194,16 +231,16 @@ const closeModal = () => {
           </VCol>
         </VRow>
         <VDivider />
-        <p class="text-h6 font-weight-medium mb-0">Abonos de créditos</p>
+        <p class="text-h6 font-weight-medium mb-0 pt-2">Abonos de créditos</p>
 
-        <VRow class="py-2">
+        <VRow class="pt-2">
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis"
                 >Efectivo en USD:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_cash }}
+                {{ props.cashClosureData.usd_cash_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -211,7 +248,7 @@ const closeModal = () => {
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Binance:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_transfer }}
+                {{ props.cashClosureData.usd_binance_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -219,7 +256,7 @@ const closeModal = () => {
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Paypal:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_conversion }}
+                {{ props.cashClosureData.usd_paypal_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -227,7 +264,7 @@ const closeModal = () => {
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Efectivo:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_spare }}
+                {{ props.cashClosureData.bs_cash_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -238,7 +275,7 @@ const closeModal = () => {
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Pago Movil:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_cash }}
+                {{ props.cashClosureData.bs_mobile_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -248,7 +285,7 @@ const closeModal = () => {
                 >Transferencias:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_transfer }}
+                {{ props.cashClosureData.bs_transfer_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -256,7 +293,7 @@ const closeModal = () => {
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis">Tarjetas:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_conversion }}
+                {{ props.cashClosureData.bs_card_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -266,19 +303,19 @@ const closeModal = () => {
                 >Efectivo en COP:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_spare }}
+                {{ props.cashClosureData.cop_cash_payment_credit }}
               </span>
             </div>
           </VCol>
         </VRow>
-        <VRow>
+        <VRow class='pb-2'>
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis"
                 >Transferencias:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_cash }}
+                {{ props.cashClosureData.cop_transfer_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -288,7 +325,7 @@ const closeModal = () => {
                 >Diferencia por cambio:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_transfer }}
+                -{{ props.cashClosureData.cop_conversion_payment_credit }}
               </span>
             </div>
           </VCol>
@@ -296,7 +333,7 @@ const closeModal = () => {
 
         <VDivider />
 
-        <VRow>
+        <VRow class='pt-2'>
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
               <span class="text-caption text-medium-emphasis"
@@ -313,7 +350,7 @@ const closeModal = () => {
                 >Entregar Efectivo en COP:</span
               >
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_delivered }}
+                {{ totalEfectivoCopConSobrante }}
               </span>
             </div>
           </VCol>
@@ -329,7 +366,7 @@ const closeModal = () => {
         >
           Cancelar
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="" class="w-50">
+        <VBtn color="primary" variant="flat" @click="completeClosure" class="w-50">
           Completar
         </VBtn>
       </VCardActions>
