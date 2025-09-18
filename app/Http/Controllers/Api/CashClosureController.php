@@ -51,4 +51,9 @@ class CashClosureController extends Controller
         $pdf = Pdf::loadHtml($html);
         return $pdf->download($filename);
     }
+
+      public function closeCash(Request $request)
+    {
+        dd($request);
+    }
 }
