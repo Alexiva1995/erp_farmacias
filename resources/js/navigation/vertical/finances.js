@@ -29,6 +29,10 @@ export default [
         title: 'Flujo de caja',
         to: 'finances-cashout',
       },
+      {
+        title: 'Nómina',
+        to: 'finances-payslips',
+      },
     ],
   },
 ]

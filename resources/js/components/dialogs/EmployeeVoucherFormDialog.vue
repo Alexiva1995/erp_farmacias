@@ -24,7 +24,7 @@ const options = [
   "Bono de Ventas",
   "Bono de Crecimiento de Ventas",
   "Bono de Productos Asignados",
-  "Salario base",
+  "Salario Base",
   "Utilidades",
   "Vacaciones",
   "Bono Vacacional",

@@ -18,7 +18,9 @@ use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Models\Payslip;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
@@ -44,6 +46,7 @@ use App\Services\ProductSupplierServices;
 use App\Services\ProfitabilityServices;
 use App\Services\PurchaseOrderServices;
 use App\Services\RoleServices;
+use App\Services\PayslipServices;
 use App\Services\TransactionServices;
 use Illuminate\Support\ServiceProvider;
 
@@ -121,6 +124,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(RoleController::class)
             ->needs(Role::class)
             ->give(RoleServices::class);
+
+        $this->app->when(PayslipController::class)
+            ->needs(Payslip::class)
+            ->give(PayslipServices::class);
     }
 
     /**

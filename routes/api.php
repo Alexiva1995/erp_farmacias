@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\ProfitabilityController;
+use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
 use Illuminate\Http\Request;
@@ -283,6 +284,15 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix('transactions')->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
+        });
+
+        Route::prefix('payslips')->group(function () {
+            Route::get('', [PayslipController::class, 'index']);
+            Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
+            Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
+            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
+            Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
+            Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
     });
 
