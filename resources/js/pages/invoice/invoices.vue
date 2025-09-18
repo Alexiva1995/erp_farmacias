@@ -4,7 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
-import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
+import InvoiceForm from "@/pages/invoice/register.vue";
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -150,6 +150,11 @@ const handleEditInvoiceForm = (invoice) => {
   currentView.value = "edit-form";
 };
 
+const handleCreateInvoice = () => {
+  selectedInvoiceId.value = null;
+  currentView.value = "create-form";
+};
+
 const handleReturnToList = () => {
   selectedInvoiceId.value = null;
   selectedInvoiceSupplierId.value = null;
@@ -207,6 +212,7 @@ const handleDeleteInvoice = async (id) => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
+        @create-invoice="handleCreateInvoice"
       />
 
       <InvoiceTable
@@ -231,8 +237,16 @@ const handleDeleteInvoice = async (id) => {
       />
     </div>
 
+    <!-- Vista unificada para crear y editar -->
+    <div v-else-if="currentView === 'create-form'">
+      <InvoiceForm
+        @back-to-list="handleReturnToList"
+        @invoice-saved="handleReturnToList"
+      />
+    </div>
+
     <div v-else-if="currentView === 'edit-form'">
-      <InvoiceFormEdit
+      <InvoiceForm
         :invoice-id="selectedInvoiceId"
         :is-edit-mode="true"
         @back-to-list="handleReturnToList"

@@ -30,6 +30,7 @@ class Expense extends Model
         'is_deductible',
         'expense_date',
         'user_id',
+        'iva'
         'status',
         'count',
     ];
