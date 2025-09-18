@@ -9,6 +9,7 @@ use App\Services\CashClosure\CashClosureQueryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CashClosureExport;
+use App\Http\Requests\CashClosure\CloseCashClosureRequest;
 
 class CashClosureController extends Controller
 {
@@ -52,8 +53,9 @@ class CashClosureController extends Controller
         return $pdf->download($filename);
     }
 
-      public function closeCash(Request $request)
+      public function closeCash(CloseCashClosureRequest $request)
     {
-        dd($request);
+        $query = $this->cashClosureActionService->closeCashClosing($request);
+        return response()->json($query->toArray(), $query->get('success') ? 200 : 400);
     }
 }
