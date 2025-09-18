@@ -1,6 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
+
+use App\Http\Controllers\Api\EmployeeController;
+
+use App\Http\Controllers\Api\FurnitureController;
+
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -8,9 +13,11 @@ use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TraceabilityController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Auth\LoginController;
@@ -63,6 +70,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/products/export', [ProductController::class, 'export']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
+    Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
 
     // Rutas de Grupos de Productos
     Route::get("/groups", [GroupController::class, "index"]);
@@ -115,6 +123,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/cash-close-items", [InventoryCycleController::class, "getCashCloseItems"]);
         Route::post("/cycle/close", [InventoryCycleController::class, "closeActiveCycle"]);
         Route::post("/cycle/create", [InventoryCycleController::class, "createCycle"]);
+        Route::get('/cycle/summary', [InventoryCycleController::class, 'getCycleSummary']);
+        Route::get('/cycle/{cycleId}', [InventoryCycleController::class, 'getCycleInfo']);
         Route::prefix('count')->group(function () {
             Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
             Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
@@ -218,6 +228,24 @@ Route::middleware("auth:sanctum")->group(function () {
         });
     });
 
+    Route::prefix('rrhh')->group(function () {
+        Route::prefix('employees')->group(function () {
+            Route::get('/', [EmployeeController::class, 'list']);
+            Route::post('/', [EmployeeController::class, 'store']);
+            Route::get('/{employee}', [EmployeeController::class, 'profile']);
+            Route::get('/{employee}/vouchers', [EmployeeController::class, 'getVouchers']);
+            Route::post('/{employee}/voucher', [EmployeeController::class, 'storeVoucher']);
+            Route::delete('/{employee}', [EmployeeController::class, 'deleteEmployee']);
+            Route::put('/{employee}/documents', [EmployeeController::class, 'storeDocuments']);
+            Route::get('/{employee}/download/{file}', [EmployeeController::class, 'downloadDocument']);
+            Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
+            Route::put('/{employee}', [EmployeeController::class, 'update']);
+            Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+        });
+    });
+
+    Route::get('/roles', [RoleController::class, 'list']);
+
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
@@ -301,6 +329,42 @@ Route::middleware("auth:sanctum")->group(function () {
         });
     });
 
+});
+
+// Rutas de Proveedores
+Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
+Route::prefix("suppliers")->group(function () {
+    Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+    Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
+    Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
+    Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
+    Route::post("/{supplier}/laboratories", [SupplierController::class, "storeLaboratory"]);
+    Route::get("/{supplier}/laboratories", [SupplierController::class, "getLaboratoryLinks"]);
+    Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
+    Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
+    Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
+    Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
+    Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
+});
+
+Route::prefix("suppliers/purchase-orders")->group(function () {
+    Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
+    Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
+    Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
+    Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
+    Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);
+    Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
+    Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
+    Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
+});
+
+
     Route::prefix("supplier-laboratories")->group(function () {
         Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
         Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
@@ -321,6 +385,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
         Route::put('/{invoice}', 'update')->name('update');
+        Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
     });
 
     // Asistente IA
@@ -339,4 +404,23 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
     });
+
+
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
+        Route::get('/balance', 'getBalance')->name('balance');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{loan}', 'update')->name('update');
+        Route::delete('/{loan}', 'destroy')->name('delete');
+    });
+
 });

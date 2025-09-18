@@ -45,7 +45,8 @@
             },
             "7": {
                 "file_field": "stock_disponible",
-                "type": "integer"
+                "type": "integer",
+                "target": "quantity"
             }
         },
         "invoice_structure": {
@@ -398,7 +399,7 @@
         "username": "C008B3",
         "password": "eyJpdiI6Im1YVjRMYy96UFdzbndIMTRUMW1CQ1E9PSIsInZhbHVlIjoiMHIwK1hhendnaTR4OU5OZ3gxMTdoQT09IiwibWFjIjoiNDNmOTkxZDdiZWI1ZWVlNjE3NWYzMzA1MmNlOTYyOGEyNjI5NDMyNzAxM2UwZmQyNjYzZDdkNjM1YjhiYjYwNyIsInRhZyI6IiJ9=",
         "path": "inventario.txt",
-        "pasv": false,
+        "pasv": true,
         "has_header": true,
         "invoice_path": "/",
         "structure": {

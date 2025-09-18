@@ -162,8 +162,6 @@ class SupplierConnectionService
 
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
-        \Log::info("Data structure: ");
-        \Log::info(explode(";", $lines[0]));
         foreach ($lines as $line) {
             $cols = explode(";", $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
@@ -172,13 +170,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $usdCurrency,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -193,6 +185,7 @@ class SupplierConnectionService
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
+            $missingBarcode = false;
 
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
@@ -202,6 +195,10 @@ class SupplierConnectionService
                     case "string":
                         $entry[$meta["target"]] = $value;
                         break;
+
+                    case "integer":
+                        $entry[$meta["target"]] = $value;
+                        break;    
 
                     case "decimal":
                         if (is_numeric($value)) {
@@ -269,10 +266,31 @@ class SupplierConnectionService
 
                 if ($meta["target"] === "barcode_match" && $value !== "") {
                     $product = $products->get($value);
-                    $entry["laboratory"] = $product?->laboratory?->name;
-                    $entry["product_id"] = $product?->id;
-                }
+
+                    if ($product) {
+                        $entry["laboratory"] = $product?->laboratory?->name;
+                        $entry["product_id"] = $product?->id;
+                    } else {
+                        $missingBarcode = true; // lo marcamos para crear luego
+                    }
+                } 
             }
+
+            if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
+                $newProduct = Product::create([
+                    'barcode' => $entry['barcode_match'],
+                    'name' => $entry['name'] ?? 'Producto sin nombre',
+                    'unit_cost' => $entry['unit_cost'] ?? 0,
+                    'sale_price' => $entry['unit_cost'] ?? 0,
+                    'stock' => $entry['quantity'] ?? 0,
+                    'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
+                    'sales_average' => $entry['sales_average'] ?? 0
+                ]);
+
+                $entry['product_id'] = $newProduct->id;
+
+                $products->put($missingBarcode, $newProduct); // actualiza el cache local
+            } 
 
             return $entry;
         });
@@ -415,7 +433,8 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }
