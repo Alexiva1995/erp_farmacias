@@ -30,6 +30,7 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "unit_cost" => ["required", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "required", "string"],
+            "active_ingredient" => ["nullable", "string"],
             "file" => ["required", "file", "mimes:xlsx,xls"],
         ];
     }
@@ -53,6 +54,8 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "file.required" => "Debes seleccionar un archivo.",
             "file.file" => "Debes seleccionar un archivo.",
             "file.mimes" => "El archivo debe ser de tipo Excel (.xlsx o .xls).",
+            "active_ingredient.required" => 'Debe indicar el valor de la columna',
+            "active_ingredient.string" => 'La columna debe ser un texto'
         ];
     }
 }

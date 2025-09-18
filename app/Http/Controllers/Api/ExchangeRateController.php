@@ -43,4 +43,18 @@ class ExchangeRateController extends Controller
     {
         return $this->exchangeRate->consultOneBCV();
     }
+
+    public function updateBCVDollar(Request $request)
+    {
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+
+        $data = [
+            "currency_code" => "USD",
+            "rate"          => $response[0]['promedio'],
+            "source"        => null,
+        ];
+
+        $this->exchangeRate->store($data);
+        return response()->json("Dolar BCV actualizado");
+    }
 }

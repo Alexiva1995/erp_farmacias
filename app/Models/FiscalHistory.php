@@ -20,6 +20,7 @@ class FiscalHistory extends Model
         'iva_amount',
         'total_amount',
         'invoice_date',
+        'order_id',
     ];
 
     public function user(): BelongsTo

@@ -28,6 +28,7 @@ class InvoiceActionService
                 'exp_date' => $data['exp_date'],
                 'payment_date' => $data['payment_date'] ?? null,
                 'received_date' => $data['received_date'],
+                'created_invoice_date' => $data['created_invoice_date'],
                 'exempt_amount' => $data['exempt_amount'] ?? 0,
                 'taxable_base' => $data['taxable_base'] ?? 0,
                 'tax_amount' => $data['tax_amount'] ?? 0,
@@ -89,17 +90,13 @@ class InvoiceActionService
     }
     public function saveInvoiceDetails(Invoice $invoice, array $data): Invoice
     {
-        // Solo se puede guardar el progreso en facturas pendientes
         if ($invoice->status !== 'pending') {
             throw new Exception("Solo se puede guardar el progreso en facturas con estado 'pendiente'.");
         }
 
         return DB::transaction(function () use ($invoice, $data) {
-            // Actualizamos los datos de la cabecera de la factura (como el descuento de proveedor)
             $invoice->update($data['invoice']);
 
-            // 1. Borramos los detalles Y las devoluciones existentes para esta factura.
-            // Esto asegura que cada guardado sea un reflejo fiel del estado actual del frontend.
             $invoice->details()->delete();
             $invoice->returns()->delete();
 
@@ -115,42 +112,43 @@ class InvoiceActionService
                     continue;
                 }
 
-                // Es el costo unitario en la moneda de la factura (ej. Bs)
+                $productId = $detail['product']['id'];
+                $quantity = (int) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
-                $unitCostUSD = $unitCostInInvoiceCurrency;
+                $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
 
-                if ($currency !== 'USD') {
-                    $unitCostUSD = round($unitCostInInvoiceCurrency / $rate, 2);
+                $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
+                if ($taxEnabled) {
+                    $totalCostInInvoiceCurrency = $totalCostInInvoiceCurrency * 1.16;
                 }
+                $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
 
-                // 2. Bifurcamos la lógica: ¿Es una devolución o un detalle normal?
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
-                    // Si es una devolución, lo creamos en la tabla de devoluciones
+                    $refundAmount = $totalCostInInvoiceCurrency;
+
                     InvoiceReturn::create([
                         'invoice_id' => $invoice->id,
-                        'product_id' => $detail['product']['id'],
-                        'quantity' => $detail['quantity'],
-                        'amount_refunded' => round($detail['quantity'] * $unitCostUSD, 2), // Guardamos el monto en USD
+                        'product_id' => $productId,
+                        'quantity' => $quantity,
+                        'amount_refunded' => $refundAmount,
                         'return_date' => Carbon::today(),
+                        'lot_number' => $detail['lot_number'] ?? null,
+                        'expiration_date' => $detail['expiration_date'] ?? null,
                     ]);
                 } else {
-                    // Si NO es una devolución, lo creamos en la tabla de detalles
-                    $totalCostUSD = round($detail['quantity'] * $unitCostUSD, 2);
                     $invoice->details()->create([
-                        'product_id' => $detail['product']['id'],
-                        'quantity' => $detail['quantity'],
-                        'unit_cost' => $unitCostUSD,
-                        'total_cost' => $totalCostUSD,
+                        'product_id' => $productId,
+                        'quantity' => $quantity,
+                        'unit_cost' => $unitCostInInvoiceCurrency,
+                        'total_cost' => $totalCostInInvoiceCurrency,
                         'lot_number' => $detail['lot_number'],
                         'expiration_date' => $detail['expiration_date'],
                         'location' => $detail['location'],
-                        'tax_enabled' => $detail['tax_enabled'] ?? false,
+                        'tax_enabled' => $taxEnabled,
                     ]);
                 }
             }
 
-            // Devolvemos la factura actualizada con sus relaciones.
-            // El frontend deberá cargar ambas relaciones (`details` y `returns`) para reconstruir la tabla.
             return $invoice->fresh(['details.product', 'supplier', 'returns.product']);
         });
     }

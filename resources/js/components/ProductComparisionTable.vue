@@ -8,7 +8,13 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "show-products", "update-products", "load-products", "delete-products"]);
+const emit = defineEmits([
+  "update:options",
+  "show-products",
+  "update-products",
+  "load-products",
+  "delete-products",
+]);
 
 const headers = [
   { title: "Id", key: "id", sortable: false },
@@ -68,21 +74,41 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip v-if="item.type !== 'NO REGISTRADO'" text="Actualizar Productos" location="top">
+        <VTooltip
+          v-if="item.type !== 'NO REGISTRADO' && item.type !== 'ARCHIVO EXCEL'"
+          text="Actualizar Productos"
+          location="top"
+        >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" :disabled="checkingApiId === item.id" @click="emit('update-products', item)">
+            <IconBtn
+              v-bind="props"
+              :disabled="checkingApiId === item.id"
+              @click="emit('update-products', item)"
+            >
               <VIcon
-                :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'"
+                :icon="
+                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'
+                "
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip v-if="item.type === 'NO REGISTRADO'" text="Cargar Productos" location="top">
+        <VTooltip
+          v-if="item.type === 'NO REGISTRADO' || item.type === 'ARCHIVO EXCEL'"
+          text="Cargar Productos"
+          location="top"
+        >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" :disabled="checkingApiId === item.id" @click="emit('load-products', item)">
+            <IconBtn
+              v-bind="props"
+              :disabled="checkingApiId === item.id"
+              @click="emit('load-products', item)"
+            >
               <VIcon
-                :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-upload'"
+                :icon="
+                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-upload'
+                "
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
             </IconBtn>
