@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Support\Collection;
 use App\Http\Requests\CashClosure\CloseCashClosureRequest;
 use App\Models\Order;
+use Illuminate\Support\Carbon;
 
 class CashClosureActionService
 {
@@ -25,6 +26,7 @@ class CashClosureActionService
     {
         $validatedData = $request->validated();
 
+        $sellerId = Auth::id();
         $cashClosure = CashClosing::findOrFail($validatedData['id']);
         $pendingOrders = $cashClosure->orders()
                                      ->whereIn('status', [Order::RESERVED, Order::PENDING])
@@ -42,11 +44,17 @@ class CashClosureActionService
         }
 
         $cashClosure->update([
-        //     'status' => CashClosing::CLOSED,
-        //     'total_cop' => $validatedData['total_cop'],
-        //     'cop_spare' => $validatedData['sobrante_en_peso'],
-        //     'cop_delivered' => $validatedData['entregar_efectivo_cop'],
+             'status' => CashClosing::CLOSED,
+             'total_cop' => $validatedData['total_cop'],
+             'cop_spare' => $validatedData['sobrante_en_peso'],
+             'cop_delivered' => $validatedData['entregar_efectivo_cop'],
          ]);
+
+         CashClosing::create([
+                    'seller_id' => $sellerId,
+                    'status' => CashClosing::OPEN,
+                    'closing_date' => Carbon::now(),
+                ]);
 
         return collect([
             'success' => true,

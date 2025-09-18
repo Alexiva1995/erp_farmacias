@@ -200,9 +200,14 @@ try {
     toast.success("Cierre de caja completado con éxito:");
     isCloseCashModalVisible.value = false;
     fetchCashClosure();
+    fetchClosingHistory();
 } catch (error) {
     console.error("Error al completar el cierre de caja:", error);
-    toast.error("Error al completar el cierre de caja:");
+    if (error.response && error.response.data && error.response.data.message) {
+      toast.error(error.response.data.message);
+    } else {
+      toast.error("Error al completar el cierre de caja.");
+    }
   }
 }
 </script>
