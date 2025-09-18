@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\ReturnsController;
+use App\Http\Controllers\Api\FinancialStatementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,11 +49,21 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 
+// TEMPORAL: Estado de Resultados público para debugging
+Route::prefix("finances")->group(function () {
+    // income statement (Estado de Resultados) - TEMPORALMENTE PÚBLICO
+    Route::get("/income-statement", [FinancialStatementController::class, "index"]);
+    Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
+    Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
+});
+
+
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
     Route::get("/user", function (Request $request) {
         return $request->user();
     });
+
     Route::post("/logout", [LoginController::class, "logout"]);
 
     // Rutas de Productos
@@ -262,6 +273,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix("payment-history")->group(function () {
             Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
         });
+
+        // income statement (Estado de Resultados) - MOVIDO A RUTAS PÚBLICAS TEMPORALMENTE
 
         Route::prefix('transactions')->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);

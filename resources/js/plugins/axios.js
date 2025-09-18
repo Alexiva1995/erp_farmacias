@@ -6,6 +6,8 @@ const axiosInstance = axios.create({
   withCredentials: true,
   headers: {
     'X-Requested-With': 'XMLHttpRequest',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
   },
 })
 
@@ -18,10 +20,25 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['X-CSRF-TOKEN'] = token;
     }
-    return config
+    
+    // Asegurar que las cookies se envíen
+    config.withCredentials = true;
+    
+          return config
   },
   (error) => {
+    console.error('Axios Request Error:', error);
     return Promise.reject(error)
+  }
+)
+
+// Interceptor de respuesta
+axiosInstance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
 )
 
