@@ -42,7 +42,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         ]);
 
         $supplierConnection = $this->supplier->connections->first();
-        $structure = $supplierConnection->structure;
+        $structure = $supplierConnection->structure ?? null;
 
         try {
             $results = [];
@@ -78,6 +78,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
                 Excel::import($import, $absolutePath);
                 $results = ["products" => $import->getRows()->toArray(), "invoices" => []];
+
+                unlink($absolutePath);
             } else {
                 $results = $connectionService->fetchData($supplierConnection);
             }
@@ -101,8 +103,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 "status" => "failed",
                 "message" => $e->getMessage(),
             ]);
-        } finally {
-            unlink($absolutePath);
         }
     }
 }
