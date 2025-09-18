@@ -175,7 +175,8 @@
             },
             "7": {
                 "file_field": "stock_disponible",
-                "type": "integer"
+                "type": "integer",
+                "target": "quantity"
             }
         },
         "invoice_structure": {
