@@ -1,14 +1,167 @@
 <script setup>
-import { computed, ref } from "vue";
+import CreditoFiscalTable from "@/components/CreditoFiscalTable.vue";
+import DebitoFiscalTable from "@/components/DebitoFiscalTable.vue";
+import IvaFiscalFilters from "@/components/IvaFiscalFilters.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { computed, onMounted, ref } from "vue";
 
-// Datos ficticios de ejemplo
-const debitoFiscal = ref(150000);
-const creditoFiscal = ref(85000);
+// Estados reactivos para las cards de resumen
+const debitoFiscal = ref(0);
+const creditoFiscal = ref(0);
+const loading = ref(false);
+const periodo = ref({
+  start_date: null,
+  end_date: null,
+});
+const detalleCredito = ref({});
+const detalleDebito = ref({});
+
+// Estados para los filtros
+const startDate = ref("");
+const endDate = ref("");
+
+// Estados para la tabla de débito fiscal
+const fiscalData = ref([]);
+const totalRecords = ref(0);
+const page = ref(1);
+const itemsPerPage = ref(10);
+const tableLoading = ref(false);
+
+// Estados para la tabla de crédito fiscal
+const expensesData = ref([]);
+const totalExpensesRecords = ref(0);
+const expensesPage = ref(1);
+const expensesItemsPerPage = ref(10);
+const expensesTableLoading = ref(false);
 
 // Cálculo automático del IVA a pagar (Débito Fiscal - Crédito Fiscal)
 const ivaAPagar = computed(() => {
   return debitoFiscal.value - creditoFiscal.value;
 });
+
+// Función para obtener crédito fiscal
+const fetchCreditoFiscal = async () => {
+  try {
+    const params = {};
+    if (startDate.value) params.start_date = startDate.value;
+    if (endDate.value) params.end_date = endDate.value;
+
+    const response = await axios.get(
+      "/finances/pending-payments/credito-fiscal",
+      { params }
+    );
+
+    if (response.data.status === "success") {
+      const data = response.data.data;
+      creditoFiscal.value = data.credito_fiscal;
+      detalleCredito.value = data.detalle_credito;
+      if (!periodo.value.start_date) {
+        periodo.value = data.periodo;
+      }
+    }
+  } catch (error) {
+    console.error("Error al obtener crédito fiscal:", error);
+    toast.error("Error al cargar crédito fiscal");
+  }
+};
+
+// Función para obtener débito fiscal
+const fetchDebitoFiscal = async () => {
+  try {
+    const params = {};
+    if (startDate.value) params.start_date = startDate.value;
+    if (endDate.value) params.end_date = endDate.value;
+
+    const response = await axios.get("/tpv/debito-fiscal", { params });
+
+    if (response.data.status === "success") {
+      const data = response.data.data;
+      debitoFiscal.value = data.debito_fiscal;
+      detalleDebito.value = data.detalle_debito;
+      if (!periodo.value.start_date) {
+        periodo.value = data.periodo;
+      }
+    }
+  } catch (error) {
+    console.error("Error al obtener débito fiscal:", error);
+    toast.error("Error al cargar débito fiscal");
+  }
+};
+
+// Función para obtener datos de la tabla fiscal
+const fetchFiscalHistoryData = async () => {
+  tableLoading.value = true;
+  try {
+    const params = {
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+    };
+
+    if (startDate.value) params.start_date = startDate.value;
+    if (endDate.value) params.end_date = endDate.value;
+
+    const response = await axios.get("/tpv/fiscal-history", { params });
+
+    if (response.data.status === "success") {
+      const data = response.data.data;
+      fiscalData.value = data.data;
+      totalRecords.value = data.pagination.total;
+    }
+  } catch (error) {
+    console.error("Error al obtener datos fiscales:", error);
+    toast.error("Error al cargar datos de facturas");
+  } finally {
+    tableLoading.value = false;
+  }
+};
+
+// Función para obtener datos de gastos con IVA
+const fetchExpensesData = async () => {
+  expensesTableLoading.value = true;
+  try {
+    const params = {
+      page: expensesPage.value,
+      itemsPerPage: expensesItemsPerPage.value,
+    };
+
+    if (startDate.value) params.start_date = startDate.value;
+    if (endDate.value) params.end_date = endDate.value;
+
+    const response = await axios.get(
+      "/finances/pending-payments/expenses-history",
+      { params }
+    );
+
+    if (response.data.status === "success") {
+      const data = response.data.data;
+      expensesData.value = data.data;
+      totalExpensesRecords.value = data.pagination.total;
+    }
+  } catch (error) {
+    console.error("Error al obtener datos de gastos:", error);
+    toast.error("Error al cargar datos de gastos");
+  } finally {
+    expensesTableLoading.value = false;
+  }
+};
+
+// Función para cargar todos los datos
+const fetchAllData = async () => {
+  loading.value = true;
+  try {
+    await Promise.all([
+      fetchCreditoFiscal(),
+      fetchDebitoFiscal(),
+      fetchFiscalHistoryData(),
+      fetchExpensesData(),
+    ]);
+  } catch (error) {
+    console.error("Error al obtener datos de IVA fiscal:", error);
+  } finally {
+    loading.value = false;
+  }
+};
 
 // Función para formatear moneda colombiana
 const formatCurrency = (amount) => {
@@ -19,6 +172,16 @@ const formatCurrency = (amount) => {
     maximumFractionDigits: 0,
   });
   return formatter.format(amount);
+};
+
+// Formatear fecha para mostrar
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleDateString("es-CO", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
 // Determinar color y estado según el resultado
@@ -46,152 +209,273 @@ const getIvaStatus = computed(() => {
     };
   }
 });
+
+// Manejar aplicación de filtros
+const handleApplyFilter = () => {
+  // Resetear paginación al aplicar filtros
+  page.value = 1;
+  expensesPage.value = 1;
+  fetchAllData();
+};
+
+// Manejar limpieza de filtros
+const handleClearFilter = () => {
+  startDate.value = "";
+  endDate.value = "";
+  page.value = 1;
+  expensesPage.value = 1;
+
+  // Establecer fechas por defecto (mes actual)
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  startDate.value = startOfMonth.toISOString().split("T")[0];
+  endDate.value = endOfMonth.toISOString().split("T")[0];
+
+  fetchAllData();
+};
+
+// Manejar cambios en la tabla de débito fiscal
+const handleTableOptionsUpdate = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+
+  // Solo recargar datos de la tabla de débito
+  fetchFiscalHistoryData();
+};
+
+// Manejar cambios en la tabla de gastos
+const handleExpensesTableOptionsUpdate = (options) => {
+  expensesPage.value = options.page;
+  expensesItemsPerPage.value = options.itemsPerPage;
+
+  // Solo recargar datos de la tabla de gastos
+  fetchExpensesData();
+};
+
+// Inicializar con mes actual
+const initializeDefaults = () => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  startDate.value = startOfMonth.toISOString().split("T")[0];
+  endDate.value = endOfMonth.toISOString().split("T")[0];
+};
+
+// Cargar datos al montar el componente
+onMounted(() => {
+  initializeDefaults();
+  fetchAllData();
+});
 </script>
 
 <template>
   <div>
-    <!-- Card de Cálculo IVA Fiscal -->
+    <!-- Filtros de fecha -->
+    <IvaFiscalFilters
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      :loading="loading"
+      @apply-filter="handleApplyFilter"
+      @clear-filter="handleClearFilter"
+    />
+
+    <!-- Cards de Cálculo IVA Fiscal -->
     <VCard class="mb-6">
       <VCardTitle class="d-flex align-center">
         <VIcon icon="tabler-calculator" class="me-2" />
         Cálculo IVA Fiscal
         <VSpacer />
+
+        <!-- Indicador de período -->
+        <VChip
+          v-if="periodo.start_date"
+          color="info"
+          size="small"
+          variant="outlined"
+          class="me-2"
+        >
+          {{ formatDate(periodo.start_date) }} -
+          {{ formatDate(periodo.end_date) }}
+        </VChip>
+
+        <!-- Estado del cálculo -->
         <VChip :color="getIvaStatus.chipColor" size="small" variant="tonal">
           <VIcon :icon="getIvaStatus.icon" size="14" class="me-1" />
           {{ getIvaStatus.message }}
         </VChip>
+
+        <!-- Botón de recarga -->
+        <VBtn
+          icon="tabler-refresh"
+          variant="text"
+          size="small"
+          :loading="loading"
+          @click="fetchAllData"
+          class="ms-2"
+        />
       </VCardTitle>
 
       <VDivider />
 
       <VCardText>
-        <VRow>
-          <!-- Débito Fiscal -->
-          <VCol cols="12" md="4">
-            <VCard variant="tonal" color="warning">
-              <VCardText class="text-center">
-                <div class="d-flex align-center justify-center mb-2">
-                  <VIcon icon="tabler-arrow-up-circle" size="28" class="me-2" />
-                  <span class="text-h6 font-weight-bold">Débito Fiscal</span>
-                </div>
-                <div class="text-h4 font-weight-bold text-warning-darken-2">
-                  {{ formatCurrency(debitoFiscal) }}
-                </div>
-                <div class="text-caption text-medium-emphasis mt-1">
-                  IVA cobrado en ventas
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
+        <!-- Loading state -->
+        <div v-if="loading" class="text-center pa-6">
+          <VProgressCircular indeterminate color="primary" size="64" />
+          <div class="text-h6 mt-4">Cargando datos de IVA fiscal...</div>
+        </div>
 
-          <!-- Crédito Fiscal -->
-          <VCol cols="12" md="4">
-            <VCard variant="tonal" color="info">
-              <VCardText class="text-center">
-                <div class="d-flex align-center justify-center mb-2">
-                  <VIcon
-                    icon="tabler-arrow-down-circle"
-                    size="28"
-                    class="me-2"
-                  />
-                  <span class="text-h6 font-weight-bold">Crédito Fiscal</span>
-                </div>
-                <div class="text-h4 font-weight-bold text-info-darken-2">
-                  {{ formatCurrency(creditoFiscal) }}
-                </div>
-                <div class="text-caption text-medium-emphasis mt-1">
-                  IVA pagado en compras
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
+        <!-- Contenido principal -->
+        <template v-else>
+          <VRow>
+            <!-- Débito Fiscal -->
+            <VCol cols="12" md="4">
+              <VCard variant="tonal" color="warning">
+                <VCardText class="text-center">
+                  <div class="d-flex align-center justify-center mb-2">
+                    <VIcon
+                      icon="tabler-arrow-up-circle"
+                      size="28"
+                      class="me-2"
+                    />
+                    <span class="text-h6 font-weight-bold">Débito Fiscal</span>
+                  </div>
+                  <div class="text-h4 font-weight-bold text-warning-darken-2">
+                    {{ formatCurrency(debitoFiscal) }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    IVA cobrado en ventas
+                  </div>
 
-          <!-- IVA a Pagar -->
-          <VCol cols="12" md="4">
-            <VCard
-              variant="tonal"
-              :color="getIvaStatus.color"
-              class="position-relative"
-            >
-              <VCardText class="text-center">
-                <div class="d-flex align-center justify-center mb-2">
-                  <VIcon :icon="getIvaStatus.icon" size="28" class="me-2" />
-                  <span class="text-h6 font-weight-bold">IVA a Pagar</span>
-                </div>
+                  <!-- Información adicional del débito -->
+                  <div v-if="detalleDebito.total_orders_with_iva" class="mt-2">
+                    <VChip color="warning" size="x-small" variant="flat">
+                      {{ detalleDebito.total_orders_with_iva }} órdenes con IVA
+                    </VChip>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+
+            <!-- Crédito Fiscal -->
+            <VCol cols="12" md="4">
+              <VCard variant="tonal" color="info">
+                <VCardText class="text-center">
+                  <div class="d-flex align-center justify-center mb-2">
+                    <VIcon
+                      icon="tabler-arrow-down-circle"
+                      size="28"
+                      class="me-2"
+                    />
+                    <span class="text-h6 font-weight-bold">Crédito Fiscal</span>
+                  </div>
+                  <div class="text-h4 font-weight-bold text-info-darken-2">
+                    {{ formatCurrency(creditoFiscal) }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    IVA pagado en compras
+                  </div>
+
+                  <!-- Información adicional del crédito -->
+                  <div
+                    v-if="detalleCredito.total_expenses_with_iva"
+                    class="mt-2"
+                  >
+                    <VChip color="info" size="x-small" variant="flat">
+                      {{ detalleCredito.total_expenses_with_iva }} gastos con
+                      IVA
+                    </VChip>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+
+            <!-- IVA a Pagar -->
+            <VCol cols="12" md="4">
+              <VCard
+                variant="tonal"
+                :color="getIvaStatus.color"
+                class="position-relative"
+              >
+                <VCardText class="text-center">
+                  <div class="d-flex align-center justify-center mb-2">
+                    <VIcon :icon="getIvaStatus.icon" size="28" class="me-2" />
+                    <span class="text-h6 font-weight-bold">IVA a Pagar</span>
+                  </div>
+                  <div
+                    class="text-h4 font-weight-bold"
+                    :class="{
+                      'text-error-darken-2': ivaAPagar > 0,
+                      'text-success-darken-2': ivaAPagar < 0,
+                      'text-info-darken-2': ivaAPagar === 0,
+                    }"
+                  >
+                    {{ formatCurrency(Math.abs(ivaAPagar)) }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    {{ getIvaStatus.message }}
+                  </div>
+                </VCardText>
+
+                <!-- Badge para valores negativos -->
                 <div
-                  class="text-h4 font-weight-bold"
-                  :class="{
-                    'text-error-darken-2': ivaAPagar > 0,
-                    'text-success-darken-2': ivaAPagar < 0,
-                    'text-info-darken-2': ivaAPagar === 0,
-                  }"
+                  v-if="ivaAPagar < 0"
+                  class="position-absolute"
+                  style="top: 10px; right: 10px"
                 >
-                  {{ formatCurrency(Math.abs(ivaAPagar)) }}
+                  <VChip color="success" size="x-small" variant="flat">
+                    Saldo a favor
+                  </VChip>
                 </div>
-                <div class="text-caption text-medium-emphasis mt-1">
-                  {{ getIvaStatus.message }}
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <!-- Información adicional en caso de no tener datos -->
+          <VRow v-if="creditoFiscal === 0 && debitoFiscal === 0" class="mt-4">
+            <VCol cols="12">
+              <VAlert type="info" variant="tonal">
+                <template #title>
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-info-circle" class="me-2" />
+                    Sin datos para el período seleccionado
+                  </div>
+                </template>
+
+                <div class="mt-2">
+                  No se encontraron gastos con IVA ni ventas gravadas para el
+                  período
+                  <strong>{{ formatDate(periodo.start_date) }}</strong> -
+                  <strong>{{ formatDate(periodo.end_date) }}</strong>
                 </div>
-              </VCardText>
-
-              <!-- Badge para valores negativos -->
-              <div
-                v-if="ivaAPagar < 0"
-                class="position-absolute"
-                style="top: 10px; right: 10px"
-              >
-                <VChip color="success" size="x-small" variant="flat">
-                  Saldo a favor
-                </VChip>
-              </div>
-            </VCard>
-          </VCol>
-        </VRow>
-
-        <!-- Detalles del cálculo -->
-        <VRow class="mt-4">
-          <VCol cols="12">
-            <VAlert type="info" variant="tonal" class="mb-0">
-              <template #title>
-                <div class="d-flex align-center">
-                  <VIcon icon="tabler-info-circle" class="me-2" />
-                  Fórmula de Cálculo
-                </div>
-              </template>
-
-              <div
-                class="d-flex align-center justify-center flex-wrap ga-2 mt-2"
-              >
-                <VChip color="warning" variant="outlined" size="small">
-                  Débito Fiscal: {{ formatCurrency(debitoFiscal) }}
-                </VChip>
-                <VIcon icon="tabler-minus" size="20" />
-                <VChip color="info" variant="outlined" size="small">
-                  Crédito Fiscal: {{ formatCurrency(creditoFiscal) }}
-                </VChip>
-                <VIcon icon="tabler-equal" size="20" />
-                <VChip :color="getIvaStatus.color" variant="flat" size="small">
-                  {{ formatCurrency(ivaAPagar) }}
-                </VChip>
-              </div>
-
-              <div class="text-center mt-3 text-body-2">
-                <template v-if="ivaAPagar > 0">
-                  <strong>Resultado:</strong> Debe pagar
-                  {{ formatCurrency(ivaAPagar) }} de IVA a la DIAN
-                </template>
-                <template v-else-if="ivaAPagar < 0">
-                  <strong>Resultado:</strong> Tiene un saldo a favor de
-                  {{ formatCurrency(Math.abs(ivaAPagar)) }}
-                </template>
-                <template v-else>
-                  <strong>Resultado:</strong> El débito y crédito fiscal están
-                  equilibrados
-                </template>
-              </div>
-            </VAlert>
-          </VCol>
-        </VRow>
+              </VAlert>
+            </VCol>
+          </VRow>
+        </template>
       </VCardText>
     </VCard>
+
+    <!-- Tabla de Débito Fiscal -->
+    <DebitoFiscalTable
+      :fiscal-data="fiscalData"
+      :loading="tableLoading"
+      :total-records="totalRecords"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="handleTableOptionsUpdate"
+      class="mb-6"
+    />
+
+    <!-- Tabla de Crédito Fiscal -->
+    <CreditoFiscalTable
+      :expenses-data="expensesData"
+      :loading="expensesTableLoading"
+      :total-records="totalExpensesRecords"
+      :items-per-page="expensesItemsPerPage"
+      :page="expensesPage"
+      @update:options="handleExpensesTableOptionsUpdate"
+    />
   </div>
 </template>

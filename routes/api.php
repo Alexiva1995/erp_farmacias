@@ -170,6 +170,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+        Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
+        Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);
     });
 
     // Rutas de Trazabilidad
@@ -249,13 +251,15 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // pending payments
         Route::prefix("pending-payments")->group(function () {
+            Route::get('/credito-fiscal', [PendingPaymentsController::class, 'getCreditoFiscal']);
             Route::get("/", [PendingPaymentsController::class, "index"]);
             Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
             Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
             Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
             Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
             Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
-            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]); // Nueva ruta
+            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]);
+            Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
         });
 
         // payment history

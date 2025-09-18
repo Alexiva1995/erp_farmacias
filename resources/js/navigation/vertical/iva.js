@@ -12,7 +12,7 @@ export default [
     children: [
       {
         title: 'General',
-        to: 'invoice-register',
+        to: 'iva-general',
       },
     ],
   }, 

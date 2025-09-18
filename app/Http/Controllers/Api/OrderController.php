@@ -316,5 +316,64 @@ class OrderController extends Controller
             return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
         }
     }
+    public function getDebitoFiscal(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date'
+            ]);
 
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+
+            $debitoFiscalData = $this->orderQueryService->getDebitoFiscal($startDate, $endDate);
+
+            return ApiResponse::success([
+                'periodo' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ],
+                'debito_fiscal' => $debitoFiscalData['total_debito'],
+                'detalle_debito' => [
+                    'total_orders_with_iva' => $debitoFiscalData['total_records'],
+                    'total_iva_amount' => $debitoFiscalData['total_iva_amount'],
+                    'total_spe_amount' => $debitoFiscalData['total_spe_amount'] ?? 0,
+                ]
+            ], 'Débito fiscal obtenido exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener débito fiscal: ' . $e->getMessage());
+            return ApiResponse::error('Error al obtener débito fiscal: ' . $e->getMessage(), 500);
+        }
+    }
+    public function getFiscalHistoryData(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date',
+                'page' => 'integer|min:1',
+                'itemsPerPage' => 'integer|min:1|max:100'
+            ]);
+
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+            $page = $request->page ?? 1;
+            $itemsPerPage = $request->itemsPerPage ?? 10;
+
+            $fiscalData = $this->orderQueryService->getFiscalHistoryRecords(
+                $startDate,
+                $endDate,
+                $page,
+                $itemsPerPage
+            );
+
+            return ApiResponse::success($fiscalData, 'Registros de fiscal history obtenidos exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener registros de fiscal history: ' . $e->getMessage());
+            return ApiResponse::error('Error al obtener registros de fiscal history: ' . $e->getMessage(), 500);
+        }
+    }
 }
