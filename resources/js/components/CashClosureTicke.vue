@@ -4,13 +4,12 @@ import { formatDateTime } from "@/utils/formatDateTime";
 import PaymentTable from "@/components/PaymentTable.vue";
 import { computed, defineProps } from "vue";
 import SectionDivider from "@/components/SectionDivider.vue";
-import TicketHeader from '@/components/TicketHeader.vue';
+import TicketHeader from "@/components/TicketHeader.vue";
 
 const props = defineProps({
   cashData: { type: Object, required: true },
   isPdf: { type: Boolean, default: false },
 });
-
 
 const logoSrc = computed(() => BASE64_LOGO_DATA);
 
@@ -99,42 +98,44 @@ const creditPayments = computed(() => [
 
 const allReferences = computed(() => {
   const references = {
-    'BINANCE': [],
-    'PAYPAL': [],
-    'TARJETA': [],
-    'TRANSFERENCIA': [],
-    'PAGO MOVIL': [],
-    'TRANSFERENCIACOP': [],
+    BINANCE: [],
+    PAYPAL: [],
+    TARJETA: [],
+    TRANSFERENCIA: [],
+    "PAGO MOVIL": [],
+    TRANSFERENCIACOP: [],
   };
 
   if (props.cashData.orders && Array.isArray(props.cashData.orders)) {
-    props.cashData.orders.forEach(order => {
+    props.cashData.orders.forEach((order) => {
       if (order.payment_methods && Array.isArray(order.payment_methods)) {
-        order.payment_methods.forEach(payment => {
-         if (payment.reference) {
-          const method = payment.method ? payment.method.toUpperCase() : '';
-          const currency = payment.currency ? payment.currency.toUpperCase() : '';
-          const referenceData = {
-            referencia: payment.reference,
-            monto: parseFloat(payment.amount),
-            currency: currency,
-          };
+        order.payment_methods.forEach((payment) => {
+          if (payment.reference) {
+            const method = payment.method ? payment.method.toUpperCase() : "";
+            const currency = payment.currency
+              ? payment.currency.toUpperCase()
+              : "";
+            const referenceData = {
+              referencia: payment.reference,
+              monto: parseFloat(payment.amount),
+              currency: currency,
+            };
 
-          if (method === 'BINANCE' && currency === 'USD') {
-            references.BINANCE.push(referenceData);
-          } else if (method === 'PAYPAL' && currency === 'USD') {
-            references.PAYPAL.push(referenceData);
-          } else if (method === 'CARD' && currency === 'BS') {
-            references.TARJETA.push(referenceData);
-          } else if (method === 'BANK_TRANSFER' && currency === 'BS') {
-            references.TRANSFERENCIA.push(referenceData);
-          } else if (method === 'MOBILE_PAYMENT' && currency === 'BS') {
-            references['PAGO MOVIL'].push(referenceData);
-          } else if (method === 'ZELLE' && currency === 'USD') {
-             references.ZELLE.push(referenceData);
-          } else if (method === 'BANK_TRANSFER' && currency === 'COP') {
-             references.TRANSFERENCIACOP.push(referenceData);
-          }
+            if (method === "BINANCE" && currency === "USD") {
+              references.BINANCE.push(referenceData);
+            } else if (method === "PAYPAL" && currency === "USD") {
+              references.PAYPAL.push(referenceData);
+            } else if (method === "CARD" && currency === "BS") {
+              references.TARJETA.push(referenceData);
+            } else if (method === "BANK_TRANSFER" && currency === "BS") {
+              references.TRANSFERENCIA.push(referenceData);
+            } else if (method === "MOBILE_PAYMENT" && currency === "BS") {
+              references["PAGO MOVIL"].push(referenceData);
+            } else if (method === "ZELLE" && currency === "USD") {
+              references.ZELLE.push(referenceData);
+            } else if (method === "BANK_TRANSFER" && currency === "COP") {
+              references.TRANSFERENCIACOP.push(referenceData);
+            }
           }
         });
       }
@@ -145,9 +146,13 @@ const allReferences = computed(() => {
 const binanceReferences = computed(() => allReferences.value.BINANCE);
 const paypalReferences = computed(() => allReferences.value.PAYPAL);
 const tarjetaReferencesBs = computed(() => allReferences.value.TARJETA);
-const transferenciaReferencesBs = computed(() => allReferences.value.TRANSFERENCIA);
-const pagoMovilReferencesBs = computed(() => allReferences.value['PAGO MOVIL']);
-const tarjetaReferencesCop = computed(() => allReferences.value['TRANSFERENCIACOP']);
+const transferenciaReferencesBs = computed(
+  () => allReferences.value.TRANSFERENCIA
+);
+const pagoMovilReferencesBs = computed(() => allReferences.value["PAGO MOVIL"]);
+const tarjetaReferencesCop = computed(
+  () => allReferences.value["TRANSFERENCIACOP"]
+);
 
 const getValueDelivery = (key1, key2) => {
   const value1 = parseFloat(props.cashData[key1] || 0);
@@ -156,16 +161,71 @@ const getValueDelivery = (key1, key2) => {
 };
 
 const delivery = computed(() => [
-  { label: "Efectivo (USD)", amount: getValueDelivery("usd_cash","usd_cash_payment_credit"), currency: "USD" },
-  { label: "Binance (USD)", amount: getValueDelivery("usd_binance", "usd_binance_payment_credit"), currency: "USD" },
-  { label: "Paypal (USD)", amount: getValueDelivery("usd_paypal", "usd_paypal_payment_credit"), currency: "USD" },
-  { label: "Efectivo (Bs)", amount: getValueDelivery("bs_cash","bs_cash_payment_credit"), currency: "BS",},
-  { label: "Tarjeta (Bs)", amount: getValueDelivery("bs_card","bs_card_payment_credit"), currency: "BS",},
-  { label: "Transferencia (Bs)", amount: getValueDelivery("bs_transfer","bs_transfer_payment_credit"), currency: "BS",},
-  { label: "Pago Móvil (Bs)", amount: getValueDelivery("bs_mobile","bs_mobile_payment_credit"), currency: "BS",},
-  { label: "Efectivo (COP)", amount: getValueDelivery("cop_cash","cop_cash_payment_credit"), currency: "COP",},
-  { label: "Transferencia (COP)", amount: getValueDelivery("cop_transfer","cop_transfer_payment_credit"), currency: "COP",},
+  {
+    label: "Efectivo (USD)",
+    amount: getValueDelivery("usd_cash", "usd_cash_payment_credit"),
+    currency: "USD",
+  },
+  {
+    label: "Binance (USD)",
+    amount: getValueDelivery("usd_binance", "usd_binance_payment_credit"),
+    currency: "USD",
+  },
+  {
+    label: "Paypal (USD)",
+    amount: getValueDelivery("usd_paypal", "usd_paypal_payment_credit"),
+    currency: "USD",
+  },
+  {
+    label: "Efectivo (Bs)",
+    amount: getValueDelivery("bs_cash", "bs_cash_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Tarjeta (Bs)",
+    amount: getValueDelivery("bs_card", "bs_card_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Transferencia (Bs)",
+    amount: getValueDelivery("bs_transfer", "bs_transfer_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Pago Móvil (Bs)",
+    amount: getValueDelivery("bs_mobile", "bs_mobile_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Efectivo (COP)",
+    amount: getValueDelivery("cop_cash", "cop_cash_payment_credit"),
+    currency: "COP",
+  },
+  {
+    label: "Transferencia (COP)",
+    amount: getValueDelivery("cop_transfer", "cop_transfer_payment_credit"),
+    currency: "COP",
+  },
 ]);
+
+const totalCreditPayments = computed(() => {
+  return creditPayments.value.reduce((sum, payment) => sum + payment.amount, 0);
+});
+
+const totalDelivery = computed(() => {
+  return delivery.value.reduce((sum, item) => sum + item.amount, 0);
+});
+
+const hasAnyReference = computed(() => {
+  return (
+    binanceReferences.value.length > 0 ||
+    paypalReferences.value.length > 0 ||
+    tarjetaReferencesBs.value.length > 0 ||
+    transferenciaReferencesBs.value.length > 0 ||
+    pagoMovilReferencesBs.value.length > 0 ||
+    tarjetaReferencesCop.value.length > 0
+  );
+});
 
 </script>
 <template>
@@ -173,7 +233,7 @@ const delivery = computed(() => [
     <VCard variant="outlined" class="pa-2 text-start">
       <TicketHeader :logoSrc="logoSrc" />
 
-      <table style="width: 100%;margin: 5px 0">
+      <table style="width: 100%; margin: 5px 0">
         <tbody>
           <tr>
             <td style="text-align: left">
@@ -202,27 +262,48 @@ const delivery = computed(() => [
         </tbody>
       </table>
 
-      <SectionDivider :isPdf="props.isPdf" text="USD" width="45%" />
-      <PaymentTable :payments="usdPayments" />
-      <SectionDivider :isPdf="props.isPdf" text="BS" width="45%" />
-      <PaymentTable :payments="bsPayments" />
-      <SectionDivider :isPdf="props.isPdf" text="COP" width="45%" />
-      <PaymentTable :payments="copPayments" />
-      <SectionDivider :isPdf="props.isPdf" text="CREDITOS" width="40%" />
-      <PaymentTable :payments="creditAmount" />
-      <SectionDivider :isPdf="props.isPdf" text="PAGOS" width="42%"/>
-      <PaymentTable :payments="creditPayments" />
-      <SectionDivider :isPdf="props.isPdf" text="ENTREGA" width="40%"/>
-      <PaymentTable :payments="delivery" />
-      <SectionDivider :isPdf="props.isPdf" text="REFERENCIA" width="40%"/>
-   
-    <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
-    <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
-    <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
-    <ReferenceTable title="TRANSFERENCIA (Bs)" :references="transferenciaReferencesBs" />
-    <ReferenceTable title="PAGO MOVIL (Bs)" :references="pagoMovilReferencesBs" />
-    <ReferenceTable title="TRANSFERENCIA (COP)" :references="tarjetaReferencesCop" />
-
+      <div v-if="props.cashData.total_usd > 0">
+        <SectionDivider :isPdf="props.isPdf" text="USD" width="45%" />
+        <PaymentTable :payments="usdPayments" />
+      </div>
+      <div v-if="props.cashData.total_bs > 0">
+        <SectionDivider :isPdf="props.isPdf" text="BS" width="45%" />
+        <PaymentTable :payments="bsPayments" />
+      </div>
+      <div v-if="props.cashData.total_cop > 0">
+        <SectionDivider :isPdf="props.isPdf" text="COP" width="45%" />
+        <PaymentTable :payments="copPayments" />
+      </div>
+      <div v-if="props.cashData.usd_credit > 0">
+        <SectionDivider :isPdf="props.isPdf" text="CREDITOS" width="40%" />
+        <PaymentTable :payments="creditAmount" />
+      </div>
+      <div v-if="totalCreditPayments > 0">
+        <SectionDivider :isPdf="props.isPdf" text="PAGOS" width="42%" />
+        <PaymentTable :payments="creditPayments" />
+      </div>
+      <div v-if="totalDelivery > 0">
+        <SectionDivider :isPdf="props.isPdf" text="ENTREGA" width="40%" />
+        <PaymentTable :payments="delivery" />
+      </div>
+      <div v-if="hasAnyReference">
+      <SectionDivider :isPdf="props.isPdf" text="REFERENCIA" width="40%" />
+      <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
+      <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
+      <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
+      <ReferenceTable
+        title="TRANSFERENCIA (Bs)"
+        :references="transferenciaReferencesBs"
+      />
+      <ReferenceTable
+        title="PAGO MOVIL (Bs)"
+        :references="pagoMovilReferencesBs"
+      />
+      <ReferenceTable
+        title="TRANSFERENCIA (COP)"
+        :references="tarjetaReferencesCop"
+      />
+      </div>
     </VCard>
   </div>
 </template>
