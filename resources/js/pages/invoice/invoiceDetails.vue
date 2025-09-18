@@ -95,17 +95,28 @@ const processedInvoiceDetails = computed(() => {
     const discountAmount = unitCost * (discountPercentage / 100);
     const discountedUnitCost = unitCost - discountAmount;
     const baseTotal = quantity * discountedUnitCost;
+
     let taxAmount = 0;
     if (detail.tax_enabled) {
       taxAmount = baseTotal * 0.16;
     }
     const finalTotal = baseTotal + taxAmount;
-    const rate = parseFloat(invoice.value.exchange_rate);
+
+    const rate = parseFloat(invoice.value.exchange_rate) || 1;
     const isUsd = invoice.value.currency === "USD";
     const hasValidRate = rate && rate > 0;
-    const unitCostUsd = isUsd || !hasValidRate ? unitCost : unitCost / rate;
-    const totalCostUsd =
-      isUsd || !hasValidRate ? finalTotal : finalTotal / rate;
+
+    const unitCostUsd = isUsd
+      ? unitCost
+      : hasValidRate
+      ? unitCost / rate
+      : unitCost;
+    const totalCostUsd = isUsd
+      ? finalTotal
+      : hasValidRate
+      ? finalTotal / rate
+      : finalTotal;
+
     return {
       ...detail,
       product_name_with_tax: detail.tax_enabled
@@ -174,23 +185,78 @@ const getCostComparisonClass = (item) => {
     return "";
   }
 
-  const invoiceCost = Number(item.unit_cost);
-  const systemCost = Number(item.product.unit_cost);
+  const systemCostUSD = Number(item.product.unit_cost);
 
-  if (isNaN(invoiceCost) || isNaN(systemCost) || systemCost === 0) {
+  if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
+    return "cost-new-product";
+  }
+
+  const invoiceCostInLocalCurrency = Number(item.unit_cost);
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const isUsd = invoice.value.currency === "USD";
+  const hasValidRate = rate && rate > 0;
+
+  let invoiceCostUSD;
+  if (isUsd) {
+    invoiceCostUSD = invoiceCostInLocalCurrency;
+  } else if (hasValidRate) {
+    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
+  } else {
+    return "";
+  }
+
+  if (isNaN(invoiceCostUSD)) {
     return "";
   }
 
   const tolerance = 0.001;
 
-  if (invoiceCost > systemCost + tolerance) {
+  if (invoiceCostUSD > systemCostUSD + tolerance) {
     return "cost-higher";
-  } else if (invoiceCost < systemCost - tolerance) {
+  } else if (invoiceCostUSD < systemCostUSD - tolerance) {
     return "cost-lower";
   }
 
   return "";
 };
+const getCostTooltipText = (item) => {
+  if (
+    !isApprovalMode.value ||
+    !item.product ||
+    typeof item.product.unit_cost === "undefined"
+  ) {
+    return "";
+  }
+
+  const systemCostUSD = Number(item.product.unit_cost);
+
+  if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
+    return "Producto Nuevo - Sin costo registrado en el sistema";
+  }
+
+  const invoiceCostInLocalCurrency = Number(item.unit_cost);
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const isUsd = invoice.value.currency === "USD";
+  const hasValidRate = rate && rate > 0;
+
+  let invoiceCostUSD;
+  if (isUsd) {
+    invoiceCostUSD = invoiceCostInLocalCurrency;
+  } else if (hasValidRate) {
+    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
+  } else {
+    return `Costo en Sistema: ${formatCurrency(
+      systemCostUSD,
+      "USD"
+    )} (No se puede comparar - tasa inválida)`;
+  }
+
+  return `Costo en Sistema: ${formatCurrency(
+    systemCostUSD,
+    "USD"
+  )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`;
+};
+
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
   if (invoice.value) {
@@ -218,9 +284,15 @@ const toggleReturnItem = (itemToToggle) => {
   const index = invoiceDetails.value.findIndex((d) => d.id === itemToToggle.id);
   if (index !== -1) {
     const item = invoiceDetails.value[index];
+
+    if (item.is_return && isNearExpiration(item)) {
+      item.manual_return_override = true;
+    }
+
     item.is_return = !item.is_return;
     if (item.is_return) {
       item.location = "N/A";
+      item.manual_return_override = false;
       startEditingDetail(item);
     } else {
       item.location = "Por Asignar";
@@ -256,19 +328,13 @@ const fetchInvoiceDetails = async (id) => {
   try {
     const response = await axios.get(`/invoices/${id}/details`);
     const combinedDetailsFromApi = response.data.data ?? [];
-    const rate = parseFloat(invoice.value.exchange_rate) || 1;
-    const isUsd = invoice.value.currency === "USD";
+
     invoiceDetails.value = combinedDetailsFromApi.map((detail) => {
-      const unitCostUSD = Number(detail.unit_cost) || 0;
-      let unitCostInInvoiceCurrency = unitCostUSD;
-      if (!isUsd && rate > 0) {
-        unitCostInInvoiceCurrency = unitCostUSD * rate;
-      }
       return {
         ...detail,
-        unit_cost: unitCostInInvoiceCurrency,
         tax_enabled: !!detail.tax_enabled,
         is_return: !!detail.is_return,
+        manual_return_override: !!detail.manual_return_override || false,
       };
     });
   } catch (error) {
@@ -429,7 +495,12 @@ const addProductToInvoice = (product) => {
   } else {
     const newDetail = {
       id: -Math.floor(Math.random() * 1000),
-      product: { id: product.id, name: product.name, iva: product.iva },
+      product: {
+        id: product.id,
+        name: product.name,
+        iva: product.iva,
+        unit_cost: product.unit_cost,
+      },
       quantity: 1,
       unit_cost: 0,
       lot_number: "",
@@ -437,6 +508,7 @@ const addProductToInvoice = (product) => {
       location: "Por Asignar",
       tax_enabled: invoiceHasIva.value ? !!product.iva : false,
       is_return: false,
+      manual_return_override: false,
     };
     invoiceDetails.value.push(newDetail);
     startEditingDetail(newDetail);
@@ -559,6 +631,16 @@ const saveEditingDetail = () => {
     return;
   }
 
+  const originalDetail = invoiceDetails.value.find(
+    (d) => d.id === editingDetailId.value
+  );
+  const isFirstTimeSettingDate =
+    !originalDetail?.expiration_date && editedDetailData.value.expiration_date;
+
+  if (isFirstTimeSettingDate) {
+    checkAndMarkAsReturn(editedDetailData.value, true);
+  }
+
   const detailIndex = invoiceDetails.value.findIndex(
     (d) => d.id === editingDetailId.value
   );
@@ -660,6 +742,34 @@ const isNearExpiration = (item) => {
   sixMonthsFromNow.setMonth(today.getMonth() + 6);
 
   return expirationDate <= sixMonthsFromNow;
+};
+const checkAndMarkAsReturn = (item, forceCheck = false) => {
+  if (!item.expiration_date) return false;
+
+  const expirationDate = new Date(item.expiration_date);
+  const today = new Date();
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(today.getMonth() + 6);
+
+  const isNearExp = expirationDate <= sixMonthsFromNow;
+
+  if (
+    isNearExp &&
+    !item.is_return &&
+    !item.manual_return_override &&
+    forceCheck
+  ) {
+    item.is_return = true;
+    item.location = "N/A";
+
+    toast.info(
+      `Producto "${item.product.name}" marcado automáticamente como devolución por proximidad a vencimiento (${item.expiration_date})`
+    );
+
+    return true;
+  }
+
+  return isNearExp;
 };
 const invoiceHasIva = computed(() => {
   if (!invoice.value) return false;
@@ -1088,7 +1198,6 @@ const detailsHeaders = [
                   min="0"
                   :prefix="getCurrencySymbol()"
                 />
-                <!-- INICIO DE LA MODIFICACIÓN -->
                 <VTooltip
                   v-else-if="
                     isApprovalMode &&
@@ -1116,14 +1225,8 @@ const detailsHeaders = [
                       >
                     </div>
                   </template>
-                  <span
-                    >Costo en Sistema:
-                    {{
-                      formatCurrency(item.product.unit_cost, invoice.currency)
-                    }}</span
-                  >
+                  <span>{{ getCostTooltipText(item) }}</span>
                 </VTooltip>
-                <!-- FIN DE LA MODIFICACIÓN -->
                 <div
                   v-else
                   class="d-flex flex-column align-end"
@@ -1585,5 +1688,15 @@ const detailsHeaders = [
 .returned-item {
   text-decoration: line-through;
   opacity: 0.6;
+}
+.cost-new-product {
+  background-color: rgba(var(--v-theme-warning), 0.1);
+
+  .font-weight-medium {
+    color: rgb(var(--v-theme-warning));
+  }
+  .text-caption {
+    color: rgba(var(--v-theme-warning), 0.8) !important;
+  }
 }
 </style>
