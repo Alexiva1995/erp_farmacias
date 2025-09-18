@@ -191,7 +191,7 @@ const downloadcash = async (cash) => {
 const handleCompleteClosure = async (data) => {
 try {
  const payload = {
-      cierre_id: cashClosure.id,
+      id: data.cierre_id,
       total_cop: data.total_cop,
       sobrante_en_peso: data.sobrante_en_peso,
       entregar_efectivo_cop: data.entregar_efectivo_cop,

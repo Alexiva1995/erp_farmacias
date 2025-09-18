@@ -41,6 +41,7 @@ const closeModal = () => {
 
 const completeClosure = () => {
   const closureData = {
+    cierre_id: props.cashClosureData.id,
     total_cop: totalCopConSobrante.value,
     sobrante_en_peso: sobranteCop.value,
     entregar_efectivo_cop: totalEfectivoCopConSobrante.value,
