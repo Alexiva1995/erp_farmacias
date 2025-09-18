@@ -52,6 +52,8 @@ declare module 'vue-router/auto-routes' {
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,
     'lot-products': RouteRecordInfo<'lot-products', '/lot/products', Record<never, never>, Record<never, never>>,
+    'rrhh-employees': RouteRecordInfo<'rrhh-employees', '/rrhh/employees', Record<never, never>, Record<never, never>>,
+    'rrhh-employees-id': RouteRecordInfo<'rrhh-employees-id', '/rrhh/employees/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'second-page': RouteRecordInfo<'second-page', '/second-page', Record<never, never>, Record<never, never>>,
     'suppliers-generar-pedido': RouteRecordInfo<'suppliers-generar-pedido', '/suppliers/generar-pedido', Record<never, never>, Record<never, never>>,
     'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
