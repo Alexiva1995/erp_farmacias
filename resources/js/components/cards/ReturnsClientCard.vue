@@ -8,7 +8,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update:modelValue', 'search-order']);
+const emit = defineEmits(['update:modelValue', 'search-order','clear-search']);
 const identificationInput = ref(props.modelValue);
 
 watch(() => props.modelValue, (newValue) => {
@@ -16,7 +16,11 @@ watch(() => props.modelValue, (newValue) => {
 });
 
 const updateIdentification = (value) => {
+identificationInput.value = value;
   emit('update:modelValue', value);
+  if (!value) {
+    emit('clear-search'); // Emite un evento específico cuando el input se vacía
+  }
 };
 
 const handleSearchOrder = () => {
@@ -30,7 +34,7 @@ const handleSearchOrder = () => {
       <VRow>
         <VCol cols="12">
           <AppTextField
-            placeholder="Ingrese identificación"
+            placeholder="Ingrese identificación, N° Orden"
             clearable
             class="flex-grow-1"
             :model-value="identificationInput"

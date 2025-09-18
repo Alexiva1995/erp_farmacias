@@ -172,4 +172,15 @@ class InvoiceQueryService
 
         return $invoice;
     }
+    public function calculateSupplierDebts(): float
+    {
+        $totalDebts = Invoice::where(function ($query) {
+            $query->where('status_payment', 'pending')
+                ->orWhereNull('status_payment');
+        })
+            ->where('total_usd', '>', 0)
+            ->sum('total_usd');
+
+        return (float) ($totalDebts ?? 0);
+    }
 }
