@@ -39,7 +39,7 @@ const copPayments = computed(() => [
   { label: "Sobrante", amount: getValue("cop_spare"), currency: "COP" },
   {
     label: "Conversión de USD",
-    amount: getValue("cop_conversion"),
+    amount: -getValue("cop_conversion"),
     currency: "COP",
   },
 ]);
@@ -163,7 +163,7 @@ const getValueDelivery = (key1, key2) => {
 const delivery = computed(() => [
   {
     label: "Efectivo (USD)",
-    amount: getValueDelivery("usd_cash", "usd_cash_payment_credit"),
+    amount: getValueDelivery("usd_delivered", "usd_cash_payment_credit"),
     currency: "USD",
   },
   {
@@ -198,7 +198,7 @@ const delivery = computed(() => [
   },
   {
     label: "Efectivo (COP)",
-    amount: getValueDelivery("cop_cash", "cop_cash_payment_credit"),
+    amount: getValueDelivery("cop_delivered", "cop_cash_payment_credit"),
     currency: "COP",
   },
   {

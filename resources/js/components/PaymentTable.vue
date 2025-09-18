@@ -10,7 +10,7 @@ const props = defineProps({
 });
 
 const filteredPayments = computed(() => {
-  return props.payments.filter(payment => parseFloat(payment.amount) > 0);
+  return props.payments.filter(payment => parseFloat(payment.amount) !== 0);
 });
 </script>
 
