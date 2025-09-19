@@ -255,21 +255,21 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
-        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
+        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create", [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
         Route::prefix("category")->group(function () {
-            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
+            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
         });
     });
 });
 
 Route::prefix("user")->group(function () {
-    Route::get("/",                                     [UserController::class, "getAll"]);
+    Route::get("/", [UserController::class, "getAll"]);
 });
 
 
@@ -368,13 +368,6 @@ Route::prefix("suppliers")->group(function () {
     Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
     Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
-
-    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
-    Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
-    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
-    Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-    Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
 
     Route::prefix("purchase-orders")->group(function () {
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
