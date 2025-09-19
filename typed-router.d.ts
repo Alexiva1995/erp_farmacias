@@ -33,6 +33,8 @@ declare module 'vue-router/auto-routes' {
     'finances-cashout': RouteRecordInfo<'finances-cashout', '/finances/cashout', Record<never, never>, Record<never, never>>,
     'finances-exchangerate': RouteRecordInfo<'finances-exchangerate', '/finances/exchangerate', Record<never, never>, Record<never, never>>,
     'finances-payment-history': RouteRecordInfo<'finances-payment-history', '/finances/payment-history', Record<never, never>, Record<never, never>>,
+    'finances-payslips': RouteRecordInfo<'finances-payslips', '/finances/payslips', Record<never, never>, Record<never, never>>,
+    'finances-payslips-id': RouteRecordInfo<'finances-payslips-id', '/finances/payslips/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'finances-pending-payments': RouteRecordInfo<'finances-pending-payments', '/finances/pending-payments', Record<never, never>, Record<never, never>>,
     'finances-profitability': RouteRecordInfo<'finances-profitability', '/finances/profitability', Record<never, never>, Record<never, never>>,
     'fiscal-history': RouteRecordInfo<'fiscal-history', '/fiscal/history', Record<never, never>, Record<never, never>>,

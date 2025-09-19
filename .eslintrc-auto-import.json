@@ -373,6 +373,9 @@
     "pdfStockProductsGenerator": true,
     "pdfPurchaseOrderGenerator": true,
     "pdfProductsWithoutSuppliersGenerator": true,
-    "pdfProductsAssistantReportGenerator": true
+    "pdfProductsAssistantReportGenerator": true,
+    "pdfEmployeesGenerator": true,
+    "pdfPayslipGenerator": true
+    "pdfGastos": true
   }
 }

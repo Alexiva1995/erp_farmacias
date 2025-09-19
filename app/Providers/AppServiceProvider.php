@@ -18,30 +18,41 @@ use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Models\Payslip;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
 use App\Services\LaboratoryServices;
 use App\Services\LotteryServices;
 use App\Contracts\ExchangeRate;
+use App\Contracts\ExpenseCategory;
+use App\Contracts\Expenses;
 use App\Contracts\Order;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
 use App\Contracts\Profitability;
+use App\Contracts\User;
 use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\ExpenseCategoryController;
+use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
+use App\Http\Controllers\Api\UserController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
+use App\Services\ExpenseCategoryServices;
+use App\Services\ExpensesServices;
 use App\Services\OrderServices;
 use App\Services\ProductServices;
 use App\Services\ProductSupplierServices;
 use App\Services\ProfitabilityServices;
 use App\Services\PurchaseOrderServices;
 use App\Services\RoleServices;
+use App\Services\PayslipServices;
 use App\Services\TransactionServices;
 use Illuminate\Support\ServiceProvider;
 
@@ -112,6 +123,18 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Product::class)
             ->give(ProductServices::class);
 
+        $this->app->when(ExpensesController::class)
+            ->needs(Expenses::class)
+            ->give(ExpensesServices::class);
+
+        $this->app->when(ExpenseCategoryController::class)
+            ->needs(ExpenseCategory::class)
+            ->give(ExpenseCategoryServices::class);
+
+        $this->app->when(UserController::class)
+            ->needs(User::class)
+            ->give(UserServices::class);
+
         $this->app->when(InventoryStockController::class)
             ->needs(Product::class)
             ->give(ProductServices::class);
@@ -123,6 +146,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(RoleController::class)
             ->needs(Role::class)
             ->give(RoleServices::class);
+
+        $this->app->when(PayslipController::class)
+            ->needs(Payslip::class)
+            ->give(PayslipServices::class);
     }
 
     /**
