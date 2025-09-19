@@ -54,7 +54,11 @@ export default [
         to: 'finances-cashout',
       },
       {
-        title: 'Nómina',
+        title: 'Estado de Resultados',
+        to: 'finances-income-statement',
+      },
+      {
+        title: 'Nómina', 
         to: 'finances-payslips',
       },
     ],
