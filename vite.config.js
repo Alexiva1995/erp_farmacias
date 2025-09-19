@@ -1,12 +1,13 @@
-import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
 import laravel from 'laravel-vite-plugin'
 import { fileURLToPath } from 'node:url'
+import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { VueRouterAutoImports, getPascalCaseRouteName } from 'unplugin-vue-router'
 import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
+import VueDevTools from 'vite-plugin-vue-devtools'
 import MetaLayouts from 'vite-plugin-vue-meta-layouts'
 import vuetify from 'vite-plugin-vuetify'
 import svgLoader from 'vite-svg-loader'
@@ -105,22 +106,5 @@ export default defineConfig({
     entries: [
       './resources/js/**/*.vue',
     ],
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-        secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            // Enviar cookies de la sesión
-            if (req.headers.cookie) {
-              proxyReq.setHeader('Cookie', req.headers.cookie);
-            }
-          });
-        },
-      },
-    },
   },
 })
