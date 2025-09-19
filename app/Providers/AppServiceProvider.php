@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
 use App\Services\ExpenseCategoryServices;
+use App\Services\UserServices;
 use App\Services\ExpensesServices;
 use App\Services\OrderServices;
 use App\Services\ProductServices;
