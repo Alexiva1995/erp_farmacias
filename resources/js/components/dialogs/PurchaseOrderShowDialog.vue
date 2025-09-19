@@ -18,6 +18,8 @@ const itemsPerPage = ref(10);
 const totalRecords = ref(0);
 
 const closeDialog = () => {
+  page.value = 1;
+  itemsPerPage.value = 10;
   emit("update:modelValue", false);
 };
 
