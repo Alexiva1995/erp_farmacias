@@ -21,4 +21,9 @@ class UsersSalaryDetails extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function payslip_details()
+    {
+        return $this->hasMany(PayslipDetails::class);
+    }
 }
