@@ -8,7 +8,6 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
-
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
