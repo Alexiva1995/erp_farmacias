@@ -55,6 +55,7 @@ use App\Services\PurchaseOrderServices;
 use App\Services\RoleServices;
 use App\Services\PayslipServices;
 use App\Services\TransactionServices;
+use App\Services\UserServices;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
