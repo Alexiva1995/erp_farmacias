@@ -55,7 +55,6 @@ class CashClosureController extends Controller
 
       public function closeCash(CloseCashClosureRequest $request)
     {
-        $query = $this->cashClosureActionService->closeCashClosing($request);
-        return response()->json($query->toArray(), $query->get('success') ? 200 : 400);
+        return $this->cashClosureActionService->closeCashClosing($request);
     }
 }

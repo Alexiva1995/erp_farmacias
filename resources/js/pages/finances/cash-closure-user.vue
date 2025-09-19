@@ -24,6 +24,18 @@ const cashData = ref(null);
 
 const isDownloadingPdf = ref(false);
 
+const orders = ref([]);
+const totalOrders = ref(0);
+const loadingOrders = ref(false);
+const pageOrders = ref(1);
+const itemsPerPageOrders = ref(10);
+const sortByOrders = ref();
+const orderByOrders = ref();
+const startDateFilter = ref(null);
+const endDateFilter = ref(null);
+
+
+
 const fetchCashClosure = async () => {
   try {
     loading.value = true;
@@ -199,6 +211,8 @@ try {
     const response = await axios.post('/finances/cash-closure/close', payload);
     toast.success("Cierre de caja completado con éxito:");
     isCloseCashModalVisible.value = false;
+    const completedCashData = response.data.cash_closure_data;
+    await printCash(completedCashData);
     fetchCashClosure();
     fetchClosingHistory();
 } catch (error) {
@@ -210,6 +224,22 @@ try {
     }
   }
 }
+
+
+
+
+const updateTableOptionsOrders = (options) => {
+  pageOrders.value = options.page;
+  itemsPerPageOrders.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByOrders.value = options.sortBy[0].key;
+    orderByOrders.value = options.sortBy[0].order;
+  } else {
+    sortByOrders.value = null;
+    orderByOrders.value = null;
+  }
+};
+
 </script>
 
 <template>
@@ -248,5 +278,22 @@ try {
     >
       <CashClosureTicke v-if="isPrinting && cashData" :cash-data="cashData" :isPdf="isDownloadingPdf" />
     </div>
+  </VCard>
+  <div class="mb-5"></div>
+  <VCard title="Lista de Ordenes">
+    <div class="mb-2"></div>
+    <ClosingHistoryTable
+      :closing="closing"
+      :loading="loadingClosing"
+      :total-closing="totalClosing"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptions"
+      @print-cash="printCash"
+      @download-cash="downloadcash"
+    />
+
+ 
+
   </VCard>
 </template>
