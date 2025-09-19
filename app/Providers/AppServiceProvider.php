@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
+use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -33,8 +34,6 @@ use App\Http\Controllers\api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfitabilityController;
-use App\Http\Controllers\Api\
-  ;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
@@ -73,7 +72,6 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Company::class)
             ->give(CompanyServices::class);
 
-
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);
@@ -105,10 +103,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(PurchaseOrderController::class)
             ->needs(PurchaseOrder::class)
             ->give(PurchaseOrderServices::class);
-
-
-
-
 
         $this->app->when(SupplierIaAssistantReportController::class)
             ->needs(Product::class)
