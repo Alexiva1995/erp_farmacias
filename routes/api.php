@@ -253,19 +253,6 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
-
-    Route::prefix("expenses")->group(function () {
-        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create", [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
-        Route::prefix("category")->group(function () {
-            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
-        });
-    });
 });
 
 Route::prefix("user")->group(function () {
@@ -347,6 +334,23 @@ Route::prefix("finances")->group(function () {
         Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
         Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
     });
+
+    Route::prefix('transactions')->group(function () {
+        Route::get('', [TransactionController::class, 'getAll']);
+        Route::get('/stats', [TransactionController::class, 'getByType']);
+    });
+
+    Route::prefix("expenses")->group(function () {
+        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
+     });
 });
 
 // Rutas de Proveedores
@@ -369,6 +373,13 @@ Route::prefix("suppliers")->group(function () {
     Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
 
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+    Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+    Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+    Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
+  
     Route::prefix("purchase-orders")->group(function () {
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
         Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
@@ -454,6 +465,7 @@ Route::prefix("suppliers-ia-assistant-report")->group(function () {
     Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
     Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
 });
+
 
 Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
     Route::get('/value', 'getValue')->name('value');
