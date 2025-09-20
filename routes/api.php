@@ -271,6 +271,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
             Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
             Route::post("/close", [CashClosureController::class, "closeCash"]);
+            Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
         });
     });
 

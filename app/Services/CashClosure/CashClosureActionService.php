@@ -17,7 +17,7 @@ class CashClosureActionService
     public function allCashClosing(): ?CashClosing
     {
         $sellerId = Auth::id();
-        $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->first();
+        $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->with('orders')->first();
         if (!$cashClosing) {
             throw new Exception('No se encontró un cierre de caja abierto.');
         }

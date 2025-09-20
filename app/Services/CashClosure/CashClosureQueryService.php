@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\CashClosing;
 use function Amp\Dns\query;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Relations\Relation; 
+use App\Models\Order;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CashClosureQueryService
 {
@@ -14,7 +17,7 @@ class CashClosureQueryService
      private function getBaseQuery(): Builder
     {
          $sellerId = Auth::id();
-        return CashClosing::query()->where('seller_id',$sellerId)->where('status', CashClosing::CLOSED)->with('orders');
+        return CashClosing::query()->where('seller_id',$sellerId)->where('status', CashClosing::CLOSED);
     }
 
 
@@ -44,6 +47,48 @@ class CashClosureQueryService
         );
 
         return $query;
+    }
+
+
+      private function getBaseQueryOrder(): ?CashClosing
+    {
+        $sellerId = Auth::id();
+        return CashClosing::where('seller_id', $sellerId)
+                          ->where('status', CashClosing::OPEN)
+                          ->first();
+    }
+
+
+     private function applyOrderSorting(Relation $query, ?string $sortBy, string $orderBy): Relation
+    {
+        if (empty($sortBy)) {
+            return $query->orderBy('id', 'desc');
+        }
+        switch ($sortBy) {
+            case 'created_at':
+                return $query->orderBy('created_at', $orderBy);
+            case 'total_amount':
+                return $query->orderBy('total_amount', $orderBy);
+            default:
+                return $query->orderBy($sortBy, $orderBy);
+        }
+    }
+
+      public function getFilteredQueryOrder(Request $request): Relation
+    {
+
+        $cashClosing = $this->getBaseQueryOrder();
+        if (is_null($cashClosing)) {
+            throw new ModelNotFoundException('No hay un cierre de caja abierto para este vendedor.');
+        }
+        $ordersQuery = $cashClosing->orders()->with('client');
+        $ordersQuery->where('status', Order::COMPLETED); 
+        $ordersQuery = $this->applyOrderSorting(
+            $ordersQuery,
+            $request->input('sortBy'),
+            $request->input('orderBy', 'desc')
+        );
+        return $ordersQuery;
     }
 
 }

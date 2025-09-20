@@ -26,7 +26,6 @@ class CashClosureController extends Controller
         return $query;
     }
 
-    
     public function  getClosingHistory(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQuery($request);
@@ -57,4 +56,19 @@ class CashClosureController extends Controller
     {
         return $this->cashClosureActionService->closeCashClosing($request);
     }
+
+        public function  getCashClosureOrders(Request $request)
+    {
+        $query = $this->cashClosureQueryService->getFilteredQueryOrder($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+
+    }
+    
 }

@@ -6,6 +6,8 @@ import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
 import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
 import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
+import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
+import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 
 const loading = ref(false);
 const cashClosure = ref([]);
@@ -31,10 +33,17 @@ const pageOrders = ref(1);
 const itemsPerPageOrders = ref(10);
 const sortByOrders = ref();
 const orderByOrders = ref();
-const startDateFilter = ref(null);
-const endDateFilter = ref(null);
 
 
+const viewModal = ref(false);
+const orderData = ref(null);
+const paymentsForPrint = ref([]);
+const changeAmountForPrint = ref(0);
+const creditAmountForPrint = ref(0);
+const amountForPrint = ref(0);
+const creditForPrint = ref(false);
+const currency = ref("COP");
+const orderItems = ref([]);
 
 const fetchCashClosure = async () => {
   try {
@@ -53,6 +62,7 @@ const fetchCashClosure = async () => {
 onMounted(() => {
   fetchCashClosure();
   fetchClosingHistory();
+  fetchOrder();
 });
 
 const handleRequestCloseCash = () => {
@@ -225,9 +235,6 @@ try {
   }
 }
 
-
-
-
 const updateTableOptionsOrders = (options) => {
   pageOrders.value = options.page;
   itemsPerPageOrders.value = options.itemsPerPage;
@@ -240,6 +247,77 @@ const updateTableOptionsOrders = (options) => {
   }
 };
 
+
+const fetchOrder = async () => {
+  loadingOrders.value = true;
+  const params = {
+    page: pageOrders.value,
+    itemsPerPage: itemsPerPageOrders.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+  };
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+  try{
+    const response = await axios.get("/finances/cash-closure/orders", { params });
+    orders.value = response.data.data;
+    totalOrders.value = response.data.total;
+
+  } catch (error) {
+    console.error("Hubo un error al obtener las ordenes:", error);
+    toast.error("Error al obtener las ordenes.");
+  } finally {
+    loadingOrders.value = false;
+  }
+}
+
+
+
+const handleViewOrder = async (orderId) => {
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
+    if (response.data && response.data.data && response.data.data.order) {
+      orderData.value = response.data.data.order;
+      currency.value = response.data.data.order.currency.toUpperCase();
+      orderItems.value = response.data.data.order.details.map((detail) => ({
+        title: detail.product.name,
+        selectedQuantity: detail.quantity,
+        taxRate: detail.product.iva,
+        price_bs: parseFloat(detail.price),
+        price_cop: parseFloat(detail.price),
+        price: parseFloat(detail.price),
+      }));
+      paymentsForPrint.value = response.data.data.order.payment_methods;
+      changeAmountForPrint.value = parseFloat(
+        response.data.data.order.money_returns
+      );
+      amountForPrint.value = parseFloat(response.data.data.order.total_amount);
+      creditAmountForPrint.value = response.data.data.hasCreditPayment
+        ? parseFloat(response.data.data.order.total_amount)
+        : 0;
+      creditForPrint.value = response.data.data.hasCreditPayment;
+      viewModal.value = true;
+    } else {
+      console.error("Respuesta de API con formato incorrecto:", response.data);
+      toast.error("La respuesta del servidor no tiene el formato esperado.");
+    }
+  } catch (error) {
+    console.error("Error al obtener los detalles de la orden:", error);
+    toast.error("Error al obtener los detalles de la orden.");
+  }
+};
+
+const handleCloseViewModal = () => {
+  viewModal.value = false;
+  orderData.value = null;
+  orderItems.value = [];
+  paymentsForPrint.value = [];
+  changeAmountForPrint.value = 0;
+  amountForPrint.value = 0;
+  creditAmountForPrint.value = 0;
+  creditForPrint.value = false;
+};
 </script>
 
 <template>
@@ -282,18 +360,28 @@ const updateTableOptionsOrders = (options) => {
   <div class="mb-5"></div>
   <VCard title="Lista de Ordenes">
     <div class="mb-2"></div>
-    <ClosingHistoryTable
-      :closing="closing"
-      :loading="loadingClosing"
-      :total-closing="totalClosing"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @print-cash="printCash"
-      @download-cash="downloadcash"
+    <OrderCashCloseTable
+      :orders="orders"
+      :loading="loadingOrders"
+      :total-orders="totalOrders"
+      :items-per-page="itemsPerPageOrders"
+      :page="pageOrders"
+      @update:options="updateTableOptionsOrders"
+      @view-order="handleViewOrder"
     />
 
  
-
+<OrderViewModal
+      v-model:isDialogVisible="viewModal"
+      :order-data="orderData"
+      :order-products="orderItems"
+      :total-amount="amountForPrint"
+      :selected-currency="currency"
+      :payments="paymentsForPrint"
+      :change-amount="changeAmountForPrint"
+      :credit-amount="creditAmountForPrint"
+      :credit="creditForPrint"
+      @close="handleCloseViewModal"
+    />
   </VCard>
 </template>

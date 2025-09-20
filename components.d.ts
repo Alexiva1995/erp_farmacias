@@ -104,6 +104,7 @@ declare module 'vue' {
     NavegationIaAutoOrder: typeof import('./resources/js/components/NavegationIaAutoOrder.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
     OpenOrderCard: typeof import('./resources/js/components/cards/OpenOrderCard.vue')['default']
+    OrderCashCloseTable: typeof import('./resources/js/components/OrderCashCloseTable.vue')['default']
     OrderClienteCard: typeof import('./resources/js/components/cards/OrderClienteCard.vue')['default']
     OrderFilters: typeof import('./resources/js/components/OrderFilters.vue')['default']
     OrderFiltersGeneral: typeof import('./resources/js/components/OrderFiltersGeneral.vue')['default']
