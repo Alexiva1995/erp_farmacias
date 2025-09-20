@@ -24,6 +24,7 @@ const module=reactive({
   productoFallas:[],
   productosOportunidadUnica:[],
   detalleOrder:[],
+  productosSinReponer:[],
   loadingApp:true,
 })
 
@@ -68,6 +69,7 @@ onMounted(async () => {
     a.uuid=generateUUID()
     return a
   })
+  module.productosSinReponer=[...data.data.productosFallas]
   module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
   module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
@@ -208,21 +210,6 @@ async function confirmarCompra(){
   }
 }
 
-// const formatoDatosOrder={
-//   "supplier_id":null,
-//   "total_items":null,
-//   "total_quantity":null,
-//   "total_amount":null,
-//   "details":[], // formatoDatosProductos
-// }
-
-// const formatoDatosProductosOrderDetalles={
-//   "product_suppliers_id":null,
-//   "quantity":null,
-//   "unit_cost":null,
-//   "subtotal":null,
-// }
-
 function formatiarData(data){
   let supplier={}
   let orders=[]
@@ -288,17 +275,29 @@ async function realizarCompra(){
   module.loadingApp=false
   toast.success("Compra realizada con exito")
   module.loadingApp=true
+
   let productosSinPorveedor= await consultarProductosSinProveedor()
   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+
   module.loadingApp=false
   router.push("/suppliers/purchase-orders/list")
 }
 
 async function consultarProductosSinProveedor(){
+  let productos=module.productosSinReponer.filter(p => p.solicitar<0)
+  let ids=productos.map(p => p.id)
+  let idsConFantante=productos.map(p => {
+    return {
+      "id": p.id,
+      "solicitar": p.solicitar,
+    }
+  })
 
   let data={
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
+    ids,
+    idsConFantante
     // "groups":groups.value,
     // "laboratoryId":laboratoryId.value,
   }

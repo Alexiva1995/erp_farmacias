@@ -143,9 +143,9 @@ class ProductRepository
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
-                $consulta->where("stock", ">", 0);
+                $consulta->having("lote_quantity", ">", 0);
             } else {
-                $consulta->where("stock", "=", 0);
+                $consulta->having("lote_quantity", "=", 0);
             }
         }
 
@@ -279,6 +279,11 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
+        if (array_key_exists("ids", $filtros)) {
+            $consulta->whereIn("id", $filtros["ids"]);
+        }
+
+
         if (array_key_exists("sin_proveedor", $filtros)) {
             $consulta->doesntHave("productSuppliers");
         }
@@ -314,9 +319,9 @@ class ProductRepository
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
-                $consulta->where("stock", ">", 0);
+                $consulta->having("lote_quantity", ">", 0);
             } else {
-                $consulta->where("stock", "=", 0);
+                $consulta->having("lote_quantity", "=", 0);
             }
         }
 
@@ -474,6 +479,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
+        if (array_key_exists("ids", $filtros)) {
+            $consulta->whereIn("id", $filtros["ids"]);
+        }
+
         if (array_key_exists("sin_proveedor", $filtros)) {
             $consulta->doesntHave("productSuppliers");
         }
@@ -508,9 +517,9 @@ class ProductRepository
 
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
-                $consulta->where("stock", ">", 0);
+                $consulta->having("lote_quantity", ">", 0);
             } else {
-                $consulta->where("stock", "=", 0);
+                $consulta->having("lote_quantity", "=", 0);
             }
         }
 

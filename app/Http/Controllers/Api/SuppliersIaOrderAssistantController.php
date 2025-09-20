@@ -166,11 +166,9 @@ class SuppliersIaOrderAssistantController extends Controller
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
         }
 
-        // $respuesta["productos"] = $productos;
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos, $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
-        $respuesta["listaDeProductos"] = $productos;
 
 
 
@@ -211,18 +209,11 @@ class SuppliersIaOrderAssistantController extends Controller
             "sin_proveedor"     => true,
             "orderBy"           => "asc",
             "sortBy"            => "name",
+            "ids"               =>  $request->ids ?? null,
 
         ];
 
-
-        // if ($request->filled("laboratoryId")) {
-        //     $filtros["laboratoryId"] = $request->laboratoryId;
-        // }
-
-        // if ($request->filled("groups")) {
-        //     $filtros["groups"] = $request->groups;
-        // }
-
+        // $idsProductos=[];
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
@@ -238,7 +229,18 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
-        $productos = $this->productSupplier->getTheLowestLotCost($productos);
+
+        foreach ($request->idsConFantante as $key => $value) {
+
+            for ($index = 0; $index < count($productos); $index++) {
+
+                if ($productos[$index]->id == $value["id"]) {
+                    $productos[$index]->stockFaltante = $value["solicitar"];
+                }
+            }
+        }
+
+        // $productos = $this->productSupplier->getTheLowestLotCost($productos);
 
         return ApiResponse::success($productos, "ok", 200);
     }
