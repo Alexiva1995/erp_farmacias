@@ -292,6 +292,8 @@ async function consultarProductosSinProveedor(){
       "solicitar": p.solicitar,
     }
   })
+  console.log("ids => ",ids)
+  console.log("ids con solicitar => ",idsConFantante)
 
   let data={
     "tipo_filtracion":tipo_de_filtracion.value,

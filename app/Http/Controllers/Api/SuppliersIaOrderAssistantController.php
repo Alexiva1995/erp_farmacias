@@ -78,6 +78,16 @@ class SuppliersIaOrderAssistantController extends Controller
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
         }
 
+        $respuesta["paginate"]->each(function ($items) {
+            $items = $this->product->calcularAOProducts($items);
+            $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+        });
+
+        // dd($respuesta["paginate"]->items());
+
+        // $respuesta["paginate"]->items = $this->product->calcularAOProducts(collect($respuesta["paginate"]->data));
+
+
         return ApiResponse::success($respuesta, "ok", 200);
     }
 
@@ -206,7 +216,6 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
-            "sin_proveedor"     => true,
             "orderBy"           => "asc",
             "sortBy"            => "name",
             "ids"               =>  $request->ids ?? null,
@@ -229,6 +238,7 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
+
 
         foreach ($request->idsConFantante as $key => $value) {
 

@@ -284,9 +284,9 @@ class ProductRepository
         }
 
 
-        if (array_key_exists("sin_proveedor", $filtros)) {
-            $consulta->doesntHave("productSuppliers");
-        }
+        // if (array_key_exists("sin_proveedor", $filtros)) {
+        //     $consulta->doesntHave("productSuppliers");
+        // }
 
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
@@ -473,9 +473,6 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 12';
         }
 
-        // calcular diferencia_product con promedio_calculado
-        // $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
-
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
@@ -483,9 +480,9 @@ class ProductRepository
             $consulta->whereIn("id", $filtros["ids"]);
         }
 
-        if (array_key_exists("sin_proveedor", $filtros)) {
-            $consulta->doesntHave("productSuppliers");
-        }
+        // if (array_key_exists("sin_proveedor", $filtros)) {
+        //     $consulta->doesntHave("productSuppliers");
+        // }
 
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
