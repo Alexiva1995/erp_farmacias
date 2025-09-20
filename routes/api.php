@@ -222,19 +222,6 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
-
-    Route::prefix("expenses")->group(function () {
-        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
-        Route::prefix("category")->group(function () {
-            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
-        });
-    });
 });
 
 Route::prefix("user")->group(function () {
@@ -305,6 +292,19 @@ Route::prefix("finances")->group(function () {
     Route::prefix('transactions')->group(function () {
         Route::get('', [TransactionController::class, 'getAll']);
         Route::get('/stats', [TransactionController::class, 'getByType']);
+    });
+
+    Route::prefix("expenses")->group(function () {
+        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
+        });
     });
 });
 
