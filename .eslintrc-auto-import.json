@@ -375,7 +375,7 @@
     "pdfProductsWithoutSuppliersGenerator": true,
     "pdfProductsAssistantReportGenerator": true,
     "pdfEmployeesGenerator": true,
-    "pdfPayslipGenerator": true
+    "pdfPayslipGenerator": true,
     "pdfGastos": true
   }
 }
