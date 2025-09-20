@@ -256,7 +256,7 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 Route::prefix("user")->group(function () {
-    Route::get("/",                                     [UserController::class, "getAll"]);
+    Route::get("/", [UserController::class, "getAll"]);
 });
 
 
@@ -350,8 +350,7 @@ Route::prefix("finances")->group(function () {
         Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
         Route::prefix("category")->group(function () {
             Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
-        });
-    });
+     });
 });
 
 // Rutas de Proveedores
@@ -380,7 +379,7 @@ Route::prefix("suppliers")->group(function () {
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
     Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
     Route::get('/invoices/{invoice}/suggested-details', [InvoiceController::class, 'getSuggestedDetails'])->name('invoices.suggested-details');
-
+  
     Route::prefix("purchase-orders")->group(function () {
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
         Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);

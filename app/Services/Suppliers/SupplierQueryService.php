@@ -8,11 +8,9 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
-
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
-use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -444,9 +442,3 @@ class SupplierQueryService
         return $supplier->connections()->first();
     }
 }
-
-
-
-
-
-
