@@ -566,4 +566,23 @@ class OrderActionService
             throw $e;
         }
     }
+
+        public function cancelledOrder(Order $order): Order
+    {
+        DB::beginTransaction();
+        try {
+            $order->status = Order::CANCELLED;
+            $order->save();
+            DB::commit();
+            Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);
+            return $order;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al cancelada la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
 }

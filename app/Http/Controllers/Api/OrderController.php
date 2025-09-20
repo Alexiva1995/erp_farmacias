@@ -317,4 +317,19 @@ class OrderController extends Controller
         }
     }
 
+
+        public function cancelledOrder(Order $order)
+    {
+        if ($order->status !== Order::COMPLETED) {
+            return ApiResponse::error('Solo se pueden cancelar órdenes completadas.', 400);
+        }
+        try {
+            $abandonedOrder = $this->orderActionService->cancelledOrder($order);
+            return ApiResponse::success('Orden cancelada exitosamente.', ['order' => $abandonedOrder]);
+        } catch (\Exception $e) {
+            Log::error('Error al cancelada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo cancelada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
 }

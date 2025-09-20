@@ -9,7 +9,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options","print-order"]);
+const emit = defineEmits(["update:options","view-order","cancelar-order"]);
 
 const date = (order) => {
   const time = new Date(order);

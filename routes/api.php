@@ -161,6 +161,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
         Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
         Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+        Route::patch('/orders/{order}/cancelled', [OrderController::class, 'cancelledOrder']);
         Route::get('/credits', [CreditsController::class, 'index']);
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);

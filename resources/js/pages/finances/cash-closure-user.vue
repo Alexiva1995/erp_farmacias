@@ -34,7 +34,6 @@ const itemsPerPageOrders = ref(10);
 const sortByOrders = ref();
 const orderByOrders = ref();
 
-
 const viewModal = ref(false);
 const orderData = ref(null);
 const paymentsForPrint = ref([]);
@@ -81,7 +80,9 @@ const fetchClosingHistory = async () => {
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get("/finances/cash-closure/closingHistory", { params });
+    const response = await axios.get("/finances/cash-closure/closingHistory", {
+      params,
+    });
     closing.value = response.data.data;
     totalClosing.value = response.data.total;
   } catch (error) {
@@ -108,52 +109,52 @@ const printCash = async (cash) => {
     await nextTick();
     const printContents = document.getElementById("CashClosurePrint");
 
- if (!printContents) {
+    if (!printContents) {
       console.warn("Elemento #CashClosurePrint no encontrado.");
       window.print();
       return;
     }
 
-        const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write(
-          "<html><head><title>Farmacia Barrio Sucre</title>"
-        );
-        const styleSheets = document.styleSheets;
-        for (let i = 0; i < styleSheets.length; i++) {
-          const sheet = styleSheets[i];
-          try {
-            if (sheet.cssRules) {
-              let cssText = "";
-              for (let j = 0; j < sheet.cssRules.length; j++) {
-                cssText += sheet.cssRules[j].cssText;
-              }
-              printWindow.document.write(`<style>${cssText}</style>`);
-            } else if (sheet.href) {
-              printWindow.document.write(
-                `<link rel="stylesheet" href="${sheet.href}">`
-              );
-            }
-          } catch (e) {
-            console.warn(
-              "No se pudo acceder a la hoja de estilo:",
-              sheet.href || sheet,
-              e
-            );
+    const printWindow = window.open("", "", "height=600,width=800");
+    printWindow.document.write(
+      "<html><head><title>Farmacia Barrio Sucre</title>"
+    );
+    const styleSheets = document.styleSheets;
+    for (let i = 0; i < styleSheets.length; i++) {
+      const sheet = styleSheets[i];
+      try {
+        if (sheet.cssRules) {
+          let cssText = "";
+          for (let j = 0; j < sheet.cssRules.length; j++) {
+            cssText += sheet.cssRules[j].cssText;
           }
+          printWindow.document.write(`<style>${cssText}</style>`);
+        } else if (sheet.href) {
+          printWindow.document.write(
+            `<link rel="stylesheet" href="${sheet.href}">`
+          );
         }
-        printWindow.document.write("</head><body>");
-        printWindow.document.write(printContents.innerHTML);
-        printWindow.document.write("</body></html>");
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
+      } catch (e) {
+        console.warn(
+          "No se pudo acceder a la hoja de estilo:",
+          sheet.href || sheet,
+          e
+        );
+      }
+    }
+    printWindow.document.write("</head><body>");
+    printWindow.document.write(printContents.innerHTML);
+    printWindow.document.write("</body></html>");
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   } catch (error) {
     console.error("Error al imprimir los detalles del cierre de caja:", error);
     toast.error("No se pudo cargar los detalles del cierre de caja.");
-      isPrinting.value = false;
-      cashData.value = null;
-      isDownloadingPdf.value = false;
+    isPrinting.value = false;
+    cashData.value = null;
+    isDownloadingPdf.value = false;
   } finally {
     setTimeout(() => {
       isPrinting.value = false;
@@ -161,7 +162,7 @@ const printCash = async (cash) => {
       isDownloadingPdf.value = false;
     }, 500);
   }
-}
+};
 
 const ticketStyles = `
 .pa-2 { padding: 8px; }
@@ -170,62 +171,66 @@ const ticketStyles = `
 .mb-2 { margin-bottom: 8px; }`;
 
 const downloadcash = async (cash) => {
-    try {
+  try {
     isDownloadingPdf.value = true;
     const cashToDownload = cash;
     cashData.value = cashToDownload;
-        isPrinting.value = true;
-        await nextTick();
-        const printContents = document.getElementById("CashClosurePrint");
-          if (!printContents) {
-            console.error("Elemento 'CashClosurePrint' no encontrado.");
-            toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
-            return;
-          }
-            const htmlContent = printContents.innerHTML;
+    isPrinting.value = true;
+    await nextTick();
+    const printContents = document.getElementById("CashClosurePrint");
+    if (!printContents) {
+      console.error("Elemento 'CashClosurePrint' no encontrado.");
+      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
+      return;
+    }
+    const htmlContent = printContents.innerHTML;
 
-            const response = await axios.post("/finances/cash-closure/generate-pdf", {
-                html: `<style>${ticketStyles}</style>${htmlContent}`,
-                filename: `Cierre-Caja-${cash.id}.pdf`,
-            }, {
-                responseType: 'blob',
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Cierre-Caja-${cash.id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-
-            toast.success("PDF generado y descargado con éxito.");
-        } catch (error) {
-        console.error("Error al descargar el PDF:", error);
-        toast.error("Hubo un error al generar y descargar el PDF.");
-        isDownloadingPdf.value = false;
-      } finally {
-        isPrinting.value = false;
-        cashData.value = null;
+    const response = await axios.post(
+      "/finances/cash-closure/generate-pdf",
+      {
+        html: `<style>${ticketStyles}</style>${htmlContent}`,
+        filename: `Cierre-Caja-${cash.id}.pdf`,
+      },
+      {
+        responseType: "blob",
       }
-  };
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Cierre-Caja-${cash.id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success("PDF generado y descargado con éxito.");
+  } catch (error) {
+    console.error("Error al descargar el PDF:", error);
+    toast.error("Hubo un error al generar y descargar el PDF.");
+    isDownloadingPdf.value = false;
+  } finally {
+    isPrinting.value = false;
+    cashData.value = null;
+  }
+};
 
 const handleCompleteClosure = async (data) => {
-try {
- const payload = {
+  try {
+    const payload = {
       id: data.cierre_id,
       total_cop: data.total_cop,
       sobrante_en_peso: data.sobrante_en_peso,
       entregar_efectivo_cop: data.entregar_efectivo_cop,
     };
-    const response = await axios.post('/finances/cash-closure/close', payload);
+    const response = await axios.post("/finances/cash-closure/close", payload);
     toast.success("Cierre de caja completado con éxito:");
     isCloseCashModalVisible.value = false;
     const completedCashData = response.data.cash_closure_data;
     await printCash(completedCashData);
     fetchCashClosure();
     fetchClosingHistory();
-} catch (error) {
+  } catch (error) {
     console.error("Error al completar el cierre de caja:", error);
     if (error.response && error.response.data && error.response.data.message) {
       toast.error(error.response.data.message);
@@ -233,7 +238,7 @@ try {
       toast.error("Error al completar el cierre de caja.");
     }
   }
-}
+};
 
 const updateTableOptionsOrders = (options) => {
   pageOrders.value = options.page;
@@ -247,7 +252,6 @@ const updateTableOptionsOrders = (options) => {
   }
 };
 
-
 const fetchOrder = async () => {
   loadingOrders.value = true;
   const params = {
@@ -259,20 +263,19 @@ const fetchOrder = async () => {
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
-  try{
-    const response = await axios.get("/finances/cash-closure/orders", { params });
+  try {
+    const response = await axios.get("/finances/cash-closure/orders", {
+      params,
+    });
     orders.value = response.data.data;
     totalOrders.value = response.data.total;
-
   } catch (error) {
     console.error("Hubo un error al obtener las ordenes:", error);
     toast.error("Error al obtener las ordenes.");
   } finally {
     loadingOrders.value = false;
   }
-}
-
-
+};
 
 const handleViewOrder = async (orderId) => {
   try {
@@ -318,6 +321,23 @@ const handleCloseViewModal = () => {
   creditAmountForPrint.value = 0;
   creditForPrint.value = false;
 };
+
+const cancelarOrder = async () => {
+  try {
+    await axios.patch(`/tpv/orders/${openOrderData.value.id}/cancelled`);
+    toast.success("Orden cancelada exitosamente.");
+    fetchOrder();
+  } catch (error) {
+    console.error(
+      "Error al cancelar la orden:",
+      error.response ? error.response.data : error.message
+    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al cancelar la orden. Inténtalo de nuevo.";
+    toast.error(errorMessage);
+  }
+};
 </script>
 
 <template>
@@ -354,7 +374,11 @@ const handleCloseViewModal = () => {
       id="CashClosurePrint"
       :class="{ 'd-none': !isPrinting, 'print-container': true }"
     >
-      <CashClosureTicke v-if="isPrinting && cashData" :cash-data="cashData" :isPdf="isDownloadingPdf" />
+      <CashClosureTicke
+        v-if="isPrinting && cashData"
+        :cash-data="cashData"
+        :isPdf="isDownloadingPdf"
+      />
     </div>
   </VCard>
   <div class="mb-5"></div>
@@ -368,10 +392,10 @@ const handleCloseViewModal = () => {
       :page="pageOrders"
       @update:options="updateTableOptionsOrders"
       @view-order="handleViewOrder"
+      @cancelar-order="cancelarOrder"
     />
 
- 
-<OrderViewModal
+    <OrderViewModal
       v-model:isDialogVisible="viewModal"
       :order-data="orderData"
       :order-products="orderItems"
