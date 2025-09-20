@@ -1,4 +1,6 @@
 <script setup>
+import Swal from "sweetalert2";
+
 const props = defineProps({
   orders: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -61,13 +63,29 @@ const headers = [
   { title: "Monto", key: "total_amount", sortable: true },
   { title: "Moneda", key: "currency", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
-  { title: "Acción", key: "actions", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false },
 ];
 
 const handleView = (orderId) => {
   emit('view-order', orderId);
 }
 
+const handleCancelled = (orderId) => {
+   Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea Cancelar la Orden!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      emit("cancelar-order", orderId);
+    }
+  });
+}
 </script>
 <template>
   <VCard>
@@ -120,6 +138,10 @@ const handleView = (orderId) => {
           <IconBtn
             @click="handleView(item.id)">
             <VIcon icon="tabler-eye" />
+          </IconBtn>
+           <IconBtn
+            @click="handleCancelled(item.id)">
+            <VIcon icon="tabler-trash" />
           </IconBtn>
         </div>
       </template>
