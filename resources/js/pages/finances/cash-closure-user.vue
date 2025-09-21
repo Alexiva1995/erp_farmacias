@@ -322,9 +322,10 @@ const handleCloseViewModal = () => {
   creditForPrint.value = false;
 };
 
-const cancelarOrder = async () => {
+const cancelarOrder = async (orderId) => {
   try {
-    await axios.patch(`/tpv/orders/${openOrderData.value.id}/cancelled`);
+  console.log(orderData);
+    await axios.patch(`/tpv/orders/${orderId}/cancelled`);
     toast.success("Orden cancelada exitosamente.");
     fetchOrder();
   } catch (error) {
