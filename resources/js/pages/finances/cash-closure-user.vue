@@ -215,14 +215,33 @@ const downloadcash = async (cash) => {
   }
 };
 
-const handleCompleteClosure = async (data) => {
+const handleCompleteClosure = async ([closureData, cashClosureData]) => {
   try {
-    const payload = {
-      id: data.cierre_id,
-      total_cop: data.total_cop,
-      sobrante_en_peso: data.sobrante_en_peso,
-      entregar_efectivo_cop: data.entregar_efectivo_cop,
+    console.log(cashClosureData);
+    const cashToDownload = cashClosureData;
+    cashData.value = cashToDownload;
+    isDownloadingPdf.value = true;
+    isPrinting.value = true; 
+    await nextTick();
+
+    const printContents = document.getElementById("CashClosurePrint");
+    if (!printContents) {
+      console.error("Elemento 'CashClosurePrint' no encontrado.");
+      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
+      isPrinting.value = false;
+      cashData.value = null;
+      isDownloadingPdf.value = false;
+      return;
+    }
+    const htmlContent = printContents.innerHTML;
+     const payload = {
+      id: closureData.cierre_id,
+      total_cop: closureData.total_cop,
+      sobrante_en_peso: closureData.sobrante_en_peso,
+      entregar_efectivo_cop: closureData.entregar_efectivo_cop,
+      ticket_html: `<style>${ticketStyles}</style>${htmlContent}`,
     };
+
     const response = await axios.post("/finances/cash-closure/close", payload);
     toast.success("Cierre de caja completado con éxito:");
     isCloseCashModalVisible.value = false;
@@ -230,6 +249,9 @@ const handleCompleteClosure = async (data) => {
     await printCash(completedCashData);
     fetchCashClosure();
     fetchClosingHistory();
+    isPrinting.value = false;
+    cashData.value = null;
+    isDownloadingPdf.value = false;
   } catch (error) {
     console.error("Error al completar el cierre de caja:", error);
     if (error.response && error.response.data && error.response.data.message) {
@@ -237,6 +259,9 @@ const handleCompleteClosure = async (data) => {
     } else {
       toast.error("Error al completar el cierre de caja.");
     }
+    isPrinting.value = false;
+    cashData.value = null;
+    isDownloadingPdf.value = false;
   }
 };
 
@@ -370,17 +395,6 @@ const cancelarOrder = async (orderId) => {
       @print-cash="printCash"
       @download-cash="downloadcash"
     />
-
-    <div
-      id="CashClosurePrint"
-      :class="{ 'd-none': !isPrinting, 'print-container': true }"
-    >
-      <CashClosureTicke
-        v-if="isPrinting && cashData"
-        :cash-data="cashData"
-        :isPdf="isDownloadingPdf"
-      />
-    </div>
   </VCard>
   <div class="mb-5"></div>
   <VCard title="Lista de Ordenes">
@@ -409,4 +423,16 @@ const cancelarOrder = async (orderId) => {
       @close="handleCloseViewModal"
     />
   </VCard>
+
+  
+    <div
+      id="CashClosurePrint"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
+      <CashClosureTicke
+        v-if="isPrinting && cashData"
+        :cash-data="cashData"
+        :isPdf="isDownloadingPdf"
+      />
+    </div>
 </template>

@@ -602,13 +602,19 @@ class OrderActionService
              if (!$cashClosing) {
                 Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
              } else {
-                dd($order->money_returns);
+
                 foreach ($order->paymentMethods as $payment) {
                     $amount = $payment->amount;
                     $method = $payment->method;
                     switch ($method) {
                         case 'cash_usd':
-                            $cashClosing->usd_cash -= $amount;
+                            if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                $montoDesc = $amount-$order->usd_conversion;
+                                $cashClosing->usd_cash -= $montoDesc;
+                                $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
+                            }else{
+                                $cashClosing->usd_cash -= $amount;
+                            } 
                             break;
                         case 'binance':
                             $cashClosing->usd_binance -= $amount;
@@ -617,7 +623,7 @@ class OrderActionService
                             $cashClosing->usd_paypal -= $amount;
                             break;
                         case 'credit':
-                            $cashClosing->usd_credit -= $amount;
+                            $cashClosing->usd_credit -= $order->total_amount;
                             break;
                         case 'cash_bs':
                             $cashClosing->bs_cash -= $amount;
@@ -632,7 +638,12 @@ class OrderActionService
                             $cashClosing->bs_card -= $amount;
                             break;
                         case 'cash_cop':
-                            $cashClosing->cop_cash -= $amount;
+                            if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
+                            }else{
+                                $montoDescCOP = $amount - $order->money_returns;
+                                $cashClosing->cop_cash -= $montoDescCOP;
+                            }
                             break;
                         case 'bank_transfer':
                             $cashClosing->cop_transfer -= $amount;
@@ -643,17 +654,6 @@ class OrderActionService
                     }
                 }
 
-
-            /*if ($method == 'cash_usd' && ) {
-                $cashClosing->usd_cash -= $request->changeAmountUSD;
-                $cashClosing->cop_conversion += $order->money_returns ?? null;
-                $cashClosing->usd_conversion += $request->changeAmountUSD ?? null;
-            } else {
-                if (isset($order->money_returns)) {
-                    $cashClosing->cop_cash -= $order->money_returns;
-                }
-            }*/
-
                 $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
                 $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
                 $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
@@ -661,9 +661,9 @@ class OrderActionService
                 $cashClosing->total_bs = $total_bs;
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;
-                $cashClosing->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
-                $cashClosing->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
-                $cashClosing->bs_delivered = $current_cash->bs_cash;
+                $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
+                $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
+                $cashClosing->bs_delivered = $cashClosing->bs_cash;
                 $cashClosing->update();
              }
 

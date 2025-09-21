@@ -26,6 +26,7 @@ class CloseCashClosureRequest extends FormRequest
             'total_cop' => 'required',
             'sobrante_en_peso' => 'required',
             'entregar_efectivo_cop' => 'required',
+            'ticket_html' => 'required|string',
         ];
     }
 }

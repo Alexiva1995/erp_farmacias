@@ -10,6 +10,9 @@ use App\Http\Requests\CashClosure\CloseCashClosureRequest;
 use App\Models\Order;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReporteCierreCajaMail;
 
 class CashClosureActionService
 {
@@ -49,12 +52,18 @@ class CashClosureActionService
     ]);
 
     $cashClosure->refresh()->load('orders');
-
+    $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
+    $pdf = PDF::loadHTML($htmlContent);
+    $pdfContent = $pdf->output();
+    $destinatariosTo = ['cierres@farmaciabs.com'];
+    $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';
+    Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
     CashClosing::create([
         'seller_id' => $sellerId,
         'status' => CashClosing::OPEN,
         'closing_date' => Carbon::now(),
     ]);
+
 
     return response()->json([
         'success' => true,

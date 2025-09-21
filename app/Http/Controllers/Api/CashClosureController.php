@@ -39,21 +39,26 @@ class CashClosureController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
+
+    public function pdf($html)
+    {
+        $pdf = Pdf::loadHtml($html);
+        return $pdf;
+    }
+
      public function generate(Request $request)
     {
         $request->validate([
             'html' => 'required|string',
             'filename' => 'required|string'
         ]);
-
-        $html = $request->input('html');
-        $filename = $request->input('filename');
-        $pdf = Pdf::loadHtml($html);
-        return $pdf->download($filename);
+        $pdf = $this->pdf($request->input('html'));
+        return $pdf->download($request->input('filename'));
     }
 
       public function closeCash(CloseCashClosureRequest $request)
     {
+        
         return $this->cashClosureActionService->closeCashClosing($request);
     }
 

@@ -46,7 +46,7 @@ const completeClosure = () => {
     sobrante_en_peso: sobranteCop.value,
     entregar_efectivo_cop: totalEfectivoCopConSobrante.value,
   };
-  emit("complete-cash-closure", closureData);
+  emit("complete-cash-closure", [closureData, props.cashClosureData]);
   closeModal();
 };
 
