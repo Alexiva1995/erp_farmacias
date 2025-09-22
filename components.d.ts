@@ -82,6 +82,7 @@ declare module 'vue' {
     GroupEditDialog: typeof import('./resources/js/components/dialogs/GroupEditDialog.vue')['default']
     GroupFilters: typeof import('./resources/js/components/GroupFilters.vue')['default']
     GroupTable: typeof import('./resources/js/components/GroupTable.vue')['default']
+    HistoryCashClosureTicke: typeof import('./resources/js/components/HistoryCashClosureTicke.vue')['default']
     HistoryFilters: typeof import('./resources/js/components/HistoryFilters.vue')['default']
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']

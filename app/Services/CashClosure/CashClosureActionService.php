@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReporteCierreCajaMail;
+use App\Mail\ReporteHistoryCierreCajaMail;
 
 class CashClosureActionService
 {
@@ -20,7 +21,7 @@ class CashClosureActionService
     public function allCashClosing(): ?CashClosing
     {
         $sellerId = Auth::id();
-        $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->with('orders')->first();
+        $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->with('orders.details.product')->first();
         if (!$cashClosing) {
             throw new Exception('No se encontró un cierre de caja abierto.');
         }
@@ -52,12 +53,21 @@ class CashClosureActionService
     ]);
 
     $cashClosure->refresh()->load('orders');
+    //pdf cierre
     $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
     $pdf = PDF::loadHTML($htmlContent);
     $pdfContent = $pdf->output();
     $destinatariosTo = ['cierres@farmaciabs.com'];
     $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';
     Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
+    //pdf history
+    $historyHtmlContent = mb_convert_encoding($validatedData['history_html'], 'UTF-8', 'UTF-8');
+    $pdfHistory = Pdf::loadHTML($historyHtmlContent);
+    $pdfHistoryContent = $pdfHistory->output();
+    $destinatariosToHistory = ['alexisvalera@farmaciabs.com'];
+    $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';
+    Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
+
     CashClosing::create([
         'seller_id' => $sellerId,
         'status' => CashClosing::OPEN,

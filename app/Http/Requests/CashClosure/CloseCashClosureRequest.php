@@ -27,6 +27,7 @@ class CloseCashClosureRequest extends FormRequest
             'sobrante_en_peso' => 'required',
             'entregar_efectivo_cop' => 'required',
             'ticket_html' => 'required|string',
+            'history_html' => 'required|string',
         ];
     }
 }

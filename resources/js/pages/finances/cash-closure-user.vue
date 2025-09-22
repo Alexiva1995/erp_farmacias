@@ -8,6 +8,7 @@ import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
+import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
 
 const loading = ref(false);
 const cashClosure = ref([]);
@@ -23,6 +24,7 @@ const orderBy = ref();
 
 const isPrinting = ref(false);
 const cashData = ref(null);
+const isDownload = ref(false);
 
 const isDownloadingPdf = ref(false);
 
@@ -43,6 +45,8 @@ const amountForPrint = ref(0);
 const creditForPrint = ref(false);
 const currency = ref("COP");
 const orderItems = ref([]);
+
+const orderDataHistory = ref(null);
 
 const fetchCashClosure = async () => {
   try {
@@ -168,18 +172,20 @@ const ticketStyles = `
 .pa-2 { padding: 8px; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
-.mb-2 { margin-bottom: 8px; }`;
+.mb-2 { margin-bottom: 8px; }
+.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }`;
 
 const downloadcash = async (cash) => {
   try {
-    isDownloadingPdf.value = true;
+    const orderToDownload = cash.orders;
     const cashToDownload = cash;
+    orderDataHistory.value = orderToDownload;
     cashData.value = cashToDownload;
-    isPrinting.value = true;
+    isDownload.value = true;
     await nextTick();
-    const printContents = document.getElementById("CashClosurePrint");
+    const printContents = document.getElementById("HistoryDownload");
     if (!printContents) {
-      console.error("Elemento 'CashClosurePrint' no encontrado.");
+      console.error("Elemento 'HistoryDownload' no encontrado.");
       toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
       return;
     }
@@ -189,7 +195,7 @@ const downloadcash = async (cash) => {
       "/finances/cash-closure/generate-pdf",
       {
         html: `<style>${ticketStyles}</style>${htmlContent}`,
-        filename: `Cierre-Caja-${cash.id}.pdf`,
+        filename: `historico-${cash.id}.pdf`,
       },
       {
         responseType: "blob",
@@ -203,28 +209,31 @@ const downloadcash = async (cash) => {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
-
     toast.success("PDF generado y descargado con éxito.");
   } catch (error) {
     console.error("Error al descargar el PDF:", error);
     toast.error("Hubo un error al generar y descargar el PDF.");
-    isDownloadingPdf.value = false;
   } finally {
-    isPrinting.value = false;
+    isDownload.value = false;
+    orderDataHistory.value = null;
     cashData.value = null;
   }
 };
 
 const handleCompleteClosure = async ([closureData, cashClosureData]) => {
   try {
-    console.log(cashClosureData);
     const cashToDownload = cashClosureData;
     cashData.value = cashToDownload;
     isDownloadingPdf.value = true;
     isPrinting.value = true; 
-    await nextTick();
 
+    isDownload.value = true;
+    orderDataHistory.value = cashClosureData.orders;
+
+    await nextTick();
     const printContents = document.getElementById("CashClosurePrint");
+    const historyContents = document.getElementById("HistoryDownload");
+
     if (!printContents) {
       console.error("Elemento 'CashClosurePrint' no encontrado.");
       toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
@@ -233,13 +242,24 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
       isDownloadingPdf.value = false;
       return;
     }
-    const htmlContent = printContents.innerHTML;
+
+    if (!historyContents) {
+      console.error("Elemento 'HistoryDownload' no encontrado.");
+      toast.error("No se pudo generar el historial para el correo.");
+      isDownload.value = false;
+      return;
+    }
+
+    const htmlContent = `<style>${ticketStyles}</style>${printContents.innerHTML}`;
+    const historyTicketHtml = `<style>${ticketStyles}</style>${historyContents.innerHTML}`;
+
      const payload = {
       id: closureData.cierre_id,
       total_cop: closureData.total_cop,
       sobrante_en_peso: closureData.sobrante_en_peso,
       entregar_efectivo_cop: closureData.entregar_efectivo_cop,
-      ticket_html: `<style>${ticketStyles}</style>${htmlContent}`,
+      ticket_html: htmlContent,
+      history_html: historyTicketHtml,
     };
 
     const response = await axios.post("/finances/cash-closure/close", payload);
@@ -252,6 +272,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     isPrinting.value = false;
     cashData.value = null;
     isDownloadingPdf.value = false;
+    isDownload.value = false;
   } catch (error) {
     console.error("Error al completar el cierre de caja:", error);
     if (error.response && error.response.data && error.response.data.message) {
@@ -262,6 +283,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     isPrinting.value = false;
     cashData.value = null;
     isDownloadingPdf.value = false;
+    isDownload.value = false;
   }
 };
 
@@ -424,15 +446,19 @@ const cancelarOrder = async (orderId) => {
     />
   </VCard>
 
-  
-    <div
-      id="CashClosurePrint"
-      :class="{ 'd-none': !isPrinting, 'print-container': true }"
-    >
+    <div id="CashClosurePrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
       <CashClosureTicke
         v-if="isPrinting && cashData"
         :cash-data="cashData"
         :isPdf="isDownloadingPdf"
+      />
+    </div>
+
+    <div id="HistoryDownload" :class="{ 'd-none': !isDownload, 'print-container': true }">
+      <HistoryCashClosureTicke
+        v-if="isDownload && orderDataHistory"
+        :order-data="orderDataHistory"
+        :cash-data="cashData"
       />
     </div>
 </template>
