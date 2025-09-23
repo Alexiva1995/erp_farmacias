@@ -470,4 +470,3 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
     });
-});

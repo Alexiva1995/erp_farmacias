@@ -485,7 +485,6 @@ declare module 'vue' {
     readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
     readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
     readonly pdfDoctorsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']>
-    readonly pdfPayslipGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']>
     readonly pdfProductsAssistantReportGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']>
     readonly pdfProductsWithoutSuppliersGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsWithoutSuppliersGenerator.js')['default']>
     readonly pdfPurchaseOrderGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['default']>
