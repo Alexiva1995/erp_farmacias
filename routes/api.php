@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ReturnsController;
+use App\Http\Controllers\Api\CashClosureController;
 
 /*
 |--------------------------------------------------------------------------
@@ -176,6 +177,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
         Route::get('/orders/abandoned', [OrderController::class, 'getAbandonedOrder']);
         Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
+        Route::patch('/orders/{order}/cancelled', [OrderController::class, 'cancelledOrder']);
         Route::get('/credits', [CreditsController::class, 'index']);
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
@@ -260,13 +262,12 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
 
-    // Rutas de Proveedores
+ // Rutas de Proveedores
 // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
 
     // Invoice
-
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
@@ -387,6 +388,14 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
 
+        Route::prefix("cash-closure")->group(function () {
+            Route::get("/", [CashClosureController::class, "getCashClosure"]);
+            Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
+            Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
+            Route::post("/close", [CashClosureController::class, "closeCash"]);
+            Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
+        });
+      
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
