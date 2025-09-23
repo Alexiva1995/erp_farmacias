@@ -13,6 +13,10 @@ export default [
         title: 'Empleados',
         to: 'rrhh-employees',
       },
+      {
+        title: 'Prestaciones Sociales',
+        to: 'rrhh-social-benefits',
+      },
     ],
   },
 ]

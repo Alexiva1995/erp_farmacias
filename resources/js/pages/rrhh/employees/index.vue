@@ -1,14 +1,17 @@
 <script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
+import FireEmployeeDialog from "@/components/dialogs/FireEmployeeDialog.vue";
 import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, watch } from "vue";
 
+const showFireEmployeeDialog = ref(false);
 const showDialog = ref(false);
 const loading = ref(false);
 const search = ref("");
+const currency = ref(null);
 
 const roles = ref([]);
 const employees = ref([]);
@@ -64,20 +67,9 @@ const handleRefreshTable = async () => {
   fetchEmployees();
 };
 
-const handleFireEmployee = async (id) => {
-  try {
-    const { data } = await axios.put(`/rrhh/employees/${id}/fire`);
-
-    if (data.data.status) {
-      toast.success("El empleado ha sido despedido exitosamente");
-
-      handleRefreshTable();
-    } else {
-      toast.success("No se pudo despedir al empleado");
-    }
-  } catch (error) {
-    toast.error("Hubo un error al despedir al empleado");
-  }
+const handleShowFireEmployeeDialog = (employee) => {
+  selectedEmployee.value = employee;
+  showFireEmployeeDialog.value = true;
 };
 
 const handleDeleteEmployee = async (employee) => {
@@ -92,7 +84,16 @@ const handleDeleteEmployee = async (employee) => {
   }
 };
 
-onMounted(() => Promise.all([fetchEmployees(), fetchRoles()]));
+const fetchCurrency = async () => {
+  try {
+    const { data } = await axios.get("finances/exchange-rates/consultOneBCV");
+    currency.value = data.rate;
+  } catch (error) {
+    toast.error("No se pudo obtener la tasa bcv del dia");
+  }
+};
+
+onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
 let debounceTimer;
 watch(
@@ -113,6 +114,13 @@ watch(
       @add-employee="handleShowDialog"
     />
 
+    <FireEmployeeDialog
+      v-model="showFireEmployeeDialog"
+      :selected-employee="selectedEmployee"
+      :currency="currency"
+      @refresh-table="handleRefreshTable"
+    />
+
     <EmployeeFormDialog
       v-model="showDialog"
       :roles="roles"
@@ -125,7 +133,7 @@ watch(
       :items-per-page="itemsPerPage"
       :total="totalEmployees"
       :employees="employees"
-      @fire-employee="handleFireEmployee"
+      @fire-employee="handleShowFireEmployeeDialog"
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
     />

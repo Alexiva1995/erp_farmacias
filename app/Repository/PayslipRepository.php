@@ -46,7 +46,6 @@ class PayslipRepository
       ->join('salary_concepts as c', 'c.id', '=', 'users_salary_details.salary_concept_id')
       ->join('employees as e', 'e.user_id', '=', 'users_salary_details.user_id')
       ->where('e.is_active', true)
-      ->whereIn('c.name', ['Bono de Alimentación', 'Salario Base'])
       ->select('users_salary_details.id', 'users_salary_details.amount')
       ->get();
   }
@@ -57,7 +56,6 @@ class PayslipRepository
       return false;
     }
 
-    /* 1.  Build CASE string */
     $cases = [];
     $ids = [];
     foreach ($details['vouchers'] as $v) {
@@ -70,16 +68,13 @@ class PayslipRepository
     $idList = implode(',', $ids);
     $caseSql = implode(' ', $cases);
 
-    /* 2.  Update only the rows that belong to this payslip */
     $sql = "UPDATE payslip_details
         SET amount = CASE id {$caseSql} END,
             updated_at = NOW()
         WHERE id IN ({$idList})
         AND payslip_id = ?";
-    \Log::info($sql, [$payslip->id]);   // tail storage/logs/laravel.log
     DB::statement($sql, [$payslip->id]);
 
-    /* 3.  Refresh the payslip total in the same query */
     DB::statement(
       'UPDATE payslips
          SET total = (

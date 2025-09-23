@@ -10,6 +10,7 @@ use App\Contracts\Laboratory;
 use App\Contracts\Lottery;
 use App\Contracts\PurchaseOrder;
 use App\Contracts\Role;
+use App\Contracts\SocialBenefit;
 use App\Contracts\Transaction;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\Api\SocialBenefitController;
 use App\Models\Payslip;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
@@ -34,7 +36,7 @@ use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
 use App\Contracts\Profitability;
 use App\Contracts\User;
-use App\Http\Controllers\api\ExchangeRateController;
+use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\InventoryStockController;
@@ -54,6 +56,7 @@ use App\Services\ProfitabilityServices;
 use App\Services\PurchaseOrderServices;
 use App\Services\RoleServices;
 use App\Services\PayslipServices;
+use App\Services\SocialBenefitServices;
 use App\Services\TransactionServices;
 use App\Services\UserServices;
 use Illuminate\Support\ServiceProvider;
@@ -147,6 +150,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(PayslipController::class)
             ->needs(Payslip::class)
             ->give(PayslipServices::class);
+
+        $this->app->when(SocialBenefitController::class)
+            ->needs(SocialBenefit::class)
+            ->give(SocialBenefitServices::class);
     }
 
     /**

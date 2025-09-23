@@ -1,11 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
-
 use App\Http\Controllers\Api\EmployeeController;
-
 use App\Http\Controllers\Api\FurnitureController;
-
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -25,11 +22,11 @@ use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
+use App\Http\Controllers\Api\SocialBenefitController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
-use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
@@ -246,6 +243,13 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
         });
+
+        Route::prefix('social-benefits')->group(function () {
+            Route::get('/employees', [SocialBenefitController::class, 'index']);
+            Route::post('/employees/{employee}/payment', [SocialBenefitController::class, 'payment']);
+            Route::get('/employees/{employee}/settlement-data', [SocialBenefitController::class, 'getSettlementData']);
+            Route::post('/employees/{employee}/fire', [SocialBenefitController::class, 'fire']);
+        });
     });
 
     Route::get('/roles', [RoleController::class, 'list']);
@@ -255,21 +259,21 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
-        Route::post("/",                                           [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create",                                     [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}",                                  [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate",                            [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel",                             [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status",                              [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice",                        [ExpensesController::class, "uploadFileInvoice"]);
+        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create", [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
         Route::prefix("category")->group(function () {
-            Route::get("/",                                        [ExpenseCategoryController::class, "getAll"]);
+            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
         });
     });
 });
 
 Route::prefix("user")->group(function () {
-    Route::get("/",                                     [UserController::class, "getAll"]);
+    Route::get("/", [UserController::class, "getAll"]);
 });
 
 

@@ -16,12 +16,7 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
-const emit = defineEmits([
-  "update:options",
-  "fire-employee",
-  "edit-employee",
-  "delete-employee",
-]);
+const emit = defineEmits(["update:options", "pay-employee", "fire-employee"]);
 </script>
 <template>
   <VCard>
@@ -35,17 +30,10 @@ const emit = defineEmits([
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.actions="{ item }">
-        <VTooltip text="Editar empleado" location="top">
+        <VTooltip text="Pagar a empleado" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-employee', item)">
-              <VIcon icon="tabler-pencil" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Ver empleado" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
-              <VIcon icon="tabler-eye" :href />
+            <IconBtn v-bind="props" @click="emit('pay-employee', item)">
+              <VIcon icon="tabler-currency-dollar" />
             </IconBtn>
           </template>
         </VTooltip>
@@ -53,13 +41,6 @@ const emit = defineEmits([
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('fire-employee', item)">
               <VIcon icon="tabler-cancel" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Eliminar empleado" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-employee', item.id)">
-              <VIcon icon="tabler-trash" />
             </IconBtn>
           </template>
         </VTooltip>
