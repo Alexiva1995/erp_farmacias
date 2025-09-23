@@ -76,6 +76,7 @@ class OrderController extends Controller
     {
         try {
             $sellerId = Auth::id();
+           // $sellerId = 2;
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
@@ -180,7 +181,7 @@ class OrderController extends Controller
 
         try {
             //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = 2; //para realizar pruebas
 
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
@@ -282,7 +283,7 @@ class OrderController extends Controller
     public function reserveOrder(Order $order): JsonResponse
     {
         //$sellerId = Auth::id();
-        $sellerId = 3; //para realizar pruebas
+        $sellerId = 2; //para realizar pruebas
         $existingReservedOrder = Order::where('seller_id', $sellerId)
             ->where('status', 'Reserved')
             ->first();
@@ -308,7 +309,7 @@ class OrderController extends Controller
     {
         try {
             //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = 2; //para realizar pruebas
             $order = $this->orderActionService->reserveAndAddOrder($order, $sellerId);
             return ApiResponse::success($order, 'Orden agregada exitosamente.', 200);
         } catch (\Exception $e) {
