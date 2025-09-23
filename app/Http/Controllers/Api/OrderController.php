@@ -30,7 +30,8 @@ class OrderController extends Controller
         protected OrderContract $orderContract,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
-    ) {}
+    ) {
+    }
     public function index(Request $request)
     {
         $query = $this->orderQueryService->getFilteredQueryProduct($request);
@@ -44,7 +45,7 @@ class OrderController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    public function  consultByIdentification(Request $request)
+    public function consultByIdentification(Request $request)
     {
         $buscarPorIdentificaion = $this->client->consultByIdentification($request->Identification);
         if (!$buscarPorIdentificaion) {
@@ -173,7 +174,6 @@ class OrderController extends Controller
 
     public function completeOrder(Order $orderId, Request $request)
     {
-
         if ($orderId->details()->doesntExist()) {
             return ApiResponse::error('No hay productos en la orden', 500);
         }
@@ -265,7 +265,7 @@ class OrderController extends Controller
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
-            "page"         => $request->page,
+            "page" => $request->page,
         ];
 
 
@@ -296,8 +296,8 @@ class OrderController extends Controller
         }
 
         try {
-            $order = $this->orderActionService->reserveOrder($order,$sellerId);
-            return ApiResponse::success($order, 'Orden reservada exitosamente.',200);
+            $order = $this->orderActionService->reserveOrder($order, $sellerId);
+            return ApiResponse::success($order, 'Orden reservada exitosamente.', 200);
         } catch (\Exception $e) {
             Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
             return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);
@@ -306,11 +306,11 @@ class OrderController extends Controller
 
     public function reserveAddOrder(Order $order): JsonResponse
     {
-         try {
+        try {
             //$sellerId = Auth::id();
             $sellerId = 3; //para realizar pruebas
-            $order = $this->orderActionService->reserveAndAddOrder($order,$sellerId);
-            return ApiResponse::success($order, 'Orden agregada exitosamente.',200);
+            $order = $this->orderActionService->reserveAndAddOrder($order, $sellerId);
+            return ApiResponse::success($order, 'Orden agregada exitosamente.', 200);
         } catch (\Exception $e) {
             Log::error('Error al agregar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
             return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);

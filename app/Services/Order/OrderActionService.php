@@ -52,22 +52,22 @@ class OrderActionService
         try {
 
             $withRelations = [
-                'client',
-                'seller',
-                'details' => function ($query) {
-                    $query->with([
-                        'product' => function ($q) {
-                            $q->with('laboratory')
-                                ->withSum('lots', 'quantity');
-                        }
-                    ]);
-                }
-            ];
+                    'client',
+                    'seller',
+                    'details' => function ($query) {
+                        $query->with([
+                            'product' => function ($q) {
+                                $q->with('laboratory')
+                                      ->withSum('lots', 'quantity');
+                            }
+                        ]);
+                    }
+                ];
 
-            $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status', Order::PENDING)
-                ->with($withRelations)
-                ->first();
+              $openOrder = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::PENDING)
+                    ->with($withRelations)
+                    ->first();
 
             $reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', 'Reserved')
@@ -95,7 +95,7 @@ class OrderActionService
 
             $product = Product::findOrFail($validatedData['product_id']);
             $product->loadSum('lots', 'quantity');
-            $availableStock = (int)$product->lots_sum_quantity ?? 0;
+            $availableStock = (int) $product->lots_sum_quantity ?? 0;
 
             $requestedQuantity = $validatedData['quantity'];
             $unitPriceAtOrder = $validatedData['price_at_product'];
@@ -245,7 +245,7 @@ class OrderActionService
         }
     }
 
-    public function invoicing(Order $order)
+    public function invoicing(Order $order, $spe)
     {
 
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
@@ -270,16 +270,17 @@ class OrderActionService
 
             $totalAmountBs = $exemptAmount + $totalIva;
             $fiscalHistory = FiscalHistory::create([
-                'user_id'      => $order->seller_id,
-                'order_id'       => $order->id,
+                'user_id' => $order->seller_id,
+                'order_id' => $order->id,
                 'invoice_number' => null,
                 'business_name' => $client->name . ' ' . $client->last_name,
                 'identification' => $client->identification_type . $client->identification,
                 'address' => $client->address,
-                'exempt_amount'     => $exemptAmount,
-                'iva_amount'     => $totalIva,
-                'total_amount'   => $totalAmountBs,
-                'invoice_date'   => Carbon::now(),
+                'exempt_amount' => $exemptAmount,
+                'iva_amount' => $totalIva,
+                'total_amount' => $totalAmountBs,
+                'invoice_date' => Carbon::now(),
+                'spe' => $spe
             ]);
 
             $fiscalHistory->save();
@@ -368,7 +369,7 @@ class OrderActionService
 
 
             if ($request->generate_invoice) {
-                $this->invoicing($orderId);
+                $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             }
 
@@ -376,7 +377,7 @@ class OrderActionService
                 if ($detail->product) {
                     if (!$request->generate_invoice) {
                         if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
-                            $this->invoicing($orderId);
+                            $this->invoicing($orderId, $request->spe);
                             $ivaEjecuted = true;
                         }
                     }
@@ -388,7 +389,7 @@ class OrderActionService
             if (!isset($current_cash)) {
                 $current_cash = CashClosing::create([
                     'seller_id' => $orderId->seller_id,
-                    'status' =>  CashClosing::OPEN,
+                    'status' => CashClosing::OPEN,
                     'closing_date' => Carbon::now(),
                 ]);
             }
@@ -465,6 +466,7 @@ class OrderActionService
                 ->first();
 
 
+
             $newPendingOrder = null;
 
             if ($reservedOrder) {
@@ -489,7 +491,7 @@ class OrderActionService
         }
     }
 
-    public function reserveOrder(Order $order, $sellerId): array
+    public function reserveOrder(Order $order,  $sellerId): array
     {
         DB::beginTransaction();
         try {
