@@ -52,10 +52,10 @@ class SocialBenefitRepository
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'users.id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->when(!empty($search), function ($query) use ($search) {
-        $query->orWhere('name', 'like', "%$search%")
-          ->orWhere('last_name', 'like', "%$search%")
+        $query->orWhere('employees.name', 'like', "%$search%")
+          ->orWhere('employees.last_name', 'like', "%$search%")
           ->orWhere('users.email', 'like', "%$search%")
-          ->orWhere('identification', 'like', "%$search%");
+          ->orWhere('employees.identification', 'like', "%$search%");
       })
       ->where('employees.is_active', true)
       ->groupBy([

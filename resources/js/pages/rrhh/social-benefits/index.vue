@@ -1,6 +1,7 @@
 <script setup>
 import EmployeePaymentDialog from "@/components/dialogs/EmployeePaymentDialog.vue";
 import FireEmployeeDialog from "@/components/dialogs/FireEmployeeDialog.vue";
+import SocialBenefitsEmployeeFilter from "@/components/SocialBenefitsEmployeeFilter.vue";
 import SocialBenefitsTable from "@/components/SocialBenefitsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -89,11 +90,15 @@ const handlePayEmployee = async (id, type, amount) => {
   }
 };
 
+const handleClearFilters = () => {
+  search.value = null;
+};
+
 onMounted(() => Promise.all([fetchCurrency(), fetchEmployees()]));
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage],
+  [page, itemsPerPage, search],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchEmployees(), 300);
@@ -103,6 +108,11 @@ watch(
 </script>
 <template>
   <div>
+    <SocialBenefitsEmployeeFilter
+      v-model:search="search"
+      @clear="handleClearFilters"
+    />
+
     <EmployeePaymentDialog
       v-model="showPaymentDialog"
       :selected-employee="selectedEmployee"

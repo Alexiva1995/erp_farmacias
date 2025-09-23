@@ -189,6 +189,7 @@ declare module 'vue' {
     ShowImportProductsFileDialog: typeof import('./resources/js/components/dialogs/ShowImportProductsFileDialog.vue')['default']
     ShowSalaryFormDialog: typeof import('./resources/js/components/dialogs/ShowSalaryFormDialog.vue')['default']
     ShowSupplierProductsDialog: typeof import('./resources/js/components/dialogs/ShowSupplierProductsDialog.vue')['default']
+    SocialBenefitsEmployeeFilter: typeof import('./resources/js/components/SocialBenefitsEmployeeFilter.vue')['default']
     SocialBenefitsTable: typeof import('./resources/js/components/SocialBenefitsTable.vue')['default']
     SparklineCard: typeof import('./resources/js/components/cards/SparklineCard.vue')['default']
     SupplierAssistantReportTable: typeof import('./resources/js/components/SupplierAssistantReportTable.vue')['default']
