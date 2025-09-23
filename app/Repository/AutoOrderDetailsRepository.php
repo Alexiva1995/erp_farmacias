@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Models\AutoOrderDetail;
+use Illuminate\Database\Eloquent\Collection;
 
 class AutoOrderDetailsRepository
 {
@@ -45,5 +46,10 @@ class AutoOrderDetailsRepository
             ->paginate($perPage);
 
         return $results;
+    }
+
+    public function consultDetailByProductSupplierId($product_supplier_id): AutoOrderDetail|null
+    {
+        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->first();
     }
 }

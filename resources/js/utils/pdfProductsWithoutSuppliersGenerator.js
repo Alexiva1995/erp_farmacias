@@ -80,7 +80,7 @@ export default function pdfProductsWithoutSuppliersGenerator(data) {
                 styles: { halign: 'center' } 
             },
             { 
-                content: product.lote_quantity?.toString() || '0', 
+                content: product.stockFaltante?.toString() || '0', 
                 styles: { halign: 'center' } 
             },
             { 
