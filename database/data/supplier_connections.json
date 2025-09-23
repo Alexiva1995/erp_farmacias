@@ -420,15 +420,18 @@
             },
             "3": {
                 "file_field": "exisMerida",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisMerida"
             },
             "4": {
                 "file_field": "exisCaracas",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisCaracas"
             },
             "5": {
                 "file_field": "exisOriente",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisOriente"
             },
             "6": {
                 "file_field": "Marca",
