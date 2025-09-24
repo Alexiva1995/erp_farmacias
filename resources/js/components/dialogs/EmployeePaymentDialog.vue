@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   currency: { type: String, default: null },
@@ -10,20 +12,37 @@ const emit = defineEmits(["register-payment"]);
 const selectedPayment = ref(null);
 const date = new Date();
 
-const options = [
-  {
-    title: "Vacaciones",
-    value: "vacation_voucher",
-  },
-  {
-    title: "Bono Vacacional",
-    value: "vacation_bonus_voucher",
-  },
-  {
-    title: "Utilidades",
-    value: "earnings_voucher",
-  },
-];
+const options = computed(() => {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+
+  const lessThanYear = props.selectedEmployee?.active_years < 1;
+  const notDecember = month !== 12;
+
+  return [
+    {
+      title: "Vacaciones",
+      value: "vacation_voucher",
+      props: {
+        disabled: lessThanYear,
+      },
+    },
+    {
+      title: "Bono Vacacional",
+      value: "vacation_bonus_voucher",
+      props: {
+        disabled: lessThanYear,
+      },
+    },
+    {
+      title: "Utilidades",
+      value: "earnings_voucher",
+      props: {
+        disabled: notDecember,
+      },
+    },
+  ];
+});
 
 const closeDialog = () => {
   selectedPayment.value = "";

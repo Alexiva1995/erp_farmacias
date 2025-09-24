@@ -2,11 +2,10 @@
 import ShowSalaryFormDialog from "@/components/dialogs/ShowSalaryFormDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
-
 const tab = ref("legal");
 const loading = ref(false);
 const showDialog = ref(false);
@@ -19,16 +18,14 @@ const fetchPayslip = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(`/finances/payslips/${payrollId}/data`);
-
     selectedPayslip.value = data.data;
-  } catch (error) {
+  } catch {
     toast.error("Hubo un error al obtener la nómina");
   } finally {
     loading.value = false;
   }
 };
-
-onMounted(() => [fetchPayslip()]);
+onMounted(fetchPayslip);
 
 const fullHeaders = [
   { title: "ID", key: "id", sortable: false },
@@ -68,11 +65,7 @@ const fullHeaders = [
     key: "family_support_voucher",
     sortable: false,
   },
-  {
-    title: "Sueldo + Asignaciones",
-    key: "positive_vouchers",
-    sortable: false,
-  },
+  { title: "Sueldo + Asignaciones", key: "positive_vouchers", sortable: false },
   {
     title: "Seguro Social 4%",
     key: "social_security_voucher",
@@ -93,21 +86,9 @@ const fullHeaders = [
     key: "days_not_worked_voucher",
     sortable: false,
   },
-  {
-    title: "Prestamos",
-    key: "loans_voucher",
-    sortable: false,
-  },
-  {
-    title: "Liquidación",
-    key: "settlement_voucher",
-    sortable: false,
-  },
-  {
-    title: "Total Deducciones",
-    key: "negative_vouchers",
-    sortable: false,
-  },
+  { title: "Prestamos", key: "loans_voucher", sortable: false },
+  { title: "Liquidación", key: "settlement_voucher", sortable: false },
+  { title: "Total Deducciones", key: "negative_vouchers", sortable: false },
   { title: "NETO A PAGAR", key: "total", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -131,30 +112,183 @@ const alwaysShow = [
 
 const headers = computed(() => {
   let list = fullHeaders;
-
-  if (tab.value === "legal") {
+  if (tab.value === "legal")
     list = list.filter((h) => alwaysShow.includes(h.key));
-  }
-
-  if (selectedPayslip.value?.status === 1) {
+  if (selectedPayslip.value?.status === 1)
     list = list.filter((h) => h.key !== "actions");
-  } else {
-    list = list.filter(
-      (h) => h.key === "actions" || !h.key.startsWith("actions_")
-    );
-  }
-
   return list;
 });
 
 const formatBs = (amount) => {
+  const newAmount = toNum(amount);
+
   return (
     new Intl.NumberFormat("es-VE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount) + " Bs."
+    }).format(newAmount) + " Bs."
   );
 };
+
+const toNum = (v) => {
+  const n = v >> 0;
+  return n === n ? n : Number(v) || 0;
+};
+
+const calcVouchers = (
+  food,
+  transport,
+  perf,
+  inv,
+  sales,
+  salesGr,
+  assProd,
+  earn,
+  vacBonus,
+  vac,
+  fam,
+  salary,
+  social,
+  employ,
+  housing,
+  daysOff,
+  loans,
+  settlement
+) => {
+  const pos =
+    toNum(food) +
+    toNum(transport) +
+    toNum(perf) +
+    toNum(inv) +
+    toNum(sales) +
+    toNum(salesGr) +
+    toNum(assProd) +
+    toNum(earn) +
+    toNum(vacBonus) +
+    toNum(vac) +
+    toNum(fam) +
+    toNum(salary);
+  const neg =
+    toNum(social) +
+    toNum(employ) +
+    toNum(housing) +
+    toNum(daysOff) +
+    toNum(loans) +
+    toNum(settlement);
+
+  return {
+    positive: Math.round(pos * 100) / 100,
+    negative: Math.round(neg * 100) / 100,
+  };
+};
+
+const employeesWithVouchers = computed(() => {
+  const rows = selectedPayslip.value?.results;
+  if (!rows) return [];
+
+  const isDecember = new Date().getMonth() === 11;
+  const out = [];
+
+  rows.forEach((r) => {
+    let salary = 0,
+      food = 0,
+      transport = 0,
+      perf = 0,
+      inv = 0,
+      sales = 0,
+      salesGr = 0,
+      assProd = 0,
+      earn = 0,
+      vacBonus = 0,
+      vac = 0,
+      fam = 0,
+      positive = 0,
+      social = 0,
+      employ = 0,
+      housing = 0,
+      daysOff = 0,
+      loans = 0,
+      settlement = 0,
+      negative = 0,
+      final = 0;
+
+    if (isDecember) earn += toNum(r.earnings_voucher);
+    if (r.active_years - 1 >= 2) {
+      vacBonus += toNum(r.vacation_bonus_voucher);
+      vac += toNum(r.vacation_voucher);
+    }
+
+    const { positive: pos, negative: neg } = calcVouchers(
+      r.food_voucher,
+      tab.value === "legal" ? 0 : r.transportation_voucher,
+      tab.value === "legal" ? 0 : r.performance_voucher,
+      tab.value === "legal" ? 0 : r.invoice_voucher,
+      tab.value === "legal" ? 0 : r.sales_voucher,
+      tab.value === "legal" ? 0 : r.sales_growth_voucher,
+      tab.value === "legal" ? 0 : r.assigned_products_voucher,
+      tab.value !== "legal" && isDecember ? r.earnings_voucher : 0,
+      tab.value !== "legal" && r.active_years - 1 >= 2
+        ? r.vacation_bonus_voucher
+        : 0,
+      tab.value !== "legal" && r.active_years - 1 >= 2 ? r.vacation_voucher : 0,
+      tab.value === "legal" ? 0 : r.family_support_voucher,
+      r.salary_to_pay_voucher,
+      r.social_security_voucher,
+      r.employment_voucher,
+      r.housing_property_benefits_voucher,
+      r.days_not_worked_voucher,
+      tab.value === "legal" ? 0 : r.loans_voucher,
+      tab.value === "legal" ? 0 : r.settlement_voucher
+    );
+
+    salary += toNum(r.salary_to_pay_voucher);
+    food += toNum(r.food_voucher);
+    transport += toNum(r.transportation_voucher);
+    perf += toNum(r.performance_voucher);
+    inv += toNum(r.invoice_voucher);
+    sales += toNum(r.sales_voucher);
+    salesGr += toNum(r.sales_growth_voucher);
+    assProd += toNum(r.assigned_products_voucher);
+    fam += toNum(r.family_support_voucher);
+    positive += pos;
+    social += toNum(r.social_security_voucher);
+    employ += toNum(r.employment_voucher);
+    housing += toNum(r.housing_property_benefits_voucher);
+    daysOff += toNum(r.days_not_worked_voucher);
+    loans += toNum(r.loans_voucher);
+    settlement += toNum(r.settlement_voucher);
+    negative += neg;
+    final += toNum(pos - neg);
+
+    const employee = {
+      salary_to_pay_voucher: salary,
+      food_voucher: food,
+      transportation_voucher: transport,
+      performance_voucher: perf,
+      invoice_voucher: inv,
+      sales_voucher: sales,
+      sales_growth_voucher: salesGr,
+      assigned_products_voucher: assProd,
+      earnings_voucher: earn,
+      vacation_bonus_voucher: vacBonus,
+      vacation_voucher: vac,
+      family_support_voucher: fam,
+      positive_vouchers: positive,
+      employment_voucher: employ,
+      housing_property_benefits_voucher: housing,
+      days_not_worked_voucher: daysOff,
+      social_security_voucher: social,
+      loans_voucher: loans,
+      settlement_voucher: settlement,
+      negative_vouchers: negative,
+      total: final,
+    };
+
+    out.push(employee);
+  });
+
+  return out;
+});
 
 const totals = computed(() => {
   const empty = {
@@ -179,52 +313,17 @@ const totals = computed(() => {
     settlement_voucher: 0,
     negative_vouchers: 0,
     total: 0,
-
-    totalSalaries: 0,
-    totalDeductions: 0,
-    totalToPay: 0,
   };
 
-  if (!selectedPayslip.value?.results?.length) return empty;
-
-  const res = selectedPayslip.value.results.reduce(
+  return employeesWithVouchers.value.reduce(
     (acc, row) => {
-      acc.salary_to_pay_voucher += Number(row.salary_to_pay_voucher || 0);
-      acc.food_voucher += Number(row.food_voucher || 0);
-      acc.transportation_voucher += Number(row.transportation_voucher || 0);
-      acc.performance_voucher += Number(row.performance_voucher || 0);
-      acc.invoice_voucher += Number(row.invoice_voucher || 0);
-      acc.sales_voucher += Number(row.sales_voucher || 0);
-      acc.sales_growth_voucher += Number(row.sales_growth_voucher || 0);
-      acc.assigned_products_voucher += Number(
-        row.assigned_products_voucher || 0
-      );
-      acc.earnings_voucher += Number(row.earnings_voucher || 0);
-      acc.vacation_bonus_voucher += Number(row.vacation_bonus_voucher || 0);
-      acc.vacation_voucher += Number(row.vacation_voucher || 0);
-      acc.family_support_voucher += Number(row.family_support_voucher || 0);
-      acc.positive_vouchers += Number(row.positive_vouchers || 0);
-      acc.employment_voucher += Number(row.employment_voucher || 0);
-      acc.housing_property_benefits_voucher += Number(
-        row.housing_property_benefits_voucher || 0
-      );
-      acc.days_not_worked_voucher += Number(row.days_not_worked_voucher || 0);
-      acc.social_security_voucher += Number(row.social_security_voucher || 0);
-      acc.loans_voucher += Number(row.loans_voucher || 0);
-      acc.settlement_voucher += Number(row.settlement_voucher || 0);
-      acc.negative_vouchers += Number(row.negative_vouchers || 0);
-      acc.total += Number(row.total || 0);
-
+      Object.keys(acc).forEach((k) => {
+        acc[k] += row[k] || 0;
+      });
       return acc;
     },
     { ...empty }
   );
-
-  res.totalSalaries = res.positive_vouchers;
-  res.totalDeductions = res.negative_vouchers;
-  res.totalToPay = res.totalSalaries - res.totalDeductions;
-
-  return res;
 });
 
 const handleShowEditFormDialog = (item) => {
@@ -263,7 +362,7 @@ const handleShowEditFormDialog = (item) => {
           <VTabsWindowItem value="legal">
             <VDataTable
               :headers="headers"
-              :items="selectedPayslip.results"
+              :items="employeesWithVouchers"
               :loading="loading"
               :hide-default-footer="true"
               class="mt-8"
@@ -348,14 +447,14 @@ const handleShowEditFormDialog = (item) => {
                 <tr class="font-weight-bold">
                   <td colspan="4" class="text-right">Total Sueldos:</td>
                   <td colspan="4" class="text-right">
-                    {{ formatBs(totals.totalSalaries) }}
+                    {{ formatBs(totals.positive_vouchers) }}
                   </td>
 
                   <td colspan="4" class="text-right">Total Deducción:</td>
                   <td class="text-right">
-                    {{ formatBs(totals.totalDeductions) }}
+                    {{ formatBs(totals.negative_vouchers) }}
                   </td>
-                  <td class="text-right">{{ formatBs(totals.totalToPay) }}</td>
+                  <td class="text-right">{{ formatBs(totals.total) }}</td>
                 </tr>
 
                 <tr class="font-weight-bold">
@@ -363,7 +462,7 @@ const handleShowEditFormDialog = (item) => {
                     Total a Pagar en Nómina:
                   </td>
                   <td colspan="3" class="text-right">
-                    {{ formatBs(totals.totalToPay) }}
+                    {{ formatBs(totals.total) }}
                   </td>
                 </tr>
               </template>
@@ -372,7 +471,7 @@ const handleShowEditFormDialog = (item) => {
           <VTabsWindowItem value="full">
             <VDataTable
               :headers="headers"
-              :items="selectedPayslip.results"
+              :items="employeesWithVouchers"
               :loading="loading"
               :hide-default-footer="true"
               class="mt-8"
@@ -529,14 +628,14 @@ const handleShowEditFormDialog = (item) => {
                 <tr class="font-weight-bold">
                   <td colspan="14" class="text-right">Total Sueldos:</td>
                   <td colspan="4" class="text-right">
-                    {{ formatBs(totals.totalSalaries) }}
+                    {{ formatBs(totals.positive_vouchers) }}
                   </td>
 
                   <td colspan="6" class="text-right">Total Deducción:</td>
                   <td class="text-right">
-                    {{ formatBs(totals.totalDeductions) }}
+                    {{ formatBs(totals.negative_vouchers) }}
                   </td>
-                  <td class="text-right">{{ formatBs(totals.totalToPay) }}</td>
+                  <td class="text-right">{{ formatBs(totals.total) }}</td>
                 </tr>
 
                 <tr class="font-weight-bold">
@@ -544,7 +643,7 @@ const handleShowEditFormDialog = (item) => {
                     Total a Pagar en Nómina:
                   </td>
                   <td colspan="3" class="text-right">
-                    {{ formatBs(totals.totalToPay) }}
+                    {{ formatBs(totals.total) }}
                   </td>
                 </tr>
               </template>

@@ -18,47 +18,44 @@ class SocialBenefitRepository
 
     return Employee::query()
       ->select([
-        'employees.id as id',
-        'employees.name as name',
-        'employees.last_name as last_name',
-        'employees.identification as identification',
-        'users.email as email',
-        "roles.name as role_name",
-        DB::raw("MAX(CASE
-                   WHEN sc.name = 'Salario Base' THEN
-                     ROUND(usd.amount / 30, 2) *
-                     (15 + IF(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) > 1,
-                              TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) - 1, 0))
-                   ELSE 0
-                 END) AS vacation_voucher"),
+        'employees.id',
+        'employees.name',
+        'employees.last_name',
+        'employees.identification',
+        'users.email',
+        'roles.name as role_name',
+        DB::raw('TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) AS active_years'),
 
         DB::raw("MAX(CASE
-                   WHEN sc.name = 'Salario Base' THEN
-                     ROUND(usd.amount / 30, 2) *
-                     (15 + IF(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) > 1,
-                              TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) - 1, 0))
-                   ELSE 0
-                 END) AS vacation_bonus_voucher"),
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    (15 + IF(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) > 1,
+                             TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) - 1, 0))
+                  ELSE 0
+                END) AS vacation_voucher"),
 
         DB::raw("MAX(CASE
-                   WHEN sc.name = 'Salario Base' THEN
-                     ROUND(usd.amount / 30, 2) *
-                     COALESCE(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()), 1)
-                   ELSE 0
-                 END) AS earnings_voucher"),
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    (15 + IF(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) > 1,
+                             TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) - 1, 0))
+                  ELSE 0
+                END) AS vacation_bonus_voucher"),
+
+        DB::raw("MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE())
+                  ELSE 0
+                END) AS earnings_voucher"),
       ])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
       ->leftJoin('roles', 'roles.id', '=', 'users.role_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'users.id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->when(!empty($search), function ($query) use ($search) {
-        $query->orWhere('employees.name', 'like', "%$search%")
-          ->orWhere('employees.last_name', 'like', "%$search%")
-          ->orWhere('users.email', 'like', "%$search%")
-          ->orWhere('employees.identification', 'like', "%$search%");
-      })
       ->where('employees.is_active', true)
-      ->groupBy([
+      ->whereNull('employees.deleted_at')
+      ->groupBy(
         'employees.id',
         'employees.name',
         'employees.last_name',
@@ -66,7 +63,7 @@ class SocialBenefitRepository
         'users.email',
         'roles.name',
         'employees.created_at'
-      ])
+      )
       ->paginate($perPage);
   }
 
