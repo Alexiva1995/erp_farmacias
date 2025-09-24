@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan de Implementación - Sistema de Renuncias</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .file-structure {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-pending { background-color: #ffc107; color: #000; }
+        .status-ready { background-color: #28a745; color: #fff; }
+        .status-blocked { background-color: #dc3545; color: #fff; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #3498db;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 5px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Plan de Implementación - Sistema de Renuncias</h1>
+        <p><strong>Proyecto:</strong> ERP Farmacias - Módulo RRHH</p>
+        <p><strong>Fecha:</strong> <span id="currentDate"></span></p>
+        <p><strong>Desarrollador:</strong> Asistente AI</p>
+
+        <div class="highlight">
+            <h3>🎯 Objetivo</h3>
+            <p>Implementar un sistema para generar cartas de renuncia de empleados con notificación automática a Jesús Freita para el proceso de liquidación, <strong>sin modificar la base de datos existente</strong>.</p>
+        </div>
+
+        <h2>📊 Análisis de la Situación Actual</h2>
+        
+        <h3>✅ Funcionalidades Existentes</h3>
+        <ul>
+            <li><strong>Gestión de Empleados:</strong> CRUD completo implementado</li>
+            <li><strong>Sistema de Roles:</strong> Admin, Supervisor, Employee</li>
+            <li><strong>Despido Básico:</strong> Método <code>fire()</code> que cambia <code>is_active = false</code></li>
+            <li><strong>Generación de PDFs:</strong> Sistema existente para documentos</li>
+            <li><strong>Notificaciones:</strong> Patrones implementados para servicios externos</li>
+        </ul>
+
+        <h3>❌ Limitaciones Identificadas</h3>
+        <ul>
+            <li><strong>No existe tabla de renuncias</strong> en la base de datos</li>
+            <li><strong>No hay registro de fechas</strong> de renuncia o tipos</li>
+            <li><strong>No hay integración</strong> con sistema de liquidación</li>
+            <li><strong>No hay generación de cartas</strong> formales</li>
+        </ul>
+
+        <div class="warning">
+            <h3>⚠️ Restricciones del Proyecto</h3>
+            <ul>
+                <li><strong>NO se puede modificar la base de datos</strong></li>
+                <li><strong>NO se pueden crear nuevas tablas</strong></li>
+                <li><strong>NO se pueden agregar nuevos campos</strong></li>
+                <li><strong>Solo se permite consultar datos existentes</strong></li>
+            </ul>
+        </div>
+
+        <h2>🏗️ Arquitectura de la Solución</h2>
+
+        <h3>Estrategia: Generación Local + Notificación Externa</h3>
+        <div class="success">
+            <p><strong>Enfoque:</strong> Generar PDFs localmente y enviar datos a Jesús Freita para almacenamiento y procesamiento de liquidación.</p>
+        </div>
+
+        <h3>Flujo de Trabajo</h3>
+        <div class="timeline">
+            <div class="timeline-item">
+                <h4>1. Admin selecciona empleado</h4>
+                <p>Desde el listado de empleados, hace clic en "Generar Renuncia"</p>
+            </div>
+            <div class="timeline-item">
+                <h4>2. Captura de datos</h4>
+                <p>Modal para seleccionar tipo de renuncia y fecha efectiva</p>
+            </div>
+            <div class="timeline-item">
+                <h4>3. Generación de PDF</h4>
+                <p>Crear carta de renuncia usando template proporcionado</p>
+            </div>
+            <div class="timeline-item">
+                <h4>4. Notificación a Jesús Freita</h4>
+                <p>Enviar datos vía API/webhook para procesamiento de liquidación</p>
+            </div>
+            <div class="timeline-item">
+                <h4>5. Actualización de empleado</h4>
+                <p>Cambiar estado a inactivo usando método <code>fire()</code> existente</p>
+            </div>
+        </div>
+
+        <h2>📁 Estructura de Archivos a Crear/Modificar</h2>
+
+        <div class="file-structure">
+📦 app/
+├── 📁 Http/
+│   ├── 📁 Controllers/Api/
+│   │   └── 📄 ResignationController.php          [NUEVO]
+│   └── 📁 Requests/
+│       └── 📄 StoreResignationRequest.php        [NUEVO]
+├── 📁 Services/
+│   ├── 📄 ResignationService.php                 [NUEVO]
+│   └── 📁 Notifications/
+│       └── 📄 LiquidationNotificationService.php [NUEVO]
+└── 📁 Models/
+    └── 📄 Resignation.php                        [NUEVO - Solo para lógica local]
+
+📦 resources/js/
+├── 📁 pages/rrhh/
+│   └── 📁 resignations/
+│       └── 📄 index.vue                          [NUEVO]
+├── 📁 components/
+│   ├── 📁 dialogs/
+│   │   └── 📄 ResignationFormDialog.vue          [NUEVO]
+│   └── 📄 ResignationTable.vue                   [NUEVO]
+└── 📁 navigation/vertical/
+    └── 📄 rrhh.js                                [MODIFICAR]
+
+📄 routes/api.php                                 [MODIFICAR]
+        </div>
+
+        <h2>🔧 Implementación Técnica</h2>
+
+        <h3>1. Backend - Controlador de Renuncias</h3>
+        <div class="code-block">
+// app/Http/Controllers/Api/ResignationController.php
+class ResignationController extends Controller
+{
+    public function generateResignation(Request $request)
+    {
+        // 1. Validar datos del empleado
+        // 2. Generar PDF de renuncia
+        // 3. Enviar notificación a Jesús Freita
+        // 4. Actualizar estado del empleado
+        // 5. Retornar respuesta con PDF generado
+    }
+    
+    public function listResignations()
+    {
+        // Listar renuncias generadas (desde cache local o API externa)
+    }
+}
+        </div>
+
+        <h3>2. Servicio de Notificación</h3>
+        <div class="code-block">
+// app/Services/Notifications/LiquidationNotificationService.php
+class LiquidationNotificationService
+{
+    public function notifyLiquidation($resignationData)
+    {
+        // Enviar datos a Jesús Freita vía:
+        // - HTTP POST a endpoint específico
+        // - Webhook
+        // - Email con datos estructurados
+    }
+}
+        </div>
+
+        <h3>3. Generación de PDF</h3>
+        <div class="code-block">
+// Usando DomPDF o similar
+$pdf = PDF::loadView('resignation-letter', [
+    'employee' => $employee,
+    'resignationType' => $request->type,
+    'effectiveDate' => $request->effective_date,
+    'companyData' => $this->getCompanyData()
+]);
+        </div>
+
+        <h3>4. Frontend - Modal de Renuncia</h3>
+        <div class="code-block">
+// resources/js/components/dialogs/ResignationFormDialog.vue
+&lt;template&gt;
+  &lt;VDialog&gt;
+    &lt;VCard&gt;
+      &lt;VCardTitle&gt;Generar Carta de Renuncia&lt;/VCardTitle&gt;
+      &lt;VForm @submit="generateResignation"&gt;
+        &lt;VSelect v-model="resignationType" :items="types" /&gt;
+        &lt;VTextField v-model="effectiveDate" type="date" /&gt;
+        &lt;VBtn type="submit"&gt;Generar Renuncia&lt;/VBtn&gt;
+      &lt;/VForm&gt;
+    &lt;/VCard&gt;
+  &lt;/VDialog&gt;
+&lt;/template&gt;
+        </div>
+
+        <h2>📋 Datos a Enviar a Jesús Freita</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Fuente</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>employee_id</td>
+                    <td>integer</td>
+                    <td>ID único del empleado</td>
+                    <td>employees.id</td>
+                </tr>
+                <tr>
+                    <td>employee_name</td>
+                    <td>string</td>
+                    <td>Nombre completo del empleado</td>
+                    <td>employees.name + last_name</td>
+                </tr>
+                <tr>
+                    <td>employee_identification</td>
+                    <td>string</td>
+                    <td>Cédula de identidad</td>
+                    <td>employees.identification</td>
+                </tr>
+                <tr>
+                    <td>employee_position</td>
+                    <td>string</td>
+                    <td>Cargo/posición del empleado</td>
+                    <td>roles.name</td>
+                </tr>
+                <tr>
+                    <td>start_date</td>
+                    <td>date</td>
+                    <td>Fecha de inicio del empleado</td>
+                    <td>employees.created_at</td>
+                </tr>
+                <tr>
+                    <td>resignation_type</td>
+                    <td>enum</td>
+                    <td>Tipo de renuncia (voluntary/unjustified_dismissal)</td>
+                    <td>Formulario</td>
+                </tr>
+                <tr>
+                    <td>request_date</td>
+                    <td>date</td>
+                    <td>Fecha de solicitud de renuncia</td>
+                    <td>Fecha actual</td>
+                </tr>
+                <tr>
+                    <td>effective_date</td>
+                    <td>date</td>
+                    <td>Fecha efectiva de renuncia</td>
+                    <td>Formulario</td>
+                </tr>
+                <tr>
+                    <td>pdf_path</td>
+                    <td>string</td>
+                    <td>Ruta del PDF generado</td>
+                    <td>Storage local</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🔗 Endpoints API Propuestos</h2>
+
+        <div class="code-block">
+// Rutas a agregar en routes/api.php
+Route::prefix('rrhh')->group(function () {
+    Route::prefix('resignations')->group(function () {
+        Route::post('/generate', [ResignationController::class, 'generateResignation']);
+        Route::get('/', [ResignationController::class, 'listResignations']);
+        Route::get('/{id}/pdf', [ResignationController::class, 'downloadPdf']);
+        Route::post('/{id}/notify-liquidation', [ResignationController::class, 'notifyLiquidation']);
+    });
+});
+        </div>
+
+        <h2>📄 Template de Carta de Renuncia</h2>
+
+        <h3>Estructura basada en el PDF proporcionado:</h3>
+        <div class="code-block">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Carta de Renuncia&lt;/title&gt;
+    &lt;style&gt;
+        .header { text-align: center; }
+        .company-info { margin: 20px 0; }
+        .body-text { margin: 30px 0; line-height: 1.8; }
+        .signature { text-align: center; margin-top: 50px; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class="header"&gt;
+        &lt;h1&gt;FARMACIA BARRIO SUCRE&lt;/h1&gt;
+    &lt;/div&gt;
+    
+    &lt;div class="company-info"&gt;
+        &lt;strong&gt;DIRIGIDO A:&lt;/strong&gt; FARMACIA BARRIO SUCRE 2024 C.A.&lt;br&gt;
+        &lt;strong&gt;R.I.F:&lt;/strong&gt; J-505406957&lt;br&gt;
+        &lt;strong&gt;TÁCHIRA - LA FRÍA - BARRIO SUCRE - CALLE PRINCIPAL LOCAL 05&lt;/strong&gt;&lt;br&gt;
+        &lt;strong&gt;ASUNTO:&lt;/strong&gt; RENUNCIA
+    &lt;/div&gt;
+    
+    &lt;div class="body-text"&gt;
+        Me dirijo ante usted para informarle que, mediante el presente documento, 
+        yo &lt;strong&gt;{{ $employee_name }}&lt;/strong&gt;, con cédula de identidad 
+        &lt;strong&gt;{{ $employee_identification }}&lt;/strong&gt;, no podré seguir 
+        desempeñándome como {{ $employee_position }}, cargo que asumí desde el 
+        &lt;strong&gt;{{ $start_date }}&lt;/strong&gt; hasta la fecha en esta empresa, 
+        por lo que tomó la decisión de terminar mi relación laboral actual y a 
+        renunciar de manera {{ $resignation_type_text }} a mi cargo, desde el día 
+        &lt;strong&gt;{{ $effective_date }}&lt;/strong&gt;
+    &lt;/div&gt;
+    
+    &lt;div class="signature"&gt;
+        &lt;strong&gt;{{ $employee_name }}&lt;/strong&gt;&lt;br&gt;
+        &lt;strong&gt;{{ $employee_identification }}&lt;/strong&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+        </div>
+
+        <h2>📅 Cronograma de Implementación</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Fase</th>
+                    <th>Tarea</th>
+                    <th>Tiempo Estimado</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Configurar generación de PDF</td>
+                    <td>2 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Crear servicio de notificación</td>
+                    <td>3 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Implementar controlador de renuncias</td>
+                    <td>4 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Crear modal de formulario</td>
+                    <td>3 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Modificar listado de empleados</td>
+                    <td>2 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Crear listado de renuncias</td>
+                    <td>3 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Pruebas y ajustes</td>
+                    <td>2 horas</td>
+                    <td><span class="status-badge status-pending">Pendiente</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🤝 Coordinación con Jesús Freita</h2>
+
+        <div class="warning">
+            <h3>Información Requerida</h3>
+            <ul>
+                <li><strong>Endpoint/URL:</strong> ¿Dónde enviar los datos?</li>
+                <li><strong>Método:</strong> POST, PUT, webhook, email</li>
+                <li><strong>Formato:</strong> JSON, XML, form-data</li>
+                <li><strong>Autenticación:</strong> API key, token, headers</li>
+                <li><strong>Campos adicionales:</strong> ¿Qué más necesita para liquidación?</li>
+                <li><strong>Confirmación:</strong> ¿Cómo saber que recibió la notificación?</li>
+            </ul>
+        </div>
+
+        <h2>✅ Checklist de Implementación</h2>
+
+        <h3>Preparación</h3>
+        <ul>
+            <li>☐ Coordinar con Jesús Freita sobre endpoint y formato</li>
+            <li>☐ Instalar dependencias para generación de PDF (DomPDF)</li>
+            <li>☐ Configurar storage para archivos PDF</li>
+        </ul>
+
+        <h3>Backend</h3>
+        <ul>
+            <li>☐ Crear ResignationController</li>
+            <li>☐ Crear ResignationService</li>
+            <li>☐ Crear LiquidationNotificationService</li>
+            <li>☐ Crear StoreResignationRequest</li>
+            <li>☐ Crear template de carta de renuncia</li>
+            <li>☐ Agregar rutas API</li>
+        </ul>
+
+        <h3>Frontend</h3>
+        <ul>
+            <li>☐ Crear ResignationFormDialog.vue</li>
+            <li>☐ Crear ResignationTable.vue</li>
+            <li>☐ Crear página de listado de renuncias</li>
+            <li>☐ Modificar EmployeeTable.vue (agregar botón)</li>
+            <li>☐ Actualizar navegación RRHH</li>
+        </ul>
+
+        <h3>Pruebas</h3>
+        <ul>
+            <li>☐ Probar generación de PDF</li>
+            <li>☐ Probar notificación a Jesús Freita</li>
+            <li>☐ Probar flujo completo de renuncia</li>
+            <li>☐ Verificar que no se modifica la BD</li>
+        </ul>
+
+        <h2>🚀 Beneficios de esta Implementación</h2>
+
+        <div class="success">
+            <ul>
+                <li><strong>✅ Cumple restricciones:</strong> No modifica la base de datos</li>
+                <li><strong>✅ Reutiliza código:</strong> Aprovecha funcionalidades existentes</li>
+                <li><strong>✅ Integración limpia:</strong> Notificación externa para liquidación</li>
+                <li><strong>✅ Escalable:</strong> Fácil de mantener y extender</li>
+                <li><strong>✅ Rápida implementación:</strong> Estimado 19 horas total</li>
+            </ul>
+        </div>
+
+        <h2>📞 Próximos Pasos</h2>
+
+        <ol>
+            <li><strong>Coordinar con Jesús Freita</strong> para definir endpoint y formato de datos</li>
+            <li><strong>Confirmar aprobación</strong> del plan de implementación</li>
+            <li><strong>Iniciar desarrollo</strong> siguiendo el cronograma propuesto</li>
+            <li><strong>Realizar pruebas</strong> en ambiente de desarrollo</li>
+            <li><strong>Desplegar a producción</strong> una vez aprobado</li>
+        </ol>
+
+        <div class="highlight">
+            <h3>💡 Nota Importante</h3>
+            <p>Este plan respeta completamente las restricciones del proyecto de no modificar la base de datos, mientras proporciona una solución funcional y profesional para el manejo de renuncias de empleados.</p>
+        </div>
+
+        <footer style="margin-top: 50px; text-align: center; color: #7f8c8d; border-top: 1px solid #ecf0f1; padding-top: 20px;">
+            <p>Documento generado automáticamente - ERP Farmacias - Sistema de Renuncias</p>
+        </footer>
+    </div>
+
+    <script>
+        // Mostrar fecha actual
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-ES');
+    </script>
+</body>
+</html>

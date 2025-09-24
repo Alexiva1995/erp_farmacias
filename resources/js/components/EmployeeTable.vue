@@ -21,6 +21,7 @@ const emit = defineEmits([
   "fire-employee",
   "edit-employee",
   "delete-employee",
+  "generate-resignation",
 ]);
 </script>
 <template>
@@ -46,6 +47,17 @@ const emit = defineEmits([
           <template #activator="{ props }">
             <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
               <VIcon icon="tabler-eye" :href />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Generar Renuncia" location="top">
+          <template #activator="{ props }">
+            <IconBtn
+              v-bind="props"
+              @click="emit('generate-resignation', item)"
+              color="warning"
+            >
+              <VIcon icon="tabler-file-text" />
             </IconBtn>
           </template>
         </VTooltip>
