@@ -27,7 +27,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         public int $userId,
         public ?string $filePath = null,
         public array $columnMap = [],
-    ) {}
+    ) {
+    }
 
     /**
      * Execute the job.
@@ -41,11 +42,25 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         ]);
 
         $supplierConnection = $this->supplier->connections->first();
+        $structure = $supplierConnection->structure ?? null;
 
         try {
             $results = [];
 
             if ($this->filePath) {
+                if (!$supplierConnection || $structure !== $this->columnMap) {
+                    $data = [
+                        'supplier_id' => $this->supplier->id,
+                        'type' => 'file',
+                        'host' => 'excel',
+                        'pasv' => 0,
+                        'has_header' => 0,
+                        'last_connection' => now()->format('Y-m-d'),
+                        'structure' => $this->columnMap
+                    ];
+                    $queryService->storeConnection($data);
+                }
+
                 $import = new SupplierImport(
                     supplierId: (int) $this->supplier->id,
                     startRow: (int) ($this->columnMap["start_row"] ?? 1),
@@ -55,6 +70,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     qtyCol: $this->columnMap["quantity"] ?: null,
                     costBsCol: $this->columnMap["unit_cost"] ?: null,
                     costUsdCol: $this->columnMap["unit_cost_usd"] ?: null,
+                    activeIngredientCol: $this->columnMap["active_ingredient"] ?: null,
                     expirationCol: $this->columnMap["expiration"] ?: null,
                 );
 
@@ -67,6 +83,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             } else {
                 $results = $connectionService->fetchData($supplierConnection);
             }
+
             $queryService->storeSupplierConnectionData($this->supplier, $results);
             $queryService->addDiscountsToProducts($this->supplier);
 

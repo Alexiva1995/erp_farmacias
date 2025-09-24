@@ -9,7 +9,12 @@ const props = defineProps({
   errors: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:modalValue", "delete-detail", "save", "clearErrors"]);
+const emit = defineEmits([
+  "update:modalValue",
+  "delete-detail",
+  "save",
+  "clearErrors",
+]);
 const details = ref([]);
 const affectedRows = ref(new Map());
 const dirty = ref(false);
@@ -24,13 +29,15 @@ const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
   idToIndex.value = new Map();
+  page.value = 1;
+  itemsPerPage.value = 10;
   emit("clearErrors");
 };
 
 watch(
   () => props.purchaseOrder,
   (purchaseOrder) => purchaseOrder?.id && fetchPurchaseOrder(purchaseOrder.id),
-  { deep: true, immediate: true },
+  { deep: true, immediate: true }
 );
 
 const reset = () => {
@@ -64,9 +71,20 @@ const detailsHeaders = [
 const fetchPurchaseOrder = async (id) => {
   try {
     reset();
-    const { data } = await axios.get(`/suppliers/purchase-orders/${id}`);
+    const params = {
+      perPage: itemsPerPage.value,
+      page: page.value,
+    };
+    const { data } = await axios.get(`/suppliers/purchase-orders/${id}`, {
+      params,
+    });
     details.value = data.data;
-    affectedRows.value = new Map(data.data.map((d) => [d.id, { quantity: d.quantity, unit_cost: d.unit_cost }]));
+    affectedRows.value = new Map(
+      data.data.map((d) => [
+        d.id,
+        { quantity: d.quantity, unit_cost: d.unit_cost },
+      ])
+    );
     totalDetails.value = data.total;
   } catch (error) {
     console.error(error);
@@ -74,10 +92,16 @@ const fetchPurchaseOrder = async (id) => {
   }
 };
 
+const updateTableOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+};
+
 const submitForm = async () => {
   const affected = details.value.filter(
     (r) =>
-      r.quantity !== affectedRows.value.get(r.id)?.quantity || r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost,
+      r.quantity !== affectedRows.value.get(r.id)?.quantity ||
+      r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost
   );
 
   if (!affected.length) {
@@ -96,7 +120,7 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true },
+  { deep: true }
 );
 
 watch(
@@ -105,11 +129,24 @@ watch(
     const changed = rows.some(
       (r) =>
         r.quantity !== affectedRows.value.get(r.id)?.quantity ||
-        r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost,
+        r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost
     );
     dirty.value = changed;
   },
-  { deep: true },
+  { deep: true }
+);
+
+let debounceTimer;
+watch(
+  [page, itemsPerPage],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(
+      () => fetchPurchaseOrder(props.purchaseOrder.id),
+      300
+    );
+  },
+  { deep: true }
 );
 
 const getError = (row, attr) => {
@@ -149,29 +186,35 @@ const getError = (row, attr) => {
           <VCol cols="6">
             <div class="d-flex align-center gap-4 mb-4">
               <span class="font-weight-medium">Proveedor</span>
-              <VChip color="primary" label>{{ purchaseOrder.supplier_name }}</VChip>
+              <VChip color="primary" label>{{
+                purchaseOrder.supplier_name
+              }}</VChip>
               <VSpacer />
             </div>
           </VCol>
           <VCol cols="6">
             <div class="d-flex align-center gap-4 mb-4">
               <span class="font-weight-medium">Fecha de solicitud</span>
-              <VChip color="primary" label>{{ formatDate(purchaseOrder.order_date) }}</VChip>
+              <VChip color="primary" label>{{
+                formatDate(purchaseOrder.order_date)
+              }}</VChip>
               <VSpacer />
             </div>
           </VCol>
         </VRow>
 
-        <VDataTable
+        <VDataTableServer
           v-if="details.length > 0"
           :headers="detailsHeaders"
           :items="details"
           density="compact"
           class="mt-4 rounded-lg"
           no-data-text="Esta orden no tiene detalles."
-          :itemsPerPage="itemsPerPage"
+          :items-per-page="itemsPerPage"
+          :items-length="totalDetails"
           :page="page"
           :total="totalDetails"
+          @update:options="(options) => updateTableOptions(options)"
         >
           <template #item.quantity="{ item }">
             <VTextField
@@ -189,9 +232,15 @@ const getError = (row, attr) => {
           </template>
           <template #item.actions="{ item }">
             <VRow>
-              <VTooltip text="Eliminar detalle de Orden de Compra" location="top">
+              <VTooltip
+                text="Eliminar detalle de Orden de Compra"
+                location="top"
+              >
                 <template #activator="{ props }">
-                  <IconBtn v-bind="props" @click="emit('delete-detail', item.id)">
+                  <IconBtn
+                    v-bind="props"
+                    @click="emit('delete-detail', item.id)"
+                  >
                     <VIcon icon="tabler-trash" />
                   </IconBtn>
                 </template>
@@ -200,25 +249,52 @@ const getError = (row, attr) => {
           </template>
           <template #body.append>
             <tr class="font-weight-bold">
-              <td :colspan="detailsHeaders.length - 4" class="text-right">Total</td>
-              <td class="text-right">
-                {{ details.reduce((sum, r) => Number(sum) + Number(r.quantity), 0) }}
+              <td :colspan="detailsHeaders.length - 4" class="text-right">
+                Total
               </td>
-              <td :colspan="detailsHeaders.length - 4" class="text-right">Total</td>
               <td class="text-right">
-                {{ details.reduce((sum, r) => sum + r.quantity * r.unit_cost, 0).toFixed(2) }}
+                {{
+                  details.reduce(
+                    (sum, r) => Number(sum) + Number(r.quantity),
+                    0
+                  )
+                }}
+              </td>
+              <td :colspan="detailsHeaders.length - 4" class="text-right">
+                Total
+              </td>
+              <td class="text-right">
+                {{
+                  details
+                    .reduce((sum, r) => sum + r.quantity * r.unit_cost, 0)
+                    .toFixed(2)
+                }}
               </td>
             </tr>
           </template>
-        </VDataTable>
+        </VDataTableServer>
       </VSheet>
 
       <VDivider />
 
       <!-- El VCardActions se mantiene igual, será el pie de página fijo -->
       <VCardActions class="pa-4">
-        <VBtn color="secondary" variant="outlined" @click="closeDialog" class="flex-grow-1 w-0 mr-4"> Cancelar </VBtn>
-        <VBtn color="primary" variant="flat" @click="submitForm" class="flex-grow-1 w-0"> Guardar </VBtn>
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="closeDialog"
+          class="flex-grow-1 w-0 mr-4"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          class="flex-grow-1 w-0"
+        >
+          Guardar
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

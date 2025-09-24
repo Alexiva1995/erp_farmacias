@@ -3,16 +3,22 @@
 namespace App\Services;
 
 use App\Contracts\Product;
+use App\Contracts\ProductSupplier;
 use App\Exports\AssistantReportProductExport;
 use App\Exports\StockProductExport;
+use App\Models\Product as ModelsProduct;
+use App\Repository\AutoOrderDetailsRepository;
 use App\Repository\ProductRepository;
+use App\Repository\ProductSupplierRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductServices implements Product
 {
     public function __construct(
-        protected ProductRepository $productRepository
+        protected ProductRepository $productRepository,
+        protected ProductSupplierRepository $productSupplierRepository,
+        protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
     ) {}
 
     public function consultProduct(): Collection
@@ -86,5 +92,24 @@ class ProductServices implements Product
             $query = $this->productRepository->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
         }
         return new AssistantReportProductExport($query);
+    }
+
+    public function calcularAOProducts(ModelsProduct $producto): ModelsProduct
+    {
+
+        $total = 0;
+        $productsSuppliers = $this->productSupplierRepository->consultarTodosLosProveedorProIdProducto($producto->id);
+        for ($j = 0; $j < count($productsSuppliers); $j++) {
+            # code...
+            $detalle = $this->autoOrderDetailsRepository->consultDetailByProductSupplierId($productsSuppliers[$j]->id);
+            if ($detalle) {
+                $total += $detalle->quantity;
+            }
+        }
+        $producto->totalQuantityInAutoOrder = $total;
+
+
+        return $producto;
+        // return $this->productRepository->calcularAOProducts($productos);
     }
 }
