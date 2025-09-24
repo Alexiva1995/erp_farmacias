@@ -81,22 +81,8 @@ const cancelToggleStatus = () => {
 
 const downloadResignationPDF = async (resignation) => {
   try {
-    const resignationData = {
-      employee_id: resignation.employee_id,
-      employee_name: resignation.employee_name,
-      employee_identification: resignation.employee_identification,
-      employee_email: resignation.employee_email,
-      employee_status: resignation.employee_status,
-      employee_position: resignation.employee_position,
-      start_date: resignation.start_date,
-      resignation_type: resignation.resignation_type,
-      request_date: resignation.request_date,
-      effective_date: resignation.effective_date,
-    };
-
-    const response = await axios.post(
-      "/api/rrhh/resignations/generate",
-      resignationData,
+    const response = await axios.get(
+      `/api/rrhh/resignations/${resignation.id}/download-pdf`,
       {
         responseType: "blob",
         headers: {
@@ -111,7 +97,7 @@ const downloadResignationPDF = async (resignation) => {
     link.href = url;
     link.setAttribute(
       "download",
-      `carta-renuncia-${resignationData.employee_identification}.pdf`
+      `carta-renuncia-${resignation.employee_identification}.pdf`
     );
     document.body.appendChild(link);
     link.click();
@@ -123,6 +109,18 @@ const downloadResignationPDF = async (resignation) => {
     console.error("Error downloading PDF:", error);
     toast.error("No se pudo descargar la carta de renuncia");
   }
+};
+
+// Función para formatear fechas
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
 };
 
 // Lifecycle
@@ -240,7 +238,7 @@ onMounted(() => {
                       Fecha Efectiva
                     </div>
                     <div class="text-body-1">
-                      {{ resignation.effective_date }}
+                      {{ formatDate(resignation.effective_date) }}
                     </div>
                   </VCol>
                   <VCol cols="12" md="1">

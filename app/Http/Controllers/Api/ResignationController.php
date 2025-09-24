@@ -3,16 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\ResignationService;
-use App\Services\ResignationStorageService;
+use App\Contracts\Resignation;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ResignationController extends Controller
 {
     public function __construct(
-        private ResignationService $resignationService,
-        private ResignationStorageService $storageService
+        private Resignation $resignationServices
     ) {}
 
     public function generateResignation(Request $request)
@@ -28,33 +27,33 @@ class ResignationController extends Controller
                 'start_date' => 'required|date',
                 'resignation_type' => 'required|in:voluntary,unjustified_dismissal',
                 'request_date' => 'required|date',
-                'effective_date' => 'required|date|after_or_equal:today',
+                'effective_date' => 'required|date|after_or_equal:request_date',
             ]);
 
             $resignationData = $request->all();
             Log::info('Validation passed, generating PDF', $resignationData);
 
-            // Guardar renuncia en archivo JSON
-            Log::info('Attempting to store resignation data', $resignationData);
-            $stored = $this->storageService->storeResignation($resignationData);
-            Log::info('Storage service result', ['stored' => $stored]);
-            if (!$stored) {
-                Log::error('Failed to store resignation data - possible duplicate');
-                return response()->json([
-                    'error' => 'Ya existe una renuncia para este empleado',
-                    'message' => 'No se puede generar una nueva renuncia para un empleado que ya tiene una renuncia registrada'
-                ], 409);
+            // Obtener email del usuario si no viene en request
+            if (empty($resignationData['employee_email'])) {
+                $employee = Employee::with('user')->find($resignationData['employee_id']);
+                if ($employee && $employee->user) {
+                    $resignationData['employee_email'] = $employee->user->email;
+                }
             }
-            Log::info('Resignation data stored successfully');
 
-            // Generar PDF
-            $pdf = $this->resignationService->generatePdf($resignationData);
+            // Guardar renuncia en base de datos
+            Log::info('Attempting to store resignation data in database', $resignationData);
+            $resignation = $this->resignationServices->store($resignationData);
+            Log::info('Resignation stored successfully', ['resignation_id' => $resignation->id]);
+
+            // Generar PDF dinámicamente usando datos de la BD
+            $pdf = $this->resignationServices->generatePdf($resignationData);
             Log::info('PDF generated successfully');
 
             // Notificar a Jesús Freita
-            $this->resignationService->notifyLiquidation($resignationData);
+            $this->resignationServices->notifyLiquidation($resignationData);
 
-            // Retornar PDF para descarga
+            // Retornar PDF para descarga (sin almacenar archivo)
             $filename = 'carta-renuncia-' . $resignationData['employee_identification'] . '.pdf';
             Log::info('Returning PDF download', ['filename' => $filename]);
 
@@ -67,6 +66,14 @@ class ResignationController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            // Manejo de errores mejorado
+            if (strpos($e->getMessage(), 'Ya existe una renuncia') !== false) {
+                return response()->json([
+                    'error' => 'Ya existe una renuncia para este empleado',
+                    'message' => 'No se puede generar una nueva renuncia para un empleado que ya tiene una renuncia registrada'
+                ], 409);
+            }
+
             Log::error('PDF generation error', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -76,9 +83,7 @@ class ResignationController extends Controller
 
             return response()->json([
                 'error' => 'Error al generar la carta de renuncia',
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'message' => $e->getMessage()
             ], 500);
         }
     }
@@ -93,18 +98,22 @@ class ResignationController extends Controller
             $perPage = $request->get('perPage', 10);
             $filters = $request->only(['search', 'resignation_type', 'date_from', 'date_to']);
 
-            $result = $this->storageService->getResignationsPaginated($page, $perPage, $filters);
+            $result = $this->resignationServices->list([
+                'page' => $page,
+                'perPage' => $perPage,
+                ...$filters
+            ]);
 
             return response()->json([
                 'success' => true,
-                'data' => $result['data'],
+                'data' => $result->items(),
                 'pagination' => [
-                    'total' => $result['total'],
-                    'per_page' => $result['per_page'],
-                    'current_page' => $result['current_page'],
-                    'last_page' => $result['last_page'],
-                    'from' => $result['from'],
-                    'to' => $result['to']
+                    'total' => $result->total(),
+                    'per_page' => $result->perPage(),
+                    'current_page' => $result->currentPage(),
+                    'last_page' => $result->lastPage(),
+                    'from' => $result->firstItem(),
+                    'to' => $result->lastItem()
                 ]
             ]);
         } catch (\Exception $e) {
@@ -122,7 +131,7 @@ class ResignationController extends Controller
     public function getStats()
     {
         try {
-            $stats = $this->storageService->getResignationStats();
+            $stats = $this->resignationServices->getStats();
 
             return response()->json([
                 'success' => true,
@@ -148,11 +157,11 @@ class ResignationController extends Controller
                 'is_active' => 'required|boolean'
             ]);
 
-            $employee = \App\Models\Employee::findOrFail($request->employee_id);
+            $employee = Employee::findOrFail($request->employee_id);
             $employee->update(['is_active' => $request->is_active]);
 
-            // Actualizar el estado en el archivo JSON de renuncias
-            $this->updateEmployeeStatusInResignations($employee->id, $request->is_active);
+            // Actualizar el estado en la tabla de renuncias
+            $this->resignationServices->updateEmployeeStatus($employee->id, $request->is_active);
 
             $status = $request->is_active ? 'activado' : 'desactivado';
 
@@ -174,31 +183,44 @@ class ResignationController extends Controller
     }
 
     /**
-     * Actualizar el estado del empleado en todas las renuncias del JSON
+     * Descargar PDF de renuncia existente (generación dinámica)
      */
-    private function updateEmployeeStatusInResignations(int $employeeId, bool $isActive)
+    public function downloadResignationPdf(int $resignationId)
     {
         try {
-            $resignations = $this->storageService->getAllResignations();
-            $updated = false;
+            $resignation = $this->resignationServices->getById($resignationId);
 
-            foreach ($resignations as &$resignation) {
-                if ($resignation['employee_id'] == $employeeId) {
-                    $resignation['employee_status'] = $isActive ? 'Activo' : 'Inactivo';
-                    $resignation['updated_at'] = now()->toISOString();
-                    $updated = true;
-                }
+            if (!$resignation) {
+                return response()->json([
+                    'error' => 'Renuncia no encontrada'
+                ], 404);
             }
 
-            if ($updated) {
-                $this->storageService->saveResignations($resignations);
-                Log::info("Updated employee status in resignations JSON", [
-                    'employee_id' => $employeeId,
-                    'is_active' => $isActive
-                ]);
-            }
+            // Preparar datos para generación de PDF
+            $resignationData = [
+                'employee_id' => $resignation->employee_id,
+                'employee_name' => $resignation->employee_name,
+                'employee_identification' => $resignation->employee_identification,
+                'employee_email' => $resignation->employee_email,
+                'employee_position' => $resignation->employee_position,
+                'start_date' => $resignation->start_date->format('Y-m-d'),
+                'resignation_type' => $resignation->resignation_type,
+                'request_date' => $resignation->request_date->format('Y-m-d'),
+                'effective_date' => $resignation->effective_date->format('Y-m-d'),
+                'employee_status' => $resignation->employee_status
+            ];
+
+            // Generar PDF dinámicamente
+            $pdf = $this->resignationServices->generatePdf($resignationData);
+
+            $filename = 'carta-renuncia-' . $resignation->employee_identification . '.pdf';
+            return $pdf->download($filename);
         } catch (\Exception $e) {
-            Log::error('Error updating employee status in resignations: ' . $e->getMessage());
+            Log::error('Error generating PDF for download: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Error al generar PDF',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }
