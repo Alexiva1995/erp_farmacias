@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\DonationController;
 
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\ResignationController;
 
 use App\Http\Controllers\Api\FurnitureController;
 
@@ -240,6 +241,13 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
         });
+
+        Route::prefix('resignations')->group(function () {
+            Route::post('/generate', [ResignationController::class, 'generateResignation']);
+            Route::get('/', [ResignationController::class, 'listResignations']);
+            Route::get('/stats', [ResignationController::class, 'getStats']);
+            Route::put('/toggle-employee-status', [ResignationController::class, 'toggleEmployeeStatus']);
+        });
     });
 
     Route::get('/roles', [RoleController::class, 'list']);
@@ -384,5 +392,4 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{loan}', 'update')->name('update');
         Route::delete('/{loan}', 'destroy')->name('delete');
     });
-
 });
