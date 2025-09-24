@@ -1,413 +1,282 @@
-# 📋 Documentación para Liquidación de Renuncias
+# 📋 Documentación para Equipo de Liquidación - Sistema de Renuncias
 
-## 🎯 Propósito
-Este documento describe cómo acceder y utilizar la información de empleados con renuncias registradas en el sistema ERP de Farmacias, específicamente para el proceso de liquidación de prestaciones sociales.
-
-## 🔥 **INFORMACIÓN CRÍTICA PARA LIQUIDACIÓN**
-
-### **Campo Más Importante: `employee_id`**
-- ✅ **SÍ, el JSON contiene el `employee_id`** que es exactamente el ID del empleado en la base de datos
-- ✅ Este es el campo **MÁS IMPORTANTE** para el personal de liquidación
-- ✅ Se puede extraer fácilmente para identificar empleados a liquidar
-- ✅ Ejemplo: `"employee_id": 2` = Empleado con ID 2 en la base de datos
-
-### **Uso Principal del Personal de Liquidación:**
-1. **Extraer solo los IDs**: `[2, 5, 8, 12]` - Lista de empleados a liquidar
-2. **Verificar estado**: Solo empleados con `employee_status: "Inactivo"`
-3. **Información adicional**: Fechas, nombres, cédulas (opcional pero útil)
+## 🎯 **Propósito**
+Esta documentación está dirigida al equipo de liquidación para explicar cómo acceder y consumir la información de renuncias de empleados desde el sistema ERP.
 
 ---
 
-## 📁 Ubicación del Archivo de Datos
+## 🗄️ **Fuente de Datos**
 
-### Archivo Principal
-```
-Ruta: storage/app/resignations.json
-Formato: JSON (JavaScript Object Notation)
-Codificación: UTF-8
-```
+### **Base de Datos: Tabla `resignations`**
+Todas las renuncias se almacenan en la tabla `resignations` de la base de datos MySQL/MariaDB.
 
-### Acceso al Archivo
-- **Servidor Local**: `C:\ruta\del\proyecto\storage\app\resignations.json`
-- **Servidor de Producción**: `/var/www/html/storage/app/resignations.json`
-- **Acceso Programático**: A través de la API REST del sistema
+### **Estructura de la Tabla**
+```sql
+CREATE TABLE resignations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    employee_id BIGINT UNSIGNED NOT NULL,
+    employee_name VARCHAR(255) NOT NULL,
+    employee_identification VARCHAR(255) NOT NULL,
+    employee_email VARCHAR(255) NULL,
+    employee_position VARCHAR(255) NULL,
+    start_date DATE NOT NULL,
+    resignation_type ENUM('voluntary', 'unjustified_dismissal') NOT NULL,
+    request_date DATE NOT NULL,
+    effective_date DATE NOT NULL,
+    employee_status VARCHAR(255) DEFAULT 'Activo',
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    UNIQUE KEY unique_employee_id (employee_id),
+    INDEX idx_employee_type (employee_id, resignation_type),
+    INDEX idx_effective_date (effective_date),
+    INDEX idx_created_at (created_at)
+);
+```
 
 ---
 
-## 🔧 Estructura de Datos
+## 🔑 **Campo Clave: `employee_id`**
 
-### Formato del Archivo JSON
-El archivo contiene un array de objetos, donde cada objeto representa una renuncia registrada:
+**⚠️ IMPORTANTE**: El campo `employee_id` es la referencia principal para identificar al empleado en el sistema de liquidación.
 
+### **Relación con otras tablas:**
+- `resignations.employee_id` → `employees.id`
+- `employees.user_id` → `users.id` (para datos de usuario)
+
+---
+
+## 📊 **Datos Disponibles para Liquidación**
+
+### **Información del Empleado:**
+| Campo | Descripción | Ejemplo |
+|-------|-------------|---------|
+| `employee_id` | **ID único del empleado** | `3` |
+| `employee_name` | Nombre completo | `"Carlos Rodríguez"` |
+| `employee_identification` | Cédula/ID | `"11223344"` |
+| `employee_email` | Email del empleado | `"carlos.rodriguez@farmacia.com"` |
+| `employee_position` | Cargo (opcional) | `"Vendedor"` |
+
+### **Información de la Renuncia:**
+| Campo | Descripción | Valores Posibles |
+|-------|-------------|------------------|
+| `resignation_type` | Tipo de renuncia | `"voluntary"` (Justificada)<br>`"unjustified_dismissal"` (Injustificada) |
+| `start_date` | Fecha de inicio laboral | `"2024-01-15"` |
+| `request_date` | Fecha de solicitud | `"2025-09-24"` |
+| `effective_date` | Fecha efectiva de renuncia | `"2025-10-30"` |
+| `employee_status` | Estado actual | `"Activo"` o `"Inactivo"` |
+
+### **Metadatos:**
+| Campo | Descripción |
+|-------|-------------|
+| `created_at` | Fecha de registro de la renuncia |
+| `updated_at` | Última actualización |
+
+---
+
+## 🔍 **Consultas SQL para Liquidación**
+
+### **1. Obtener todas las renuncias:**
+```sql
+SELECT 
+    employee_id,
+    employee_name,
+    employee_identification,
+    employee_email,
+    employee_position,
+    start_date,
+    resignation_type,
+    request_date,
+    effective_date,
+    employee_status,
+    created_at
+FROM resignations
+ORDER BY effective_date DESC;
+```
+
+### **2. Renuncias por período:**
+```sql
+SELECT *
+FROM resignations
+WHERE effective_date BETWEEN '2025-01-01' AND '2025-12-31'
+ORDER BY effective_date DESC;
+```
+
+### **3. Renuncias por tipo:**
+```sql
+-- Solo renuncias justificadas
+SELECT * FROM resignations WHERE resignation_type = 'voluntary';
+
+-- Solo renuncias injustificadas
+SELECT * FROM resignations WHERE resignation_type = 'unjustified_dismissal';
+```
+
+### **4. Renuncias de un empleado específico:**
+```sql
+SELECT *
+FROM resignations
+WHERE employee_id = 3;
+```
+
+### **5. Renuncias con datos del empleado:**
+```sql
+SELECT 
+    r.*,
+    e.name,
+    e.last_name,
+    e.identification,
+    e.is_active,
+    u.email
+FROM resignations r
+JOIN employees e ON r.employee_id = e.id
+LEFT JOIN users u ON e.user_id = u.id
+ORDER BY r.effective_date DESC;
+```
+
+---
+
+## 📈 **Estadísticas Disponibles**
+
+### **API Endpoint:**
+```
+GET /api/rrhh/resignations/stats
+```
+
+### **Respuesta:**
 ```json
-[
-    {
-        "id": 1,
-        "employee_id": 2,
-        "employee_name": "María González",
-        "employee_identification": "87654321",
-        "employee_email": "maria.gonzalez@farmacia.com",
-        "employee_status": "Activo",
-        "employee_position": "empleado",
-        "start_date": "2025-09-23",
-        "resignation_type": "voluntary",
-        "request_date": "2025-09-23",
-        "effective_date": "2025-09-30",
-        "created_at": "2025-09-23T16:00:00Z",
-        "updated_at": "2025-09-23T16:00:00Z"
+{
+    "success": true,
+    "data": {
+        "total": 2,
+        "voluntary": 2,
+        "unjustified_dismissal": 0,
+        "this_month": 2,
+        "this_year": 2
     }
-]
+}
 ```
-
-### Descripción de Campos
-
-| Campo | Tipo | Descripción | Ejemplo | **Importancia** |
-|-------|------|-------------|---------|-----------------|
-| `id` | Integer | Identificador único de la renuncia | `1` | Secundario |
-| **`employee_id`** | **Integer** | **ID del empleado en la base de datos** | **`2`** | **🔥 CRÍTICO** |
-| `employee_name` | String | Nombre completo del empleado | `"María González"` | Útil |
-| `employee_identification` | String | Cédula de identidad | `"87654321"` | Útil |
-| `employee_email` | String | Correo electrónico del empleado | `"maria.gonzalez@farmacia.com"` | Útil |
-| `employee_status` | String | Estado actual del empleado | `"Activo"` o `"Inactivo"` | **🔥 CRÍTICO** |
-| `employee_position` | String | Cargo del empleado | `"empleado"`, `"vendedora"`, `"cajero"` | Útil |
-| `start_date` | String | Fecha de inicio de labores (YYYY-MM-DD) | `"2025-09-23"` | **🔥 CRÍTICO** |
-| `resignation_type` | String | Tipo de renuncia | `"voluntary"` | Secundario |
-| `request_date` | String | Fecha de solicitud de renuncia (YYYY-MM-DD) | `"2025-09-23"` | Secundario |
-| `effective_date` | String | Fecha efectiva de renuncia (YYYY-MM-DD) | `"2025-09-30"` | **🔥 CRÍTICO** |
-| `created_at` | String | Fecha de creación del registro (ISO 8601) | `"2025-09-23T16:00:00Z"` | Secundario |
-| `updated_at` | String | Fecha de última actualización (ISO 8601) | `"2025-09-23T16:00:00Z"` | Secundario |
-
-### 🎯 **Campos Críticos para Liquidación**
-- **`employee_id`**: ID único del empleado en la base de datos (MÁS IMPORTANTE)
-- **`employee_status`**: Debe ser "Inactivo" para empleados a liquidar
-- **`start_date`**: Para calcular tiempo de servicio
-- **`effective_date`**: Fecha de salida del empleado
 
 ---
 
-## 🚀 Métodos de Acceso
+## 🛠️ **APIs para Consumo Programático**
 
-### 1. Acceso Directo al Archivo
-```bash
-# Linux/Mac
-cat /ruta/del/proyecto/storage/app/resignations.json
-
-# Windows
-type C:\ruta\del\proyecto\storage\app\resignations.json
-```
-
-### 2. Acceso a través de API REST
-
-#### Obtener Todas las Renuncias
+### **1. Listar renuncias:**
 ```http
 GET /api/rrhh/resignations
-Content-Type: application/json
-Authorization: Bearer {token}
 ```
 
-**Respuesta:**
-```json
-{
-    "data": [
-        {
-            "id": 1,
-            "employee_id": 2,
-            "employee_name": "María González",
-            "employee_identification": "87654321",
-            "employee_email": "maria.gonzalez@farmacia.com",
-            "employee_status": "Activo",
-            "employee_position": "empleado",
-            "start_date": "2025-09-23",
-            "resignation_type": "voluntary",
-            "request_date": "2025-09-23",
-            "effective_date": "2025-09-30",
-            "created_at": "2025-09-23T16:00:00Z",
-            "updated_at": "2025-09-23T16:00:00Z"
-        }
-    ],
-    "pagination": {
-        "current_page": 1,
-        "per_page": 15,
-        "total": 1,
-        "last_page": 1
-    }
-}
-```
+**Parámetros opcionales:**
+- `page`: Número de página (default: 1)
+- `perPage`: Elementos por página (default: 10)
+- `search`: Búsqueda por nombre, identificación o email
+- `resignation_type`: Filtrar por tipo (`voluntary` o `unjustified_dismissal`)
+- `date_from`: Fecha desde (YYYY-MM-DD)
+- `date_to`: Fecha hasta (YYYY-MM-DD)
 
-#### Obtener Estadísticas
+**Ejemplo:**
 ```http
-GET /api/rrhh/resignations/stats
-Content-Type: application/json
-Authorization: Bearer {token}
+GET /api/rrhh/resignations?page=1&perPage=50&resignation_type=voluntary&date_from=2025-01-01
 ```
 
-**Respuesta:**
-```json
-{
-    "total_resignations": 1,
-    "active_employees": 0,
-    "inactive_employees": 1,
-    "this_month": 1,
-    "this_year": 1
-}
+### **2. Obtener renuncia específica:**
+```http
+GET /api/rrhh/resignations/{id}
 ```
 
-### 3. Acceso Programático (PHP)
-
-#### **Ejemplo Simple: Solo IDs de Empleados a Liquidar**
-```php
-<?php
-// Leer el archivo JSON
-$jsonData = file_get_contents(storage_path('app/resignations.json'));
-$resignations = json_decode($jsonData, true);
-
-// Extraer SOLO los IDs de empleados inactivos (para liquidación)
-$employeeIds = [];
-foreach ($resignations as $resignation) {
-    if ($resignation['employee_status'] === 'Inactivo') {
-        $employeeIds[] = $resignation['employee_id'];
-    }
-}
-
-// Resultado: [2, 5, 8, 12] - IDs de empleados a liquidar
-echo "IDs de empleados a liquidar: " . implode(', ', $employeeIds);
-?>
-```
-
-#### **Ejemplo Completo: Con Información Adicional**
-```php
-<?php
-// Leer el archivo JSON
-$jsonData = file_get_contents(storage_path('app/resignations.json'));
-$resignations = json_decode($jsonData, true);
-
-// Procesar los datos con información completa
-foreach ($resignations as $resignation) {
-    if ($resignation['employee_status'] === 'Inactivo') {
-        echo "ID: " . $resignation['employee_id'] . "\n";
-        echo "Empleado: " . $resignation['employee_name'] . "\n";
-        echo "Cédula: " . $resignation['employee_identification'] . "\n";
-        echo "Fecha efectiva: " . $resignation['effective_date'] . "\n";
-        echo "---\n";
-    }
-}
-?>
+### **3. Descargar PDF de renuncia:**
+```http
+GET /api/rrhh/resignations/{id}/download-pdf
 ```
 
 ---
 
-## 💼 Casos de Uso para Liquidación
+## 📋 **Proceso de Liquidación Recomendado**
 
-### 1. **Extraer Solo los IDs de Empleados (MÁS IMPORTANTE)**
-```php
-// Obtener solo los IDs de empleados inactivos para liquidación
-$employeeIds = [];
-foreach ($resignations as $resignation) {
-    if ($resignation['employee_status'] === 'Inactivo') {
-        $employeeIds[] = $resignation['employee_id'];
-    }
-}
-
-// Resultado: [2, 5, 8, 12] - IDs de empleados a liquidar
-print_r($employeeIds);
+### **1. Identificación de Renuncias:**
+```sql
+-- Renuncias pendientes de liquidación
+SELECT 
+    employee_id,
+    employee_name,
+    employee_identification,
+    effective_date,
+    resignation_type
+FROM resignations
+WHERE employee_status = 'Activo'
+ORDER BY effective_date ASC;
 ```
 
-### 2. **Generar Lista Completa de Empleados a Liquidar**
-```php
-// Filtrar empleados inactivos (renuncias efectivas)
-$employeesToLiquidate = array_filter($resignations, function($resignation) {
-    return $resignation['employee_status'] === 'Inactivo';
-});
+### **2. Cálculo de Período Laboral:**
+```sql
+-- Días trabajados desde inicio hasta renuncia
+SELECT 
+    employee_id,
+    employee_name,
+    start_date,
+    effective_date,
+    DATEDIFF(effective_date, start_date) AS dias_trabajados
+FROM resignations;
 ```
 
-### 3. **Extraer IDs con Información Adicional**
-```php
-// Obtener IDs con datos básicos para liquidación
-$liquidationData = [];
-foreach ($resignations as $resignation) {
-    if ($resignation['employee_status'] === 'Inactivo') {
-        $liquidationData[] = [
-            'employee_id' => $resignation['employee_id'],        // ID de la BD
-            'name' => $resignation['employee_name'],             // Nombre
-            'identification' => $resignation['employee_identification'], // Cédula
-            'start_date' => $resignation['start_date'],          // Fecha inicio
-            'effective_date' => $resignation['effective_date']   // Fecha salida
-        ];
-    }
-}
-```
-
-### 2. Calcular Tiempo de Servicio
-```php
-function calculateServiceTime($startDate, $effectiveDate) {
-    $start = new DateTime($startDate);
-    $end = new DateTime($effectiveDate);
-    $interval = $start->diff($end);
-    
-    return [
-        'years' => $interval->y,
-        'months' => $interval->m,
-        'days' => $interval->d,
-        'total_days' => $interval->days
-    ];
-}
-```
-
-### 3. Exportar Datos para Liquidación
-```php
-function exportForLiquidation($resignations) {
-    $exportData = [];
-    
-    foreach ($resignations as $resignation) {
-        if ($resignation['employee_status'] === 'Inactivo') {
-            $exportData[] = [
-                'nombre' => $resignation['employee_name'],
-                'cedula' => $resignation['employee_identification'],
-                'email' => $resignation['employee_email'],
-                'cargo' => $resignation['employee_position'],
-                'fecha_inicio' => $resignation['start_date'],
-                'fecha_renuncia' => $resignation['effective_date'],
-                'tipo_renuncia' => $resignation['resignation_type']
-            ];
-        }
-    }
-    
-    return $exportData;
-}
-```
+### **3. Verificación de Datos:**
+- ✅ **employee_id**: Usar para consultar nóminas y prestaciones
+- ✅ **effective_date**: Fecha de corte para liquidación
+- ✅ **resignation_type**: Determina tipo de liquidación
+- ✅ **employee_status**: Verificar si ya fue procesado
 
 ---
 
-## ⚠️ Consideraciones Importantes
+## ⚠️ **Consideraciones Importantes**
 
-### 1. Estados de Empleados
-- **"Activo"**: El empleado aún está en la empresa (renuncia no efectiva)
-- **"Inactivo"**: El empleado ya no está en la empresa (renuncia efectiva)
+### **1. Campo `employee_id` es CRÍTICO:**
+- Es la única referencia confiable al empleado
+- Usar para consultar tablas de nóminas, prestaciones, etc.
+- No confiar solo en `employee_identification` (puede cambiar)
 
-### 2. Fechas
-- Todas las fechas están en formato ISO 8601 (YYYY-MM-DD)
-- `effective_date` es la fecha real de salida del empleado
-- `request_date` es cuando se solicitó la renuncia
+### **2. Estados de Renuncias:**
+- `"Activo"`: Renuncia pendiente de liquidación
+- `"Inactivo"`: Renuncia ya procesada
 
-### 3. Validaciones Recomendadas
-```php
-// Verificar que el archivo existe
-if (!file_exists(storage_path('app/resignations.json'))) {
-    throw new Exception('Archivo de renuncias no encontrado');
-}
+### **3. Tipos de Renuncia:**
+- `"voluntary"`: Renuncia justificada (liquidación completa)
+- `"unjustified_dismissal"`: Renuncia injustificada (liquidación parcial)
 
-// Validar formato JSON
-$resignations = json_decode($jsonData, true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    throw new Exception('Error al decodificar JSON: ' . json_last_error_msg());
-}
-```
-
-### 4. Seguridad
-- El archivo contiene información sensible de empleados
-- Acceso restringido solo al personal autorizado
-- No compartir datos sin autorización
+### **4. Fechas:**
+- `effective_date`: Fecha de corte para liquidación
+- `start_date`: Para calcular antigüedad
+- `request_date`: Fecha de solicitud (referencia)
 
 ---
 
-## 🔄 Actualizaciones del Archivo
+## 🔄 **Flujo de Trabajo Sugerido**
 
-### Frecuencia de Actualización
-- **Tiempo Real**: Cada vez que se genera una nueva renuncia
-- **Sincronización**: Los cambios se reflejan inmediatamente
-
-### Campos que Pueden Cambiar
-- `employee_status`: Cuando se cambia el estado del empleado
-- `updated_at`: Se actualiza con cada modificación
-
----
-
-## 📞 Soporte Técnico
-
-### Contacto
-- **Desarrollador**: Equipo de Desarrollo ERP
-- **Email**: desarrollo@farmacia.com
-- **Teléfono**: +58-XXX-XXX-XXXX
-
-### Problemas Comunes
-1. **Archivo no encontrado**: Verificar ruta y permisos
-2. **JSON inválido**: Verificar formato del archivo
-3. **Datos faltantes**: Contactar al administrador del sistema
+1. **Consultar renuncias pendientes** (`employee_status = 'Activo'`)
+2. **Obtener `employee_id`** de cada renuncia
+3. **Consultar datos del empleado** usando `employee_id`
+4. **Calcular liquidación** basada en `effective_date` y `resignation_type`
+5. **Procesar liquidación** según políticas de la empresa
+6. **Actualizar estado** a `"Inactivo"` cuando se complete
 
 ---
 
-## 📝 Ejemplo de Implementación Completa
+## 📞 **Contacto Técnico**
 
-```php
-<?php
-class ResignationLiquidationService 
-{
-    private $resignationsFile;
-    
-    public function __construct() 
-    {
-        $this->resignationsFile = storage_path('app/resignations.json');
-    }
-    
-    public function getEmployeesToLiquidate() 
-    {
-        $resignations = $this->loadResignations();
-        
-        return array_filter($resignations, function($resignation) {
-            return $resignation['employee_status'] === 'Inactivo';
-        });
-    }
-    
-    public function generateLiquidationReport() 
-    {
-        $employees = $this->getEmployeesToLiquidate();
-        $report = [];
-        
-        foreach ($employees as $employee) {
-            $serviceTime = $this->calculateServiceTime(
-                $employee['start_date'], 
-                $employee['effective_date']
-            );
-            
-            $report[] = [
-                'employee_data' => $employee,
-                'service_time' => $serviceTime,
-                'liquidation_date' => date('Y-m-d')
-            ];
-        }
-        
-        return $report;
-    }
-    
-    private function loadResignations() 
-    {
-        if (!file_exists($this->resignationsFile)) {
-            return [];
-        }
-        
-        $jsonData = file_get_contents($this->resignationsFile);
-        return json_decode($jsonData, true) ?: [];
-    }
-    
-    private function calculateServiceTime($startDate, $effectiveDate) 
-    {
-        $start = new DateTime($startDate);
-        $end = new DateTime($effectiveDate);
-        $interval = $start->diff($end);
-        
-        return [
-            'years' => $interval->y,
-            'months' => $interval->m,
-            'days' => $interval->d,
-            'total_days' => $interval->days
-        ];
-    }
-}
-?>
-```
+Para dudas técnicas sobre el sistema de renuncias:
+- **Desarrollador**: Sistema ERP
+- **Base de datos**: MySQL/MariaDB
+- **Tabla principal**: `resignations`
+- **Campo clave**: `employee_id`
 
 ---
 
-**📅 Última actualización**: 23 de Septiembre de 2025  
-**📋 Versión**: 1.0  
-**👥 Autor**: Equipo de Desarrollo ERP Farmacias
+## 📝 **Notas de Versión**
+
+- **v1.0**: Sistema inicial con almacenamiento en JSON
+- **v2.0**: Migración a base de datos MySQL
+- **v2.1**: Generación dinámica de PDFs
+- **v2.2**: APIs para consumo programático
+
+---
+
+*Documentación actualizada: Septiembre 2025*

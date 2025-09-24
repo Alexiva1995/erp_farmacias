@@ -18,12 +18,15 @@ use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
 use App\Services\DoctorServices;
 use App\Services\LaboratoryServices;
 use App\Services\LotteryServices;
+use App\Services\ResignationServices;
+use App\Contracts\Resignation;
 use App\Contracts\ExchangeRate;
 use App\Contracts\Order;
 use App\Contracts\Product;
@@ -121,6 +124,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(RoleController::class)
             ->needs(Role::class)
             ->give(RoleServices::class);
+
+        $this->app->when(ResignationController::class)
+            ->needs(Resignation::class)
+            ->give(ResignationServices::class);
     }
 
     /**
