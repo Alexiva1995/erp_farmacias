@@ -20,8 +20,8 @@ class CashClosureActionService
 
     public function allCashClosing(): ?CashClosing
     {
-        //$sellerId = Auth::id();
-        $sellerId = 2;
+        $sellerId = Auth::id();
+        //$sellerId = 2;
         $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->with('orders.details.product')->first();
         if (!$cashClosing) {
             throw new Exception('No se encontró un cierre de caja abierto.');
@@ -31,8 +31,8 @@ class CashClosureActionService
    public function closeCashClosing(CloseCashClosureRequest $request): JsonResponse
 {
     $validatedData = $request->validated();
-    //$sellerId = Auth::id();
-    $sellerId = 2;
+    $sellerId = Auth::id();
+    //$sellerId = 2;
     $cashClosure = CashClosing::findOrFail($validatedData['id']);
     $pendingOrders = $cashClosure->orders()->whereIn('status', [Order::RESERVED, Order::PENDING])->get();
 

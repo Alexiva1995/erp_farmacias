@@ -16,8 +16,8 @@ class CashClosureQueryService
 
      private function getBaseQuery(): Builder
     {
-         //$sellerId = Auth::id();
-         $sellerId = 2;
+         $sellerId = Auth::id();
+        // $sellerId = 2;
         return CashClosing::query()->where('seller_id',$sellerId)->where('status', CashClosing::CLOSED)->with('orders.details.product');
     }
 
@@ -53,8 +53,8 @@ class CashClosureQueryService
 
       private function getBaseQueryOrder(): ?CashClosing
     {
-        //$sellerId = Auth::id();
-         $sellerId = 2;
+        $sellerId = Auth::id();
+        // $sellerId = 2;
         return CashClosing::where('seller_id', $sellerId)
                           ->where('status', CashClosing::OPEN)
                           ->first();
