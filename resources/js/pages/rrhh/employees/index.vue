@@ -1,6 +1,7 @@
 <script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
 import FireEmployeeDialog from "@/components/dialogs/FireEmployeeDialog.vue";
+import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
 import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
@@ -9,6 +10,7 @@ import { onMounted, watch } from "vue";
 
 const showFireEmployeeDialog = ref(false);
 const showDialog = ref(false);
+const showResignationDialog = ref(false);
 const loading = ref(false);
 const search = ref("");
 const currency = ref(null);
@@ -17,6 +19,7 @@ const roles = ref([]);
 const employees = ref([]);
 const totalEmployees = ref(0);
 const selectedEmployee = ref(null);
+const selectedEmployeeForResignation = ref(null);
 
 const showActiveEmployees = ref(true);
 const page = ref(1);
@@ -95,6 +98,18 @@ const fetchCurrency = async () => {
 
 onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
+const handleGenerateResignation = (employee) => {
+  selectedEmployeeForResignation.value = employee;
+  showResignationDialog.value = true;
+};
+
+const handleResignationGenerated = (resignationData) => {
+  console.log("Renuncia generada:", resignationData);
+  toast.success("Carta de renuncia generada exitosamente");
+  // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
+};
+
+
 let debounceTimer;
 watch(
   [page, itemsPerPage, search, showActiveEmployees],
@@ -128,6 +143,12 @@ watch(
       @refresh-table="handleRefreshTable"
     />
 
+    <ResignationFormDialog
+      v-model="showResignationDialog"
+      :selectedEmployee="selectedEmployeeForResignation"
+      @resignation-generated="handleResignationGenerated"
+    />
+
     <EmployeeTable
       :page="page"
       :items-per-page="itemsPerPage"
@@ -136,6 +157,7 @@ watch(
       @fire-employee="handleShowFireEmployeeDialog"
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
+      @generate-resignation="handleGenerateResignation"
     />
   </div>
 </template>
