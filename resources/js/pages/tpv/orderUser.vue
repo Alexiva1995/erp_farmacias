@@ -1,16 +1,16 @@
 <script setup>
-import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderFilters from "@/components/OrderFilters.vue";
-import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
-import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
-import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
-import BuysModal from "@/components/dialogs/BuysModal.vue";
-import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
-import { useAuthStore } from "@/stores/auth";
+import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
+import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
+import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
+import BuysModal from "@/components/dialogs/BuysModal.vue";
+import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -185,7 +185,8 @@ const formatOrderItemForFrontend = (backendItem) => {
     price: parseFloat(product.sale_price) || 0,
     price_bs: parseFloat(product.price_bs) || 0,
     price_cop: parseFloat(product.price_cop) || 0,
-    availableQuantity: parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
+    availableQuantity:
+      parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
@@ -640,7 +641,6 @@ const addProductToOrder = async ({ productId, quantity }) => {
     );
 
     if (existingItemIndex !== -1) {
-        
       orderItems.value[existingItemIndex] =
         formatOrderItemForFrontend(backendOrderItem);
       toast.success(
@@ -763,34 +763,45 @@ const cancelarOrder = async () => {
 
 const reserverOrder = async () => {
   try {
-    const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-      hasOpenOrder.value = false;
-      openOrderData.value = null;
-      selectedClient.value = null;
-      orderItems.value = [];
+    const response = await axios.patch(
+      `/tpv/order/${openOrderData.value.id}/reserve`
+    );
+    hasOpenOrder.value = false;
+    openOrderData.value = null;
+    selectedClient.value = null;
+    orderItems.value = [];
     reservedOrderData.value = response.data.data.reserved_order;
     toast.success("Orden reservada exitosamente.");
-
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
 
-    if (error.response?.data?.message.includes("Ya tienes una orden reservada")) {
-     try {
-        const checkResponse = await axios.get("/tpv/order/seller/my-open-order");
+    if (
+      error.response?.data?.message.includes("Ya tienes una orden reservada")
+    ) {
+      try {
+        const checkResponse = await axios.get(
+          "/tpv/order/seller/my-open-order"
+        );
         if (checkResponse.data.data) {
           openOrderData.value = checkResponse.data.data.order.pending_order;
-          reservedOrderData.value = checkResponse.data.data.order.reserved_order;
-          toast.info("Ya hay una orden reservada. La orden abierta se mantiene.");
+          reservedOrderData.value =
+            checkResponse.data.data.order.reserved_order;
+          toast.info(
+            "Ya hay una orden reservada. La orden abierta se mantiene."
+          );
           return;
         }
       } catch (checkError) {
-        console.error("Error al verificar el estado de las órdenes:", checkError);
+        console.error(
+          "Error al verificar el estado de las órdenes:",
+          checkError
+        );
       }
     }
-     console.error(
+    console.error(
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
@@ -815,8 +826,9 @@ const handleBuysCompletion = async (
   switchStates
 ) => {
   try {
-
-  const balanceUsed = paymentsData.some(payment => payment.type === 'balance');
+    const balanceUsed = paymentsData.some(
+      (payment) => payment.type === "balance"
+    );
 
     const payload = {
       order_id: orderId,
@@ -830,6 +842,7 @@ const handleBuysCompletion = async (
       credit: credit,
       changeAmount: changeAmount,
       changeAmountUSD: changeAmountUSD,
+      spe: switchStates.spe,
     };
 
     const response = await axios.post(
@@ -891,24 +904,22 @@ const handleBuysCompletion = async (
         window.print();
       }
 
-
       if (response.data.data.order) {
-                hasOpenOrder.value = true;
-                openOrderData.value = response.data.data.order;
-                selectedClient.value = openOrderData.value.client;
-                reservedOrderData.value = null;
-                orderItems.value = openOrderData.value.details.map((item) =>
-                    formatOrderItemForFrontend(item)
-                );
-            } else {
-                hasOpenOrder.value = false;
-                openOrderData.value = null;
-                selectedClient.value = null;
-                orderItems.value = [];
-                reservedOrderData.value = null;
-                clientIdentification.value = "";
-            }
-
+        hasOpenOrder.value = true;
+        openOrderData.value = response.data.data.order;
+        selectedClient.value = openOrderData.value.client;
+        reservedOrderData.value = null;
+        orderItems.value = openOrderData.value.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
+        hasOpenOrder.value = false;
+        openOrderData.value = null;
+        selectedClient.value = null;
+        orderItems.value = [];
+        reservedOrderData.value = null;
+        clientIdentification.value = "";
+      }
     } else {
       toast.error(
         `Error inesperado al finalizar la compra: ${
@@ -976,15 +987,17 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 };
 
 const addReserverOrder = async () => {
- try {
-    const response = await axios.patch(`/tpv/order/${reservedOrderData.value.id}/reserveAdd`);
+  try {
+    const response = await axios.patch(
+      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`
+    );
     const { pending_order, reserved_order } = response.data.data;
 
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-    console.log('dentro de add reserver');
+    console.log("dentro de add reserver");
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
@@ -996,16 +1009,14 @@ const addReserverOrder = async () => {
     await nextTick();
     toast.success("Orden agregada exitosamente.");
     return response.data.data.order;
-
   } catch (error) {
-     console.error(
+    console.error(
       "Error al agregar la orden:",
       error.response ? error.response.data : error.message
     );
     toast.error(errorMessage);
   }
-
-}
+};
 </script>
 <template>
   <div>
@@ -1103,7 +1114,6 @@ const addReserverOrder = async () => {
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
       />
-
     </div>
   </div>
 </template>

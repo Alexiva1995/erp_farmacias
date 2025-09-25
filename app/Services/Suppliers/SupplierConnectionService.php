@@ -170,13 +170,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $usdCurrency,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -210,7 +204,7 @@ class SupplierConnectionService
                         if (is_numeric($value)) {
                             $newValue = number_format((float) $value, 2, ".", "");
 
-                            if ($meta["target"] === "quantity") {
+                            if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
                                 $entry[$meta["target"]] = $newValue;
                                 break;
                             }
@@ -283,12 +277,21 @@ class SupplierConnectionService
             }
 
             if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
+                $stock = 0;
+
+                if ($entry['supplier_id'] == 2) {
+                    foreach (['exisMerida', 'exisCaracas', 'exisOriente'] as $campo) {
+                        $stock += intval($entry[$campo] ?? 0);
+                    }
+                } else
+                    $stock = $entry['quantity'];
+                
                 $newProduct = Product::create([
                     'barcode' => $entry['barcode_match'],
                     'name' => $entry['name'] ?? 'Producto sin nombre',
                     'unit_cost' => $entry['unit_cost'] ?? 0,
                     'sale_price' => $entry['unit_cost'] ?? 0,
-                    'stock' => $entry['quantity'] ?? 0,
+                    'stock' => $stock,
                     'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
                     'sales_average' => $entry['sales_average'] ?? 0
                 ]);
@@ -439,7 +442,8 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }

@@ -1,11 +1,10 @@
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch } from "vue";
-import { onMounted, onBeforeUnmount } from "vue";
-import { formatCurrency } from "@/utils/currencyFormatter";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import { formatDateTime } from "@/utils/formatDateTime";
 import { toast } from "@/plugins/sweetalert";
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -52,6 +51,8 @@ const currentStageIndex = ref(0);
 const invoiceSwitch = ref(false);
 
 const changeAmountUSD = ref(0);
+
+const speSwitch = ref(false);
 
 const payments = ref([
   {
@@ -197,14 +198,35 @@ onMounted(() => {
 });
 
 const roundedTotalAmountToPay = computed(() => {
-  if (props.selectedCurrency === "COP") {
-    return roundUpToNearestHundred(props.totalAmount);
+  let baseAmount = props.totalAmount;
+
+  if (speSwitch.value) {
+    const totalIva = props.orderProducts.reduce((sum, product) => {
+      return sum + getIva(product, props.selectedCurrency);
+    }, 0);
+    const speAmount = totalIva * 0.75;
+    baseAmount += speAmount;
   }
-  return props.totalAmount;
+
+  if (props.selectedCurrency === "COP") {
+    return roundUpToNearestHundred(baseAmount);
+  }
+  return roundToTwoDecimalPlaces(baseAmount);
 });
 
 const remainingAmount = computed(() => {
-  const rawDifference = props.totalAmount - totalPaidAmount.value;
+  let totalToPay = props.totalAmount;
+
+  if (speSwitch.value) {
+    const totalIva = props.orderProducts.reduce((sum, product) => {
+      return sum + getIva(product, props.selectedCurrency);
+    }, 0);
+    const speAmount = totalIva * 0.75;
+    totalToPay += speAmount;
+  }
+
+  const rawDifference = totalToPay - totalPaidAmount.value;
+
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(rawDifference);
   }
@@ -215,11 +237,20 @@ const remainingAmount = computed(() => {
 const getConvertedRemainingAmount = (currency) => {
   const baseCurrency = props.selectedCurrency;
   const targetCurrency = currency;
-  const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
-  let converted = remainingAmount.value;
-  if (rate) {
-    converted = remainingAmount.value * rate;
+
+  if (baseCurrency === targetCurrency) {
+    return remainingAmount.value;
   }
+
+  const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
+  if (!rate) {
+    console.warn(
+      `No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`
+    );
+    return 0;
+  }
+
+  let converted = remainingAmount.value * rate;
   return parseFloat(converted.toFixed(2));
 };
 
@@ -364,6 +395,7 @@ const handleCompletePurchase = () => {
       changeAmountInUSD.value,
       {
         invoice_switch: invoiceSwitch.value,
+        spe: speSwitch.value,
       }
     );
     dialogVisible.value = false;
@@ -385,6 +417,7 @@ const resetProgress = () => {
     },
   ];
   invoiceSwitch.value = false;
+  speSwitch.value = false;
 };
 
 const logoSrc = computed(() => {
@@ -497,41 +530,44 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 });
 
 const changeAmount = computed(() => {
-  const diff = totalPaidAmount.value - props.totalAmount;
+  let totalToPay = props.totalAmount;
+
+  if (speSwitch.value) {
+    const totalIva = props.orderProducts.reduce((sum, product) => {
+      return sum + getIva(product, props.selectedCurrency);
+    }, 0);
+    const speAmount = totalIva * 0.75;
+    totalToPay += speAmount;
+  }
+
   if (props.selectedCurrency === "COP") {
+    const totalToPayRounded = roundUpToNearestHundred(totalToPay);
     return Math.max(
       0,
-      roundToTwoDecimalPlaces(
-        totalPaidAmount.value - roundUpToNearestHundred(props.totalAmount)
-      )
+      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPayRounded)
     );
   } else {
     return Math.max(
       0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - props.totalAmount)
+      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPay)
     );
   }
 });
 
 const changeAmountInUSD = computed(() => {
-  // 1. Identificar pagos en efectivo en USD
   const cashPaymentsInUSD = payments.value.filter(
     (p) => p.method === "cash_usd" && p.currency === "USD"
   );
 
-  // Si no hay pagos en efectivo en USD, el vuelto es cero.
   if (cashPaymentsInUSD.length === 0) {
     return 0;
   }
 
-  // 2. Calcular el total de los pagos en efectivo en USD
   let totalCashPaidInUSD = 0;
   cashPaymentsInUSD.forEach((p) => {
     totalCashPaidInUSD += Number(p.amount) || 0;
   });
 
-  // 3. Calcular el total de la orden en USD
-  // Si la moneda de la orden no es USD, la convertimos.
   let totalOrdenEnUSD;
   if (props.selectedCurrency === "USD") {
     totalOrdenEnUSD = props.totalAmount;
@@ -546,7 +582,6 @@ const changeAmountInUSD = computed(() => {
     totalOrdenEnUSD = props.totalAmount / rate;
   }
 
-  // 4. Calcular el vuelto en USD, solo si la diferencia es positiva.
   const diff = totalCashPaidInUSD - totalOrdenEnUSD;
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
@@ -559,7 +594,7 @@ const changeAmountInCOP = computed(() => {
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
-    return roundUpToNearestHundred(vueltoConvertido); // Aplicamos el redondeo para COP
+    return roundUpToNearestHundred(vueltoConvertido);
   }
   return 0;
 });
@@ -652,84 +687,81 @@ const updateDebouncedAmount = (payment, newValue) => {
           </VChip>
         </div>
 
-       
-          <VTable density="compact" lines="none" class="py-2">
-            <tbody>
-              <tr
-                v-for="(product, index) in props.orderProducts"
-                :key="product.id"
-              >
-                <td>
-                  <div class="d-flex flex-column">
-                    <span
-                      class="text-body-1 font-weight-medium text-high-emphasis"
-                    >
-                      {{ product.title }}
-                    </span>
-                    <span class="text-sm text-disabled">
-                      {{ product.active_ingredient }}
-                      {{ product.laboratory ? `- ${product.laboratory}` : "" }}
-                      {{ product.selectedQuantity }} x
-                    </span>
-                  </div>
-                </td>
-                <td class="text-right">
-                  <div class="d-flex flex-column align-end me-4">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >Precio</span
-                    >
-                    <span class="text-body-1 font-weight-regular">
-                      {{
-                        formatCurrency(
-                          getProductPriceSinIva(
-                            product,
-                            props.selectedCurrency
-                          ) * product.selectedQuantity,
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
-                  </div>
-                </td>
-                <td class="text-right">
-                  <div class="d-flex flex-column align-end me-4">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >IVA</span
-                    >
-                    <span class="text-body-1 font-weight-regular">
-                      {{
-                        formatCurrency(
-                          getIva(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
-                  </div>
-                </td>
-                <td class="text-right">
-                  <div class="d-flex flex-column align-end">
-                    <span
-                      v-if="index === 0"
-                      class="text-caption text-medium-emphasis"
-                      >Total</span
-                    >
-                    <span class="text-body-1 font-weight-bold text-black">
-                      {{
-                        formatCurrency(
-                          getProductPrice(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
+        <VTable density="compact" lines="none" class="py-2">
+          <tbody>
+            <tr
+              v-for="(product, index) in props.orderProducts"
+              :key="product.id"
+            >
+              <td>
+                <div class="d-flex flex-column">
+                  <span
+                    class="text-body-1 font-weight-medium text-high-emphasis"
+                  >
+                    {{ product.title }}
+                  </span>
+                  <span class="text-sm text-disabled">
+                    {{ product.active_ingredient }}
+                    {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+                    {{ product.selectedQuantity }} x
+                  </span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Precio</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
+                    {{
+                      formatCurrency(
+                        getProductPriceSinIva(product, props.selectedCurrency) *
+                          product.selectedQuantity,
+                        props.selectedCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >IVA</span
+                  >
+                  <span class="text-body-1 font-weight-regular">
+                    {{
+                      formatCurrency(
+                        getIva(product, props.selectedCurrency),
+                        props.selectedCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
+                  <span class="text-body-1 font-weight-bold text-black">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedCurrency),
+                        props.selectedCurrency
+                      )
+                    }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
 
         <VDivider />
         <div
@@ -880,6 +912,62 @@ const updateDebouncedAmount = (payment, newValue) => {
               formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
             }}
           </p>
+        </div>
+        <div class="d-flex align-center mt-3 mb-2">
+          <VCheckbox v-model="speSwitch" color="warning" class="me-2">
+            <template #label>
+              <div class="d-flex align-center">
+                <VIcon icon="tabler-shield-check" class="me-2" size="20" />
+                <span class="text-subtitle-1 font-weight-medium">
+                  ¿Sujeto a pasivos especiales?
+                </span>
+              </div>
+            </template>
+          </VCheckbox>
+          <VChip v-if="speSwitch" color="warning" size="small" class="ms-2">
+            <VIcon icon="tabler-shield-check" size="14" class="me-1" />
+            SPE: +75% IVA
+          </VChip>
+        </div>
+
+        <!-- Mostrar cálculo del SPE cuando está activo -->
+        <div v-if="speSwitch" class="bg-warning-lighten-4 pa-3 rounded mb-3">
+          <div
+            class="text-subtitle-2 font-weight-bold text-warning-darken-2 mb-2"
+          >
+            <VIcon icon="tabler-info-circle" class="me-1" size="16" />
+            Cálculo Sujeto a Pasivos Especiales (75% del IVA):
+          </div>
+          <div class="d-flex justify-space-between">
+            <span class="text-body-2">IVA Total:</span>
+            <span class="text-body-2 font-weight-medium">
+              {{
+                formatCurrency(
+                  props.orderProducts.reduce(
+                    (sum, product) =>
+                      sum + getIva(product, props.selectedCurrency),
+                    0
+                  ),
+                  props.selectedCurrency
+                )
+              }}
+            </span>
+          </div>
+          <div class="d-flex justify-space-between">
+            <span class="text-body-2">SPE (75% del IVA):</span>
+            <span class="text-body-2 font-weight-bold text-warning-darken-2">
+              {{
+                formatCurrency(
+                  props.orderProducts.reduce(
+                    (sum, product) =>
+                      sum + getIva(product, props.selectedCurrency),
+                    0
+                  ) * 0.75,
+                  props.selectedCurrency
+                )
+              }}
+            </span>
+          </div>
         </div>
 
         <div

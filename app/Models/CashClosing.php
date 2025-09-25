@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Services\Resources\ResourceService; 
 
 class CashClosing extends Model
 {
@@ -28,6 +30,8 @@ class CashClosing extends Model
         'usd_transfer_payment_credit', 'usd_cash_payment_credit', 'usd_paypal_payment_credit', 'usd_binance_payment_credit',
     ];
 
+     protected $appends = ['total_bs_in_usd', 'total_cop_in_usd'];
+
     public function seller()
     {
         return $this->belongsTo(User::class, 'seller_id');
@@ -41,5 +45,31 @@ class CashClosing extends Model
     public function orders()
     {
         return $this->hasMany(Order::class, 'cash_closing_id');
+    }
+
+
+    protected function getServiceExchangeRate(string $currencyCode): float
+    {
+        $resourceService = app(ResourceService::class);
+        return $resourceService->getExchangeRate($currencyCode);
+    }
+     /**
+     * Accesor para el TOTAL en Bolívares (BS). Coventido EN USD
+     */
+    protected function totalBsInUsd(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => round($this->total_bs / $this->getServiceExchangeRate('BS'), 2),
+        );
+    }
+
+    /**
+     * Accesor para el precio en Pesos Colombianos (COP). Coventido EN USD
+     */
+    protected function totalCopInUsd(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => round($this->total_cop / $this->getServiceExchangeRate('COP') , 2),
+        );
     }
 }

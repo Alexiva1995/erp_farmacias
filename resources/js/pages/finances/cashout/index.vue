@@ -10,6 +10,7 @@ const loading = ref(false);
 const dataDetailed = ref(false);
 const dateRange = ref("");
 const selectedCurrency = ref("");
+const previousCurrency = ref("");
 const selectedOption = ref("");
 const previousTotalUsd = ref(0);
 
@@ -42,10 +43,6 @@ const fetchTransactions = async ({ date, currency, detailed, option } = {}) => {
     transactions.value = data.data.items;
     transactionsTotal.value = data.data.total;
     previousTotalUsd.value = data.data.previous_total_usd;
-
-    if (currency) {
-      toast.success(`Moneda seleccionada: ${currency}`);
-    }
   } catch (error) {
     console.error("Hubo un error al obtener las transacciones:", error);
     toast.error("Error al obtener las transacciones.");
@@ -95,10 +92,18 @@ watch(
   [dateRange, selectedCurrency, dataDetailed, selectedOption],
   ([date, currency, detailed, option]) => {
     const opts = { date, currency, detailed, option };
+    page.value = 1;
     fetchTransactions(opts);
   },
   { deep: true }
 );
+
+watch(selectedCurrency, (newVal, oldVal) => {
+  if (newVal && newVal !== oldVal && newVal !== previousCurrency.value) {
+    toast.success(`Moneda seleccionada: ${newVal}`);
+    previousCurrency.value = newVal;
+  }
+});
 
 let debounceTimer;
 watch(

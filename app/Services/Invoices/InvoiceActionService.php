@@ -39,7 +39,8 @@ class InvoiceActionService
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
                 'registered_by' => 1,
-                'uploaded_by' => 1
+                'uploaded_by' => 1,
+                'status_payment' => 'pending',
             ];
 
             return Invoice::create($invoiceData);

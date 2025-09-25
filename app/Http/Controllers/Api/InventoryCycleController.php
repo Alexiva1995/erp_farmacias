@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCount;
 use App\Services\InventoryCycle\InventoryCycleQueryService;
 use App\Services\InventoryCycle\InventoryCycleActionService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -346,5 +347,34 @@ class InventoryCycleController extends Controller
             return response()->json(['success' => true, 'message' => $result['message']]);
         }
         return response()->json(['success' => false, 'message' => $result['message']], 400);
+    }
+    public function getCycleSummary(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getCycleSummaryQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+    public function getCycleInfo($cycleId)
+    {
+        try {
+            $cycle = DB::table('inventory_cycles')
+                ->where('id', $cycleId)
+                ->first();
+
+            if (!$cycle) {
+                return response()->json(['message' => 'Ciclo no encontrado'], 404);
+            }
+
+            return response()->json(['data' => $cycle]);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error al obtener información del ciclo'], 500);
+        }
     }
 }

@@ -20,14 +20,14 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "close", "payment-processed"]);
 
-// Estado del formulario
 const form = ref({
-  payment_type: "full", // Nuevo campo para tipo de pago
+  payment_type: "full",
   payment_currency: "USD",
   payment_amount: 0,
   payment_date: new Date().toISOString().split("T")[0],
   payment_receipt: null,
   reference: "",
+  has_iva: false, // Nuevo campo para IVA
 });
 
 // Estado de carga
@@ -353,6 +353,7 @@ const resetForm = () => {
     payment_date: new Date().toISOString().split("T")[0],
     payment_receipt: null,
     reference: "",
+    has_iva: false, // Reset del campo IVA
   };
   errors.value = {};
   selectedInvoices.value = [];
@@ -447,11 +448,12 @@ const processPayment = async () => {
 
   try {
     const paymentData = {
-      payment_type: form.value.payment_type, // Nuevo campo
+      payment_type: form.value.payment_type,
       payment_currency: form.value.payment_currency,
       payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
       reference: form.value.reference || null,
+      has_iva: form.value.has_iva, // Nuevo campo IVA
       photo_url: form.value.payment_receipt
         ? form.value.payment_receipt.name
         : null,
@@ -757,7 +759,7 @@ onMounted(() => {
           </VRow>
 
           <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="form.payment_date"
                 label="Fecha de Pago"
@@ -766,7 +768,7 @@ onMounted(() => {
                 required
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VFileInput
                 v-model="form.payment_receipt"
                 label="Comprobante de Pago"
@@ -776,13 +778,41 @@ onMounted(() => {
                 prepend-icon="tabler-upload"
               />
             </VCol>
+            <VCol cols="12" md="4" class="d-flex align-center">
+              <VCheckbox
+                v-model="form.has_iva"
+                :error-messages="errors.has_iva"
+                color="primary"
+              >
+                <template #label>
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-percentage" class="me-2" size="20" />
+                    <span class="text-subtitle-2">¿Incluye IVA?</span>
+                  </div>
+                </template>
+              </VCheckbox>
+            </VCol>
           </VRow>
 
           <!-- Información y detalles del pago -->
           <VRow>
             <VCol cols="12">
               <VAlert type="info" variant="tonal" class="mb-4">
-                <template #title> Información y detalles del pago </template>
+                <template #title>
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-info-circle" class="me-2" />
+                    Información y detalles del pago
+                    <VChip
+                      v-if="form.has_iva"
+                      color="warning"
+                      size="small"
+                      class="ms-2"
+                    >
+                      <VIcon icon="tabler-percentage" size="14" class="me-1" />
+                      Con IVA
+                    </VChip>
+                  </div>
+                </template>
 
                 <!-- Información de pagos previos -->
                 <div

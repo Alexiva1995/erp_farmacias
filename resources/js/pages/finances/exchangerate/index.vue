@@ -55,11 +55,13 @@ const getCOP = async () => {
   }
 }
 
-
-
-onMounted(() => {
+function refresh() {
   getCOP();
   getDollarBCV();
+}
+
+onMounted(() => {
+  refresh()
 });
 
 </script>
@@ -73,6 +75,7 @@ onMounted(() => {
     :dollar="dollar"
     :dateUpdate="dateUpdate"
     :dateColor="dateColor"
+    @refresh="refresh"
     />
 
 </template>
