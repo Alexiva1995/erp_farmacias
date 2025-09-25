@@ -108,6 +108,7 @@ const alwaysShow = [
   "days_not_worked_voucher",
   "negative_vouchers",
   "total",
+  "actions",
 ];
 
 const headers = computed(() => {
@@ -116,6 +117,7 @@ const headers = computed(() => {
     list = list.filter((h) => alwaysShow.includes(h.key));
   if (selectedPayslip.value?.status === 1)
     list = list.filter((h) => h.key !== "actions");
+
   return list;
 });
 
@@ -282,6 +284,12 @@ const employeesWithVouchers = computed(() => {
       settlement_voucher: settlement,
       negative_vouchers: negative,
       total: final,
+      name: r.name,
+      last_name: r.last_name,
+      identification: r.identification,
+      role: r.role,
+      employee_id: r.employee_id,
+      base_salary_voucher: r.base_salary_voucher,
     };
 
     out.push(employee);
