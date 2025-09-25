@@ -15,9 +15,10 @@ const date = new Date();
 const options = computed(() => {
   const now = new Date();
   const month = now.getMonth() + 1;
+  const day = now.getDate();
 
   const lessThanYear = props.selectedEmployee?.active_years < 1;
-  const notDecember = month !== 12;
+  const notDecemberFifthteen = month !== 12 && day !== 15;
 
   return [
     {
@@ -38,7 +39,7 @@ const options = computed(() => {
       title: "Utilidades",
       value: "earnings_voucher",
       props: {
-        disabled: notDecember,
+        disabled: notDecemberFifthteen,
       },
     },
   ];
