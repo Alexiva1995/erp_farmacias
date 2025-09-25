@@ -183,6 +183,7 @@ declare module 'vue' {
     QuotationTicket: typeof import('./resources/js/components/QuotationTicket.vue')['default']
     RecurringExpenseTable: typeof import('./resources/js/components/RecurringExpenseTable.vue')['default']
     ReferAndEarnDialog: typeof import('./resources/js/components/dialogs/ReferAndEarnDialog.vue')['default']
+    ResignationFormDialog: typeof import('./resources/js/components/dialogs/ResignationFormDialog.vue')['default']
     ReferenceTable: typeof import('./resources/js/components/ReferenceTable.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
     ReturnsOrderGeneralTable: typeof import('./resources/js/components/ReturnsOrderGeneralTable.vue')['default']

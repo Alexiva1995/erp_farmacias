@@ -4,7 +4,7 @@ export default [
     icon: {
       is: 'font-awesome-icon', 
       props: {
-        icon: ['fas', 'users-viewfinder'],
+        icon: ['fas', 'users'],
         size: 'sm',
       },
     },
@@ -12,6 +12,10 @@ export default [
       {
         title: 'Empleados',
         to: 'rrhh-employees',
+      },
+      {
+        title: 'Renuncias',
+        to: 'rrhh-resignations',
       },
     ],
   },

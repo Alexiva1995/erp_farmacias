@@ -1,5 +1,6 @@
 <script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
+import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
 import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
@@ -7,6 +8,7 @@ import { toast } from "@/plugins/sweetalert";
 import { onMounted, watch } from "vue";
 
 const showDialog = ref(false);
+const showResignationDialog = ref(false);
 const loading = ref(false);
 const search = ref("");
 
@@ -14,6 +16,7 @@ const roles = ref([]);
 const employees = ref([]);
 const totalEmployees = ref(0);
 const selectedEmployee = ref(null);
+const selectedEmployeeForResignation = ref(null);
 
 const showActiveEmployees = ref(true);
 const page = ref(1);
@@ -92,6 +95,17 @@ const handleDeleteEmployee = async (employee) => {
   }
 };
 
+const handleGenerateResignation = (employee) => {
+  selectedEmployeeForResignation.value = employee;
+  showResignationDialog.value = true;
+};
+
+const handleResignationGenerated = (resignationData) => {
+  console.log("Renuncia generada:", resignationData);
+  toast.success("Carta de renuncia generada exitosamente");
+  // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
+};
+
 onMounted(() => Promise.all([fetchEmployees(), fetchRoles()]));
 
 let debounceTimer;
@@ -120,6 +134,12 @@ watch(
       @refresh-table="handleRefreshTable"
     />
 
+    <ResignationFormDialog
+      v-model="showResignationDialog"
+      :selectedEmployee="selectedEmployeeForResignation"
+      @resignation-generated="handleResignationGenerated"
+    />
+
     <EmployeeTable
       :page="page"
       :items-per-page="itemsPerPage"
@@ -128,6 +148,7 @@ watch(
       @fire-employee="handleFireEmployee"
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
+      @generate-resignation="handleGenerateResignation"
     />
   </div>
 </template>
