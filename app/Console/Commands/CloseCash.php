@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\CashClosing;
-use Illuminate\Support\Carbon;
-
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class CloseCash extends Command
 {
@@ -28,15 +27,15 @@ class CloseCash extends Command
      */
     public function handle()
     {
-        try {
-            $cashes = CashClosing::where('estatus',CashClosing::OPEN)->whereDate('created_at', Carbon::today())->get();
-
-            $this->info('Daily cash closure completed successfully!');
-            return 0;
-        } catch (\Exception $e) {
-            $this->error('Failed to close the daily cash closure.');
-            $this->error($e->getMessage());
-            return 1;
+        $sellers = User::all();
+        $cashClosureService = app(\App\Services\CashClosure\CashClosureActionService::class);
+        foreach ($sellers as $seller) {
+            try {
+                $cashClosureService->closeDailyCashClosure($seller);
+                Log::info("Cierre de caja diario completado para el vendedor: {$seller->name}");
+            } catch (\Exception $e) {
+                Log::error("Error al cerrar la caja para el vendedor: {$seller->name}. Mensaje: {$e->getMessage()}");
+            }
         }
     }
 }

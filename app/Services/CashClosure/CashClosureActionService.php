@@ -14,6 +14,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReporteCierreCajaMail;
 use App\Mail\ReporteHistoryCierreCajaMail;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use App\Models\DailyCashClosure;
 
 class CashClosureActionService
 {
@@ -22,65 +25,111 @@ class CashClosureActionService
     {
         $sellerId = Auth::id();
         //$sellerId = 2;
-        $cashClosing = CashClosing::where('seller_id',$sellerId)->where('status', CashClosing::OPEN)->with('orders.details.product')->first();
+        $cashClosing = CashClosing::where('seller_id', $sellerId)->where('status', CashClosing::OPEN)->with('orders.details.product')->first();
         if (!$cashClosing) {
             throw new Exception('No se encontró un cierre de caja abierto.');
         }
         return $cashClosing;
     }
-   public function closeCashClosing(CloseCashClosureRequest $request): JsonResponse
-{
-    $validatedData = $request->validated();
-    $sellerId = Auth::id();
-    //$sellerId = 2;
-    $cashClosure = CashClosing::findOrFail($validatedData['id']);
-    $pendingOrders = $cashClosure->orders()->whereIn('status', [Order::RESERVED, Order::PENDING])->get();
+    public function closeCashClosing(CloseCashClosureRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
+        $sellerId = Auth::id();
+        //$sellerId = 2;
+        $cashClosure = CashClosing::findOrFail($validatedData['id']);
+        $pendingOrders = $cashClosure->orders()->whereIn('status', [Order::RESERVED, Order::PENDING])->get();
 
-    if ($pendingOrders->isNotEmpty()) {
+        if ($pendingOrders->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede cerrar la caja. Hay órdenes pendientes o reservadas.',
+                'data' => [
+                    'pending_orders_count' => $pendingOrders->count(),
+                    'pending_order_ids' => $pendingOrders->pluck('id')->toArray(),
+                ],
+            ], 409);
+        }
+
+        $cashClosure->update([
+            'status' => CashClosing::CLOSED,
+            'total_cop' => $validatedData['total_cop'],
+            'cop_spare' => $validatedData['sobrante_en_peso'],
+            'cop_delivered' => $validatedData['entregar_efectivo_cop'],
+        ]);
+
+        $cashClosure->refresh()->load('orders');
+        //pdf cierre
+        $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
+        $pdf = PDF::loadHTML($htmlContent);
+        $pdfContent = $pdf->output();
+        $destinatariosTo = ['cierres@farmaciabs.com'];
+        $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';
+        Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
+        //pdf history
+        $historyHtmlContent = mb_convert_encoding($validatedData['history_html'], 'UTF-8', 'UTF-8');
+        $pdfHistory = Pdf::loadHTML($historyHtmlContent);
+        $pdfHistoryContent = $pdfHistory->output();
+        $destinatariosToHistory = ['alexisvalera@farmaciabs.com'];
+        $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';
+        Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
+
+        CashClosing::create([
+            'seller_id' => $sellerId,
+            'status' => CashClosing::OPEN,
+            'closing_date' => Carbon::now(),
+        ]);
+
+
         return response()->json([
-            'success' => false,
-            'message' => 'No se puede cerrar la caja. Hay órdenes pendientes o reservadas.',
-            'data' => [
-                'pending_orders_count' => $pendingOrders->count(),
-                'pending_order_ids' => $pendingOrders->pluck('id')->toArray(),
-            ],
-        ], 409);
+            'success' => true,
+            'message' => 'Caja cerrada exitosamente.',
+            'cash_closure_data' => $cashClosure,
+        ], 200);
     }
 
-    $cashClosure->update([
-        'status' => CashClosing::CLOSED,
-        'total_cop' => $validatedData['total_cop'],
-        'cop_spare' => $validatedData['sobrante_en_peso'],
-        'cop_delivered' => $validatedData['entregar_efectivo_cop'],
-    ]);
 
-    $cashClosure->refresh()->load('orders');
-    //pdf cierre
-    $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
-    $pdf = PDF::loadHTML($htmlContent);
-    $pdfContent = $pdf->output();
-    $destinatariosTo = ['cierres@farmaciabs.com'];
-    $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';
-    Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
-    //pdf history
-    $historyHtmlContent = mb_convert_encoding($validatedData['history_html'], 'UTF-8', 'UTF-8');
-    $pdfHistory = Pdf::loadHTML($historyHtmlContent);
-    $pdfHistoryContent = $pdfHistory->output();
-    $destinatariosToHistory = ['alexisvalera@farmaciabs.com'];
-    $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';
-    Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
+    public function closeDailyCashClosure(User $seller)
+    {
+        $cashClosings = CashClosing::where('seller_id', $seller->id)
+            ->where('status', CashClosing::OPEN)
+            ->with('orders.details.product')
+            ->whereDate('closing_date', Carbon::today())
+            ->get();
 
-    CashClosing::create([
-        'seller_id' => $sellerId,
-        'status' => CashClosing::OPEN,
-        'closing_date' => Carbon::now(),
-    ]);
+        if ($cashClosings->isEmpty()) {
+           return;
+        }
+        DB::beginTransaction();
+        try {
 
+             $dailyClosure = DailyCashClosure::create([
+                'total_usd'     => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
+                'total_cop'     => $cashClosings->sum('total_cop'),
+                'total_bs'      => $cashClosings->sum('total_bs'),
+                'bs_card'       => $cashClosings->sum('bs_card'),
+                'bs_mobile'     => $cashClosings->sum('bs_mobile'),
+                'usd_delivered' => $cashClosings->sum('usd_delivered'),
+                'cop_delivered' => $cashClosings->sum('cop_delivered'),
+                'bs_delivered'  => $cashClosings->sum('bs_delivered'),
+            ]);
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Caja cerrada exitosamente.',
-        'cash_closure_data' => $cashClosure,
-    ], 200);
-}
+             foreach ($cashClosings as $cashClosing) {
+                $cashClosing->update([
+                    'status' => CashClosing::CLOSED,
+                    'daily_closure_id' => $dailyClosure->id,
+                ]);
+            }
+
+            CashClosing::create([
+                'seller_id' => $seller->id,
+                'status' => CashClosing::OPEN,
+                'closing_date' => Carbon::now(),
+            ]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al realizar el cierre de caja diario: ' . $e->getMessage());
+        }
+    }
 }
