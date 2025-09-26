@@ -3,20 +3,23 @@ import { faBoxesStacked } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import {
-  faBarcode,
-  faCog,
-  faEye,
-  faFileLines,
-  faPencilAlt,
-  faPlus,
-  faSave,
-  faTrash,
-  faUser,
-  faAddressBook
+    faAddressBook,
+    faBarcode,
+    faChartSimple,
+    faCog,
+    faEye,
+    faFileLines,
+    faPencilAlt,
+    faPlus,
+    faSave,
+    faTrash,
+    faUser,
+    faUsers
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
   faUser, 
+  faUsers,
   faCog, 
   faSave, 
   faTrash, 
@@ -26,7 +29,8 @@ library.add(
   faBoxesStacked,
   faBarcode,
   faFileLines,
-  faAddressBook
+  faAddressBook,
+  faChartSimple
 )
 
 export default function (app) {

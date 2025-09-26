@@ -42,7 +42,6 @@ class InvoiceActionService
                 'uploaded_by' => 1,
                 'status_payment' => 'pending',
             ];
-
             return Invoice::create($invoiceData);
         });
     }
