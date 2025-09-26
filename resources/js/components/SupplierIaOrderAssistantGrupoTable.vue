@@ -37,10 +37,16 @@ const headers = [
     title: "Análisis",
     key: "solicitar",
     sortable: true,
-    value: (item) =>
+    value: (item) => {
       item.solicitar != "" && item.solicitar != null
         ? parseFloat(item.solicitar).toFixed(2)
-        : 0,
+        : 0;
+    },
+  },
+  {
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
   },
 ];
 

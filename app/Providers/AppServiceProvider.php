@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\Api\SocialBenefitController;
@@ -28,6 +29,8 @@ use App\Services\CompanyServices;
 use App\Services\DoctorServices;
 use App\Services\LaboratoryServices;
 use App\Services\LotteryServices;
+use App\Services\ResignationServices;
+use App\Contracts\Resignation;
 use App\Contracts\ExchangeRate;
 use App\Contracts\ExpenseCategory;
 use App\Contracts\Expenses;
@@ -48,6 +51,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Services\AutoOrderServices;
 use App\Services\ExchangeRateServices;
 use App\Services\ExpenseCategoryServices;
+use App\Services\UserServices;
 use App\Services\ExpensesServices;
 use App\Services\OrderServices;
 use App\Services\ProductServices;
@@ -146,6 +150,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(RoleController::class)
             ->needs(Role::class)
             ->give(RoleServices::class);
+
+        $this->app->when(ResignationController::class)
+            ->needs(Resignation::class)
+            ->give(ResignationServices::class);
 
         $this->app->when(PayslipController::class)
             ->needs(Payslip::class)
