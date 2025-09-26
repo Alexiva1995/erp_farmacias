@@ -6,8 +6,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   
   const isAuthenticated = computed(() => !!user.value)
-  const isAdmin = computed(() => user.value?.is_admin ?? false)
-
+  const isAdmin = computed(() => user.value?.role_id == 1 ? true : false)
   async function fetchUser() {
     try {
       const response = await axios.get('/user')
