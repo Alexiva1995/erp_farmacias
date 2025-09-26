@@ -365,62 +365,60 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
 });
 
 
-    Route::prefix("supplier-laboratories")->group(function () {
-        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
-        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+Route::prefix("supplier-laboratories")->group(function () {
+    Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+    Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+});
+
+// Invoices
+Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('/{invoice}/details', 'getDetails')->name('details');
+    Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+    Route::put('/{invoice}/data', 'updateData')->name('updateData');
+    Route::post('/{invoice}/approve', 'approve')->name('approve');
+    Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+    Route::get('/{invoice}', 'show')->name('show');
+    Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
+    Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
+    Route::delete('/{invoice}', 'destroy')->name('destroy');
+    Route::put('/{invoice}', 'update')->name('update');
+    Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
+});
+
+// Asistente IA
+Route::prefix("suppliers-ia-order-assistant")->group(function () {
+    Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
+    Route::prefix("generate-order")->group(function () {
+        Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+        Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+        Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
     });
+});
 
-    // Invoices
-    Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::post('/', 'store')->name('store');
-        Route::get('/{invoice}/details', 'getDetails')->name('details');
-        Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
-        Route::put('/{invoice}/data', 'updateData')->name('updateData');
-        Route::post('/{invoice}/approve', 'approve')->name('approve');
-        Route::post('/{invoice}/reject', 'reject')->name('reject');
-        Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
-        Route::get('/{invoice}', 'show')->name('show');
-        Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
-        Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
-        Route::delete('/{invoice}', 'destroy')->name('destroy');
-        Route::put('/{invoice}', 'update')->name('update');
-        Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
-    });
-
-    // Asistente IA
-    Route::prefix("suppliers-ia-order-assistant")->group(function () {
-        Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
-        Route::prefix("generate-order")->group(function () {
-            Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-            Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
-            Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
-        });
-    });
-
-    Route::prefix("suppliers-ia-assistant-report")->group(function () {
-        Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
-        Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
-        Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
-        Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
-    });
+Route::prefix("suppliers-ia-assistant-report")->group(function () {
+    Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+    Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+    Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+    Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+});
 
 
-    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
-        Route::get('/value', 'getValue')->name('value');
-        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
-        Route::get('/', 'index')->name('index');
-        Route::post('/', 'store')->name('store');
-        Route::put('/{furniture}', 'update')->name('update');
-        Route::delete('/{furniture}', 'destroy')->name('delete');
-    });
+Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+    Route::get('/value', 'getValue')->name('value');
+    Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::put('/{furniture}', 'update')->name('update');
+    Route::delete('/{furniture}', 'destroy')->name('delete');
+});
 
-    Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
-        Route::get('/balance', 'getBalance')->name('balance');
-        Route::get('/', 'index')->name('index');
-        Route::post('/', 'store')->name('store');
-        Route::put('/{loan}', 'update')->name('update');
-        Route::delete('/{loan}', 'destroy')->name('delete');
-    });
-
+Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
+    Route::get('/balance', 'getBalance')->name('balance');
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::put('/{loan}', 'update')->name('update');
+    Route::delete('/{loan}', 'destroy')->name('delete');
 });
