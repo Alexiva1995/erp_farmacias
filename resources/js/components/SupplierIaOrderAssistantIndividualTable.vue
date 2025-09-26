@@ -43,6 +43,11 @@ const headers = [
         ? parseFloat(item.solicitar).toFixed(2)
         : 0,
   },
+  {
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
+  },
 ];
 </script>
 
