@@ -65,7 +65,7 @@ const emit = defineEmits([
         </VTooltip>
         <VTooltip text="Despedir empleado" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('fire-employee', item.id)">
+            <IconBtn v-bind="props" @click="emit('fire-employee', item)">
               <VIcon icon="tabler-cancel" />
             </IconBtn>
           </template>
