@@ -1,11 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
-
 use App\Http\Controllers\Api\EmployeeController;
-
 use App\Http\Controllers\Api\FurnitureController;
-
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -402,7 +399,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
     });
-  
+
+
     Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
         Route::get('/value', 'getValue')->name('value');
         Route::get('/depreciation', 'getDepreciation')->name('depreciation');
