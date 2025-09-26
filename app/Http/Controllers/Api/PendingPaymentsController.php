@@ -29,7 +29,7 @@ class PendingPaymentsController extends Controller
                 ->whereIn('status', ['loaded', 'to_order'])
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
-                        ->orWhere('status_payment', '!=', 'paid');
+                        ->orWhere('status_payment', '!=', 1);
                 })
                 ->orderBy('payment_date', 'asc');
 
@@ -46,24 +46,18 @@ class PendingPaymentsController extends Controller
                 $query->whereDate('payment_date', '<=', $request->end_date);
             }
 
+
+            // Filtro de facturas vencidas
+            if ($request->filled('show_overdue_only') && $request->boolean('show_overdue_only')) {
+                $query->where(function ($q) {
+                    $q->whereDate('payment_date', '<', Carbon::now())
+                        ->orWhereDate('exp_date', '<', Carbon::now());
+                });
+            } else {
+            }
+
             $invoices = $query->get();
 
-            // Log temporal para debugging
-            Log::info('Facturas encontradas en PendingPayments:', [
-                'total_facturas' => $invoices->count(),
-                'facturas' => $invoices->map(function ($invoice) {
-                    return [
-                        'id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'supplier_id' => $invoice->supplier_id,
-                        'supplier_name' => $invoice->supplier->name ?? 'N/A',
-                        'status' => $invoice->status,
-                        'payment_date' => $invoice->payment_date,
-                        'currency' => $invoice->currency,
-                        'total_amount' => $invoice->total_amount
-                    ];
-                })
-            ]);
 
             // Agrupar por proveedor y fecha de pago
             $groupedInvoices = $invoices->groupBy(function ($invoice) {
@@ -184,10 +178,36 @@ class PendingPaymentsController extends Controller
                 ];
             })->values();
 
+            // Calcular totales por moneda
+            $invoicesBs = $invoices->where('currency', 'Bs');
+            $invoicesUsd = $invoices->where('currency', 'USD');
+            $invoicesCop = $invoices->where('currency', 'COP');
+
+            $totalBs = $invoicesBs->sum('total_amount');
+            $totalUsd = $invoicesUsd->sum('total_amount');
+            $totalCop = $invoicesCop->sum('total_amount');
+            $totalUsdConverted = $invoices->sum('total_usd');
+
             return ApiResponse::success([
                 'pending_payments' => $groupedInvoices,
                 'total_groups' => $groupedInvoices->count(),
-                'total_amount' => $invoices->sum('total_usd') // Usar total_usd en lugar de total_amount
+                'total_suppliers' => $groupedInvoices->unique('supplier_id')->count(),
+                'total_amount' => $totalUsdConverted,
+                'totals_by_currency' => [
+                    'bs' => [
+                        'amount' => $totalBs,
+                        'count' => $invoicesBs->count()
+                    ],
+                    'usd' => [
+                        'amount' => $totalUsd,
+                        'count' => $invoicesUsd->count()
+                    ],
+                    'cop' => [
+                        'amount' => $totalCop,
+                        'count' => $invoicesCop->count()
+                    ],
+                    'usd_converted' => $totalUsdConverted
+                ]
             ], 'Facturas pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
             return ApiResponse::error('Error al obtener las facturas pendientes: ' . $e->getMessage(), 500);
@@ -206,7 +226,7 @@ class PendingPaymentsController extends Controller
                 ->whereNotNull('payment_date')
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
-                        ->orWhere('status_payment', '!=', 'paid');
+                        ->orWhere('status_payment', '!=', 1);
                 })
                 ->orderBy('payment_date', 'asc')
                 ->get();
@@ -263,36 +283,15 @@ class PendingPaymentsController extends Controller
         }
 
         try {
-            // Log de debug
-            Log::info('ProcessPayment - Datos recibidos:', [
-                'invoice_ids' => $request->invoice_ids,
-                'payment_currency' => $request->payment_currency,
-                'payment_amount' => $request->payment_amount,
-                'payment_date' => $request->payment_date,
-                'reference' => $request->reference,
-                'all_data' => $request->all()
-            ]);
 
             // 1. Verificar que las facturas no estén ya pagadas
             $invoices = Invoice::with(['supplier'])
                 ->whereIn('id', $request->invoice_ids)
                 ->get();
 
-            Log::info('ProcessPayment - Facturas encontradas:', [
-                'total_facturas' => $invoices->count(),
-                'facturas' => $invoices->map(function ($invoice) {
-                    return [
-                        'id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'status' => $invoice->status,
-                        'status_payment' => $invoice->status_payment,
-                        'supplier_name' => $invoice->supplier->name ?? 'N/A'
-                    ];
-                })
-            ]);
 
             foreach ($invoices as $invoice) {
-                if ($invoice->status_payment === 'paid') {
+                if ($invoice->status_payment === 1) {
                     return ApiResponse::error(
                         "La factura {$invoice->invoice_number} ya está pagada",
                         400
@@ -321,7 +320,7 @@ class PendingPaymentsController extends Controller
             // 3. Filtrar facturas válidas para pago
             $invoices = $invoices->filter(function ($invoice) {
                 return in_array($invoice->status, ['loaded', 'to_order']) &&
-                    (is_null($invoice->status_payment) || $invoice->status_payment !== 'paid');
+                    (is_null($invoice->status_payment) || $invoice->status_payment !== 1);
             });
 
             if ($invoices->isEmpty()) {
@@ -402,7 +401,7 @@ class PendingPaymentsController extends Controller
 
             // El campo status solo acepta: 'pending', 'loaded', 'to_order', 'ordered'
             // Usamos 'ordered' para facturas completamente pagadas
-            $newStatus = $paymentStatus === 'paid' ? 'ordered' : 'to_order';
+            $newStatus = $paymentStatus === 1 ? 'ordered' : 'to_order';
 
             Invoice::whereIn('id', $request->invoice_ids)->update([
                 'status' => $newStatus,
@@ -412,7 +411,7 @@ class PendingPaymentsController extends Controller
             ]);
 
             // 7. Crear expense
-            $this->createExpense($invoices, $payment, $amountUSD, $request->has_iva);
+            $this->createExpense($invoices, $payment, $amountUSD, false);
 
             DB::commit();
 
@@ -556,7 +555,7 @@ class PendingPaymentsController extends Controller
                 ->whereNotNull('payment_date')
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
-                        ->orWhere('status_payment', '!=', 'paid');
+                        ->orWhere('status_payment', '!=', 1);
                 });
 
             $totalPending = $baseQuery->count();
@@ -572,15 +571,28 @@ class PendingPaymentsController extends Controller
                 ->whereNotNull('payment_date')
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
-                        ->orWhere('status_payment', '!=', 'paid');
+                        ->orWhere('status_payment', '!=', 1);
                 })
                 ->select('supplier_id', DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
                 ->groupBy('supplier_id')
                 ->get();
 
+            // Calcular facturas vencidas
+            $overdueInvoices = Invoice::whereIn('status', ['loaded', 'to_order'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                        ->orWhere('status_payment', '!=', 1);
+                })
+                ->where(function ($q) {
+                    $q->whereDate('payment_date', '<', Carbon::now())
+                        ->orWhereDate('exp_date', '<', Carbon::now());
+                })
+                ->count();
+
             return ApiResponse::success([
                 'total_pending_invoices' => $totalPending,
                 'total_amount_pending' => $totalAmount,
+                'overdue_invoices' => $overdueInvoices,
                 'by_currency' => $byCurrency,
                 'by_supplier' => $bySupplier
             ], 'Estadísticas obtenidas exitosamente');
@@ -639,15 +651,6 @@ class PendingPaymentsController extends Controller
         // Calcular el total pagado incluyendo el pago actual
         $totalPaidUSD = $previousPaymentsUSD + $currentPaymentUSD;
 
-        // Log para debugging
-        Log::info('Determinando estado de pago:', [
-            'invoice_ids' => $invoiceIds,
-            'previous_payments_usd' => $previousPaymentsUSD,
-            'current_payment_usd' => $currentPaymentUSD,
-            'total_paid_usd' => $totalPaidUSD,
-            'total_amount_usd' => $totalAmountUSD,
-            'will_be_paid' => $totalPaidUSD >= $totalAmountUSD
-        ]);
 
         if ($totalPaidUSD >= $totalAmountUSD) {
             return 'paid';
@@ -683,20 +686,11 @@ class PendingPaymentsController extends Controller
         // Calcular el total pagado incluyendo el pago actual
         $totalPaidUSD = $previousPaymentsUSD + $currentPaymentUSD;
 
-        // Log para debugging
-        Log::info('Determinando estado de pago (corregido):', [
-            'invoice_ids' => $invoiceIds,
-            'previous_payments_usd' => $previousPaymentsUSD,
-            'current_payment_usd' => $currentPaymentUSD,
-            'total_paid_usd' => $totalPaidUSD,
-            'total_amount_usd' => $totalAmountUSD,
-            'will_be_paid' => $totalPaidUSD >= $totalAmountUSD
-        ]);
 
         if ($totalPaidUSD >= $totalAmountUSD) {
-            return 'paid';
+            return 1; // paid
         } else {
-            return 'partial';
+            return 0; // pending
         }
     }
 
@@ -721,7 +715,7 @@ class PendingPaymentsController extends Controller
             'user_id' => $payment->payment_by,
             'has_invoice' => true,
             'is_deductible' => true,
-            'iva' => $iva
+            'iva' => $iva ?? false
         ]);
     }
 
