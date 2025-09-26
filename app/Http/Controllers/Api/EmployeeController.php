@@ -97,4 +97,10 @@ class EmployeeController extends Controller
             return ApiResponse::error($e->getMessage());
         }
     }
+
+    public function reset2FA(Employee $employee)
+    {
+        $result = $this->employeeServices->reset2FA($employee);
+        return ApiResponse::success(['status' => $result]);
+    }
 }

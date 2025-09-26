@@ -22,6 +22,7 @@ const emit = defineEmits([
   "edit-employee",
   "delete-employee",
   "generate-resignation",
+  "reset-2fa",
 ]);
 </script>
 <template>
@@ -32,6 +33,7 @@ const emit = defineEmits([
       :items="props.employees"
       :items-length="props.total"
       :loading="loading"
+      :loading-text="'Cargando empleados...'"
       :page="props.page"
       @update:options="(options) => emit('update:options', options)"
     >
@@ -46,7 +48,7 @@ const emit = defineEmits([
         <VTooltip text="Ver empleado" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
-              <VIcon icon="tabler-eye" :href />
+              <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
         </VTooltip>
@@ -65,6 +67,13 @@ const emit = defineEmits([
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('fire-employee', item.id)">
               <VIcon icon="tabler-cancel" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Reiniciar autenticación" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('reset-2fa', item.id)">
+              <VIcon icon="tabler-auth-2fa" />
             </IconBtn>
           </template>
         </VTooltip>

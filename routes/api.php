@@ -248,6 +248,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+            Route::put('/{employee}/reset-2fa', [EmployeeController::class, 'reset2FA']);
         });
 
         Route::prefix('resignations')->group(function () {
@@ -271,7 +272,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
 
- // Rutas de Proveedores
+    // Rutas de Proveedores
 // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
@@ -404,7 +405,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
         });
-      
+
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);

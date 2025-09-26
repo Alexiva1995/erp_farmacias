@@ -21,4 +21,5 @@ interface Employee
   public function deleteEmployee(MEmployee $employee): bool;
   public function storeDocuments(MEmployee $employee, array $data): bool;
   public function downloadDocument(MEmployee $employee, string $file): Exception|StreamedResponse;
+  public function reset2FA(MEmployee $employee): bool;
 }

@@ -2,11 +2,13 @@
 import EmployeeVoucherFormDialog from "@/components/dialogs/EmployeeVoucherFormDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
 const router = useRouter();
+const { isAdmin } = useAuthStore();
 
 const loading = ref(false);
 const employee = ref({});
@@ -151,6 +153,10 @@ const handleEditEmployee = () => {
   showEditDialog.value = true;
 };
 
+const handleCloseEditDialog = () => {
+  showEditDialog.value = false;
+};
+
 const handleRefreshTable = async () => {
   fetchEmployee();
 };
@@ -213,7 +219,9 @@ watch(photo, (newFile, oldFile) => {
       v-model="showEditDialog"
       :roles="roles"
       :selectedEmployee="employee"
+      :clear-data-on-close="false"
       @refresh-table="handleRefreshTable"
+      @close="handleCloseEditDialog"
     />
 
     <VRow>
@@ -260,7 +268,7 @@ watch(photo, (newFile, oldFile) => {
                 {{ employee?.user?.role?.name }}
               </p>
             </div>
-            <div class="mb-2 d-flex justify-center ga-3">
+            <div v-if="!isAdmin" class="mb-2 d-flex justify-center ga-3">
               <VBtn @click="handleEditEmployee">
                 <VIcon icon="tabler-pencil" />
                 <span>Editar</span>
@@ -305,7 +313,7 @@ watch(photo, (newFile, oldFile) => {
           <VWindowItem value="documents">
             <VCard>
               <VCardText>
-                <VRow>
+                <VRow v-if="!isAdmin">
                   <VCol cols="12" sm="12" md="6">
                     <VFileInput
                       v-model="photo"
@@ -375,6 +383,49 @@ watch(photo, (newFile, oldFile) => {
                   >
                     <span>Guardar cambios</span>
                   </VBtn>
+                </VRow>
+                <VRow v-if="isAdmin">
+                  <VCol cols="12" sm="12" md="6">
+                    <h5 class="text-h5">Foto de perfil</h5>
+                    <VDivider class="pb-4" />
+                    <VImg
+                      v-if="Object.hasOwn(employee, 'photo')"
+                      :aspect-ratio="1"
+                      class="bg-surface elevation-10 mt-4 mx-auto"
+                      :src="'/storage/' + employee.photo"
+                      width="200"
+                      cover
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="12" md="6">
+                    <h5 class="text-h5">Documentos</h5>
+                    <VDivider class="pb-4" />
+                    <div class="d-flex flex-column">
+                      <VBtn
+                        class="mb-2"
+                        @click="handleDownloadFile('rif')"
+                        :disabled="!employee.rif"
+                      >
+                        <VIcon icon="tabler-download" class="me-2" />
+                        <span>Rif</span>
+                      </VBtn>
+                      <VBtn
+                        class="mb-2"
+                        @click="handleDownloadFile('residence_letter')"
+                        :disabled="!employee.residence_letter"
+                      >
+                        <VIcon icon="tabler-download" class="me-2" />
+                        <span> Carta de residencia consejo comunal </span>
+                      </VBtn>
+                      <VBtn
+                        @click="handleDownloadFile('cv')"
+                        :disabled="!employee.cv"
+                      >
+                        <VIcon icon="tabler-download" class="me-2" />
+                        <span>CV</span>
+                      </VBtn>
+                    </div>
+                  </VCol>
                 </VRow>
               </VCardText>
             </VCard>
