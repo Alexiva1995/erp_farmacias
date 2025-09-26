@@ -1,12 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
-
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ResignationController;
-
 use App\Http\Controllers\Api\FurnitureController;
-
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -26,11 +23,11 @@ use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
+use App\Http\Controllers\Api\SocialBenefitController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
-use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
@@ -248,6 +245,15 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+            Route::put('/{employee}/reset-2fa', [EmployeeController::class, 'reset2FA']);
+        });
+
+
+        Route::prefix('social-benefits')->group(function () {
+            Route::get('/employees', [SocialBenefitController::class, 'index']);
+            Route::post('/employees/{employee}/payment', [SocialBenefitController::class, 'payment']);
+            Route::get('/employees/{employee}/settlement-data', [SocialBenefitController::class, 'getSettlementData']);
+            Route::post('/employees/{employee}/fire', [SocialBenefitController::class, 'fire']);
         });
 
         Route::prefix('resignations')->group(function () {
@@ -265,13 +271,76 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
 
+    Route::prefix("expenses")->group(function () {
+        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create", [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+        });
+    });
+});
+
+Route::prefix("user")->group(function () {
+    Route::get("/", [UserController::class, "getAll"]);
+});
+
+
+// Rutas de Proveedores
+Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
+Route::prefix("suppliers")->group(function () {
+    Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+    Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
+    Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
+    Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);
+    Route::post("/{supplier}/laboratories", [SupplierController::class, "storeLaboratory"]);
+    Route::get("/{supplier}/laboratories", [SupplierController::class, "getLaboratoryLinks"]);
+    Route::get("/{supplier}/pending-invoices", [SupplierController::class, "getPendingInvoices"]);
+    Route::post("/{supplier}/discounts", [SupplierController::class, "storeDiscounts"]);
+    Route::get("/{supplier}/discounts", [SupplierController::class, "getDiscounts"]);
+    Route::get("/{supplier}/products", [SupplierController::class, "getSupplierProducts"]);
+    Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
+    Route::get("available-products", [SupplierController::class, "getProducts"]);
+    Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+    Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
+    Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
+    Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
+});
+// Ruta de fiscal
+Route::get("/history", [FiscalController::class, "index"]);
+Route::get("/history/export", [FiscalController::class, "export"]);
+
+// Finanzas
+Route::prefix("finances")->group(function () {
+    Route::prefix("profitability")->group(function () {
+        Route::get("/", [ProfitabilityController::class, "consultOne"]);
+        Route::post("/store", [ProfitabilityController::class, "store"]);
+        Route::post("/{id}", [ProfitabilityController::class, "edit"]);
+        Route::prefix("product")->group(function () {
+            Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
+            Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
+            Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
+        });
+    });
+    Route::prefix("exchange-rates")->group(function () {
+        Route::get("/", [ExchangeRateController::class, "consultAll"]);
+        Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
+        Route::post("/store", [ExchangeRateController::class, "store"]);
+        Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
+        Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+        Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
+    });
 
     Route::prefix("users")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });
 
 
- // Rutas de Proveedores
+    // Rutas de Proveedores
 // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
@@ -404,7 +473,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
         });
-      
+
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
