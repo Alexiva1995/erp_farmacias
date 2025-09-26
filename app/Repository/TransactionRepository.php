@@ -28,7 +28,9 @@ class TransactionRepository
       ->when(
         $detailed && $option,
         fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
-      );
+      )
+      ->orderByDesc('transaction_date')
+      ->orderByDesc('id');
 
     $previousTotal = 0.00;
 
@@ -56,8 +58,8 @@ class TransactionRepository
         'users.username as user_name',
         'categories.name as category_name',
       ])
-      ->orderBy('transactions.transaction_date', 'desc')
-      ->orderBy('transactions.id', 'asc')
+      ->orderByDesc('transactions.transaction_date')
+      ->orderByDesc('transactions.id')
       ->paginate($perPage);
 
     $openingBalances = ['USD' => 0, 'COP' => 0, 'BS' => 0];
