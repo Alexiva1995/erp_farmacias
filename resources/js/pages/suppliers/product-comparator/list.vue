@@ -5,17 +5,21 @@ import { onMounted, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
+const origins = ref([]);
 const laboratories = ref([]);
 const products = ref([]);
 const loadingSuppliers = ref(false);
 const loadingProducts = ref(false);
-const loadingLaboratories = ref(false);
 const quantityErrors = reactive({});
 
 const supplierOption = ref(null);
 const selectedSupplier = ref(null);
 const searchedSupplier = ref(null);
 const searchedLaboratory = ref(null);
+const selectedOrigin = ref(null);
+const filterSearchQuery = ref("");
+const stockStatusFilter = ref(null);
+const isStrictSearch = ref(false);
 
 const enableDiscounts = ref(false);
 
@@ -34,29 +38,8 @@ const productsPage = ref(1);
 const productsItemPerPage = ref(10);
 const productsTotal = ref(0);
 
-const fetchSuppliers = async () => {
-  try {
-    const { data } = await axios.get("/available-suppliers");
-    suppliers.value = data.data;
-  } catch (error) {
-    console.error("Hubo un error al obtener los proveedores:", error);
-    toast.error("Error al obtener los proveedores.");
-  } finally {
-    loadingSuppliers.value = false;
-  }
-};
-
-const fetchLaboratories = async () => {
-  try {
-    const { data } = await axios.get("/suppliers/available-laboratories");
-    laboratories.value = data;
-  } catch (error) {
-    console.error("Hubo un error al obtener los laboratorios:", error);
-    toast.error("Error al obtener los laboratorios.");
-  } finally {
-    loadingLaboratories.value = false;
-  }
-};
+const enableUsdAmountCol = ref(false);
+const enableDiscountCol = ref(false);
 
 const fetchProducts = async () => {
   const params = {
@@ -64,6 +47,12 @@ const fetchProducts = async () => {
     perPage: productsItemPerPage.value,
     supplierId: searchedSupplier.value,
     laboratoryId: searchedLaboratory.value,
+    q: filterSearchQuery.value,
+    originId: selectedOrigin.value,
+    isStrictSearch: isStrictSearch.value,
+    ...(stockStatusFilter.value !== null && {
+      hasStock: stockStatusFilter.value,
+    }),
   };
 
   Object.keys(params).forEach(
@@ -138,11 +127,28 @@ const stopPolling = () => {
   }
 };
 
+const fetchOptions = async () => {
+  try {
+    const [labResponse, originResponse, suppliersResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+      axios.get("/available-suppliers"),
+    ]);
+    laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
+    suppliers.value = suppliersResponse.data.data;
+  } catch (error) {
+    console.error("Hubo un error al obtener los datos para filtrar:", error);
+    toast.error("Hubo un error al obtener los datos para filtrar.");
+  } finally {
+    loadingSuppliers.value = false;
+  }
+};
+
 onMounted(() => {
-  fetchSuppliers();
+  fetchOptions();
   fetchSupplierConnections();
   fetchProducts();
-  fetchLaboratories();
 });
 
 let supplierDebounceTimer;
@@ -165,10 +171,19 @@ watch(
   { deep: true }
 );
 
+let debounceTimer;
 watch(
-  [searchedSupplier, searchedLaboratory],
+  [
+    searchedSupplier,
+    searchedLaboratory,
+    filterSearchQuery,
+    stockStatusFilter,
+    isStrictSearch,
+    selectedOrigin,
+  ],
   () => {
-    fetchProducts();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
   {
     deep: true,
@@ -222,6 +237,13 @@ const handleClearSuppliersFilters = () => {
 const handleClearProductsFilters = () => {
   searchedSupplier.value = null;
   searchedLaboratory.value = null;
+  filterSearchQuery.value = "";
+  stockStatusFilter.value = null;
+  selectedOrigin.value = null;
+  isStrictSearch.value = false;
+  enableDiscounts.value = false;
+  enableUsdAmountCol.value = false;
+  enableDiscountCol.value = false;
 };
 
 const handleAddItemToAutoOrder = async (product) => {
@@ -256,6 +278,11 @@ const handleShowImportProductsDialog = (supplier) => {
   isShowImportFileDialogActive.value = true;
 };
 
+const handleHideImportProductsDialog = () => {
+  supplierOption.value = {};
+  isShowImportFileDialogActive.value = false;
+};
+
 const handleDeleteSupplierProducts = async (supplier) => {
   try {
     const { data } = await axios.delete(
@@ -281,6 +308,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
     <ShowImportProductsFileDialog
       v-model="isShowImportFileDialogActive"
       :selectedSupplier="supplierOption"
+      @close-dialog="handleHideImportProductsDialog"
     />
 
     <VCard title="Listados" class="mb-6">
@@ -300,10 +328,17 @@ const handleDeleteSupplierProducts = async (supplier) => {
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
           v-model:enable-discounts="enableDiscounts"
+          v-model:enable-usd-amount-col="enableUsdAmountCol"
+          v-model:enable-discount-col="enableDiscountCol"
+          v-model:searchQuery="filterSearchQuery"
+          v-model:stockStatusFilter="stockStatusFilter"
+          v-model:selectedOrigin="selectedOrigin"
+          v-model:isStrictSearch="isStrictSearch"
           :suppliers="suppliers"
           :laboratories="laboratories"
           :selected-laboratory="searchedLaboratory"
           :selected-supplier="searchedSupplier"
+          :origins="origins"
           @clear="handleClearProductsFilters"
           @update:selectedLaboratory="handleSearchLaboratory"
           @update:selectedSupplier="handleSearchSupplier"
@@ -336,6 +371,8 @@ const handleDeleteSupplierProducts = async (supplier) => {
           :items-per-page="itemsPerPage"
           :page="productsPage"
           :quantity-errors="quantityErrors"
+          :enable-usd-amount-col="enableUsdAmountCol"
+          :enable-discount-col="enableDiscountCol"
           @update:options="updateProductsTableOptions"
           @send-product="handleAddItemToAutoOrder"
         />

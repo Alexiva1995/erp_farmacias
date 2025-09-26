@@ -54,6 +54,8 @@ class SupplierConnectionService
 
         // Facturas (si tiene ruta definida)
         $invoiceResults = [];
+        $seenInvoiceNumbers = [];
+
         if (!empty($connection->invoice_path)) {
             $files = ftp_nlist($ftp, $connection->invoice_path);
             $filter = $connection->invoice_structure['filter'] ?? null;
@@ -73,8 +75,11 @@ class SupplierConnectionService
 
                 if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $invoiceContent = file_get_contents($tempInvoice);
-                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection);
-                    $invoiceResults[] = $parsed;
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
+
+                    if (!empty($parsed) && !empty($parsed['header'])) {
+                        $invoiceResults[] = $parsed;                        
+                    }
                 }
             }
         }
@@ -157,8 +162,6 @@ class SupplierConnectionService
 
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
-        \Log::info("Data structure: ");
-        \Log::info(explode(";", $lines[0]));
         foreach ($lines as $line) {
             $cols = explode(";", $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
@@ -167,13 +170,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $usdCurrency,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -188,6 +185,7 @@ class SupplierConnectionService
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
+            $missingBarcode = false;
 
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
@@ -197,6 +195,10 @@ class SupplierConnectionService
                     case "string":
                         $entry[$meta["target"]] = $value;
                         break;
+
+                    case "integer":
+                        $entry[$meta["target"]] = $value;
+                        break;    
 
                     case "decimal":
                         if (is_numeric($value)) {
@@ -213,7 +215,7 @@ class SupplierConnectionService
                                 break;
                             } else {
                                 // Precio en bs calcula con la tasa  usd del dia
-                                if ($meta["currency"] === "usd") {
+                                if (isset($meta["currency"]) && $meta["currency"] === "usd") {
                                     $entry[$meta["target"]] = number_format(
                                         (float) ($newValue * $usdCurrency->rate),
                                         2,
@@ -264,10 +266,31 @@ class SupplierConnectionService
 
                 if ($meta["target"] === "barcode_match" && $value !== "") {
                     $product = $products->get($value);
-                    $entry["laboratory"] = $product?->laboratory?->name;
-                    $entry["product_id"] = $product?->id;
-                }
+
+                    if ($product) {
+                        $entry["laboratory"] = $product?->laboratory?->name;
+                        $entry["product_id"] = $product?->id;
+                    } else {
+                        $missingBarcode = true; // lo marcamos para crear luego
+                    }
+                } 
             }
+
+            if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
+                $newProduct = Product::create([
+                    'barcode' => $entry['barcode_match'],
+                    'name' => $entry['name'] ?? 'Producto sin nombre',
+                    'unit_cost' => $entry['unit_cost'] ?? 0,
+                    'sale_price' => $entry['unit_cost'] ?? 0,
+                    'stock' => $entry['quantity'] ?? 0,
+                    'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
+                    'sales_average' => $entry['sales_average'] ?? 0
+                ]);
+
+                $entry['product_id'] = $newProduct->id;
+
+                $products->put($missingBarcode, $newProduct); // actualiza el cache local
+            } 
 
             return $entry;
         });
@@ -275,8 +298,7 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection): array
-    {
+    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
@@ -302,46 +324,99 @@ class SupplierConnectionService
 
         $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
 
-        foreach ($lines as $line) {
-            $cols = explode($separator, $line);
-            $tipo = trim($cols[0] ?? "");
+        $mode = $structure['mode'] ?? 'grouped';
 
-            if ($tipo === "E") {
+        if ($mode === 'flat') {
+            $invoiceGroups = [];
+            
+            foreach ($lines as $line) {
+                $cols = explode($separator, $line);
+
+                // Encabezado desde la misma línea
                 $header = [];
-
-                foreach ($structure["header"] as $index => $meta) {
-                    $raw = $cols[$index] ?? "";
-                    $value = $this->castValue($raw, $meta);
-                    $header[$meta["field"]] = $value;
+                foreach ($structure['header'] as $index => $meta) {
+                    $raw = $cols[$index] ?? '';
+                    $header[$meta['field']] = $this->castValue($raw, $meta);
                 }
 
-                $invoices = [
-                    "header" => $header,
-                    "lines" => $bufferLines,
-                ];
+                $invoiceNumber = $header['invoice_number'] ?? null;
+                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers)) continue;
 
-                $bufferLines = []; // limpiar para el próximo bloque
+                // Línea de producto
+                $lineData = [];
+                foreach ($structure['lines'] as $index => $meta) {
+                    $raw = $cols[$index] ?? '';
+                    $lineData[$meta['field']] = $this->castValue($raw, $meta);
+                }
+
+                $barcode = $lineData['barcode'] ?? null;
+                $lineData['product_id'] = $products[$barcode]->id ?? null;
+
+                // Agrupar por número de factura
+                if (!isset($invoiceGroups[$invoiceNumber])) {
+                    $invoiceGroups[$invoiceNumber] = [
+                        'header' => $header,
+                        'lines' => [],
+                    ];
+                }
+
+                $invoiceGroups[$invoiceNumber]['lines'][] = $lineData;
             }
 
-            if ($tipo === "R") {
-                $lineData = [];
+            foreach ($invoiceGroups as $number => $invoice) {
+                $invoices = $invoice;
+                $seenInvoiceNumbers[] = $number;
+            }
+        } else {
+            foreach ($lines as $line) {
+                $cols = explode($separator, $line);
+                $tipo = trim($cols[0] ?? "");
 
-                foreach ($structure["lines"] as $index => $meta) {
-                    $raw = $cols[$index] ?? "";
-                    $value = $this->castValue($raw, $meta);
-                    $lineData[$meta["field"]] = $value;
+                if ($tipo === "E") {
+                    $header = [];
+
+                    foreach ($structure["header"] as $index => $meta) {
+                        $raw = $cols[$index] ?? "";
+                        $value = $this->castValue($raw, $meta);
+                        $header[$meta["field"]] = $value;
+                    }
+
+                    $invoiceNumber = $header['invoice_number'] ?? null;
+                    if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
+                        $bufferLines = []; // limpiar igual
+                        continue; // ya existe, saltar
+                    }
+
+                    $invoices = [
+                        "header" => $header,
+                        "lines" => $bufferLines,
+                    ];
+
+                    $seenInvoiceNumbers[] = $invoiceNumber;
+                    $bufferLines = []; // limpiar para el próximo bloque
                 }
 
-                $barcode = $lineData["barcode"] ?? null;
-                $lineData["product_id"] = $products[$barcode]->id ?? null;
+                if ($tipo === "R") {
+                    $lineData = [];
 
-                $unitCost = floatval($lineData["unit_cost"] ?? 0);
-                $quantity = intval($lineData["quantity"] ?? 0);
-                $lineData["total_cost"] = $unitCost * $quantity;
+                    foreach ($structure["lines"] as $index => $meta) {
+                        $raw = $cols[$index] ?? "";
+                        $value = $this->castValue($raw, $meta);
+                        $lineData[$meta["field"]] = $value;
+                    }
 
-                $bufferLines[] = $lineData;
+                    $barcode = $lineData["barcode"] ?? null;
+                    $lineData["product_id"] = $products[$barcode]->id ?? null;
+
+                    $unitCost = floatval($lineData["unit_cost"] ?? 0);
+                    $quantity = intval($lineData["quantity"] ?? 0);
+                    $lineData["total_cost"] = $unitCost * $quantity;
+
+                    $bufferLines[] = $lineData;
+                }
             }
         }
+        
         return $invoices;
     }
 
@@ -358,7 +433,8 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }

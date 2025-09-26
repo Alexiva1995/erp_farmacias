@@ -26,6 +26,7 @@ class AddOrderItemRequest extends FormRequest
             'quantity' =>  ['required', 'integer', 'min:1'],
             'price_at_product' => ['required', 'numeric', 'min:0'],
             'currency_at_order' => ['required', 'string', 'in:USD,BS,COP'],
+            'price_usd_unit' => ['required', 'numeric', 'min:0'],
         ];
     }
 

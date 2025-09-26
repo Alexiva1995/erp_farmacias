@@ -11,12 +11,12 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "open-payment-modal", "reload", "view-order-modal"]);
+const emit = defineEmits(["update:options", "open-payment-modal", "reload", "view-order-modal","print-order"]);
 
 const headers = [
   { title: "Nombre", key: "client_full_name", sortable: true },
   { title: "Monto", key: "total_pending_amount", sortable: true },
-  { title: "Añadir", key: "action", sortable: false },
+  { title: "Acciones", key: "action", sortable: false },
 ];
 
 const authStore = useAuthStore();
@@ -41,16 +41,16 @@ const authStore = useAuthStore();
 
       <template v-slot:item.action="{ item }">
         <div class="d-flex align-center gap-2">
-          <VBtn
-            color="primary"
-            variant="outlined"
-            @click="emit('open-payment-modal', item)"
-          >
-            Pagar
-          </VBtn>
+          <IconBtn @click="emit('open-payment-modal', item)" :disabled="item.is_paid">
+            <VIcon icon="tabler-wallet"
+          /></IconBtn>
           <IconBtn @click="emit('view-order-modal', item)">
             <VIcon icon="tabler-eye"
           /></IconBtn>
+            <IconBtn
+            @click="emit('print-order', item)">
+            <VIcon icon="tabler-printer" />
+          </IconBtn>
         </div>
       </template>
     </VDataTableServer>
