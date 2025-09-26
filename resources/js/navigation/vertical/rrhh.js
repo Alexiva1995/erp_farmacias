@@ -17,6 +17,10 @@ export default [
         title: 'Renuncias',
         to: 'rrhh-resignations',
       },
+      {
+        title: 'Prestaciones Sociales',
+        to: 'rrhh-social-benefits',
+      },
     ],
   },
 ]

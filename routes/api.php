@@ -1,12 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
-
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ResignationController;
 
 use App\Http\Controllers\Api\FurnitureController;
-
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -26,11 +24,11 @@ use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
+use App\Http\Controllers\Api\SocialBenefitController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
-use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
