@@ -81,4 +81,9 @@ class EmployeeServices implements Employee
 
     return $this->employeeRepository->downloadDocument($path);
   }
+
+  public function reset2FA(MEmployee $employee): bool
+  {
+    return $this->employeeRepository->reset2FA($employee);
+  }
 }
