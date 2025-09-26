@@ -97,4 +97,11 @@ class EmployeeController extends Controller
             return ApiResponse::error($e->getMessage());
         }
     }
+
+    public function payments(Request $request)
+    {
+        $data = $request->all();
+        $results = $this->employeeServices->payments($data);
+        return ApiResponse::success($results);
+    }
 }

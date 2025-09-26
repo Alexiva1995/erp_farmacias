@@ -15,4 +15,9 @@ class Employee extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function settlement()
+    {
+        return $this->hasOne(EmployeeSettlement::class);
+    }
 }

@@ -11,9 +11,6 @@ const totalPayslips = ref(0);
 const itemsPerPage = ref(10);
 const payslips = ref([]);
 
-const showDialog = ref(false);
-const selectedPayslip = ref({});
-
 const fetchPayslips = async () => {
   loading.value = true;
   try {
@@ -100,11 +97,6 @@ const handleDownloadPdf = async (id, type) => {
 
 <template>
   <div>
-    <ShowPayslipDialog
-      :model-value="showDialog"
-      :selected-payslip="selectedPayslip"
-    />
-
     <PayslipTable
       :page="page"
       :items-per-page="itemsPerPage"
