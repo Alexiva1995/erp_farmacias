@@ -76,4 +76,9 @@ class CashClosureController extends Controller
 
     }
     
+        public function  getSummarysales()
+    { 
+         $summaryData = $this->cashClosureActionService->getMonthlySalesSummaryData();
+        return response()->json($summaryData);
+    }
 }

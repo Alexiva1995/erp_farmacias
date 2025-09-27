@@ -39,7 +39,7 @@ const summaryData = ref({
 
 const fetchSummaryData = async () => {
     try {
-        const response = await axios.get('/api/sales/summary'); 
+        const response = await axios.get('/finances/cash-closure/sales/summary'); 
         summaryData.value = response.data;
     } catch (error) {
         console.error("Error al obtener el resumen de ventas:", error);

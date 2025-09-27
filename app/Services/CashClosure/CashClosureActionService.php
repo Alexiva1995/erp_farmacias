@@ -136,4 +136,45 @@ class CashClosureActionService
             throw new \Exception('Error al realizar el cierre de caja diario: ' . $e->getMessage());
         }
     }
+
+    public function getMonthlySalesSummaryData(): array {
+    
+        $currentMonthStart = Carbon::now()->startOfMonth();
+        $currentMonthEnd = Carbon::now();
+        $lastMonthStart = Carbon::now()->subMonthNoOverflow()->startOfMonth();
+        $lastMonthEnd = Carbon::now()->subMonthNoOverflow()->endOfMonth();
+
+        $currentDays = $currentMonthStart->diffInDays($currentMonthEnd) + 1;
+        $currentDays = ($currentDays === 0) ? 1 : $currentDays;
+
+         $currentMonthTotal = CashClosing::where('status', CashClosing::CLOSED)
+            ->whereBetween('closing_date', [$currentMonthStart, $currentMonthEnd])
+            ->sum('total_sales');
+
+        $currentAverage = $currentMonthTotal / $currentDays;
+
+        $lastDays = $lastMonthStart->diffInDays($lastMonthEnd) + 1;
+        $lastDays = ($lastDays === 0) ? 1 : $lastDays;
+
+        $lastMonthTotal = CashClosing::where('status', CashClosing::CLOSED)
+            ->whereBetween('closing_date', [$lastMonthStart, $lastMonthEnd])
+            ->sum('total_sales');
+
+        $lastAverage = $lastMonthTotal / $lastDays;
+
+        $percentageChange = 0;
+        $isPositive = true;
+        
+        if ($lastAverage > 0) {
+            $percentageChange = (($currentAverage - $lastAverage) / $lastAverage) * 100;
+            $isPositive = $percentageChange >= 0;
+        }
+
+         return [
+            'current_month_average' => number_format($currentAverage, 2, '.', ','),
+            'last_month_average' => number_format($lastAverage, 2, '.', ','),
+            'percentage_change' => number_format(abs($percentageChange), 1),
+            'is_positive' => $isPositive,
+        ];
+    }
 }
