@@ -245,6 +245,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+            Route::put('/{employee}/reset-2fa', [EmployeeController::class, 'reset2FA']);
         });
 
         Route::prefix('social-benefits')->group(function () {
@@ -286,6 +287,28 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });
 
+    // Rutas de Proveedores
+// Ruta de fiscal
+    Route::get("/history", [FiscalController::class, "index"]);
+    Route::get("/history/export", [FiscalController::class, "export"]);
+
+    // Invoice
+    Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{invoice}/details', 'getDetails')->name('details');
+        Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
+        Route::put('/{invoice}/data', 'updateData')->name('updateData');
+        Route::post('/{invoice}/approve', 'approve')->name('approve');
+        Route::post('/{invoice}/reject', 'reject')->name('reject');
+        Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+        Route::get('/{invoice}', 'show')->name('show');
+        Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
+        Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
+        Route::delete('/{invoice}', 'destroy')->name('destroy');
+        Route::put('/{invoice}', 'update')->name('update');
+        Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
+    });
 
     // Rutas de Proveedores
     Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);

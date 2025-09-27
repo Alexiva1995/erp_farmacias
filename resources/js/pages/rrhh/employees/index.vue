@@ -109,6 +109,20 @@ const handleResignationGenerated = (resignationData) => {
   // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
 };
 
+const handleCloseEmployeeDialog = () => {
+  showDialog.value = false;
+  selectedEmployee.value = null;
+};
+
+const handleReset2FA = async (id) => {
+  try {
+    await axios.put(`/rrhh/employees/${id}/reset-2fa`);
+    toast.success("Autenticación de dos factores reiniciada exitosamente");
+  } catch (error) {
+    toast.error("No se pudo reiniciar la autenticación de dos factores");
+  }
+};
+
 let debounceTimer;
 watch(
   [page, itemsPerPage, search, showActiveEmployees],
@@ -140,6 +154,7 @@ watch(
       :roles="roles"
       :selectedEmployee="selectedEmployee"
       @refresh-table="handleRefreshTable"
+      @close="handleCloseEmployeeDialog"
     />
 
     <ResignationFormDialog
@@ -153,10 +168,12 @@ watch(
       :items-per-page="itemsPerPage"
       :total="totalEmployees"
       :employees="employees"
+      :loading="loading"
       @fire-employee="handleShowFireEmployeeDialog"
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
       @generate-resignation="handleGenerateResignation"
+      @reset-2fa="handleReset2FA"
     />
   </div>
 </template>
