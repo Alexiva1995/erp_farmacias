@@ -9,6 +9,7 @@ class DailyCashClosure extends Model
     protected $table = 'daily_closures';
 
     protected $fillable = [
+        'total_sales',
         'total_usd',
         'total_cop',
         'total_bs',

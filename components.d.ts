@@ -36,6 +36,7 @@ declare module 'vue' {
     CardStatisticsHorizontal: typeof import('./resources/js/@core/components/cards/CardStatisticsHorizontal.vue')['default']
     CardStatisticsVertical: typeof import('./resources/js/@core/components/cards/CardStatisticsVertical.vue')['default']
     CardStatisticsVerticalSimple: typeof import('./resources/js/@core/components/CardStatisticsVerticalSimple.vue')['default']
+    CashAverage: typeof import('./resources/js/components/cards/CashAverage.vue')['default']
     CashCloseFilters: typeof import('./resources/js/components/CashCloseFilters.vue')['default']
     CashCloseTable: typeof import('./resources/js/components/CashCloseTable.vue')['default']
     CashClosureTicke: typeof import('./resources/js/components/CashClosureTicke.vue')['default']

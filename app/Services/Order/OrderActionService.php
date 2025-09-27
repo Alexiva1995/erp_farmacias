@@ -458,6 +458,8 @@ class OrderActionService
             $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
             $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
             $current_cash->bs_delivered = $current_cash->bs_cash;
+            
+            $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit;
             $current_cash->update();
 
 

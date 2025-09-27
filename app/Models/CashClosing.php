@@ -20,6 +20,7 @@ class CashClosing extends Model
         'seller_id',
         'closing_date',
         'status',
+        'total_sales',
         'total_usd',
         'total_cop',
         'total_bs',

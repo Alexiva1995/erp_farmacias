@@ -91,18 +91,17 @@ class CashClosureActionService
     public function closeDailyCashClosure(User $seller)
     {
         $cashClosings = CashClosing::where('seller_id', $seller->id)
-            ->where('status', CashClosing::OPEN)
-            ->with('orders.details.product')
             ->whereDate('closing_date', Carbon::today())
             ->get();
 
         if ($cashClosings->isEmpty()) {
-           return;
+            return;
         }
         DB::beginTransaction();
         try {
 
-             $dailyClosure = DailyCashClosure::create([
+            $dailyClosure = DailyCashClosure::create([
+                'total_sales'  => $cashClosings->sum('total_sales'),
                 'total_usd'     => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
                 'total_cop'     => $cashClosings->sum('total_cop'),
                 'total_bs'      => $cashClosings->sum('total_bs'),
@@ -113,11 +112,16 @@ class CashClosureActionService
                 'bs_delivered'  => $cashClosings->sum('bs_delivered'),
             ]);
 
-             foreach ($cashClosings as $cashClosing) {
-                $cashClosing->update([
-                    'status' => CashClosing::CLOSED,
-                    'daily_closure_id' => $dailyClosure->id,
-                ]);
+            foreach ($cashClosings as $cashClosing) {
+
+                if ($cashClosing->status === CashClosing::OPEN) {
+                    $cashClosing->update([
+                        'status' => CashClosing::CLOSED,
+                        'daily_closure_id' => $dailyClosure->id,
+                    ]);
+                } else if (empty($cashClosing->daily_closure_id)) {
+                    $cashClosing->update(['daily_closure_id' => $dailyClosure->id]);
+                }
             }
 
             CashClosing::create([
