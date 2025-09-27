@@ -9,18 +9,22 @@ const props = defineProps({
 });
 
 const headers = [
-  { title: "ID", key: "client_full_name", sortable: true },
-  { title: "Fecha", key: "total_pending_amount", sortable: true },
-  { title: "USD", key: "action", sortable: false },
-  { title: "COP", key: "total_pending_amount", sortable: true },
-  { title: "BS", key: "total_pending_amount", sortable: true },
-  { title: "E. USD", key: "action", sortable: false },
-  { title: "E. COP", key: "action", sortable: false },
-  { title: "Bs PM", key: "action", sortable: false },
-  { title: "Bs Tarjeta", key: "action", sortable: false },
+  { title: "ID", key: "id", sortable: true },
+  { title: "Fecha", key: "date", sortable: true },
+  { title: "USD", key: "total_usd", sortable: true },
+  { title: "COP", key: "total_cop", sortable: true },
+  { title: "BS", key: "total_bs", sortable: true },
+  { title: "E. USD", key: "usd_delivered", sortable: true },
+  { title: "E. COP", key: "cop_delivered", sortable: true },
+  { title: "Bs PM", key: "bs_mobile", sortable: true },
+  { title: "Bs Tarjeta", key: "bs_card", sortable: true },
   { title: "ACCIONES", key: "action", sortable: false },
 ];
 
+const date = (order) => {
+  const time = new Date(order);
+  return time.toISOString().split("T")[0];
+};
 </script>
 <template>
  <VCard title="Cierre de caja diarios">
@@ -32,6 +36,9 @@ const headers = [
       :items-length="props.totalDailyCash"
       :loading="props.loading"
     >
+       <template #item.date="{ item }">
+        <span>{{ date(item.created_at) }}</span>
+      </template>
     </VDataTableServer>
  </VCard>
 </template>

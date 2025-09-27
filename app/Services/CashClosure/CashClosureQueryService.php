@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\Relation; 
 use App\Models\Order;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\DailyCashClosure;
 
 class CashClosureQueryService
 {
@@ -91,6 +92,37 @@ class CashClosureQueryService
             $request->input('orderBy', 'desc')
         );
         return $ordersQuery;
+    }
+
+
+     private function getBaseQueryDaily(): Builder
+    {
+        return DailyCashClosure::query()->with('cashClosings');
+    }
+
+    private function applySortingDaily(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
+          if (empty($sortBy)) {
+            return $query->orderBy('id', 'desc');
+        }
+
+        switch ($sortBy) {
+            case 'total_sales':
+                return $query->orderBy('total_sales', $orderBy); 
+        }
+
+        return $query;
+    }
+
+     public function getFilteredQueryDaily(Request $request): Builder
+    {
+         $query = $this->getBaseQueryDaily();
+          $query = $this->applySortingDaily(
+            $query, 
+            $request->input('sortBy'), 
+            $request->input('orderBy', 'desc')
+        );
+        return $query;
     }
 
 }

@@ -2,17 +2,14 @@
 import { defineProps, computed } from 'vue';
 
 const props = defineProps({
-  // Promedio actual (va en el <h3>)
   averageAmount: {
     type: [String, Number],
     required: true,
   },
-  // Promedio del mes anterior (va en el <span>)
   lastMonthAverage: { 
     type: [String, Number],
     required: true,
   },
-  // Variación porcentual (usada solo para la lógica de la flecha)
   percentageChange: {
     type: [String, Number],
     default: 0
@@ -47,10 +44,10 @@ const changeIcon = computed(() => props.isPositive ? 'tabler-chevron-up' : 'tabl
               aria-hidden="true"
             ></i>
             <span :class="['font-weight-medium', changeClass]">
-              {{ props.lastMonthAverage }}
+              {{ props.lastMonthAverage }} USD
             </span>
           </div>
-          <h3 class="text-h3">{{ props.averageAmount }}</h3>
+          <h3 class="text-h3">{{ props.averageAmount }} USD</h3>
         </div>
       </div>
     </VCardText>

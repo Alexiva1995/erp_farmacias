@@ -81,4 +81,17 @@ class CashClosureController extends Controller
          $summaryData = $this->cashClosureActionService->getMonthlySalesSummaryData();
         return response()->json($summaryData);
     }
+
+        public function  getDailyCashTable(Request $request)
+    { 
+        $query = $this->cashClosureQueryService->getFilteredQueryDaily($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
 }

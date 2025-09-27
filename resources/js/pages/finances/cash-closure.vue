@@ -46,9 +46,61 @@ const fetchSummaryData = async () => {
     }
 };
 
+const fetchDailyCashData = async () => {
+loadingDailyCash.value = true;
+ const params = {
+    page: pageDailyCash.value,
+    itemsPerPage: itemsPerPageDailyCash.value,
+    sortBy: sortByDailyCash.value,
+    orderBy: orderByDailyCash.value,
+  };
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+    try {
+        const response = await axios.get('/finances/cash-closure/dailyCash',{params}); 
+        dailyCash.value = response.data.data;
+        totalDailyCash.value = response.data.total;
+     } catch (error) {
+      console.error("Hubo un error al obtener los cierres diarios:", error);
+      toast.error("Error al obtener los cierres diarios.");
+    } finally {
+      loadingDailyCash.value = false;
+    }
+};
+
 onMounted(() => {
     fetchSummaryData();
+    fetchDailyCashData();
 });
+
+let debounceTimer;
+watch(
+  [
+    pageDailyCash,
+    itemsPerPageDailyCash,
+    sortByDailyCash,
+    orderByDailyCash,
+  ],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetchDailyCashData();
+    }, 300);
+  },
+  { deep: true }
+);
+const updateTableOptionsDailyCash = (options) => {
+  pageDailyCash.value = options.page;
+  itemsPerPageDailyCash.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByDailyCash.value = options.sortBy[0].key;
+    orderByDailyCash.value = options.sortBy[0].order;
+  } else {
+    sortByDailyCash.value = null;
+    orderByDailyCash.value = null;
+  }
+};
 </script>
 <template>
   <CashAverage
@@ -72,6 +124,7 @@ onMounted(() => {
     :total-dailyCash="totalDailyCash"
     :items-per-page="itemsPerPageDailyCash"
     :page="pageDailyCash"
+    @update:options="updateTableOptionsDailyCash"
   />
   <div class="mb-5"></div>
   <MonthlyCashClosingTable

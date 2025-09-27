@@ -21,7 +21,7 @@ class DailyCashClosure extends Model
     ];
 
     public function cashClosings()
-    {
-        return $this->hasMany(CashClosing::class);
-    }
+{
+    return $this->hasMany(CashClosing::class, 'daily_closure_id'); 
+}
 }

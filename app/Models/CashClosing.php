@@ -53,6 +53,7 @@ class CashClosing extends Model
         'usd_cash_payment_credit',
         'usd_paypal_payment_credit',
         'usd_binance_payment_credit',
+        'daily_closure_id',
     ];
 
     protected $appends = ['total_bs_in_usd', 'total_cop_in_usd'];
@@ -72,11 +73,10 @@ class CashClosing extends Model
         return $this->hasMany(Order::class, 'cash_closing_id');
     }
 
-    public function dailyClosure()
+      public function dailyClosure()
     {
         return $this->belongsTo(DailyCashClosure::class);
     }
-
 
     protected function getServiceExchangeRate(string $currencyCode): float
     {
