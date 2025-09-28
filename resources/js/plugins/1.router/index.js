@@ -40,8 +40,18 @@ const router = createRouter({
     }
 
     const pagesWithAuth = addAuthMeta(pages)
-
-    return [...pagesWithAuth.map(route => recursiveLayouts(route))]
+    
+    // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
+    const manualRoutes = [
+      {
+        path: '/rrhh/resignations',
+        name: 'rrhh-resignations',
+        component: () => import('@/pages/rrhh/resignations/index.vue'),
+        meta: { requiresAuth: true }
+      }
+    ]
+    
+    return [...pagesWithAuth.map(route => recursiveLayouts(route)), ...manualRoutes.map(route => recursiveLayouts(route))]
   },
 })
 

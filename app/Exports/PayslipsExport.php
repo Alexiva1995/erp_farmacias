@@ -43,17 +43,18 @@ class PayslipsExport implements FromQuery, WithHeadings, WithMapping, ShouldAuto
 
     public function map($record): array
     {
-        $this->total += $record->total;
+        $total = round($record->base_salary_voucher + $record->food_voucher, 2);
+        $this->total += $total;
 
         return [
             $record->id,
             $record->name,
             $record->last_name,
             $record->identification,
-            $record->first_salary,
-            $record->last_salary,
-            $record->voucher,
-            $record->total
+            $record->salary_to_pay_voucher,
+            $record->salary_to_pay_voucher,
+            $record->food_voucher,
+            $total
         ];
     }
 

@@ -1,11 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\DonationController;
-
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\ResignationController;
 
 use App\Http\Controllers\Api\FurnitureController;
-
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
@@ -25,11 +24,11 @@ use App\Http\Controllers\Api\ProfitabilityController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderDetailController;
+use App\Http\Controllers\Api\SocialBenefitController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
-use App\Http\Controllers\Api\LaboratoryController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\SupplierController;
@@ -247,6 +246,15 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
             Route::put('/{employee}', [EmployeeController::class, 'update']);
             Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
+            Route::put('/{employee}/reset-2fa', [EmployeeController::class, 'reset2FA']);
+        });
+
+        Route::prefix('resignations')->group(function () {
+            Route::post('/generate', [ResignationController::class, 'generateResignation']);
+            Route::get('/', [ResignationController::class, 'listResignations']);
+            Route::get('/stats', [ResignationController::class, 'getStats']);
+            Route::put('/toggle-employee-status', [ResignationController::class, 'toggleEmployeeStatus']);
+            Route::get('/{id}/download-pdf', [ResignationController::class, 'downloadResignationPdf']);
         });
     });
 
@@ -262,7 +270,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
 
- // Rutas de Proveedores
+    // Rutas de Proveedores
 // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
@@ -383,7 +391,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -395,7 +403,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
         });
-      
+
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
