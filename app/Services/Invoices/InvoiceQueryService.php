@@ -134,7 +134,6 @@ class InvoiceQueryService
         if ($invoice->details()->exists()) {
 
             return $invoice->details()->with(['product.laboratory'])->get();
-
         } else {
 
             $configuredProducts = SuppliersConfigProduct::query()
@@ -175,7 +174,7 @@ class InvoiceQueryService
     public function calculateSupplierDebts(): float
     {
         $totalDebts = Invoice::where(function ($query) {
-            $query->where('status_payment', 'pending')
+            $query->where('status_payment', 0)
                 ->orWhereNull('status_payment');
         })
             ->where('total_usd', '>', 0)
