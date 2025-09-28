@@ -177,6 +177,9 @@ watch(
     itemsPerPageSellerCash,
     sortBySellerCash,
     orderBySellerCash,
+    startDateFilter,
+    endDateFilter,
+    filterSearchQuery
   ],
   () => {
     clearTimeout(debounceTimerSellerCashData);
@@ -220,6 +223,18 @@ const updateTableOptionsSellerCash = (options) => {
     orderBySellerCash.value = null;
   }
 };
+
+const handleClearFilters = () => {
+  filterSearchQuery.value = "";
+  sortBySellerCash.value = undefined;
+  orderBySellerCash.value = undefined;
+  startDateFilter.value = null;
+  endDateFilter.value = null;
+};
+
+watch([filterSearchQuery], () => {
+  pageSellerCash.value = 1;
+});
 
 </script>
 <template>
