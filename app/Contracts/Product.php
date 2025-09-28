@@ -25,5 +25,8 @@ interface Product
     public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator;
     public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection;
     public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport;
-    public function calcularAOProducts(ModelsProduct $productos): ModelsProduct;
+    public function calcularAOProduct(ModelsProduct $producto): ModelsProduct;
+    public function calcularAOProducts(Collection $productos): Collection;
+    public function removerProductosConPedidosAutomaticos(Collection $productos): Collection;
+    public function actualizarElSolicitadoConElAO(Collection $productos): Collection;
 }

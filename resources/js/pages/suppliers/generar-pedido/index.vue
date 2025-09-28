@@ -129,7 +129,7 @@ function seleccionarProductosParaElDetalle(){
 function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
-    productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => producto.product.id!=productUnique.product.id && producto.supplier.id!=productUnique.supplier.id)
+    productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => !(producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id))
 
   }
   return productosOportunidadUnica
@@ -191,12 +191,12 @@ const LISTA_PORVEEDORES_TOTAL= computed(() => {
 
 async function confirmarCompra(){
   const result = await Swal.fire({
-    title: '¿Estás seguro que desea realizar esta compra?',
-    text: "",
+    title: '¿Estás seguro?',
+    text: "Esta compra no se podra revertir",
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Confirmar',
-    cancelButtonText: 'Cancelar',
+    cancelButtonText: 'No, ¡Cancelar!',
     buttonsStyling: false,
     customClass: {
       cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2',
