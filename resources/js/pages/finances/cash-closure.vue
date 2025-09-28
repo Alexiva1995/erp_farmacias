@@ -69,12 +69,36 @@ loadingDailyCash.value = true;
     }
 };
 
+const fetchMonthlyCashData = async () => {
+loadingMonthlyCash.value = true;
+ const params = {
+    page: pageMonthlyCash.value,
+    itemsPerPage: itemsPerPageMonthlyCash.value,
+    sortBy: sortByMonthlyCash.value,
+    orderBy: orderByMonthlyCash.value,
+  };
+    Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+  try {
+    const response = await axios.get('/finances/cash-closure/monthlyCash',{params}); 
+    monthlyCash.value = response.data.data;
+    totalMonthlyCash.value = response.data.total;
+  } catch (error) {
+      console.error("Hubo un error al obtener los cierres mensuales:", error);
+      toast.error("Error al obtener los cierres mensuales.");
+    } finally {
+      loadingMonthlyCash.value = false;
+    }
+};
+
 onMounted(() => {
     fetchSummaryData();
     fetchDailyCashData();
+    fetchMonthlyCashData();
 });
 
-let debounceTimer;
+let debounceTimerDaily;
 watch(
   [
     pageDailyCash,
@@ -83,13 +107,31 @@ watch(
     orderByDailyCash,
   ],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
+    clearTimeout(debounceTimerDaily);
+    debounceTimerDaily = setTimeout(() => {
       fetchDailyCashData();
     }, 300);
   },
   { deep: true }
 );
+
+let debounceTimerMonthly;
+watch(
+  [
+    pageMonthlyCash,
+    itemsPerPageMonthlyCash,
+    sortByMonthlyCash,
+    orderByMonthlyCash,
+  ],
+  () => {
+    clearTimeout(debounceTimerMonthly);
+    debounceTimerMonthly = setTimeout(() => {
+      fetchMonthlyCashData();
+    }, 300);
+  },
+  { deep: true }
+);
+
 const updateTableOptionsDailyCash = (options) => {
   pageDailyCash.value = options.page;
   itemsPerPageDailyCash.value = options.itemsPerPage;
@@ -99,6 +141,17 @@ const updateTableOptionsDailyCash = (options) => {
   } else {
     sortByDailyCash.value = null;
     orderByDailyCash.value = null;
+  }
+};
+const updateTableOptionsMonthlyCash = (options) => {
+  pageMonthlyCash.value = options.page;
+  itemsPerPageMonthlyCash.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByMonthlyCash.value = options.sortBy[0].key;
+    orderByMonthlyCash.value = options.sortBy[0].order;
+  } else {
+    sortByMonthlyCash.value = null;
+    orderByMonthlyCash.value = null;
   }
 };
 </script>
@@ -133,5 +186,6 @@ const updateTableOptionsDailyCash = (options) => {
     :total-monthlyCash="totalMonthlyCash"
     :items-per-page="itemsPerPageMonthlyCash"
     :page="pageMonthlyCash"
+    @update:options="updateTableOptionsMonthlyCash"
   />
 </template>

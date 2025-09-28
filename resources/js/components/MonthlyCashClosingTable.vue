@@ -9,11 +9,11 @@ const props = defineProps({
 });
 
 const headers = [
-  { title: "Fecha", key: "total_pending_amount", sortable: true },
-  { title: "USD", key: "action", sortable: false },
-  { title: "COP", key: "total_pending_amount", sortable: true },
-  { title: "BS", key: "total_pending_amount", sortable: true },
-  { title: "promedio de venta", key: "action", sortable: false },
+  { title: "Fecha", key: "closing_date", sortable: true },
+  { title: "USD", key: "amount_usd", sortable: true },
+  { title: "COP", key: "amount_cop", sortable: true },
+  { title: "BS", key: "amount_bs", sortable: true },
+  { title: "promedio de venta", key: "daily_average", sortable: true },
   { title: "Acción", key: "action", sortable: false },
 ];
 

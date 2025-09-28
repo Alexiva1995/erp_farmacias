@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\DailyCashClosure;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 
 class CashClosureQueryService
 {
@@ -125,4 +128,80 @@ class CashClosureQueryService
         return $query;
     }
 
+
+     private function getBaseQueryMonthly(): Builder
+    {
+        return DailyCashClosure::query();
+    }
+
+     private function applySortingMonthly(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
+        if (empty($sortBy)) {
+             return $query->orderByDesc('year')->orderByDesc('month');
+        }
+
+        switch ($sortBy) {
+             case 'total_sales':
+                 return $query->orderBy('total_sales_month', $orderBy); 
+             case 'period':
+                 return $query->orderBy('year', $orderBy)->orderBy('month', $orderBy);
+        }
+
+        return $query;
+    
+    }    
+     public function getFilteredQueryMonthly(Request $request): Collection 
+    {
+        $query = $this->getBaseQueryMonthly();
+
+         $query->select(
+            DB::raw('YEAR(created_at) as year'),
+            DB::raw('MONTH(created_at) as month'),
+            DB::raw('COUNT(id) as days_closed'),
+            DB::raw('SUM(total_sales) as total_sales_month'),
+            DB::raw('SUM(total_usd) as amount_usd_month'),
+            DB::raw('SUM(total_bs) as amount_bs_month'),
+            DB::raw('SUM(total_cop) as amount_cop_month')
+        )
+        ->groupBy('year', 'month');
+
+         $query = $this->applySortingMonthly(
+            $query, 
+            $request->input('sortBy'), 
+            $request->input('orderBy', 'desc')
+        );
+
+        $summaries = $query->get();
+        $data = new Collection();
+        foreach ($summaries as $summary) {
+
+            $endDate = Carbon::create($summary->year, $summary->month)->endOfMonth();
+
+            //$monthName = Carbon::create($summary->year, $summary->month, 1)->monthName;
+            $monthName = $endDate->monthName;
+            $totalAmountRaw = $summary->amount_usd_month + $summary->amount_bs_month + $summary->amount_cop_month;
+            $daysClosed = $summary->days_closed;
+
+            $dailyAverageRaw = ($daysClosed > 0) ? ($summary->total_sales_month / $daysClosed) : 0;
+
+            $object = new \stdClass();
+            $object->closing_date = $endDate->format('Y-m-d');
+
+            $object->created_at = $endDate->format('Y-m-d'); 
+            $object->period = ucfirst($monthName) . ' ' . $summary->year;
+            
+            $object->amount_usd = number_format($summary->amount_usd_month, 2, ",", ".");
+            $object->amount_bs = number_format($summary->amount_bs_month, 2, ",", ".");
+            $object->amount_cop = number_format($summary->amount_cop_month, 0, ",", ".");
+            $object->total_amount_raw = $totalAmountRaw;
+            $object->total_amount = number_format($totalAmountRaw, 2, ",", ".");
+            
+            $object->days_closed = $daysClosed;
+            $object->daily_average_raw = $dailyAverageRaw;
+            $object->daily_average = number_format($dailyAverageRaw, 2, ",", ".");
+
+            $data->push($object);
+        }
+        return $data;
+    }
 }
