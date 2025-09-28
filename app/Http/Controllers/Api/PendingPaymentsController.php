@@ -251,7 +251,8 @@ class PendingPaymentsController extends Controller
                 'payment_date' => 'required|date',
                 'reference' => 'nullable|string|max:100',
                 'photo_url' => 'nullable|string',
-                'notes' => 'nullable|string|max:500'
+                'notes' => 'nullable|string|max:500',
+                'has_iva' => 'nullable|boolean',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('ProcessPayment - Validation Error:', [
@@ -411,7 +412,7 @@ class PendingPaymentsController extends Controller
             ]);
 
             // 7. Crear expense
-            $this->createExpense($invoices, $payment, $amountUSD);
+            $this->createExpense($invoices, $payment, $amountUSD, $request->has_iva);
 
             DB::commit();
 
@@ -702,7 +703,7 @@ class PendingPaymentsController extends Controller
     /**
      * Crear registro en expenses
      */
-    private function createExpense($invoices, $payment, $amountUSD): void
+    private function createExpense($invoices, $payment, $amountUSD, $iva): void
     {
         // Crear o obtener categoría
         $category = ExpenseCategory::firstOrCreate([
@@ -715,11 +716,12 @@ class PendingPaymentsController extends Controller
             'category_id' => $category->id,
             'amount' => $payment->amount,
             'amount_usd' => $amountUSD,
-            'currency' => $payment->payment_method, // Ya está normalizada
+            'currency' => $payment->payment_method,
             'expense_date' => $payment->payment_date,
             'user_id' => $payment->payment_by,
             'has_invoice' => true,
             'is_deductible' => true,
+            'iva' => $iva
         ]);
     }
 

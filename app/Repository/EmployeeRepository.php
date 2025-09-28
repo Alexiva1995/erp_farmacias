@@ -20,7 +20,7 @@ class EmployeeRepository
   {
     $search = $data['search'] ?? '';
     $perPage = $data['perPage'] ?? 10;
-    $active = filter_var($data['active'], FILTER_VALIDATE_BOOLEAN);
+    $active = filter_var($data['active'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
     return Employee::query()
       ->select([
@@ -57,6 +57,17 @@ class EmployeeRepository
       "email" => $email,
       'is_active' => true,
       'password_hash' => Hash::make($password),
+    ]);
+
+    $concept = SalaryConcept::create([
+      'name' => 'Bono de Alimentación',
+      'type' => 'salary',
+      'frequency' => 'monthly'
+    ]);
+
+    $user->salaries()->create([
+      'amount' => 50,
+      'salary_concept_id' => $concept->id
     ]);
 
     unset($role);
@@ -188,5 +199,11 @@ class EmployeeRepository
     return Storage::disk('public')->download($path, null, [
       'Content-Type' => 'application/pdf'
     ]);
+  }
+
+  public function reset2FA(Employee $employee): bool
+  {
+    $employee->user->update(['token_login' => null]);
+    return true;
   }
 }

@@ -442,9 +442,3 @@ class SupplierQueryService
         return $supplier->connections()->first();
     }
 }
-
-
-
-
-
-

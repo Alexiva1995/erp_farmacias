@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\ProductLots;
+namespace App\Services\Lots;
 
 use App\Models\ProductLot;
 use Illuminate\Database\Eloquent\Builder;
