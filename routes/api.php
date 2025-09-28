@@ -397,6 +397,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/sales/summary', [CashClosureController::class, 'getSummarysales']);
             Route::get('/dailyCash', [CashClosureController::class, 'getDailyCashTable']);
             Route::get('/monthlyCash', [CashClosureController::class, 'getMonthlyCashTable']);
+            Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
         });
       
         Route::prefix("expenses")->group(function () {

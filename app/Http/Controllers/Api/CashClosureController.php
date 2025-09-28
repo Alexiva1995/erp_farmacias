@@ -98,30 +98,32 @@ class CashClosureController extends Controller
     {
         $query = $this->cashClosureQueryService->getFilteredQueryMonthly($request);
         $perPage = $request->input('itemsPerPage', 10);
-
-        // 2. Definir parámetros de paginación
         $perPage = $request->input('itemsPerPage', 10);
         $page = $request->input('page', 1);
-
-        // Calcular el desplazamiento (offset)
         $offset = ($page - 1) * $perPage;
-
-        // Obtener los ítems para la página actual
         $itemsForCurrentPage = $query->slice($offset, $perPage)->values();
-
-        // 3. Crear el LengthAwarePaginator
         $paginatedResult = new LengthAwarePaginator(
-            $itemsForCurrentPage, // ítems de la página
-            $query->count(),  // total de ítems
-            $perPage,             // ítems por página
-            $page,                // número de página actual
+            $itemsForCurrentPage, 
+            $query->count(),
+            $perPage,           
+            $page,        
             ['path' => $request->url(), 'query' => $request->query()]
         );
-
-        // 4. Devolver la respuesta en el formato esperado
         return response()->json([
             'data' => $paginatedResult->items(),
             'total' => $paginatedResult->total()
         ]);
+    }
+    public function  getSellerCashTable(Request $request)
+    {   
+        $query = $this->cashClosureQueryService->getFilteredQuerySellerCash($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 }

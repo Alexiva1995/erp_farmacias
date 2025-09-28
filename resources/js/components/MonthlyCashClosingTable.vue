@@ -17,6 +17,12 @@ const headers = [
   { title: "Acción", key: "action", sortable: false },
 ];
 
+const emit = defineEmits(['update:options']);
+
+const handleUpdateOptions = (options) => {
+  emit('update:options', options);
+};
+
 </script>
 <template>
  <VCard title="Cierre de caja mensual">
@@ -27,6 +33,7 @@ const headers = [
       :items="props.monthlyCash"
       :items-length="props.totalMonthlyCash"
       :loading="props.loading"
+      @update:options="handleUpdateOptions"
     >
     </VDataTableServer>
  </VCard>

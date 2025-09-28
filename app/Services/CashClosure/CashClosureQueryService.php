@@ -204,4 +204,74 @@ class CashClosureQueryService
         }
         return $data;
     }
+
+
+     private function getBaseQuerySellerCash(): Builder
+    {
+        return CashClosing::query()->with('orders.details.product','seller');
+    }
+
+    private function applyFilters(Builder $query, array $filters): Builder
+    {
+
+        if (!empty($filters['q'])) {
+            $searchTerm = "%{$filters['q']}%";
+
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
+                    $sellerQuery->where('username', 'like', $searchTerm);
+                });
+            });
+        }
+
+        if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
+            $startDate = !empty($filters['start_date']) ? Carbon::parse($filters['start_date'])->startOfDay() : null;
+            $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
+
+            if ($startDate && $endDate) {
+                $query->whereBetween('closing_date', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $query->where('closing_date', '>=', $startDate);
+            } elseif ($endDate) {
+                $query->where('closing_date', '<=', $endDate);
+            }
+        }
+
+        return $query;
+    }
+
+      private function applySortingSellerCash(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
+        if (empty($sortBy)) {
+            return $query->orderBy('id', 'desc');
+        }
+
+        switch ($sortBy) {
+            case 'total_sales':
+                return $query->orderBy('total_sales', $orderBy);
+            case 'total_usd':
+                return $query->orderBy('total_usd', $orderBy);
+            case 'total_cop':
+                return $query->orderBy('total_cop', $orderBy);
+            case 'total_bs':
+                return $query->orderBy('total_bs', $orderBy);
+            case 'status':
+                return $query->orderBy('status', $orderBy);
+        }
+
+        return $query;
+    }
+
+     public function getFilteredQuerySellerCash(Request $request): Builder
+    {
+        $query = $this->getBaseQuerySellerCash();
+        $filters = [
+            'q' => $request->q,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+        ];
+        $this->applyFilters($query, $filters);
+        $this->applySortingSellerCash($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+        return $query;
+    }
 }

@@ -25,6 +25,12 @@ const date = (order) => {
   const time = new Date(order);
   return time.toISOString().split("T")[0];
 };
+
+const emit = defineEmits(['update:options']);
+const handleUpdateOptions = (options) => {
+  emit('update:options', options);
+};
+
 </script>
 <template>
  <VCard title="Cierre de caja diarios">
@@ -35,6 +41,7 @@ const date = (order) => {
       :items="props.dailyCash"
       :items-length="props.totalDailyCash"
       :loading="props.loading"
+      @update:options="handleUpdateOptions"
     >
        <template #item.date="{ item }">
         <span>{{ date(item.created_at) }}</span>

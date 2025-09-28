@@ -195,6 +195,7 @@ declare module 'vue' {
     SectionAutoOrderIa: typeof import('./resources/js/components/SectionAutoOrderIa.vue')['default']
     SectionDivider: typeof import('./resources/js/components/SectionDivider.vue')['default']
     SellerBoxTable: typeof import('./resources/js/components/SellerBoxTable.vue')['default']
+    SellerCashFilters: typeof import('./resources/js/components/SellerCashFilters.vue')['default']
     ShareProjectDialog: typeof import('./resources/js/components/dialogs/ShareProjectDialog.vue')['default']
     Shortcuts: typeof import('./resources/js/@core/components/Shortcuts.vue')['default']
     ShowImportProductsFileDialog: typeof import('./resources/js/components/dialogs/ShowImportProductsFileDialog.vue')['default']
