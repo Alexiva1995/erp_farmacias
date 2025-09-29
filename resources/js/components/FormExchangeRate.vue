@@ -77,7 +77,7 @@ const updateBCVDollar = async () => {
 
                 
                 <VTextField
-                  id="doliar"
+                  id="dollar"
                   v-model="props.dollar"
                   placeholder="$"
                   persistent-placeholder
@@ -98,15 +98,23 @@ const updateBCVDollar = async () => {
 
             <VRow no-gutters>
 
+              <VCol cols="6" class="mb-1" style="padding-top:.1em">
+                <label class="text-sm ml-2">Bolivares</label>
+              </VCol>
+
+              <VCol cols="6" class="mb-1">
+                <label class="text-sm ml-2">COP <VChip :color="dateColorPesos">{{ dateUpdatePesos }}</VChip></label>
+              </VCol>
+
               <VCol cols="6">
                 
-                <label class="mb-1 text-sm">Bolivares</label>
+                
                 <VTextField
                   id="bolivares"
                   v-model="props.bolivares"
                   :placeholder="props.dollar"
                   persistent-placeholder
-                  class="mb-2 mt-1"
+                  class="mb-2 mr-1"
                 />
                 <!--VBtn
                   color="secondary"
@@ -118,21 +126,19 @@ const updateBCVDollar = async () => {
                 </VBtn-->
 
               </VCol>
-
                 
               <VCol cols="6">
 
 
-                <label class="mb-1 text-sm">COP <VChip :color="dateColorPesos">{{ dateUpdatePesos }}</VChip></label>
+                
                 <VTextField
                   id="pesos"
                   v-model="pesos"
                   :placeholder="props.pesos"
                   persistent-placeholder
-                  class="mb-2"
+                  class="mb-2 ml-1"
                 />
                 
-
               </VCol>
 
               <VCol cols="12">
