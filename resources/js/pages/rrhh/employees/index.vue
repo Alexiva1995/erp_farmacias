@@ -109,7 +109,6 @@ const handleResignationGenerated = (resignationData) => {
   // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
 };
 
-
 const handleCloseEmployeeDialog = () => {
   showDialog.value = false;
   selectedEmployee.value = null;
@@ -123,8 +122,6 @@ const handleReset2FA = async (id) => {
     toast.error("No se pudo reiniciar la autenticación de dos factores");
   }
 };
-
-onMounted(() => Promise.all([fetchEmployees(), fetchRoles()]));
 
 let debounceTimer;
 watch(
