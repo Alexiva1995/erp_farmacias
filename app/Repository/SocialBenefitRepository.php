@@ -194,6 +194,7 @@ class SocialBenefitRepository
       'total_deductions' => $totalDeductions,
       'total_deductions_usd' => $totalDeductionsUsd,
       'final_usd' => $finalUsd,
+      'resignation_date' => $employee->resignation?->effective_date,
     ];
   }
 

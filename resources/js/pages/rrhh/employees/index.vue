@@ -87,6 +87,17 @@ const handleDeleteEmployee = async (employee) => {
   }
 };
 
+const fetchCurrency = async () => {
+  try {
+    const { data } = await axios.get("finances/exchange-rates/consultOneBCV");
+    currency.value = data.rate;
+  } catch (error) {
+    toast.error("No se pudo obtener la tasa bcv del dia");
+  }
+};
+
+onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
+
 const handleGenerateResignation = (employee) => {
   selectedEmployeeForResignation.value = employee;
   showResignationDialog.value = true;
@@ -120,8 +131,6 @@ const fetchCurrency = async () => {
     toast.error("No se pudo obtener la tasa bcv del dia");
   }
 };
-
-onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
 let debounceTimer;
 watch(
