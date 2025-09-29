@@ -55,4 +55,13 @@ class Employee extends Model
         return $this->belongsToMany(Product::class, 'employee_product')
             ->withTimestamps();
     }
+    public function settlement()
+    {
+        return $this->hasOne(EmployeeSettlement::class);
+    }
+
+    public function resignation()
+    {
+        return $this->hasOne(Resignation::class);
+    }
 }
