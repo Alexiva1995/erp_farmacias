@@ -98,7 +98,7 @@ const updateBCVDollar = async () => {
 
             <VRow no-gutters>
 
-              <VCol cols="6" style="padding: .5em;">
+              <VCol cols="6">
                 
                 <label class="mb-1 text-sm">Bolivares</label>
                 <VTextField
@@ -108,14 +108,14 @@ const updateBCVDollar = async () => {
                   persistent-placeholder
                   class="mb-2 mt-1"
                 />
-                <VBtn
+                <!--VBtn
                   color="secondary"
                   variant="tonal"
                   type="reset"
                   class="me-4 w-100"
                 >
                   cancelar
-                </VBtn>
+                </VBtn-->
 
               </VCol>
 
@@ -131,6 +131,11 @@ const updateBCVDollar = async () => {
                   persistent-placeholder
                   class="mb-2"
                 />
+                
+
+              </VCol>
+
+              <VCol cols="12">
                 <VBtn
                   type="button"
                   @click="sudmitPesos"
@@ -138,10 +143,7 @@ const updateBCVDollar = async () => {
                 >
                   Establecer
                 </VBtn>
-
               </VCol>
-
-
             </VRow>
           
         </VCardText>
