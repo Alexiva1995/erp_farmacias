@@ -109,6 +109,5 @@ class EmployeeController extends Controller
         $data = $request->all();
         $results = $this->employeeServices->payments($data);
         return ApiResponse::success($results);
-
     }
 }

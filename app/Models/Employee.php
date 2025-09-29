@@ -20,7 +20,7 @@ class Employee extends Model
     {
         return $this->hasOne(EmployeeSettlement::class);
     }
-
+  
     public function resignation()
     {
         return $this->hasOne(Resignation::class);

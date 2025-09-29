@@ -85,7 +85,7 @@ const handleDownloadExcel = async (id) => {
 
 const handleDownloadPdf = async (id, type) => {
   try {
-    const { data } = await axios.get(`/finances/payslips/${id}/data`);
+    const { data } = await axios.get(`/finances/payslips/${id}/data/${type}`);
 
     pdfPayslipsGenerator(data.data, type);
     toast.success("Se ha descargado la nómina exitosamente");
