@@ -158,6 +158,7 @@ class CashClosureQueryService
             DB::raw('YEAR(created_at) as year'),
             DB::raw('MONTH(created_at) as month'),
             DB::raw('COUNT(id) as days_closed'),
+            DB::raw('GROUP_CONCAT(id) as daily_closure_ids'),
             DB::raw('SUM(total_sales) as total_sales_month'),
             DB::raw('SUM(total_usd) as amount_usd_month'),
             DB::raw('SUM(total_bs) as amount_bs_month'),
@@ -183,6 +184,7 @@ class CashClosureQueryService
             $daysClosed = $summary->days_closed;
 
             $dailyAverageRaw = ($daysClosed > 0) ? ($summary->total_sales_month / $daysClosed) : 0;
+            $dailyClosureIds = array_map('intval', explode(',', $summary->daily_closure_ids));
 
             $object = new \stdClass();
             $object->closing_date = $endDate->format('Y-m-d');
@@ -199,6 +201,8 @@ class CashClosureQueryService
             $object->days_closed = $daysClosed;
             $object->daily_average_raw = $dailyAverageRaw;
             $object->daily_average = number_format($dailyAverageRaw, 2, ",", ".");
+
+            $object->daily_closure_ids = $dailyClosureIds;
 
             $data->push($object);
         }
@@ -235,6 +239,10 @@ class CashClosureQueryService
             } elseif ($endDate) {
                 $query->where('closing_date', '<=', $endDate);
             }
+        } else {
+            $todayStart = Carbon::today()->startOfDay();
+            $todayEnd = Carbon::today()->endOfDay();
+            $query->whereBetween('closing_date', [$todayStart, $todayEnd]);
         }
 
         return $query;

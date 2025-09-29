@@ -18,7 +18,7 @@ const headers = [
   { title: "E. COP", key: "cop_delivered", sortable: true },
   { title: "Bs PM", key: "bs_mobile", sortable: true },
   { title: "Bs Tarjeta", key: "bs_card", sortable: true },
-  { title: "ACCIONES", key: "action", sortable: false },
+  { title: "ACCIONES", key: "actions", sortable: false },
 ];
 
 const date = (order) => {
@@ -46,6 +46,16 @@ const handleUpdateOptions = (options) => {
        <template #item.date="{ item }">
         <span>{{ date(item.created_at) }}</span>
       </template>
+
+      <template #item.actions="{ item }">
+        <div class="d-flex align-center gap-2">
+          <IconBtn
+            @click="emit('print-cash', item)">
+            <VIcon icon="tabler-eye" />
+          </IconBtn>
+        </div>
+      </template>
+
     </VDataTableServer>
  </VCard>
 </template>

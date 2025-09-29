@@ -6,6 +6,7 @@ import CashAverage from "@/components/cards/CashAverage.vue";
 import axios from "@/plugins/axios";
 import { ref, onMounted } from 'vue';
 import SellerCashFilters from "@/components/SellerCashFilters.vue";
+import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -32,6 +33,11 @@ const pageMonthlyCash = ref(1);
 const itemsPerPageMonthlyCash = ref(10);
 const sortByMonthlyCash = ref();
 const orderByMonthlyCash = ref();
+
+const viewModal = ref(false);
+const monthlyCashData = ref(null);
+
+const originalMonthlyIds = ref([]);
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -236,6 +242,30 @@ watch([filterSearchQuery], () => {
   pageSellerCash.value = 1;
 });
 
+
+const viewMonthlyCash = async (cash) => {
+try {
+    console.log(cash.daily_closure_ids);
+    console.log('hola');
+    originalMonthlyIds.value = cash.daily_closure_ids;
+     const params = {
+      closingMonthlyIds: cash.daily_closure_ids
+     };
+    const response = await axios.get('/finances/cash-closure/monthlyCashclosing',{params});
+    monthlyCashData.value =  response.data.data
+    viewModal.value = true;
+   
+  } catch (error) {
+    console.error("Error al obtener los detalles del cierre:", error);
+    toast.error("Error al obtener los detalles del cierre.");
+  }
+}
+
+const handleCloseViewModal = () => {
+  viewModal.value = false;
+};
+
+
 </script>
 <template>
   <CashAverage
@@ -280,5 +310,14 @@ watch([filterSearchQuery], () => {
     :items-per-page="itemsPerPageMonthlyCash"
     :page="pageMonthlyCash"
     @update:options="updateTableOptionsMonthlyCash"
+    @view-cash="viewMonthlyCash"
   />
+
+   <MonthlyCashModal
+      v-model:isDialogVisible="viewModal"
+      :monthlyCash-data="monthlyCashData"
+      :original-ids="originalMonthlyIds"
+      @close="handleCloseViewModal"
+    />
+
 </template>

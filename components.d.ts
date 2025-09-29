@@ -123,6 +123,8 @@ declare module 'vue' {
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
     LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
     MonthlyCashClosingTable: typeof import('./resources/js/components/MonthlyCashClosingTable.vue')['default']
+    MonthlyCashModal: typeof import('./resources/js/components/dialogs/MonthlyCashModal.vue')['default']
+    MonthlyCashTicket: typeof import('./resources/js/components/MonthlyCashTicket.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     NavegationIaAutoOrder: typeof import('./resources/js/components/NavegationIaAutoOrder.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']

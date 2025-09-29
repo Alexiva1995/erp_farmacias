@@ -14,10 +14,10 @@ const headers = [
   { title: "COP", key: "amount_cop", sortable: true },
   { title: "BS", key: "amount_bs", sortable: true },
   { title: "promedio de venta", key: "daily_average", sortable: true },
-  { title: "Acción", key: "action", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false },
 ];
 
-const emit = defineEmits(['update:options']);
+const emit = defineEmits(['update:options','view-cash']);
 
 const handleUpdateOptions = (options) => {
   emit('update:options', options);
@@ -35,6 +35,18 @@ const handleUpdateOptions = (options) => {
       :loading="props.loading"
       @update:options="handleUpdateOptions"
     >
+      <template #item.actions="{ item }">
+        <div class="d-flex align-center gap-2">
+          <IconBtn
+            @click="emit('view-cash', item)">
+            <VIcon icon="tabler-eye" />
+          </IconBtn>
+                    <IconBtn
+            @click="emit('download-cash', item)">
+            <VIcon icon="tabler-download" />
+          </IconBtn>
+        </div>
+      </template>
     </VDataTableServer>
  </VCard>
 </template>

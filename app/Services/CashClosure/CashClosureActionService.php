@@ -137,8 +137,9 @@ class CashClosureActionService
         }
     }
 
-    public function getMonthlySalesSummaryData(): array {
-    
+    public function getMonthlySalesSummaryData(): array
+    {
+
         $currentMonthStart = Carbon::now()->startOfMonth();
         $currentMonthEnd = Carbon::now();
         $lastMonthStart = Carbon::now()->subMonthNoOverflow()->startOfMonth();
@@ -147,7 +148,7 @@ class CashClosureActionService
         $currentDays = $currentMonthStart->diffInDays($currentMonthEnd) + 1;
         $currentDays = ($currentDays === 0) ? 1 : $currentDays;
 
-         $currentMonthTotal = CashClosing::where('status', CashClosing::CLOSED)
+        $currentMonthTotal = CashClosing::where('status', CashClosing::CLOSED)
             ->whereBetween('closing_date', [$currentMonthStart, $currentMonthEnd])
             ->sum('total_sales');
 
@@ -164,17 +165,58 @@ class CashClosureActionService
 
         $percentageChange = 0;
         $isPositive = true;
-        
+
         if ($lastAverage > 0) {
             $percentageChange = (($currentAverage - $lastAverage) / $lastAverage) * 100;
             $isPositive = $percentageChange >= 0;
         }
 
-         return [
+        return [
             'current_month_average' => number_format($currentAverage, 2, '.', ','),
             'last_month_average' => number_format($lastAverage, 2, '.', ','),
             'percentage_change' => number_format(abs($percentageChange), 1),
             'is_positive' => $isPositive,
         ];
+    }
+
+    public function getCashClosingsForMonthlySummary(array $dailyClosureIds): Collection
+    {
+        if (empty($dailyClosureIds)) {
+            return collect();
+        }
+
+        $sellerSummary = CashClosing::query()
+            ->whereIn('daily_closure_id', $dailyClosureIds)
+            ->join('users', 'users.id', '=', 'cash_closing.seller_id')
+            ->select(
+                'cash_closing.seller_id',
+                'users.username',
+                DB::raw('COUNT(cash_closing.id) as cash_closures_count'),
+                DB::raw('SUM(total_usd) as total_usd_seller'),
+                DB::raw('SUM(total_cop) as total_cop_seller'),
+                DB::raw('SUM(total_bs) as total_bs_seller'),
+                DB::raw('SUM(total_sales) as total_sales_seller')
+            )
+            ->groupBy('cash_closing.seller_id', 'users.username')
+            ->orderByDesc('total_sales_seller')
+            ->get();
+
+        /*$cashClosings = CashClosing::whereIn('daily_closure_id', $dailyClosureIds)
+                                   ->with('seller') 
+                                   ->orderBy('id', 'asc') 
+                                   ->get();*/
+        return $sellerSummary->map(function ($summary) {
+           // $totalRaw = $summary->total_usd_seller + $summary->total_cop_seller + $summary->total_bs_seller;
+            return [
+                'seller_id' => $summary->seller_id,
+                'seller_name' => $summary->username,
+                'closures_count' => $summary->cash_closures_count,
+                'total_sales' => number_format($summary->total_sales_seller, 2, ',', '.'),
+                'total_usd' => number_format($summary->total_usd_seller, 2, ',', '.'),
+                'total_cop' => number_format($summary->total_cop_seller, 2, ',', '.'),
+                'total_bs' => number_format($summary->total_bs_seller, 2, ',', '.'),
+               // 'total_amount_raw' => $totalRaw
+            ];
+        });
     }
 }
