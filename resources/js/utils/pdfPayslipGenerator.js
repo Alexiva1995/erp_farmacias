@@ -37,8 +37,6 @@ export default function pdfPayslipsGenerator(data, type) {
 
     return `${formattedAmount} ${type === 'legal' ? 'Bs.' : '$'}`;
   };
-  };
-  
 
   let hasMoreThanYear = false
   const isDecember = new Date().getMonth() === 11
