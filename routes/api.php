@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DonationController;
 
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeeLaboratoryController;
+use App\Http\Controllers\Api\EmployeeProductController;
 use App\Http\Controllers\Api\ResignationController;
 
 use App\Http\Controllers\Api\FurnitureController;
@@ -271,7 +274,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
 
- // Rutas de Proveedores
+    // Rutas de Proveedores
 // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
@@ -404,7 +407,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
         });
-      
+
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
@@ -433,5 +436,24 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/', 'store')->name('store');
         Route::put('/{loan}', 'update')->name('update');
         Route::delete('/{loan}', 'destroy')->name('delete');
+    });
+    Route::prefix('cleaning-activities')->group(function () {
+        Route::get('/', [CleaningActivityController::class, 'index']);
+        Route::post('/', [CleaningActivityController::class, 'store']);
+        Route::put('/{cleaningActivity}', [CleaningActivityController::class, 'update']);
+        Route::delete('/{cleaningActivity}', [CleaningActivityController::class, 'destroy']);
+    });
+    // Rutas para gestión de laboratorios asignados a empleados
+    Route::prefix('employee-laboratories')->group(function () {
+        Route::get('/', [EmployeeLaboratoryController::class, 'index']);
+        Route::post('/', [EmployeeLaboratoryController::class, 'store']);
+        Route::delete('/{employee}/{laboratoryId}', [EmployeeLaboratoryController::class, 'destroy']);
+    });
+    // Rutas para gestión de productos asignados a empleados
+    Route::prefix('employee-products')->group(function () {
+        Route::get('/', [EmployeeProductController::class, 'index']);
+        Route::post('/', [EmployeeProductController::class, 'store']);
+        Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
+        Route::get('/stats', [EmployeeProductController::class, 'stats']); // Opcional
     });
 });
