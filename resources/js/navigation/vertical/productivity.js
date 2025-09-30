@@ -10,10 +10,6 @@ export default [
     },
     children: [
       {
-        title: 'General',
-        to: 'productivity-general',
-      },
-      {
         title: 'Tareas de Limpieza',
         to: 'productivity-cleaning',
       },

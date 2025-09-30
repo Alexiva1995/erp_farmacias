@@ -548,6 +548,6 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeProductController::class, 'index']);
         Route::post('/', [EmployeeProductController::class, 'store']);
         Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
-        Route::get('/stats', [EmployeeProductController::class, 'stats']); // Opcional
+        Route::get('/stats', [EmployeeProductController::class, 'stats']);
     });
 });
