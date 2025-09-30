@@ -7,6 +7,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActivityEditDialog: typeof import('./resources/js/components/dialogs/ActivityEditDialog.vue')['default']
+    ActivityFilters: typeof import('./resources/js/components/ActivityFilters.vue')['default']
+    ActivityTable: typeof import('./resources/js/components/ActivityTable.vue')['default']
     AddAuthenticatorAppDialog: typeof import('./resources/js/components/dialogs/AddAuthenticatorAppDialog.vue')['default']
     AddEditAddressDialog: typeof import('./resources/js/components/dialogs/AddEditAddressDialog.vue')['default']
     AddEditPermissionDialog: typeof import('./resources/js/components/dialogs/AddEditPermissionDialog.vue')['default']
@@ -78,7 +81,14 @@ declare module 'vue' {
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
     EmployeeFilters: typeof import('./resources/js/components/EmployeeFilters.vue')['default']
     EmployeeFormDialog: typeof import('./resources/js/components/dialogs/EmployeeFormDialog.vue')['default']
+    EmployeeLaboratoriesFilters: typeof import('./resources/js/components/EmployeeLaboratoriesFilters.vue')['default']
+    EmployeeLaboratoriesTable: typeof import('./resources/js/components/EmployeeLaboratoriesTable.vue')['default']
+    EmployeeLaboratoryDialog: typeof import('./resources/js/components/dialogs/EmployeeLaboratoryDialog.vue')['default']
     EmployeePaymentDialog: typeof import('./resources/js/components/dialogs/EmployeePaymentDialog.vue')['default']
+    EmployeeProductDialog: typeof import('./resources/js/components/dialogs/EmployeeProductDialog.vue')['default']
+    EmployeeProductsFilters: typeof import('./resources/js/components/EmployeeProductsFilters.vue')['default']
+    EmployeeProductsTable: typeof import('./resources/js/components/EmployeeProductsTable.vue')['default']
+    EmployeeProductsViewDialog: typeof import('./resources/js/components/dialogs/EmployeeProductsViewDialog.vue')['default']
     EmployeeTable: typeof import('./resources/js/components/EmployeeTable.vue')['default']
     EmployeeVoucherFormDialog: typeof import('./resources/js/components/dialogs/EmployeeVoucherFormDialog.vue')['default']
     EnableOneTimePasswordDialog: typeof import('./resources/js/components/dialogs/EnableOneTimePasswordDialog.vue')['default']
