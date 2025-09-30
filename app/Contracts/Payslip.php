@@ -14,7 +14,7 @@ interface Payslip
   public function generate(Carbon $date): bool;
   public function finalize(MPayslip $payslip): bool;
   public function exportExcel(MPayslip $payslip): PayslipsExport;
-  public function getData(MPayslip $payslip): array;
+  public function getData(MPayslip $payslip, string $type): array;
   public function getEmployeeVouchers(MPayslip $payslip, Employee $employee): array;
   public function updateVouchers(MPayslip $payslip, array $data): bool;
 }

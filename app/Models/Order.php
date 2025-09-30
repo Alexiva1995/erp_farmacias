@@ -27,6 +27,7 @@ class Order extends Model
         'status',
         'has_multiple_currencies',
         'payment_methods',
+        'usd_conversion'
     ];
 
     protected $casts = [

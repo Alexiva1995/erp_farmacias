@@ -1,4 +1,10 @@
 <script setup>
+import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
+import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
+import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
+import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
+import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
+import ProductsComparisionSuppliersFilter from "@/components/ProductsComparisionSuppliersFilter.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -38,8 +44,8 @@ const productsPage = ref(1);
 const productsItemPerPage = ref(10);
 const productsTotal = ref(0);
 
-const enableUsdAmountCol = ref(false);
-const enableDiscountCol = ref(false);
+const enableUsdAmountCol = ref(true);
+const enableDiscountCol = ref(true);
 
 const fetchProducts = async () => {
   const params = {
@@ -292,6 +298,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
       toast.success(`Se borraron los productos del proveedor ${supplier.name}`);
 
       fetchSupplierConnections();
+      fetchProducts();
     }
   } catch (error) {
     toast.error("No se pudieron borrar los productos del proveedor.");
@@ -309,6 +316,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
       v-model="isShowImportFileDialogActive"
       :selectedSupplier="supplierOption"
       @close-dialog="handleHideImportProductsDialog"
+      @refresh-products="fetchProducts"
     />
 
     <VCard title="Listados" class="mb-6">

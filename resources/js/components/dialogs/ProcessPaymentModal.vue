@@ -27,7 +27,6 @@ const form = ref({
   payment_date: new Date().toISOString().split("T")[0],
   payment_receipt: null,
   reference: "",
-  has_iva: false, // Nuevo campo para IVA
 });
 
 // Estado de carga
@@ -78,23 +77,52 @@ const validatePaymentAmount = (value) => {
     return errors;
   }
 
-  // Validar que no exceda el monto sugerido
-  const suggestedAmount = suggestedAmountInLocalCurrency.value;
-  if (numValue > suggestedAmount) {
-    errors.push(
-      `❌ El monto no puede exceder ${formatCurrency(
-        suggestedAmount,
-        form.value.payment_currency
-      )}`
-    );
-    return errors;
-  }
-
   // Validar formato decimal (máximo 2 decimales)
   const decimalPlaces = (value.toString().split(".")[1] || "").length;
   if (decimalPlaces > 2) {
     errors.push("❌ Máximo 2 decimales permitidos");
     return errors;
+  }
+
+  // Validaciones según el tipo de pago
+  const paymentType = form.value.payment_type;
+  const suggestedAmount = suggestedAmountInLocalCurrency.value;
+  const tolerance = 0.01; // Tolerancia de 1 centavo para diferencias de redondeo
+
+  if (paymentType === "full") {
+    // Para pagos completos, el monto debe ser exactamente el sugerido
+    if (Math.abs(numValue - suggestedAmount) > tolerance) {
+      errors.push(
+        `❌ Para pago completo, el monto debe ser exactamente ${formatCurrency(
+          suggestedAmount,
+          form.value.payment_currency
+        )}`
+      );
+      return errors;
+    }
+  } else if (paymentType === "partial") {
+    // Para pagos parciales, el monto debe ser menor o igual al sugerido
+    if (numValue > suggestedAmount + tolerance) {
+      errors.push(
+        `❌ Para pago parcial, el monto no puede exceder ${formatCurrency(
+          suggestedAmount,
+          form.value.payment_currency
+        )}`
+      );
+      return errors;
+    }
+
+    // Validar que el monto parcial sea razonable (al menos 1% del total)
+    const minPartialAmount = suggestedAmount * 0.01;
+    if (numValue < minPartialAmount) {
+      errors.push(
+        `❌ El pago parcial debe ser al menos ${formatCurrency(
+          minPartialAmount,
+          form.value.payment_currency
+        )} (1% del total)`
+      );
+      return errors;
+    }
   }
 
   return errors;
@@ -122,27 +150,18 @@ const amountFieldState = computed(() => {
     form.value.payment_amount === "" ||
     form.value.payment_amount === null
   ) {
-    console.log("🔵 Estado: default (sin valor)");
     return "default"; // Sin valor
   }
 
   // Validar el monto
   const amountErrors = validatePaymentAmount(form.value.payment_amount);
 
-  console.log("🔍 Validando monto:", {
-    amount: form.value.payment_amount,
-    errors: amountErrors,
-    suggestedAmount: suggestedAmountInLocalCurrency.value,
-  });
-
   // Si hay errores, estado de error
   if (amountErrors.length > 0) {
-    console.log("❌ Estado: error");
     return "error"; // Con errores
   }
 
   // Si no hay errores, estado de éxito
-  console.log("✅ Estado: success - Mostrando mensaje de éxito");
   return "success"; // Válido
 });
 
@@ -195,14 +214,7 @@ const totalInUSD = computed(() => {
 
 const suggestedAmountInLocalCurrency = computed(() => {
   const paymentCurrency = form.value.payment_currency;
-
-  console.log("🔍 Calculando monto sugerido:");
-  console.log("- Moneda de pago:", paymentCurrency);
-  console.log("- Moneda de factura:", invoiceCurrency.value);
-  console.log("- Monto original:", totalInOriginalCurrency.value);
-  console.log("- Total en USD (de BD):", totalInUSD.value);
-  console.log("- Monto restante:", paymentInfo.value.remaining_amount);
-  console.log("- Hay pagos previos:", paymentInfo.value.has_previous_payments);
+  const supplierCurrency = supplierInfo.value?.currency || "USD";
 
   // Si hay pagos previos, usar el monto restante
   if (paymentInfo.value.has_previous_payments) {
@@ -210,7 +222,6 @@ const suggestedAmountInLocalCurrency = computed(() => {
 
     if (paymentCurrency === "USD") {
       const roundedAmount = roundToTwoDecimals(remainingAmount);
-      console.log("✅ Usando monto restante en USD:", roundedAmount);
       return roundedAmount;
     }
 
@@ -219,38 +230,36 @@ const suggestedAmountInLocalCurrency = computed(() => {
     const rate = exchangeRates.value[currencyKey];
 
     if (!rate) {
-      console.log("❌ No hay tasa de cambio para:", currencyKey);
       return 0;
     }
 
     const calculated = roundToTwoDecimals(remainingAmount * rate);
-    console.log(
-      "✅ Conversión de monto restante:",
-      remainingAmount,
-      "×",
-      rate,
-      "=",
-      calculated
-    );
     return calculated;
   }
 
-  // Si es USD, usar el total en USD de la base de datos
-  if (paymentCurrency === "USD") {
-    console.log("✅ Usando total en USD de BD:", totalInUSD.value);
-    return totalInUSD.value;
+  // Si la moneda de pago es la misma que la moneda del proveedor, usar el total del proveedor
+  if (
+    paymentCurrency === supplierCurrency ||
+    (paymentCurrency === "VES" && supplierCurrency === "Bs")
+  ) {
+    return totalInSupplierCurrency.value;
   }
 
   // Si la moneda de pago es la misma que la factura, usar el monto original
   if (
     selectedInvoices.value.length > 0 &&
-    paymentCurrency === selectedInvoices.value[0].currency
+    (paymentCurrency === selectedInvoices.value[0].currency ||
+      (paymentCurrency === "VES" &&
+        selectedInvoices.value[0].currency === "Bs") ||
+      (paymentCurrency === "COP" &&
+        selectedInvoices.value[0].currency === "COP"))
   ) {
-    console.log(
-      "✅ Usando monto original (misma moneda):",
-      totalInOriginalCurrency.value
-    );
     return totalInOriginalCurrency.value;
+  }
+
+  // Si es USD, usar el total en USD de la base de datos
+  if (paymentCurrency === "USD") {
+    return totalInUSD.value;
   }
 
   // Para conversiones a otras monedas, usar la tasa de cambio
@@ -258,19 +267,10 @@ const suggestedAmountInLocalCurrency = computed(() => {
   const rate = exchangeRates.value[currencyKey];
 
   if (!rate) {
-    console.log("❌ No hay tasa de cambio para:", currencyKey);
     return 0;
   }
 
   const calculated = roundToTwoDecimals(totalInUSD.value * rate);
-  console.log(
-    "✅ Conversión calculada:",
-    totalInUSD.value,
-    "×",
-    rate,
-    "=",
-    calculated
-  );
   return calculated;
 });
 
@@ -353,7 +353,6 @@ const resetForm = () => {
     payment_date: new Date().toISOString().split("T")[0],
     payment_receipt: null,
     reference: "",
-    has_iva: false, // Reset del campo IVA
   };
   errors.value = {};
   selectedInvoices.value = [];
@@ -453,14 +452,11 @@ const processPayment = async () => {
       payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
       reference: form.value.reference || null,
-      has_iva: form.value.has_iva, // Nuevo campo IVA
       photo_url: form.value.payment_receipt
         ? form.value.payment_receipt.name
         : null,
       invoice_ids: selectedInvoices.value.map((inv) => inv.id),
     };
-
-    console.log("Enviando datos de pago:", paymentData);
 
     const response = await axios.post(
       "/finances/pending-payments/process-payment",
@@ -534,9 +530,91 @@ const supplierInfo = computed(() => {
     return {
       name: props.paymentGroup.supplier_name,
       paymentDate: props.paymentGroup.payment_date,
+      currency: getSupplierCurrency(props.paymentGroup.supplier_name),
     };
   }
   return null;
+});
+
+// Función para determinar la moneda del proveedor
+const getSupplierCurrency = (supplierName) => {
+  if (!supplierName) return "USD";
+
+  // Cristalmedicals siempre es USD
+  if (supplierName.toLowerCase().includes("cristalmedicals")) {
+    return "USD";
+  }
+
+  // Para otros proveedores, usar la moneda de la factura
+  if (selectedInvoices.value.length > 0) {
+    return selectedInvoices.value[0].currency;
+  }
+
+  return "USD"; // Default
+};
+
+// Total a pagar en la moneda del proveedor
+const totalInSupplierCurrency = computed(() => {
+  if (!supplierInfo.value) return 0;
+
+  const supplierCurrency = supplierInfo.value.currency;
+
+  // Si la moneda del proveedor es la misma que la factura, usar el monto original
+  if (
+    selectedInvoices.value.length > 0 &&
+    supplierCurrency === selectedInvoices.value[0].currency
+  ) {
+    return totalInOriginalCurrency.value;
+  }
+
+  // Si es USD, usar el total en USD
+  if (supplierCurrency === "USD") {
+    return totalInUSD.value;
+  }
+
+  // Para otras monedas, convertir desde USD
+  const currencyKey = supplierCurrency === "VES" ? "BS" : supplierCurrency;
+  const rate = exchangeRates.value[currencyKey];
+
+  if (!rate) return 0;
+
+  return roundToTwoDecimals(totalInUSD.value * rate);
+});
+
+// Monto original de la factura en USD (para el % de ahorro)
+const originalAmountUSD = computed(() => {
+  return totalInUSD.value;
+});
+
+// Monto pagado en USD (convertido desde la moneda de pago)
+const paidAmountUSD = computed(() => {
+  const paymentAmount = form.value.payment_amount || 0;
+  const paymentCurrency = form.value.payment_currency;
+
+  if (paymentCurrency === "USD") {
+    return paymentAmount;
+  }
+
+  // Convertir a USD
+  const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
+  const rate = exchangeRates.value[currencyKey];
+
+  if (!rate) return 0;
+
+  return roundToTwoDecimals(paymentAmount / rate);
+});
+
+// Porcentaje de ahorro
+const savingsPercentage = computed(() => {
+  const original = originalAmountUSD.value;
+  const paid = paidAmountUSD.value;
+
+  if (original <= 0 || paid <= 0) return 0;
+
+  const savings = original - paid;
+  const percentage = (savings / original) * 100;
+
+  return roundToTwoDecimals(percentage);
 });
 
 // Watchers
@@ -573,6 +651,19 @@ watch(
 watch(
   () => form.value.payment_amount,
   () => {
+    validateAmountRealtime();
+  }
+);
+
+// Watcher para cuando cambie el tipo de pago
+watch(
+  () => form.value.payment_type,
+  () => {
+    // Si es pago completo, establecer el monto sugerido
+    if (form.value.payment_type === "full") {
+      form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+    }
+    // Si es pago parcial, permitir que el usuario ingrese un monto menor
     validateAmountRealtime();
   }
 );
@@ -614,10 +705,21 @@ onMounted(() => {
                 </VCol>
                 <VCol cols="12" md="6">
                   <div class="text-caption text-medium-emphasis">
-                    Total a Pagar
+                    Total a Pagar ({{ supplierInfo.currency }})
                   </div>
                   <div class="text-h6 font-weight-bold text-success">
-                    {{ formatCurrency(totalInUSD, "USD") }}
+                    {{
+                      formatCurrency(
+                        totalInSupplierCurrency,
+                        supplierInfo.currency
+                      )
+                    }}
+                  </div>
+                  <div
+                    v-if="supplierInfo.currency !== 'USD'"
+                    class="text-caption text-medium-emphasis"
+                  >
+                    ≈ {{ formatCurrency(totalInUSD, "USD") }} USD
                   </div>
                 </VCol>
               </VRow>
@@ -625,57 +727,25 @@ onMounted(() => {
           </VCard>
         </div>
 
-        <!-- Selección de facturas -->
+        <!-- Información de facturas seleccionadas -->
         <VRow>
           <VCol cols="12">
-            <VCard variant="outlined">
-              <VCardTitle class="text-h6">
-                Seleccionar Facturas a Pagar
-              </VCardTitle>
-              <VCardText>
-                <div class="text-caption text-medium-emphasis mb-3">
-                  {{ selectedInvoices.length }} de
-                  {{ invoices.length }} factura(s) seleccionada(s)
+            <VAlert type="info" variant="tonal" class="mb-4">
+              <template #title>
+                <div class="d-flex align-center">
+                  <VIcon icon="tabler-receipt" class="me-2" />
+                  Facturas a Pagar
                 </div>
-
-                <!-- Tabla de facturas con checkboxes -->
-                <VTable density="compact">
-                  <thead>
-                    <tr>
-                      <th width="50">Seleccionar</th>
-                      <th>N° Factura</th>
-                      <th>Monto</th>
-                      <th>Moneda</th>
-                      <th>Fecha Vencimiento</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="invoice in invoices"
-                      :key="invoice.id"
-                      :class="{
-                        'bg-primary-lighten-5': isInvoiceSelected(invoice),
-                      }"
-                    >
-                      <td>
-                        <VCheckbox
-                          :model-value="isInvoiceSelected(invoice)"
-                          @change="toggleInvoiceSelection(invoice)"
-                        />
-                      </td>
-                      <td>{{ invoice.invoice_number }}</td>
-                      <td>
-                        {{
-                          formatCurrency(invoice.total_amount, invoice.currency)
-                        }}
-                      </td>
-                      <td>{{ invoice.currency }}</td>
-                      <td>{{ formatDate(invoice.due_date) }}</td>
-                    </tr>
-                  </tbody>
-                </VTable>
-              </VCardText>
-            </VCard>
+              </template>
+              <div class="text-caption text-medium-emphasis mb-2">
+                {{ invoices.length }} factura(s) seleccionada(s) para pago
+              </div>
+              <div v-for="invoice in invoices" :key="invoice.id" class="mb-1">
+                <strong>{{ invoice.invoice_number }}</strong> -
+                {{ formatCurrency(invoice.total_amount, invoice.currency) }}
+                ({{ invoice.currency }})
+              </div>
+            </VAlert>
           </VCol>
         </VRow>
 
@@ -733,11 +803,18 @@ onMounted(() => {
                 :prepend-inner-icon="amountFieldState === 'error' ? '❌' : '💲'"
                 :hint="
                   amountFieldState === 'success'
-                    ? '✅ Monto correcto - Listo para procesar'
-                    : `Monto sugerido: ${formatCurrency(
+                    ? form.payment_type === 'full'
+                      ? '✅ Monto correcto - Listo para procesar pago completo'
+                      : '✅ Monto válido - Listo para procesar pago parcial'
+                    : form.payment_type === 'full'
+                    ? `Monto requerido para pago completo: ${formatCurrency(
                         suggestedAmountInLocalCurrency.value,
                         form.payment_currency
                       )}`
+                    : `Monto sugerido (máximo): ${formatCurrency(
+                        suggestedAmountInLocalCurrency.value,
+                        form.payment_currency
+                      )} - Puede ser menor para pago parcial`
                 "
                 persistent-hint
                 @input="validateAmountRealtime"
@@ -759,7 +836,7 @@ onMounted(() => {
           </VRow>
 
           <VRow>
-            <VCol cols="12" md="4">
+            <VCol cols="12" md="6">
               <VTextField
                 v-model="form.payment_date"
                 label="Fecha de Pago"
@@ -768,7 +845,7 @@ onMounted(() => {
                 required
               />
             </VCol>
-            <VCol cols="12" md="4">
+            <VCol cols="12" md="6">
               <VFileInput
                 v-model="form.payment_receipt"
                 label="Comprobante de Pago"
@@ -778,201 +855,77 @@ onMounted(() => {
                 prepend-icon="tabler-upload"
               />
             </VCol>
-            <VCol cols="12" md="4" class="d-flex align-center">
-              <VCheckbox
-                v-model="form.has_iva"
-                :error-messages="errors.has_iva"
-                color="primary"
-              >
-                <template #label>
-                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-percentage" class="me-2" size="20" />
-                    <span class="text-subtitle-2">¿Incluye IVA?</span>
-                  </div>
-                </template>
-              </VCheckbox>
-            </VCol>
           </VRow>
 
-          <!-- Información y detalles del pago -->
+          <!-- Información simplificada del pago -->
           <VRow>
             <VCol cols="12">
               <VAlert type="info" variant="tonal" class="mb-4">
                 <template #title>
                   <div class="d-flex align-center">
                     <VIcon icon="tabler-info-circle" class="me-2" />
-                    Información y detalles del pago
-                    <VChip
-                      v-if="form.has_iva"
-                      color="warning"
-                      size="small"
-                      class="ms-2"
-                    >
-                      <VIcon icon="tabler-percentage" size="14" class="me-1" />
-                      Con IVA
-                    </VChip>
+                    Información del Pago
                   </div>
                 </template>
 
-                <!-- Información de pagos previos -->
+                <VRow>
+                  <VCol cols="12" md="4">
+                    <div class="text-center pa-3 bg-primary-lighten-5 rounded">
+                      <div class="text-h6 font-weight-bold text-primary">
+                        {{ formatCurrency(originalAmountUSD, "USD") }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        Monto Original de la Factura
+                      </div>
+                    </div>
+                  </VCol>
+
+                  <VCol cols="12" md="4">
+                    <div class="text-center pa-3 bg-success-lighten-5 rounded">
+                      <div class="text-h6 font-weight-bold text-success">
+                        {{ formatCurrency(paidAmountUSD, "USD") }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        Monto Pagado
+                      </div>
+                    </div>
+                  </VCol>
+
+                  <VCol cols="12" md="4">
+                    <div class="text-center pa-3 bg-warning-lighten-5 rounded">
+                      <div class="text-h6 font-weight-bold text-warning">
+                        {{ savingsPercentage }}%
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        % de Ahorro
+                      </div>
+                    </div>
+                  </VCol>
+                </VRow>
+
+                <!-- Información adicional para pagos parciales -->
                 <div
-                  v-if="paymentInfo.has_previous_payments"
-                  class="mb-3 pa-3 bg-info-lighten-4 rounded"
+                  v-if="form.payment_type === 'partial'"
+                  class="mt-3 pa-3 bg-warning-lighten-4 rounded"
                 >
                   <div class="text-subtitle-2 mb-2">
-                    💰 Pagos Previos Realizados
+                    📊 Información del Pago Parcial
                   </div>
                   <div>
-                    <strong>Total de la factura:</strong>
-                    {{ formatCurrency(paymentInfo.total_invoice_usd, "USD") }}
-                  </div>
-                  <div>
-                    <strong>Ya pagado:</strong>
-                    {{ formatCurrency(paymentInfo.total_paid_usd, "USD") }}
+                    <strong>Progreso del pago:</strong>
+                    {{ paymentPercentage }}%
                   </div>
                   <div>
                     <strong>Monto restante:</strong>
-                    {{ formatCurrency(paymentInfo.remaining_amount, "USD") }}
-                  </div>
-                  <div>
-                    <strong>Progreso:</strong>
-                    {{ paymentInfo.payment_percentage }}%
+                    {{ formatCurrency(remainingAmount, "USD") }}
                   </div>
                   <div class="mt-2">
                     <VProgressLinear
-                      :model-value="paymentInfo.payment_percentage"
-                      color="info"
-                      height="6"
+                      :model-value="paymentPercentage"
+                      color="warning"
+                      height="8"
                       rounded
                     />
-                  </div>
-                </div>
-
-                <!-- Para USD -->
-                <div v-if="form.payment_currency === 'USD'">
-                  <div>
-                    <strong
-                      >Monto sugerido en {{ form.payment_currency }}:</strong
-                    >
-                    {{
-                      formatCurrency(
-                        suggestedAmountInLocalCurrency,
-                        form.payment_currency
-                      )
-                    }}
-                  </div>
-                  <div>
-                    <strong
-                      >Monto ingresado en {{ form.payment_currency }}:</strong
-                    >
-                    {{
-                      formatCurrency(form.payment_amount, form.payment_currency)
-                    }}
-                  </div>
-                  <div>
-                    <strong>Total a Pagar (USD):</strong>
-                    {{ formatCurrency(totalInUSD, "USD") }}
-                  </div>
-
-                  <!-- Información adicional para pagos parciales -->
-                  <div
-                    v-if="form.payment_type === 'partial'"
-                    class="mt-3 pa-3 bg-warning-lighten-4 rounded"
-                  >
-                    <div class="text-subtitle-2 mb-2">
-                      📊 Información del Pago Parcial
-                    </div>
-                    <div>
-                      <strong>Progreso del pago:</strong>
-                      {{ paymentPercentage }}%
-                    </div>
-                    <div>
-                      <strong>Monto restante:</strong>
-                      {{ formatCurrency(remainingAmount, "USD") }}
-                    </div>
-                    <div class="mt-2">
-                      <VProgressLinear
-                        :model-value="paymentPercentage"
-                        color="warning"
-                        height="8"
-                        rounded
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Para VES/COP -->
-                <div v-else>
-                  <div>
-                    <strong>Tasa de cambio:</strong>
-                    1 USD = {{ currentExchangeRate }}
-                    {{ form.payment_currency }}
-                  </div>
-                  <div>
-                    <strong
-                      >Monto sugerido en {{ form.payment_currency }}:</strong
-                    >
-                    {{
-                      formatCurrency(
-                        suggestedAmountInLocalCurrency,
-                        form.payment_currency
-                      )
-                    }}
-                  </div>
-                  <div>
-                    <strong
-                      >Monto ingresado en {{ form.payment_currency }}:</strong
-                    >
-                    {{
-                      formatCurrency(form.payment_amount, form.payment_currency)
-                    }}
-                  </div>
-                  <div>
-                    <strong>Equivalente en USD:</strong>
-                    {{ formatCurrency(amountInUSD, "USD") }}
-                  </div>
-
-                  <!-- Información adicional para pagos parciales -->
-                  <div
-                    v-if="form.payment_type === 'partial'"
-                    class="mt-3 pa-3 bg-warning-lighten-4 rounded"
-                  >
-                    <div class="text-subtitle-2 mb-2">
-                      📊 Información del Pago Parcial
-                    </div>
-                    <div>
-                      <strong>Progreso del pago:</strong>
-                      {{ paymentPercentage }}%
-                    </div>
-                    <div>
-                      <strong>Monto restante (USD):</strong>
-                      {{ formatCurrency(remainingAmount, "USD") }}
-                    </div>
-                    <div class="mt-2">
-                      <VProgressLinear
-                        :model-value="paymentPercentage"
-                        color="warning"
-                        height="8"
-                        rounded
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Información de la factura original -->
-                  <div
-                    v-if="invoiceCurrency"
-                    class="mt-3 pa-3 bg-grey-lighten-4 rounded"
-                  >
-                    <div>
-                      <strong>Monto original de la factura:</strong>
-                      {{
-                        formatCurrency(totalInOriginalCurrency, invoiceCurrency)
-                      }}
-                    </div>
-                    <div>
-                      <strong>Total a Pagar (USD):</strong>
-                      {{ formatCurrency(totalInUSD, "USD") }}
-                    </div>
                   </div>
                 </div>
               </VAlert>

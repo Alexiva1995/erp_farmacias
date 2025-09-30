@@ -72,6 +72,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     costUsdCol: $this->columnMap["unit_cost_usd"] ?: null,
                     activeIngredientCol: $this->columnMap["active_ingredient"] ?: null,
                     expirationCol: $this->columnMap["expiration"] ?: null,
+                    currencyCol: $this->columnMap["currency"] ?: null,
                 );
 
                 $absolutePath = Storage::disk("local")->path($this->filePath);
