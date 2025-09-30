@@ -97,9 +97,9 @@ class PayslipRepository
     return $payslip->update(['status' => 1]);
   }
 
-  public function exportableData(Payslip $payslip)
+  public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $this->todayUsdRate();
+    $currency = $type === 'full' ? 1 : $this->todayUsdRate();
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;
@@ -178,7 +178,7 @@ class PayslipRepository
       ->orderBy('id');
   }
 
-  public function getData(Payslip $payslip): array
+  public function getData(Payslip $payslip, string $type): array
   {
     $end_period = Carbon::createFromFormat('Y-m-d', $payslip->payslip_date);
     $start_period = $end_period->subWeeks(2)->format('d/m/Y');
@@ -186,7 +186,7 @@ class PayslipRepository
     $period = "{$start_period} hasta el {$end_period}";
 
     return [
-      'items' => $this->exportableData($payslip)->get()->toArray(),
+      'items' => $this->exportableData($payslip, $type)->get()->toArray(),
       'name' => $payslip->name,
       'date' => $payslip->payslip_date,
       'status' => $payslip->status,

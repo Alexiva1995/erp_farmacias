@@ -25,7 +25,7 @@ const headers = [
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Costo", key: "cost_price", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: 'Utilidad', key: 'profitability', sortable: true  },
+  { title: '% Utilidad', key: 'profitability', sortable: true  },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -209,7 +209,9 @@ const calculateSalePriceWithIva = (product) => {
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column">
           <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">
-            {{ formatPrice(calculateSalePriceWithIva(item)) }}
+            {{ item.profitability?.is_locked == '1' ? 
+            (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2) 
+            : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
           </span>
           <span v-if="item.iva == 1" class="text-xs text-success">
             (IVA incluido)
@@ -218,10 +220,7 @@ const calculateSalePriceWithIva = (product) => {
       </template>
       <template #item.profitability="{ item }">
         <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">
-          {{ item.profitability?.is_locked == '1' ? 
-            (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2) 
-            : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
-            ({{ item.profitability?.is_locked == '1' ? parseInt(item.profitability.profitability_percentage) : parseInt(profitability) }}%)
+            {{ item.profitability?.is_locked == '1' ? parseInt(item.profitability.profitability_percentage) : parseInt(profitability) }}%
         </span>
       </template>
       <template #item.actions="{ item }" >

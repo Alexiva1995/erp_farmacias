@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeeLaboratoryController;
+use App\Http\Controllers\Api\EmployeeProductController;
 use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\FurnitureController;
 use App\Http\Controllers\Api\GroupController;
@@ -287,8 +290,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });
 
-    // Rutas de Proveedores
-// Ruta de fiscal
+
+    // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
 
@@ -480,7 +483,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -491,6 +494,12 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
+        });
+        Route::prefix("suppliers-ia-assistant-report")->group(function () {
+            Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+            Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+            Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+            Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
         });
 
         Route::prefix("expenses")->group(function () {
@@ -521,5 +530,24 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::put('/{loan}', 'update')->name('update');
             Route::delete('/{loan}', 'destroy')->name('delete');
         });
+    });
+    Route::prefix('cleaning-activities')->group(function () {
+        Route::get('/', [CleaningActivityController::class, 'index']);
+        Route::post('/', [CleaningActivityController::class, 'store']);
+        Route::put('/{cleaningActivity}', [CleaningActivityController::class, 'update']);
+        Route::delete('/{cleaningActivity}', [CleaningActivityController::class, 'destroy']);
+    });
+    // Rutas para gestión de laboratorios asignados a empleados
+    Route::prefix('employee-laboratories')->group(function () {
+        Route::get('/', [EmployeeLaboratoryController::class, 'index']);
+        Route::post('/', [EmployeeLaboratoryController::class, 'store']);
+        Route::delete('/{employee}/{laboratoryId}', [EmployeeLaboratoryController::class, 'destroy']);
+    });
+    // Rutas para gestión de productos asignados a empleados
+    Route::prefix('employee-products')->group(function () {
+        Route::get('/', [EmployeeProductController::class, 'index']);
+        Route::post('/', [EmployeeProductController::class, 'store']);
+        Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
+        Route::get('/stats', [EmployeeProductController::class, 'stats']);
     });
 });

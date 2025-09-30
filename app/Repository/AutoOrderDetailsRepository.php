@@ -48,8 +48,8 @@ class AutoOrderDetailsRepository
         return $results;
     }
 
-    public function consultDetailByProductSupplierId($product_supplier_id): AutoOrderDetail|null
+    public function consultDetailByProductSupplierId($product_supplier_id): int|null
     {
-        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->first();
+        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->sum("quantity");
     }
 }

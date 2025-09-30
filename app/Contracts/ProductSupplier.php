@@ -21,6 +21,8 @@ interface ProductSupplier
 
     public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array;
 
+    public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array;
+
     public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, int $repuesto): array;
 
     public function checkTolerance(array $replenishTheProducts, string $conDescuento): array;
