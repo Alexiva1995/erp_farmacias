@@ -94,7 +94,7 @@ const stockOptions = [
           @update:model-value="emit('update:selectedSupplier', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="4" md="2">
+      <VCol cols="12" sm="4" md="3">
         <VSwitch
           :model-value="props.enableDiscounts"
           label="Activar Descuento"
@@ -102,7 +102,7 @@ const stockOptions = [
           @update:model-value="emit('update:enableDiscounts', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="4" md="2">
+      <VCol cols="12" sm="4" md="3">
         <VSwitch
           :model-value="props.enableUsdAmountCol"
           label="Monto en Divisas"
