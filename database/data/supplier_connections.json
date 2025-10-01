@@ -406,7 +406,8 @@
         "structure": {
             "0": {
                 "file_field": "Codigo",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "CodBarras",
@@ -451,28 +452,41 @@
                 "type": "string"
             },
             "10": {
-                "file_field": "Vence",
+                "file_field": "VenceMerida",
                 "type": "date",
                 "target": "expiration"
             },
             "11": {
-                "file_field": "Principio",
-                "type": "string"
+                "file_field": "VenceCentro",
+                "type": "date"
             },
             "12": {
+                "file_field": "VenceOriente",
+                "type": "date"
+            },
+            "13": {
+                "file_field": "Principio",
+                "type": "string",
+                "target": "active_ingredient"
+            },
+            "14": {
                 "file_field": "Escala",
                 "type": "decimal"
             },
-            "13": {
+            "15": {
                 "file_field": "DescXEscala",
                 "type": "decimal"
             },
-            "14": {
+            "16": {
                 "file_field": "Bonifica",
                 "type": "decimal"
             },
-            "15": {
+            "17": {
                 "file_field": "CantBonifica",
+                "type": "decimal"
+            },
+            "18": {
+                "file_field": "DifPorcentaje",
                 "type": "decimal"
             }
         },
