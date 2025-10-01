@@ -17,9 +17,17 @@ use App\Mail\ReporteHistoryCierreCajaMail;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Models\DailyCashClosure;
+use App\Services\Resources\ResourceService;
 
 class CashClosureActionService
 {
+
+    protected ResourceService $resourceService;
+
+     public function __construct(ResourceService $resourceService)
+    {
+        $this->resourceService = $resourceService;
+    }
 
     public function allCashClosing(): ?CashClosing
     {
@@ -179,11 +187,26 @@ class CashClosureActionService
         ];
     }
 
-    public function getCashClosingsForMonthlySummary(array $dailyClosureIds): Collection
+
+     private function getFormattedRates(): array
+    {
+        $rates = $this->resourceService->getAllExchangeRate();
+        $formattedRates = [];
+        foreach ($rates as $rate) {
+            $formattedRates[$rate->currency_code] = (float) $rate->rate;
+        }
+        return $formattedRates; 
+    }
+
+    public function getCashClosingsForMonthlySummary(array $dailyClosureIds): array
     {
         if (empty($dailyClosureIds)) {
-            return collect();
-        }
+        return ['summary' => collect(), 'global_total_sales' => 0.0];
+    }
+
+        $rates = $this->getFormattedRates();
+        $bsRate = $rates['BS'] ?? 1; 
+        $copRate = $rates['COP'] ?? 1;
 
         $sellerSummary = CashClosing::query()
             ->whereIn('daily_closure_id', $dailyClosureIds)
@@ -201,22 +224,47 @@ class CashClosureActionService
             ->orderByDesc('total_sales_seller')
             ->get();
 
-        /*$cashClosings = CashClosing::whereIn('daily_closure_id', $dailyClosureIds)
-                                   ->with('seller') 
-                                   ->orderBy('id', 'asc') 
-                                   ->get();*/
-        return $sellerSummary->map(function ($summary) {
-           // $totalRaw = $summary->total_usd_seller + $summary->total_cop_seller + $summary->total_bs_seller;
+        $totalSalesBs = 0.0;
+        $totalSalesUsd = 0.0;
+        $totalSalesCop = 0.0;
+        $totalSalesBsInUSD = 0.0;
+        $totalSalesGlobalCopInUsd = 0.0;
+        $totalSalesGlobal = 0.0;
+
+        $summaryData = $sellerSummary->map(function ($summary) use ($bsRate, $copRate, &$totalSalesBs, &$totalSalesUsd, &$totalSalesCop, &$totalSalesBsInUSD, &$totalSalesGlobalCopInUsd, &$totalSalesGlobal)  {
+
+            $bsInUsd = $summary->total_bs_seller / $bsRate;
+            $copInUsd = $summary->total_cop_seller / $copRate;
+
+            $totalSalesBs += $summary->total_bs_seller;
+            $totalSalesUsd += $summary->total_usd_seller;
+            $totalSalesCop += $summary->total_cop_seller;
+            $totalSalesBsInUSD += $bsInUsd;
+            $totalSalesGlobalCopInUsd += $copInUsd;
+            $totalSalesGlobal += (float) $summary->total_sales_seller;
+
             return [
                 'seller_id' => $summary->seller_id,
                 'seller_name' => $summary->username,
                 'closures_count' => $summary->cash_closures_count,
                 'total_sales' => number_format($summary->total_sales_seller, 2, ',', '.'),
                 'total_usd' => number_format($summary->total_usd_seller, 2, ',', '.'),
-                'total_cop' => number_format($summary->total_cop_seller, 2, ',', '.'),
+                'total_cop' => number_format($summary->total_cop_seller, 0, ',', '.'),
                 'total_bs' => number_format($summary->total_bs_seller, 2, ',', '.'),
-               // 'total_amount_raw' => $totalRaw
+
+                'total_bs_in_usd' => number_format($bsInUsd, 2, ',', '.'),
+                'total_cop_in_usd' => number_format($copInUsd, 2, ',', '.'),
             ];
         });
+
+        return [
+            'summary' => $summaryData, 
+            'totalSalesBs' => number_format($totalSalesBs, 2, ',', '.'),
+            'totalSalesUsd' => number_format($totalSalesUsd, 2, ',', '.'),
+            'totalSalesCop' => number_format($totalSalesCop, 0, ',', '.'),
+            'totalSalesBsInUSD' => number_format($totalSalesBsInUSD, 2, ',', '.'),
+            'totalSalesGlobalCopInUsd' => number_format($totalSalesGlobalCopInUsd, 2, ',', '.'),
+            'totalSalesGlobal' => number_format($totalSalesGlobal, 2, ',', '.'),
+        ];
     }
 }

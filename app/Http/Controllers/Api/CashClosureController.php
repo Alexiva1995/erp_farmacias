@@ -127,38 +127,16 @@ class CashClosureController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-     public function getmonthlyCashclosing(Request $request){
+    public function getmonthlyCashclosing(Request $request){
         $dailyClosureIds = $request->input('closingMonthlyIds', []); 
         $cashClosings = $this->cashClosureActionService->getCashClosingsForMonthlySummary($dailyClosureIds);
 
         return response()->json([
-            'data' => $cashClosings,
-            'total' => $cashClosings->count(),
+            'data' => $cashClosings
         ]);
      }
 
     public function downloadMonthlyReport(Request $request){
-
-      /*  $dailyClosureIds = $request->input('closingMonthlyIds', []); 
-        if (empty($dailyClosureIds)) {
-            return response()->json(['error' => 'No se proporcionaron identificadores para el reporte.'], 400);
-        }
-        $cashesList = $this->cashClosureActionService->getCashClosingsForMonthlySummary($dailyClosureIds);
-        $totalAmount = $cashesList->sum('total_amount_raw'); 
-
-        // 3. Cargar la vista Blade con los datos
-        // NOTA: Asegúrate de que esta vista exista en resources/views/reports/monthly_cash_summary_pdf.blade.php
-        $pdf = Pdf::loadView('reports.monthly_cash_summary_pdf', [
-            'cashesList' => $cashesList,
-            'totalAmount' => number_format($totalAmount, 2, ',', '.') . '$',
-            // ... (pasar otros totales globales)
-        ]);
-        
-        // 4. Devolver la descarga forzada del PDF
-        $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
-        
-        return $pdf->download($filename);*/
-
         $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->download($filename );

@@ -44,10 +44,13 @@ const ticketStyles = `
 .pa-2 { padding: 8px; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
+.text-left { text-align: left; }
 .mb-2 { margin-bottom: 8px; }
 .tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
 .center-block { margin-left: auto; margin-right: auto; }
-.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }`;
+.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
+.w-75 {width: 75% !important;}
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }`;
 
 const downloadReport = async () => {
   try {
@@ -152,114 +155,107 @@ const printReport = async () => {
         <div id="monthly-cash-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
           <div class="container mt-3">
-            <div class="row">
-              <div
-                :class="[
-            'mb-1',
-            props.monthlyCashData.length === 1 ? 'col-md-6 offset-md-3' : 'col-md-6',
-            props.monthlyCashData.length === 1 ? 'single-report-center' : ''
-          ]"
-                v-for="(cashData, index) in props.monthlyCashData"
-                :key="index"
-              >
+              
+<div class="row">
+    <div
+      v-for="(cashData, index) in props.monthlyCashData.summary"
+      :key="index"
+      :class="{
+        'col-md-6': props.monthlyCashData.summary.length > 1, 
+        'col-12': props.monthlyCashData.summary.length === 1, 
+        'mb-4': true, 
+      }"
+    >
+      <div 
+        :class="{
+          'w-100': true, // Ancho 100% de la columna si hay > 1 usuario
+          'w-50 mx-auto': props.monthlyCashData.summary.length === 1 // 50% de ancho y centrado si hay 1 usuario
+        }"
+      >
+        <SectionDivider
+          :isPdf="true"
+          :text="cashData.seller_name"
+          width="30%"
+          class="center-block"
+        />
 
-              <div :class="{'mx-auto center-block': props.monthlyCashData.length === 1}">
-                <SectionDivider
-                  :isPdf="true"
-                  :text="cashData.seller_name"
-                  width="35%"
-                />
-                 </div>
-
-
-                <div class="row">
-                  <template
-                    v-if="cashData && props.monthlyCashData.length === 1"
-                  >
-                    <div v-if="cashData.total_sales !== '0.00'">
-                      <table class="table table-sm table-borderless w-50">
-                        <tbody>
-                          <tr>
-                            <td class="text-start"><span>USD:</span></td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_usd }}</span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_usd }}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-start"><span>BS:</span></td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_bs }}</span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_bs }}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-start"><span>COP:</span></td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_cop }}</span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_cop }}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-start"><span></span></td>
-                            <td class="text-right fw-bold">
-                              <span>TOTAL VENTA</span>
-                            </td>
-                            <td class="text-right fw-bold">
-                              <span>{{ cashData.total_sales }}</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </div>
+        <div v-if="cashData && cashData.total_sales !== '0.00'">
+           <table 
+          class="table table-sm table-borderless"
+          :class="{
+            'w-75 mx-auto center-block': props.monthlyCashData.summary.length === 1,
+            'w-100': props.monthlyCashData.summary.length > 1
+          }"
+        >
+            <tbody>
+              <tr>
+                <td class="text-left"><span>USD:</span></td>
+                <td class="text-right"><span>{{ cashData.total_usd }}</span></td>
+                <td class="text-right">
+                  <span>{{ cashData.total_usd }}</span> 
+                </td>
+              </tr>
+              <tr>
+                <td class="text-left"><span>BS:</span></td>
+                <td class="text-right"><span>{{ cashData.total_bs }}</span></td>
+                <td class="text-right"><span>{{ cashData.total_bs_in_usd }}</span></td>
+              </tr>
+              <tr>
+                <td class="text-left"><span>COP:</span></td>
+                <td class="text-right"><span>{{ cashData.total_cop }}</span></td>
+                <td class="text-right"><span>{{ cashData.total_cop_in_usd }}</span></td>
+              </tr>
+              <tr>
+                <td class="text-left"><span></span></td>
+                <td class="text-right fw-bold"><span>TOTAL VENTA</span></td>
+                <td class="text-right fw-bold">
+                  <span>{{ cashData.total_sales }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
           </div>
         
           <SectionDivider :isPdf="true" text="TOTAL VENTA" width="35%" class="mx-auto center-block"  />
-          <div class="container mt-3 w-100">
-            <table class="table table-borderless table-sm w-50 mx-auto center-block">
+          <div class="container mt-3">
+            <table class="table table-borderless table-sm w-75 mx-auto center-block">
               <tbody>
                 <tr>
-                  <td class="text-start"><span>USD:</span></td>
+                  <td class="text-left"><span>USD:</span></td>
                   <td class="text-right">
-                    <span>0,00</span>
+                    <span>{{props.monthlyCashData.totalSalesUsd}}</span>
                   </td>
                   <td class="text-right">
-                    <span>0,00</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="text-start"><span>BS:</span></td>
-                  <td class="text-right">
-                    <span>0,00</span>
-                  </td>
-                  <td class="text-right">
-                    <span>0,00</span>
+                    <span>{{props.monthlyCashData.totalSalesUsd}}</span>
                   </td>
                 </tr>
                 <tr>
-                  <td class="text-start"><span>COP:</span></td>
+                  <td class="text-left"><span>BS:</span></td>
                   <td class="text-right">
-                    <span>0,00</span>
+                    <span>{{props.monthlyCashData.totalSalesBs}}</span>
                   </td>
                   <td class="text-right">
-                    <span>0,00</span>
+                    <span>{{props.monthlyCashData.totalSalesBsInUSD}}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-left"><span>COP:</span></td>
+                  <td class="text-right">
+                    <span>{{props.monthlyCashData.totalSalesCop}}</span>
+                  </td>
+                  <td class="text-right">
+                    <span>{{props.monthlyCashData.totalSalesGlobalCopInUsd}}</span>
                   </td>
                 </tr>
                 <tr>
                   <td class="text-start"><span></span></td>
                   <td class="text-right fw-bold"><span>TOTAL</span></td>
                   <td class="text-right fw-bold">
-                    <span>0,00</span>
+                    <span>{{props.monthlyCashData.totalSalesGlobal}}</span>
                   </td>
                 </tr>
               </tbody>

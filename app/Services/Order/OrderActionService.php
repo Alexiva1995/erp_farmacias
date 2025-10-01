@@ -677,7 +677,6 @@ class OrderActionService
                 $cashClosing->update();
              }
 
-
             DB::commit();
             Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);
             return $order;
