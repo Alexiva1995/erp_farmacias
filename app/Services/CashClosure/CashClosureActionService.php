@@ -66,20 +66,22 @@ class CashClosureActionService
         ]);
 
         $cashClosure->refresh()->load('orders');
+
         //pdf cierre
-        $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
+      /*  $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');
         $pdf = PDF::loadHTML($htmlContent);
         $pdfContent = $pdf->output();
         $destinatariosTo = ['cierres@farmaciabs.com'];
-        $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';
-        Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
+        $namePDF = 'Cierre de caja' . $cashClosure->id . '.pdf';*/
+        //Mail::to($destinatariosTo)->send(new ReporteCierreCajaMail($pdfContent, $namePDF));
+
         //pdf history
-        $historyHtmlContent = mb_convert_encoding($validatedData['history_html'], 'UTF-8', 'UTF-8');
+       /* $historyHtmlContent = mb_convert_encoding($validatedData['history_html'], 'UTF-8', 'UTF-8');
         $pdfHistory = Pdf::loadHTML($historyHtmlContent);
         $pdfHistoryContent = $pdfHistory->output();
         $destinatariosToHistory = ['alexisvalera@farmaciabs.com'];
-        $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';
-        Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
+        $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';*/
+        //Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
 
         CashClosing::create([
             'seller_id' => $sellerId,
