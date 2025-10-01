@@ -550,28 +550,33 @@
         "password": "eyJpdiI6IlEzMnR6cmUydFhEWFZndGNnNnA1Nmc9PSIsInZhbHVlIjoiSHZ3Z2FHWUZlc21yVm5VS0toR3cxdz09IiwibWFjIjoiMzU1MDQxZDg4OTI4NjMzN2IwZGU3YzUwZDFmNzdhNDVkZTdiZjBkOTQ0NTcwNDY3Y2M3ZGMyZTc1MGUzOGQwNCIsInRhZyI6IiJ9",
         "path": "http://www.cobeca.com:8080/pedidofl/api/Articulos?cod_drogueria=3",
         "pasv": false,
-        "has_header": false,
+        "has_header": true,
         "invoice_path": null,
         "structure": {
-            "0": {
-                "file_field": "cod_barras",
+            "13": {
+                "file_field": "cod_barra",
                 "type": "string",
                 "target": "barcode_match"
             },
-            "1": {
+            "14": {
                 "file_field": "desc_articulo",
                 "type": "string",
                 "target": "name"
             },
-            "2": {
+            "28": {
                 "file_field": "fecha_Expire_ned",
                 "type": "date",
                 "target": "expiration"
             },
-            "3": {
+            "20": {
                 "file_field": "monto_final",
                 "type": "decimal",
                 "target": "unit_cost"
+            },
+            "17": {
+                "file_field": "existencia",
+                "type": "integer",
+                "target": "quantity"
             }
         }
     }
