@@ -459,14 +459,15 @@ class OrderActionService
             $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
             $current_cash->bs_delivered = $current_cash->bs_cash;
             
-            $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit;
+            $cop_in_usd = $current_cash->total_cop_in_usd;
+            $bs_in_usd = $current_cash->total_bs_in_usd;
+            $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit + $cop_in_usd + $bs_in_usd;
             $current_cash->update();
 
 
             $reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', Order::RESERVED)
                 ->first();
-
 
 
             $newPendingOrder = null;
@@ -668,6 +669,11 @@ class OrderActionService
                 $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
                 $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
                 $cashClosing->bs_delivered = $cashClosing->bs_cash;
+
+                $cop_in_usd = $cashClosing->total_cop_in_usd;
+                $bs_in_usd = $cashClosing->total_bs_in_usd;
+                $cashClosing->total_sales = $cashClosing->total_usd + $cashClosing->usd_credit + $cop_in_usd + $bs_in_usd;
+
                 $cashClosing->update();
              }
 

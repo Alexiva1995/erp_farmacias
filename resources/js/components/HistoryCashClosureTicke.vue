@@ -13,8 +13,7 @@ const props = defineProps({
 });
 
 const logoSrc = computed(() => BASE64_LOGO_DATA);
-console.log(props.orderData);
-console.log(props.cashData);
+
 </script>
 <template>
   <div style="width: 100%">

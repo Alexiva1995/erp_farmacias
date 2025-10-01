@@ -245,8 +245,6 @@ watch([filterSearchQuery], () => {
 
 const viewMonthlyCash = async (cash) => {
 try {
-    console.log(cash.daily_closure_ids);
-    console.log('hola');
     originalMonthlyIds.value = cash.daily_closure_ids;
      const params = {
       closingMonthlyIds: cash.daily_closure_ids

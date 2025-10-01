@@ -432,7 +432,6 @@ watch(
         "El modal se ha abierto. Moneda de la orden:",
         props.selectedCurrency
       );
-      console.log("Prop totalAmount:", props.totalAmount);
       resetProgress();
     }
   }
