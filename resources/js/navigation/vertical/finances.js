@@ -57,6 +57,14 @@ export default [
         title: 'Nómina',
         to: 'finances-payslips',
       },
+      {
+        title: 'Cierre de caja',
+        to: 'finances-cash-closure',
+      },
+      {
+        title: 'Cierre de caja user',
+        to: 'finances-cash-closure-user',
+      },
     ],
   },
 ]

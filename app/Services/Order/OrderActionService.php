@@ -15,6 +15,7 @@ use Exception;
 use App\Exceptions\InsufficientStockException;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Models\ProductLot;
 
 class OrderActionService
 {
@@ -51,22 +52,22 @@ class OrderActionService
         try {
 
             $withRelations = [
-                'client',
-                'seller',
-                'details' => function ($query) {
-                    $query->with([
-                        'product' => function ($q) {
-                            $q->with('laboratory')
-                                ->withSum('lots', 'quantity');
-                        }
-                    ]);
-                }
-            ];
+                    'client',
+                    'seller',
+                    'details' => function ($query) {
+                        $query->with([
+                            'product' => function ($q) {
+                                $q->with('laboratory')
+                                      ->withSum('lots', 'quantity');
+                            }
+                        ]);
+                    }
+                ];
 
-            $openOrder = Order::where('seller_id', $sellerId)
-                ->where('status', Order::PENDING)
-                ->with($withRelations)
-                ->first();
+              $openOrder = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::PENDING)
+                    ->with($withRelations)
+                    ->first();
 
             $reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', 'Reserved')
@@ -300,6 +301,9 @@ class OrderActionService
                 $orderId->money_returns = $request->changeAmount;
             }
 
+            if (isset($request->changeAmountUSD)) {
+                $orderId->usd_conversion = $request->changeAmountUSD;
+            }
 
             $currencies = [];
             foreach ($request->payments as $payment) {
@@ -390,10 +394,6 @@ class OrderActionService
                 ]);
             }
 
-
-            $current_cash->cop_conversion += $request->changeAmount ?? null;
-            $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
-
             foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
                 $amount = $payment['amount'] ?? 0;
@@ -438,8 +438,10 @@ class OrderActionService
             }
 
 
-            if (isset($request->changeAmountUSD)) {
+            if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
                 $current_cash->usd_cash -= $request->changeAmountUSD;
+                $current_cash->cop_conversion += $request->changeAmount ?? null;
+                $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
             } else {
                 if (isset($request->changeAmount)) {
                     $current_cash->cop_cash -= $request->changeAmount;
@@ -447,18 +449,22 @@ class OrderActionService
             }
 
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
-            $total_cop = $current_cash->cop_cash + $current_cash->cop_transfer;
-            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_credit + $current_cash->usd_balance + $current_cash->usd_conversion;
+            $total_cop = ($current_cash->cop_cash + $current_cash->cop_transfer) - $current_cash->cop_conversion;
+            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance + $current_cash->usd_conversion;
 
-            $current_cash->total_bs += $total_bs;
-            $current_cash->total_cop += $total_cop;
-            $current_cash->total_usd += $total_usd;
+            $current_cash->total_bs = $total_bs;
+            $current_cash->total_cop = $total_cop;
+            $current_cash->total_usd = $total_usd;
+            $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
+            $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
+            $current_cash->bs_delivered = $current_cash->bs_cash;
             $current_cash->update();
 
 
             $reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', Order::RESERVED)
                 ->first();
+
 
 
             $newPendingOrder = null;
@@ -475,7 +481,6 @@ class OrderActionService
             return [
                 'order' => $newPendingOrder,
             ];
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al completar la orden: ' . $e->getMessage(), [
@@ -486,7 +491,7 @@ class OrderActionService
         }
     }
 
-    public function reserveOrder(Order $order, $sellerId): array
+    public function reserveOrder(Order $order,  $sellerId): array
     {
         DB::beginTransaction();
         try {
@@ -560,6 +565,117 @@ class OrderActionService
 
             DB::rollBack();
             Log::error('Error al agregar la orden: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function cancelledOrder(Order $order): Order
+    {
+        DB::beginTransaction();
+        try {
+            $order->status = Order::CANCELLED;
+            $order->save();
+            $order->load('details','cashClosing');
+
+            foreach ($order->details as $item) {
+                $productLot = ProductLot::where('product_id', $item->product_id)
+                    ->where(function ($query) {
+                        $query->whereNull('expiration_date')
+                            ->orWhere('expiration_date', '>', Carbon::now());
+                    })
+                    ->orderBy('expiration_date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->first();
+
+                     if (!$productLot) {
+                    Log::error("No se encontró un lote activo/válido para devolver el producto.", [
+                        'order_item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'order_id' => $order->id,
+                    ]);
+                    throw new \Exception("No se pudo devolver el inventario para el producto ID: {$item->product_id}. No hay lote disponible.");
+                }
+                $productLot->increment('quantity', $item->quantity); 
+            }
+            $cashClosing = $order->cashClosing;
+             if (!$cashClosing) {
+                Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
+             } else {
+
+                foreach ($order->paymentMethods as $payment) {
+                    $amount = $payment->amount;
+                    $method = $payment->method;
+                    switch ($method) {
+                        case 'cash_usd':
+                            if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                $montoDesc = $amount-$order->usd_conversion;
+                                $cashClosing->usd_cash -= $montoDesc;
+                                $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
+                            }else{
+                                $cashClosing->usd_cash -= $amount;
+                            } 
+                            break;
+                        case 'binance':
+                            $cashClosing->usd_binance -= $amount;
+                            break;
+                        case 'paypal':
+                            $cashClosing->usd_paypal -= $amount;
+                            break;
+                        case 'credit':
+                            $cashClosing->usd_credit -= $order->total_amount;
+                            break;
+                        case 'cash_bs':
+                            $cashClosing->bs_cash -= $amount;
+                            break;
+                        case 'mobile_payment':
+                            $cashClosing->bs_mobile -= $amount;
+                            break;
+                        case 'bank_transfer_bs':
+                            $cashClosing->bs_transfer -= $amount;
+                            break;
+                        case 'card':
+                            $cashClosing->bs_card -= $amount;
+                            break;
+                        case 'cash_cop':
+                            if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
+                            }else{
+                                $montoDescCOP = $amount - $order->money_returns;
+                                $cashClosing->cop_cash -= $montoDescCOP;
+                            }
+                            break;
+                        case 'bank_transfer':
+                            $cashClosing->cop_transfer -= $amount;
+                            break;
+                        case 'balance':
+                            $cashClosing->usd_balance -= $amount;
+                            break;
+                    }
+                }
+
+                $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
+                $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
+                $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
+
+                $cashClosing->total_bs = $total_bs;
+                $cashClosing->total_cop = $total_cop;
+                $cashClosing->total_usd = $total_usd;
+                $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
+                $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
+                $cashClosing->bs_delivered = $cashClosing->bs_cash;
+                $cashClosing->update();
+             }
+
+
+            DB::commit();
+            Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);
+            return $order;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al cancelada la orden: ' . $e->getMessage(), [
                 'order_id' => $order->id,
                 'trace' => $e->getTraceAsString(),
             ]);
