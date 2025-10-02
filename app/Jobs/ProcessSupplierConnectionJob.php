@@ -42,7 +42,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         ]);
 
         $supplierConnection = $this->supplier->connections->first();
-        if (is_null($supplierConnection)) {
+        if (is_null($supplierConnection) && !$this->filePath) {
             $status->update([
                 "status" => "failed",
                 "message" => "Este proveedor no posee una conexión registrada",
