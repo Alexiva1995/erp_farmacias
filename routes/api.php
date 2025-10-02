@@ -488,118 +488,145 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
             Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
         });
+    });
 
-        Route::prefix("supplier-laboratories")->group(function () {
-            Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
-            Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    Route::prefix("supplier-laboratories")->group(function () {
+        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    });
+
+    Route::prefix("supplier-laboratories")->group(function () {
+        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    });
+
+    // Asistente IA
+    Route::prefix("suppliers-ia-order-assistant")->group(function () {
+        Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
+        Route::prefix("generate-order")->group(function () {
+            Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+            Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+            Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
         });
+    });
 
-        // Asistente IA
-        Route::prefix("suppliers-ia-order-assistant")->group(function () {
-            Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
-            Route::prefix("generate-order")->group(function () {
-                Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-                Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
-                Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
-            });
-        });
+    Route::prefix("suppliers-ia-assistant-report")->group(function () {
+        Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+        Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+        Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+        Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    });
 
-        Route::prefix("suppliers-ia-assistant-report")->group(function () {
-            Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
-            Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
-            Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
-            Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
-        });
-
-        // Finanzas
-        Route::prefix("finances")->group(function () {
-            Route::prefix("profitability")->group(function () {
-                Route::get("/", [ProfitabilityController::class, "consultOne"]);
-                Route::post("/store", [ProfitabilityController::class, "store"]);
-                Route::post("/{id}", [ProfitabilityController::class, "edit"]);
-                Route::prefix("product")->group(function () {
-                    Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
-                    Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
-                    Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
-                });
-            });
-
-            Route::prefix("exchange-rates")->group(function () {
-                Route::get("/", [ExchangeRateController::class, "consultAll"]);
-                Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
-                Route::post("/store", [ExchangeRateController::class, "store"]);
-                Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
-                Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
-                Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
-            });
-
-            // pending payments
-            Route::prefix("pending-payments")->group(function () {
-                Route::get("/", [PendingPaymentsController::class, "index"]);
-                Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
-                Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
-                Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
-                Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
-                Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
-                Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]); // Nueva ruta
-            });
-
-            // payment history
-            Route::prefix("payment-history")->group(function () {
-                Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
-            });
-
-            Route::prefix('transactions')->group(function () {
-                Route::get('', [TransactionController::class, 'getAll']);
-                Route::get('/stats', [TransactionController::class, 'getByType']);
-            });
-
-            Route::prefix('payslips')->group(function () {
-                Route::get('', [PayslipController::class, 'index']);
-                Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
-                Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-                Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
-                Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
-                Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
-            });
-
-            Route::prefix("cash-closure")->group(function () {
-                Route::get("/", [CashClosureController::class, "getCashClosure"]);
-                Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
-                Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
-                Route::post("/close", [CashClosureController::class, "closeCash"]);
-                Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
-            });
-
-            Route::prefix("expenses")->group(function () {
-                Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-                Route::post("/create", [ExpensesController::class, "createExpense"]);
-                Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
-                Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
-                Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
-                Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
-                Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
-                Route::prefix("category")->group(function () {
-                    Route::get("/", [ExpenseCategoryController::class, "getAll"]);
-                });
+    // Finanzas
+    Route::prefix("finances")->group(function () {
+        Route::prefix("profitability")->group(function () {
+            Route::get("/", [ProfitabilityController::class, "consultOne"]);
+            Route::post("/store", [ProfitabilityController::class, "store"]);
+            Route::post("/{id}", [ProfitabilityController::class, "edit"]);
+            Route::prefix("product")->group(function () {
+                Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
+                Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
+                Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
             });
         });
 
-        Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
-            Route::get('/value', 'getValue')->name('value');
-            Route::get('/depreciation', 'getDepreciation')->name('depreciation');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::put('/{furniture}', 'update')->name('update');
-            Route::delete('/{furniture}', 'destroy')->name('delete');
+        Route::prefix("exchange-rates")->group(function () {
+            Route::get("/", [ExchangeRateController::class, "consultAll"]);
+            Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
+            Route::post("/store", [ExchangeRateController::class, "store"]);
+            Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
+            Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+            Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
-        Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
-            Route::get('/balance', 'getBalance')->name('balance');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::put('/{loan}', 'update')->name('update');
-            Route::delete('/{loan}', 'destroy')->name('delete');
+        // pending payments
+        Route::prefix("pending-payments")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "index"]);
+            Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
+            Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
+            Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
+            Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
+            Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
+            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]); // Nueva ruta
+        });
+
+        // payment history
+        Route::prefix("payment-history")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
+        });
+
+        Route::prefix('transactions')->group(function () {
+            Route::get('', [TransactionController::class, 'getAll']);
+            Route::get('/stats', [TransactionController::class, 'getByType']);
+        });
+
+        Route::prefix('payslips')->group(function () {
+            Route::get('', [PayslipController::class, 'index']);
+            Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
+            Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
+            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
+            Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
+            Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
+        });
+
+        Route::prefix("cash-closure")->group(function () {
+            Route::get("/", [CashClosureController::class, "getCashClosure"]);
+            Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
+            Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
+            Route::post("/close", [CashClosureController::class, "closeCash"]);
+            Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
+        });
+
+        Route::prefix("expenses")->group(function () {
+            Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+            Route::post("/create", [ExpensesController::class, "createExpense"]);
+            Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+            Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+            Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+            Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+            Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+            Route::prefix("category")->group(function () {
+                Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+            });
+        });
+    });
+
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
+        Route::get('/balance', 'getBalance')->name('balance');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{loan}', 'update')->name('update');
+        Route::delete('/{loan}', 'destroy')->name('delete');
+    });
+
+    Route::prefix("expenses")->group(function () {
+        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create", [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
         });
 
         Route::prefix('cleaning-activities')->group(function () {
