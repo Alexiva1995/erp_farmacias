@@ -17,7 +17,19 @@ class InvoiceDetail extends Model
         'unit_cost',
         'total_cost',
         'location',
+        'tax_enabled'
     ];
+
+    public const FILLABLEDETAILS = [
+        'quantity',
+        'unit_cost',
+        'lot_number',
+        'expiration_date',
+        'total_cost',
+        'product_id',
+    ];
+
+    protected $fillableDetails = self::FILLABLEDETAILS;
 
     public function invoice(): BelongsTo
     {

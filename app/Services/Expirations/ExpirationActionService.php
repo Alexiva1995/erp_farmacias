@@ -208,7 +208,7 @@ class ExpirationActionService
 
             return [
                 'success' => true,
-                'message' => "Reajuste aplicado exitosamente. Se procesaron {$totalUnitsProcessed} unidades de productos caducados de {$processedCount} productos del mes. {$excludedCount} productos fueron excluidos. Se redistribuyó $" . number_format($totalLostValue, 2) . " entre las {$totalActiveStock} unidades de {$affectedProductCount} productos activos.",
+                'message' => "Reajuste realizado con éxito.",
                 'processed_logs' => $processedCount,
                 'excluded_logs' => $excludedCount,
                 'total_logs' => $totalCount,

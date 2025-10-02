@@ -11,10 +11,33 @@ class ExchangeRateRepository
 
     public function consultAll(): Collection
     {
-        $product = ExchangeRate::all();
+        $exhange = ExchangeRate::all();
 
 
-        return $product;
+        return $exhange;
+    }
+
+    public function consultOneCOP(): Model | null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
+
+
+        return $exhange;
+    }
+
+    public function consultOneBCV(): Model | null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'USD')->first();
+
+        return $exhange;
+    }
+
+    public function updateBCVDollar(): Model
+    {
+
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+
+        return ExchangeRate::create($data);
     }
 
     public function store(array $data): Model

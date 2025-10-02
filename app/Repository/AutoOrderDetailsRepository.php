@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Repository;
+
+use App\Models\AutoOrderDetail;
+use Illuminate\Database\Eloquent\Collection;
+
+class AutoOrderDetailsRepository
+{
+    public function create(array $datos): ?AutoOrderDetail
+    {
+        $record = AutoOrderDetail::create($datos);
+        return $record;
+    }
+
+    public function getPurchaseOrderDetails($filters)
+    {
+        $results = AutoOrderDetail::where("order_id", $filters["id"])
+            ->with(["productSupplier"])
+            ->paginate(10)
+            ->through(fn($record) => [...$record->toArray(), "product_name" => $record->productSupplier->name ?? null]);
+
+        return $results;
+    }
+
+    public function deleteDetail(AutoOrderDetail $autoOrderDetail)
+    {
+        $autoOrder = $autoOrderDetail->order;
+        $autoOrder->decrement("total_quantity", $autoOrderDetail->quantity);
+        $autoOrder->decrement("total_items");
+        $autoOrder->decrement("total_amount", $autoOrderDetail->subtotal);
+        $autoOrderDetail->delete();
+        return response()->json(["message" => "Eliminado"]);
+    }
+
+    public function orderHistory(array $data)
+    {
+        $id = $data["id"];
+        $perPage = $data["perPage"] ?? 10;
+
+        $results = AutoOrderDetail::query()
+            ->select(["auto_order_details.*", "products.name as product_name"])
+            ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->where("auto_order_details.order_id", $id)
+            ->paginate($perPage);
+
+        return $results;
+    }
+
+    public function consultDetailByProductSupplierId($product_supplier_id): int|null
+    {
+        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->sum("quantity");
+    }
+}

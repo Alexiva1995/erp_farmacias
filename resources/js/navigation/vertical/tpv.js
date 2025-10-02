@@ -13,6 +13,32 @@ export default [
         title: 'Cotización',
         to: 'tpv-quotation',
       },
+       {
+        title: 'Pedidos',
+        to: 'tpv-order-general',
+       // meta: { roles: ['admin'] }
+      },
+       {
+        title: 'Pedidos Usuario',
+        to: 'tpv-order-user',
+       // meta: { roles: ['user'] }
+      },
+      {
+        title: 'Creditos',
+        to: 'tpv-credit',
+      },
+      {
+        title: 'Devoluciones',
+        to: 'tpv-returns',
+      },
+      {
+        title: 'Devoluciones Usuario',
+        to: 'tpv-returns-user',
+      },
+      {
+        title: 'Devoluciones Supervisor',
+        to: 'tpv-returns-supervisor',
+      },
     ],
   },
 ]

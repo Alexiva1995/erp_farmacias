@@ -23,6 +23,21 @@ class ExchangeRateServices implements ExchangeRate
         return $this->exchangeRateRepository->store($data);
     }
 
+    public function consultOneCOP(): Model
+    {
+        return $this->exchangeRateRepository->consultOneCOP();
+    }
+
+    public function consultOneBCV(): Model
+    {
+        return $this->exchangeRateRepository->consultOneBCV();
+    }
+
+    public function updateBCVDollar(): Model
+    {
+        return $this->exchangeRateRepository->updateBCVDollar();
+    }
+
     /*
     public function consultById(string $id): ?Model
     {

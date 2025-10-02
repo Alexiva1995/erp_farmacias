@@ -36,7 +36,15 @@ class Supplier extends Model
         'cash_payment',
         'charges_igtf',
         'rating',
-        'is_deleted'
+        'is_deleted',
+        'payment_due_type',
+        'custom_due_days',
+        'payment_due_reference'
+    ];
+
+    protected $casts = [
+        'dispatch_days' => 'array',
+        'order_days' => 'array',
     ];
 
     /**
@@ -45,6 +53,9 @@ class Supplier extends Model
      *
      * @var array<string, string>
      */
+
+    protected $appends = ['debt'];
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
@@ -103,5 +114,34 @@ class Supplier extends Model
     public function psychotropicControls()
     {
         return $this->hasMany(PsychotropicControl::class);
+    }
+
+    public function scores()
+    {
+        return $this->hasMany(SupplierScore::class);
+    }
+
+    public function latestScore()
+    {
+        return $this->hasOne(SupplierScore::class)->latestOfMany('evaluated_on');
+    }
+
+    public function getDebtAttribute(): float
+    {
+        return $this->invoices->sum->outstanding_debt;
+    }
+
+    public function discounts()
+    {
+        return $this->hasMany(SupplierDiscount::class);
+    }
+
+    public function connections()
+    {
+        return $this->hasMany(SupplierConnection::class);
+    }
+    public function paymentDate()
+    {
+        return $this->hasOne(SupplierPaymentMethod::class);
     }
 }

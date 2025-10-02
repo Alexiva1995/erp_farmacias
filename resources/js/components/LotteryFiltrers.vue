@@ -23,34 +23,8 @@ const emit = defineEmits([
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaDesde_filtro"
-            label="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaDesde_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaHasta_filtro"
-            label="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaHasta_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
             :model-value="props.laboratory_id"
             label="Laboratorios"
             :items="props.laboratories"
@@ -60,18 +34,47 @@ const emit = defineEmits([
             @update:model-value="emit('update:laboratory_id', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VNumberInput
+        <VCol cols="12" sm="6" md="2">
+          <AppDateTimePicker
+            placeholder="Fecha Desde"
+            :model-value="props.fechaDesde_filtro"
+            clearable
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
+            @update:model-value="emit('update:fechaDesde_filtro', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="2">
+          <AppDateTimePicker
+            placeholder="Fecha Hasta"
+            :model-value="props.fechaHasta_filtro"
+            clearable
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
+            @update:model-value="emit('update:fechaHasta_filtro', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="2">
+          <v-text-field
+            label="Monto Minimo"
+            type="number"
             :model-value="props.monto_minimo"
             placeholder="Monto Minimo"
             clearable
             variant="outlined"
-            precision="2"
             @update:model-value="emit('update:monto_minimo', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VNumberInput
+        <VCol cols="12" sm="6" md="2">
+          <v-text-field
+            label="Numero de Ganadores"
+            type="number"
             :model-value="props.numero_de_premios"
             placeholder="Numero de ganadores"
             clearable
@@ -94,7 +97,7 @@ const emit = defineEmits([
         prepend-icon="tabler-plus"
         @click="emit('action-sortiar', 'ok')"
       >
-        Sortiar
+        Realizar Sorteo
       </VBtn>
     </VCardActions>
   </VCard>

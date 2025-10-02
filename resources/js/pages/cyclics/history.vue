@@ -1,0 +1,135 @@
+<script setup>
+import CycleSummaryFilters from "@/components/CycleSummaryFilters.vue";
+import CycleSummaryTable from "@/components/CycleSummaryTable.vue";
+import CycleDetailsModal from "@/components/dialogs/CycleDetailsModal.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { onMounted, ref, watch } from "vue";
+
+const cycles = ref([]);
+const totalCycles = ref(0);
+const loading = ref(false);
+const page = ref(1);
+const itemsPerPage = ref(10);
+const sortBy = ref();
+const orderBy = ref();
+
+const startDate = ref(null);
+const endDate = ref(null);
+const cycleStatus = ref(null);
+const isLoadingFilters = ref(false);
+
+// Modal state
+const showCycleDetailsModal = ref(false);
+const selectedCycleId = ref(null);
+
+const fetchCycles = async () => {
+  loading.value = true;
+
+  const params = {
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    cycleStatus: cycleStatus.value,
+  };
+
+  // Remover parámetros null o vacíos
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
+  try {
+    const response = await axios.get("/inventory/cycle/summary", {
+      params,
+    });
+    cycles.value = response.data.data;
+    totalCycles.value = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener el resumen de ciclos:", error);
+    toast.error("No se pudo cargar el resumen de ciclos.");
+  } finally {
+    loading.value = false;
+  }
+};
+
+let debounceTimer;
+watch(
+  [page, itemsPerPage, sortBy, orderBy, startDate, endDate, cycleStatus],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchCycles(), 300);
+  },
+  { deep: true }
+);
+
+// Resetear página cuando se cambian los filtros
+watch([startDate, endDate, cycleStatus], () => {
+  page.value = 1;
+});
+
+onMounted(() => {
+  fetchCycles();
+});
+
+const updateTableOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  }
+};
+
+const handleClearFilters = () => {
+  startDate.value = null;
+  endDate.value = null;
+  cycleStatus.value = null;
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+};
+
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+};
+
+const viewCycleDetails = (cycleId) => {
+  selectedCycleId.value = cycleId;
+  showCycleDetailsModal.value = true;
+};
+</script>
+
+<template>
+  <div>
+    <CycleSummaryFilters
+      v-model:startDate="startDate"
+      v-model:endDate="endDate"
+      v-model:cycleStatus="cycleStatus"
+      :loading="isLoadingFilters"
+      @clear="handleClearFilters"
+      @sort="handleSort"
+    />
+
+    <CycleSummaryTable
+      :cycles="cycles"
+      :loading="loading"
+      :total-cycles="totalCycles"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptions"
+      @view-cycle-details="viewCycleDetails"
+    />
+
+    <!-- Modal de detalles del ciclo -->
+    <CycleDetailsModal
+      v-model="showCycleDetailsModal"
+      :cycle-id="selectedCycleId"
+    />
+  </div>
+</template>
