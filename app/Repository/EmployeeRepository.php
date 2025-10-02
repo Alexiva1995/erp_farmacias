@@ -66,7 +66,7 @@ class EmployeeRepository
     ]);
 
     $user->salaries()->create([
-      'amount' => 50,
+      'amount' => 40,
       'salary_concept_id' => $concept->id
     ]);
 
