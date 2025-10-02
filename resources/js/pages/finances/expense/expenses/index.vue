@@ -187,7 +187,6 @@ async function exportarExcel(formato){
 
 onMounted(async () => {
   statuModule.loadingApp=true
-  formulario.user_id=1
   let categorias=await consultarCategorias()
   await actualizarTabla()
   statuModule.categorias=categorias

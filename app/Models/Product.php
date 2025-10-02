@@ -6,17 +6,16 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes; // Se mantiene si se usa en el futuro, aunque no se usa directamente en este snippet
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
-use App\Services\Resources\ResourceService; // Importado de 4.0-TPV
-use Illuminate\Support\Str; // Importado de develop
+use App\Services\Resources\ResourceService;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
     use HasFactory;
-    // Si se necesita SoftDeletes en el futuro, se añadiría aquí:
-    // use SoftDeletes;
 
     /**
      * La tabla asociada con el modelo.
@@ -52,8 +51,6 @@ class Product extends Model
         'stock',
     ];
 
-    // Atributos que se añadirán al array del modelo cuando se serialice a JSON.
-    // protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'preferencia_producto'];
     protected $appends = ['formatted_details', 'price_bs', 'price_cop'];
 
     /**
@@ -66,8 +63,6 @@ class Product extends Model
         'psychotropic' => 'boolean',
         'is_deleted' => 'boolean',
         'sale_price' => 'float',
-        // Puedes añadir más casts aquí si es necesario, por ejemplo:
-        // 'unit_cost' => 'decimal:2',
     ];
 
 
@@ -179,7 +174,7 @@ class Product extends Model
     /**
      * Un producto tiene una rentabilidad asociada.
      */
-    public function profitability(): \Illuminate\Database\Eloquent\Relations\HasOne // Corregido a HasOne si es una sola rentabilidad
+    public function profitability(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(ProductProfitability::class);
     }
@@ -222,6 +217,21 @@ class Product extends Model
     public function psychotropicControls(): HasMany
     {
         return $this->hasMany(PsychotropicControl::class);
+    }
+
+    public function invoiceCounts(): HasMany
+    {
+        return $this->hasMany(InvoiceCount::class);
+    }
+
+    /**
+     * Un producto puede estar asignado a muchos empleados.
+     * Un empleado puede tener asignados muchos productos.
+     */
+    public function employees(): BelongsToMany
+    {
+        return $this->belongsToMany(Employee::class, 'employee_product')
+            ->withTimestamps();
     }
 
     /**
@@ -279,18 +289,4 @@ class Product extends Model
     {
         $this->attributes['name'] = Str::upper($value);
     }
-    public function invoiceCounts()
-    {
-        return $this->hasMany(InvoiceCount::class);
-    }
-
-    // public function getPreferenciaProductoAttribute()
-    // {
-    //     if ($this->group_id == null) {
-    //         return 0;
-    //     }
-
-    //     $cantidadEnGrupo = self::where('group_id', $this->group_id)->count();
-    //     return $cantidadEnGrupo > 0 ? $this->stock / $cantidadEnGrupo : 0;
-    // }
 }
