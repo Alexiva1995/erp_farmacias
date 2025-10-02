@@ -78,7 +78,7 @@ class SupplierConnectionService
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
-                        $invoiceResults[] = $parsed;                        
+                        $invoiceResults[] = $parsed;
                     }
                 }
             }
@@ -187,6 +187,7 @@ class SupplierConnectionService
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
+            $quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -198,14 +199,14 @@ class SupplierConnectionService
 
                     case "integer":
                         $entry[$meta["target"]] = $value;
-                        break;    
+                        break;
 
                     case "decimal":
                         if (is_numeric($value)) {
                             $newValue = number_format((float) $value, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $entry[$meta["target"]] = $newValue;
+                                $quantity += $newValue;
                                 break;
                             }
 
@@ -273,8 +274,10 @@ class SupplierConnectionService
                     } else {
                         $missingBarcode = true; // lo marcamos para crear luego
                     }
-                } 
+                }
             }
+
+            $entry["quantity"] = $quantity;
 
             if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
                 $stock = 0;
@@ -285,7 +288,7 @@ class SupplierConnectionService
                     }
                 } else
                     $stock = $entry['quantity'];
-                
+
                 $newProduct = Product::create([
                     'barcode' => $entry['barcode_match'],
                     'name' => $entry['name'] ?? 'Producto sin nombre',
@@ -299,7 +302,7 @@ class SupplierConnectionService
                 $entry['product_id'] = $newProduct->id;
 
                 $products->put($missingBarcode, $newProduct); // actualiza el cache local
-            } 
+            }
 
             return $entry;
         });
@@ -307,7 +310,8 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array {
+    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+    {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
@@ -337,7 +341,7 @@ class SupplierConnectionService
 
         if ($mode === 'flat') {
             $invoiceGroups = [];
-            
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
 
@@ -349,7 +353,8 @@ class SupplierConnectionService
                 }
 
                 $invoiceNumber = $header['invoice_number'] ?? null;
-                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers)) continue;
+                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
+                    continue;
 
                 // Línea de producto
                 $lineData = [];
@@ -425,7 +430,7 @@ class SupplierConnectionService
                 }
             }
         }
-        
+
         return $invoices;
     }
 
