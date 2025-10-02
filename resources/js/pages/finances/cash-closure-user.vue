@@ -371,7 +371,6 @@ const handleCloseViewModal = () => {
 
 const cancelarOrder = async (orderId) => {
   try {
-  console.log(orderData);
     await axios.patch(`/tpv/orders/${orderId}/cancelled`);
     toast.success("Orden cancelada exitosamente.");
     fetchOrder();

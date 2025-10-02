@@ -7,6 +7,9 @@ import axios from "@/plugins/axios";
 import { ref, onMounted } from 'vue';
 import SellerCashFilters from "@/components/SellerCashFilters.vue";
 import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
+import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
+import { toast } from "@/plugins/sweetalert";
+import CashClosureTicke from "@/components/CashClosureTicke.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -38,6 +41,12 @@ const viewModal = ref(false);
 const monthlyCashData = ref(null);
 
 const originalMonthlyIds = ref([]);
+
+const orderDataHistory = ref(null);
+const isDownload = ref(false);
+const cashData = ref(null);
+const isDownloadingPdf = ref(false);
+const isPrinting = ref(false);
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -263,7 +272,118 @@ const handleCloseViewModal = () => {
   viewModal.value = false;
 };
 
+const ticketStyles = `
+.pa-2 { padding: 8px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mb-2 { margin-bottom: 8px; }
+.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }`;
 
+const downloadcash = async (cash) => {
+  try {
+    const orderToDownload = cash.orders;
+    const cashToDownload = cash;
+    orderDataHistory.value = orderToDownload;
+    cashData.value = cashToDownload;
+    isDownload.value = true;
+    await nextTick();
+    const printContents = document.getElementById("HistoryDownload");
+    if (!printContents) {
+      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
+      return;
+    }
+    const htmlContent = printContents.innerHTML;
+
+    const response = await axios.post(
+      "/finances/cash-closure/generate-pdf",
+      {
+        html: `<style>${ticketStyles}</style>${htmlContent}`,
+        filename: `historico-${cash.id}.pdf`,
+      },
+      {
+        responseType: "blob",
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Cierre-Caja-${cash.id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("PDF generado y descargado con éxito.");
+  } catch (error) {
+    console.error("Error al descargar el PDF:", error);
+    toast.error("Hubo un error al generar y descargar el PDF.");
+  } finally {
+    isDownload.value = false;
+    orderDataHistory.value = null;
+    cashData.value = null;
+  }
+};
+const printCash = async (cash) => {
+  try {
+    isDownloadingPdf.value = false;
+    const cashToPrint = cash;
+    cashData.value = cashToPrint;
+    isPrinting.value = true;
+    await nextTick();
+    const printContents = document.getElementById("CashClosurePrint");
+
+    if (!printContents) {
+      console.warn("Elemento #CashClosurePrint no encontrado.");
+      window.print();
+      return;
+    }
+
+    const printWindow = window.open("", "", "height=600,width=800");
+    printWindow.document.write(
+      "<html><head><title>Farmacia Barrio Sucre</title>"
+    );
+    const styleSheets = document.styleSheets;
+    for (let i = 0; i < styleSheets.length; i++) {
+      const sheet = styleSheets[i];
+      try {
+        if (sheet.cssRules) {
+          let cssText = "";
+          for (let j = 0; j < sheet.cssRules.length; j++) {
+            cssText += sheet.cssRules[j].cssText;
+          }
+          printWindow.document.write(`<style>${cssText}</style>`);
+        } else if (sheet.href) {
+          printWindow.document.write(
+            `<link rel="stylesheet" href="${sheet.href}">`
+          );
+        }
+      } catch (e) {
+        console.warn(
+          "No se pudo acceder a la hoja de estilo:",
+          sheet.href || sheet,
+          e
+        );
+      }
+    }
+    printWindow.document.write("</head><body>");
+    printWindow.document.write(printContents.innerHTML);
+    printWindow.document.write("</body></html>");
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  } catch (error) {
+    toast.error("No se pudo cargar los detalles del cierre de caja.");
+    isPrinting.value = false;
+    cashData.value = null;
+    isDownloadingPdf.value = false;
+  } finally {
+    setTimeout(() => {
+      isPrinting.value = false;
+      cashData.value = null;
+      isDownloadingPdf.value = false;
+    }, 500);
+  }
+};
 </script>
 <template>
   <CashAverage
@@ -290,6 +410,8 @@ const handleCloseViewModal = () => {
     :items-per-page="itemsPerPageSellerCash"
     :page="pageSellerCash"
     @update:options="updateTableOptionsSellerCash"
+    @print-cash="printCash"
+    @download-cash="downloadcash"
   />
   <div class="mb-5"></div>
   <DailyCashClosingTable
@@ -317,5 +439,22 @@ const handleCloseViewModal = () => {
       :original-ids="originalMonthlyIds"
       @close="handleCloseViewModal"
     />
+
+
+ <div id="CashClosurePrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
+      <CashClosureTicke
+        v-if="isPrinting && cashData"
+        :cash-data="cashData"
+        :isPdf="isDownloadingPdf"
+      />
+    </div>
+
+  <div id="HistoryDownload" :class="{ 'd-none': !isDownload, 'print-container': true }">
+      <HistoryCashClosureTicke
+        v-if="isDownload && orderDataHistory"
+        :order-data="orderDataHistory"
+        :cash-data="cashData"
+      />
+    </div>
 
 </template>
