@@ -41,10 +41,6 @@ const handleUpdateOptions = (options) => {
             @click="emit('view-cash', item)">
             <VIcon icon="tabler-eye" />
           </IconBtn>
-                    <IconBtn
-            @click="emit('download-cash', item)">
-            <VIcon icon="tabler-download" />
-          </IconBtn>
         </div>
       </template>
     </VDataTableServer>

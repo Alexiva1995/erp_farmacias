@@ -147,4 +147,6 @@ class CashClosureController extends Controller
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->stream($filename );
     }
+
+    
 }

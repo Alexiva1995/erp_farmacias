@@ -10,6 +10,7 @@ import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
 import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
 import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
+import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -47,6 +48,9 @@ const isDownload = ref(false);
 const cashData = ref(null);
 const isDownloadingPdf = ref(false);
 const isPrinting = ref(false);
+
+const viewModalDaily = ref(false);
+const dailyCashData = ref({}); 
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -384,6 +388,24 @@ const printCash = async (cash) => {
     }, 500);
   }
 };
+
+const handleCloseViewModalDaily = () => {
+  viewModalDaily.value = false;
+};
+
+
+const viewDailyCash = async (daily) => {
+try {
+    const itemDaily = daily;
+    
+    dailyCashData.value =  itemDaily;
+    viewModalDaily.value = true;
+  } catch (error) {
+    console.error("Error al obtener los detalles del cierre diario:", error);
+    toast.error("Error al obtener los detalles del cierre diario.");
+  }
+}
+
 </script>
 <template>
   <CashAverage
@@ -421,6 +443,7 @@ const printCash = async (cash) => {
     :items-per-page="itemsPerPageDailyCash"
     :page="pageDailyCash"
     @update:options="updateTableOptionsDailyCash"
+    @view-cash="viewDailyCash"
   />
   <div class="mb-5"></div>
   <MonthlyCashClosingTable
@@ -438,6 +461,12 @@ const printCash = async (cash) => {
       :monthlyCash-data="monthlyCashData"
       :original-ids="originalMonthlyIds"
       @close="handleCloseViewModal"
+    />
+
+    <DailyCashModal
+      v-model:isDialogVisible="viewModalDaily"
+      :cashData="dailyCashData" 
+      @close="handleCloseViewModalDaily"
     />
 
 

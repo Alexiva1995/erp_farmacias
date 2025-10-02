@@ -70,6 +70,7 @@ declare module 'vue' {
     CycleSummaryFilters: typeof import('./resources/js/components/CycleSummaryFilters.vue')['default']
     CycleSummaryTable: typeof import('./resources/js/components/CycleSummaryTable.vue')['default']
     DailyCashClosingTable: typeof import('./resources/js/components/DailyCashClosingTable.vue')['default']
+    DailyCashModal: typeof import('./resources/js/components/dialogs/DailyCashModal.vue')['default']
     DetailHistoryShowDialog: typeof import('./resources/js/components/dialogs/DetailHistoryShowDialog.vue')['default']
     DialogCloseBtn: typeof import('./resources/js/@core/components/DialogCloseBtn.vue')['default']
     DoctorFilters: typeof import('./resources/js/components/DoctorFilters.vue')['default']

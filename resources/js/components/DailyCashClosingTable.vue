@@ -26,7 +26,7 @@ const date = (order) => {
   return time.toISOString().split("T")[0];
 };
 
-const emit = defineEmits(['update:options']);
+const emit = defineEmits(['update:options','view-cash']);
 const handleUpdateOptions = (options) => {
   emit('update:options', options);
 };
@@ -50,7 +50,7 @@ const handleUpdateOptions = (options) => {
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
           <IconBtn
-            @click="emit('print-cash', item)">
+            @click="emit('view-cash', item)">
             <VIcon icon="tabler-eye" />
           </IconBtn>
         </div>
