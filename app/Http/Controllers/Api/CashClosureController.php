@@ -136,17 +136,16 @@ class CashClosureController extends Controller
         ]);
      }
 
-    public function downloadMonthlyReport(Request $request){
-        $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
+    public function downloadReport(Request $request){
+        $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->download($filename );
     }
 
-        public function printdMonthlyReport(Request $request){
-        $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
+        public function printdReport(Request $request){
+        $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->stream($filename );
     }
-
     
 }

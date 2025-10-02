@@ -88,7 +88,7 @@ const downloadReport = async () => {
     };
 
     const response = await axios.post(
-      "/finances/cash-closure/downloadMonthlyReport",
+      "/finances/cash-closure/downloadReport",
       params,
       {
         responseType: "blob",
@@ -96,7 +96,7 @@ const downloadReport = async () => {
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
-    let filename = "reporte.pdf";
+    let filename = "CierreCajaMensual.pdf";
     link.href = url;
     link.setAttribute("download", filename);
     document.body.appendChild(link);
@@ -126,7 +126,7 @@ const printReport = async () => {
     };
 
     const response = await axios.post(
-      "/finances/cash-closure/PrintMonthlyReport",
+      "/finances/cash-closure/PrintReport",
       params,
       {
         responseType: "blob",

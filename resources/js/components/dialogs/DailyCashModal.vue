@@ -40,6 +40,107 @@ const filteredCashClosings = computed(() => {
     (closing) => closing.total_sales !== '0.00'
   );
 });
+
+const ticketStyles = `
+.pa-2 { padding: 8px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+.mb-2 { margin-bottom: 8px; }
+.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
+.center-block { margin-left: auto; margin-right: auto; }
+.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
+.w-75 {width: 75% !important;}
+.w-100 {width: 100% !important;}
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }
+.pdf-row-2col {
+  width: 100%;
+  display: block; 
+}
+.pdf-col-50,
+.pdf-col-multi {
+  float: left;
+  width: 50%; 
+  box-sizing: border-box;
+  padding: 0 8px;
+  min-height: 1px;
+}
+.pdf-row-multi:after,
+.pdf-row-2col:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+`;
+
+const downloadReport = async () => {
+  try {
+    await nextTick();
+    const element = document.getElementById("daily-cash-report");
+    if (!element) {
+      console.error("No se encontró el contenido del reporte.");
+      return;
+    }
+    const htmlContent = element.outerHTML;
+    const params = {
+      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
+      filename: "Resumen_Cajas_Diario",
+    };
+
+    const response = await axios.post(
+      "/finances/cash-closure/downloadReport",
+      params,
+      {
+        responseType: "blob",
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    let filename = "CierreDiario.pdf";
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    closeModal();
+  } catch (error) {
+    console.error("Error al descargar el PDF:", error);
+  }
+};
+const printReport = async () => {
+    try {
+    await nextTick();
+    const element = document.getElementById("daily-cash-report");
+    if (!element) {
+      console.error("No se encontró el contenido del reporte.");
+      return;
+    }
+    const htmlContent = element.outerHTML;
+
+    const params = {
+      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
+      filename: "Resumen_Cajas_Diario",
+    };
+
+    const response = await axios.post(
+      "/finances/cash-closure/PrintReport",
+      params,
+      {
+        responseType: "blob",
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const printWindow = window.open(url, '_blank');
+    if (printWindow) {
+            printWindow.focus();
+        }
+    window.URL.revokeObjectURL(url); 
+    closeModal();
+  } catch (error) {
+    console.error("Error al visualizar el PDF:", error);
+  }
+};
 </script>
 <template>
   <VDialog v-model="dialogVisible" max-width="700px">
@@ -54,7 +155,6 @@ const filteredCashClosings = computed(() => {
       <VCardText>
         <div id="daily-cash-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-        </div>
      
         <div class="container mt-3">
             <div>
@@ -196,13 +296,13 @@ const filteredCashClosings = computed(() => {
                   </table>
                 </div>
          </div>
-
+      </div>
       </VCardText>
       <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
-        <VBtn color="secondary" variant="outlined" @click="" class="w-50">
+        <VBtn color="secondary" variant="outlined" @click="printReport" class="w-50">
           Imprimir
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="" class="w-50">
+        <VBtn color="primary" variant="flat" @click="downloadReport" class="w-50">
           Descargar
         </VBtn>
       </VCardActions>
