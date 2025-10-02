@@ -98,9 +98,56 @@ class CashClosureActionService
     }
 
 
-    public function closeDailyCashClosure(User $seller)
+    public function closeDailyCashClosure()
     {
-        $cashClosings = CashClosing::where('seller_id', $seller->id)
+    $cashClosings = CashClosing::whereDate('closing_date', Carbon::today())
+        ->where('total_sales', '>', 0.0)
+        ->whereNull('daily_closure_id')
+        ->get();
+
+    if ($cashClosings->isEmpty()) {
+        return;
+    }
+
+    DB::beginTransaction();
+    try {
+        $dailyClosure = DailyCashClosure::create([
+            'total_sales' => $cashClosings->sum('total_sales'),
+            'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
+            'total_cop' => $cashClosings->sum('total_cop'),
+            'total_bs' => $cashClosings->sum('total_bs'),
+            'bs_card' => $cashClosings->sum('bs_card'),
+            'bs_mobile' => $cashClosings->sum('bs_mobile'),
+            'usd_delivered' => $cashClosings->sum('usd_delivered'),
+            'cop_delivered' => $cashClosings->sum('cop_delivered'),
+            'bs_delivered' => $cashClosings->sum('bs_delivered'),
+        ]);
+
+        foreach ($cashClosings as $cashClosing) {
+            $cashClosing->update([
+                'status' => CashClosing::CLOSED,
+                'daily_closure_id' => $dailyClosure->id,
+            ]);
+        }
+
+        $sellers = User::all();
+        foreach ($sellers as $seller) {
+            CashClosing::firstOrCreate(
+                [
+                    'seller_id' => $seller->id,
+                    'closing_date' => Carbon::today()->toDateString(),
+                    'status' => CashClosing::OPEN,
+                ]
+            );
+        }
+
+        DB::commit();
+    } catch (\Exception $e) {
+        DB::rollBack();
+        throw new \Exception('Error al realizar el cierre de caja diario consolidado: ' . $e->getMessage());
+    }
+
+       /* $cashClosings = CashClosing::where('seller_id', $seller->id)
             ->whereDate('closing_date', Carbon::today())
             ->where('total_sales', '>', 0.0)
             ->get();
@@ -145,7 +192,7 @@ class CashClosureActionService
         } catch (\Exception $e) {
             DB::rollBack();
             throw new \Exception('Error al realizar el cierre de caja diario: ' . $e->getMessage());
-        }
+        }*/
     }
 
     public function getMonthlySalesSummaryData(): array
