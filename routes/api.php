@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ReturnsController;
 use App\Http\Controllers\Api\CashClosureController;
+use App\Http\Controllers\Api\FinancialStatementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +61,14 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
+
+// TEMPORAL: Estado de Resultados público para debugging
+Route::prefix("finances")->group(function () {
+    // income statement (Estado de Resultados) - TEMPORALMENTE PÚBLICO
+    Route::get("/income-statement", [FinancialStatementController::class, "index"]);
+    Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
+    Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
+});
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
@@ -293,6 +302,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });
 
+    // Rutas de Proveedores
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
@@ -433,7 +443,6 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix("user")->group(function () {
             Route::get("/", [UserController::class, "getAll"]);
         });
-
         // Ruta de fiscal
         Route::get("/history", [FiscalController::class, "index"]);
         Route::get("/history/export", [FiscalController::class, "export"]);
