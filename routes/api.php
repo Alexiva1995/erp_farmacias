@@ -376,10 +376,6 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
-        Route::prefix("users")->group(function () {
-            Route::get("/", [UserController::class, "getAll"]);
-        });
-
         // pending payments
         Route::prefix("pending-payments")->group(function () {
             Route::get("/", [PendingPaymentsController::class, "index"]);
@@ -447,11 +443,26 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/{loan}', 'update')->name('update');
         Route::delete('/{loan}', 'destroy')->name('delete');
     });
-    Route::prefix('islr')->group(function () {
-        Route::get('/summary', [IslrController::class, 'getIslrSummary']);
-        Route::get('/gross-income', [IslrController::class, 'getGrossIncome']);
-        Route::get('/deductions', [IslrController::class, 'getDeductions']);
-        Route::get('/tax-unit', [IslrController::class, 'getTaxUnit']);
-        Route::post('/tax-unit', [IslrController::class, 'updateTaxUnit']);
+
+    Route::prefix('cleaning-activities')->group(function () {
+        Route::get('/', [CleaningActivityController::class, 'index']);
+        Route::post('/', [CleaningActivityController::class, 'store']);
+        Route::put('/{cleaningActivity}', [CleaningActivityController::class, 'update']);
+        Route::delete('/{cleaningActivity}', [CleaningActivityController::class, 'destroy']);
+    });
+
+    // Rutas para gestión de laboratorios asignados a empleados
+    Route::prefix('employee-laboratories')->group(function () {
+        Route::get('/', [EmployeeLaboratoryController::class, 'index']);
+        Route::post('/', [EmployeeLaboratoryController::class, 'store']);
+        Route::delete('/{employee}/{laboratoryId}', [EmployeeLaboratoryController::class, 'destroy']);
+    });
+
+    // Rutas para gestión de productos asignados a empleados
+    Route::prefix('employee-products')->group(function () {
+        Route::get('/', [EmployeeProductController::class, 'index']);
+        Route::post('/', [EmployeeProductController::class, 'store']);
+        Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
+        Route::get('/stats', [EmployeeProductController::class, 'stats']);
     });
 });
