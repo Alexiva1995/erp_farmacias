@@ -305,6 +305,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
         Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
     });
+
+    Route::prefix("user")->group(function () {
+        Route::get("/", [UserController::class, "getAll"]);
+    });
+
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
