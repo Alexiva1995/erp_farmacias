@@ -76,6 +76,7 @@ declare module 'vue' {
     DoctorTable: typeof import('./resources/js/components/DoctorTable.vue')['default']
     DonationLetterDialog: typeof import('./resources/js/components/DonationLetterDialog.vue')['default']
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
+    EditUTDialog: typeof import('./resources/js/components/dialogs/EditUTDialog.vue')['default']
     EmployeeFilters: typeof import('./resources/js/components/EmployeeFilters.vue')['default']
     EmployeeFormDialog: typeof import('./resources/js/components/dialogs/EmployeeFormDialog.vue')['default']
     EmployeePaymentDialog: typeof import('./resources/js/components/dialogs/EmployeePaymentDialog.vue')['default']
