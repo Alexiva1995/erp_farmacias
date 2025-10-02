@@ -400,6 +400,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
             Route::get('/monthlyCashclosing', [CashClosureController::class, 'getmonthlyCashclosing']);
             Route::post('/downloadMonthlyReport', [CashClosureController::class, 'downloadMonthlyReport']);
+            Route::post('/PrintMonthlyReport', [CashClosureController::class, 'printdMonthlyReport']);
         });
       
         Route::prefix("expenses")->group(function () {

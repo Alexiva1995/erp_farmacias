@@ -102,6 +102,7 @@ class CashClosureActionService
     {
         $cashClosings = CashClosing::where('seller_id', $seller->id)
             ->whereDate('closing_date', Carbon::today())
+            ->where('total_sales', '>', 0.0)
             ->get();
 
         if ($cashClosings->isEmpty()) {

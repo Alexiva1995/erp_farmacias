@@ -140,6 +140,11 @@ class CashClosureController extends Controller
         $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->download($filename );
+    }
 
+        public function printdMonthlyReport(Request $request){
+        $filename = 'Resumen_Cierres_Mensual_' . now()->format('Y_m_d_His') . '.pdf';
+        $pdf = $this->pdf($request->input('html_content'));
+        return $pdf->stream($filename );
     }
 }
