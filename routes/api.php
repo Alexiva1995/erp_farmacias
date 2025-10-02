@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IslrController;
+use App\Http\Controllers\Api\EmployeeLaboratoryController;
+use App\Http\Controllers\Api\EmployeeProductController;
 use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\FurnitureController;
 use App\Http\Controllers\Api\GroupController;
@@ -207,6 +210,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/exportar/excel", [DoctorController::class, "exportarExcel"]);
             Route::get("/help/check", [DoctorController::class, "helpCheck"]);
         });
+
         Route::prefix("companies")->group(function () {
             Route::post("/", [CompanyController::class, "create"]);
             Route::get("/", [CompanyController::class, "consultAll"]);
@@ -217,6 +221,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/filtrar-sin-paginar", [CompanyController::class, "filtrarSinPaginar"]);
             Route::get("/exportar/excel", [CompanyController::class, "exportarExcel"]);
         });
+
         Route::prefix("clients")->group(function () {
             Route::post("/", [ClientController::class, "create"]);
             Route::get("/", [ClientController::class, "consultAll"]);
@@ -227,6 +232,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
             Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
         });
+
         Route::prefix("lottery")->group(function () {
             Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
             Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
@@ -314,6 +320,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
         Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
     });
+
     Route::prefix("suppliers/purchase-orders")->group(function () {
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
         Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
@@ -369,6 +376,10 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
+        Route::prefix("users")->group(function () {
+            Route::get("/", [UserController::class, "getAll"]);
+        });
+
         // pending payments
         Route::prefix("pending-payments")->group(function () {
             Route::get("/", [PendingPaymentsController::class, "index"]);
@@ -377,7 +388,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
             Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
             Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
-            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]); // Nueva ruta
+            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]);
         });
 
         // payment history
