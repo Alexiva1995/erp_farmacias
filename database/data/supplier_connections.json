@@ -574,5 +574,57 @@
                 "target": "unit_cost"
             }
         }
+    },
+    {
+        "supplier_id": "38",
+        "type": "ftp",
+        "host": "jkserverom.drogueriajoskar.com",
+        "port": 21,
+        "username": "CLI_V241509806",
+        "password": "eyJpdiI6Im1iMGR5V000TXJySEVWWkpIQWI1cmc9PSIsInZhbHVlIjoiM0VEOEVJZVZrc3lITjhORUdqRlkzUT09IiwibWFjIjoiMjI3YjQ3OGQ3OTMwYWFjYzg5ZTI4NTIwYjBlMzBjZTQxOTdlZjQ2YTk5MDE0N2UyZDQ2ZjFlOGRmYTljOGQ1ZiIsInRhZyI6IiJ9",
+        "path": "inventario.txt",
+        "pasv": true,
+        "has_header": false,
+        "invoice_path": "",
+        "structure": {
+            "0": {
+                "file_field": "codigo_interno",
+                "type": "string",
+                "target": "cod_supplier"
+            },
+            "1": {
+                "file_field": "codigo_barras",
+                "type": "string",
+                "target": "barcode_match"
+            },
+            "2": {
+                "file_field": "descripcion_producto",
+                "type": "string",
+                "target": "name"
+            },
+            "3": {
+                "file_field": "fecha_lote",
+                "type": "date",
+                "target": "expiration"
+            },
+            "4": {
+                "file_field": "precio_unitario",
+                "type": "decimal"
+            },
+            "5": {
+                "file_field": "porcentaje_oferta_vigente",
+                "type": "decimal"
+            },
+            "6": {
+                "file_field": "precio_final",
+                "type": "decimal",
+                "target": "unit_cost"
+            },
+            "7": {
+                "file_field": "stock",
+                "type": "integer",
+                "target": "quantity"
+            }
+        }
     }
 ]
