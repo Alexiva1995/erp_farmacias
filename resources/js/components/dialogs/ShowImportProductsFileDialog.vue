@@ -19,7 +19,7 @@ const errors = ref({});
 const start_row = ref(1);
 const cod_supplier = ref("");
 const name = ref("");
-const barcode = ref("");
+const barcode = ref(null);
 const bs_cost = ref("");
 const usd_cost = ref("");
 const active_ingredient = ref("");
@@ -67,7 +67,7 @@ const submitForm = async () => {
     start_row.value = 1;
     cod_supplier.value = "";
     name.value = "";
-    barcode.value = "";
+    barcode.value = null;
     bs_cost.value = "";
     usd_cost.value = "";
     active_ingredient.value = "";
@@ -100,7 +100,7 @@ const fetchSupplierConnection = async (id) => {
     start_row.value = structure.start_row ?? 1;
     cod_supplier.value = structure.cod_supplier ?? "";
     name.value = structure.name ?? "";
-    barcode.value = structure.barcode_match ?? "";
+    barcode.value = structure.barcode_match ?? null;
     bs_cost.value = structure.unit_cost ?? "";
     usd_cost.value = structure.unit_cost_usd ?? "";
     active_ingredient.value = structure.active_ingredient ?? "";
@@ -114,7 +114,7 @@ const handleCleanFormData = () => {
   start_row.value = 1;
   cod_supplier.value = "";
   name.value = "";
-  barcode.value = "";
+  barcode.value = null;
   bs_cost.value = "";
   usd_cost.value = "";
   active_ingredient.value = "";

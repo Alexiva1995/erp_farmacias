@@ -10,6 +10,10 @@ use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
+use Psr\Http\Message\ResponseInterface;
+use React\Http\Browser;
+use React\Socket\Connector;
+use React\EventLoop\Loop;
 
 class SupplierConnectionService
 {
@@ -118,32 +122,54 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        $user = $connection->username;
-        $password = FtpCrypt::decrypt($connection->password);
+        $data = $this->fetchFromAPI($connection);
+        if($data) {
+            $jsonPath = storage_path('app/api_products.json');
+            $csvPath = storage_path('app/api_products.txt');
 
-        $response = Http::post($connection->host, [
-            "usuario" => $user,
-            "clave" => $password,
-        ]);
-        $token = $response->json()["token"];
+            // Verifica si el archivo se descargó
+            if (!file_exists($jsonPath) || filesize($jsonPath) === 0)
+                throw new \Exception("Archivo no descargado");
 
-        try {
-            $response = Http::withHeaders([
-                "autorizacion" => $token,
-            ])
-                ->timeout(1000)
-                ->get($connection->path);
-
-            if ($response->successful()) {
-                $productData = $this->parseDynamicContent($response->json(), $connection);
-                return $productData;
-            } else {
-                throw new Exception("La petición a la API falló");
+            // Convierte JSON a CSV
+            $data = json_decode(file_get_contents($jsonPath), true);
+            if (!is_array($data) || empty($data)) {
+                throw new \Exception("Contenido JSON inválido");
             }
-        } catch (Exception $e) {
-            Log::alert("Supplier connection service");
-            Log::error($e);
-            throw new Exception("No se pudo establecer la conexión");
+
+            try {  
+                $headers = array_keys($data[0]);
+                $csv = implode(';', $headers) . "\n";
+
+                foreach ($data as $row) {
+                    $line = [];
+                    foreach ($headers as $key) {
+                        $value = $row[$key] ?? '';
+
+                        if (is_array($value)) {
+                            $value = json_encode($value);
+                        }
+                        $value = str_replace(["\n", "\r", ";"], [" ", " ", ","], $value);
+                        $line[] = $value;
+                    }
+                    $csv .= implode(';', $line) . "\n";
+                }
+
+                file_put_contents($csvPath, $csv);
+                $productData = $this->parseDynamicContent(file_get_contents($csvPath), $connection);
+
+                unlink($jsonPath);
+                unlink($csvPath);
+
+                return [
+                    "products" => $productData ?? [],
+                    "invoices" => $invoiceResults ?? [],
+                ];
+            } catch (\Exception $e) {
+                Log::alert("Supplier connection service");
+                Log::error($e);
+                throw new \Exception("No se pudo establecer la conexión");
+            }
         }
     }
 
@@ -155,6 +181,7 @@ class SupplierConnectionService
         $has_header = $connection->has_header;
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
+
         $barcodes = [];
 
         // ignora la primera fila si contiene encabezados en vez de registros
@@ -206,6 +233,7 @@ class SupplierConnectionService
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
+            $quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -224,7 +252,7 @@ class SupplierConnectionService
                             $newValue = number_format((float) $value, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $entry[$meta["target"]] = $newValue;
+                                $quantity += $newValue;
                                 break;
                             }
 
@@ -295,6 +323,8 @@ class SupplierConnectionService
                     }
                 }
             }
+
+            $entry["quantity"] = $quantity;
 
             if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
                 $stock = 0;
@@ -487,5 +517,53 @@ class SupplierConnectionService
         }
 
         return null;
+    }
+
+    public function fetchFromAPI(SupplierConnection $connection): bool
+    {
+        $connector = new Connector([
+            'timeout' => 1800,
+        ]);
+
+        $client = (new Browser($connector))->withTimeout(1800.0);
+        $token = $this->getAPIToken($connection);
+        $url = $connection->path;
+        $path = storage_path('app/api_products.json');
+
+        $success = false;
+        
+        try {
+            $client->get($url, [
+                'Autorizacion' => $token
+            ])->then(
+                function (ResponseInterface $response) use (&$success, $path) {
+                    file_put_contents($path, (string) $response->getBody());
+                    $success = true;
+                },
+                function (\Exception $e) use (&$success)  {
+                    Log::error('Error: ' . $e->getMessage() . PHP_EOL);
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::error('Error API: ' . $e->getMessage());
+            $success = false;
+        }
+
+        Loop::run(); // ejecuta el ciclo de eventos
+
+        return $success && file_exists($path) && filesize($path) > 0;
+    }
+
+    public function getAPIToken(SupplierConnection $connection): string
+    {
+        $user = $connection->username;
+        $password = FtpCrypt::decrypt($connection->password);
+
+        $loginResponse = Http::post($connection->host, [
+            "usuario" => $user,
+            "clave" => $password,
+        ]);
+
+        return $loginResponse->json()["token"];
     }
 }

@@ -30,13 +30,12 @@ export default function pdfPayslipsGenerator(data, type) {
 
   const formatBs = (amount) => {
     const newAmount = toNum(amount)
+    const formattedAmount = new Intl.NumberFormat("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(newAmount);
 
-    return (
-      new Intl.NumberFormat("es-VE", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(newAmount) + " Bs."
-    );
+    return `${formattedAmount} ${type === 'legal' ? 'Bs.' : '$'}`;
   };
 
   let hasMoreThanYear = false
