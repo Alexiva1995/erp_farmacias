@@ -4,6 +4,7 @@ import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import TicketHeader from "@/components/TicketHeader.vue";
 import axios from "@/plugins/axios";
 import SectionDivider from "@/components/SectionDivider.vue";
+import { formatDateTime } from "@/utils/formatDateTime";
 
 const props = defineProps({
   isDialogVisible: {
@@ -155,7 +156,16 @@ const printReport = async () => {
       <VCardText>
         <div id="daily-cash-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-     
+     <div class="ticket-header d-flex justify-space-between align-start mt-2">
+        <span class="font-weight-bold tituloAzulPrint"
+          >Cierre Diario N° {{ props.cashData.id }}</span
+        >
+        <div class="text-right d-flex flex-column align-end">
+          <p class="text-black font-weight-regular mb-0 textoPrint">
+            {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}
+          </p>
+        </div>
+      </div>
         <div class="container mt-3">
             <div>
               <div
