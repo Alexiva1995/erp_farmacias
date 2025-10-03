@@ -16,9 +16,9 @@ const exchangeRates = ref({});
 
 // Totales por moneda
 const totalsByCurrency = ref({
-  bs: { amount: 0, count: 0 },
-  usd: { amount: 0, count: 0 },
-  cop: { amount: 0, count: 0 },
+  bs: { amount: 0, count: 0, total_usd: 0 },
+  usd: { amount: 0, count: 0, total_usd: 0 },
+  cop: { amount: 0, count: 0, total_usd: 0 },
   usd_converted: 0,
 });
 
@@ -49,12 +49,12 @@ const selectedTableInvoices = ref([]);
 // Headers de la tabla
 const headers = [
   { title: "Seleccionar", key: "select", sortable: false, width: "50px" },
-  { title: "N° Factura", key: "invoice_number", sortable: true },
-  { title: "Proveedor", key: "supplier_name", sortable: true },
-  { title: "Fecha de Pago", key: "payment_date", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "N° Factura", key: "invoice_number", sortable: false },
+  { title: "Proveedor", key: "supplier_name", sortable: false },
+  { title: "Fecha de Pago", key: "payment_date", sortable: false },
+  { title: "Monto", key: "total_amount", sortable: false },
   { title: "Moneda", key: "currency", sortable: false },
-  { title: "Fecha Vencimiento", key: "exp_date", sortable: true },
+  { title: "Fecha Vencimiento", key: "exp_date", sortable: false },
   { title: "Estado", key: "status", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -88,8 +88,6 @@ const fetchPendingPayments = async () => {
     const params = {
       page: page.value,
       itemsPerPage: itemsPerPage.value,
-      sortBy: sortBy.value,
-      orderBy: orderBy.value,
       q: searchQuery.value,
       supplier_id: selectedSupplier.value,
       start_date: startDate.value,
@@ -128,9 +126,9 @@ const fetchPendingPayments = async () => {
       totalGroups.value = allInvoices.length; // Total de facturas individuales
       totalSuppliers.value = response.data.data.total_suppliers || 0; // Total de proveedores únicos
       totalsByCurrency.value = response.data.data.totals_by_currency || {
-        bs: { amount: 0, count: 0 },
-        usd: { amount: 0, count: 0 },
-        cop: { amount: 0, count: 0 },
+        bs: { amount: 0, count: 0, total_usd: 0 },
+        usd: { amount: 0, count: 0, total_usd: 0 },
+        cop: { amount: 0, count: 0, total_usd: 0 },
         usd_converted: 0,
       };
       // totalAmount se calcula ahora con totalAmountUSD (computed)
@@ -222,6 +220,13 @@ const fetchStatistics = async () => {
 
     if (response.data.status === "success" || response.data.success) {
       statistics.value = response.data.data;
+      // Actualizar también totalsByCurrency con los datos de estadísticas
+      totalsByCurrency.value = response.data.data.totals_by_currency || {
+        bs: { amount: 0, count: 0, total_usd: 0 },
+        usd: { amount: 0, count: 0, total_usd: 0 },
+        cop: { amount: 0, count: 0, total_usd: 0 },
+        usd_converted: 0,
+      };
     } else {
       console.error("Error al cargar estadísticas:", response.data.message);
     }
@@ -414,7 +419,7 @@ const getStatusText = (status) => {
 };
 
 // Watchers para recargar datos
-watch([page, itemsPerPage, sortBy, orderBy], () => {
+watch([page, itemsPerPage], () => {
   fetchPendingPayments();
 });
 
@@ -500,7 +505,7 @@ onMounted(async () => {
                 <div class="text-caption text-medium-emphasis">
                   ≈
                   {{
-                    formatCurrency(totalsByCurrency.bs.amount / 151.57, "USD")
+                    formatCurrency(totalsByCurrency.bs.total_usd || 0, "USD")
                   }}
                 </div>
               </VCardText>
@@ -540,7 +545,7 @@ onMounted(async () => {
                 <div class="text-caption text-medium-emphasis">
                   ≈
                   {{
-                    formatCurrency(totalsByCurrency.cop.amount / 4008.92, "USD")
+                    formatCurrency(totalsByCurrency.cop.total_usd || 0, "USD")
                   }}
                 </div>
               </VCardText>
@@ -644,13 +649,12 @@ onMounted(async () => {
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
-          :sort-by="[{ key: sortBy, order: orderBy }]"
+          :sort-by="[]"
           @update:options="
             (options) => {
               page = options.page;
               itemsPerPage = options.itemsPerPage;
-              sortBy = options.sortBy[0]?.key || 'payment_date';
-              orderBy = options.sortBy[0]?.order || 'asc';
+              // NO aplicar ordenamiento del frontend - el backend ya envía los datos ordenados
             }
           "
         >
