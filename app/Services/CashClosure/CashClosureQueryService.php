@@ -100,7 +100,7 @@ class CashClosureQueryService
 
      private function getBaseQueryDaily(): Builder
     {
-        return DailyCashClosure::query()->with('cashClosings.seller');
+        return DailyCashClosure::query()->with('cashClosings.seller','cashClosings.orders');
     }
 
     private function applySortingDaily(Builder $query, ?string $sortBy, string $orderBy): Builder

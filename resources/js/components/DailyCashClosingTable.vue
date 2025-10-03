@@ -53,6 +53,10 @@ const handleUpdateOptions = (options) => {
             @click="emit('view-cash', item)">
             <VIcon icon="tabler-eye" />
           </IconBtn>
+           <IconBtn
+            @click="emit('reference', item)">
+            <VIcon icon="tabler-clipboard-list" />
+          </IconBtn>
         </div>
       </template>
 

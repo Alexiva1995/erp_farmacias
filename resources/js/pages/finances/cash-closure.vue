@@ -11,6 +11,7 @@ import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
 import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
+import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -50,7 +51,10 @@ const isDownloadingPdf = ref(false);
 const isPrinting = ref(false);
 
 const viewModalDaily = ref(false);
-const dailyCashData = ref({}); 
+const dailyCashData = ref({});
+
+const reference = ref(null);
+const viewModalReference = ref(false);
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -63,7 +67,7 @@ const filterSearchQuery = ref("");
 
 const fetchSummaryData = async () => {
     try {
-        const response = await axios.get('/finances/cash-closure/sales/summary'); 
+        const response = await axios.get('/finances/cash-closure/sales/summary');
         summaryData.value = response.data;
     } catch (error) {
         console.error("Error al obtener el resumen de ventas:", error);
@@ -82,7 +86,7 @@ loadingDailyCash.value = true;
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
     try {
-        const response = await axios.get('/finances/cash-closure/dailyCash',{params}); 
+        const response = await axios.get('/finances/cash-closure/dailyCash',{params});
         dailyCash.value = response.data.data;
         totalDailyCash.value = response.data.total;
      } catch (error) {
@@ -105,7 +109,7 @@ loadingMonthlyCash.value = true;
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get('/finances/cash-closure/monthlyCash',{params}); 
+    const response = await axios.get('/finances/cash-closure/monthlyCash',{params});
     monthlyCash.value = response.data.data;
     totalMonthlyCash.value = response.data.total;
   } catch (error) {
@@ -136,7 +140,7 @@ loadingSellerCash.value = true;
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get('/finances/cash-closure/sellerCash',{params}); 
+    const response = await axios.get('/finances/cash-closure/sellerCash',{params});
     sellerCash.value = response.data.data;
     totalSellerCash.value = response.data.total;
   } catch (error) {
@@ -265,7 +269,7 @@ try {
     const response = await axios.get('/finances/cash-closure/monthlyCashclosing',{params});
     monthlyCashData.value =  response.data.data
     viewModal.value = true;
-   
+
   } catch (error) {
     console.error("Error al obtener los detalles del cierre:", error);
     toast.error("Error al obtener los detalles del cierre.");
@@ -393,11 +397,13 @@ const handleCloseViewModalDaily = () => {
   viewModalDaily.value = false;
 };
 
+const handleCloseViewModalReference = () => {
+  viewModalReference.value = false;
+};
 
 const viewDailyCash = async (daily) => {
 try {
     const itemDaily = daily;
-    
     dailyCashData.value =  itemDaily;
     viewModalDaily.value = true;
   } catch (error) {
@@ -406,6 +412,41 @@ try {
   }
 }
 
+const referenceDaily = async (daily) => {
+  try {
+   if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
+        console.warn("No hay cierres de caja para procesar.");
+        return [];
+    }
+
+     const allPaymentReferences = daily.cash_closings.flatMap(closing => {
+        const completedOrders = closing.orders.filter(order =>
+            order.status === 'Completed'
+        );
+        return completedOrders.flatMap(order => {
+            if (!order.payment_methods || order.payment_methods.length === 0) {
+                return [];
+            }
+          const methodsWithReference = order.payment_methods.filter(method =>
+                method.reference !== null && method.reference !== '' && method.reference !== 'null'
+            );
+            return methodsWithReference.map(method => ({
+                ...method,
+                order_id: order.id,
+                order_currency: order.currency,
+            }));
+        });
+    });
+
+    reference.value = allPaymentReferences;
+    const itemDaily = daily;
+    dailyCashData.value =  itemDaily;
+    viewModalReference.value = true;
+  } catch (error) {
+    console.error("Error al obtener las referencias del cierre diario:", error);
+    toast.error("Error al obtener las referencias del cierre diario.");
+  }
+}
 </script>
 <template>
   <CashAverage
@@ -415,14 +456,14 @@ try {
     :is-positive="summaryData.is_positive"
   />
   <div class="mb-5"></div>
-   <SellerCashFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:startDate="startDateFilter"
-      v-model:endDate="endDateFilter"
-      @clear="handleClearFilters"
-      :showDateFilters="true"
-      :showStateFilters="true"
-    ></SellerCashFilters>
+  <SellerCashFilters
+    v-model:searchQuery="filterSearchQuery"
+    v-model:startDate="startDateFilter"
+    v-model:endDate="endDateFilter"
+    @clear="handleClearFilters"
+    :showDateFilters="true"
+    :showStateFilters="true"
+  ></SellerCashFilters>
 
   <div class="mb-5"></div>
   <SellerBoxTable
@@ -444,6 +485,7 @@ try {
     :page="pageDailyCash"
     @update:options="updateTableOptionsDailyCash"
     @view-cash="viewDailyCash"
+    @reference="referenceDaily"
   />
   <div class="mb-5"></div>
   <MonthlyCashClosingTable
@@ -456,34 +498,45 @@ try {
     @view-cash="viewMonthlyCash"
   />
 
-   <MonthlyCashModal
-      v-model:isDialogVisible="viewModal"
-      :monthlyCash-data="monthlyCashData"
-      :original-ids="originalMonthlyIds"
-      @close="handleCloseViewModal"
+  <MonthlyCashModal
+    v-model:isDialogVisible="viewModal"
+    :monthlyCash-data="monthlyCashData"
+    :original-ids="originalMonthlyIds"
+    @close="handleCloseViewModal"
+  />
+
+  <DailyCashModal
+    v-model:isDialogVisible="viewModalDaily"
+    :cashData="dailyCashData"
+    @close="handleCloseViewModalDaily"
+  />
+
+  <ReferenceModal
+    v-model:isDialogVisible="viewModalReference"
+    :reference="reference"
+    :cashData="dailyCashData"
+    @close="handleCloseViewModalReference"
+  />
+
+  <div
+    id="CashClosurePrint"
+    :class="{ 'd-none': !isPrinting, 'print-container': true }"
+  >
+    <CashClosureTicke
+      v-if="isPrinting && cashData"
+      :cash-data="cashData"
+      :isPdf="isDownloadingPdf"
     />
+  </div>
 
-    <DailyCashModal
-      v-model:isDialogVisible="viewModalDaily"
-      :cashData="dailyCashData" 
-      @close="handleCloseViewModalDaily"
+  <div
+    id="HistoryDownload"
+    :class="{ 'd-none': !isDownload, 'print-container': true }"
+  >
+    <HistoryCashClosureTicke
+      v-if="isDownload && orderDataHistory"
+      :order-data="orderDataHistory"
+      :cash-data="cashData"
     />
-
-
- <div id="CashClosurePrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
-      <CashClosureTicke
-        v-if="isPrinting && cashData"
-        :cash-data="cashData"
-        :isPdf="isDownloadingPdf"
-      />
-    </div>
-
-  <div id="HistoryDownload" :class="{ 'd-none': !isDownload, 'print-container': true }">
-      <HistoryCashClosureTicke
-        v-if="isDownload && orderDataHistory"
-        :order-data="orderDataHistory"
-        :cash-data="cashData"
-      />
-    </div>
-
+  </div>
 </template>
