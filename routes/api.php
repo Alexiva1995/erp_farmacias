@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeeLaboratoryController;
+use App\Http\Controllers\Api\EmployeeProductController;
 use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\FurnitureController;
 use App\Http\Controllers\Api\GroupController;
@@ -44,6 +47,7 @@ use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ReturnsController;
 use App\Http\Controllers\Api\CashClosureController;
+use App\Http\Controllers\Api\FinancialStatementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +61,14 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
+
+// TEMPORAL: Estado de Resultados público para debugging
+Route::prefix("finances")->group(function () {
+    // income statement (Estado de Resultados) - TEMPORALMENTE PÚBLICO
+    Route::get("/income-statement", [FinancialStatementController::class, "index"]);
+    Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
+    Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
+});
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
@@ -206,6 +218,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/exportar/excel", [DoctorController::class, "exportarExcel"]);
             Route::get("/help/check", [DoctorController::class, "helpCheck"]);
         });
+
         Route::prefix("companies")->group(function () {
             Route::post("/", [CompanyController::class, "create"]);
             Route::get("/", [CompanyController::class, "consultAll"]);
@@ -216,6 +229,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/filtrar-sin-paginar", [CompanyController::class, "filtrarSinPaginar"]);
             Route::get("/exportar/excel", [CompanyController::class, "exportarExcel"]);
         });
+
         Route::prefix("clients")->group(function () {
             Route::post("/", [ClientController::class, "create"]);
             Route::get("/", [ClientController::class, "consultAll"]);
@@ -226,6 +240,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
             Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
         });
+
         Route::prefix("lottery")->group(function () {
             Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
             Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
@@ -288,7 +303,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Rutas de Proveedores
-// Ruta de fiscal
+    // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
 
@@ -329,10 +344,41 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
         Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
         Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
+        Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
     });
-    // Ruta de fiscal
-    Route::get("/history", [FiscalController::class, "index"]);
-    Route::get("/history/export", [FiscalController::class, "export"]);
+
+    Route::prefix("suppliers/purchase-orders")->group(function () {
+        Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
+        Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
+        Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
+        Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
+        Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);
+        Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
+        Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
+        Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
+    });
+
+    Route::prefix("supplier-laboratories")->group(function () {
+        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    });
+
+    // Asistente IA
+    Route::prefix("suppliers-ia-order-assistant")->group(function () {
+        Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
+        Route::prefix("generate-order")->group(function () {
+            Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+            Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+            Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
+        });
+    });
+
+    Route::prefix("suppliers-ia-assistant-report")->group(function () {
+        Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+        Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+        Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+        Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    });
 
     // Finanzas
     Route::prefix("finances")->group(function () {
@@ -359,9 +405,45 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/", [UserController::class, "getAll"]);
         });
 
+        // pending payments
+        Route::prefix("pending-payments")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "index"]);
+            Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
+            Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
+            Route::get("/supplier/{supplierId}/invoices", [PendingPaymentsController::class, "getSupplierInvoices"]);
+            Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
+            Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
+            Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]);
+        });
 
-        // Rutas de Proveedores
-// Ruta de fiscal
+        // payment history
+        Route::prefix("payment-history")->group(function () {
+            Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
+        });
+
+        Route::prefix('transactions')->group(function () {
+            Route::get('', [TransactionController::class, 'getAll']);
+            Route::get('/stats', [TransactionController::class, 'getByType']);
+        });
+
+        Route::prefix('payslips')->group(function () {
+            Route::get('', [PayslipController::class, 'index']);
+            Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+            Route::post("/create", [ExpensesController::class, "createExpense"]);
+            Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+            Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+            Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+            Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+            Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+            Route::prefix("category")->group(function () {
+                Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+            });
+        });
+
+        Route::prefix("user")->group(function () {
+            Route::get("/", [UserController::class, "getAll"]);
+        });
+        // Ruta de fiscal
         Route::get("/history", [FiscalController::class, "index"]);
         Route::get("/history/export", [FiscalController::class, "export"]);
 
@@ -404,6 +486,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
             Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
         });
+
         Route::prefix("suppliers/purchase-orders")->group(function () {
             Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
             Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
@@ -414,28 +497,37 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
             Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
         });
-        Route::prefix("supplier-laboratories")->group(function () {
-            Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
-            Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
-        });
+    });
 
-        // Asistente IA
-        Route::prefix("suppliers-ia-order-assistant")->group(function () {
-            Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
-            Route::prefix("generate-order")->group(function () {
-                Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
-                Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
-                Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
-            });
-        });
+    Route::prefix("supplier-laboratories")->group(function () {
+        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    });
 
-        Route::prefix("suppliers-ia-assistant-report")->group(function () {
-            Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
-            Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
-            Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
-            Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    Route::prefix("supplier-laboratories")->group(function () {
+        Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
+        Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    });
+
+    // Asistente IA
+    Route::prefix("suppliers-ia-order-assistant")->group(function () {
+        Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
+        Route::prefix("generate-order")->group(function () {
+            Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
+            Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
+            Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
         });
-        // Finanzas
+    });
+
+    Route::prefix("suppliers-ia-assistant-report")->group(function () {
+        Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
+        Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+        Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
+        Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    });
+
+    // Finanzas
+    Route::prefix("finances")->group(function () {
         Route::prefix("profitability")->group(function () {
             Route::get("/", [ProfitabilityController::class, "consultOne"]);
             Route::post("/store", [ProfitabilityController::class, "store"]);
@@ -446,6 +538,7 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
             });
         });
+
         Route::prefix("exchange-rates")->group(function () {
             Route::get("/", [ExchangeRateController::class, "consultAll"]);
             Route::get("/apiDollar", [ExchangeRateController::class, "apiDollar"]);
@@ -505,21 +598,66 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::get("/", [ExpenseCategoryController::class, "getAll"]);
             });
         });
-        Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
-            Route::get('/value', 'getValue')->name('value');
-            Route::get('/depreciation', 'getDepreciation')->name('depreciation');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::put('/{furniture}', 'update')->name('update');
-            Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
+        Route::get('/value', 'getValue')->name('value');
+        Route::get('/depreciation', 'getDepreciation')->name('depreciation');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{furniture}', 'update')->name('update');
+        Route::delete('/{furniture}', 'destroy')->name('delete');
+    });
+
+    Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
+        Route::get('/balance', 'getBalance')->name('balance');
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{loan}', 'update')->name('update');
+        Route::delete('/{loan}', 'destroy')->name('delete');
+    });
+
+    Route::prefix("expenses")->group(function () {
+        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+        Route::post("/create", [ExpensesController::class, "createExpense"]);
+        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+        Route::prefix("category")->group(function () {
+            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
         });
 
-        Route::prefix('loans')->name('loans.')->controller(LoanController::class)->group(function () {
-            Route::get('/balance', 'getBalance')->name('balance');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::put('/{loan}', 'update')->name('update');
-            Route::delete('/{loan}', 'destroy')->name('delete');
+        Route::prefix('cleaning-activities')->group(function () {
+            Route::get('/', [CleaningActivityController::class, 'index']);
+            Route::post('/', [CleaningActivityController::class, 'store']);
+            Route::put('/{cleaningActivity}', [CleaningActivityController::class, 'update']);
+            Route::delete('/{cleaningActivity}', [CleaningActivityController::class, 'destroy']);
+        });
+
+        // Rutas para gestión de laboratorios asignados a empleados
+        Route::prefix('employee-laboratories')->group(function () {
+            Route::get('/', [EmployeeLaboratoryController::class, 'index']);
+            Route::post('/', [EmployeeLaboratoryController::class, 'store']);
+            Route::delete('/{employee}/{laboratoryId}', [EmployeeLaboratoryController::class, 'destroy']);
+        });
+
+        // Rutas para gestión de productos asignados a empleados
+        Route::prefix('employee-products')->group(function () {
+            Route::get('/', [EmployeeProductController::class, 'index']);
+            Route::post('/', [EmployeeProductController::class, 'store']);
+            Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
+            Route::get('/stats', [EmployeeProductController::class, 'stats']);
         });
     });
 });

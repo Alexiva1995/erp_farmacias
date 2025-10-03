@@ -8,19 +8,24 @@ const props = defineProps({
   selectedSupplier: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:modalValue", "close-dialog"]);
+const emit = defineEmits([
+  "update:modalValue",
+  "close-dialog",
+  "refresh-products",
+]);
 
 const errors = ref({});
 
 const start_row = ref(1);
 const cod_supplier = ref("");
 const name = ref("");
-const barcode = ref("");
+const barcode = ref(null);
 const bs_cost = ref("");
 const usd_cost = ref("");
 const active_ingredient = ref("");
 const expiration = ref(null);
 const quantity = ref(null);
+const currency = ref(null);
 const file = ref(null);
 
 const formatDate = (dateString) => {
@@ -50,6 +55,7 @@ const submitForm = async () => {
   form.append("unit_cost_usd", usd_cost.value);
   form.append("active_ingredient", active_ingredient.value);
   form.append("expiration", expiration.value);
+  form.append("currency", currency.value);
   form.append("file", file.value);
 
   try {
@@ -61,15 +67,20 @@ const submitForm = async () => {
     start_row.value = 1;
     cod_supplier.value = "";
     name.value = "";
-    barcode.value = "";
+    barcode.value = null;
     bs_cost.value = "";
     usd_cost.value = "";
     active_ingredient.value = "";
+    currency.value = null;
     expiration.value = null;
     quantity.value = null;
     file.value = null;
     emit("close-dialog");
     handleCleanFormData();
+
+    setTimeout(() => {
+      emit("refresh-products");
+    }, 3000);
   } catch (error) {
     console.error(error);
     toast.error(
@@ -89,7 +100,7 @@ const fetchSupplierConnection = async (id) => {
     start_row.value = structure.start_row ?? 1;
     cod_supplier.value = structure.cod_supplier ?? "";
     name.value = structure.name ?? "";
-    barcode.value = structure.barcode_match ?? "";
+    barcode.value = structure.barcode_match ?? null;
     bs_cost.value = structure.unit_cost ?? "";
     usd_cost.value = structure.unit_cost_usd ?? "";
     active_ingredient.value = structure.active_ingredient ?? "";
@@ -103,12 +114,14 @@ const handleCleanFormData = () => {
   start_row.value = 1;
   cod_supplier.value = "";
   name.value = "";
-  barcode.value = "";
+  barcode.value = null;
   bs_cost.value = "";
   usd_cost.value = "";
   active_ingredient.value = "";
   expiration.value = null;
   quantity.value = null;
+  currency.value = null;
+  file.value = null;
 };
 
 watch(
@@ -229,6 +242,17 @@ watch(
               variant="outlined"
               hide-details="auto"
               :error-messages="errors.usd_cost"
+            />
+          </VCol>
+          <VCol cols="6">
+            <VTextField
+              v-model="currency"
+              label="Tasa de Cambio"
+              type="number"
+              variant="outlined"
+              hide-details="auto"
+              :step="0.01"
+              :error-messages="errors.currency"
             />
           </VCol>
           <VCol cols="6">
