@@ -92,6 +92,7 @@ function submitForm(){
               v-model="props.formData.category_id"
               label="Categoria"
               :items="props.categorias"
+              :error-messages="props.formError.category_id"
               item-title="name"
               item-value="id"
             />
@@ -119,6 +120,7 @@ function submitForm(){
               v-model="props.formData.currency"
               label="Moneda"
               :items="currencies"
+              :error-messages="props.formError.currency"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -127,18 +129,21 @@ function submitForm(){
               v-model="props.formData.count"
               label="Cuenta"
               :items="bs"
+              :error-messages="props.formError.count"
             />
             <VSelect
               v-if="props.formData.currency == 'USD'"
               v-model="props.formData.count"
               label="Cuenta"
               :items="usd"
+              :error-messages="props.formError.count"
             />
             <VSelect
               v-if="props.formData.currency == 'COP'"
               v-model="props.formData.count"
               label="Cuenta"
               :items="cop"
+              :error-messages="props.formError.count"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6">
