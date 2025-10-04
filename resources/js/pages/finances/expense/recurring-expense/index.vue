@@ -31,7 +31,7 @@ const formulario= reactive({
   category_id:"",
   amount:"",
   amount_usd:"",
-  currency:"BS",
+  currency:"USD",
   has_invoice:false,
   is_deductible:false,
   expense_date:"",
