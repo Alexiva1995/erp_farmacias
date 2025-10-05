@@ -56,6 +56,7 @@ const groupedCashDataSellers = computed(() => {
               <span style="display: block; margin-bottom: 5px;">Cierre N° {{ cash.id }}</span>
               
               <table style="width: 100%;">
+              <tbody>
                 <tr>
                   <td style="text-align: left"><span>USD:</span></td>
                   <td style="text-align: right">
@@ -90,9 +91,9 @@ const groupedCashDataSellers = computed(() => {
                       <span>{{ cash.total_sales}}$</span>
                     </td>
                   </tr>
+                </tbody>
               </table>
             </td>
-            
             <td v-if="pair.length === 1" style="width: 50%;"></td>
           </tr>
         </tbody>

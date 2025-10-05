@@ -205,8 +205,8 @@ const printReport = async () => {
                       >
                         <tbody>
                             <tr>
-                            <td class="text-left"><span>ID: {{cashData.id}}</span></td>
-                          </tr>
+                              <td class="text-left"><span>ID: {{cashData.id}}</span></td>
+                            </tr>
                           <tr>
                             <td class="text-left"><span>USD:</span></td>
                             <td class="text-right">

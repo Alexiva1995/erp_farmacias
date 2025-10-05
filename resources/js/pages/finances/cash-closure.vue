@@ -13,6 +13,7 @@ import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
 import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 import CashClosingSellersTicke from "@/components/CashClosingSellersTicke.vue"; 
+import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -59,6 +60,9 @@ const viewModalReference = ref(false);
 
 const monthlyCashDataSellers = ref(null)
 const isDownloadCashDataSellers = ref(false);
+
+const delivery = ref(null);
+const viewModalDelivery = ref(false);
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -430,6 +434,10 @@ const handleCloseViewModalReference = () => {
   viewModalReference.value = false;
 };
 
+const handleCloseViewModalDelivery = () => {
+  viewModalDelivery.value = false;
+};
+
 const viewDailyCash = async (daily) => {
 try {
     const itemDaily = daily;
@@ -473,6 +481,21 @@ const referenceDaily = async (daily) => {
   } catch (error) {
     console.error("Error al obtener las referencias del cierre diario:", error);
     toast.error("Error al obtener las referencias del cierre diario.");
+  }
+}
+
+const deliveryDaily = async (daily) => {
+  try {
+   if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
+        console.warn("No hay cierres de caja para procesar.");
+        return [];
+    }
+    const cash = daily;
+    dailyCashData.value =  cash;
+    viewModalDelivery.value = true;
+  } catch (error) {
+    console.error("Error al obtener las tipos de entrega del cierre diario:", error);
+    toast.error("Error al obtener las tipos de entrega  del cierre diario.");
   }
 }
 
@@ -562,6 +585,7 @@ const closingCashAllSellers = async (cash) => {
     :page="pageDailyCash"
     @update:options="updateTableOptionsDailyCash"
     @view-cash="viewDailyCash"
+    @delivery="deliveryDaily"
     @reference="referenceDaily"
   />
   <div class="mb-5"></div>
@@ -594,6 +618,12 @@ const closingCashAllSellers = async (cash) => {
     :reference="reference"
     :cashData="dailyCashData"
     @close="handleCloseViewModalReference"
+  />
+
+  <DeliveryModal
+    v-model:isDialogVisible="viewModalDelivery"
+    :cashData="dailyCashData"
+    @close="handleCloseViewModalDelivery"
   />
 
   <div

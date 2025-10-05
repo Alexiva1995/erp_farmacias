@@ -26,7 +26,7 @@ const date = (order) => {
   return time.toISOString().split("T")[0];
 };
 
-const emit = defineEmits(['update:options','view-cash','reference']);
+const emit = defineEmits(['update:options','view-cash','delivery','reference']);
 const handleUpdateOptions = (options) => {
   emit('update:options', options);
 };
@@ -52,6 +52,10 @@ const handleUpdateOptions = (options) => {
           <IconBtn
             @click="emit('view-cash', item)">
             <VIcon icon="tabler-eye" />
+          </IconBtn>
+          <IconBtn
+            @click="emit('delivery', item)">
+            <VIcon icon="tabler-box" />
           </IconBtn>
            <IconBtn
             @click="emit('reference', item)">
