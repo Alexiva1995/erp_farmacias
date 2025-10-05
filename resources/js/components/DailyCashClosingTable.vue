@@ -26,7 +26,7 @@ const date = (order) => {
   return time.toISOString().split("T")[0];
 };
 
-const emit = defineEmits(['update:options','view-cash']);
+const emit = defineEmits(['update:options','view-cash','reference']);
 const handleUpdateOptions = (options) => {
   emit('update:options', options);
 };

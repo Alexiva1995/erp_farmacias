@@ -17,7 +17,7 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
-const emit = defineEmits(['update:options','view-cash']);
+const emit = defineEmits(['update:options','view-cash','seller-cash']);
 
 const handleUpdateOptions = (options) => {
   emit('update:options', options);
@@ -40,6 +40,10 @@ const handleUpdateOptions = (options) => {
           <IconBtn
             @click="emit('view-cash', item)">
             <VIcon icon="tabler-eye" />
+          </IconBtn>
+           <IconBtn
+            @click="emit('seller-cash', item)">
+            <VIcon icon="tabler-clipboard-list" />
           </IconBtn>
         </div>
       </template>

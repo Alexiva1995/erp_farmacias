@@ -39,6 +39,7 @@ declare module 'vue' {
     CashAverage: typeof import('./resources/js/components/cards/CashAverage.vue')['default']
     CashCloseFilters: typeof import('./resources/js/components/CashCloseFilters.vue')['default']
     CashCloseTable: typeof import('./resources/js/components/CashCloseTable.vue')['default']
+    CashClosingSellersTicke: typeof import('./resources/js/components/CashClosingSellersTicke.vue')['default']
     CashClosureTicke: typeof import('./resources/js/components/CashClosureTicke.vue')['default']
     CashoutFilters: typeof import('./resources/js/components/CashoutFilters.vue')['default']
     CashSummary: typeof import('./resources/js/components/CashSummary.vue')['default']

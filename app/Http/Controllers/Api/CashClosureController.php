@@ -130,7 +130,6 @@ class CashClosureController extends Controller
     public function getmonthlyCashclosing(Request $request){
         $dailyClosureIds = $request->input('closingMonthlyIds', []); 
         $cashClosings = $this->cashClosureActionService->getCashClosingsForMonthlySummary($dailyClosureIds);
-
         return response()->json([
             'data' => $cashClosings
         ]);
@@ -142,10 +141,17 @@ class CashClosureController extends Controller
         return $pdf->download($filename );
     }
 
-        public function printdReport(Request $request){
+    public function printdReport(Request $request){
         $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
         return $pdf->stream($filename );
     }
-    
+
+    public function getmonthlyCashclosingAllSellers(Request $request){
+        $dailyClosureIds = $request->input('closingMonthlyIds', []);
+        $cashClosings = $this->cashClosureActionService->getCashClosingsAllSellers($dailyClosureIds);
+        return response()->json([
+            'data' => $cashClosings
+        ]);
+    }
 }

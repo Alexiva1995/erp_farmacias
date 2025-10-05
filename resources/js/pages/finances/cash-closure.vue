@@ -12,6 +12,7 @@ import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
 import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
+import CashClosingSellersTicke from "@/components/CashClosingSellersTicke.vue"; 
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -55,6 +56,9 @@ const dailyCashData = ref({});
 
 const reference = ref(null);
 const viewModalReference = ref(false);
+
+const monthlyCashDataSellers = ref(null)
+const isDownloadCashDataSellers = ref(false);
 
 const summaryData = ref({
     current_month_average: '0.00',
@@ -269,7 +273,6 @@ try {
     const response = await axios.get('/finances/cash-closure/monthlyCashclosing',{params});
     monthlyCashData.value =  response.data.data
     viewModal.value = true;
-
   } catch (error) {
     console.error("Error al obtener los detalles del cierre:", error);
     toast.error("Error al obtener los detalles del cierre.");
@@ -284,8 +287,34 @@ const ticketStyles = `
 .pa-2 { padding: 8px; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
+.text-left { text-align: left; }
 .mb-2 { margin-bottom: 8px; }
-.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }`;
+.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
+.center-block { margin-left: auto; margin-right: auto; }
+.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
+.w-75 {width: 75% !important;}
+.w-100 {width: 100% !important;}
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }
+.pdf-row-2col {
+  width: 100%;
+  display: block; 
+}
+.pdf-col-multi {
+ float: left;
+ /* ¡CLAVE! Reducir el ancho para dejar espacio */
+width: 48%; 
+box-sizing: border-box;
+padding: 0 5px; 
+ margin-right: 2%; /* Espacio entre columnas */
+  min-height: 1px;
+}
+
+.pdf-row-multi:after {
+ content: "";
+ display: table; 
+ clear: both;
+}}
+`;
 
 const downloadcash = async (cash) => {
   try {
@@ -418,7 +447,6 @@ const referenceDaily = async (daily) => {
         console.warn("No hay cierres de caja para procesar.");
         return [];
     }
-
      const allPaymentReferences = daily.cash_closings.flatMap(closing => {
         const completedOrders = closing.orders.filter(order =>
             order.status === 'Completed'
@@ -445,6 +473,55 @@ const referenceDaily = async (daily) => {
   } catch (error) {
     console.error("Error al obtener las referencias del cierre diario:", error);
     toast.error("Error al obtener las referencias del cierre diario.");
+  }
+}
+
+const closingCashAllSellers = async (cash) => {
+  try {
+    const paramsData = {
+      closingMonthlyIds: cash.daily_closure_ids
+     };
+
+    const responseData = await axios.get('/finances/cash-closure/monthlyCashclosingAllSellers',{params: paramsData});
+    monthlyCashDataSellers.value =  responseData.data.data
+
+    isDownloadCashDataSellers.value = true;
+    await nextTick();
+    const printContents = document.getElementById("cashClosingSellersDownload");
+    if (!printContents) {
+      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
+      return;
+    }
+    const htmlContent = printContents.innerHTML;
+
+    const params = {
+      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
+      filename: "Cierre de caja",
+    };
+
+    const response = await axios.post(
+      "/finances/cash-closure/downloadReport",
+      params,
+      {
+        responseType: "blob",
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    let filename = "CierreCaja.pdf";
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+   toast.success("PDF generado y descargado con éxito.");
+  } catch (error) {
+    console.error("Error al obtener los detalles del cierre por vendedor:", error);
+    toast.error("Error al obtener los detalles del cierre por vendedor.");
+  }finally {
+    isDownloadCashDataSellers.value = false;
+    monthlyCashDataSellers.value = null;
   }
 }
 </script>
@@ -496,6 +573,7 @@ const referenceDaily = async (daily) => {
     :page="pageMonthlyCash"
     @update:options="updateTableOptionsMonthlyCash"
     @view-cash="viewMonthlyCash"
+    @seller-cash="closingCashAllSellers"
   />
 
   <MonthlyCashModal
@@ -539,4 +617,15 @@ const referenceDaily = async (daily) => {
       :cash-data="cashData"
     />
   </div>
+
+    <div
+    id="cashClosingSellersDownload"
+    :class="{ 'd-none': !isDownloadCashDataSellers, 'print-container': true }"
+  >
+    <CashClosingSellersTicke
+      v-if="isDownloadCashDataSellers && monthlyCashDataSellers"
+      :monthly-cash-data-sellers="monthlyCashDataSellers"
+    />
+  </div>
+  
 </template>

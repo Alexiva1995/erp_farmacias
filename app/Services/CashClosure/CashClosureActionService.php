@@ -252,7 +252,7 @@ class CashClosureActionService
     {
         if (empty($dailyClosureIds)) {
         return ['summary' => collect(), 'global_total_sales' => 0.0];
-    }
+        }
 
         $rates = $this->getFormattedRates();
         $bsRate = $rates['BS'] ?? 1; 
@@ -316,5 +316,16 @@ class CashClosureActionService
             'totalSalesGlobalCopInUsd' => number_format($totalSalesGlobalCopInUsd, 2, ',', '.'),
             'totalSalesGlobal' => number_format($totalSalesGlobal, 2, ',', '.'),
         ];
+    }
+
+        public function getCashClosingsAllSellers(array $dailyClosureIds): \Illuminate\Support\Collection
+    {
+        $cashClosings = CashClosing::query()
+        ->whereIn('daily_closure_id', $dailyClosureIds)
+        ->with('seller')
+        ->get();
+
+        $groupedBySeller = $cashClosings->groupBy('seller_id');
+        return $groupedBySeller;
     }
 }
