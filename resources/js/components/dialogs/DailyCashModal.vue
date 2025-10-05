@@ -278,7 +278,7 @@ const printReport = async () => {
                         </td>
                         <td class="text-right">
                           <span>{{
-                            props.cashData.total_bs
+                            props.cashData.total_bs_in_usd
                           }}</span>
                         </td>
                       </tr>
@@ -289,7 +289,7 @@ const printReport = async () => {
                         </td>
                         <td class="text-right">
                           <span>{{
-                            props.cashData.total_cop
+                            props.cashData.total_cop_in_usd
                           }}</span>
                         </td>
                       </tr>
