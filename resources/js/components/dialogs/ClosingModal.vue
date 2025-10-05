@@ -7,7 +7,6 @@ import SectionDivider from "@/components/SectionDivider.vue";
 import { formatDateTime } from "@/utils/formatDateTime";
 
 const props = defineProps({
-  isPdf: { type: Boolean, default: false },
   isDialogVisible: {
     type: Boolean,
     required: true,
@@ -63,6 +62,16 @@ const globalTotals = computed(() => {
         total_bs_mobile_payment_credit: 0,
         total_cop_cash_payment_credit: 0,
         total_cop_transfer_payment_credit: 0,
+
+       total_usd_cash_delivery: 0,
+       total_usd_binance_delivery: 0,
+       total_usd_paypal_delivery: 0,
+       total_bs_cash_delivery: 0,
+       total_bs_card_delivery: 0,
+       total_bs_transfer_delivery: 0,
+       total_bs_mobile_delivery: 0,
+       total_cop_cash_delivery: 0,
+       total_cop_transfer_delivery: 0,
     };
     return closings.reduce((acc, closing) => {
         acc.total_usd += parseFloat(closing.total_usd) || 0;
@@ -94,6 +103,16 @@ const globalTotals = computed(() => {
         acc.total_bs_mobile_payment_credit += parseFloat(closing.bs_mobile_payment_credit) || 0;
         acc.total_cop_cash_payment_credit += parseFloat(closing.cop_cash_payment_credit) || 0;
         acc.total_cop_transfer_payment_credit += parseFloat(closing.cop_transfer_payment_credit) || 0;
+
+        acc.total_usd_cash_delivery += (parseFloat(closing.usd_delivered) || 0) + (parseFloat(closing.usd_cash_payment_credit) || 0);
+        acc.total_usd_binance_delivery += (parseFloat(closing.usd_binance) || 0) + (parseFloat(closing.usd_binance_payment_credit) || 0);
+        acc.total_usd_paypal_delivery += (parseFloat(closing.usd_paypal) || 0) + (parseFloat(closing.usd_paypal_payment_credit) || 0);
+        acc.total_bs_cash_delivery += (parseFloat(closing.bs_cash) || 0) + (parseFloat(closing.bs_cash_payment_credit) || 0);
+        acc.total_bs_card_delivery += (parseFloat(closing.bs_card) || 0) + (parseFloat(closing.bs_card_payment_credit) || 0);
+        acc.total_bs_transfer_delivery += (parseFloat(closing.bs_transfer) || 0) + (parseFloat(closing.bs_transfer_payment_credit) || 0);
+        acc.total_bs_mobile_delivery += (parseFloat(closing.bs_mobile) || 0) + (parseFloat(closing.bs_mobile_payment_credit) || 0);
+        acc.total_cop_cash_delivery += (parseFloat(closing.cop_delivered) || 0) + (parseFloat(closing.cop_cash_payment_credit) || 0);
+        acc.total_cop_transfer_delivery += (parseFloat(closing.cop_transfer) || 0) + (parseFloat(closing.cop_transfer_payment_credit) || 0);
         return acc;
     }, initialTotals);
 });
@@ -156,6 +175,22 @@ const creditPayments = computed(() => {
     return paymentsList.filter(p => p.amount > 0);
 });
 
+const delivery = computed(() => {
+    const totals = globalTotals.value;
+    const paymentsList = [
+        { label: "Efectivo (usd)", amount: totals.total_usd_cash_delivery, currency: "USD" },
+        { label: "Binance", amount: totals.total_usd_binance_delivery, currency: "USD" },
+        { label: "Paypal", amount: totals.total_usd_paypal_delivery, currency: "USD" },
+        { label: "Efectivo (BS)", amount: totals.total_bs_cash_delivery, currency: "BS" },
+        { label: "Tarjeta", amount: totals.total_bs_card_delivery, currency: "BS" },
+        { label: "Transferencia", amount: totals.total_bs_transfer_delivery, currency: "BS" },
+        { label: "Pago Móvil", amount: totals.total_bs_mobile_delivery, currency: "BS" },
+        { label: "Efectivo (COP)", amount: totals.total_cop_cash_delivery, currency: "COP" },
+        { label: "Transferencia (COP)", amount: totals.total_cop_transfer_delivery, currency: "COP" },
+    ];
+    return paymentsList.filter(p => p.amount > 0);
+});
+
 const downloadReport = async () => {
   try {
     await nextTick();
@@ -194,7 +229,6 @@ const downloadReport = async () => {
 
 const printReport = async () => {
     try {
-    props.isPdf = true;
     await nextTick();
     const element = document.getElementById("closing-report");
     if (!element) {
@@ -226,8 +260,6 @@ const printReport = async () => {
     console.error("Error al visualizar el PDF:", error);
   } finally {
     setTimeout(() => {
-      props.cashData.value = null;
-      props.isPdf = false;
     }, 500);
   }
 };
@@ -312,6 +344,10 @@ min-height: 1px;
             <PaymentTable :payments="creditPayments" />
         </div>
 
+        <div v-if="delivery.length  > 0">
+        <SectionDivider :isPdf="true" text="ENTREGA" width="40%" />
+        <PaymentTable :payments="delivery" />
+      </div>
     </div>
    </VCardText>
       <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
