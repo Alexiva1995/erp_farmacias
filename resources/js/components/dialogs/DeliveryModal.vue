@@ -56,15 +56,12 @@ content: "";
 display: table;
  clear: both;
 }
-
-/* Clave para las columnas 2x2 */
 .pdf-col-multi {
 float: left;
-/* 48% fuerza el salto de línea, dejando espacio para el margen */
 width: 48%; 
 box-sizing: border-box;
- padding: 0 5px; /* Espacio interno */
-margin-right: 2%; /* Espacio entre columnas */
+ padding: 0 5px;
+margin-right: 2%;
 min-height: 1px;
 }
 `;

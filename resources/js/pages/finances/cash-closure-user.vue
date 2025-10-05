@@ -112,7 +112,6 @@ const printCash = async (cash) => {
     isPrinting.value = true;
     await nextTick();
     const printContents = document.getElementById("CashClosurePrint");
-
     if (!printContents) {
       console.warn("Elemento #CashClosurePrint no encontrado.");
       window.print();

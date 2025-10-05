@@ -4,7 +4,7 @@ import DailyCashClosingTable from "@/components/DailyCashClosingTable.vue";
 import MonthlyCashClosingTable from "@/components/MonthlyCashClosingTable.vue";
 import CashAverage from "@/components/cards/CashAverage.vue";
 import axios from "@/plugins/axios";
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from "vue";
 import SellerCashFilters from "@/components/SellerCashFilters.vue";
 import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
 import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
@@ -12,8 +12,9 @@ import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
 import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
-import CashClosingSellersTicke from "@/components/CashClosingSellersTicke.vue"; 
+import CashClosingSellersTicke from "@/components/CashClosingSellersTicke.vue";
 import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
+import ClosingModal from "@/components/dialogs/ClosingModal.vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -58,33 +59,35 @@ const dailyCashData = ref({});
 const reference = ref(null);
 const viewModalReference = ref(false);
 
-const monthlyCashDataSellers = ref(null)
+const monthlyCashDataSellers = ref(null);
 const isDownloadCashDataSellers = ref(false);
 
 const delivery = ref(null);
 const viewModalDelivery = ref(false);
 
+const viewModalClosing = ref(false);
+
 const summaryData = ref({
-    current_month_average: '0.00',
-    last_month_average: '0.00',
-    percentage_change: '0.0',
-    is_positive: true,
+  current_month_average: "0.00",
+  last_month_average: "0.00",
+  percentage_change: "0.0",
+  is_positive: true,
 });
 
 const filterSearchQuery = ref("");
 
 const fetchSummaryData = async () => {
-    try {
-        const response = await axios.get('/finances/cash-closure/sales/summary');
-        summaryData.value = response.data;
-    } catch (error) {
-        console.error("Error al obtener el resumen de ventas:", error);
-    }
+  try {
+    const response = await axios.get("/finances/cash-closure/sales/summary");
+    summaryData.value = response.data;
+  } catch (error) {
+    console.error("Error al obtener el resumen de ventas:", error);
+  }
 };
 
 const fetchDailyCashData = async () => {
-loadingDailyCash.value = true;
- const params = {
+  loadingDailyCash.value = true;
+  const params = {
     page: pageDailyCash.value,
     itemsPerPage: itemsPerPageDailyCash.value,
     sortBy: sortByDailyCash.value,
@@ -93,45 +96,48 @@ loadingDailyCash.value = true;
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
-    try {
-        const response = await axios.get('/finances/cash-closure/dailyCash',{params});
-        dailyCash.value = response.data.data;
-        totalDailyCash.value = response.data.total;
-     } catch (error) {
-      console.error("Hubo un error al obtener los cierres diarios:", error);
-      toast.error("Error al obtener los cierres diarios.");
-    } finally {
-      loadingDailyCash.value = false;
-    }
+  try {
+    const response = await axios.get("/finances/cash-closure/dailyCash", {
+      params,
+    });
+    dailyCash.value = response.data.data;
+    totalDailyCash.value = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener los cierres diarios:", error);
+    toast.error("Error al obtener los cierres diarios.");
+  } finally {
+    loadingDailyCash.value = false;
+  }
 };
 
 const fetchMonthlyCashData = async () => {
-loadingMonthlyCash.value = true;
- const params = {
+  loadingMonthlyCash.value = true;
+  const params = {
     page: pageMonthlyCash.value,
     itemsPerPage: itemsPerPageMonthlyCash.value,
     sortBy: sortBySellerCash.value,
     orderBy: orderByMonthlyCash.value,
   };
-    Object.keys(params).forEach(
+  Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get('/finances/cash-closure/monthlyCash',{params});
+    const response = await axios.get("/finances/cash-closure/monthlyCash", {
+      params,
+    });
     monthlyCash.value = response.data.data;
     totalMonthlyCash.value = response.data.total;
   } catch (error) {
-      console.error("Hubo un error al obtener los cierres mensuales:", error);
-      toast.error("Error al obtener los cierres mensuales.");
-    } finally {
-      loadingMonthlyCash.value = false;
-    }
+    console.error("Hubo un error al obtener los cierres mensuales:", error);
+    toast.error("Error al obtener los cierres mensuales.");
+  } finally {
+    loadingMonthlyCash.value = false;
+  }
 };
 
-
 const fetchSellerCashData = async () => {
-loadingSellerCash.value = true;
- const params = {
+  loadingSellerCash.value = true;
+  const params = {
     q: filterSearchQuery.value,
     ...(startDateFilter.value !== null && {
       start_date: startDateFilter.value,
@@ -148,32 +154,32 @@ loadingSellerCash.value = true;
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get('/finances/cash-closure/sellerCash',{params});
+    const response = await axios.get("/finances/cash-closure/sellerCash", {
+      params,
+    });
     sellerCash.value = response.data.data;
     totalSellerCash.value = response.data.total;
   } catch (error) {
-      console.error("Hubo un error al obtener los cierres de los vendedor:", error);
-      toast.error("Error al obtener los cierres de los vendedor.");
-    } finally {
-      loadingSellerCash.value = false;
-    }
+    console.error(
+      "Hubo un error al obtener los cierres de los vendedor:",
+      error
+    );
+    toast.error("Error al obtener los cierres de los vendedor.");
+  } finally {
+    loadingSellerCash.value = false;
+  }
 };
 
 onMounted(() => {
-    fetchSummaryData();
-    fetchDailyCashData();
-    fetchMonthlyCashData();
-    fetchSellerCashData();
+  fetchSummaryData();
+  fetchDailyCashData();
+  fetchMonthlyCashData();
+  fetchSellerCashData();
 });
 
 let debounceTimerDaily;
 watch(
-  [
-    pageDailyCash,
-    itemsPerPageDailyCash,
-    sortByDailyCash,
-    orderByDailyCash,
-  ],
+  [pageDailyCash, itemsPerPageDailyCash, sortByDailyCash, orderByDailyCash],
   () => {
     clearTimeout(debounceTimerDaily);
     debounceTimerDaily = setTimeout(() => {
@@ -200,7 +206,6 @@ watch(
   { deep: true }
 );
 
-
 let debounceTimerSellerCashData;
 watch(
   [
@@ -210,7 +215,7 @@ watch(
     orderBySellerCash,
     startDateFilter,
     endDateFilter,
-    filterSearchQuery
+    filterSearchQuery,
   ],
   () => {
     clearTimeout(debounceTimerSellerCashData);
@@ -267,21 +272,23 @@ watch([filterSearchQuery], () => {
   pageSellerCash.value = 1;
 });
 
-
 const viewMonthlyCash = async (cash) => {
-try {
+  try {
     originalMonthlyIds.value = cash.daily_closure_ids;
-     const params = {
-      closingMonthlyIds: cash.daily_closure_ids
-     };
-    const response = await axios.get('/finances/cash-closure/monthlyCashclosing',{params});
-    monthlyCashData.value =  response.data.data
+    const params = {
+      closingMonthlyIds: cash.daily_closure_ids,
+    };
+    const response = await axios.get(
+      "/finances/cash-closure/monthlyCashclosing",
+      { params }
+    );
+    monthlyCashData.value = response.data.data;
     viewModal.value = true;
   } catch (error) {
     console.error("Error al obtener los detalles del cierre:", error);
     toast.error("Error al obtener los detalles del cierre.");
   }
-}
+};
 
 const handleCloseViewModal = () => {
   viewModal.value = false;
@@ -438,75 +445,88 @@ const handleCloseViewModalDelivery = () => {
   viewModalDelivery.value = false;
 };
 
+const handleCloseViewModalClosing = () => {
+  viewModalClosing.value = false;
+};
+
 const viewDailyCash = async (daily) => {
-try {
+  try {
     const itemDaily = daily;
-    dailyCashData.value =  itemDaily;
+    dailyCashData.value = itemDaily;
     viewModalDaily.value = true;
   } catch (error) {
     console.error("Error al obtener los detalles del cierre diario:", error);
     toast.error("Error al obtener los detalles del cierre diario.");
   }
-}
+};
 
 const referenceDaily = async (daily) => {
   try {
-   if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
-        console.warn("No hay cierres de caja para procesar.");
-        return [];
+    if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
+      console.warn("No hay cierres de caja para procesar.");
+      return [];
     }
-     const allPaymentReferences = daily.cash_closings.flatMap(closing => {
-        const completedOrders = closing.orders.filter(order =>
-            order.status === 'Completed'
+    const allPaymentReferences = daily.cash_closings.flatMap((closing) => {
+      const completedOrders = closing.orders.filter(
+        (order) => order.status === "Completed"
+      );
+      return completedOrders.flatMap((order) => {
+        if (!order.payment_methods || order.payment_methods.length === 0) {
+          return [];
+        }
+        const methodsWithReference = order.payment_methods.filter(
+          (method) =>
+            method.reference !== null &&
+            method.reference !== "" &&
+            method.reference !== "null"
         );
-        return completedOrders.flatMap(order => {
-            if (!order.payment_methods || order.payment_methods.length === 0) {
-                return [];
-            }
-          const methodsWithReference = order.payment_methods.filter(method =>
-                method.reference !== null && method.reference !== '' && method.reference !== 'null'
-            );
-            return methodsWithReference.map(method => ({
-                ...method,
-                order_id: order.id,
-                order_currency: order.currency,
-            }));
-        });
+        return methodsWithReference.map((method) => ({
+          ...method,
+          order_id: order.id,
+          order_currency: order.currency,
+        }));
+      });
     });
 
     reference.value = allPaymentReferences;
     const itemDaily = daily;
-    dailyCashData.value =  itemDaily;
+    dailyCashData.value = itemDaily;
     viewModalReference.value = true;
   } catch (error) {
     console.error("Error al obtener las referencias del cierre diario:", error);
     toast.error("Error al obtener las referencias del cierre diario.");
   }
-}
+};
 
 const deliveryDaily = async (daily) => {
   try {
-   if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
-        console.warn("No hay cierres de caja para procesar.");
-        return [];
+    if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
+      console.warn("No hay cierres de caja para procesar.");
+      return [];
     }
     const cash = daily;
-    dailyCashData.value =  cash;
+    dailyCashData.value = cash;
     viewModalDelivery.value = true;
   } catch (error) {
-    console.error("Error al obtener las tipos de entrega del cierre diario:", error);
+    console.error(
+      "Error al obtener las tipos de entrega del cierre diario:",
+      error
+    );
     toast.error("Error al obtener las tipos de entrega  del cierre diario.");
   }
-}
+};
 
 const closingCashAllSellers = async (cash) => {
   try {
     const paramsData = {
-      closingMonthlyIds: cash.daily_closure_ids
-     };
+      closingMonthlyIds: cash.daily_closure_ids,
+    };
 
-    const responseData = await axios.get('/finances/cash-closure/monthlyCashclosingAllSellers',{params: paramsData});
-    monthlyCashDataSellers.value =  responseData.data.data
+    const responseData = await axios.get(
+      "/finances/cash-closure/monthlyCashclosingAllSellers",
+      { params: paramsData }
+    );
+    monthlyCashDataSellers.value = responseData.data.data;
 
     isDownloadCashDataSellers.value = true;
     await nextTick();
@@ -538,15 +558,29 @@ const closingCashAllSellers = async (cash) => {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
-   toast.success("PDF generado y descargado con éxito.");
+    toast.success("PDF generado y descargado con éxito.");
   } catch (error) {
-    console.error("Error al obtener los detalles del cierre por vendedor:", error);
+    console.error(
+      "Error al obtener los detalles del cierre por vendedor:",
+      error
+    );
     toast.error("Error al obtener los detalles del cierre por vendedor.");
-  }finally {
+  } finally {
     isDownloadCashDataSellers.value = false;
     monthlyCashDataSellers.value = null;
   }
-}
+};
+
+const closingDaily = async (daily) => {
+  try {
+    const item = daily;
+    dailyCashData.value = item;
+    viewModalClosing.value = true;
+  } catch (error) {
+    console.error("Error al obtener los cierre", error);
+    toast.error("Error al obtener los cierre.");
+  }
+};
 </script>
 <template>
   <CashAverage
@@ -587,6 +621,7 @@ const closingCashAllSellers = async (cash) => {
     @view-cash="viewDailyCash"
     @delivery="deliveryDaily"
     @reference="referenceDaily"
+    @closing-daily="closingDaily"
   />
   <div class="mb-5"></div>
   <MonthlyCashClosingTable
@@ -626,6 +661,12 @@ const closingCashAllSellers = async (cash) => {
     @close="handleCloseViewModalDelivery"
   />
 
+  <ClosingModal
+    v-model:isDialogVisible="viewModalClosing"
+    :cashData="dailyCashData"
+    @close="handleCloseViewModalClosing"
+  />
+
   <div
     id="CashClosurePrint"
     :class="{ 'd-none': !isPrinting, 'print-container': true }"
@@ -648,7 +689,7 @@ const closingCashAllSellers = async (cash) => {
     />
   </div>
 
-    <div
+  <div
     id="cashClosingSellersDownload"
     :class="{ 'd-none': !isDownloadCashDataSellers, 'print-container': true }"
   >
@@ -657,5 +698,4 @@ const closingCashAllSellers = async (cash) => {
       :monthly-cash-data-sellers="monthlyCashDataSellers"
     />
   </div>
-  
 </template>
