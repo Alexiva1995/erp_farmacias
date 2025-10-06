@@ -22,7 +22,13 @@ const chunkArray = (array, size) => {
 const groupedCashDataSellers = computed(() => {
     const grouped = {};
     for (const sellerKey in props.monthlyCashDataSellers) {
-        grouped[sellerKey] = chunkArray(props.monthlyCashDataSellers[sellerKey], 2);
+        let sellerClosings = props.monthlyCashDataSellers[sellerKey];
+         const filteredClosings = sellerClosings.filter(cash => {
+            return parseFloat(cash.total_sales) > 0;
+        });
+        if (filteredClosings.length > 0) {
+            grouped[sellerKey] = chunkArray(filteredClosings, 2);
+        }
     }
     return grouped;
 });
