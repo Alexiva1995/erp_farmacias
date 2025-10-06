@@ -52,13 +52,10 @@ const chunkArray = (array, size) => {
   return chunkedArr;
 };
 
-// Propiedad calculada para agrupar a los vendedores de dos en dos
 const groupedClosings = computed(() => {
-  // Usamos filteredCashClosings para asegurarnos de que solo se agrupen los que tienen ventas.
   return chunkArray(filteredCashClosings.value, 2);
 });
 
-// Propiedad calculada para saber si hay un solo vendedor (para centrarlo).
 const isSingleSeller = computed(() => {
   return filteredCashClosings.value.length === 1;
 });
