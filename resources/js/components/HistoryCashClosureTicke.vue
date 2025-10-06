@@ -80,7 +80,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
               </td>
               <td>
                 <p v-for="detail in order.details" :key="detail.id">
-                  {{ formatCurrency(parseFloat(detail.price), order.currency) }}
+                  {{ formatCurrency(parseFloat(detail.price), order.currency.toUpperCase()) }}
                 </p>
               </td>
             </tr>
