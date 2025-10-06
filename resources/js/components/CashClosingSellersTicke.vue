@@ -2,6 +2,7 @@
 import { defineProps, defineEmits, computed, nextTick } from "vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import TicketHeader from "@/components/TicketHeader.vue";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   monthlyCashDataSellers: {
@@ -66,10 +67,10 @@ const groupedCashDataSellers = computed(() => {
                 <tr>
                   <td style="text-align: left"><span>USD:</span></td>
                   <td style="text-align: right">
-                    <span>{{ cash.total_usd }}$</span>
+                    <span>{{formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0))}}$</span>
                   </td>
                   <td style="text-align: right">
-                    <span>{{cash.total_usd }}$</span>
+                    <span>{{formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0))}}$</span>
                   </td>
                 </tr>
                 <tr>
@@ -78,7 +79,7 @@ const groupedCashDataSellers = computed(() => {
                     <span>{{ cash.total_bs }}BS</span>
                   </td>
                   <td style="text-align: right">
-                    <span>{{ cash.total_bs_in_usd}}$</span>
+                    <span>{{formatCurrency(cash.total_bs_in_usd)}}$</span>
                   </td>
                 </tr>
                 <tr>
@@ -87,7 +88,7 @@ const groupedCashDataSellers = computed(() => {
                     <span>{{ cash.total_cop }}COP</span>
                   </td>
                   <td style="text-align: right">
-                    <span>{{ cash.total_cop_in_usd }}$</span>
+                    <span>{{formatCurrency(cash.total_cop_in_usd)}}$</span>
                   </td>
                 </tr>
                 <tr style="margin-bottom: 2px;">

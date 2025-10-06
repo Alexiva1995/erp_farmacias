@@ -249,7 +249,7 @@ const getDividerWidth = (name) => {
                         <table
                           class="table table-sm table-borderless"
                           :class="{
-                            'w-75 mx-auto center-block': isSingleSeller, // Centrar tabla interna
+                            'w-75 mx-auto center-block': isSingleSeller,
                             'w-100': !isSingleSeller,
                           }"
                         >
