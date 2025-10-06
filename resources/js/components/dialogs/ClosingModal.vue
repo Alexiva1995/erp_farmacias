@@ -125,7 +125,6 @@ const usdPayments = computed(() => {
         { label: "Efectivo", amount: totals.total_usd_cash, currency: "USD" },
         { label: "Paypal", amount: totals.total_usd_paypal, currency: "USD" },
         { label: "Binance", amount: totals.total_usd_binance, currency: "USD" },
-        { label: "Créditos", amount: totals.total_usd_conversion, currency: "USD" },
     ];
     return paymentsList.filter(p => p.amount > 0);
 });

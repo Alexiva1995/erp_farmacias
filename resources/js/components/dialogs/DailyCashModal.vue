@@ -5,6 +5,7 @@ import TicketHeader from "@/components/TicketHeader.vue";
 import axios from "@/plugins/axios";
 import SectionDivider from "@/components/SectionDivider.vue";
 import { formatDateTime } from "@/utils/formatDateTime";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   isDialogVisible: {
@@ -210,10 +211,11 @@ const printReport = async () => {
                           <tr>
                             <td class="text-left"><span>USD:</span></td>
                             <td class="text-right">
-                              <span>{{ cashData.total_usd }}</span>
+                              <span>{{formatCurrency(parseFloat(cashData.total_usd || 0) + parseFloat(cashData.usd_credit || 0))}}
+                              </span>
                             </td>
                             <td class="text-right">
-                              <span>{{ cashData.total_usd }}</span>
+                              <span>{{formatCurrency(parseFloat(cashData.total_usd || 0) + parseFloat(cashData.usd_credit || 0))}}</span>
                             </td>
                           </tr>
                           <tr>
