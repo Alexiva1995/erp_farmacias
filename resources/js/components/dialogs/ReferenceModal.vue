@@ -65,6 +65,7 @@ const translateMethod = (methodKey) => {
     BANK_TRANSFER_BS: "Transferencia",
     BINANCE: "Binance",
     PAYPAL: "PayPal",
+    MOBILE_PAYMENT: "Pago Móvil",
   };
   const upperKey = methodKey.toUpperCase();
   return translations[upperKey] || upperKey.replace(/_/g, " ");
@@ -222,7 +223,7 @@ const printReport = async () => {
                 class="text-center font-weight-bold my-2"
                 style="font-size: 1rem"
               >
-                {{ translateMethod(method) }} ({{ currency }})
+                {{ translateMethod(method) }} ({{ references[0].currency }})
               </h4>
 
               <table
