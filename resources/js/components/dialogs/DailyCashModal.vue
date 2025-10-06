@@ -39,8 +39,28 @@ const filteredCashClosings = computed(() => {
     return [];
   }
   return props.cashData.cash_closings.filter(
-    (closing) => closing.total_sales !== '0.00'
+    (closing) => closing.total_sales !== "0.00"
   );
+});
+
+const chunkArray = (array, size) => {
+  if (!array || !array.length) return [];
+  const chunkedArr = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunkedArr.push(array.slice(i, i + size));
+  }
+  return chunkedArr;
+};
+
+// Propiedad calculada para agrupar a los vendedores de dos en dos
+const groupedClosings = computed(() => {
+  // Usamos filteredCashClosings para asegurarnos de que solo se agrupen los que tienen ventas.
+  return chunkArray(filteredCashClosings.value, 2);
+});
+
+// Propiedad calculada para saber si hay un solo vendedor (para centrarlo).
+const isSingleSeller = computed(() => {
+  return filteredCashClosings.value.length === 1;
 });
 
 const ticketStyles = `
@@ -111,7 +131,7 @@ const downloadReport = async () => {
   }
 };
 const printReport = async () => {
-    try {
+  try {
     await nextTick();
     const element = document.getElementById("daily-cash-report");
     if (!element) {
@@ -132,16 +152,32 @@ const printReport = async () => {
         responseType: "blob",
       }
     );
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    const printWindow = window.open(url, '_blank');
+    const url = window.URL.createObjectURL(
+      new Blob([response.data], { type: "application/pdf" })
+    );
+    const printWindow = window.open(url, "_blank");
     if (printWindow) {
-            printWindow.focus();
-        }
-    window.URL.revokeObjectURL(url); 
+      printWindow.focus();
+    }
+    window.URL.revokeObjectURL(url);
     closeModal();
   } catch (error) {
     console.error("Error al visualizar el PDF:", error);
   }
+};
+
+const getDividerWidth = (name) => {
+    if (!name) return '40%';
+    const length = name.length;
+    if (length > 20) {
+        return '10%'; 
+    } else if (length > 15) {
+        return '25%'; 
+    } else if (length > 6){
+        return '35%'; 
+    } else {
+        return '40%'; 
+    }
 };
 </script>
 <template>
@@ -157,164 +193,205 @@ const printReport = async () => {
       <VCardText>
         <div id="daily-cash-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-     <div class="ticket-header d-flex justify-space-between align-start mt-2">
-        <span class="font-weight-bold tituloAzulPrint"
-          >Cierre Diario N° {{ props.cashData.id }}</span
-        >
-        <div class="text-right d-flex flex-column align-end">
-          <p class="text-black font-weight-regular mb-0 textoPrint">
-            {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}
-          </p>
-        </div>
-      </div>
-        <div class="container mt-3">
-            <div>
-              <div
-                class="row"
-                v-if="filteredCashClosings.length > 0"
-                :class="{
-                  'd-flex flex-wrap': filteredCashClosings.length > 1,
-                  'mb-4': true,
-                  'pdf-row-multi': filteredCashClosings.length > 1,
-                }"
+          <div
+            class="ticket-header d-flex justify-space-between align-start mt-2"
+          >
+            <span class="font-weight-bold tituloAzulPrint"
+              >Cierre Diario N° {{ props.cashData.id }}</span
+            >
+            <div class="text-right d-flex flex-column align-end">
+              <p class="text-black font-weight-regular mb-0 textoPrint">
+                {{ formatDateTime(props.cashData.created_at, "date") }}
+                {{ formatDateTime(props.cashData.created_at, "time") }}
+              </p>
+            </div>
+          </div>
+          <div class="container mt-3">
+            <div class="w-100">
+              <table
+                v-if="groupedClosings.length > 0"
+                style="
+                  width: 100%;
+                  border-collapse: separate;
+                  border-spacing: 15px 15px;
+                "
               >
-                <div
-                  v-for="(cashData, index) in filteredCashClosings"
-                  :key="index"
-                  :class="{
-                    'col-6 w-50': filteredCashClosings.length > 1,
-                    'col-12': filteredCashClosings.length === 1,
-                    'mb-4': true,
-                    'pdf-col-multi': filteredCashClosings.length > 1,
-                  }"
-                >
-                  <div class="w-100" v-if="cashData.total_sales !== '0.00'">
-                    <SectionDivider
-                      :isPdf="true"
-                      :text="cashData.seller.username"
-                      width="30%"
-                      class="center-block"
-                    />
-
-                    
-                      <table
-                        class="table table-sm table-borderless"
-                        :class="{
-                          'w-75 mx-auto center-block': filteredCashClosings.length === 1,
-                          'w-100': filteredCashClosings.length > 1,
+                <tbody>
+                  <tr
+                    v-for="(pair, rowIndex) in groupedClosings"
+                    :key="rowIndex"
+                  >
+                    <td
+                      v-for="(cashData, colIndex) in pair"
+                      :key="colIndex"
+                      :colspan="isSingleSeller ? '2' : '1'"
+                      :style="{
+                        'vertical-align': 'top',
+                        padding: '0',
+                        margin: isSingleSeller ? '0 auto' : '0',
+                        width: isSingleSeller ? '80%' : '50%',
+                      }"
+                      :class="{ 'mx-auto': isSingleSeller }"
+                    >
+                      <div
+                        class="w-100"
+                        :style="{
+                          padding: '5px',
+                          width: isSingleSeller ? '80%' : '100%',
+                          'margin-left': isSingleSeller ? 'auto' : '0',
+                          'margin-right': isSingleSeller ? 'auto' : '0',
                         }"
                       >
-                        <tbody>
+                        <SectionDivider
+                          :isPdf="true"
+                          :text="cashData.seller.username"
+                          :width="getDividerWidth(cashData.seller.username)"
+                          class="center-block"
+                        />
+
+                        <table
+                          class="table table-sm table-borderless"
+                          :class="{
+                            'w-75 mx-auto center-block': isSingleSeller, // Centrar tabla interna
+                            'w-100': !isSingleSeller,
+                          }"
+                        >
+                          <tbody>
                             <tr>
-                              <td class="text-left"><span>ID: {{cashData.id}}</span></td>
+                              <td class="text-left">
+                                <span>ID: {{ cashData.id }}</span>
+                              </td>
                             </tr>
-                          <tr>
-                            <td class="text-left"><span>USD:</span></td>
-                            <td class="text-right">
-                              <span>{{formatCurrency(parseFloat(cashData.total_usd || 0) + parseFloat(cashData.usd_credit || 0))}}
-                              </span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{formatCurrency(parseFloat(cashData.total_usd || 0) + parseFloat(cashData.usd_credit || 0))}}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-left"><span>BS:</span></td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_bs }}</span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_bs_in_usd }}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-left"><span>COP:</span></td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_cop }}</span>
-                            </td>
-                            <td class="text-right">
-                              <span>{{ cashData.total_cop_in_usd }}</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td class="text-left"><span></span></td>
-                            <td class="text-right fw-bold">
-                              <span>TOTAL VENTA</span>
-                            </td>
-                            <td class="text-right fw-bold">
-                              <span>{{ cashData.total_sales }}</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                  </div>
-                </div>
+                            <tr>
+                              <td class="text-left"><span>USD:</span></td>
+                              <td class="text-right">
+                                <span
+                                  >{{
+                                    formatCurrency(
+                                      parseFloat(cashData.total_usd || 0) +
+                                        parseFloat(cashData.usd_credit || 0)
+                                    )
+                                  }}
+                                </span>
+                              </td>
+                              <td class="text-right">
+                                <span>{{
+                                  formatCurrency(
+                                    parseFloat(cashData.total_usd || 0) +
+                                      parseFloat(cashData.usd_credit || 0)
+                                  )
+                                }}</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="text-left"><span>BS:</span></td>
+                              <td class="text-right">
+                                <span>{{ cashData.total_bs }}</span>
+                              </td>
+                              <td class="text-right">
+                                <span>{{ cashData.total_bs_in_usd }}</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="text-left"><span>COP:</span></td>
+                              <td class="text-right">
+                                <span>{{ cashData.total_cop }}</span>
+                              </td>
+                              <td class="text-right">
+                                <span>{{ cashData.total_cop_in_usd }}</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="text-left"><span></span></td>
+                              <td class="text-right fw-bold">
+                                <span>TOTAL VENTA</span>
+                              </td>
+                              <td class="text-right fw-bold">
+                                <span>{{ cashData.total_sales }}</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+
+                    <td
+                      v-if="pair.length === 1 && !isSingleSeller"
+                      style="width: 50%; padding: 0"
+                    ></td>
+                    
+                  </tr>
+                </tbody>
+              </table>
             </div>
+          </div>
+          <div class="mt-3">
+            <SectionDivider
+              :isPdf="true"
+              text="TOTAL VENTA DIA"
+              width="35%"
+              class="mx-auto center-block"
+            />
+            <div>
+              <table
+                class="table table-borderless table-sm w-75 mx-auto center-block"
+              >
+                <tbody>
+                  <tr>
+                    <td class="text-left"><span>USD:</span></td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_usd }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-left"><span>BS:</span></td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_bs }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_bs_in_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-left"><span>COP:</span></td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_cop }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_cop_in_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start"><span></span></td>
+                    <td class="text-right fw-bold"><span>TOTAL</span></td>
+                    <td class="text-right fw-bold">
+                      <span>{{ props.cashData.total_sales }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        </div>
-        <div class="mt-3">
-         <SectionDivider
-                  :isPdf="true"
-                  text="TOTAL VENTA DIA"
-                  width="35%"
-                  class="mx-auto center-block"
-                />
-                <div>
-                  <table
-                    class="table table-borderless table-sm w-75 mx-auto center-block"
-                  >
-                    <tbody>
-                      <tr>
-                        <td class="text-left"><span>USD:</span></td>
-                        <td class="text-right">
-                          <span>{{ props.cashData.total_usd }}</span>
-                        </td>
-                        <td class="text-right">
-                          <span>{{ props.cashData.total_usd }}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="text-left"><span>BS:</span></td>
-                        <td class="text-right">
-                          <span>{{ props.cashData.total_bs }}</span>
-                        </td>
-                        <td class="text-right">
-                          <span>{{
-                            props.cashData.total_bs_in_usd
-                          }}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="text-left"><span>COP:</span></td>
-                        <td class="text-right">
-                          <span>{{ props.cashData.total_cop }}</span>
-                        </td>
-                        <td class="text-right">
-                          <span>{{
-                            props.cashData.total_cop_in_usd
-                          }}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="text-start"><span></span></td>
-                        <td class="text-right fw-bold"><span>TOTAL</span></td>
-                        <td class="text-right fw-bold">
-                          <span>{{
-                            props.cashData.total_sales
-                          }}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-         </div>
-      </div>
       </VCardText>
       <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
-        <VBtn color="secondary" variant="outlined" @click="printReport" class="w-50">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="printReport"
+          class="w-50"
+        >
           Imprimir
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="downloadReport" class="w-50">
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="downloadReport"
+          class="w-50"
+        >
           Descargar
         </VBtn>
       </VCardActions>
