@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Invoice;
+use App\Models\ReturnEntry;
 use Illuminate\Support\Facades\Auth;
 
 class ProductObserver
@@ -51,7 +52,9 @@ class ProductObserver
             $stockBefore = $product->stock ?? 0;
             $stockAfter = $stockBefore - $detail->quantity;
 
-            $product->updateQuietly(['stock' => $stockAfter]);
+            Product::withoutEvents(function () use ($product, $stockAfter) {
+                $product->update(['stock' => $stockAfter]);
+            });
 
             InventoryMovement::create([
                 'product_id' => $product->id,
@@ -79,7 +82,10 @@ class ProductObserver
             $stockBefore = $product->stock ?? 0;
             $stockAfter = $stockBefore + $detail->quantity;
 
-            $product->updateQuietly(['stock' => $stockAfter]);
+            //$product->updateQuietly(['stock' => $stockAfter]);
+            Product::withoutEvents(function () use ($product, $stockAfter) {
+                $product->update(['stock' => $stockAfter]);
+            });
 
             InventoryMovement::create([
                 'product_id' => $product->id,
@@ -95,5 +101,35 @@ class ProductObserver
                 'movement_date' => $invoice->received_date ?? now(),
             ]);
         }
+    }
+
+    /**
+     * Manejar movimientos de devolución
+     */
+    public static function handleReturnMovement(ReturnEntry $return): void
+    {
+      
+            $product = $return->product; 
+            $stockBefore = $product->stock ?? 0;
+            $stockAfter = $stockBefore + $return->quantity;
+
+            Product::withoutEvents(function () use ($product, $stockAfter) {
+                $product->update(['stock' => $stockAfter]);
+            });
+
+            InventoryMovement::create([
+                'product_id' => $product->id,
+                'product_lot_id' =>  null,
+                'movement_type' => 'return',
+                'quantity' => $return->quantity,
+                'invoice_id' => null,
+                'supplier_id' => null,
+                'order_id' => $return->order_id,
+                'user_id' => $return->generated_by_id ?? Auth::id(),
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'movement_date' => $return->received_date ?? now(),
+            ]);
+        
     }
 }

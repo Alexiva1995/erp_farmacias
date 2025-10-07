@@ -68,7 +68,7 @@ const fetchReturn = async () => {
       <ReturnsOrderGeneralTable
       :returns="returns"
       :loading="loading"
-      :total-return="totalReturns"
+      :total-returns="totalReturns"
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
