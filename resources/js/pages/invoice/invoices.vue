@@ -4,7 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
-import InvoiceFormEdit from "@/pages/invoice/InvoiceFormEdit.vue";
+import InvoiceForm from "@/pages/invoice/register.vue";
 
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -32,6 +32,21 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
+
+const requiredFields = [
+  "supplier_id",
+  "invoice_number",
+  "control_number",
+  "exp_date",
+  "payment_date",
+  "received_date",
+  "created_invoice_date",
+  "currency",
+  "exempt_amount",
+  "taxable_base",
+  "tax_amount",
+  "total_amount",
+];
 
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
@@ -136,7 +151,52 @@ const fetchSupplierDiscounts = async (supplierId) => {
   }
 };
 
+const validateInvoiceData = (invoice) => {
+  const missingFields = requiredFields.filter((field) => {
+    const value = invoice[field];
+    return value === null || value === undefined || value === "";
+  });
+
+  return {
+    isValid: missingFields.length === 0,
+    missingFields,
+  };
+};
+
 const handleEditInvoice = async (invoice) => {
+  const validation = validateInvoiceData(invoice);
+
+  if (!validation.isValid) {
+    const result = await Swal.fire({
+      title: "Faltan datos necesarios",
+      text: "Por favor editar y completar la factura seleccionada. ¿Desea ir al formulario?",
+      icon: "warning",
+      showCancelButton: true,
+      cancelButtonText: "Rechazar",
+      confirmButtonText: "Confirmar",
+      reverseButtons: true,
+      didOpen: () => {
+        const actions = Swal.getActions();
+        const confirmButton = Swal.getConfirmButton();
+        const cancelButton = Swal.getCancelButton();
+        actions.style.display = "flex";
+        actions.style.gap = "10px";
+        actions.style.width = "100%";
+        actions.style.padding = "0 20px";
+        confirmButton.style.flex = "1";
+        confirmButton.style.width = "50%";
+        cancelButton.style.flex = "1";
+        cancelButton.style.width = "50%";
+      },
+    });
+
+    if (result.isConfirmed) {
+      handleEditInvoiceForm(invoice);
+      return;
+    }
+    return;
+  }
+
   selectedInvoiceId.value = invoice.id;
   selectedInvoiceSupplierId.value = invoice.supplier_id;
 
@@ -148,6 +208,11 @@ const handleEditInvoice = async (invoice) => {
 const handleEditInvoiceForm = (invoice) => {
   selectedInvoiceId.value = invoice.id;
   currentView.value = "edit-form";
+};
+
+const handleCreateInvoice = () => {
+  selectedInvoiceId.value = null;
+  currentView.value = "create-form";
 };
 
 const handleReturnToList = () => {
@@ -207,6 +272,7 @@ const handleDeleteInvoice = async (id) => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
+        @create-invoice="handleCreateInvoice"
       />
 
       <InvoiceTable
@@ -231,8 +297,16 @@ const handleDeleteInvoice = async (id) => {
       />
     </div>
 
+    <!-- Vista unificada para crear y editar -->
+    <div v-else-if="currentView === 'create-form'">
+      <InvoiceForm
+        @back-to-list="handleReturnToList"
+        @invoice-saved="handleReturnToList"
+      />
+    </div>
+
     <div v-else-if="currentView === 'edit-form'">
-      <InvoiceFormEdit
+      <InvoiceForm
         :invoice-id="selectedInvoiceId"
         :is-edit-mode="true"
         @back-to-list="handleReturnToList"

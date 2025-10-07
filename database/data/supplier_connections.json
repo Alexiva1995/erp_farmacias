@@ -45,7 +45,8 @@
             },
             "7": {
                 "file_field": "stock_disponible",
-                "type": "integer"
+                "type": "integer",
+                "target": "quantity"
             }
         },
         "invoice_structure": {
@@ -138,7 +139,7 @@
         "path": "Existencia/inventario.txt",
         "pasv": true,
         "has_header": false,
-        "invoice_path": "Facturas/3226",
+        "invoice_path": "Facturas/3613",
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
@@ -174,7 +175,8 @@
             },
             "7": {
                 "file_field": "stock_disponible",
-                "type": "integer"
+                "type": "integer",
+                "target": "quantity"
             }
         },
         "invoice_structure": {
@@ -398,13 +400,14 @@
         "username": "C008B3",
         "password": "eyJpdiI6Im1YVjRMYy96UFdzbndIMTRUMW1CQ1E9PSIsInZhbHVlIjoiMHIwK1hhendnaTR4OU5OZ3gxMTdoQT09IiwibWFjIjoiNDNmOTkxZDdiZWI1ZWVlNjE3NWYzMzA1MmNlOTYyOGEyNjI5NDMyNzAxM2UwZmQyNjYzZDdkNjM1YjhiYjYwNyIsInRhZyI6IiJ9=",
         "path": "inventario.txt",
-        "pasv": false,
+        "pasv": true,
         "has_header": true,
         "invoice_path": "/",
         "structure": {
             "0": {
                 "file_field": "Codigo",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "CodBarras",
@@ -418,15 +421,18 @@
             },
             "3": {
                 "file_field": "exisMerida",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisMerida"
             },
             "4": {
                 "file_field": "exisCaracas",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisCaracas"
             },
             "5": {
                 "file_field": "exisOriente",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "exisOriente"
             },
             "6": {
                 "file_field": "Marca",
@@ -446,28 +452,41 @@
                 "type": "string"
             },
             "10": {
-                "file_field": "Vence",
+                "file_field": "VenceMerida",
                 "type": "date",
                 "target": "expiration"
             },
             "11": {
-                "file_field": "Principio",
-                "type": "string"
+                "file_field": "VenceCentro",
+                "type": "date"
             },
             "12": {
+                "file_field": "VenceOriente",
+                "type": "date"
+            },
+            "13": {
+                "file_field": "Principio",
+                "type": "string",
+                "target": "active_ingredient"
+            },
+            "14": {
                 "file_field": "Escala",
                 "type": "decimal"
             },
-            "13": {
+            "15": {
                 "file_field": "DescXEscala",
                 "type": "decimal"
             },
-            "14": {
+            "16": {
                 "file_field": "Bonifica",
                 "type": "decimal"
             },
-            "15": {
+            "17": {
                 "file_field": "CantBonifica",
+                "type": "decimal"
+            },
+            "18": {
+                "file_field": "DifPorcentaje",
                 "type": "decimal"
             }
         },
@@ -545,28 +564,33 @@
         "password": "eyJpdiI6IlEzMnR6cmUydFhEWFZndGNnNnA1Nmc9PSIsInZhbHVlIjoiSHZ3Z2FHWUZlc21yVm5VS0toR3cxdz09IiwibWFjIjoiMzU1MDQxZDg4OTI4NjMzN2IwZGU3YzUwZDFmNzdhNDVkZTdiZjBkOTQ0NTcwNDY3Y2M3ZGMyZTc1MGUzOGQwNCIsInRhZyI6IiJ9",
         "path": "http://www.cobeca.com:8080/pedidofl/api/Articulos?cod_drogueria=3",
         "pasv": false,
-        "has_header": false,
+        "has_header": true,
         "invoice_path": null,
         "structure": {
-            "0": {
-                "file_field": "cod_barras",
+            "13": {
+                "file_field": "cod_barra",
                 "type": "string",
                 "target": "barcode_match"
             },
-            "1": {
+            "14": {
                 "file_field": "desc_articulo",
                 "type": "string",
                 "target": "name"
             },
-            "2": {
+            "28": {
                 "file_field": "fecha_Expire_ned",
                 "type": "date",
                 "target": "expiration"
             },
-            "3": {
+            "20": {
                 "file_field": "monto_final",
                 "type": "decimal",
                 "target": "unit_cost"
+            },
+            "17": {
+                "file_field": "existencia",
+                "type": "integer",
+                "target": "quantity"
             }
         }
     }

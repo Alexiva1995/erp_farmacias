@@ -134,7 +134,6 @@ class InvoiceQueryService
         if ($invoice->details()->exists()) {
 
             return $invoice->details()->with(['product.laboratory'])->get();
-
         } else {
 
             $configuredProducts = SuppliersConfigProduct::query()
@@ -171,5 +170,16 @@ class InvoiceQueryService
         $invoice->load(['supplier', 'discountRule']);
 
         return $invoice;
+    }
+    public function calculateSupplierDebts(): float
+    {
+        $totalDebts = Invoice::where(function ($query) {
+            $query->where('status_payment', 0)
+                ->orWhereNull('status_payment');
+        })
+            ->where('total_usd', '>', 0)
+            ->sum('total_usd');
+
+        return (float) ($totalDebts ?? 0);
     }
 }
