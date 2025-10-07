@@ -253,7 +253,7 @@ class SupplierQueryService
         try {
             DB::transaction(function () use ($supplierId) {
                 $factor = DB::scalar(
-                    "SELECT COALESCE(EXP(SUM(LN(1 - rate))), 1)
+                    "SELECT COALESCE(1 - MAX(rate), 1)
                               FROM (
                                     SELECT discount_percentage / 100 AS rate
                                       FROM supplier_discounts

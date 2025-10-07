@@ -14,7 +14,6 @@ class Laboratory extends Model
 
     /**
      * La tabla asociada con el modelo.
-     * Aunque Laravel lo infiere, es buena práctica especificarlo.
      *
      * @var string
      */
@@ -51,8 +50,18 @@ class Laboratory extends Model
         return $this->belongsToMany(Supplier::class, 'suppliers_laboratories');
     }
 
-    public function supplierLinks()
+    public function supplierLinks(): HasMany
     {
         return $this->hasMany(SupplierLaboratory::class);
+    }
+
+    /**
+     * Un laboratorio puede estar asignado a muchos empleados.
+     * Un empleado puede tener asignados muchos laboratorios.
+     */
+    public function employees(): BelongsToMany
+    {
+        return $this->belongsToMany(Employee::class, 'employee_laboratory')
+            ->withTimestamps();
     }
 }
