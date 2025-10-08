@@ -13,6 +13,8 @@ use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Observers\ProductObserver;
 
 class ReturnsActionService
 {
@@ -59,7 +61,6 @@ class ReturnsActionService
         DB::beginTransaction();
 
         try {
-
             $orderData = $request->order;
             $productData = $request->product;
             $orderDetail = collect($orderData['details'])->firstWhere('product_id', $productData['id']);
@@ -89,14 +90,17 @@ class ReturnsActionService
 
             if ($lot) {
                 $lot->quantity += $returnsQuantity;
-                $lot->save();
+                ProductLot::withoutEvents(function () use ($lot) {
+                    $lot->save(); 
+                });
             } else {
                 throw new Exception('No se encontró lote vigente para ese producto.');
             }
 
 
-            ReturnEntry::create([
+            $return = ReturnEntry::create([
                 'order_id' => $orderData['id'],
+                'generated_by_id' => Auth::id(),
                 'product_id' => $productData['id'],
                 'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
@@ -104,6 +108,7 @@ class ReturnsActionService
                 'status' => ReturnEntry::CREATED,
             ]);
 
+            ProductObserver::handleReturnMovement($return); 
             DB::commit();
             return [
                 'success' => true,
