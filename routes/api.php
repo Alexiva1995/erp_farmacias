@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CleaningActivityController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IslrController;
@@ -473,5 +474,28 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/', [EmployeeProductController::class, 'store']);
         Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
         Route::get('/stats', [EmployeeProductController::class, 'stats']);
+    });
+    Route::prefix('islr')->group(function () {
+        Route::get('/summary', [IslrController::class, 'getIslrSummary']);
+        Route::get('/gross-income', [IslrController::class, 'getGrossIncome']);
+        Route::get('/deductions', [IslrController::class, 'getDeductions']);
+        Route::get('/tax-unit', [IslrController::class, 'getTaxUnit']);
+        Route::post('/tax-unit', [IslrController::class, 'updateTaxUnit']);
+
+        // Rutas para Declaraciones ISLR
+        Route::get('/declarations/latest', [IslrController::class, 'getLatestDeclaration']);
+        Route::get('/declarations', [IslrController::class, 'getDeclaration']);
+        Route::post('/declarations', [IslrController::class, 'createDeclaration']);
+        Route::put('/declarations/{id}', [IslrController::class, 'updateDeclaration']);
+        Route::delete('/declarations/{id}', [IslrController::class, 'deleteDeclaration']);
+        Route::patch('/declarations/{id}/mark-paid', [IslrController::class, 'markAsPaid']);
+        Route::patch('/declarations/{id}/mark-unpaid', [IslrController::class, 'markAsUnpaid']);
+    });
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+        Route::get('/stats', [DashboardController::class, 'getDashboardStats']);
+        Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
+        Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
+        Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']); // Nueva
     });
 });
