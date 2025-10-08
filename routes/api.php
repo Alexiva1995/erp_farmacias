@@ -287,8 +287,8 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Ruta de fiscal
-    Route::get("/history", [FiscalController::class, "index"]);
-    Route::get("/history/export", [FiscalController::class, "export"]);
+        Route::get("/history", [FiscalController::class, "index"]);
+        Route::get("/history/export", [FiscalController::class, "export"]);
 
     // Invoice
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
@@ -410,7 +410,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -421,8 +421,16 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
+            Route::get('/sales/summary', [CashClosureController::class, 'getSummarysales']);
+            Route::get('/dailyCash', [CashClosureController::class, 'getDailyCashTable']);
+            Route::get('/monthlyCash', [CashClosureController::class, 'getMonthlyCashTable']);
+            Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
+            Route::get('/monthlyCashclosing', [CashClosureController::class, 'getmonthlyCashclosing']);
+            Route::post('/downloadReport', [CashClosureController::class, 'downloadReport']);
+            Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
+            Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
         });
-
+      
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);

@@ -112,7 +112,6 @@ const printCash = async (cash) => {
     isPrinting.value = true;
     await nextTick();
     const printContents = document.getElementById("CashClosurePrint");
-
     if (!printContents) {
       console.warn("Elemento #CashClosurePrint no encontrado.");
       window.print();
@@ -371,7 +370,6 @@ const handleCloseViewModal = () => {
 
 const cancelarOrder = async (orderId) => {
   try {
-  console.log(orderData);
     await axios.patch(`/tpv/orders/${orderId}/cancelled`);
     toast.success("Orden cancelada exitosamente.");
     fetchOrder();

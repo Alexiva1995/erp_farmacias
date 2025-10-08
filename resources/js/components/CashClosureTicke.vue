@@ -19,11 +19,7 @@ const usdPayments = computed(() => [
   { label: "Efectivo", amount: getValue("usd_cash"), currency: "USD" },
   { label: "Binance", amount: getValue("usd_binance"), currency: "USD" },
   { label: "Paypal", amount: getValue("usd_paypal"), currency: "USD" },
-  {
-    label: "Conversión de COP",
-    amount: getValue("usd_conversion"),
-    currency: "USD",
-  },
+  { label: "Conversión de COP", amount: getValue("usd_conversion"), currency: "USD",},
 ]);
 
 const bsPayments = computed(() => [
@@ -143,6 +139,7 @@ const allReferences = computed(() => {
   }
   return references;
 });
+
 const binanceReferences = computed(() => allReferences.value.BINANCE);
 const paypalReferences = computed(() => allReferences.value.PAYPAL);
 const tarjetaReferencesBs = computed(() => allReferences.value.TARJETA);
@@ -226,7 +223,6 @@ const hasAnyReference = computed(() => {
     tarjetaReferencesCop.value.length > 0
   );
 });
-
 </script>
 <template>
   <div style="width: 100%">
