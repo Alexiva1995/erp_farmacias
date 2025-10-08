@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException; // <-- Importante
 use PragmaRX\Google2FA\Google2FA;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Writer as BaconQrCodeWriter;
-use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 
 class LoginController extends Controller
@@ -181,7 +181,7 @@ class LoginController extends Controller
     {
         $bacon = new BaconQrCodeWriter(new ImageRenderer(
             new RendererStyle(200),
-            new ImagickImageBackEnd()
+            new SvgImageBackEnd()
         ));
 
         $qrCodeUrl = (new Google2FA())->getQRCodeUrl(
@@ -192,6 +192,6 @@ class LoginController extends Controller
 
         $data = $bacon->writeString($qrCodeUrl, 'utf-8');
 
-        return 'data:image/png;base64,' . base64_encode($data);
+        return 'data:image/svg+xml;base64,' . base64_encode($data);
     }
 }

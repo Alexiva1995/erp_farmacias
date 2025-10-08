@@ -58,9 +58,22 @@ class ProductQueryService
         }
         // filtro de profitability is_locked
         if (!empty($filters['lockedValue'])) {
-            $query->whereHas('profitability', function ($query) use ($filters) {
-                $query->where("is_locked", $filters['lockedValue']);
-            });
+
+            switch ($filters['lockedValue']) {
+                case 2:
+                    $query->whereHas('profitability', function ($query) {
+                        $query->where("is_locked", 1);
+                    });
+                    break;
+
+                case 1:
+                    $query->whereDoesntHave('profitability')
+                        ->orWhereHas('profitability', function ($q) {
+                            $q->where('is_locked', '!=', 1);
+                        });
+                    break;
+            }
+
         }
 
         $hasStock = $filters['hasStock'] ?? null;
@@ -147,7 +160,7 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'lockedValue' => $request->lockedValue, // <- para el filtro de profitability.is_locked
+            'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
         ];
 
@@ -155,5 +168,14 @@ class ProductQueryService
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+    public function calculateInventoryValue(): float
+    {
+        $totalValue = Product::selectRaw('SUM(stock * unit_cost) as total_value')
+            ->where('stock', '>', 0)
+            ->where('unit_cost', '>', 0)
+            ->value('total_value');
+
+        return (float) ($totalValue ?? 0);
     }
 }

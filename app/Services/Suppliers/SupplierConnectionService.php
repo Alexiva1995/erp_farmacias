@@ -9,6 +9,10 @@ use App\Helpers\FtpCrypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
+use Psr\Http\Message\ResponseInterface;
+use React\Http\Browser;
+use React\Socket\Connector;
+use React\EventLoop\Loop;
 
 class SupplierConnectionService
 {
@@ -78,7 +82,7 @@ class SupplierConnectionService
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
-                        $invoiceResults[] = $parsed;                        
+                        $invoiceResults[] = $parsed;
                     }
                 }
             }
@@ -99,32 +103,54 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        $user = $connection->username;
-        $password = FtpCrypt::decrypt($connection->password);
+        $data = $this->fetchFromAPI($connection);
+        if($data) {
+            $jsonPath = storage_path('app/api_products.json');
+            $csvPath = storage_path('app/api_products.txt');
 
-        $response = Http::post($connection->host, [
-            "usuario" => $user,
-            "clave" => $password,
-        ]);
-        $token = $response->json()["token"];
+            // Verifica si el archivo se descargó
+            if (!file_exists($jsonPath) || filesize($jsonPath) === 0)
+                throw new \Exception("Archivo no descargado");
 
-        try {
-            $response = Http::withHeaders([
-                "autorizacion" => $token,
-            ])
-                ->timeout(1000)
-                ->get($connection->path);
-
-            if ($response->successful()) {
-                $productData = $this->parseDynamicContent($response->json(), $connection);
-                return $productData;
-            } else {
-                throw new \Exception("La petición a la API falló");
+            // Convierte JSON a CSV
+            $data = json_decode(file_get_contents($jsonPath), true);
+            if (!is_array($data) || empty($data)) {
+                throw new \Exception("Contenido JSON inválido");
             }
-        } catch (\Exception $e) {
-            Log::alert("Supplier connection service");
-            Log::error($e);
-            throw new \Exception("No se pudo establecer la conexión");
+
+            try {  
+                $headers = array_keys($data[0]);
+                $csv = implode(';', $headers) . "\n";
+
+                foreach ($data as $row) {
+                    $line = [];
+                    foreach ($headers as $key) {
+                        $value = $row[$key] ?? '';
+
+                        if (is_array($value)) {
+                            $value = json_encode($value);
+                        }
+                        $value = str_replace(["\n", "\r", ";"], [" ", " ", ","], $value);
+                        $line[] = $value;
+                    }
+                    $csv .= implode(';', $line) . "\n";
+                }
+
+                file_put_contents($csvPath, $csv);
+                $productData = $this->parseDynamicContent(file_get_contents($csvPath), $connection);
+
+                unlink($jsonPath);
+                unlink($csvPath);
+
+                return [
+                    "products" => $productData ?? [],
+                    "invoices" => $invoiceResults ?? [],
+                ];
+            } catch (\Exception $e) {
+                Log::alert("Supplier connection service");
+                Log::error($e);
+                throw new \Exception("No se pudo establecer la conexión");
+            }
         }
     }
 
@@ -136,6 +162,7 @@ class SupplierConnectionService
         $has_header = $connection->has_header;
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
+
         $barcodes = [];
 
         // ignora la primera fila si contiene encabezados en vez de registros
@@ -162,8 +189,6 @@ class SupplierConnectionService
 
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
-        \Log::info("Data structure: ");
-        \Log::info(explode(";", $lines[0]));
         foreach ($lines as $line) {
             $cols = explode(";", $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
@@ -172,13 +197,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use (
-            $structure,
-            $now,
-            $usdCurrency,
-            $supplierId,
-            $products,
-        ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -193,7 +212,9 @@ class SupplierConnectionService
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
+            $missingBarcode = false;
 
+            $quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -203,12 +224,16 @@ class SupplierConnectionService
                         $entry[$meta["target"]] = $value;
                         break;
 
+                    case "integer":
+                        $entry[$meta["target"]] = $value;
+                        break;
+
                     case "decimal":
                         if (is_numeric($value)) {
                             $newValue = number_format((float) $value, 2, ".", "");
 
-                            if ($meta["target"] === "quantity") {
-                                $entry[$meta["target"]] = $newValue;
+                            if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
+                                $quantity += $newValue;
                                 break;
                             }
 
@@ -257,6 +282,11 @@ class SupplierConnectionService
                             break;
                         }
 
+                        if (empty($value)) {
+                            $entry[$meta["target"]] = null;
+                            break;
+                        }
+
                         if ($value === "NULL") {
                             $entry[$meta["target"]] = null;
                             break;
@@ -269,9 +299,41 @@ class SupplierConnectionService
 
                 if ($meta["target"] === "barcode_match" && $value !== "") {
                     $product = $products->get($value);
-                    $entry["laboratory"] = $product?->laboratory?->name;
-                    $entry["product_id"] = $product?->id;
+
+                    if ($product) {
+                        $entry["laboratory"] = $product?->laboratory?->name;
+                        $entry["product_id"] = $product?->id;
+                    } else {
+                        $missingBarcode = true; // lo marcamos para crear luego
+                    }
                 }
+            }
+
+            $entry["quantity"] = $quantity;
+
+            if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
+                $stock = 0;
+
+                if ($entry['supplier_id'] == 2) {
+                    foreach (['exisMerida', 'exisCaracas', 'exisOriente'] as $campo) {
+                        $stock += intval($entry[$campo] ?? 0);
+                    }
+                } else
+                    $stock = $entry['quantity'];
+
+                $newProduct = Product::create([
+                    'barcode' => $entry['barcode_match'],
+                    'name' => $entry['name'] ?? 'Producto sin nombre',
+                    'unit_cost' => $entry['unit_cost'] ?? 0,
+                    'sale_price' => $entry['unit_cost'] ?? 0,
+                    'stock' => $stock,
+                    'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
+                    'sales_average' => $entry['sales_average'] ?? 0
+                ]);
+
+                $entry['product_id'] = $newProduct->id;
+
+                $products->put($missingBarcode, $newProduct); // actualiza el cache local
             }
 
             return $entry;
@@ -280,7 +342,8 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array {
+    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+    {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
@@ -310,7 +373,7 @@ class SupplierConnectionService
 
         if ($mode === 'flat') {
             $invoiceGroups = [];
-            
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
 
@@ -322,7 +385,8 @@ class SupplierConnectionService
                 }
 
                 $invoiceNumber = $header['invoice_number'] ?? null;
-                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers)) continue;
+                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
+                    continue;
 
                 // Línea de producto
                 $lineData = [];
@@ -398,7 +462,7 @@ class SupplierConnectionService
                 }
             }
         }
-        
+
         return $invoices;
     }
 
@@ -415,7 +479,8 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string {
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }
@@ -437,5 +502,53 @@ class SupplierConnectionService
         }
 
         return null;
+    }
+
+    public function fetchFromAPI(SupplierConnection $connection): bool
+    {
+        $connector = new Connector([
+            'timeout' => 1800,
+        ]);
+
+        $client = (new Browser($connector))->withTimeout(1800.0);
+        $token = $this->getAPIToken($connection);
+        $url = $connection->path;
+        $path = storage_path('app/api_products.json');
+
+        $success = false;
+        
+        try {
+            $client->get($url, [
+                'Autorizacion' => $token
+            ])->then(
+                function (ResponseInterface $response) use (&$success, $path) {
+                    file_put_contents($path, (string) $response->getBody());
+                    $success = true;
+                },
+                function (\Exception $e) use (&$success)  {
+                    Log::error('Error: ' . $e->getMessage() . PHP_EOL);
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::error('Error API: ' . $e->getMessage());
+            $success = false;
+        }
+
+        Loop::run(); // ejecuta el ciclo de eventos
+
+        return $success && file_exists($path) && filesize($path) > 0;
+    }
+
+    public function getAPIToken(SupplierConnection $connection): string
+    {
+        $user = $connection->username;
+        $password = FtpCrypt::decrypt($connection->password);
+
+        $loginResponse = Http::post($connection->host, [
+            "usuario" => $user,
+            "clave" => $password,
+        ]);
+
+        return $loginResponse->json()["token"];
     }
 }

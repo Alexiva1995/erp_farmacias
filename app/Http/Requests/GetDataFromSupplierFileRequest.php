@@ -25,13 +25,24 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "start_row" => ["required", "integer", "min:1"],
             "cod_supplier" => ["required", "string"],
             "name" => ["required", "string"],
-            "barcode_match" => ["required", "string"],
+            "barcode_match" => ["nullable", "required", "string"],
             "quantity" => ["nullable", "required", "string"],
-            "unit_cost" => ["required", "string"],
+            "currency" => ["nullable", "required", "decimal:0,2"],
+            "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "required", "string"],
+            "active_ingredient" => ["nullable", "string"],
             "file" => ["required", "file", "mimes:xlsx,xls"],
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->sometimes('unit_cost', 'required', function ($input) {
+            $currencyNotEmpty = !empty($input->currency);
+            $usdNotEmpty = !empty($input->unit_cost_usd);
+            return !($currencyNotEmpty && $usdNotEmpty);
+        });
     }
 
     public function messages(): array
@@ -42,6 +53,7 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "cod_supplier.required" => "La columna de código es obligatoria.",
             "name.required" => "La columna de nombre es obligatoria.",
             "barcode_match.required" => "La columna de código de barras es obligatoria.",
+            "currency.decimal" => "La columna de tasa de cambio debe ser un número.",
             "quantity.integer" => "La columna de cantidad debe ser un número entero.",
             "quantity.min" => "La cantidad debe ser mayor o igual a 0.",
             "unit_cost.required" => "La columna de coste unitario es obligatoria.",
@@ -53,6 +65,8 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "file.required" => "Debes seleccionar un archivo.",
             "file.file" => "Debes seleccionar un archivo.",
             "file.mimes" => "El archivo debe ser de tipo Excel (.xlsx o .xls).",
+            "active_ingredient.required" => 'Debe indicar el valor de la columna',
+            "active_ingredient.string" => 'La columna debe ser un texto'
         ];
     }
 }

@@ -6,6 +6,8 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   quantityErrors: { type: Object, default: () => ({}) },
+  enableUsdAmountCol: { type: Boolean, default: false },
+  enableDiscountCol: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options", "send-product"]);
@@ -30,15 +32,32 @@ const formatUsd = (amount) => {
   );
 };
 
-const headers = [
-  { title: "Id", key: "id", sortable: false },
+const allHeaders = [
   { title: "Nombre", key: "name", sortable: false },
+  { title: "Proveedor", key: "supplier_name", sortable: false },
   { title: "Usd", key: "unit_cost_usd", sortable: false },
   { title: "Usd %", key: "final_cost_usd", sortable: false },
   { title: "Bs", key: "unit_cost_bs", sortable: false },
   { title: "Bs %", key: "final_cost_bs", sortable: false },
+  { title: "Vencimiento", key: "expiration", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
+
+const headers = computed(() =>
+  allHeaders.filter((h) => {
+    if (props.enableDiscountCol) {
+      if (["unit_cost_usd", "unit_cost_bs"].includes(h.key)) return false;
+
+      if (props.enableUsdAmountCol && h.key === "final_cost_bs") return false;
+      if (!props.enableUsdAmountCol && h.key === "final_cost_usd") return false;
+    } else {
+      if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
+      if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
+    }
+
+    return true;
+  })
+);
 </script>
 
 <template>
@@ -53,8 +72,17 @@ const headers = [
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
+      <template #item.name="{ item }">
+        <div class="d-flex align-center gap-x-4">
+          <div class="d-flex flex-column">
+            <span class="text-body-1 font-weight-medium text-high-emphasis">
+              {{ item.name }}
+            </span>
+            <span class="text-sm text-disabled">
+              {{ item.active_ingredient }}
+            </span>
+          </div>
+        </div>
       </template>
 
       <template #item.unit_cost_usd="{ item }">
@@ -83,7 +111,7 @@ const headers = [
             variant="outlined"
             density="compact"
             hide-details="auto"
-            style="width: 200px"
+            style="width: 80px"
             :error="!!quantityErrors[item.id]"
             :error-messages="quantityErrors[item.id]"
           />

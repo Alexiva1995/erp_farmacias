@@ -1,4 +1,8 @@
 <script setup>
+import PurchaseOrderEditDialog from "@/components/dialogs/PurchaseOrderEditDialog.vue";
+import PurchaseOrderShowDialog from "@/components/dialogs/PurchaseOrderShowDialog.vue";
+import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
+import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";

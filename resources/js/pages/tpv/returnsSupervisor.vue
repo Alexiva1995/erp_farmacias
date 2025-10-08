@@ -85,7 +85,7 @@ const updateStatus = async (item) => {
       <ReturnsSupervisorTable
       :returns="returns"
       :loading="loading"
-      :total-return="totalReturns"
+      :total-returns="totalReturns"
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"

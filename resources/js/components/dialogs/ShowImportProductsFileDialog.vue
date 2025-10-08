@@ -1,28 +1,36 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   selectedSupplier: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:modalValue"]);
+const emit = defineEmits([
+  "update:modalValue",
+  "close-dialog",
+  "refresh-products",
+]);
 
 const errors = ref({});
 
 const start_row = ref(1);
 const cod_supplier = ref("");
 const name = ref("");
-const barcode = ref("");
+const barcode = ref(null);
 const bs_cost = ref("");
 const usd_cost = ref("");
+const active_ingredient = ref("");
 const expiration = ref(null);
 const quantity = ref(null);
+const currency = ref(null);
 const file = ref(null);
 
 const formatDate = (dateString) => {
-  if (!dateString || dateString === "No se ha establecido conexión") return "N/A";
+  if (!dateString || dateString === "No se ha establecido conexión")
+    return "N/A";
   try {
     const date = new Date(dateString);
     const year = date.getUTCFullYear();
@@ -32,10 +40,6 @@ const formatDate = (dateString) => {
   } catch (error) {
     return "Fecha inválida";
   }
-};
-
-const closeDialog = () => {
-  emit("update:modelValue", false);
 };
 
 const submitForm = async () => {
@@ -49,32 +53,87 @@ const submitForm = async () => {
   form.append("quantity", quantity.value);
   form.append("unit_cost", bs_cost.value);
   form.append("unit_cost_usd", usd_cost.value);
+  form.append("active_ingredient", active_ingredient.value);
   form.append("expiration", expiration.value);
+  form.append("currency", currency.value);
   form.append("file", file.value);
 
   try {
-    toast.info(`Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`);
+    toast.info(
+      `Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`
+    );
     await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form);
 
     start_row.value = 1;
     cod_supplier.value = "";
     name.value = "";
-    barcode.value = "";
+    barcode.value = null;
     bs_cost.value = "";
     usd_cost.value = "";
+    active_ingredient.value = "";
+    currency.value = null;
     expiration.value = null;
     quantity.value = null;
     file.value = null;
-    closeDialog();
+    emit("close-dialog");
+    handleCleanFormData();
+
+    setTimeout(() => {
+      emit("refresh-products");
+    }, 3000);
   } catch (error) {
     console.error(error);
-    toast.error(`No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`);
+    toast.error(
+      `No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`
+    );
 
     if (error.response.status === 422) {
       errors.value = error.response.data.errors;
     }
   }
 };
+
+const fetchSupplierConnection = async (id) => {
+  try {
+    const { data } = await axios.get(`suppliers/${id}/first-connection`);
+    const structure = data.data.structure;
+    start_row.value = structure.start_row ?? 1;
+    cod_supplier.value = structure.cod_supplier ?? "";
+    name.value = structure.name ?? "";
+    barcode.value = structure.barcode_match ?? null;
+    bs_cost.value = structure.unit_cost ?? "";
+    usd_cost.value = structure.unit_cost_usd ?? "";
+    active_ingredient.value = structure.active_ingredient ?? "";
+    expiration.value =
+      structure.expiration != "null" ? structure.expiration : null;
+    quantity.value = structure.quantity != "null" ? structure.quantity : null;
+  } catch (error) {}
+};
+
+const handleCleanFormData = () => {
+  start_row.value = 1;
+  cod_supplier.value = "";
+  name.value = "";
+  barcode.value = null;
+  bs_cost.value = "";
+  usd_cost.value = "";
+  active_ingredient.value = "";
+  expiration.value = null;
+  quantity.value = null;
+  currency.value = null;
+  file.value = null;
+};
+
+watch(
+  () => props.selectedSupplier?.id,
+  (supplierId) => {
+    if (supplierId) {
+      handleCleanFormData();
+      fetchSupplierConnection(supplierId);
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -82,7 +141,7 @@ const submitForm = async () => {
     :model-value="props.modelValue"
     max-width="800px"
     persistent
-    @update:model-value="closeDialog"
+    @update:model-value="emit('close-dialog')"
     :scrollable="true"
     content-class="d-flex"
   >
@@ -92,7 +151,7 @@ const submitForm = async () => {
 
         <VSpacer />
 
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" @click="emit('close-dialog')">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -111,15 +170,17 @@ const submitForm = async () => {
           <VCol cols="6">
             <div class="d-flex align-center gap-4 mb-4">
               <span class="font-weight-medium">Última actualización</span>
-              <VChip color="primary" label>{{ formatDate(selectedSupplier.last_connection) }}</VChip>
+              <VChip color="primary" label>{{
+                formatDate(selectedSupplier.last_connection)
+              }}</VChip>
               <VSpacer />
             </div>
           </VCol>
         </VRow>
 
         <p>
-          <span class="font-weight-bold">Nota</span>: Debe indicar las columnas en las cuales se encuentran los campos
-          solicitados a continuación:
+          <span class="font-weight-bold">Nota</span>: Debe indicar las columnas
+          en las cuales se encuentran los campos solicitados a continuación:
         </p>
 
         <VRow>
@@ -185,6 +246,27 @@ const submitForm = async () => {
           </VCol>
           <VCol cols="6">
             <VTextField
+              v-model="currency"
+              label="Tasa de Cambio"
+              type="number"
+              variant="outlined"
+              hide-details="auto"
+              :step="0.01"
+              :error-messages="errors.currency"
+            />
+          </VCol>
+          <VCol cols="6">
+            <VTextField
+              v-model="active_ingredient"
+              label="Principio Activo"
+              type="text"
+              variant="outlined"
+              hide-details="auto"
+              :error-messages="errors.active_ingredient"
+            />
+          </VCol>
+          <VCol cols="6">
+            <VTextField
               v-model="expiration"
               label="Fecha de Expiración"
               type="text"
@@ -220,8 +302,22 @@ const submitForm = async () => {
       <VDivider />
 
       <VCardActions class="pa-4">
-        <VBtn color="secondary" variant="outlined" @click="closeDialog" class="flex-grow-1 w-0 mr-4"> Cerrar </VBtn>
-        <VBtn color="primary" variant="flat" @click="submitForm" class="flex-grow-1 w-0"> Cargar </VBtn>
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          @click="emit('close-dialog')"
+          class="flex-grow-1 w-0 mr-4"
+        >
+          Cerrar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="submitForm"
+          class="flex-grow-1 w-0"
+        >
+          Cargar
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

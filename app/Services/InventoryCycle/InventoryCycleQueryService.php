@@ -62,6 +62,9 @@ class InventoryCycleQueryService
                 : 'created_at';
             $query->where($dateColumn, '<=', $filters['endDate']);
         }
+        if (!empty($filters['cycleId'])) {
+            $query->where('product_counts.cycle_id', $filters['cycleId']);
+        }
 
         if (!empty($filters['status'])) {
             if (is_array($filters['status'])) {
@@ -200,10 +203,11 @@ class InventoryCycleQueryService
             'laboratoryId' => $request->laboratoryId,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'cycleId' => $request->cycleId,
             'is_history' => $isHistoryView,
         ];
 
-        if ($isHistoryView) {
+        if ($isHistoryView || $request->cycleId) {
             $filters['status'] = ['approved', 'rejected'];
         } else {
             $filters['status'] = 'pending';
@@ -423,6 +427,86 @@ class InventoryCycleQueryService
             $query->orderBy($sortableColumns[$sortBy], $orderBy);
         } else {
             $query->orderBy('discrepancies.updated_at', 'desc');
+        }
+
+        return $query;
+    }
+    public function getCycleSummaryQuery(Request $request)
+    {
+        $query = DB::table('product_counts as pc')
+            ->join('inventory_cycles as ic', 'pc.cycle_id', '=', 'ic.id')
+            ->leftJoin('products as p', 'pc.product_id', '=', 'p.id')
+            ->select([
+                'pc.cycle_id',
+                'ic.start_date',
+                'ic.end_date',
+                'ic.status as cycle_status',
+                DB::raw('COUNT(pc.id) as total_products'),
+                DB::raw('SUM(CASE 
+                WHEN pc.discrepancy > 0 AND p.sale_price IS NOT NULL 
+                THEN pc.discrepancy * p.sale_price 
+                ELSE 0 
+            END) as total_surplus'),
+                DB::raw('SUM(CASE 
+                WHEN pc.discrepancy < 0 AND p.sale_price IS NOT NULL 
+                THEN ABS(pc.discrepancy) * p.sale_price 
+                ELSE 0 
+            END) as total_shortage'),
+                DB::raw('SUM(CASE 
+                WHEN pc.discrepancy IS NOT NULL AND p.sale_price IS NOT NULL 
+                THEN pc.discrepancy * p.sale_price 
+                ELSE 0 
+            END) as net_total')
+            ])
+            ->whereNotNull('pc.cycle_id')
+            ->groupBy('pc.cycle_id', 'ic.start_date', 'ic.end_date', 'ic.status');
+
+        $filters = [
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'cycleStatus' => $request->cycleStatus,
+        ];
+
+        $query = $this->applyCycleSummaryFilters($query, $filters);
+        $query = $this->applyCycleSummarySorting($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+
+        return $query;
+    }
+
+    private function applyCycleSummaryFilters($query, array $filters)
+    {
+        if (!empty($filters['startDate'])) {
+            $query->where('ic.start_date', '>=', $filters['startDate']);
+        }
+
+        if (!empty($filters['endDate'])) {
+            $query->where('ic.end_date', '<=', $filters['endDate']);
+        }
+
+        if (!empty($filters['cycleStatus'])) {
+            $query->where('ic.status', $filters['cycleStatus']);
+        }
+
+        return $query;
+    }
+
+    private function applyCycleSummarySorting($query, ?string $sortBy, string $orderBy = 'desc')
+    {
+        $validSortFields = [
+            'cycle_id' => 'pc.cycle_id',
+            'start_date' => 'ic.start_date',
+            'end_date' => 'ic.end_date',
+            'cycle_status' => 'ic.status',
+            'total_products' => 'total_products',
+            'total_surplus' => 'total_surplus',
+            'total_shortage' => 'total_shortage',
+            'net_total' => 'net_total'
+        ];
+
+        if ($sortBy && isset($validSortFields[$sortBy])) {
+            $query->orderBy($validSortFields[$sortBy], $orderBy);
+        } else {
+            $query->orderBy('ic.start_date', 'desc');
         }
 
         return $query;

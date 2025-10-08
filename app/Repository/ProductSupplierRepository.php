@@ -26,4 +26,11 @@ class ProductSupplierRepository
 
         return $consulta->get();
     }
+
+    public function consultarTodosLosProveedorProIdProducto($product_id): Collection
+    {
+        return ProductSupplier::where("product_id", "=", $product_id)
+            ->with("supplier")
+            ->get();
+    }
 }

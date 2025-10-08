@@ -25,8 +25,7 @@ const headers = [
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Costo", key: "cost_price", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: '% Utilidad', key: 'profitability', sortable: true  }, 
-  { title: 'Fecha', key: 'valid_stock', sortable: true  },
+  { title: '% Utilidad', key: 'profitability', sortable: true  },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -134,6 +133,24 @@ try {
 
 }
 
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("es-CO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+};
+
+const calculateSalePriceWithIva = (product) => {
+  const basePrice = Number(product.sale_price || 0);
+
+  if (product.iva == 1) {
+    const priceWithIva = basePrice * 1.16;
+    return priceWithIva.toFixed(2);
+  }
+
+  return basePrice.toFixed(2);
+};
+
 </script>
 
 <template>
@@ -147,31 +164,64 @@ try {
       :loading="props.loading"
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
-      >
+      >  
       <template #item.id="{ item }">
-        <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.id }}</span>
-      </template>    
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">{{ item.id }}</span>
+      </template>
+      <!--template #item.name="{ item }">
+        <span class="font-weight-medium" >{{ item.name }}</span>
+      </template-->
       <template #item.name="{ item }">
-        <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.name }}</span>
+        <div class="d-flex align-center gap-x-4">
+          <VAvatar
+            v-if="item.photo_url"
+            size="38"
+            variant="tonal"
+            rounded
+            :image="item.photo_url"
+          />
+          <div class="d-flex flex-column">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']"
+            >
+              {{ item.name }}
+
+              <span v-if="item.iva == 1"> (G)</span>
+
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
+
+            <span class="text-sm text-disabled">{{
+              item.active_ingredient
+            }}</span>
+          </div>
+        </div>
       </template> 
-      <template #item.laboratory="{ item }">
-        <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.laboratory.name }}</span>
-      </template> 
+      <template #item.laboratory.name="{ item }">
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">{{ item.laboratory ? item.laboratory.name : ""}}</span>
+      </template>
       <template #item.cost_price="{ item }">
-        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.cost_price }}</span>
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">{{
+          formatPrice(item.unit_cost)
+        }}</span>
       </template>
       <template #item.sale_price="{ item }">
-        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ item.sale_price }}</span>
+        <div class="d-flex flex-column">
+          <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">
+            {{ item.profitability?.is_locked == '1' ? 
+            (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2) 
+            : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
+          </span>
+          <span v-if="item.iva == 1" class="text-xs text-success">
+            (IVA incluido)
+          </span>
+        </div>
       </template>
       <template #item.profitability="{ item }">
-        <span class="font-weight-medium" :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">
-          {{ item.profitability?.is_locked == '1' ? 
-            (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(item.profitability.profitability_percentage)/100))).toFixed(2)
-            : (parseFloat(item.sale_price) + (parseFloat(item.sale_price) * (parseInt(profitability)/100))).toFixed(2) }}
+        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-error' : 'font-weight-medium']">
+            {{ item.profitability?.is_locked == '1' ? parseInt(item.profitability.profitability_percentage) : parseInt(profitability) }}%
         </span>
-      </template>
-      <template #item.valid_stock="{ item }">
-        <span :class="[item.profitability?.is_locked == '1' ? 'font-weight-medium text-lg text-error' : 'font-weight-medium']">{{ new Date(item.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
       </template>
       <template #item.actions="{ item }" >
         <IconBtn @click="emit('editProduct', item.profitability?.id, item.profitability?.profitability_percentage, item.id, item.profitability?.is_locked)">

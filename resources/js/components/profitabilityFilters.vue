@@ -34,9 +34,10 @@ const stockOptions = [
   { title: "Sin Stock", value: false },
 ];
 
+// Opcion para el nuevo filtro bloqueado
 const lockedOptions = [
-  { name: "Bloqueado", value: 1 },
-  { name: "No bloqueado", value: 0 },
+  { name: "Bloqueado", value: 2 },
+  { name: "No bloqueado", value: 1 },
 ];
 
 const sortOptions = [
@@ -254,6 +255,8 @@ watch(
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
+
+        <!-- Filtro bloqueado -->
         <VCol cols="12" sm="6" md="4">
           <VAutocomplete
             :model-value="props.lockedValue"
