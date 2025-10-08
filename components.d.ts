@@ -84,6 +84,9 @@ declare module 'vue' {
     DoctorTable: typeof import('./resources/js/components/DoctorTable.vue')['default']
     DonationLetterDialog: typeof import('./resources/js/components/DonationLetterDialog.vue')['default']
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
+    EcommerceEarningReports: typeof import('./resources/js/components/EcommerceEarningReports.vue')['default']
+    EcommerceRevenueReport: typeof import('./resources/js/components/EcommerceRevenueReport.vue')['default']
+    EcommerceRevenueReports: typeof import('./resources/js/components/EcommerceRevenueReports.vue')['default']
     EditUTDialog: typeof import('./resources/js/components/dialogs/EditUTDialog.vue')['default']
     EmployeeFilters: typeof import('./resources/js/components/EmployeeFilters.vue')['default']
     EmployeeFormDialog: typeof import('./resources/js/components/dialogs/EmployeeFormDialog.vue')['default']
@@ -250,5 +253,6 @@ declare module 'vue' {
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }
