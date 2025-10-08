@@ -7,6 +7,8 @@ import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 
+const chipColor = "primary";
+
 const props = defineProps({
   isDialogVisible: {
     type: Boolean,
@@ -154,7 +156,7 @@ const totalPaidAmount = computed(() => {
 const fetchExchangeRates = async () => {
   try {
     const response = await axios.get("/public/exchange-rates");
-    if (response.status!=200) {
+    if (response.status != 200) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
@@ -655,6 +657,17 @@ const updateDebouncedAmount = (payment, newValue) => {
     payment.amount = Number(newValue);
   }, 1000);
 };
+
+const handleMethodChange = (payment, newMethod) => {
+  clearTimeout(payment.debounceTimeout);
+  payment.debounceTimeout = null;
+  if (newMethod !== "balance") {
+    console.log(newMethod);
+    payment.amount = null;
+    payment.inputAmount = null;
+  }
+  payment.reference = null;
+};
 </script>
 
 <template>
@@ -678,7 +691,7 @@ const updateDebouncedAmount = (payment, newValue) => {
             variant="tonal"
             density="default"
             size="small"
-            draggable="false"
+            :draggable="false"
             class="ms-auto"
           >
             <span class="font-weight-medium mb-0">{{
@@ -804,7 +817,11 @@ const updateDebouncedAmount = (payment, newValue) => {
 
           <VRow class="pb-2">
             <VCol cols="12" md="6">
-              <VRadioGroup v-model="payment.method" inline>
+              <VRadioGroup
+                v-model="payment.method"
+                inline
+                @update:modelValue="(newVal) => handleMethodChange(payment, newVal)"
+              >
                 <VRadio
                   v-for="method in (
                     paymentMethodsByCurrency[payment.currency] || []
@@ -841,6 +858,7 @@ const updateDebouncedAmount = (payment, newValue) => {
                 v-if="
                   payment.method !== 'balance' && payment.method !== 'credit'
                 "
+                :key="payment.method"
               >
                 <VCol
                   :cols="isTransferMethod(payment.method) ? 12 : 6"
