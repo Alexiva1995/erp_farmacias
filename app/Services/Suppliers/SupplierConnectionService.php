@@ -6,6 +6,7 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
@@ -27,33 +28,49 @@ class SupplierConnectionService
             case "api":
                 return $this->fetchFromHttp($connection);
             default:
-                throw new \Exception("Tipo de conexión no soportado");
+                throw new Exception("Tipo de conexión no soportado");
         }
     }
 
     public function fetchFromFtp(SupplierConnection $connection)
     {
-        $ftp = ftp_connect($connection->host, $connection->port ?? 21, 10);
-        if (!$ftp) {
-            throw new \Exception("No se pudo conectar al servidor FTP");
+        $host = $connection->host;
+        $port = $connection->port ?? 21;
+        $user = $connection->username;
+        $pass = FtpCrypt::decrypt($connection->password);
+
+        // Valida la conexión en texto plano
+        $ftp = @ftp_connect($host, $port, 10);
+        if ($ftp === false) {
+            throw new Exception('No se pudo conectar al servidor FTP');
         }
 
-        $login = ftp_login($ftp, $connection->username, FtpCrypt::decrypt($connection->password));
+        $login = @ftp_login($ftp, $user, $pass);
+        if ($login === false) {
+            @ftp_close($ftp);
 
-        if (!$login) {
-            throw new \Exception("Credenciales inválidas");
+            // Si el inicio fallo usa ssl para intentar conectarse de nuevo
+            $ftp = @ftp_ssl_connect($host, $port, 90);
+            if ($ftp === false) {
+                throw new Exception('No se pudo conectar al servidor FTP');
+            }
+
+            $login = ftp_login($ftp, $user, $pass);
+            if ($login === false) {
+                throw new Exception('Credenciales inválidas');
+            }
         }
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
-        if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+        if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
             $content = file_get_contents($tempFile);
             $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
             $productData = $this->parseDynamicContent($content_encoded, $connection);
         } else {
-            throw new \Exception("No se pudo guardar los productos");
+            throw new Exception("No se pudo guardar los productos");
         }
 
         // Facturas (si tiene ruta definida)
@@ -77,7 +94,7 @@ class SupplierConnectionService
                 }
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
-                if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $invoiceContent = file_get_contents($tempInvoice);
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
 
@@ -88,7 +105,9 @@ class SupplierConnectionService
             }
         }
 
-        ftp_close($ftp);
+        if ($ftp !== false) {
+            @ftp_close($ftp);
+        }
 
         return [
             "products" => $productData ?? [],
@@ -183,7 +202,7 @@ class SupplierConnectionService
                     ->first();
             } else {
                 \Log::error("Failed to fetch exchange rate");
-                throw new \Exception("No se pudo guardar la tasa del día USD");
+                throw new Exception("No se pudo guardar la tasa del día USD");
             }
         }
 
@@ -272,28 +291,24 @@ class SupplierConnectionService
                         break;
 
                     case "date":
-                        if ($value === "0000-00-00") {
+                        if ($value === "0000-00-00" || $value === "-0001-11-30" || strtoupper($value) === "NULL" || trim($value) === "") {
                             $entry[$meta["target"]] = null;
                             break;
                         }
 
-                        if (\Datetime::createFromFormat("Y-m-d", $value)) {
-                            $entry[$meta["target"]] = $value;
+                        $dt = \DateTime::createFromFormat("Y-m-d", $value);
+                        if ($dt && $dt->format("Y-m-d") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
                             break;
                         }
 
-                        if (empty($value)) {
-                            $entry[$meta["target"]] = null;
+                        $dt = \DateTime::createFromFormat("d/m/Y", $value);
+                        if ($dt && $dt->format("d/m/Y") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
                             break;
                         }
 
-                        if ($value === "NULL") {
-                            $entry[$meta["target"]] = null;
-                            break;
-                        }
-
-                        $entry[$meta["target"]] =
-                            $value === "" ? null : \DateTime::createFromFormat("d/m/Y", $value)?->format("Y-m-d");
+                        $entry[$meta["target"]] = null;
                         break;
                 }
 

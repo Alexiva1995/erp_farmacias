@@ -131,4 +131,190 @@ class IslrController extends Controller
             'message' => 'Unidad tributaria actualizada con éxito.'
         ], 200);
     }
+    public function getDeclaration(Request $request)
+    {
+        $year = $request->input('year', now()->year);
+
+        $declaration = $this->islrQueryService->getDeclarationByYear($year);
+
+        if (!$declaration) {
+            return response()->json([
+                'data' => null,
+                'message' => "No se encontró declaración para el año {$year}."
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $declaration->id,
+                'year' => $declaration->year,
+                'amount' => $declaration->amount,
+                'status' => $declaration->status,
+                'status_text' => $declaration->status_text,
+                'status_color' => $declaration->status_color,
+                'declaration_date' => $declaration->declaration_date->format('Y-m-d'),
+                'is_paid' => $declaration->isPaid(),
+            ],
+            'message' => 'Declaración obtenida con éxito.'
+        ], 200);
+    }
+
+    /**
+     * Obtiene la última declaración
+     */
+    public function getLatestDeclaration()
+    {
+        $declaration = $this->islrQueryService->getLatestDeclaration();
+
+        if (!$declaration) {
+            return response()->json([
+                'data' => null,
+                'message' => 'No se encontraron declaraciones.'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $declaration->id,
+                'year' => $declaration->year,
+                'amount' => $declaration->amount,
+                'status' => $declaration->status,
+                'status_text' => $declaration->status_text,
+                'status_color' => $declaration->status_color,
+                'declaration_date' => $declaration->declaration_date->format('Y-m-d'),
+                'is_paid' => $declaration->isPaid(),
+            ],
+            'message' => 'Última declaración obtenida con éxito.'
+        ], 200);
+    }
+
+    /**
+     * Crea una nueva declaración
+     */
+    public function createDeclaration(Request $request)
+    {
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2000|max:' . (now()->year + 1),
+            'amount' => 'required|numeric|min:0',
+            'status' => 'nullable|in:paid,unpaid',
+            'declaration_date' => 'nullable|date',
+        ]);
+
+        try {
+            $declaration = $this->islrActionService->createDeclaration($validated);
+
+            return response()->json([
+                'data' => [
+                    'id' => $declaration->id,
+                    'year' => $declaration->year,
+                    'amount' => $declaration->amount,
+                    'status' => $declaration->status,
+                    'status_text' => $declaration->status_text,
+                    'declaration_date' => $declaration->declaration_date->format('Y-m-d'),
+                ],
+                'message' => 'Declaración creada con éxito.'
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Actualiza una declaración existente
+     */
+    public function updateDeclaration(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'year' => 'nullable|integer|min:2000|max:' . (now()->year + 1),
+            'amount' => 'nullable|numeric|min:0',
+            'status' => 'nullable|in:paid,unpaid',
+            'declaration_date' => 'nullable|date',
+        ]);
+
+        try {
+            $declaration = $this->islrActionService->updateDeclaration($id, $validated);
+
+            return response()->json([
+                'data' => [
+                    'id' => $declaration->id,
+                    'year' => $declaration->year,
+                    'amount' => $declaration->amount,
+                    'status' => $declaration->status,
+                    'status_text' => $declaration->status_text,
+                    'declaration_date' => $declaration->declaration_date->format('Y-m-d'),
+                ],
+                'message' => 'Declaración actualizada con éxito.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Marca una declaración como pagada
+     */
+    public function markAsPaid($id)
+    {
+        try {
+            $declaration = $this->islrActionService->markDeclarationAsPaid($id);
+
+            return response()->json([
+                'data' => [
+                    'id' => $declaration->id,
+                    'status' => $declaration->status,
+                    'status_text' => $declaration->status_text,
+                ],
+                'message' => 'Declaración marcada como pagada.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Marca una declaración como no pagada
+     */
+    public function markAsUnpaid($id)
+    {
+        try {
+            $declaration = $this->islrActionService->markDeclarationAsUnpaid($id);
+
+            return response()->json([
+                'data' => [
+                    'id' => $declaration->id,
+                    'status' => $declaration->status,
+                    'status_text' => $declaration->status_text,
+                ],
+                'message' => 'Declaración marcada como no pagada.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Elimina una declaración
+     */
+    public function deleteDeclaration($id)
+    {
+        try {
+            $this->islrActionService->deleteDeclaration($id);
+
+            return response()->json([
+                'message' => 'Declaración eliminada con éxito.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
 }

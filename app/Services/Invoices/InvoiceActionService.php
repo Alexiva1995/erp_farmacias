@@ -32,7 +32,7 @@ class InvoiceActionService
                 'exempt_amount' => $data['exempt_amount'] ?? 0,
                 'taxable_base' => $data['taxable_base'] ?? 0,
                 'tax_amount' => $data['tax_amount'] ?? 0,
-                'exchange_rate' => $data['exchange_rate'],
+                'exchange_rate' => $data['currency'] === 'USD' ? 1 : $data['exchange_rate'],
                 'total_amount' => $data['total_amount'],
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
@@ -40,7 +40,7 @@ class InvoiceActionService
                 'status' => 'pending',
                 'registered_by' => 1,
                 'uploaded_by' => 1,
-                'status_payment' => 'pending',
+                'status_payment' => 0,
             ];
 
             return Invoice::create($invoiceData);
