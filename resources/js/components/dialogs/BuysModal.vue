@@ -589,11 +589,16 @@ const changeAmountInUSD = computed(() => {
 const changeAmountInCOP = computed(() => {
   const vueltoEnMonedaOrden = changeAmount.value;
   if (props.selectedCurrency === "COP") {
+    console.log(vueltoEnMonedaOrden);
     return vueltoEnMonedaOrden;
   }
+  console.log(vueltoEnMonedaOrden);
+  console.log(props.selectedCurrency);
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+  console.log(rate);
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
+    console.log(roundUpToNearestHundred(vueltoConvertido));
     return roundUpToNearestHundred(vueltoConvertido);
   }
   return 0;
