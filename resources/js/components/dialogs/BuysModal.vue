@@ -5,6 +5,7 @@ import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
+import axios from "@/plugins/axios";
 
 const props = defineProps({
   isDialogVisible: {
@@ -152,11 +153,13 @@ const totalPaidAmount = computed(() => {
 
 const fetchExchangeRates = async () => {
   try {
-    const response = await fetch("/api/exchange-rates");
-    if (!response.ok) {
+    const response = await axios.get("/public/exchange-rates");
+    if (response.status!=200) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    const apiRates = await response.json();
+
+    const apiRates = response.data;
+
     const formattedRates = {};
     apiRates.forEach((rateItem) => {
       const currencyCode = rateItem.currency_code;
@@ -192,10 +195,6 @@ const fetchExchangeRates = async () => {
     console.error("Error fetching exchange rates:", error);
   }
 };
-
-onMounted(() => {
-  fetchExchangeRates();
-});
 
 const roundedTotalAmountToPay = computed(() => {
   let baseAmount = props.totalAmount;
@@ -428,12 +427,8 @@ watch(
   () => props.isDialogVisible,
   (newVal) => {
     if (newVal) {
-      console.log(
-        "El modal se ha abierto. Moneda de la orden:",
-        props.selectedCurrency
-      );
-      console.log("Prop totalAmount:", props.totalAmount);
       resetProgress();
+      fetchExchangeRates();
     }
   }
 );
