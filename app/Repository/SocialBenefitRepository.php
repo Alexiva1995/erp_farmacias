@@ -114,7 +114,7 @@ class SocialBenefitRepository
       ->first();
 
     $amount = round((float) $settlement?->amount ?? 0, 2);
-    $activeYears = (int) $settlement?->active_years ?? 0;
+    $activeYears = (int) $settlement?->active_years ?? 1;
     $dailyWage = $amount === 0 ? 0 : round($amount / 30);
 
     $sub = DB::table('employees')

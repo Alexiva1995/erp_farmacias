@@ -94,6 +94,11 @@ const handleClearFilters = () => {
   search.value = null;
 };
 
+const handleCloseFireDialog = () => {
+  showFireEmployeeDialog.value = false;
+  selectedEmployee.value = {};
+};
+
 onMounted(() => Promise.all([fetchCurrency(), fetchEmployees()]));
 
 let debounceTimer;
@@ -125,6 +130,7 @@ watch(
       :selected-employee="selectedEmployee"
       :currency="currency"
       @refresh-table="handleRefreshTable"
+      @close="handleCloseFireDialog"
     />
 
     <SocialBenefitsTable
