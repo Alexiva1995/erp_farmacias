@@ -123,21 +123,21 @@ class SupplierConnectionService
     public function fetchFromHttp(SupplierConnection $connection)
     {
         $data = $this->fetchFromAPI($connection);
-        if($data) {
+        if ($data) {
             $jsonPath = storage_path('app/api_products.json');
             $csvPath = storage_path('app/api_products.txt');
 
             // Verifica si el archivo se descargó
             if (!file_exists($jsonPath) || filesize($jsonPath) === 0)
-                throw new \Exception("Archivo no descargado");
+                throw new Exception("Archivo no descargado");
 
             // Convierte JSON a CSV
             $data = json_decode(file_get_contents($jsonPath), true);
             if (!is_array($data) || empty($data)) {
-                throw new \Exception("Contenido JSON inválido");
+                throw new Exception("Contenido JSON inválido");
             }
 
-            try {  
+            try {
                 $headers = array_keys($data[0]);
                 $csv = implode(';', $headers) . "\n";
 
@@ -165,10 +165,10 @@ class SupplierConnectionService
                     "products" => $productData ?? [],
                     "invoices" => $invoiceResults ?? [],
                 ];
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::alert("Supplier connection service");
                 Log::error($e);
-                throw new \Exception("No se pudo establecer la conexión");
+                throw new Exception("No se pudo establecer la conexión");
             }
         }
     }
@@ -209,14 +209,21 @@ class SupplierConnectionService
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
-            $cols = explode(";", $line);
+            if (!empty($structure_for_parsing)) {
+                $line = $this->parseFixedWidth($line, $structure_for_parsing);
+            }
+            $cols = explode(';', $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
+        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, ) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing) {
+            if (!empty($structure_for_parsing)) {
+                $line = $this->parseFixedWidth($line, $structure_for_parsing);
+            }
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -531,19 +538,19 @@ class SupplierConnectionService
         $path = storage_path('app/api_products.json');
 
         $success = false;
-        
+
         try {
             $client->get($url, [
                 'Autorizacion' => $token
             ])->then(
-                function (ResponseInterface $response) use (&$success, $path) {
-                    file_put_contents($path, (string) $response->getBody());
-                    $success = true;
-                },
-                function (\Exception $e) use (&$success)  {
-                    Log::error('Error: ' . $e->getMessage() . PHP_EOL);
-                }
-            );
+                    function (ResponseInterface $response) use (&$success, $path) {
+                        file_put_contents($path, (string) $response->getBody());
+                        $success = true;
+                    },
+                    function (Exception $e) use (&$success) {
+                        Log::error('Error: ' . $e->getMessage() . PHP_EOL);
+                    }
+                );
         } catch (\Throwable $e) {
             Log::error('Error API: ' . $e->getMessage());
             $success = false;
@@ -565,5 +572,20 @@ class SupplierConnectionService
         ]);
 
         return $loginResponse->json()["token"];
+    }
+
+    public function parseFixedWidth(string $line, array $map, string $encoding = 'UTF-8'): string
+    {
+        $offset = 0;
+        $out = [];
+
+        foreach ($map as $field) {
+            $width = (int) $field->width;
+            $slice = mb_substr($line, $offset, $width, $encoding);
+            $out[] = trim($slice);
+            $offset += $width;
+        }
+
+        return implode(';', $out);
     }
 }
