@@ -40,7 +40,7 @@ interface Resignation
     /**
      * Actualizar una renuncia existente
      */
-    public function update(int $id, array $data): bool;
+    public function update(int $id, array $data): MResignation;
 
     /**
      * Eliminar una renuncia
