@@ -4,6 +4,7 @@ namespace App\Services\Islr;
 
 use App\Models\Expense;
 use App\Models\FiscalHistory;
+use App\Models\IslrDeclaration;
 use App\Models\TaxUnit;
 use Carbon\Carbon;
 
@@ -345,5 +346,60 @@ class IslrQueryService
         return TaxUnit::whereBetween('effective_date', [$startDate, $endDate])
             ->orderBy('effective_date', 'desc')
             ->get();
+    }
+    public function getDeclarationByYear(int $year): ?IslrDeclaration
+    {
+        return IslrDeclaration::forYear($year)->first();
+    }
+
+    /**
+     * Obtiene la última declaración
+     * 
+     * @return IslrDeclaration|null
+     */
+    public function getLatestDeclaration(): ?IslrDeclaration
+    {
+        return IslrDeclaration::latest()->first();
+    }
+
+    /**
+     * Verifica si existe una declaración para el año especificado
+     * 
+     * @param int $year
+     * @return bool
+     */
+    public function declarationExistsForYear(int $year): bool
+    {
+        return IslrDeclaration::forYear($year)->exists();
+    }
+
+    /**
+     * Obtiene todas las declaraciones
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAllDeclarations()
+    {
+        return IslrDeclaration::latest()->get();
+    }
+
+    /**
+     * Obtiene declaraciones pagadas
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getPaidDeclarations()
+    {
+        return IslrDeclaration::paid()->latest()->get();
+    }
+
+    /**
+     * Obtiene declaraciones no pagadas
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getUnpaidDeclarations()
+    {
+        return IslrDeclaration::unpaid()->latest()->get();
     }
 }

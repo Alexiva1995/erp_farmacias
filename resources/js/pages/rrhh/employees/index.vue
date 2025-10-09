@@ -6,7 +6,7 @@ import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 
 const showFireEmployeeDialog = ref(false);
 const showDialog = ref(false);
@@ -20,6 +20,8 @@ const employees = ref([]);
 const totalEmployees = ref(0);
 const selectedEmployee = ref(null);
 const selectedEmployeeForResignation = ref(null);
+const isEditingResignation = ref(false);
+const existingResignationData = ref(null);
 
 const showActiveEmployees = ref(true);
 const page = ref(1);
@@ -98,14 +100,52 @@ const fetchCurrency = async () => {
 
 onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
-const handleGenerateResignation = (employee) => {
-  selectedEmployeeForResignation.value = employee;
-  showResignationDialog.value = true;
+const handleGenerateResignation = async (employee) => {
+  try {
+    // Verificar si ya existe una renuncia para este empleado
+    const url = `/rrhh/resignations/employee/${employee.id}/edit`;
+
+    const response = await axios.get(url);
+
+    if (response.data.success && response.data.data) {
+      // Ya existe una renuncia, abrir en modo edición
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = response.data.data;
+      isEditingResignation.value = true;
+      showResignationDialog.value = true;
+
+      toast.info(
+        "Se encontró una renuncia existente. Se abrirá en modo de edición."
+      );
+    } else {
+      // No existe renuncia, crear nueva
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = null;
+      isEditingResignation.value = false;
+      showResignationDialog.value = true;
+    }
+  } catch (error) {
+    // Si hay error (probablemente 404), significa que no existe renuncia
+    if (error.response?.status === 404) {
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = null;
+      isEditingResignation.value = false;
+      showResignationDialog.value = true;
+    } else {
+      toast.error("Error al verificar renuncias existentes");
+    }
+  }
 };
 
 const handleResignationGenerated = (resignationData) => {
-  console.log("Renuncia generada:", resignationData);
   toast.success("Carta de renuncia generada exitosamente");
+
+  // Limpiar el estado del modal
+  showResignationDialog.value = false;
+  isEditingResignation.value = false;
+  existingResignationData.value = null;
+  selectedEmployeeForResignation.value = null;
+
   // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
 };
 
@@ -160,6 +200,8 @@ watch(
     <ResignationFormDialog
       v-model="showResignationDialog"
       :selectedEmployee="selectedEmployeeForResignation"
+      :isEdit="isEditingResignation"
+      :existingResignation="existingResignationData"
       @resignation-generated="handleResignationGenerated"
     />
 

@@ -65,7 +65,7 @@ const handleReturnProduct = async ({ product, order, returns_quantity }) =>  {
     });
 
   toast.success(`Producto ${product.name} devuelto.`);
-
+  handleClearSearch();
   } catch (error) {
     console.error("Error al devolver producto:", error.response?.data?.error);
     toast.error(error.response?.data?.error || "Error al devolver producto.");
@@ -77,6 +77,8 @@ clientIdentification.value = '';
   orders.value = [];    
   totalOrder.value = 0;
 };
+
+
 </script>
 
 <template>

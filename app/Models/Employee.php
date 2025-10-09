@@ -19,7 +19,8 @@ class Employee extends Model
         "photo",
         "rif",
         "residence_letter",
-        "cv"
+        "cv",
+        "user_id"
     ];
 
     /**
