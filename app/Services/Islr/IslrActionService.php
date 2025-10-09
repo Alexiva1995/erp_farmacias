@@ -2,6 +2,7 @@
 
 namespace App\Services\Islr;
 
+use App\Models\IslrDeclaration;
 use App\Models\TaxUnit;
 use Carbon\Carbon;
 
@@ -92,5 +93,101 @@ class IslrActionService
 
         $taxUnit->delete();
         return true;
+    }
+    public function createDeclaration(array $data): IslrDeclaration
+    {
+        $year = $data['year'];
+
+        if (IslrDeclaration::forYear($year)->exists()) {
+            throw new \Exception("Ya existe una declaración para el año {$year}. No se puede crear otra.");
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+            return IslrDeclaration::create([
+                'year' => $data['year'],
+                'amount' => $data['amount'],
+                'status' => $data['status'] ?? 'unpaid',
+                'declaration_date' => $data['declaration_date'] ?? now(),
+            ]);
+        });
+    }
+
+    /**
+     * Actualiza una declaración existente
+     * 
+     * @param int $id
+     * @param array $data
+     * @return IslrDeclaration
+     * @throws \Exception
+     */
+    public function updateDeclaration(int $id, array $data): IslrDeclaration
+    {
+        $declaration = IslrDeclaration::findOrFail($id);
+
+        if (isset($data['year']) && $data['year'] != $declaration->year) {
+            if (IslrDeclaration::forYear($data['year'])->exists()) {
+                throw new \Exception("Ya existe una declaración para el año {$data['year']}.");
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($declaration, $data) {
+            $declaration->update(array_filter([
+                'year' => $data['year'] ?? null,
+                'amount' => $data['amount'] ?? null,
+                'status' => $data['status'] ?? null,
+                'declaration_date' => $data['declaration_date'] ?? null,
+            ], fn($value) => $value !== null));
+        });
+
+        return $declaration->fresh();
+    }
+
+    /**
+     * Marca una declaración como pagada
+     * 
+     * @param int $id
+     * @return IslrDeclaration
+     */
+    public function markDeclarationAsPaid(int $id): IslrDeclaration
+    {
+        $declaration = IslrDeclaration::findOrFail($id);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($declaration) {
+            $declaration->markAsPaid();
+        });
+
+        return $declaration->fresh();
+    }
+
+    /**
+     * Marca una declaración como no pagada
+     * 
+     * @param int $id
+     * @return IslrDeclaration
+     */
+    public function markDeclarationAsUnpaid(int $id): IslrDeclaration
+    {
+        $declaration = IslrDeclaration::findOrFail($id);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($declaration) {
+            $declaration->markAsUnpaid();
+        });
+
+        return $declaration->fresh();
+    }
+
+    /**
+     * Elimina una declaración
+     * 
+     * @param int $id
+     * @return bool
+     */
+    public function deleteDeclaration(int $id): bool
+    {
+        $declaration = IslrDeclaration::findOrFail($id);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($declaration) {
+            return $declaration->delete();
+        });
     }
 }

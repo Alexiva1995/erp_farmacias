@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CleaningActivityController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IslrController;
@@ -277,6 +278,9 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/stats', [ResignationController::class, 'getStats']);
             Route::put('/toggle-employee-status', [ResignationController::class, 'toggleEmployeeStatus']);
             Route::get('/{id}/download-pdf', [ResignationController::class, 'downloadResignationPdf']);
+            Route::get('/{id}/edit', [ResignationController::class, 'getResignationForEdit']);
+            Route::get('/employee/{employeeId}/edit', [ResignationController::class, 'getResignationForEditByEmployee']);
+            Route::delete('/{id}', [ResignationController::class, 'deleteResignation']);
         });
     });
 
@@ -287,8 +291,8 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Ruta de fiscal
-    Route::get("/history", [FiscalController::class, "index"]);
-    Route::get("/history/export", [FiscalController::class, "export"]);
+        Route::get("/history", [FiscalController::class, "index"]);
+        Route::get("/history/export", [FiscalController::class, "export"]);
 
     // Invoice
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
@@ -410,7 +414,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -421,8 +425,16 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/generate-pdf', [CashClosureController::class, 'generate'])->name('api.cashClosure.generatePdf');
             Route::post("/close", [CashClosureController::class, "closeCash"]);
             Route::get('/orders', [CashClosureController::class, 'getCashClosureOrders']);
+            Route::get('/sales/summary', [CashClosureController::class, 'getSummarysales']);
+            Route::get('/dailyCash', [CashClosureController::class, 'getDailyCashTable']);
+            Route::get('/monthlyCash', [CashClosureController::class, 'getMonthlyCashTable']);
+            Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
+            Route::get('/monthlyCashclosing', [CashClosureController::class, 'getmonthlyCashclosing']);
+            Route::post('/downloadReport', [CashClosureController::class, 'downloadReport']);
+            Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
+            Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
         });
-
+      
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
@@ -473,5 +485,28 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/', [EmployeeProductController::class, 'store']);
         Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
         Route::get('/stats', [EmployeeProductController::class, 'stats']);
+    });
+    Route::prefix('islr')->group(function () {
+        Route::get('/summary', [IslrController::class, 'getIslrSummary']);
+        Route::get('/gross-income', [IslrController::class, 'getGrossIncome']);
+        Route::get('/deductions', [IslrController::class, 'getDeductions']);
+        Route::get('/tax-unit', [IslrController::class, 'getTaxUnit']);
+        Route::post('/tax-unit', [IslrController::class, 'updateTaxUnit']);
+
+        // Rutas para Declaraciones ISLR
+        Route::get('/declarations/latest', [IslrController::class, 'getLatestDeclaration']);
+        Route::get('/declarations', [IslrController::class, 'getDeclaration']);
+        Route::post('/declarations', [IslrController::class, 'createDeclaration']);
+        Route::put('/declarations/{id}', [IslrController::class, 'updateDeclaration']);
+        Route::delete('/declarations/{id}', [IslrController::class, 'deleteDeclaration']);
+        Route::patch('/declarations/{id}/mark-paid', [IslrController::class, 'markAsPaid']);
+        Route::patch('/declarations/{id}/mark-unpaid', [IslrController::class, 'markAsUnpaid']);
+    });
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+        Route::get('/stats', [DashboardController::class, 'getDashboardStats']);
+        Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
+        Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
+        Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']); // Nueva
     });
 });
