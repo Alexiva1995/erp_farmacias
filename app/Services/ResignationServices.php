@@ -8,6 +8,7 @@ use App\Repository\ResignationRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ResignationServices implements Resignation
@@ -77,15 +78,22 @@ class ResignationServices implements Resignation
      */
     public function getByEmployeeId(int $employeeId): ?MResignation
     {
-        return $this->resignationRepository->getResignationByEmployeeId($employeeId);
+        $result = $this->resignationRepository->getResignationByEmployeeId($employeeId);
+
+        return $result;
     }
 
     /**
      * Actualizar una renuncia existente
      */
-    public function update(int $id, array $data): bool
+    public function update(int $id, array $data): MResignation
     {
-        return $this->resignationRepository->updateResignation($id, $data);
+        $result = $this->resignationRepository->updateResignation($id, $data);
+        if ($result) {
+            return $this->resignationRepository->getResignationById($id);
+        }
+
+        throw new \Exception('No se pudo actualizar la renuncia');
     }
 
     /**
