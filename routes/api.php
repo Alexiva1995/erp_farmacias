@@ -267,6 +267,9 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/stats', [ResignationController::class, 'getStats']);
             Route::put('/toggle-employee-status', [ResignationController::class, 'toggleEmployeeStatus']);
             Route::get('/{id}/download-pdf', [ResignationController::class, 'downloadResignationPdf']);
+            Route::get('/{id}/edit', [ResignationController::class, 'getResignationForEdit']);
+            Route::get('/employee/{employeeId}/edit', [ResignationController::class, 'getResignationForEditByEmployee']);
+            Route::delete('/{id}', [ResignationController::class, 'deleteResignation']);
         });
     });
 
