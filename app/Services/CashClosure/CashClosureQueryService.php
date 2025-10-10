@@ -70,13 +70,30 @@ class CashClosureQueryService
         if (empty($sortBy)) {
             return $query->orderBy('id', 'desc');
         }
+
+        $sortableColumns = [
+        'id'             => 'orders.id',        
+        'total_amount'   => 'orders.total_amount',
+        'currency'       => 'orders.currency',
+        'date'           => 'orders.order_date',
+        ];
+
+        if (isset($sortableColumns[$sortBy])) {
+            return $query->orderBy($sortableColumns[$sortBy], $orderBy);
+        }
+
         switch ($sortBy) {
-            case 'created_at':
-                return $query->orderBy('created_at', $orderBy);
-            case 'total_amount':
-                return $query->orderBy('total_amount', $orderBy);
+            case 'client_full_name':
+            return $query->join('clients', 'orders.client_id', '=', 'clients.id')
+                         ->orderBy('clients.name', $orderBy)
+                         ->select('orders.*'); 
+            case 'identification': 
+            return $query->join('clients', 'orders.client_id', '=', 'clients.id')
+                         ->orderBy('clients.identification', $orderBy)
+                         ->select('orders.*');
+                         
             default:
-                return $query->orderBy($sortBy, $orderBy);
+            return $query->orderBy('orders.id', 'desc');
         }
     }
 

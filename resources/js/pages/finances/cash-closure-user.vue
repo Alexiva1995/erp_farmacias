@@ -303,8 +303,8 @@ const fetchOrder = async () => {
   const params = {
     page: pageOrders.value,
     itemsPerPage: itemsPerPageOrders.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
+    sortBy: sortByOrders.value,
+    orderBy: orderByOrders.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -384,6 +384,24 @@ const cancelarOrder = async (orderId) => {
     toast.error(errorMessage);
   }
 };
+
+
+let debounceTimerOrder;
+watch(
+  [
+    pageOrders,
+    itemsPerPageOrders,
+    sortByOrders,
+    orderByOrders,
+  ],
+  () => {
+    clearTimeout(debounceTimerOrder);
+    debounceTimerOrder = setTimeout(() => {
+      fetchOrder();
+    }, 300);
+  },
+  { deep: true }
+);
 </script>
 
 <template>
