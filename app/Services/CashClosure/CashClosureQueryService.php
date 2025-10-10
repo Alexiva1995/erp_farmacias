@@ -129,11 +129,36 @@ class CashClosureQueryService
         }
 
         switch ($sortBy) {
-            case 'total_sales':
-                return $query->orderBy('total_sales', $orderBy);
-        }
+            case 'id':
+                return $query->orderBy('id', $orderBy);
 
-        return $query;
+            case 'date':
+                return $query->orderBy('created_at', $orderBy);
+
+            case 'total_usd':
+                return $query->orderBy('total_usd', $orderBy);
+
+            case 'total_cop':
+                return $query->orderBy('total_cop', $orderBy);
+
+            case 'total_bs':
+                return $query->orderBy('total_bs', $orderBy);
+
+            case 'usd_delivered':
+                return $query->orderBy('usd_delivered', $orderBy);
+
+            case 'cop_delivered':
+                return $query->orderBy('cop_delivered', $orderBy);
+
+            case 'bs_mobile':
+                return $query->orderBy('bs_mobile', $orderBy);
+
+            case 'bs_card': 
+                return $query->orderBy('bs_card', $orderBy);
+
+            default:
+                return $query->orderBy('id', 'desc');
+        }
     }
 
     public function getFilteredQueryDaily(Request $request): Builder
