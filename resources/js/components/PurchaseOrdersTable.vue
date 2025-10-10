@@ -51,12 +51,9 @@ const headers = [
       </template>
 
       <template #item.total_quantity="{ item }">
-        <span class="font-weight-medium">{{
-          Intl.NumberFormat("es", {
-            maximumFractionDigits: 2,
-            minimumFractionDigits: 2,
-          }).format(item.total_quantity)
-        }}</span>
+        <span class="font-weight-medium">
+          {{ item.total_quantity }}
+        </span>
       </template>
 
       <template #item.total_amount="{ item }">
@@ -69,17 +66,18 @@ const headers = [
       </template>
 
       <template #item.debt="{ item }">
-        <span class="font-weight-medium">{{
-          item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 })
-        }}</span>
+        <span class="font-weight-medium">
+          {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
+        </span>
       </template>
 
       <template #item.status="{ item }">
         <span
           class="font-weight-medium"
           :class="item.status === 0 ? 'text-error' : 'text-success'"
-          >{{ item.status === 0 ? "Pendiente" : "Compleado" }}</span
         >
+          {{ item.status === 0 ? "Pendiente" : "Compleado" }}
+        </span>
       </template>
 
       <template #item.actions="{ item }">

@@ -75,11 +75,12 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-            //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = Auth::id();
+            // $sellerId = 2;
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
+
 
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
 
@@ -180,7 +181,7 @@ class OrderController extends Controller
 
         try {
             //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = 2; //para realizar pruebas
 
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
@@ -282,7 +283,7 @@ class OrderController extends Controller
     public function reserveOrder(Order $order): JsonResponse
     {
         //$sellerId = Auth::id();
-        $sellerId = 3; //para realizar pruebas
+        $sellerId = 2; //para realizar pruebas
         $existingReservedOrder = Order::where('seller_id', $sellerId)
             ->where('status', 'Reserved')
             ->first();
@@ -308,7 +309,7 @@ class OrderController extends Controller
     {
         try {
             //$sellerId = Auth::id();
-            $sellerId = 3; //para realizar pruebas
+            $sellerId = 2; //para realizar pruebas
             $order = $this->orderActionService->reserveAndAddOrder($order, $sellerId);
             return ApiResponse::success($order, 'Orden agregada exitosamente.', 200);
         } catch (\Exception $e) {
@@ -376,4 +377,19 @@ class OrderController extends Controller
             return ApiResponse::error('Error al obtener registros de fiscal history: ' . $e->getMessage(), 500);
         }
     }
+
+    public function cancelledOrder(Order $order)
+    {
+        if ($order->status !== Order::COMPLETED) {
+            return ApiResponse::error('Solo se pueden cancelar órdenes completadas.', 400);
+        }
+        try {
+            $abandonedOrder = $this->orderActionService->cancelledOrder($order);
+            return ApiResponse::success('Orden cancelada exitosamente.', ['order' => $abandonedOrder]);
+        } catch (\Exception $e) {
+            Log::error('Error al cancelada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo cancelada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
 }

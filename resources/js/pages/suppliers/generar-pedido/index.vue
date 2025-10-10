@@ -24,6 +24,7 @@ const module=reactive({
   productoFallas:[],
   productosOportunidadUnica:[],
   detalleOrder:[],
+  productosSinReponer:[],
   loadingApp:true,
 })
 
@@ -68,6 +69,7 @@ onMounted(async () => {
     a.uuid=generateUUID()
     return a
   })
+  module.productosSinReponer=[...data.data.productosFallas]
   module.dataProductos={...data.data}
   module.productoFallas=[...data.data.productos_a_reponer]
   module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
@@ -127,7 +129,7 @@ function seleccionarProductosParaElDetalle(){
 function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
-    productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => producto.product.id!=productUnique.product.id && producto.supplier.id!=productUnique.supplier.id)
+    productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => !(producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id))
 
   }
   return productosOportunidadUnica
@@ -189,16 +191,16 @@ const LISTA_PORVEEDORES_TOTAL= computed(() => {
 
 async function confirmarCompra(){
   const result = await Swal.fire({
-    title: '¿Estás seguro que desea realizar esta compra?',
-    text: "",
+    title: '¿Estás seguro?',
+    text: "Esta compra no se podra revertir",
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Confirmar',
-    cancelButtonText: 'Cancelar',
+    cancelButtonText: 'No, ¡Cancelar!',
     buttonsStyling: false,
     customClass: {
       cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2',
-      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-success v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
     },
     reverseButtons: true,
   });
@@ -207,21 +209,6 @@ async function confirmarCompra(){
     await realizarCompra()
   }
 }
-
-// const formatoDatosOrder={
-//   "supplier_id":null,
-//   "total_items":null,
-//   "total_quantity":null,
-//   "total_amount":null,
-//   "details":[], // formatoDatosProductos
-// }
-
-// const formatoDatosProductosOrderDetalles={
-//   "product_suppliers_id":null,
-//   "quantity":null,
-//   "unit_cost":null,
-//   "subtotal":null,
-// }
 
 function formatiarData(data){
   let supplier={}
@@ -288,17 +275,31 @@ async function realizarCompra(){
   module.loadingApp=false
   toast.success("Compra realizada con exito")
   module.loadingApp=true
+
   let productosSinPorveedor= await consultarProductosSinProveedor()
   pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+
   module.loadingApp=false
   router.push("/suppliers/purchase-orders/list")
 }
 
 async function consultarProductosSinProveedor(){
+  let productos=module.productosSinReponer.filter(p => p.solicitar<0)
+  let ids=productos.map(p => p.id)
+  let idsConFantante=productos.map(p => {
+    return {
+      "id": p.id,
+      "solicitar": p.solicitar,
+    }
+  })
+  console.log("ids => ",ids)
+  console.log("ids con solicitar => ",idsConFantante)
 
   let data={
     "tipo_filtracion":tipo_de_filtracion.value,
     "lapso_de_tiempo":lapso_de_tiempo.value,
+    ids,
+    idsConFantante
     // "groups":groups.value,
     // "laboratoryId":laboratoryId.value,
   }

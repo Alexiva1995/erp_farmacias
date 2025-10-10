@@ -42,7 +42,15 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         ]);
 
         $supplierConnection = $this->supplier->connections->first();
-        $structure = $supplierConnection->structure;
+        if (is_null($supplierConnection) && !$this->filePath) {
+            $status->update([
+                "status" => "failed",
+                "message" => "Este proveedor no posee una conexión registrada",
+            ]);
+            return;
+        }
+
+        $structure = $supplierConnection->structure ?? null;
 
         try {
             $results = [];
@@ -72,12 +80,15 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     costUsdCol: $this->columnMap["unit_cost_usd"] ?: null,
                     activeIngredientCol: $this->columnMap["active_ingredient"] ?: null,
                     expirationCol: $this->columnMap["expiration"] ?: null,
+                    currencyCol: $this->columnMap["currency"] ?: null,
                 );
 
                 $absolutePath = Storage::disk("local")->path($this->filePath);
 
                 Excel::import($import, $absolutePath);
                 $results = ["products" => $import->getRows()->toArray(), "invoices" => []];
+
+                unlink($absolutePath);
             } else {
                 $results = $connectionService->fetchData($supplierConnection);
             }
@@ -101,8 +112,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 "status" => "failed",
                 "message" => $e->getMessage(),
             ]);
-        } finally {
-            unlink($absolutePath);
         }
     }
 }

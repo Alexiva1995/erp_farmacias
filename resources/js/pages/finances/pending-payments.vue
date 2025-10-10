@@ -1,7 +1,6 @@
 <script setup>
 import PendingPaymentModal from "@/components/dialogs/PendingPaymentModal.vue";
 import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
-import PendingPaymentsFilters from "@/components/PendingPaymentsFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref, watch } from "vue";
@@ -10,9 +9,18 @@ import { computed, onMounted, ref, watch } from "vue";
 const loading = ref(false);
 const pendingPayments = ref([]);
 const totalGroups = ref(0);
+const totalSuppliers = ref(0);
 const totalAmount = ref(0);
 const statistics = ref({});
 const exchangeRates = ref({});
+
+// Totales por moneda
+const totalsByCurrency = ref({
+  bs: { amount: 0, count: 0, total_usd: 0 },
+  usd: { amount: 0, count: 0, total_usd: 0 },
+  cop: { amount: 0, count: 0, total_usd: 0 },
+  usd_converted: 0,
+});
 
 // Estado para filtros
 const suppliers = ref([]);
@@ -41,12 +49,12 @@ const selectedTableInvoices = ref([]);
 // Headers de la tabla
 const headers = [
   { title: "Seleccionar", key: "select", sortable: false, width: "50px" },
-  { title: "N° Factura", key: "invoice_number", sortable: true },
-  { title: "Proveedor", key: "supplier_name", sortable: true },
-  { title: "Fecha de Pago", key: "payment_date", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "N° Factura", key: "invoice_number", sortable: false },
+  { title: "Proveedor", key: "supplier_name", sortable: false },
+  { title: "Fecha de Pago", key: "payment_date", sortable: false },
+  { title: "Monto", key: "total_amount", sortable: false },
   { title: "Moneda", key: "currency", sortable: false },
-  { title: "Fecha Vencimiento", key: "exp_date", sortable: true },
+  { title: "Fecha Vencimiento", key: "exp_date", sortable: false },
   { title: "Estado", key: "status", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -80,20 +88,21 @@ const fetchPendingPayments = async () => {
     const params = {
       page: page.value,
       itemsPerPage: itemsPerPage.value,
-      sortBy: sortBy.value,
-      orderBy: orderBy.value,
       q: searchQuery.value,
       supplier_id: selectedSupplier.value,
       start_date: startDate.value,
       end_date: endDate.value,
+      show_overdue_only: showOverdueOnly.value,
     };
 
-    // Limpiar parámetros vacíos
+    // Limpiar parámetros vacíos (mantener show_overdue_only siempre)
     Object.keys(params).forEach((key) => {
       if (params[key] === null || params[key] === "") {
         delete params[key];
       }
     });
+
+    // Log temporal para debugging
 
     const response = await axios.get("/finances/pending-payments", {
       params,
@@ -115,6 +124,13 @@ const fetchPendingPayments = async () => {
 
       pendingPayments.value = allInvoices;
       totalGroups.value = allInvoices.length; // Total de facturas individuales
+      totalSuppliers.value = response.data.data.total_suppliers || 0; // Total de proveedores únicos
+      totalsByCurrency.value = response.data.data.totals_by_currency || {
+        bs: { amount: 0, count: 0, total_usd: 0 },
+        usd: { amount: 0, count: 0, total_usd: 0 },
+        cop: { amount: 0, count: 0, total_usd: 0 },
+        usd_converted: 0,
+      };
       // totalAmount se calcula ahora con totalAmountUSD (computed)
     } else {
       console.error("Error al cargar pagos pendientes:", response.data.message);
@@ -150,7 +166,6 @@ const fetchExchangeRates = async () => {
 
 // Convertir monto a USD
 const convertToUSD = (amount, currency) => {
-
   if (currency === "USD") return parseFloat(amount);
 
   // Mapear moneda para buscar la tasa de cambio
@@ -205,6 +220,13 @@ const fetchStatistics = async () => {
 
     if (response.data.status === "success" || response.data.success) {
       statistics.value = response.data.data;
+      // Actualizar también totalsByCurrency con los datos de estadísticas
+      totalsByCurrency.value = response.data.data.totals_by_currency || {
+        bs: { amount: 0, count: 0, total_usd: 0 },
+        usd: { amount: 0, count: 0, total_usd: 0 },
+        cop: { amount: 0, count: 0, total_usd: 0 },
+        usd_converted: 0,
+      };
     } else {
       console.error("Error al cargar estadísticas:", response.data.message);
     }
@@ -397,7 +419,7 @@ const getStatusText = (status) => {
 };
 
 // Watchers para recargar datos
-watch([page, itemsPerPage, sortBy, orderBy], () => {
+watch([page, itemsPerPage], () => {
   fetchPendingPayments();
 });
 
@@ -428,17 +450,21 @@ onMounted(async () => {
         Pagos Pendientes
       </VCardTitle>
       <VCardText>
-        <VRow>
-          <VCol cols="12" md="3">
-            <VCard variant="tonal" color="primary">
+        <!-- Tarjetas de Cantidades -->
+        <VRow class="mb-4">
+          <VCol cols="12">
+            <h6 class="text-h6 mb-3 text-primary">Resumen General</h6>
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="primary" class="h-100">
               <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">{{ totalGroups }}</div>
-                <div class="text-caption">Grupos Pendientes</div>
+                <div class="text-h4 font-weight-bold">{{ totalSuppliers }}</div>
+                <div class="text-caption">Proveedores Pendientes</div>
               </VCardText>
             </VCard>
           </VCol>
-          <VCol cols="12" md="3">
-            <VCard variant="tonal" color="warning">
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="warning" class="h-100">
               <VCardText class="text-center">
                 <div class="text-h4 font-weight-bold">
                   {{ statistics.overdue_invoices || 0 }}
@@ -447,8 +473,8 @@ onMounted(async () => {
               </VCardText>
             </VCard>
           </VCol>
-          <VCol cols="12" md="3">
-            <VCard variant="tonal" color="success">
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="success" class="h-100">
               <VCardText class="text-center">
                 <div class="text-h4 font-weight-bold">
                   {{ statistics.total_pending_invoices || 0 }}
@@ -457,40 +483,127 @@ onMounted(async () => {
               </VCardText>
             </VCard>
           </VCol>
-          <VCol cols="12" md="3">
-            <VCard variant="tonal" color="info">
+        </VRow>
+
+        <!-- Tarjetas de Monedas -->
+        <VRow>
+          <VCol cols="12">
+            <h6 class="text-h6 mb-3 text-primary">Deudas por Moneda</h6>
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="error" class="h-100">
               <VCardText class="text-center">
                 <div class="text-h4 font-weight-bold">
-                  {{ formatCurrency(totalAmountUSD, "USD") }}
+                  {{ formatCurrency(totalsByCurrency.bs.amount, "Bs") }}
                 </div>
-                <div class="text-caption">Monto Total (USD)</div>
+                <div class="text-caption">Deuda en Bs</div>
                 <div class="text-caption text-medium-emphasis mt-1">
-                  <div
-                    v-for="(data, currency) in currencyBreakdown"
-                    :key="currency"
-                    class="text-xs"
-                  >
-                    {{ currency }}: {{ formatCurrency(data.totalUSD, "USD") }}
-                  </div>
+                  {{ totalsByCurrency.bs.count }} factura{{
+                    totalsByCurrency.bs.count !== 1 ? "s" : ""
+                  }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  ≈
+                  {{
+                    formatCurrency(totalsByCurrency.bs.total_usd || 0, "USD")
+                  }}
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="info" class="h-100">
+              <VCardText class="text-center">
+                <div class="text-h4 font-weight-bold">
+                  {{ formatCurrency(totalsByCurrency.usd.amount, "USD") }}
+                </div>
+                <div class="text-caption">Deuda en USD</div>
+                <div class="text-caption text-medium-emphasis mt-1">
+                  {{ totalsByCurrency.usd.count }} factura{{
+                    totalsByCurrency.usd.count !== 1 ? "s" : ""
+                  }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Total:
+                  {{ formatCurrency(totalsByCurrency.usd_converted, "USD") }}
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VCard variant="tonal" color="secondary" class="h-100">
+              <VCardText class="text-center">
+                <div class="text-h4 font-weight-bold">
+                  {{ formatCurrency(totalsByCurrency.cop.amount, "COP") }}
+                </div>
+                <div class="text-caption">Deuda en COP</div>
+                <div class="text-caption text-medium-emphasis mt-1">
+                  {{ totalsByCurrency.cop.count }} factura{{
+                    totalsByCurrency.cop.count !== 1 ? "s" : ""
+                  }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  ≈
+                  {{
+                    formatCurrency(totalsByCurrency.cop.total_usd || 0, "USD")
+                  }}
                 </div>
               </VCardText>
             </VCard>
           </VCol>
         </VRow>
+
+        <!-- Filtros integrados -->
+        <VDivider class="my-4" />
+        <VRow>
+          <VCol cols="12">
+            <h6 class="text-h6 mb-3 text-primary">Filtros</h6>
+          </VCol>
+          <VCol cols="12" sm="6" md="3">
+            <AppTextField
+              v-model="searchQuery"
+              placeholder="Buscar por Proveedor..."
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="3">
+            <VAutocomplete
+              v-model="selectedSupplier"
+              :items="suppliers"
+              :loading="isLoadingFilters"
+              label="Proveedor"
+              item-title="name"
+              item-value="id"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="2">
+            <AppDateTimePicker
+              v-model="startDate"
+              placeholder="Desde"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="2">
+            <AppDateTimePicker
+              v-model="endDate"
+              placeholder="Hasta"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="2">
+            <VCheckbox v-model="showOverdueOnly" label="Pagos vencidos" />
+          </VCol>
+        </VRow>
+        <VRow>
+          <VCol cols="12" class="text-end">
+            <VBtn color="secondary" variant="outlined" @click="clearFilters">
+              Limpiar Filtros
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardText>
     </VCard>
-
-    <!-- Filtros -->
-    <PendingPaymentsFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedSupplier="selectedSupplier"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      v-model:showOverdueOnly="showOverdueOnly"
-      :suppliers="suppliers"
-      :loading="isLoadingFilters"
-      @clear="clearFilters"
-    />
 
     <!-- Tabla de pagos pendientes -->
     <VCard>
@@ -536,13 +649,12 @@ onMounted(async () => {
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
-          :sort-by="[{ key: sortBy, order: orderBy }]"
+          :sort-by="[]"
           @update:options="
             (options) => {
               page = options.page;
               itemsPerPage = options.itemsPerPage;
-              sortBy = options.sortBy[0]?.key || 'payment_date';
-              orderBy = options.sortBy[0]?.order || 'asc';
+              // NO aplicar ordenamiento del frontend - el backend ya envía los datos ordenados
             }
           "
         >

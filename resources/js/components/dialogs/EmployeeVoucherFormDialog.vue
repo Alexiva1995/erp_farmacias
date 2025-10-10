@@ -17,28 +17,29 @@ const selectedFrequency = ref("");
 const amount = ref(null);
 
 const options = [
-  "Bono de Alimentación",
-  "Bono de Transporte",
-  "Bono de Rendimiento",
-  "Bono de Facturas",
-  "Bono de Ventas",
-  "Bono de Crecimiento de Ventas",
-  "Bono de Productos Asignados",
-  "Salario base",
-  "Utilidades",
-  "Vacaciones",
-  "Bono Vacacional",
-  "Liquidación",
-  "Bono de Ayuda familiar",
-  "Seguro Social",
-  "Prestacional de Empleo",
-  "Prestación Vivienda y Hacienda",
-  "Dias no Trabajados",
-  "Prestamos",
+  // "Bono de Alimentación",
+  // "Bono de Transporte",
+  // "Bono de Rendimiento",
+  // "Bono de Facturas",
+  // "Bono de Ventas",
+  // "Bono de Crecimiento de Ventas",
+  // "Bono de Productos Asignados",
+  "Salario Base",
+  // "Utilidades",
+  // "Vacaciones",
+  // "Bono Vacacional",
+  // "Liquidación",
+  // "Bono de Ayuda familiar",
+  // "Seguro Social",
+  // "Prestacional de Empleo",
+  // "Prestación Vivienda y Hacienda",
+  // "Dias no Trabajados",
+  // "Prestamos",
 ];
 
 const closeDialog = () => {
   emit("update:modelValue", false);
+  handleClearInputs();
 };
 
 const handleClearInputs = () => {

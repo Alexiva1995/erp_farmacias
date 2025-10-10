@@ -8,11 +8,9 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
-
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
-use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -255,7 +253,7 @@ class SupplierQueryService
         try {
             DB::transaction(function () use ($supplierId) {
                 $factor = DB::scalar(
-                    "SELECT COALESCE(EXP(SUM(LN(1 - rate))), 1)
+                    "SELECT COALESCE(1 - MAX(rate), 1)
                               FROM (
                                     SELECT discount_percentage / 100 AS rate
                                       FROM supplier_discounts
@@ -444,9 +442,3 @@ class SupplierQueryService
         return $supplier->connections()->first();
     }
 }
-
-
-
-
-
-
