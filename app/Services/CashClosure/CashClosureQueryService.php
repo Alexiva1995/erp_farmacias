@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\CashClosing;
 use function Amp\Dns\query;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Relations\Relation; 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\DailyCashClosure;
@@ -18,17 +18,17 @@ use Illuminate\Support\Carbon;
 class CashClosureQueryService
 {
 
-     private function getBaseQuery(): Builder
+    private function getBaseQuery(): Builder
     {
-         $sellerId = Auth::id();
+        $sellerId = Auth::id();
         // $sellerId = 2;
-        return CashClosing::query()->where('seller_id',$sellerId)->where('status', CashClosing::CLOSED)->with('orders.details.product');
+        return CashClosing::query()->where('seller_id', $sellerId)->where('status', CashClosing::CLOSED)->with('orders.details.product');
     }
 
 
-     private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
+    private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
-          if (empty($sortBy)) {
+        if (empty($sortBy)) {
             return $query->orderBy('id', 'desc');
         }
 
@@ -36,20 +36,20 @@ class CashClosureQueryService
             case 'id':
                 return $query->orderBy('id', $orderBy);
             case 'date':
-                return $query->orderBy('closing_date', $orderBy); 
+                return $query->orderBy('closing_date', $orderBy);
         }
 
         return $query;
     }
 
-      public function getFilteredQuery(Request $request): Builder
+    public function getFilteredQuery(Request $request): Builder
     {
 
-         $query = $this->getBaseQuery();
+        $query = $this->getBaseQuery();
 
-          $query = $this->applySorting(
-            $query, 
-            $request->input('sortBy'), 
+        $query = $this->applySorting(
+            $query,
+            $request->input('sortBy'),
             $request->input('orderBy', 'desc')
         );
 
@@ -57,27 +57,27 @@ class CashClosureQueryService
     }
 
 
-      private function getBaseQueryOrder(): ?CashClosing
+    private function getBaseQueryOrder(): ?CashClosing
     {
         $sellerId = Auth::id();
         // $sellerId = 2;
         return CashClosing::where('seller_id', $sellerId)
-                          ->where('status', CashClosing::OPEN)
-                          ->first();
+            ->where('status', CashClosing::OPEN)
+            ->first();
     }
 
 
-     private function applyOrderSorting(Relation $query, ?string $sortBy, string $orderBy): Relation
+    private function applyOrderSorting(Relation $query, ?string $sortBy, string $orderBy): Relation
     {
         if (empty($sortBy)) {
             return $query->orderBy('id', 'desc');
         }
 
         $sortableColumns = [
-        'id'             => 'orders.id',        
-        'total_amount'   => 'orders.total_amount',
-        'currency'       => 'orders.currency',
-        'date'           => 'orders.order_date',
+            'id'             => 'orders.id',
+            'total_amount'   => 'orders.total_amount',
+            'currency'       => 'orders.currency',
+            'date'           => 'orders.order_date',
         ];
 
         if (isset($sortableColumns[$sortBy])) {
@@ -86,20 +86,20 @@ class CashClosureQueryService
 
         switch ($sortBy) {
             case 'client_full_name':
-            return $query->join('clients', 'orders.client_id', '=', 'clients.id')
-                         ->orderBy('clients.name', $orderBy)
-                         ->select('orders.*'); 
-            case 'identification': 
-            return $query->join('clients', 'orders.client_id', '=', 'clients.id')
-                         ->orderBy('clients.identification', $orderBy)
-                         ->select('orders.*');
-                         
+                return $query->join('clients', 'orders.client_id', '=', 'clients.id')
+                    ->orderBy('clients.name', $orderBy)
+                    ->select('orders.*');
+            case 'identification':
+                return $query->join('clients', 'orders.client_id', '=', 'clients.id')
+                    ->orderBy('clients.identification', $orderBy)
+                    ->select('orders.*');
+
             default:
-            return $query->orderBy('orders.id', 'desc');
+                return $query->orderBy('orders.id', 'desc');
         }
     }
 
-      public function getFilteredQueryOrder(Request $request): Relation
+    public function getFilteredQueryOrder(Request $request): Relation
     {
 
         $cashClosing = $this->getBaseQueryOrder();
@@ -107,7 +107,7 @@ class CashClosureQueryService
             throw new ModelNotFoundException('No hay un cierre de caja abierto para este vendedor.');
         }
         $ordersQuery = $cashClosing->orders()->with('client');
-        $ordersQuery->where('status', Order::COMPLETED); 
+        $ordersQuery->where('status', Order::COMPLETED);
         $ordersQuery = $this->applyOrderSorting(
             $ordersQuery,
             $request->input('sortBy'),
@@ -117,63 +117,68 @@ class CashClosureQueryService
     }
 
 
-     private function getBaseQueryDaily(): Builder
+    private function getBaseQueryDaily(): Builder
     {
-        return DailyCashClosure::query()->with('cashClosings.seller','cashClosings.orders');
+        return DailyCashClosure::query()->with('cashClosings.seller', 'cashClosings.orders');
     }
 
     private function applySortingDaily(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
-          if (empty($sortBy)) {
+        if (empty($sortBy)) {
             return $query->orderBy('id', 'desc');
         }
 
         switch ($sortBy) {
             case 'total_sales':
-                return $query->orderBy('total_sales', $orderBy); 
+                return $query->orderBy('total_sales', $orderBy);
         }
 
         return $query;
     }
 
-     public function getFilteredQueryDaily(Request $request): Builder
+    public function getFilteredQueryDaily(Request $request): Builder
     {
-         $query = $this->getBaseQueryDaily();
-          $query = $this->applySortingDaily(
-            $query, 
-            $request->input('sortBy'), 
+        $query = $this->getBaseQueryDaily();
+        $query = $this->applySortingDaily(
+            $query,
+            $request->input('sortBy'),
             $request->input('orderBy', 'desc')
         );
         return $query;
     }
 
 
-     private function getBaseQueryMonthly(): Builder
+    private function getBaseQueryMonthly(): Builder
     {
         return DailyCashClosure::query();
     }
 
-     private function applySortingMonthly(Builder $query, ?string $sortBy, string $orderBy): Builder
+    private function applySortingMonthly(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         if (empty($sortBy)) {
-             return $query->orderByDesc('year')->orderByDesc('month');
+            return $query->orderByDesc('year')->orderByDesc('month');
         }
 
         switch ($sortBy) {
-             case 'total_sales':
-                 return $query->orderBy('total_sales_month', $orderBy); 
-             case 'period':
-                 return $query->orderBy('year', $orderBy)->orderBy('month', $orderBy);
+            case 'closing_date':
+                return $query->orderBy('year', $orderBy)->orderBy('month', $orderBy);
+            case 'amount_usd':
+                return $query->orderBy('amount_usd_month', $orderBy);
+            case 'amount_cop':
+                return $query->orderBy('amount_cop_month', $orderBy);
+            case 'amount_bs':
+                return $query->orderBy('amount_bs_month', $orderBy);
+            case 'daily_average':
+                return $query->orderBy('total_sales_month', $orderBy);
         }
 
         return $query;
-    
-    }    
-     public function getFilteredQueryMonthly(Request $request): Collection 
+    }
+    public function getFilteredQueryMonthly(Request $request): Collection
     {
         $query = $this->getBaseQueryMonthly();
 
-         $query->select(
+        $query->select(
             DB::raw('YEAR(created_at) as year'),
             DB::raw('MONTH(created_at) as month'),
             DB::raw('COUNT(id) as days_closed'),
@@ -183,11 +188,11 @@ class CashClosureQueryService
             DB::raw('SUM(total_bs) as amount_bs_month'),
             DB::raw('SUM(total_cop) as amount_cop_month')
         )
-        ->groupBy('year', 'month');
+            ->groupBy('year', 'month');
 
-         $query = $this->applySortingMonthly(
-            $query, 
-            $request->input('sortBy'), 
+        $query = $this->applySortingMonthly(
+            $query,
+            $request->input('sortBy'),
             $request->input('orderBy', 'desc')
         );
 
@@ -208,15 +213,15 @@ class CashClosureQueryService
             $object = new \stdClass();
             $object->closing_date = $endDate->format('Y-m-d');
 
-            $object->created_at = $endDate->format('Y-m-d'); 
+            $object->created_at = $endDate->format('Y-m-d');
             $object->period = ucfirst($monthName) . ' ' . $summary->year;
-            
+
             $object->amount_usd = number_format($summary->amount_usd_month, 2, ",", ".");
             $object->amount_bs = number_format($summary->amount_bs_month, 2, ",", ".");
             $object->amount_cop = number_format($summary->amount_cop_month, 0, ",", ".");
             $object->total_amount_raw = $totalAmountRaw;
             $object->total_amount = number_format($totalAmountRaw, 2, ",", ".");
-            
+
             $object->days_closed = $daysClosed;
             $object->daily_average_raw = $dailyAverageRaw;
             $object->daily_average = number_format($dailyAverageRaw, 2, ",", ".");
@@ -229,9 +234,9 @@ class CashClosureQueryService
     }
 
 
-     private function getBaseQuerySellerCash(): Builder
+    private function getBaseQuerySellerCash(): Builder
     {
-        return CashClosing::query()->with('orders.details.product','seller');
+        return CashClosing::query()->with('orders.details.product', 'seller');
     }
 
     private function applyFilters(Builder $query, array $filters): Builder
@@ -267,7 +272,7 @@ class CashClosureQueryService
         return $query;
     }
 
-      private function applySortingSellerCash(Builder $query, ?string $sortBy, string $orderBy): Builder
+    private function applySortingSellerCash(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         if (empty($sortBy)) {
             return $query->orderBy('id', 'desc');
@@ -289,7 +294,7 @@ class CashClosureQueryService
         return $query;
     }
 
-     public function getFilteredQuerySellerCash(Request $request): Builder
+    public function getFilteredQuerySellerCash(Request $request): Builder
     {
         $query = $this->getBaseQuerySellerCash();
         $filters = [
