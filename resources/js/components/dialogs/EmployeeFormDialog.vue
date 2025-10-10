@@ -202,7 +202,12 @@ watch(
               hide-details="auto"
               :items="
                 roles.map((role) => ({
-                  title: role.name,
+                  title:
+                    role.name === 'Admin'
+                      ? 'Administrador'
+                      : role.name === 'Employee'
+                      ? 'Empleado'
+                      : 'Supervisor',
                   value: role.id,
                 }))
               "
