@@ -26,6 +26,7 @@ class UpdateOrderTotalsRequest extends FormRequest
             'total_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', Rule::in(['USD', 'BS', 'COP'])],
             'total_amount_usd' => ['required', 'numeric', 'min:0'],
+            'total_cost' => ['required', 'numeric', 'min:0'],
         ];
     }
 
@@ -36,6 +37,7 @@ class UpdateOrderTotalsRequest extends FormRequest
             'total_amount.required' => 'El monto total de la orden es obligatorio',
             'currency.required' => 'El currency es obligatorio',
             'total_amount_usd.required' => 'El monto total de la orden es obligatorio',
+            'total_cost.required' => 'El monto del costo de la orden es obligatorio',
         ];
     }
 }
