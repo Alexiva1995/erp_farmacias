@@ -33,7 +33,9 @@ class CashClosureQueryService
         }
 
         switch ($sortBy) {
-            case 'closing_date':
+            case 'id':
+                return $query->orderBy('id', $orderBy);
+            case 'date':
                 return $query->orderBy('closing_date', $orderBy); 
         }
 

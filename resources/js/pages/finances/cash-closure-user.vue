@@ -100,8 +100,13 @@ const fetchClosingHistory = async () => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  } else {
+    sortBy.value = null;
+    orderBy.value = null;
+  }
 };
 
 const printCash = async (cash) => {
@@ -398,6 +403,24 @@ watch(
     clearTimeout(debounceTimerOrder);
     debounceTimerOrder = setTimeout(() => {
       fetchOrder();
+    }, 300);
+  },
+  { deep: true }
+);
+
+
+let debounceTimer;
+watch(
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+  ],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetchClosingHistory();
     }, 300);
   },
   { deep: true }
