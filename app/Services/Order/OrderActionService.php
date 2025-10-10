@@ -32,6 +32,7 @@ class OrderActionService
             } else {
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
                 $data['total_amount'] = $data['total_amount'] ?? 0;
+                $data['total_amount_usd'] = $data['total_amount_usd'] ?? 0;
                 $data['money_returns'] = $data['money_returns'] ?? 0;
                 $data['payment_methods'] = null;
             }
@@ -172,6 +173,7 @@ class OrderActionService
         try {
             $targetCurrency = $validatedData['currency'];
             $order->total_amount = $validatedData['total_amount'];
+            $order->total_amount_usd = $validatedData['total_amount_usd'];
             $order->currency = $targetCurrency;
             $order->save();
             $order->load('details.product');

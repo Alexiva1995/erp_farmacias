@@ -512,6 +512,7 @@ const updateOrderTotalsInBackend = async () => {
   try {
     const payload = {
       total_amount: total,
+      total_amount_usd: totalAmountUsd.value,
       currency: selectedDisplayCurrency.value,
     };
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
