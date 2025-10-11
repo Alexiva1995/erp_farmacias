@@ -115,7 +115,7 @@ const fetchMonthlyCashData = async () => {
   const params = {
     page: pageMonthlyCash.value,
     itemsPerPage: itemsPerPageMonthlyCash.value,
-    sortBy: sortBySellerCash.value,
+    sortBy: sortByMonthlyCash.value,
     orderBy: orderByMonthlyCash.value,
   };
   Object.keys(params).forEach(

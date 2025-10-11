@@ -63,6 +63,7 @@ class CashClosureActionService
             'total_cop' => $validatedData['total_cop'],
             'cop_spare' => $validatedData['sobrante_en_peso'],
             'cop_delivered' => $validatedData['entregar_efectivo_cop'],
+            'closing_date' => Carbon::now(),
         ]);
 
         $cashClosure->refresh()->load('orders');
@@ -127,6 +128,7 @@ class CashClosureActionService
             $cashClosing->update([
                 'status' => CashClosing::CLOSED,
                 'daily_closure_id' => $dailyClosure->id,
+                'closing_date' => Carbon::now(),
             ]);
         }
 
