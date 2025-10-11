@@ -1,7 +1,6 @@
 <script setup lang="js">
 import { VDateInput } from 'vuetify/labs/VDateInput';
 
-
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
@@ -17,22 +16,22 @@ function close(){
 }
 
 function generarFormData(estado){
-
   let formData = new FormData();
 
   Object.entries(estado).forEach(([key, value]) => {
     if (value instanceof File) {
       formData.append(key, value); // Archivo (Blob/File)
+    } else if (typeof value === 'boolean') {
+      formData.append(key, value ? '1' : '0'); // Boolean convertido a string
     } else if (typeof value === 'object' && value !== null) {
       formData.append(key, JSON.stringify(value)); // Objetos anidados
-    } else {
+    } else if (value !== null && value !== undefined) {
       formData.append(key, value); // Strings/números
     }
   });
 
   return formData
 }
-
 
 function submitForm(){
   emit("clearErrorForm")
@@ -190,6 +189,40 @@ function formatearFechaCompleta(fechaInput) {
               label="Dirección"
               variant="outlined"
             />
+          </VCol>
+          <!-- Nuevo campo SPE -->
+          <VCol cols="12">
+            <div class="d-flex align-center mt-3 mb-2">
+              <VCheckbox v-model="formData.is_spe" color="warning" class="me-2">
+                <template #label>
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-shield-check" class="me-2" size="20" />
+                    <span class="text-subtitle-1 font-weight-medium">
+                      ¿Es sujeto a pasivos especiales?
+                    </span>
+                  </div>
+                </template>
+              </VCheckbox>
+              <VChip
+                v-if="formData.is_spe"
+                color="warning"
+                size="small"
+                class="ms-2"
+              >
+                <VIcon icon="tabler-shield-check" size="14" class="me-1" />
+                SPE: -75% IVA
+              </VChip>
+            </div>
+            <div
+              v-if="formData.is_spe"
+              class="bg-warning-lighten-4 pa-3 rounded mb-3"
+            >
+              <div class="text-caption text-warning-darken-2">
+                <VIcon icon="tabler-info-circle" class="me-1" size="14" />
+                Este cliente será marcado como sujeto a pasivos especiales. En
+                sus compras se restara automáticamente el 75% del IVA.
+              </div>
+            </div>
           </VCol>
         </VRow>
       </VContainer>

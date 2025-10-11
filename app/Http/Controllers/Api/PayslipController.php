@@ -40,9 +40,9 @@ class PayslipController extends Controller
         return Excel::download($data, $fileName);
     }
 
-    public function getData(Payslip $payslip)
+    public function getData(Payslip $payslip, string $type)
     {
-        $data = $this->payslipServices->getData($payslip);
+        $data = $this->payslipServices->getData($payslip, $type);
 
         return ApiResponse::success([
             'results' => $data['items'],

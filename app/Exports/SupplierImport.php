@@ -2,13 +2,11 @@
 
 namespace App\Exports;
 
-use App\Models\ExchangeRate;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithStartRow;
-use Illuminate\Support\Facades\Artisan;
 
 class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormulas
 {
@@ -20,9 +18,10 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly int $startRow,
         private readonly string $codSupplierCol,
         private readonly string $nameCol,
-        private readonly string $barcodeCol,
+        private readonly ?string $barcodeCol,
         private readonly ?string $qtyCol,
-        private readonly string $costBsCol,
+        private readonly ?float $currencyCol,
+        private readonly ?string $costBsCol,
         private readonly ?string $costUsdCol,
         private readonly ?string $activeIngredientCol,
         private readonly ?string $expirationCol,
@@ -47,9 +46,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             $this->supplierId === "null" ||
             $this->startRow === "null" ||
             $this->codSupplierCol === "null" ||
-            $this->nameCol === "null" ||
-            $this->barcodeCol === "null" ||
-            $this->costBsCol === "null"
+            $this->nameCol === "null"
         ) {
             throw new \Exception("Los campos no se encuentran definidos");
         }
@@ -64,53 +61,48 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             ->toArray();
 
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
-        $usdCurrency = ExchangeRate::where("currency_code", "USD")
-            ->whereDate("created_at", \Carbon\Carbon::today())
-            ->first();
-
-        if (!isset($usdCurrency)) {
-            $exitCode = Artisan::call("app:update-exchange-rate");
-
-            if ($exitCode === 0) {
-                $usdCurrency = ExchangeRate::where("currency_code", "USD")
-                    ->whereDate("created_at", \Carbon\Carbon::today())
-                    ->first();
-            } else {
-                \Log::error("Failed to fetch exchange rate");
-                throw new \Exception("No se pudo guardar la tasa del día USD");
-            }
-        }
 
         $rawRows = $rows;
+        $currency = $this->currencyCol ?? 1;
 
         $toNumber = function (string $value): ?float {
-            // a) drop everything except digits, comma, dot, Bs.F., $
             $clean = preg_replace('/[^\d,.\$]|(?<!B)s\.F\.(?! )/i', '', $value);
 
-            // b) if any letter is left → garbage
             if (preg_match('/[a-z]/i', $clean)) {
                 return null;
             }
 
-            // c) only one decimal separator allowed → turn comma into dot
             $clean = str_replace(',', '.', $clean);
 
-            // d) cast and validate
             $float = (float) $clean;
             return is_finite($float) ? $float : null;
         };
 
         $rows = $rawRows
             ->takeWhile(fn($row) => !empty(array_filter($row->toArray())))
-            ->map(function ($row, $index) use ($rows, $now, $usdCurrency, $toNumber) {
+            ->map(function ($row) use ($now, $currency, $toNumber) {
+                // Skip processing if $row is null or not an array/object
+                if (is_null($row) || (is_array($row) && empty($row)) || (is_object($row) && empty((array) $row))) {
+                    return null;
+                }
+
                 $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
                 $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));
                 $active_ingredient = trim((string) ($row[$this->colIndex($this->activeIngredientCol)] ?? ""));
                 $bar = trim((string) ($row[$this->colIndex($this->barcodeCol)] ?? ""));
-                $bs = $toNumber($row[$this->colIndex($this->costBsCol)] ?? null);
+                $bs = $this->costBsCol === null
+                    ? null
+                    : $toNumber($row[$this->colIndex($this->costBsCol)] ?? null);
                 $usd = $toNumber($this->costUsdCol === "null"
-                    ? $this->castToFloat($bs) / $usdCurrency->rate
+                    ? $this->castToFloat($bs) / $currency
                     : $this->castToFloat($row[$this->colIndex($this->costUsdCol)] ?? null));
+
+                if ($bs == null && $usd != null) {
+                    $bs = $usd * $currency;
+                } elseif ($usd == null && $bs != null) {
+                    $usd = round($bs / $currency, 2);
+                }
+
                 $expiration = $row[$this->colIndex($this->expirationCol)] ?? null;
 
                 if ($cod === "") {
@@ -129,10 +121,17 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     $bs = 0;
                 }
 
+                if ($name === null) {
+                    return null;
+                }
+
                 if ($expiration != null) {
-                    if (!\Datetime::createFromFormat("Y-m-d", $expiration)) {
-                        $expiration = \DateTime::createFromFormat("d/m/Y", $expiration)?->format("Y-m-d");
-                    }
+                    $date = \DateTime::createFromFormat("d/m/Y", $expiration);
+                    $expiration = $date !== false
+                        ? $date->format("Y-m-d")
+                        : (($date = \DateTime::createFromFormat("Y-m-d", $expiration)) !== false
+                            ? $date->format("Y-m-d")
+                            : null);
                 }
 
                 $data = [
@@ -156,6 +155,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
                 return $data;
             })
+            ->filter()
             ->values();
 
         $products = Product::with("laboratory")

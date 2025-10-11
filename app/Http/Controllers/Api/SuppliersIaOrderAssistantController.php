@@ -79,13 +79,13 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
         $respuesta["paginate"]->each(function ($items) {
-            $items = $this->product->calcularAOProducts($items);
+            $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
         });
 
         // dd($respuesta["paginate"]->items());
 
-        // $respuesta["paginate"]->items = $this->product->calcularAOProducts(collect($respuesta["paginate"]->data));
+        // $respuesta["paginate"]->items = $this->product->calcularAOProduct(collect($respuesta["paginate"]->data));
 
 
         return ApiResponse::success($respuesta, "ok", 200);
@@ -141,6 +141,12 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
+        $productosFallas = $this->product->calcularAOProducts($productosFallas);
+
+        $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
+
+        $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
+
         $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"], $request->con_descuento);
         $respuesta["productosFallas"] = $productosFallas;
@@ -150,11 +156,11 @@ class SuppliersIaOrderAssistantController extends Controller
         $filtrosConExistencia = [
             "tipo_filtracion"   => $request->tipo_filtracion,
             "lapso_de_tiempo"   => "1 year",
-            "stock"             => "all",
+            // "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
             "orderBy"           => "asc",
-            "sortBy"            => "stock",
+            "sortBy"            => "name",
         ];
 
         if ($request->filled("laboratoryId")) {
@@ -176,9 +182,25 @@ class SuppliersIaOrderAssistantController extends Controller
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
         }
 
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos, $request->con_descuento);
+        $productos = $this->product->calcularAOProducts($productos);
+
+
+        $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
+
+
+        $productos = $this->product->actualizarElSolicitadoConElAO($productos);
+
+
+
+        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
+
+
+
+
+        // $items = $this->product->calcularAOProduct($items);
+        // $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
 
 
 

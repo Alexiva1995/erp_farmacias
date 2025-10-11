@@ -33,10 +33,10 @@ class CreateClientRequest extends FormRequest
     {
         return [
             //
-            "name"                   =>    "required|string|max:255",
-            "last_name"              =>    "nullable|string|max:255",
-            "email"                  =>    "nullable|string|max:255|email:rfc,dns",
-            "identification_type"    =>    [
+            "name" => "required|string|max:255",
+            "last_name" => "nullable|string|max:255",
+            "email" => "nullable|string|max:255|email:rfc,dns",
+            "identification_type" => [
                 "required",
                 "string",
                 Rule::in([
@@ -47,10 +47,11 @@ class CreateClientRequest extends FormRequest
                 ]),
 
             ],
-            "identification"         =>    "required|string|unique:clients,identification|min:7|max:9",
-            "phone"                  =>    "required|string|max:50",
-            "address"                =>    "required|string",
-            "company_id"             =>    "nullable|exists:companies,id",
+            "identification" => "required|string|unique:clients,identification|min:7|max:9",
+            "phone" => "required|string|max:50",
+            "address" => "required|string",
+            "company_id" => "nullable|exists:companies,id",
+            "is_spe" => "nullable|boolean",
         ];
     }
 
@@ -106,15 +107,17 @@ class CreateClientRequest extends FormRequest
 
     protected function passedValidation()
     {
+        // Debug completo - TEMPORAL para identificar el problema
         $this->client = CreateClientData::from([
-            "name"                    =>    $this->name,
-            "last_name"               =>    $this->last_name,
-            "identification_type"     =>    $this->identification_type,
-            "identification"          =>    $this->identification,
-            "phone"                   =>    $this->phone,
-            "address"                 =>    $this->address,
-            "company_id"              =>    $this->company_id,
-            "email"                   =>    $this->email,
+            "name" => $this->name,
+            "last_name" => $this->last_name,
+            "identification_type" => $this->identification_type,
+            "identification" => $this->identification,
+            "phone" => $this->phone,
+            "address" => $this->address,
+            "company_id" => $this->company_id,
+            "email" => $this->email,
+            "is_spe" => $this->is_spe,
         ]);
     }
 }

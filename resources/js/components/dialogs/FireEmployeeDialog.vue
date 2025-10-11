@@ -17,6 +17,8 @@ const percentage = ref(100);
 
 const fetchSettlement = async () => {
   if (!props.selectedEmployee?.id) return;
+  if (!props.modelValue) return;
+
   try {
     const { data } = await axios.get(
       `/rrhh/social-benefits/employees/${props.selectedEmployee.id}/settlement-data`
