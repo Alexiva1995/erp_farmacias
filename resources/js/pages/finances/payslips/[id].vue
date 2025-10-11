@@ -215,7 +215,7 @@ const employeesWithVouchers = computed(() => {
       final = 0;
 
     if (isDecember) earn += toNum(r.earnings_voucher);
-    if (r.active_years - 1 >= 2) {
+    if (r.active_years >= 2) {
       vacBonus += toNum(r.vacation_bonus_voucher);
       vac += toNum(r.vacation_voucher);
     }
@@ -229,10 +229,10 @@ const employeesWithVouchers = computed(() => {
       tab.value === "legal" ? 0 : r.sales_growth_voucher,
       tab.value === "legal" ? 0 : r.assigned_products_voucher,
       tab.value !== "legal" && isDecember ? r.earnings_voucher : 0,
-      tab.value !== "legal" && r.active_years - 1 >= 2
+      tab.value !== "legal" && r.active_years >= 2
         ? r.vacation_bonus_voucher
         : 0,
-      tab.value !== "legal" && r.active_years - 1 >= 2 ? r.vacation_voucher : 0,
+      tab.value !== "legal" && r.active_years >= 2 ? r.vacation_voucher : 0,
       tab.value === "legal" ? 0 : r.family_support_voucher,
       r.salary_to_pay_voucher,
       r.social_security_voucher,
