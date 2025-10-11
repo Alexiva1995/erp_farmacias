@@ -255,6 +255,7 @@ class OrderActionService
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
         $totalIva = 0;
         $exemptAmount = 0;
+        $taxableAmount = 0;
         $client = $order->client;
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
@@ -262,17 +263,22 @@ class OrderActionService
                 $priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
 
+                $itemSubtotal = $priceBs * $quantity;
+
                 if ($product->iva == 1) {
                     $ivaRate = 0.16;
                     $itemTotal = $priceBs * $quantity;
                     $itemIva = $itemTotal * $ivaRate;
                     $totalIva += $itemIva;
+                    $taxableAmount += $itemSubtotal;
+                }else{
+                    $exemptAmount += $itemSubtotal; 
                 }
-
-                $exemptAmount += $priceBs * $quantity;
             }
 
-            $totalAmountBs = $spe ? $exemptAmount + ($totalIva * 0.25) : $exemptAmount + $totalIva;
+            //$totalAmountBs = $spe ? $exemptAmount + ($totalIva * 0.25) : $exemptAmount + $totalIva;
+            $totalAmountBs = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
                 'order_id' => $order->id,
@@ -281,6 +287,7 @@ class OrderActionService
                 'identification' => $client->identification_type . $client->identification,
                 'address' => $client->address,
                 'exempt_amount' => $exemptAmount,
+                'taxable_amount' => $taxableAmount,
                 'iva_amount' => $totalIva,
                 'total_amount' => $totalAmountBs,
                 'invoice_date' => Carbon::now(),
