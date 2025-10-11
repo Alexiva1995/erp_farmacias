@@ -35,4 +35,6 @@ interface Expenses
     public function changeStatus(int $id, string $status): Expense;
 
     public function exportExcel(array $filtros): ExpenseExport;
+
+    public function ejecutarGastosRecurrentesDeHoy(): void;
 }
