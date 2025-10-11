@@ -292,10 +292,6 @@ Route::middleware("auth:sanctum")->group(function () {
         });
     });
 
-    Route::prefix("user")->group(function () {
-        Route::get("/", [UserController::class, "getAll"]);
-    });
-
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
