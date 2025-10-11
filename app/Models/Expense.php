@@ -19,6 +19,13 @@ class Expense extends Model
     const COUNT_BINANCE = "Binance"; // USD
     const COUNT_PAYPAL = "PayPal"; // USD
 
+    const TYPE_OF_EXPENSE_NORMAL = "Normal";
+    const TYPE_OF_EXPENSE_RECURRENTE = "Recurrente";
+
+    const RECURRENCE_MENSUAL = "Mensual";
+    const RECURRENCE_SEMESTRAL = "Semestral";
+    const RECURRENCE_ANUAL = "Anual";
+
 
     protected $fillable = [
         'name',

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Contracts\Expenses;
+use App\Data\CreateExpenseData;
+use App\Data\CreateExpenseRecurrenceData;
 use App\Exports\ExpenseExport;
 use App\Models\Expense;
 use App\Repository\ExpensesRepository;
@@ -23,10 +25,29 @@ class ExpensesServices implements Expenses
     ) {}
 
 
-    public function crearGasto(array $data): Expense
+    public function crearGasto(CreateExpenseData $data): Expense
     {
-        $data["status"] = "Pending";
+        $data->status = "Pending";
+
         return $this->expensesRepository->createGasto($data);
+    }
+
+    public function crearGastoRecurrente(CreateExpenseRecurrenceData $data): Expense
+    {
+        $next_expense_date = null;
+        $data->status = "Pending";
+
+        if ($data->recurrence === Expense::RECURRENCE_MENSUAL) {
+            $next_expense_date = (new DateTime($data->next_expense_date))->modify('+1 month')->format('Y-m-d');
+        } elseif ($data->recurrence === Expense::RECURRENCE_ANUAL) {
+            $next_expense_date = (new DateTime($data->next_expense_date))->modify('+1 year')->format('Y-m-d');
+        } elseif ($data->recurrence === Expense::RECURRENCE_SEMESTRAL) {
+            $next_expense_date = (new DateTime($data->next_expense_date))->modify('+6 months')->format('Y-m-d');
+        }
+
+        $data->next_expense_date = $next_expense_date;
+
+        return $this->expensesRepository->createGastoRecurente($data);
     }
 
     public function editarGasto(array $data): Expense

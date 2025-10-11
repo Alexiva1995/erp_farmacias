@@ -3,6 +3,8 @@
 
 namespace App\Repository;
 
+use App\Data\CreateExpenseData;
+use App\Data\CreateExpenseRecurrenceData;
 use App\Models\Expense;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -11,9 +13,30 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class ExpensesRepository
 {
 
-    public function createGasto(array $data): Expense
+    public function createGasto(CreateExpenseData $data): Expense
     {
-        return Expense::create($data);
+        return Expense::create($data->toArray());
+    }
+
+    public function createGastoRecurente(CreateExpenseRecurrenceData $data): Expense
+    {
+        $gasto = new Expense();
+        $gasto->name = $data->name;
+        $gasto->category_id = $data->category_id;
+        $gasto->amount = $data->amount;
+        $gasto->amount_usd = $data->amount_usd;
+        $gasto->currency = $data->currency;
+        $gasto->has_invoice = $data->has_invoice;
+        $gasto->is_deductible = $data->is_deductible;
+        // $gasto->expense_date = $data->expense_date;
+        $gasto->user_id = $data->user_id;
+        $gasto->count = $data->count;
+        $gasto->type_of_expense = $data->type_of_expense;
+        $gasto->recurrence = $data->recurrence;
+        $gasto->next_expense_date = $data->next_expense_date;
+        $gasto->status = "Pending";
+        $gasto->save();
+        return $gasto;
     }
 
     public function cargarFactura(array $data): Expense

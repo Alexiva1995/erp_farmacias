@@ -588,7 +588,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-            Route::post("/create", [ExpensesController::class, "createExpense"]);
+            Route::post("/create-normal", [ExpensesController::class, "createExpense"]);
+            Route::post("/create-recurrence", [ExpensesController::class, "createExpenseRecurrente"]);
             Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
             Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
             Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
@@ -627,17 +628,6 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     Route::prefix("expenses")->group(function () {
-        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create", [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
-        Route::prefix("category")->group(function () {
-            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
-        });
-
         Route::prefix('cleaning-activities')->group(function () {
             Route::get('/', [CleaningActivityController::class, 'index']);
             Route::post('/', [CleaningActivityController::class, 'store']);

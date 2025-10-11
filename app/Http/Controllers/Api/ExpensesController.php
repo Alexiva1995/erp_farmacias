@@ -6,6 +6,7 @@ use App\Contracts\Expenses;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeStatusExpenseRequest;
+use App\Http\Requests\CreateExpenseRecurrenceRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use App\Http\Requests\UploadFileInvoiceExpenseRequest;
@@ -26,7 +27,14 @@ class ExpensesController extends Controller
     public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
         // dd($request->data->toArray());
-        $expense = $this->expenses->crearGasto($request->data->toArray());
+        $expense = $this->expenses->crearGasto($request->data);
+
+        return ApiResponse::success($expense, "ok");
+    }
+
+    public function createExpenseRecurrente(CreateExpenseRecurrenceRequest $request): JsonResponse
+    {
+        $expense = $this->expenses->crearGastoRecurrente($request->data);
 
         return ApiResponse::success($expense, "ok");
     }

@@ -34,10 +34,11 @@ const formulario= reactive({
   currency:"USD",
   has_invoice:false,
   is_deductible:false,
-  expense_date:"",
+  // expense_date:"",
   user_id:"",
   count:"",
-  file_factura:null,
+  // file_factura:null,
+  recurrence:"Mensual",
 })
 
 const formularioError= reactive({
@@ -49,9 +50,10 @@ const formularioError= reactive({
   currency:"",
   has_invoice:"",
   is_deductible:"",
-  expense_date:null,
+  // expense_date:null,
   count:"",
-  file_factura:null,
+  // file_factura:null,
+  recurrence:"",
 })
 
 const buscardor_filtro= ref("");// nombre, id
@@ -77,7 +79,7 @@ function insertarDatosAlFormulario(datos){
   formulario.currency=datos.currency
   formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
-  formulario.expense_date=datos.expense_date
+  // formulario.expense_date=datos.expense_date
   formulario.count=datos.count
 }
 
@@ -90,9 +92,9 @@ function limpiarDatosFormulario(){
   formulario.currency="BS"
   formulario.has_invoice=false
   formulario.is_deductible=false
-  formulario.expense_date=""
+  // formulario.expense_date=""
   formulario.count=""
-  formulario.file_factura=null
+  // formulario.file_factura=null
 }
 
 function limpiarErroresFormulario(){
@@ -104,9 +106,10 @@ function limpiarErroresFormulario(){
   formularioError.currency=""
   formularioError.has_invoice=false
   formularioError.is_deductible=false
-  formularioError.expense_date=""
+  // formularioError.expense_date=""
   formularioError.count=""
-  formularioError.file_factura=""
+  formularioError.recurrence=""
+  // formularioError.file_factura=""
 }
 
 function cargarErrores(errores){
@@ -118,9 +121,10 @@ function cargarErrores(errores){
   formularioError.currency=(errores.currency)?errores.currency.join(", "):""
   formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
   formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
-  formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
+  // formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
   formularioError.count=(errores.count)?errores.count.join(", "):""
-  formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
+  formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
+  // formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
 }
 
 function mostarModal(){
@@ -154,7 +158,7 @@ watch(
 async function enviar(payload){
   try {
     statuModule.loadingApp=true
-    let respuesApi=await axios.post("/finances/expenses/create",payload)
+    let respuesApi=await axios.post("/finances/expenses/create-recurrence",payload)
     if(respuesApi.status==200 && payload.has_invoice==false){
       toast.success("El gasto se a guardado correctamente")
       cerrarModal(false)
@@ -164,25 +168,25 @@ async function enviar(payload){
     console.log("respuesta api gasto => ",respuesApi.data.data)
     let gasto=respuesApi.data.data
 
-    if(payload.has_invoice==true){
-      let data=new FormData()
-      data.append("id",gasto.id)
-      data.append("file_invoice",payload.file_factura)
+    // if(payload.has_invoice==true){
+    //   let data=new FormData()
+    //   data.append("id",gasto.id)
+    //   // data.append("file_invoice",payload.file_factura)
 
-      let config= {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+    //   let config= {
+    //     headers: {
+    //       'Content-Type': 'multipart/form-data',
+    //     },
+    //   }
 
-      let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
-      if(respuesApiFileUploaa.status==200){
-        toast.success("El archivo de la factura a sido guardado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
-        statuModule.loadingApp=false
-      }
-    }
+    //   let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
+    //   if(respuesApiFileUploaa.status==200){
+    //     toast.success("El archivo de la factura a sido guardado correctamente")
+    //     cerrarModal(false)
+    //     await actualizarTabla()
+    //     statuModule.loadingApp=false
+    //   }
+    // }
 
   } catch (error) {
     statuModule.loadingApp=false

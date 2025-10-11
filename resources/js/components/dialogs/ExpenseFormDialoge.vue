@@ -33,6 +33,10 @@ const cop=[
 
 const currencies=["BS","USD", "COP"];
 
+const recurrencia=[
+  "Mensual","Semestral","Anual"
+];
+
 
 function close(){
   emit("modalClose",false)
@@ -147,7 +151,13 @@ function submitForm(){
             />
           </VCol>
           <VCol cols="12" sm="6" md="6">
-            <AppDateTimePicker
+            <VSelect
+              v-model="props.formData.recurrence"
+              label="Recurrencia"
+              :items="recurrencia"
+              :error-messages="props.formError.recurrencia"
+            />
+            <!-- <AppDateTimePicker
               v-model="props.formData.expense_date"
               :error-messages="props.formError.expense_date"
               label="Fecha"
@@ -157,21 +167,21 @@ function submitForm(){
                 altFormat: 'Y-m-d',
                 dateFormat: 'Y-m-d',
               }"
-            />
+            /> -->
           </VCol>
         </VRow>
         <VRow>
-          <VCol cols="12" sm="12" md="12" lg="12">
+          <!-- <VCol cols="12" sm="12" md="12" lg="12">
             <VCheckbox v-model="props.formData.has_invoice">
               <template v-slot:label> Tiene Factura </template>
             </VCheckbox>
-          </VCol>
+          </VCol> -->
           <VCol cols="12" sm="12" md="12" lg="12">
             <VCheckbox v-model="props.formData.is_deductible">
               <template v-slot:label> Es Deducible </template>
             </VCheckbox>
           </VCol>
-          <VCol
+          <!-- <VCol
             cols="12"
             sm="12"
             md="12"
@@ -186,7 +196,7 @@ function submitForm(){
               label="Factura"
               variant="outlined"
             />
-          </VCol>
+          </VCol> -->
         </VRow>
       </VContainer>
       <VDivider />

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Data\CreateExpenseData;
+use App\Data\CreateExpenseRecurrenceData;
 use App\Helpers\ApiResponse;
 use App\Models\Expense;
 use Illuminate\Contracts\Validation\Validator;
@@ -11,10 +11,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
-class CreateExpenseRequest extends FormRequest
+class CreateExpenseRecurrenceRequest extends FormRequest
 {
-
-    public CreateExpenseData $data;
+    public CreateExpenseRecurrenceData $data;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -53,6 +52,16 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_PAYPAL,
                 ])
             ],
+            "recurrence"             =>    [
+                "required",
+                "string",
+                Rule::in([
+                    Expense::RECURRENCE_MENSUAL,
+                    Expense::RECURRENCE_SEMESTRAL,
+                    Expense::RECURRENCE_ANUAL,
+                ])
+            ],
+
         ];
     }
 
@@ -101,6 +110,11 @@ class CreateExpenseRequest extends FormRequest
             'count.required' => 'El método de pago es obligatorio.',
             'count.string' => 'El método de pago debe ser una cadena de texto.',
             'count.in' => 'El método de pago seleccionado no es válido.',
+
+            // Reglas para 'recurrence'
+            'recurrence.required' => 'La recurrencia es obligatoria.',
+            'recurrence.string' => 'La recurrencia debe ser una cadena de texto.',
+            'recurrence.in' => 'La recurrencia seleccionada no es válida.',
         ];
     }
 
@@ -114,7 +128,7 @@ class CreateExpenseRequest extends FormRequest
 
     protected function passedValidation()
     {
-        $this->data = CreateExpenseData::from([
+        $this->data = CreateExpenseRecurrenceData::from([
             "name"                    =>    $this->name,
             "category_id"             =>    $this->category_id,
             "amount"                  =>    $this->amount,
@@ -122,9 +136,12 @@ class CreateExpenseRequest extends FormRequest
             "currency"                =>    $this->currency,
             "has_invoice"             =>    $this->has_invoice,
             "is_deductible"           =>    $this->is_deductible,
-            // "expense_date"            =>    $this->expense_date,
+            // "expense_date"            =>    new \DateTime($this->expense_date),
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
+            "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_RECURRENTE,
+            "recurrence"              =>    $this->recurrence,
+            // "next_expense_date"       =>    $this->next_expense_date,
         ]);
     }
 }
