@@ -605,7 +605,7 @@
         "host": "jkserverom.drogueriajoskar.com",
         "port": 21,
         "username": "CLI_V241509806",
-        "password": "eyJpdiI6Im1iMGR5V000TXJySEVWWkpIQWI1cmc9PSIsInZhbHVlIjoiM0VEOEVJZVZrc3lITjhORUdqRlkzUT09IiwibWFjIjoiMjI3YjQ3OGQ3OTMwYWFjYzg5ZTI4NTIwYjBlMzBjZTQxOTdlZjQ2YTk5MDE0N2UyZDQ2ZjFlOGRmYTljOGQ1ZiIsInRhZyI6IiJ9",
+        "password": "eyJpdiI6Ik1ITEgvVUlsSkJPM2JqMHQrQmhsdUE9PSIsInZhbHVlIjoiRDllMFpBR2ticTFYc04wVGVFUW5mZz09IiwibWFjIjoiYmZmOWFmNWM1YjYxMzkzZjI4MDNiZDFjYjE1YzVlMjdlMDM1ZWE4MDdkYzAyYmI2OWRiZTMzNmNkZDg4ZWU5MiIsInRhZyI6IiJ9",
         "path": "inventario.txt",
         "pasv": true,
         "has_header": false,
