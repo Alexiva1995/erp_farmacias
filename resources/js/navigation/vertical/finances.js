@@ -65,6 +65,10 @@ export default [
         title: 'Cierre de caja user',
         to: 'finances-cash-closure-user',
       },
+      {
+        title: 'Estado de Resultados',
+        to: 'finances-income-statement',
+      },
     ],
   },
 ]

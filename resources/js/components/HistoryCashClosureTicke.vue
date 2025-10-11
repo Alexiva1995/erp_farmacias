@@ -13,8 +13,7 @@ const props = defineProps({
 });
 
 const logoSrc = computed(() => BASE64_LOGO_DATA);
-console.log(props.orderData);
-console.log(props.cashData);
+
 </script>
 <template>
   <div style="width: 100%">
@@ -81,7 +80,7 @@ console.log(props.cashData);
               </td>
               <td>
                 <p v-for="detail in order.details" :key="detail.id">
-                  {{ formatCurrency(parseFloat(detail.price), order.currency) }}
+                  {{ formatCurrency(parseFloat(detail.price), order.currency.toUpperCase()) }}
                 </p>
               </td>
             </tr>

@@ -184,7 +184,9 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productos = $this->product->calcularAOProducts($productos);
 
+
         $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
+
 
         $productos = $this->product->actualizarElSolicitadoConElAO($productos);
 

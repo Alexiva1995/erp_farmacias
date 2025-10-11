@@ -2,13 +2,11 @@
 
 namespace App\Exports;
 
-use App\Models\ExchangeRate;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithStartRow;
-use Illuminate\Support\Facades\Artisan;
 
 class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormulas
 {
@@ -20,7 +18,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly int $startRow,
         private readonly string $codSupplierCol,
         private readonly string $nameCol,
-        private readonly string $barcodeCol,
+        private readonly ?string $barcodeCol,
         private readonly ?string $qtyCol,
         private readonly ?float $currencyCol,
         private readonly ?string $costBsCol,
@@ -48,8 +46,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             $this->supplierId === "null" ||
             $this->startRow === "null" ||
             $this->codSupplierCol === "null" ||
-            $this->nameCol === "null" ||
-            $this->barcodeCol === "null"
+            $this->nameCol === "null"
         ) {
             throw new \Exception("Los campos no se encuentran definidos");
         }
@@ -83,7 +80,12 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
         $rows = $rawRows
             ->takeWhile(fn($row) => !empty(array_filter($row->toArray())))
-            ->map(function ($row, $index) use ($rows, $now, $currency, $toNumber) {
+            ->map(function ($row) use ($now, $currency, $toNumber) {
+                // Skip processing if $row is null or not an array/object
+                if (is_null($row) || (is_array($row) && empty($row)) || (is_object($row) && empty((array) $row))) {
+                    return null;
+                }
+
                 $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
                 $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));
                 $active_ingredient = trim((string) ($row[$this->colIndex($this->activeIngredientCol)] ?? ""));
@@ -119,10 +121,17 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     $bs = 0;
                 }
 
+                if ($name === null) {
+                    return null;
+                }
+
                 if ($expiration != null) {
-                    if (!\Datetime::createFromFormat("Y-m-d", $expiration)) {
-                        $expiration = \DateTime::createFromFormat("d/m/Y", $expiration)?->format("Y-m-d");
-                    }
+                    $date = \DateTime::createFromFormat("d/m/Y", $expiration);
+                    $expiration = $date !== false
+                        ? $date->format("Y-m-d")
+                        : (($date = \DateTime::createFromFormat("Y-m-d", $expiration)) !== false
+                            ? $date->format("Y-m-d")
+                            : null);
                 }
 
                 $data = [
@@ -146,6 +155,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
                 return $data;
             })
+            ->filter()
             ->values();
 
         $products = Product::with("laboratory")

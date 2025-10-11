@@ -123,11 +123,25 @@ class ProductServices implements Product
 
     public function removerProductosConPedidosAutomaticos(Collection $productos): Collection
     {
-        $productosFiltrados = $productos->filter(function ($producto) {
-            return (($producto->solicitar + $producto->totalQuantityInAutoOrder) < 0);
-        });
+        $productosFiltrados = collect();
+        $idsAhDescartar = [];
+        for ($index2 = 0; $index2 < $productos->count(); $index2++) {
+            $producto = $productos[$index2];
+            if (($producto->solicitar + $producto->totalQuantityInAutoOrder) == 0 && $producto->totalQuantityInAutoOrder > 0) {
+                $productosFiltrados->add($producto);
+                $idsAhDescartar[] = $producto->id;
+            }
+        }
+        // dump($idsAhDescartar);
+        // dump('------------------');
 
-        return $productosFiltrados->values();
+        $productos = $productos->filter(function ($prod) use ($idsAhDescartar) {
+            return !in_array($prod->id, $idsAhDescartar);
+        })->values();
+        // dump("despus de filtrar");
+        // dd($productos);
+
+        return $productos;
     }
 
     public function actualizarElSolicitadoConElAO(Collection $productos): Collection
