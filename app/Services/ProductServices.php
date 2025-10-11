@@ -94,22 +94,63 @@ class ProductServices implements Product
         return new AssistantReportProductExport($query);
     }
 
-    public function calcularAOProducts(ModelsProduct $producto): ModelsProduct
+    public function calcularAOProduct(ModelsProduct $producto): ModelsProduct
     {
 
         $total = 0;
         $productsSuppliers = $this->productSupplierRepository->consultarTodosLosProveedorProIdProducto($producto->id);
         for ($j = 0; $j < count($productsSuppliers); $j++) {
             # code...
-            $detalle = $this->autoOrderDetailsRepository->consultDetailByProductSupplierId($productsSuppliers[$j]->id);
-            if ($detalle) {
-                $total += $detalle->quantity;
+            $suma = $this->autoOrderDetailsRepository->consultDetailByProductSupplierId($productsSuppliers[$j]->id);
+            if ($suma) {
+                $total += $suma;
             }
         }
         $producto->totalQuantityInAutoOrder = $total;
 
 
         return $producto;
-        // return $this->productRepository->calcularAOProducts($productos);
+    }
+
+    public function calcularAOProducts(Collection $productos): Collection
+    {
+        $productosConPedidosAutomaticos = $productos->map(function ($producto) {
+            return $this->calcularAOProduct($producto);
+        });
+
+        return $productosConPedidosAutomaticos;
+    }
+
+    public function removerProductosConPedidosAutomaticos(Collection $productos): Collection
+    {
+        $productosFiltrados = collect();
+        $idsAhDescartar = [];
+        for ($index2 = 0; $index2 < $productos->count(); $index2++) {
+            $producto = $productos[$index2];
+            if (($producto->solicitar + $producto->totalQuantityInAutoOrder) == 0 && $producto->totalQuantityInAutoOrder > 0) {
+                $productosFiltrados->add($producto);
+                $idsAhDescartar[] = $producto->id;
+            }
+        }
+        // dump($idsAhDescartar);
+        // dump('------------------');
+
+        $productos = $productos->filter(function ($prod) use ($idsAhDescartar) {
+            return !in_array($prod->id, $idsAhDescartar);
+        })->values();
+        // dump("despus de filtrar");
+        // dd($productos);
+
+        return $productos;
+    }
+
+    public function actualizarElSolicitadoConElAO(Collection $productos): Collection
+    {
+        $productosActualizados = $productos->map(function ($producto) {
+            $producto->solicitar += $producto->totalQuantityInAutoOrder;
+            return $producto;
+        });
+
+        return $productosActualizados;
     }
 }

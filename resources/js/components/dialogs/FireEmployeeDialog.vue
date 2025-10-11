@@ -17,6 +17,8 @@ const percentage = ref(100);
 
 const fetchSettlement = async () => {
   if (!props.selectedEmployee?.id) return;
+  if (!props.modelValue) return;
+
   try {
     const { data } = await axios.get(
       `/rrhh/social-benefits/employees/${props.selectedEmployee.id}/settlement-data`
@@ -227,6 +229,27 @@ const closeDialog = () => {
               <td style="width: 80%" class="font-weight-bold">Total Final</td>
               <td class="font-weight-bold">
                 {{ displayAmount(settlement?.final_usd ?? 0) }} $
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 80%" class="font-weight-bold">
+                Fecha de renuncia
+              </td>
+              <td class="font-weight-bold">
+                {{
+                  (() => {
+                    const dateValue = settlement?.resignation_date
+                      ? new Date(settlement.resignation_date)
+                      : new Date();
+                    return isNaN(dateValue.getTime())
+                      ? "-"
+                      : Intl.DateTimeFormat("es-VE", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        }).format(dateValue);
+                  })()
+                }}
               </td>
             </tr>
           </tbody>

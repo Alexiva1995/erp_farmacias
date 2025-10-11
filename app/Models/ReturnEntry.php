@@ -14,6 +14,7 @@ class ReturnEntry extends Model
 
     protected $fillable = [
         'order_id',
+        'generated_by_id',
         'product_id',
         'quantity',
         'amount_refunded',

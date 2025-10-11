@@ -14,7 +14,7 @@ class ResignationRepository
      */
     public function storeResignation(array $data): Resignation
     {
-        // Validar que no existe renuncia para este empleado
+        // Validar que no existe renuncia activa para este empleado (excluyendo soft deletes)
         $existing = Resignation::where('employee_id', $data['employee_id'])->first();
         if ($existing) {
             throw new \Exception('Ya existe una renuncia para este empleado');
@@ -129,7 +129,9 @@ class ResignationRepository
      */
     public function getResignationByEmployeeId(int $employeeId): ?Resignation
     {
-        return Resignation::where('employee_id', $employeeId)->first();
+        $result = Resignation::where('employee_id', $employeeId)->first();
+
+        return $result;
     }
 
     /**
@@ -139,9 +141,20 @@ class ResignationRepository
     {
         $resignation = Resignation::find($id);
         if ($resignation) {
-            $resignation->update($data);
+            // Solo actualizar campos específicos, mantener request_date original
+            $updateData = [
+                'employee_position' => $data['employee_position'] ?? $resignation->employee_position,
+                'resignation_type' => $data['resignation_type'] ?? $resignation->resignation_type,
+                'effective_date' => $data['effective_date'] ?? $resignation->effective_date,
+                // No incluir request_date para mantener el valor original
+                // updated_at se actualiza automáticamente por Laravel
+            ];
+
+            $result = $resignation->update($updateData);
+
             return true;
         }
+
         return false;
     }
 

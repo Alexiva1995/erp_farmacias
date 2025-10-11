@@ -435,7 +435,6 @@ const updateTableOptionsOrdersCancelled = (options) => {
 const printOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
-    console.log(response);
     if (response.data && response.data.data && response.data.data.order) {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
@@ -553,7 +552,7 @@ const handleCloseViewModal = () => {
 
 const handleViewOrder = async (orderId) => {
   try {
-    const response = await axios.get(`/tpv/orders/${orderId}/print`); // Llama al endpoint de impresión
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
     if (response.data && response.data.data && response.data.data.order) {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();

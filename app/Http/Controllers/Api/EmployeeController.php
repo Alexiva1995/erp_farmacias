@@ -103,6 +103,7 @@ class EmployeeController extends Controller
         $result = $this->employeeServices->reset2FA($employee);
         return ApiResponse::success(['status' => $result]);
     }
+
     public function payments(Request $request)
     {
         $data = $request->all();

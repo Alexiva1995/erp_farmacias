@@ -12,10 +12,9 @@ use Illuminate\Support\Facades\DB;
 class ProductRepository
 {
 
-    private $subConsultaParaCalcularStockPorLotes = '(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1)';
+    private $subConsultaParaCalcularStockPorLotes = '(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id)';
 
     public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
     {
@@ -41,10 +40,9 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1) AS lote_quantity'),
+            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -217,10 +215,9 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1) AS lote_quantity'),
+            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -403,10 +400,9 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1) AS lote_quantity'),
+            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -592,10 +588,9 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1) AS lote_quantity'),
+            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -761,10 +756,9 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT quantity 
-                    FROM product_lots 
-                    WHERE product_id = products.id
-                    LIMIT 1) AS lote_quantity'),
+            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id) AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details

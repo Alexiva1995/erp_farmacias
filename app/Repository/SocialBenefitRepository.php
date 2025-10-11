@@ -95,7 +95,7 @@ class SocialBenefitRepository
   {
     $currency = round(ExchangeRate::where('currency_code', 'USD')
       ->whereDate('created_at', now()->today())
-      ->value('rate') ?? 0, 2);
+      ->value('rate') ?? 1, 2);
 
     $settlement = Employee::query()
       ->select([
@@ -194,6 +194,7 @@ class SocialBenefitRepository
       'total_deductions' => $totalDeductions,
       'total_deductions_usd' => $totalDeductionsUsd,
       'final_usd' => $finalUsd,
+      'resignation_date' => $employee->resignation?->effective_date,
     ];
   }
 

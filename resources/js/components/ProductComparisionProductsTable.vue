@@ -111,7 +111,7 @@ const headers = computed(() =>
             variant="outlined"
             density="compact"
             hide-details="auto"
-            style="width: 200px"
+            style="width: 80px"
             :error="!!quantityErrors[item.id]"
             :error-messages="quantityErrors[item.id]"
           />

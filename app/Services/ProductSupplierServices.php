@@ -98,6 +98,45 @@ class ProductSupplierServices implements ProductSupplier
         return $respuesta;
     }
 
+    public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array
+    {
+        $respuesta = [];
+        for ($index = 0; $index < count($products); $index++) {
+
+            $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
+            $products[$index]->ofertas = $ofertas;
+            $products[$index]->solicitar = ceil((int)$products[$index]->solicitar);
+
+            for ($index2 = 0; $index2 < count($ofertas); $index2++) {
+
+                $oferta = $ofertas[$index2];
+
+                // el el proveedor tienene stock disponible repone el producto
+                if ($oferta->quantity != null && $oferta->quantity > 0) {
+                    $suma = null;
+                    // formula dependiendo si el solicitar es positivo o negativo
+                    if ((int)$products[$index]->solicitar >= 0) {
+                        $suma = $ofertas[$index2]->quantity - (int)$products[$index]->solicitar;
+                    } else {
+                        $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
+                    }
+
+                    if ($suma < 0) {
+                        $products[$index]->solicitar = $suma;
+                        $reponer = $ofertas[$index2]->quantity;
+                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
+                    } else if ($suma >= 0) {
+                        $reponer = abs((int)$products[$index]->solicitar);
+                        $products[$index]->solicitar = 0;
+                        $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
+                        break;
+                    }
+                }
+            }
+        }
+        return $respuesta;
+    }
+
     public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, $repuesto): array
     {
         $data = [

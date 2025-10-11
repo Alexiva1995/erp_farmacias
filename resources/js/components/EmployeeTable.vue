@@ -1,4 +1,6 @@
 <script setup>
+import Swal from "sweetalert2";
+
 const props = defineProps({
   employees: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -24,6 +26,43 @@ const emit = defineEmits([
   "generate-resignation",
   "reset-2fa",
 ]);
+
+const confirmGenerateResignation = async (employee) => {
+  try {
+    const confirmed = await Swal.fire({
+      title: "¿Generar carta de renuncia?",
+      html: `
+        <div class="text-left">
+          <p><strong>Empleado:</strong> ${employee.name} ${
+        employee.last_name
+      }</p>
+          <p><strong>Identificación:</strong> ${employee.identification}</p>
+          <p><strong>Correo:</strong> ${employee.email}</p>
+          <p><strong>Estado:</strong> ${
+            employee.is_active ? "Activo" : "Inactivo"
+          }</p>
+        </div>
+        <div class="alert alert-info mt-3" style="background-color: transparent; border: 2px solid #17a2b8; padding: 10px; border-radius: 5px; color: #17a2b8;">
+          <strong>ℹ️ Información:</strong> Se abrirá un formulario para completar los datos de la carta de renuncia.
+        </div>
+        <p class="mt-3"><strong>¿Desea generar una carta de renuncia para este empleado?</strong></p>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#ff9800",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Sí, generar carta",
+      cancelButtonText: "Cancelar",
+      width: "600px",
+    });
+
+    if (confirmed.isConfirmed) {
+      emit("generate-resignation", employee);
+    }
+  } catch (error) {
+    console.error("Error in confirmation dialog:", error);
+  }
+};
 </script>
 <template>
   <VCard>
@@ -56,7 +95,7 @@ const emit = defineEmits([
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
-              @click="emit('generate-resignation', item)"
+              @click="confirmGenerateResignation(item)"
               color="warning"
             >
               <VIcon icon="tabler-file-text" />
