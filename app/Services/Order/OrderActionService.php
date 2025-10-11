@@ -268,7 +268,7 @@ class OrderActionService
                 $exemptAmount += $priceBs * $quantity;
             }
 
-            $totalAmountBs = $exemptAmount + $totalIva;
+            $totalAmountBs = $spe ? $exemptAmount + ($totalIva * 0.25) : $exemptAmount + $totalIva;
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
                 'order_id' => $order->id,

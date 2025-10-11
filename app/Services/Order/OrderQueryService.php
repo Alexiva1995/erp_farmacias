@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class OrderQueryService
 {
@@ -108,27 +109,27 @@ class OrderQueryService
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
-            
+
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-            
-            if ($isStrictSearch) {
-                $subQuery->where('name', 'like', "%{$searchTerm}%")
-                         ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
-                         ->orWhere('barcode', 'like', $searchTerm)
-                         ->orWhere('id', 'like', $searchTerm);
-            } else {
-                $words = explode(' ', $searchTerm);
-                foreach ($words as $word) {
-                    $subQuery->where(function ($wordQuery) use ($word) {
-                        $wordQuery->where('name', 'like', "%{$word}%")
-                                  ->orWhere('active_ingredient', 'like', "%{$word}%")
-                                  ->orWhereHas('laboratory', function ($labQuery) use ($word) {
-                                     $labQuery->where('name', 'like', "%{$word}%");
-                                 });
-                    });
+
+                if ($isStrictSearch) {
+                    $subQuery->where('name', 'like', "%{$searchTerm}%")
+                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                        ->orWhere('barcode', 'like', $searchTerm)
+                        ->orWhere('id', 'like', $searchTerm);
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $subQuery->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where('name', 'like', "%{$word}%")
+                                ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                    $labQuery->where('name', 'like', "%{$word}%");
+                                });
+                        });
+                    }
                 }
-            }
-        });
+            });
         }
 
         if (!empty($filters['laboratoryId'])) {
@@ -209,5 +210,123 @@ class OrderQueryService
         $this->applySortingProduct($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+    public function getDebitoFiscal(string $startDate, string $endDate): array
+    {
+        try {
+            // Consultar tabla fiscal_history para registros con iva_amount
+            $query = DB::table('fiscal_history')
+                ->whereNotNull('iva_amount')
+                ->where('iva_amount', '>', 0)
+                ->whereBetween('invoice_date', [$startDate, $endDate]);
+
+            $fiscalRecords = $query->get();
+
+            // Calcular totales
+            $totalIvaAmount = $fiscalRecords->sum('iva_amount');
+            $totalSpeAmount = $fiscalRecords->sum('spe_amount') ?? 0; // Si existe campo SPE
+
+            // El débito fiscal es la suma del IVA cobrado en ventas
+            $totalDebito = $totalIvaAmount + $totalSpeAmount;
+
+            Log::info('Cálculo débito fiscal:', [
+                'periodo' => [$startDate, $endDate],
+                'total_records' => $fiscalRecords->count(),
+                'total_iva_amount' => $totalIvaAmount,
+                'total_spe_amount' => $totalSpeAmount,
+                'total_debito' => $totalDebito
+            ]);
+
+            return [
+                'total_records' => $fiscalRecords->count(),
+                'total_iva_amount' => $totalIvaAmount,
+                'total_spe_amount' => $totalSpeAmount,
+                'total_debito' => $totalDebito,
+                'records' => $fiscalRecords
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error en getDebitoFiscal: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10): array
+    {
+        try {
+            // Query base para fiscal_history con IVA
+            $query = DB::table('fiscal_history')
+                ->whereNotNull('iva_amount')
+                ->where('iva_amount', '>', 0)
+                ->whereBetween('invoice_date', [$startDate, $endDate])
+                ->orderBy('invoice_date', 'desc')
+                ->orderBy('order_id', 'desc');
+
+            // Clonar query para el conteo total
+            $totalQuery = clone $query;
+            $totalRecords = $totalQuery->count();
+
+            // Aplicar paginación
+            $offset = ($page - 1) * $itemsPerPage;
+            $records = $query
+                ->skip($offset)
+                ->take($itemsPerPage)
+                ->get();
+
+            // Formatear los registros para el frontend
+            $formattedRecords = $records->map(function ($record) {
+                return [
+                    'id' => $record->id,
+                    'order_id' => $record->order_id,
+                    'invoice_number' => $record->invoice_number,
+                    'identification' => $record->identification,
+                    'business_name' => $record->business_name,
+                    'address' => $record->address,
+                    'exempt_amount' => (float) $record->exempt_amount,
+                    'iva_amount' => (float) $record->iva_amount,
+                    'total_amount' => (float) $record->total_amount,
+                    'invoice_date' => $record->invoice_date,
+                    'spe' => (bool) $record->spe,
+                    'created_at' => $record->created_at,
+                    'updated_at' => $record->updated_at
+                ];
+            });
+
+            // Calcular totales para la página actual
+            $pageTotals = [
+                'total_exempt' => $formattedRecords->sum('exempt_amount'),
+                'total_iva' => $formattedRecords->sum('iva_amount'),
+                'total_amount' => $formattedRecords->sum('total_amount')
+            ];
+
+            Log::info('Registros de fiscal history obtenidos:', [
+                'periodo' => [$startDate, $endDate],
+                'page' => $page,
+                'items_per_page' => $itemsPerPage,
+                'total_records' => $totalRecords,
+                'records_in_page' => $formattedRecords->count(),
+                'page_totals' => $pageTotals
+            ]);
+
+            return [
+                'data' => $formattedRecords->toArray(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $itemsPerPage,
+                    'total' => $totalRecords,
+                    'last_page' => ceil($totalRecords / $itemsPerPage),
+                    'from' => $offset + 1,
+                    'to' => min($offset + $itemsPerPage, $totalRecords)
+                ],
+                'totals' => $pageTotals,
+                'periodo' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error en getFiscalHistoryRecords: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }

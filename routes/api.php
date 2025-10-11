@@ -198,6 +198,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+        Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
+        Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);
     });
 
     // Rutas de Trazabilidad
@@ -291,8 +293,8 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Ruta de fiscal
-        Route::get("/history", [FiscalController::class, "index"]);
-        Route::get("/history/export", [FiscalController::class, "export"]);
+    Route::get("/history", [FiscalController::class, "index"]);
+    Route::get("/history/export", [FiscalController::class, "export"]);
 
     // Invoice
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
@@ -391,6 +393,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // pending payments
         Route::prefix("pending-payments")->group(function () {
+            Route::get('/credito-fiscal', [PendingPaymentsController::class, 'getCreditoFiscal']);
             Route::get("/", [PendingPaymentsController::class, "index"]);
             Route::get("/statistics", [PendingPaymentsController::class, "getStatistics"]);
             Route::get("/suppliers", [PendingPaymentsController::class, "getSuppliers"]);
@@ -398,6 +401,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/process-payment", [PendingPaymentsController::class, "processPayment"]);
             Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
             Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]);
+            Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
         });
 
         // payment history
@@ -434,7 +438,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
         });
-      
+
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
             Route::post("/create", [ExpensesController::class, "createExpense"]);
