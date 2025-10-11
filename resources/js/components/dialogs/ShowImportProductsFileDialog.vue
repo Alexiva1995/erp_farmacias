@@ -62,7 +62,9 @@ const submitForm = async () => {
     toast.info(
       `Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`
     );
-    await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form);
+    await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     start_row.value = 1;
     cod_supplier.value = "";
