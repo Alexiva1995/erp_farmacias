@@ -4,6 +4,7 @@
 
 
 const props= defineProps({
+  type_of_expense:{type:String, required: true, default: () => 'normal'},
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
   formData: {type: Object, default: () => {}},
@@ -152,12 +153,14 @@ function submitForm(){
           </VCol>
           <VCol cols="12" sm="6" md="6">
             <VSelect
+              v-if="type_of_expense == 'recurrente'"
               v-model="props.formData.recurrence"
               label="Recurrencia"
               :items="recurrencia"
               :error-messages="props.formError.recurrencia"
             />
-            <!-- <AppDateTimePicker
+            <AppDateTimePicker
+              v-if="type_of_expense == 'normal'"
               v-model="props.formData.expense_date"
               :error-messages="props.formError.expense_date"
               label="Fecha"
@@ -167,21 +170,27 @@ function submitForm(){
                 altFormat: 'Y-m-d',
                 dateFormat: 'Y-m-d',
               }"
-            /> -->
+            />
           </VCol>
         </VRow>
         <VRow>
-          <!-- <VCol cols="12" sm="12" md="12" lg="12">
+          <VCol
+            cols="12"
+            sm="12"
+            md="12"
+            lg="12"
+            v-if="type_of_expense == 'normal'"
+          >
             <VCheckbox v-model="props.formData.has_invoice">
               <template v-slot:label> Tiene Factura </template>
             </VCheckbox>
-          </VCol> -->
+          </VCol>
           <VCol cols="12" sm="12" md="12" lg="12">
             <VCheckbox v-model="props.formData.is_deductible">
               <template v-slot:label> Es Deducible </template>
             </VCheckbox>
           </VCol>
-          <!-- <VCol
+          <VCol
             cols="12"
             sm="12"
             md="12"
@@ -189,6 +198,7 @@ function submitForm(){
             v-if="props.formData.has_invoice == true"
           >
             <v-file-input
+              v-if="type_of_expense == 'normal'"
               v-model="props.formData.file_factura"
               :error-messages="props.formError.file_factura"
               accept="image/png, image/jpeg, image/jpg"
@@ -196,7 +206,7 @@ function submitForm(){
               label="Factura"
               variant="outlined"
             />
-          </VCol> -->
+          </VCol>
         </VRow>
       </VContainer>
       <VDivider />

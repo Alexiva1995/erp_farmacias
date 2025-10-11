@@ -39,7 +39,7 @@ class CreateExpenseRequest extends FormRequest
             "currency"               =>    "required|string|max:10",
             "has_invoice"            =>    "nullable|boolean:strict",
             "is_deductible"          =>    "nullable|boolean:strict",
-            // "expense_date"           =>    "required|date",
+            "expense_date"           =>    "required|date",
             "user_id"                =>    "required|numeric|exists:users,id",
             "count"                  =>    [
                 "required",
@@ -89,8 +89,8 @@ class CreateExpenseRequest extends FormRequest
             'is_deductible.boolean' => 'El campo deducible debe ser verdadero o falso.',
 
             // Reglas para 'expense_date'
-            // 'expense_date.required' => 'La fecha del gasto es obligatoria.',
-            // 'expense_date.date' => 'La fecha debe ser una fecha válida.',
+            'expense_date.required' => 'La fecha del gasto es obligatoria.',
+            'expense_date.date' => 'La fecha debe ser una fecha válida.',
 
             // Reglas para 'user_id'
             'user_id.required' => 'El usuario es obligatorio.',
@@ -122,9 +122,10 @@ class CreateExpenseRequest extends FormRequest
             "currency"                =>    $this->currency,
             "has_invoice"             =>    $this->has_invoice,
             "is_deductible"           =>    $this->is_deductible,
-            // "expense_date"            =>    $this->expense_date,
+            "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
+            "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
         ]);
     }
 }

@@ -81,6 +81,8 @@ function insertarDatosAlFormulario(datos){
   formulario.is_deductible=datos.is_deductible
   // formulario.expense_date=datos.expense_date
   formulario.count=datos.count
+  formulario.recurrence=datos.recurrence
+
 }
 
 function limpiarDatosFormulario(){
@@ -95,6 +97,8 @@ function limpiarDatosFormulario(){
   // formulario.expense_date=""
   formulario.count=""
   // formulario.file_factura=null
+  formulario.recurrence="Mensual"
+
 }
 
 function limpiarErroresFormulario(){
@@ -354,6 +358,7 @@ onMounted(async () => {
       @add="mostarModal"
     />
     <ExpenseFormDialoge
+      type_of_expense="recurrente"
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
       :form-data="formulario"
