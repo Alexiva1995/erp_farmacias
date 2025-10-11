@@ -178,6 +178,7 @@ onMounted(() => {
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
+  console.log(product);
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
@@ -187,6 +188,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     price: parseFloat(product.sale_price) || 0,
     price_bs: parseFloat(product.price_bs) || 0,
     price_cop: parseFloat(product.price_cop) || 0,
+    unitCost: parseFloat(product.unit_cost) || 0,
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
@@ -230,6 +232,17 @@ onMounted(async () => {
   } finally {
     isLoadingInitialOrder.value = false;
   }
+});
+
+
+const totalOrderCost = computed(() => {
+  let totalCost = 0;
+  orderItems.value.forEach((item) => {
+  const cost = item.unitCost || 0; 
+  const quantity = item.selectedQuantity || 0;
+  totalCost += cost * quantity;
+  });
+  return parseFloat(totalCost.toFixed(2));
 });
 
 const updateTableOptions = (options) => {
@@ -562,6 +575,8 @@ const updateOrderTotalsInBackend = async () => {
   try {
     const payload = {
       total_amount: total,
+      total_amount_usd: totalAmountUsd.value,
+      total_cost: totalOrderCost.value,
       currency: selectedDisplayCurrency.value,
     };
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
