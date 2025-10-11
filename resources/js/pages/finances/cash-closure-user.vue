@@ -100,8 +100,13 @@ const fetchClosingHistory = async () => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  } else {
+    sortBy.value = null;
+    orderBy.value = null;
+  }
 };
 
 const printCash = async (cash) => {
@@ -303,8 +308,8 @@ const fetchOrder = async () => {
   const params = {
     page: pageOrders.value,
     itemsPerPage: itemsPerPageOrders.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
+    sortBy: sortByOrders.value,
+    orderBy: orderByOrders.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -338,9 +343,11 @@ const handleViewOrder = async (orderId) => {
         price: parseFloat(detail.price),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
+      
       changeAmountForPrint.value = parseFloat(
         response.data.data.order.money_returns
       );
+
       amountForPrint.value = parseFloat(response.data.data.order.total_amount);
       creditAmountForPrint.value = response.data.data.hasCreditPayment
         ? parseFloat(response.data.data.order.total_amount)
@@ -384,6 +391,42 @@ const cancelarOrder = async (orderId) => {
     toast.error(errorMessage);
   }
 };
+
+
+let debounceTimerOrder;
+watch(
+  [
+    pageOrders,
+    itemsPerPageOrders,
+    sortByOrders,
+    orderByOrders,
+  ],
+  () => {
+    clearTimeout(debounceTimerOrder);
+    debounceTimerOrder = setTimeout(() => {
+      fetchOrder();
+    }, 300);
+  },
+  { deep: true }
+);
+
+
+let debounceTimer;
+watch(
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+  ],
+  () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetchClosingHistory();
+    }, 300);
+  },
+  { deep: true }
+);
 </script>
 
 <template>
