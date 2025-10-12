@@ -66,6 +66,13 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
         }
 
+        $respuestaConsulta->each(function ($items) {
+            $items = $this->product->calcularAOProduct($items);
+            $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+        });
+
+
+
         return ApiResponse::success($respuestaConsulta, "ok", 200);
     }
 
