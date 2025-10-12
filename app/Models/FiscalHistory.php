@@ -21,7 +21,8 @@ class FiscalHistory extends Model
         'total_amount',
         'invoice_date',
         'order_id',
-        'spe'
+        'spe',
+        'taxable_amount',
     ];
 
     public function user(): BelongsTo
