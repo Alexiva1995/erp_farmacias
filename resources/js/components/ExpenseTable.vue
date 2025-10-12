@@ -14,6 +14,10 @@ const props= defineProps({
 
 const emit= defineEmits(["edit",'delete','update:options'])
 
+function verImagne(item){
+  window.open(item.url_file,"_blank")
+}
+
 const headers = [
   { title: 'id', key: 'id', sortable: true,},
   { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
@@ -40,7 +44,7 @@ const headers = [
     return fecha;
   }},
   { title: 'Usuario', key: 'user.username', sortable: false },
-  // { title: 'Acciones', key: 'acciones', sortable: false },
+  { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 </script>
 <template>
@@ -65,6 +69,11 @@ const headers = [
           ><VIcon icon="tabler-trash"
         /></IconBtn>
       </template> -->
+      <template #item.acciones="{ item }">
+        <IconBtn @click="() => verImagne(item)" v-if="item.url_file"
+          ><VIcon icon="tabler-photo-search"
+        /></IconBtn>
+      </template>
     </VDataTableServer>
   </VCard>
 </template>

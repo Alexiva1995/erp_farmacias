@@ -12,9 +12,9 @@ const props= defineProps({
   // search: { type: String, required: true },
 })
 
-function verImagne(item){
-  window.open(item.url_file,"_blank")
-}
+// function verImagne(item){
+//   window.open(item.url_file,"_blank")
+// }
 
 const emit= defineEmits(["edit",'delete','update:options'])
 
@@ -44,7 +44,7 @@ const headers = [
     return fecha;
   }},
   { title: 'Usuario', key: 'user.username', sortable: false },
-  { title: 'Acciones', key: 'acciones', sortable: false },
+  // { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 </script>
 <template>
@@ -61,11 +61,11 @@ const headers = [
       <template #item.id="{ item }"
         ><span class="font-weight-medium">{{ item.id }}</span></template
       >
-      <template #item.acciones="{ item }">
+      <!-- <template #item.acciones="{ item }">
         <IconBtn @click="() => verImagne(item)" v-if="item.url_file"
           ><VIcon icon="tabler-photo-search"
         /></IconBtn>
-      </template>
+      </template> -->
     </VDataTableServer>
   </VCard>
 </template>

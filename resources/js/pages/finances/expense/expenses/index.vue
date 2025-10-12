@@ -1,4 +1,5 @@
 <script setup lang="js">
+import ExpenseFormDialoge from '@/components/dialogs/ExpenseFormDialoge.vue';
 import ExpenseTable from '@/components/ExpenseTable.vue';
 import FiltrosGastos from '@/components/FiltrosGastos.vue';
 import LoaderComponent from '@/components/LoaderComponent.vue';
@@ -24,6 +25,37 @@ const statuModule= reactive({
   loadingApp:false
 })
 
+const formulario= reactive({
+  id:null,
+  name:"",
+  category_id:"",
+  amount:"",
+  amount_usd:"",
+  currency:"USD",
+  has_invoice:false,
+  is_deductible:false,
+  expense_date:"",
+  user_id:"",
+  count:"",
+  file_factura:null,
+  // recurrence:"Mensual",
+})
+
+const formularioError= reactive({
+  id:"",
+  name:"",
+  category_id:"",
+  amount:"",
+  amount_usd:"",
+  currency:"",
+  has_invoice:"",
+  is_deductible:"",
+  expense_date:null,
+  count:"",
+  file_factura:null,
+  // recurrence:"",
+})
+
 const buscardor_filtro= ref("");// nombre, id
 const category_id_filtro= ref("");
 const currency= ref("");
@@ -37,6 +69,74 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
+
+function insertarDatosAlFormulario(datos){
+  formulario.id=datos.id
+  formulario.id=datos.name
+  formulario.category_id=datos.category_id
+  formulario.amount=datos.amount
+  formulario.amount_usd=datos.amount_usd
+  formulario.currency=datos.currency
+  formulario.has_invoice=datos.has_invoice
+  formulario.is_deductible=datos.is_deductible
+  formulario.expense_date=datos.expense_date
+  formulario.count=datos.count
+}
+
+function limpiarDatosFormulario(){
+  formulario.id=null
+  formulario.name=""
+  formulario.category_id=""
+  formulario.amount=""
+  formulario.amount_usd=""
+  formulario.currency="BS"
+  formulario.has_invoice=false
+  formulario.is_deductible=false
+  formulario.expense_date=""
+  formulario.count=""
+  formulario.file_factura=null
+}
+
+function limpiarErroresFormulario(){
+  formularioError.id=""
+  formularioError.name=""
+  formularioError.category_id=""
+  formularioError.amount=""
+  formularioError.amount_usd=""
+  formularioError.currency=""
+  formularioError.has_invoice=false
+  formularioError.is_deductible=false
+  formularioError.expense_date=""
+  formularioError.count=""
+  // formularioError.recurrence=""
+  formularioError.file_factura=""
+}
+
+function cargarErrores(errores){
+  formularioError.id=(errores.id)?errores.id.join(", "):""
+  formularioError.name=(errores.name)?errores.name.join(", "):""
+  formularioError.category_id=(errores.category_id)?errores.category_id.join(", "):""
+  formularioError.amount=(errores.amount)?errores.amount.join(", "):""
+  formularioError.amount_usd=(errores.amount_usd)?errores.amount_usd.join(", "):""
+  formularioError.currency=(errores.currency)?errores.currency.join(", "):""
+  formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
+  formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
+  formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
+  formularioError.count=(errores.count)?errores.count.join(", "):""
+  // formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
+  formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
+}
+
+function mostarModal(){
+  modal.statu=true
+  modal.titulo="Nuevo Gasto Recurrente"
+}
+
+function cerrarModal(payload){
+  modal.statu=payload
+  limpiarDatosFormulario()
+  limpiarErroresFormulario()
+}
 
 watch(
     [
@@ -54,6 +154,7 @@ watch(
     actualizarTabla()
   }
 )
+
 
 async function consultarCategorias(){
   let respuestaApi=await axios.get("/finances/expenses/category")
@@ -185,8 +286,51 @@ async function exportarExcel(formato){
 
 }
 
+async function enviar(payload){
+  try {
+    statuModule.loadingApp=true
+    let respuesApi=await axios.post("/finances/expenses/create-normal",payload)
+    if(respuesApi.status==200 && payload.has_invoice==false){
+      toast.success("El gasto se a guardado correctamente")
+      cerrarModal(false)
+      await actualizarTabla()
+      statuModule.loadingApp=false
+    }
+    console.log("respuesta api gasto => ",respuesApi.data.data)
+    let gasto=respuesApi.data.data
+
+    if(payload.has_invoice==true){
+      let data=new FormData()
+      data.append("id",gasto.id)
+      data.append("file_invoice",payload.file_factura)
+
+      let config= {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+
+      let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
+      if(respuesApiFileUploaa.status==200){
+        toast.success("El archivo de la factura a sido guardado correctamente")
+        cerrarModal(false)
+        await actualizarTabla()
+        statuModule.loadingApp=false
+      }
+    }
+
+  } catch (error) {
+    statuModule.loadingApp=false
+    toast.error("Error al crear el gasto")
+    console.log("error en el servidor => ",error)
+    let errores={...error.response.data.data.errors}
+    cargarErrores(errores)
+  }
+}
+
 onMounted(async () => {
   statuModule.loadingApp=true
+  formulario.user_id=1
   let categorias=await consultarCategorias()
   await actualizarTabla()
   statuModule.categorias=categorias
@@ -206,6 +350,18 @@ onMounted(async () => {
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
+      @add="mostarModal"
+    />
+    <ExpenseFormDialoge
+      type_of_expense="normal"
+      :modal-formulario="modal.statu"
+      :titulo="modal.titulo"
+      :form-data="formulario"
+      :form-error="formularioError"
+      :categorias="statuModule.categorias"
+      @modal-close="cerrarModal"
+      @clear-error-form="limpiarErroresFormulario"
+      @save="enviar"
     />
     <VCard title="Gastos">
       <VDivider />
