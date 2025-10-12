@@ -2,7 +2,7 @@
 import ShowSalaryFormDialog from "@/components/dialogs/ShowSalaryFormDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
@@ -17,7 +17,9 @@ const selectedEmployee = ref(null);
 const fetchPayslip = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get(`/finances/payslips/${payrollId}/data`);
+    const { data } = await axios.get(
+      `/finances/payslips/${payrollId}/data/${tab.value}`
+    );
     selectedPayslip.value = data.data;
   } catch {
     toast.error("Hubo un error al obtener la nómina");
@@ -128,7 +130,7 @@ const formatBs = (amount) => {
     new Intl.NumberFormat("es-VE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(newAmount) + " Bs."
+    }).format(newAmount) + (tab.value === "legal" ? " Bs." : " $")
   );
 };
 
@@ -215,7 +217,7 @@ const employeesWithVouchers = computed(() => {
       final = 0;
 
     if (isDecember) earn += toNum(r.earnings_voucher);
-    if (r.active_years - 1 >= 2) {
+    if (r.active_years >= 2) {
       vacBonus += toNum(r.vacation_bonus_voucher);
       vac += toNum(r.vacation_voucher);
     }
@@ -229,10 +231,10 @@ const employeesWithVouchers = computed(() => {
       tab.value === "legal" ? 0 : r.sales_growth_voucher,
       tab.value === "legal" ? 0 : r.assigned_products_voucher,
       tab.value !== "legal" && isDecember ? r.earnings_voucher : 0,
-      tab.value !== "legal" && r.active_years - 1 >= 2
+      tab.value !== "legal" && r.active_years >= 2
         ? r.vacation_bonus_voucher
         : 0,
-      tab.value !== "legal" && r.active_years - 1 >= 2 ? r.vacation_voucher : 0,
+      tab.value !== "legal" && r.active_years >= 2 ? r.vacation_voucher : 0,
       tab.value === "legal" ? 0 : r.family_support_voucher,
       r.salary_to_pay_voucher,
       r.social_security_voucher,
@@ -338,6 +340,8 @@ const handleShowEditFormDialog = (item) => {
   showDialog.value = true;
   selectedEmployee.value = item;
 };
+
+watch(tab, () => fetchPayslip());
 </script>
 
 <template>
@@ -346,7 +350,7 @@ const handleShowEditFormDialog = (item) => {
       <VCardText>
         <VRow class="ma-1">
           <h5 class="text-h5 font-weight-bold">
-            {{ selectedPayslip.name }} {{ selectedPayslip.date }}
+            {{ selectedPayslip?.name }} {{ selectedPayslip?.date }}
           </h5>
         </VRow>
       </VCardText>

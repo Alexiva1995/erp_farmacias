@@ -265,10 +265,10 @@ const getItemPriceByCurrency = (item, currency) => {
             </span>
         </div>
 
-         <div v-if="showChangeAmount" class="ticket-total d-flex justify-space-between align-center">
+         <div v-if="changeAmount" class="ticket-total d-flex justify-space-between align-center">
             <span class="font-weight-bold text-h6">DEVOLUCION:</span>
             <span class="text-end font-weight-bold text-h6">
-                {{ formatCurrency(changeAmount, selectedCurrency) }}
+                {{ formatCurrency(changeAmount, 'COP') }}
             </span>
         </div>
       </VCardText>

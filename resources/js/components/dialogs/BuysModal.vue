@@ -1,11 +1,10 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
-import axios from "@/plugins/axios";
 
 const chipColor = "primary";
 
@@ -52,10 +51,9 @@ const progressStages = [0, 100];
 const currentStageIndex = ref(0);
 
 const invoiceSwitch = ref(false);
-
 const changeAmountUSD = ref(0);
 
-const speSwitch = ref(false);
+// ELIMINAR: const speSwitch = ref(false); - Ya no se usa
 
 const ratesLoaded = ref(false);
 
@@ -227,16 +225,16 @@ const fetchExchangeRates = async () => {
   }
 };
 
+onMounted(() => {
+  fetchExchangeRates();
+});
+
+// ACTUALIZADO: Eliminar lógica SPE adicional, ahora se calcula automáticamente
 const roundedTotalAmountToPay = computed(() => {
   let baseAmount = props.totalAmount;
 
-  if (speSwitch.value) {
-    const totalIva = props.orderProducts.reduce((sum, product) => {
-      return sum + getIva(product, props.selectedCurrency);
-    }, 0);
-    const speAmount = totalIva * 0.75;
-    baseAmount += speAmount;
-  }
+  // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
+  // El descuento SPE ya está incluido en props.totalAmount
 
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(baseAmount);
@@ -244,16 +242,12 @@ const roundedTotalAmountToPay = computed(() => {
   return roundToTwoDecimalPlaces(baseAmount);
 });
 
+// ACTUALIZADO: Eliminar lógica SPE adicional
 const remainingAmount = computed(() => {
   let totalToPay = props.totalAmount;
 
-  if (speSwitch.value) {
-    const totalIva = props.orderProducts.reduce((sum, product) => {
-      return sum + getIva(product, props.selectedCurrency);
-    }, 0);
-    const speAmount = totalIva * 0.75;
-    totalToPay += speAmount;
-  }
+  // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
+  // El descuento SPE ya está incluido en props.totalAmount
 
   const rawDifference = totalToPay - totalPaidAmount.value;
 
@@ -370,13 +364,13 @@ const handleCompletePurchase = () => {
   if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
     let totalToPayCalculated = props.totalAmount;
 
-    if (speSwitch.value) {
+    /*if (speSwitch.value) {
       const totalIva = props.orderProducts.reduce((sum, product) => {
         return sum + getIva(product, props.selectedCurrency);
       }, 0);
       const speAmount = totalIva * 0.75;
       totalToPayCalculated += speAmount;
-    }
+    }*/
 
     if (props.selectedCurrency === "COP") {
       totalToPayCalculated = roundUpToNearestHundred(totalToPayCalculated);
@@ -385,21 +379,19 @@ const handleCompletePurchase = () => {
     }
 
     const usedCurrencies = payments.value
-        .filter(p => p.currency) 
-        .map(p => p.currency);
+      .filter((p) => p.currency)
+      .map((p) => p.currency);
 
-     const uniqueCurrencies = new Set(usedCurrencies);
-     const numberOfCurrencies = uniqueCurrencies.size;
+    const uniqueCurrencies = new Set(usedCurrencies);
+    const numberOfCurrencies = uniqueCurrencies.size;
 
-    console.log(numberOfCurrencies);
     let tolerance = 0;
 
-    if(numberOfCurrencies > 2 ){
+    if (numberOfCurrencies > 2) {
       tolerance = 0.6;
-    }else{
+    } else {
       tolerance = 0.01;
     }
-    console.log(tolerance);
 
     let finalRemainingAmount = remainingAmount.value;
 
@@ -409,7 +401,6 @@ const handleCompletePurchase = () => {
       );
       return;
     }
-
 
     if (Math.abs(finalRemainingAmount) < tolerance) {
       finalRemainingAmount = 0;
@@ -481,7 +472,7 @@ const handleCompletePurchase = () => {
       changeAmountInUSD.value,
       {
         invoice_switch: invoiceSwitch.value,
-        spe: speSwitch.value,
+        spe: props.orderData?.client?.is_spe || false, // ACTUALIZADO: Usar SPE del cliente
       }
     );
     dialogVisible.value = false;
@@ -489,6 +480,7 @@ const handleCompletePurchase = () => {
   }
 };
 
+// ACTUALIZADO: Eliminar speSwitch
 const resetProgress = () => {
   currentProgress.value = 0;
   currentStageIndex.value = 0;
@@ -503,7 +495,7 @@ const resetProgress = () => {
     },
   ];
   invoiceSwitch.value = false;
-  speSwitch.value = false;
+  // ELIMINAR: speSwitch.value = false;
 };
 
 const logoSrc = computed(() => {
@@ -538,6 +530,7 @@ const getProductPriceSinIva = (product, currency) => {
   return priceSinIva;
 };
 
+// ACTUALIZADO: Función para calcular precio con IVA ajustado para SPE
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -548,7 +541,14 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let priceWithIva = basePrice * (1 + taxRate);
+
+  // Calcular el IVA con descuento SPE si aplica
+  let effectiveTaxRate = taxRate;
+  if (props.orderData?.client?.is_spe) {
+    effectiveTaxRate = taxRate * 0.25; // Solo aplicar 25% del IVA para clientes SPE
+  }
+
+  let priceWithIva = basePrice * (1 + effectiveTaxRate);
 
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
@@ -558,6 +558,7 @@ const getProductPrice = (product, currency) => {
   return priceWithIva;
 };
 
+// ACTUALIZADO: Función para calcular IVA con descuento SPE
 const getIva = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -568,13 +569,47 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let Iva = basePrice * taxRate;
-  if (currency === "COP") {
-    Iva = roundUpToNearestHundred(Iva);
+
+  let ivaAmount = basePrice * taxRate * product.selectedQuantity;
+
+  // Si el cliente es SPE, aplicar solo el 25% del IVA (descuento del 75%)
+  if (props.orderData?.client?.is_spe) {
+    ivaAmount = ivaAmount * 0.25;
   }
-  Iva = Iva * product.selectedQuantity;
-  return Iva;
+
+  if (currency === "COP") {
+    ivaAmount = roundUpToNearestHundred(ivaAmount);
+  }
+
+  return ivaAmount;
 };
+
+// NUEVO: Computed para mostrar el ahorro SPE
+const totalSPESavings = computed(() => {
+  if (!props.orderData?.client?.is_spe) return 0;
+
+  let totalOriginalIVA = 0;
+  props.orderProducts.forEach((product) => {
+    const taxRate = product.taxRate || 0;
+    let basePrice = 0;
+    if (props.selectedCurrency === "BS") {
+      basePrice = product.price_bs || 0;
+    } else if (props.selectedCurrency === "COP") {
+      basePrice = product.price_cop || 0;
+    } else {
+      basePrice = product.price || 0;
+    }
+
+    let originalIva = basePrice * taxRate * product.selectedQuantity;
+    totalOriginalIVA += originalIva;
+  });
+
+  // El ahorro es el 75% del IVA original
+  const savings = totalOriginalIVA * 0.75;
+  return props.selectedCurrency === "COP"
+    ? roundUpToNearestHundred(savings)
+    : savings;
+});
 
 const hasCreditPayment = computed(() => {
   return payments.value.some((payment) => payment.method === "credit");
@@ -612,16 +647,12 @@ const totalCashPaidInUSDOrCOP = computed(() => {
   return roundToTwoDecimalPlaces(cashAmount);
 });
 
+// ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
   let totalToPay = props.totalAmount;
 
-  if (speSwitch.value) {
-    const totalIva = props.orderProducts.reduce((sum, product) => {
-      return sum + getIva(product, props.selectedCurrency);
-    }, 0);
-    const speAmount = totalIva * 0.75;
-    totalToPay += speAmount;
-  }
+  // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
+  // El descuento SPE ya está incluido en props.totalAmount
 
   if (props.selectedCurrency === "COP") {
     const totalToPayRounded = roundUpToNearestHundred(totalToPay);
@@ -755,7 +786,6 @@ const handleMethodChange = (payment, newMethod) => {
   payment.reference = null;
 };
 </script>
-
 <template>
   <VDialog v-model="dialogVisible">
     <VCard>
@@ -1023,7 +1053,109 @@ const handleMethodChange = (payment, newMethod) => {
               </VCol>
             </VRow>
           </div>
+        </div>
+        <VDivider />
 
+        <!-- Total a pagar -->
+        <div class="d-flex align-center flex-wrap justify-space-between">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            {{
+              formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
+            }}
+          </p>
+        </div>
+
+        <!-- NUEVA sección de información SPE mejorada -->
+        <div
+          v-if="props.orderData?.client?.is_spe"
+          class="bg-success-lighten-4 pa-3 rounded mb-3 mt-3"
+        >
+          <div
+            class="text-subtitle-2 font-weight-bold text-success-darken-2 mb-2"
+          >
+            <VIcon icon="tabler-discount-check" class="me-1" size="16" />
+            Cliente SPE - Descuento aplicado:
+          </div>
+
+          <div class="d-flex justify-space-between">
+            <span class="text-body-2">IVA Original (sin descuento):</span>
+            <span class="text-body-2 font-weight-medium text-disabled">
+              {{
+                formatCurrency(
+                  props.orderProducts.reduce((sum, product) => {
+                    const taxRate = product.taxRate || 0;
+                    let basePrice = 0;
+                    if (props.selectedCurrency === "BS") {
+                      basePrice = product.price_bs || 0;
+                    } else if (props.selectedCurrency === "COP") {
+                      basePrice = product.price_cop || 0;
+                    } else {
+                      basePrice = product.price || 0;
+                    }
+                    return sum + basePrice * taxRate * product.selectedQuantity;
+                  }, 0),
+                  props.selectedCurrency
+                )
+              }}
+            </span>
+          </div>
+
+          <div class="d-flex justify-space-between">
+            <span class="text-body-2 text-success-darken-2"
+              >Descuento SPE (75%):</span
+            >
+            <span class="text-body-2 font-weight-bold text-success-darken-2">
+              -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
+            </span>
+          </div>
+
+          <VDivider class="my-2" />
+
+          <div class="d-flex justify-space-between">
+            <span class="text-body-2 font-weight-medium"
+              >IVA Final a pagar:</span
+            >
+            <span class="text-body-2 font-weight-bold text-success-darken-2">
+              {{
+                formatCurrency(
+                  props.orderProducts.reduce((sum, product) => {
+                    return sum + getIva(product, props.selectedCurrency);
+                  }, 0),
+                  props.selectedCurrency
+                )
+              }}
+            </span>
+          </div>
+
+          <div class="text-caption text-success-darken-2 mt-2">
+            <VIcon icon="tabler-user-check" class="me-1" size="14" />
+            {{ props.orderData.client.name }}
+            {{ props.orderData.client.last_name }}
+            tiene descuento SPE del 75% en IVA
+          </div>
+        </div>
+
+        <!-- Monto devuelto -->
+        <div
+          v-if="showChangeAmount"
+          class="d-flex align-center flex-wrap justify-space-between"
+        >
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Devuelto:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            {{ formatCurrency(changeAmountInCOP, "COP") }}
+          </p>
+        </div>
+
+        <!-- Monto restante -->
+        <div
+          v-if="remainingAmount > 0"
+          class="d-flex align-center flex-wrap justify-space-between"
+        >
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
+            {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
+          </p>
           <VDivider />
           <div class="d-flex align-center flex-wrap justify-space-between">
             <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
@@ -1112,6 +1244,7 @@ const handleMethodChange = (payment, newMethod) => {
         </div>
       </VCardText>
 
+      <!-- Ticket de impresión (sin cambios mayores) -->
       <VCardText v-else-if="currentProgress === 100">
         <div class="d-flex justify-center">
           <div style="width: '50%'">
@@ -1150,6 +1283,11 @@ const handleMethodChange = (payment, newMethod) => {
               <span class="font-weight-bold text-h6">
                 {{ props.orderData.client.name }}
                 {{ props.orderData.client.last_name }}
+                <span
+                  v-if="props.orderData?.client?.is_spe"
+                  class="text-success"
+                  >(SPE)</span
+                >
               </span>
             </div>
 
@@ -1171,6 +1309,7 @@ const handleMethodChange = (payment, newMethod) => {
               </div>
             </div>
 
+            <!-- Lista de productos en el ticket -->
             <div>
               <VList class="card-list" density="compact" nav>
                 <VListItem
@@ -1182,9 +1321,15 @@ const handleMethodChange = (payment, newMethod) => {
                     <span>{{ product.selectedQuantity }} x</span>
                   </template>
 
-                  <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                    product.title
-                  }}</VListItemTitle>
+                  <VListItemTitle class="font-weight-medium me-4 mx-2">
+                    {{ product.title }}
+                    <span
+                      v-if="props.orderData?.client?.is_spe"
+                      class="text-success text-caption"
+                    >
+                      (SPE)
+                    </span>
+                  </VListItemTitle>
                   <VListItemSubtitle class="mx-2"
                     >{{ product.active_ingredient }}
                     {{ product.laboratory }}</VListItemSubtitle
@@ -1194,8 +1339,7 @@ const handleMethodChange = (payment, newMethod) => {
                     <div class="d-flex align-center">
                       <span class="text-body-1 me-2">{{
                         formatCurrency(
-                          getProductPrice(product, props.selectedCurrency) *
-                            product.selectedQuantity,
+                          getProductPrice(product, props.selectedCurrency),
                           props.selectedCurrency
                         )
                       }}</span>
@@ -1204,6 +1348,8 @@ const handleMethodChange = (payment, newMethod) => {
                 </VListItem>
               </VList>
             </div>
+
+            <!-- Totales en el ticket -->
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">
@@ -1213,6 +1359,19 @@ const handleMethodChange = (payment, newMethod) => {
                     props.selectedCurrency
                   )
                 }}
+              </p>
+            </div>
+
+            <!-- Mostrar ahorro SPE en el ticket -->
+            <div
+              v-if="props.orderData?.client?.is_spe"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="font-weight-bold text-h6 text-success">
+                Descuento SPE:
+              </p>
+              <p class="font-weight-bold text-h6 text-success">
+                -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
               </p>
             </div>
 
@@ -1230,6 +1389,7 @@ const handleMethodChange = (payment, newMethod) => {
                 </p>
               </div>
             </div>
+
             <div
               v-if="hasCreditPayment"
               class="d-flex flex-wrap justify-space-between"
@@ -1244,6 +1404,7 @@ const handleMethodChange = (payment, newMethod) => {
                 }}
               </p>
             </div>
+
             <div
               v-if="showChangeAmount"
               class="d-flex flex-wrap justify-space-between"
@@ -1260,6 +1421,8 @@ const handleMethodChange = (payment, newMethod) => {
           </div>
         </div>
       </VCardText>
+
+      <!-- Botones del modal -->
       <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
         <VBtn
           color="secondary"
@@ -1281,6 +1444,7 @@ const handleMethodChange = (payment, newMethod) => {
     </VCard>
   </VDialog>
 </template>
+
 <style scoped>
 .v-table__wrapper > table > tbody > tr > td {
   border-bottom: none !important;

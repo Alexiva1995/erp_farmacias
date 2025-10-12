@@ -62,7 +62,6 @@ class PendingPaymentsController extends Controller
             END')
                 ->orderBy('payment_date', 'asc');
 
-            // Aplicar filtros si existen
             if ($request->filled('supplier_id')) {
                 $query->where('supplier_id', $request->supplier_id);
             }
@@ -87,6 +86,21 @@ class PendingPaymentsController extends Controller
 
             $invoices = $query->get();
 
+            Log::info('Facturas encontradas en PendingPayments:', [
+                'total_facturas' => $invoices->count(),
+                'facturas' => $invoices->map(function ($invoice) {
+                    return [
+                        'id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'supplier_id' => $invoice->supplier_id,
+                        'supplier_name' => $invoice->supplier->name ?? 'N/A',
+                        'status' => $invoice->status,
+                        'payment_date' => $invoice->payment_date,
+                        'currency' => $invoice->currency,
+                        'total_amount' => $invoice->total_amount
+                    ];
+                })
+            ]);
 
             // Agregar total_usd calculado dinámicamente a cada factura
             $invoices->transform(function ($invoice) {
@@ -94,7 +108,6 @@ class PendingPaymentsController extends Controller
                 return $invoice;
             });
 
-            // Agrupar por proveedor y fecha de pago
             $groupedInvoices = $invoices->groupBy(function ($invoice) {
                 return $invoice->supplier_id . '_' . $invoice->payment_date;
             })->map(function ($group) {
@@ -909,15 +922,153 @@ class PendingPaymentsController extends Controller
     {
         $normalized = strtoupper(trim($currency));
 
-        // Mapeo de códigos inconsistentes a códigos estándar
         $currencyMap = [
-            'BS' => 'BS',   // Bolívares venezolanos
-            'Bs' => 'BS',   // Bolívares venezolanos (minúscula)
-            'VES' => 'BS',  // Mapear VES a BS (como está en la BD)
-            'USD' => 'USD', // Dólares americanos
-            'COP' => 'COP', // Pesos colombianos
+            'BS' => 'BS',
+            'Bs' => 'BS',
+            'VES' => 'BS',
+            'USD' => 'USD',
+            'COP' => 'COP',
         ];
 
         return $currencyMap[$normalized] ?? $normalized;
+    }
+    public function getCreditoFiscal(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date'
+            ]);
+
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+
+            // CRÉDITO FISCAL: Gastos con IVA (campo iva = 1)
+            $expensesWithIva = Expense::where('iva', 1)
+                ->whereBetween('expense_date', [$startDate, $endDate])
+                ->get();
+
+            // Calcular 16% del amount_usd para cada gasto con IVA
+            $creditoFiscal = 0;
+            foreach ($expensesWithIva as $expense) {
+                $creditoFiscal += $expense->amount_usd * 0.16;
+            }
+
+            return ApiResponse::success([
+                'periodo' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ],
+                'credito_fiscal' => round($creditoFiscal, 2),
+                'detalle_credito' => [
+                    'total_expenses_with_iva' => $expensesWithIva->count(),
+                    'total_amount_expenses' => $expensesWithIva->sum('amount_usd'),
+                    'iva_calculated' => round($creditoFiscal, 2)
+                ]
+            ], 'Crédito fiscal obtenido exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al calcular crédito fiscal: ' . $e->getMessage());
+            return ApiResponse::error('Error al calcular crédito fiscal: ' . $e->getMessage(), 500);
+        }
+    }
+    public function getExpensesHistory(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date',
+                'page' => 'integer|min:1',
+                'itemsPerPage' => 'integer|min:1|max:100'
+            ]);
+
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+            $page = $request->page ?? 1;
+            $itemsPerPage = $request->itemsPerPage ?? 10;
+
+            // Query para gastos con IVA
+            $query = Expense::with(['category'])
+                ->where('iva', 1)
+                ->whereBetween('expense_date', [$startDate, $endDate])
+                ->orderBy('expense_date', 'desc')
+                ->orderBy('id', 'desc');
+
+            // Clonar query para el conteo total
+            $totalQuery = clone $query;
+            $totalRecords = $totalQuery->count();
+
+            // Aplicar paginación
+            $offset = ($page - 1) * $itemsPerPage;
+            $records = $query
+                ->skip($offset)
+                ->take($itemsPerPage)
+                ->get();
+
+            // Formatear los registros para el frontend
+            $formattedRecords = $records->map(function ($expense) {
+                // Calcular el IVA (16% del amount_usd)
+                $ivaAmount = $expense->amount_usd * 0.16;
+
+                return [
+                    'id' => $expense->id,
+                    'name' => $expense->name,
+                    'category_name' => $expense->category->name ?? 'Sin categoría',
+                    'amount_usd' => (float) $expense->amount_usd,
+                    'currency' => $expense->currency,
+                    'expense_date' => $expense->expense_date,
+                    'is_deductible' => (bool) $expense->is_deductible,
+                    'has_invoice' => (bool) $expense->has_invoice,
+                    'iva_amount' => round($ivaAmount, 2),
+                    'exempt_amount' => 0, // Los gastos generalmente no tienen exención
+
+                    // Campos para la tabla (algunos pueden ser null)
+                    'supplier_name' => $expense->supplier_name ?? $expense->name,
+                    'supplier_rif' => $expense->supplier_rif ?? null,
+                    'supplier_business_name' => $expense->supplier_business_name ?? $expense->name,
+                    'invoice_number' => $expense->invoice_number ?? 'N/A',
+
+                    'created_at' => $expense->created_at,
+                    'updated_at' => $expense->updated_at
+                ];
+            });
+
+            // Calcular totales para la página actual
+            $pageTotals = [
+                'total_amount' => $formattedRecords->sum('amount_usd'),
+                'total_iva' => $formattedRecords->sum('iva_amount'),
+                'total_expenses' => $formattedRecords->count()
+            ];
+
+            Log::info('Registros de gastos con IVA obtenidos:', [
+                'periodo' => [$startDate, $endDate],
+                'page' => $page,
+                'items_per_page' => $itemsPerPage,
+                'total_records' => $totalRecords,
+                'records_in_page' => $formattedRecords->count(),
+                'page_totals' => $pageTotals
+            ]);
+
+            return ApiResponse::success([
+                'data' => $formattedRecords->toArray(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $itemsPerPage,
+                    'total' => $totalRecords,
+                    'last_page' => ceil($totalRecords / $itemsPerPage),
+                    'from' => $offset + 1,
+                    'to' => min($offset + $itemsPerPage, $totalRecords)
+                ],
+                'totals' => $pageTotals,
+                'periodo' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ], 'Registros de gastos con IVA obtenidos exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener registros de gastos: ' . $e->getMessage());
+            return ApiResponse::error('Error al obtener registros de gastos: ' . $e->getMessage(), 500);
+        }
     }
 }
