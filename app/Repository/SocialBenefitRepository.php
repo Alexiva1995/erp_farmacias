@@ -171,6 +171,7 @@ class SocialBenefitRepository
     $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
     $totalDeductionsUsd = round($totalDeductions / $currency, 2);
     $finalUsd = round($totalSettlementUsd - $totalDeductionsUsd, 2);
+    $startDate = $employee->created_at->format('d/m/Y');
 
     return [
       'amount' => $amount,
@@ -195,6 +196,7 @@ class SocialBenefitRepository
       'total_deductions_usd' => $totalDeductionsUsd,
       'final_usd' => $finalUsd,
       'resignation_date' => $employee->resignation?->effective_date,
+      'starting_date' => $startDate,
     ];
   }
 
