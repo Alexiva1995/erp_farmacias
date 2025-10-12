@@ -27,6 +27,7 @@ const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
+const type_of_expense= "normal";
 const status= ["Pending"];
 
 const loading = ref(false)
@@ -73,6 +74,7 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    type_of_expense:type_of_expense,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -114,7 +116,8 @@ async function generaPdf(){
       currency:currency.value,
       category_id_filtro:category_id_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      type_of_expense:type_of_expense,
   }
   let respuestaApi=await axios.post(`/finances/expenses`,DATA)
   if(respuestaApi.status!=200){
@@ -137,7 +140,8 @@ async function exportarExcel(formato){
         currency:currency.value,
         category_id_filtro:category_id_filtro.value,
         fechaDesde_filtro:fechaDesde_filtro.value,
-        fechaHasta_filtro:fechaHasta_filtro.value
+        fechaHasta_filtro:fechaHasta_filtro.value,
+        type_of_expense:type_of_expense,
     }
 
     let respuestaApi = await axios.post(
