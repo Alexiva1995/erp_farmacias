@@ -582,7 +582,8 @@ class SupplierConnectionService
     public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): array
     {
         $supplierId = $connection->supplier_id;
-        $config = config("suppliers.{$supplierId}");
+        //$config = config("suppliers.{$supplierId}");
+        $config = require app_path("SupplierConfigs/{$supplierId}.php");
 
         if (!isset($config[$endpoint])) {
             throw new \Exception("No se encontró configuración para {$endpoint} en proveedor {$supplierId}");
