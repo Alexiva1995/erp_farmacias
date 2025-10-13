@@ -473,6 +473,7 @@ class OrderActionService
             $cop_in_usd = $current_cash->total_cop_in_usd;
             $bs_in_usd = $current_cash->total_bs_in_usd;
             $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit + $cop_in_usd + $bs_in_usd;
+            $current_cash->closing_date =  Carbon::now();
             $current_cash->update();
 
 
