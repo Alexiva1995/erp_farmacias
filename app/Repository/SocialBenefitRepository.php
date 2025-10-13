@@ -119,7 +119,7 @@ class SocialBenefitRepository
       ->where('employees.id', $employee->id)
       ->where('sc.name', 'Salario Base')
       ->groupBy(['employees.id', 'employees.created_at'])
-      ->orderByDesc('pd.created_at')
+      ->orderByDesc(DB::raw('MAX(pd.created_at)'))
       ->limit(6)
       ->first();
 
