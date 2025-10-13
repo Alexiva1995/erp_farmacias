@@ -101,17 +101,17 @@ const closeDialog = () => {
         <VTable density="comfortable">
           <thead>
             <tr>
-              <td style="width: 80%" class="font-weight-bold">
+              <td style="width: 70%" class="font-weight-bold">
                 Fecha de inicio
               </td>
               <td></td>
               <td class="font-weight-bold">
-                {{ settlement.starting_date }}
+                {{ settlement?.starting_date }}
               </td>
             </tr>
 
             <tr>
-              <th style="width: 70%" class="text-start font-weight-bold">
+              <th style="width: 60%" class="text-start font-weight-bold">
                 Liquidación
               </th>
               <th class="font-weight-bold">Días</th>
