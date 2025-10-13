@@ -292,18 +292,18 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
 
-    Route::prefix("expenses")->group(function () {
-        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create", [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
-        Route::prefix("category")->group(function () {
-            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
-        });
-    });
+    // Route::prefix("expenses")->group(function () {
+    //     Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+    //     Route::post("/create", [ExpensesController::class, "createExpense"]);
+    //     Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+    //     Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+    //     Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+    //     Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+    //     Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+    //     Route::prefix("category")->group(function () {
+    //         Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+    //     });
+    // });
 
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
@@ -431,7 +431,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -454,7 +454,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-            Route::post("/create", [ExpensesController::class, "createExpense"]);
+            Route::post("/create-normal", [ExpensesController::class, "createExpense"]);
+            Route::post("/create-recurrence", [ExpensesController::class, "createExpenseRecurrente"]);
             Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
             Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
             Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);

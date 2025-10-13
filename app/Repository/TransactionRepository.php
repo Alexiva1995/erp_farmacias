@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Data\CreateTransactionData;
 use App\Models\Transaction;
 use App\TransactionType;
 
@@ -232,5 +233,21 @@ class TransactionRepository
       'COP' => $results->get('COP', 0.0),
       'BS' => $results->get('BS', 0.0),
     ];
+  }
+
+  public function create(CreateTransactionData $data): ?Transaction
+  {
+    $record = new Transaction();
+
+    $record->user_id = $data->user_id;
+    $record->category_id = $data->category_id;
+    $record->description = $data->description;
+    $record->currency = $data->currency;
+    $record->amount = $data->amount;
+    $record->movement_type = $data->movement_type;
+    $record->transaction_date = $data->transaction_date;
+
+    $record->save();
+    return $record;
   }
 }
