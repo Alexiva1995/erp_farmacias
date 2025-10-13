@@ -364,13 +364,13 @@ const handleCompletePurchase = () => {
   if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
     let totalToPayCalculated = props.totalAmount;
 
-    if (speSwitch.value) {
+    /*if (speSwitch.value) {
       const totalIva = props.orderProducts.reduce((sum, product) => {
         return sum + getIva(product, props.selectedCurrency);
       }, 0);
       const speAmount = totalIva * 0.75;
       totalToPayCalculated += speAmount;
-    }
+    }*/
 
     if (props.selectedCurrency === "COP") {
       totalToPayCalculated = roundUpToNearestHundred(totalToPayCalculated);
@@ -385,7 +385,6 @@ const handleCompletePurchase = () => {
     const uniqueCurrencies = new Set(usedCurrencies);
     const numberOfCurrencies = uniqueCurrencies.size;
 
-    console.log(numberOfCurrencies);
     let tolerance = 0;
 
     if (numberOfCurrencies > 2) {
@@ -393,7 +392,6 @@ const handleCompletePurchase = () => {
     } else {
       tolerance = 0.01;
     }
-    console.log(tolerance);
 
     let finalRemainingAmount = remainingAmount.value;
 
