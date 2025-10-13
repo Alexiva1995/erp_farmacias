@@ -106,7 +106,7 @@ const closeDialog = () => {
               </td>
               <td></td>
               <td class="font-weight-bold">
-                {{ settlement.starting_date }}
+                {{ settlement?.starting_date }}
               </td>
             </tr>
 
