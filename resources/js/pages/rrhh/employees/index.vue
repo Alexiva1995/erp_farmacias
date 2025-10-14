@@ -101,14 +101,16 @@ const fetchCurrency = async () => {
 onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
 const handleGenerateResignation = async (employee) => {
+
   try {
     // Verificar si ya existe una renuncia para este empleado
-    const url = `/rrhh/resignations/employee/${employee.id}/edit`;
+    const url = `/api/rrhh/resignations/employee/${employee.id}/edit`;
 
     const response = await axios.get(url);
 
     if (response.data.success && response.data.data) {
       // Ya existe una renuncia, abrir en modo edición
+
       selectedEmployeeForResignation.value = employee;
       existingResignationData.value = response.data.data;
       isEditingResignation.value = true;
@@ -119,19 +121,23 @@ const handleGenerateResignation = async (employee) => {
       );
     } else {
       // No existe renuncia, crear nueva
+
       selectedEmployeeForResignation.value = employee;
       existingResignationData.value = null;
       isEditingResignation.value = false;
       showResignationDialog.value = true;
     }
   } catch (error) {
+
     // Si hay error (probablemente 404), significa que no existe renuncia
     if (error.response?.status === 404) {
+
       selectedEmployeeForResignation.value = employee;
       existingResignationData.value = null;
       isEditingResignation.value = false;
       showResignationDialog.value = true;
     } else {
+
       toast.error("Error al verificar renuncias existentes");
     }
   }
