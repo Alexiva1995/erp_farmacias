@@ -39,6 +39,10 @@ const impuestoISLR = computed(() => {
   return impuesto;
 });
 
+const impuestoISLREnBolivares = computed(() => {
+  return impuestoISLR.value * unidadesTributarias.value;
+});
+
 const tramoISLR = computed(() => {
   if (unidadesTributarias.value === 0)
     return { tramo: "N/A", tasa: 0, ajuste: 0 };
@@ -330,15 +334,18 @@ onMounted(() => {
               class="mb-4"
             />
             <div class="text-h2 font-weight-bold text-warning mb-2">
-              {{ formatCurrency(impuestoISLR) }}
+              {{ impuestoISLR.toFixed(2) }} UT
             </div>
+            <p class="text-body-2 text-medium-emphasis mb-3">
+              {{ formatCurrency(impuestoISLREnBolivares) }}
+            </p>
             <p class="text-body-1 text-medium-emphasis">
               {{ tramoISLR.tramo }}
             </p>
             <VChip color="warning" variant="outlined" size="small" class="mt-3">
               {{ tramoISLR.tasa }}%
               <span v-if="tramoISLR.ajuste > 0">
-                - {{ tramoISLR.ajuste }}
+                - {{ tramoISLR.ajuste }} UT
               </span>
             </VChip>
           </VCardText>
