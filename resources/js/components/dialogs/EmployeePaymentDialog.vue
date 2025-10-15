@@ -24,23 +24,23 @@ const options = computed(() => {
     {
       title: "Vacaciones",
       value: "vacation_voucher",
-      props: {
-        disabled: lessThanYear,
-      },
+      // props: {
+      //   disabled: lessThanYear,
+      // },
     },
     {
       title: "Bono Vacacional",
       value: "vacation_bonus_voucher",
-      props: {
-        disabled: lessThanYear,
-      },
+      // props: {
+      //   disabled: lessThanYear,
+      // },
     },
     {
       title: "Utilidades",
       value: "earnings_voucher",
-      props: {
-        disabled: notDecemberFifthteen,
-      },
+      // props: {
+      //   disabled: notDecemberFifthteen,
+      // },
     },
   ];
 });

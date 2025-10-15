@@ -10,7 +10,7 @@ const props = defineProps({
   selectedEmployee: { type: Object, default: null },
 });
 
-const emit = defineEmits(["update:modelValue", "refresh-table"]);
+const emit = defineEmits(["update:modelValue", "refresh-table", "close"]);
 
 const step = ref("employee");
 const settlement = ref(null);
@@ -101,7 +101,7 @@ const submitForm = async () => {
 };
 
 const closeDialog = () => {
-  emit("update:modelValue", false);
+  emit("close");
 };
 </script>
 

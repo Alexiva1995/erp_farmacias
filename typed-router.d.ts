@@ -60,6 +60,7 @@ declare module 'vue-router/auto-routes' {
     'invoice-invoices': RouteRecordInfo<'invoice-invoices', '/invoice/invoices', Record<never, never>, Record<never, never>>,
     'invoice-register': RouteRecordInfo<'invoice-register', '/invoice/register', Record<never, never>, Record<never, never>>,
     'islr-general': RouteRecordInfo<'islr-general', '/islr/general', Record<never, never>, Record<never, never>>,
+    'iva-general': RouteRecordInfo<'iva-general', '/iva/general', Record<never, never>, Record<never, never>>,
     'loans-list': RouteRecordInfo<'loans-list', '/loans/list', Record<never, never>, Record<never, never>>,
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,

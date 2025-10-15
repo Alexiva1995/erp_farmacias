@@ -1,17 +1,13 @@
 <?php
 
-
 namespace App\Data;
 
-use DateTime;
-use Spatie\LaravelData\Attributes\WithCast;
-use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
-use Spatie\LaravelData\Data;
 
-class CreateExpenseData extends Data
+class EditExpenseRecurrenceData extends CreateExpenseData
 {
 
     public function __construct(
+        public int          $id,
         public string       $name,
         public int          $category_id,
         public float        $amount,
@@ -19,12 +15,12 @@ class CreateExpenseData extends Data
         public string       $currency,
         public bool|null    $has_invoice,
         public bool|null    $is_deductible,
-        #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d')]
-        public DateTime     $expense_date,
+        // public DateTime $expense_date,
         public int          $user_id,
         public string       $count,
-        public ?string      $status,
         public string       $type_of_expense,
-
+        public string       $recurrence,
+        public ?string      $next_expense_date = null,
+        public ?string      $status,
     ) {}
 }

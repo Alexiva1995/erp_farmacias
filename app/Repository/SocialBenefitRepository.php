@@ -116,7 +116,7 @@ class SocialBenefitRepository
       ->first();
 
     $amount = round((float) $settlement?->amount ?? 0, 2);
-    $activeYears = (int) $settlement?->active_years ?? 0;
+    $activeYears = (int) $settlement?->active_years ?? 1;
     $dailyWage = $amount === 0 ? 0 : round($amount / 30);
 
     $sub = DB::table('employees')
@@ -173,6 +173,7 @@ class SocialBenefitRepository
     $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
     $totalDeductionsUsd = round($totalDeductions / $currency, 2);
     $finalUsd = round($totalSettlementUsd - $totalDeductionsUsd, 2);
+    $startDate = $employee->created_at->format('d/m/Y');
 
     return [
       'amount' => $amount,
@@ -197,6 +198,7 @@ class SocialBenefitRepository
       'total_deductions_usd' => $totalDeductionsUsd,
       'final_usd' => $finalUsd,
       'resignation_date' => $employee->resignation?->effective_date,
+      'starting_date' => $startDate,
     ];
   }
 

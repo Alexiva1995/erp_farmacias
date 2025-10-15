@@ -17,5 +17,7 @@ class CreateClientData extends Data
         public string $phone,
         public string $address,
         public ?string $company_id,
-    ) {}
+        public ?bool $is_spe,
+    ) {
+    }
 }
