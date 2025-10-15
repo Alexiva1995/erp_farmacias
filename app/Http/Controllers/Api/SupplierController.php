@@ -17,6 +17,7 @@ use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -294,15 +295,37 @@ class SupplierController extends Controller
         $userId = auth()->id() ?? 1;
         \Log::info('Supplier Controller', ['Before validation', $request->all()]);
 
-        $validated = $request->validated();
+        try {
+            // This will throw ValidationException if invalid
+            $validated = $request->validated();
+        } catch (ValidationException $e) {
+            \Log::error('Supplier Controller Validation failed in importData', [
+                'errors' => $e->errors(),
+                'input' => $request->all(),
+                'supplier_id' => $supplier->id,
+                'user_id' => $userId,
+            ]);
+
+            // Optionally re-throw or return custom response
+            throw $e; // Let Laravel handle the 422 response
+        }
+
         \Log::info('Supplier Controller', ['File', $validated['file']]);
         unset($validated["file"]);
 
-        \Log::info('Supplier Controller', ['After validation', $request->validated()]);
+        try {
+            $path = $request->file("file")->store("temp", ["disk" => "local"]);
+            \Log::info('Supplier Controller', ['File stored at', $path]);
+        } catch (\Exception $e) {
+            \Log::error('File storage failed in importData', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'supplier_id' => $supplier->id,
+                'user_id' => $userId,
+            ]);
 
-        $path = $request->file("file")->store("temp", ["disk" => "local"]);
-
-        \Log::info('Supplier Controller', ['File stored at', $path]);
+            return response()->json(['error' => 'Failed to store file'], 500);
+        }
 
         ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
 
