@@ -488,6 +488,19 @@ class SupplierConnectionService
                         continue; // ya existe, saltar
                     }
 
+                    if(in_array($connection->supplier_id, [15])) {
+                        $totalUSD = floatval($header["total_usd"] ?? 0);
+                        $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $header["total_amount"] = $totalUSD * $exchangeRate;
+
+                        if(isset($header["tax_amount"])){
+                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                            $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                        } else 
+                            $header["exempt_amount"] = $header["total_amount"];
+                        $header["status_payment"] = 0;
+                    }
+
                     $invoices = [
                         "header" => $header,
                         "lines" => $bufferLines,
@@ -644,4 +657,3 @@ class SupplierConnectionService
         return implode(';', $out);
     }
 }
-
