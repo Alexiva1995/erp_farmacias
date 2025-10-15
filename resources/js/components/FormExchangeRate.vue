@@ -71,7 +71,7 @@ const updateBCVDollar = async () => {
           
             
 
-            <VRow no-gutters>
+            <!--VRow no-gutters>
               <label class="text-sm">Dolar BCV <VChip :color="dateColorDollar">{{ dateUpdateDollar }}</VChip></label>
               <VCol cols="10">
 
@@ -89,7 +89,7 @@ const updateBCVDollar = async () => {
                   Actualizar
                 </VBtn>
               </VCol>
-            </VRow>
+            </VRow-->
         
             
 
@@ -98,23 +98,23 @@ const updateBCVDollar = async () => {
 
             <VRow no-gutters>
 
-              <VCol cols="6" class="mb-1" style="padding-top:.1em">
-                <label class="text-sm ml-2">Bolivares</label>
+              <VCol cols="6" class="mb-1">
+                <label class="text-sm ml-2">Dolar BCV <VChip :color="dateColorDollar">{{ dateUpdateDollar }}</VChip></label>
               </VCol>
 
               <VCol cols="6" class="mb-1">
                 <label class="text-sm ml-2">COP <VChip :color="dateColorPesos">{{ dateUpdatePesos }}</VChip></label>
               </VCol>
 
-              <VCol cols="6">
+              <VCol cols="4">
                 
                 
                 <VTextField
-                  id="bolivares"
-                  v-model="props.bolivares"
-                  :placeholder="props.dollar"
+                  id="dollar"
+                  v-model="props.dollar"
+                  placeholder="$"
                   persistent-placeholder
-                  class="mb-2 mr-1"
+                  class="mb-2 mt-2"
                 />
                 <!--VBtn
                   color="secondary"
@@ -126,6 +126,12 @@ const updateBCVDollar = async () => {
                 </VBtn-->
 
               </VCol>
+
+              <VCol cols="2">
+                <VBtn @click="updateBCVDollar" class="mb-2 mt-2 ml-2">
+                  Actualizar
+                </VBtn>
+              </VCol>
                 
               <VCol cols="6">
 
@@ -136,7 +142,7 @@ const updateBCVDollar = async () => {
                   v-model="pesos"
                   :placeholder="props.pesos"
                   persistent-placeholder
-                  class="mb-2 ml-1"
+                  class="mb-2 mt-2"
                 />
                 
               </VCol>

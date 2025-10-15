@@ -112,7 +112,7 @@ const emit = defineEmits([
           location="top"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('finalize-payslip', item.id)">
+            <IconBtn v-bind="props" @click="emit('finalize-payslip', item)">
               <VIcon icon="tabler-file-check" />
             </IconBtn>
           </template>

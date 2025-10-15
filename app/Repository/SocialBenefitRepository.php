@@ -5,7 +5,9 @@ namespace App\Repository;
 
 use App\Models\Employee;
 use App\Models\ExchangeRate;
+use App\Models\Expense;
 use App\Models\SalaryConcept;
+use App\Models\Transaction;
 use DB;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -96,6 +98,7 @@ class SocialBenefitRepository
     $currency = round(ExchangeRate::where('currency_code', 'USD')
       ->whereDate('created_at', now()->today())
       ->value('rate') ?? 1, 2);
+    \Log::info('Repository', ['currency' => $currency]);
 
     $settlement = Employee::query()
       ->select([
@@ -123,9 +126,12 @@ class SocialBenefitRepository
       ->limit(6)
       ->first();
 
+    \Log::info('Repository', ['settlement' => $settlement]);
     $amount = round((float) $settlement?->amount ?? 0, 2);
     $activeYears = (int) $settlement?->active_years ?? 1;
     $dailyWage = $amount === 0 ? 0 : round($amount / 30);
+
+    \Log::info('Repository', ['amount' => $amount, 'activeYears' => $activeYears, 'dailyWage' => $dailyWage]);
 
     $sub = DB::table('employees')
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
@@ -150,6 +156,8 @@ class SocialBenefitRepository
         DB::raw('pd.amount * er.rate AS amount_usd')
       );
 
+    \Log::info('Repository', context: ['sub-query' => $sub]);
+
     $deductions = DB::query()
       ->fromSub($sub, 'x')
       ->selectRaw('
@@ -159,29 +167,60 @@ class SocialBenefitRepository
     ', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
       ->first();
 
+    \Log::info('Repository', ['deductions' => $deductions]);
+
     $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears - 1);
     $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears - 1);
     $vacBonusVoucherDays = $vacationVoucherDays;
     $earningsVoucherDays = 30 * $activeYears;
+
+    \Log::info('Repository', [
+      'socialBenefitsDays' => $socialBenefitsDays,
+      'vacationVoucherDays' => $vacationVoucherDays,
+      'earningsVoucherDays' => $earningsVoucherDays
+    ]);
 
     $socialBenefitsAmount = round($socialBenefitsDays * $dailyWage, 2);
     $vacationVoucherAmount = round($vacationVoucherDays * $dailyWage, 2);
     $vacBonusVoucherAmount = round($vacBonusVoucherDays * $dailyWage, 2);
     $earningsVoucherAmount = round($earningsVoucherDays * $dailyWage, 2);
 
+    \Log::info('Repository', [
+      'socialBenefitsAmount' => $socialBenefitsAmount,
+      'vacationVoucherAmount' => $vacationVoucherAmount,
+      'vacBonusVoucherAmount' => $vacBonusVoucherAmount,
+      'earningsVoucherAmount' => $earningsVoucherAmount
+    ]);
+
     $totalSettlementAmount = round($socialBenefitsAmount
       + $vacationVoucherAmount
       + $vacBonusVoucherAmount
       + $earningsVoucherAmount, 2);
 
+    \Log::info('Repository', [
+      'totalSettlementAmount' => $totalSettlementAmount,
+    ]);
+
     $totalDeductions = round((float) $deductions->vacation_voucher
       + (float) $deductions->vacation_bonus_voucher
       + (float) $deductions->earnings_voucher, 2);
+
+    \Log::info('Repository', [
+      'totalDeductions' => $totalDeductions,
+    ]);
 
     $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
     $totalDeductionsUsd = round($totalDeductions / $currency, 2);
     $finalUsd = round($totalSettlementUsd - $totalDeductionsUsd, 2);
     $startDate = $employee->created_at->format('d/m/Y');
+
+    \Log::info('Repository', [
+      'totalSettlementUsd' => $totalSettlementUsd,
+      'totalDeductionsUsd' => $totalDeductionsUsd,
+      'finalUsd' => $finalUsd,
+      'startDate' => $startDate,
+      'employee resignation date' => $employee->resignation?->effective_date,
+    ]);
 
     return [
       'amount' => $amount,
@@ -218,6 +257,49 @@ class SocialBenefitRepository
 
     $percentage = (float) ($data['percentage'] ?? 100);
     $total = round((float) $data['total'], 2);
+
+    $exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'USD')
+      ->first();
+
+    $total_bs = round($total * $exchange_rate->rate, 2);
+    $currency = $data['currency'];
+    $count = $data['count'];
+    $payed = $data['payed'];
+
+    Expense::create([
+      'name' => "Despido de empleado ID: {$employee->id}",
+      'category_id' => 1,
+      'amount' => $payed,
+      'amount_usd' => $total,
+      'amount_bs' => $total_bs,
+      'currency' => $currency,
+      'expense_date' => now(),
+      'user_id' => auth()->user()->id,
+      'count' => $count,
+      'is_deductible' => true
+    ]);
+
+    $type = match ($count) {
+      'Efectivo' => 'CASH',
+      'Tarjeta' => 'CARD',
+      'Pago móvil' => 'MOBILE',
+      'Transferencia' => 'TRANSFER',
+      'Binance' => 'BINANCE',
+      'Paypal' => 'PAYPAL'
+    };
+
+    Transaction::create([
+      'user_id' => auth()->user()->id,
+      'category_id' => 1,
+      'exchange_rate_id' => $currency === 'BS' ? $exchange_rate->id : null,
+      'description' => "Despido de empleado ID: {$employee->id}",
+      'currency' => $currency,
+      'type' => $type,
+      'amount' => $payed,
+      'movement_type' => 'OUT',
+      'transaction_date' => now()
+    ]);
 
     $employee->settlement()->create([
       'currency' => $settlement['currency'],

@@ -115,6 +115,7 @@ declare module 'vue' {
     ExpiredSummaryCard: typeof import('./resources/js/components/ExpiredSummaryCard.vue')['default']
     FiltrosGastoRecurrente: typeof import('./resources/js/components/FiltrosGastoRecurrente.vue')['default']
     FiltrosGastos: typeof import('./resources/js/components/FiltrosGastos.vue')['default']
+    FinalizePayslipFormDialog: typeof import('./resources/js/components/dialogs/FinalizePayslipFormDialog.vue')['default']
     FireEmployeeDialog: typeof import('./resources/js/components/dialogs/FireEmployeeDialog.vue')['default']
     FormExchangeRate: typeof import('./resources/js/components/FormExchangeRate.vue')['default']
     FurnitureEditDialog: typeof import('./resources/js/components/dialogs/FurnitureEditDialog.vue')['default']

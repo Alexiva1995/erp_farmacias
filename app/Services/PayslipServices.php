@@ -39,9 +39,9 @@ class PayslipServices implements Payslip
     return $this->payslipRepository->updateDetails($payslip, $details);
   }
 
-  public function finalize(MPayslip $payslip): bool
+  public function finalize(MPayslip $payslip, array $data): bool
   {
-    return $this->payslipRepository->finalize($payslip);
+    return $this->payslipRepository->finalize($payslip, $data);
   }
 
   public function exportExcel(MPayslip $payslip): PayslipsExport
