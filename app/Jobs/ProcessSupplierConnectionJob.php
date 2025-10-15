@@ -72,9 +72,9 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $import = new SupplierImport(
                     supplierId: (int) $this->supplier->id,
                     startRow: (int) ($this->columnMap["start_row"] ?? 1),
-                    codSupplierCol: $this->columnMap["cod_supplier"] ?? "A",
-                    nameCol: $this->columnMap["name"] ?? "B",
-                    barcodeCol: $this->columnMap["barcode_match"] ?? "C",
+                    codSupplierCol: $this->columnMap["cod_supplier"] ?: null,
+                    nameCol: $this->columnMap["name"],
+                    barcodeCol: $this->columnMap["barcode_match"] ?: null,
                     qtyCol: $this->columnMap["quantity"] ?: null,
                     costBsCol: $this->columnMap["unit_cost"] ?: null,
                     costUsdCol: $this->columnMap["unit_cost_usd"] ?: null,

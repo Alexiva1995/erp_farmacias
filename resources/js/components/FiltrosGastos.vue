@@ -20,6 +20,7 @@ const emit=defineEmits([
   "clear",
   "export-excel",
   "export-pdf",
+  "add",
 ])
 </script>
 <template>
@@ -117,6 +118,9 @@ const emit=defineEmits([
           </VListItem>
         </VList>
       </VMenu>
+      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')">
+        Agregar Gasto
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>

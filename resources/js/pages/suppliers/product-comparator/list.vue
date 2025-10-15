@@ -35,6 +35,7 @@ const isShowImportFileDialogActive = ref(false);
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
+const pollingSupplierId = ref(null);
 const tab = ref("suppliers");
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -108,16 +109,29 @@ const fetchStatuses = async () => {
     const { data } = await axios.get("/suppliers/supplier-connection-statuses");
     const newStatuses = data.statuses;
 
-    const hasFinished = newStatuses.some((s) =>
-      ["completed", "failed"].includes(s.status)
+    const currentStatus = newStatuses.find(
+      (s) => s.supplier_id === pollingSupplierId.value
     );
-    if (hasFinished) {
+    if (
+      currentStatus &&
+      ["completed", "failed"].includes(currentStatus.status)
+    ) {
       stopPolling();
+      pollingSupplierId.value = null;
+
       await fetchSupplierConnections();
+      await fetchProducts();
+
+      if (currentStatus.status === "failed") {
+        toast.error("La sincronización con el proveedor falló");
+      } else {
+        toast.success("Sincronización completada exitosamente");
+      }
     }
   } catch (error) {
     console.error("Error al consultar estados de conexión:", error);
     stopPolling();
+    pollingSupplierId.value = null;
   }
 };
 
@@ -221,6 +235,7 @@ const handleShowProducts = (supplier) => {
 
 const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
+  pollingSupplierId.value = supplier.id;
 
   try {
     toast.info(
@@ -231,6 +246,7 @@ const handleCheckSupplierApi = async (supplier) => {
     startPolling();
   } catch (error) {
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
+    pollingSupplierId.value = null;
   } finally {
     checkingApiSupplierId.value = null;
   }
@@ -358,7 +374,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
       <VTabsWindowItem value="suppliers">
         <ProductComparisionTable
           :supplierConnections="supplierConnections"
-          :loading="loading"
+          :loading="loadingSuppliers"
           :total-supplierConnections="totalSupplierConnections"
           :items-per-page="itemsPerPage"
           :page="page"
@@ -374,7 +390,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
       <VTabsWindowItem value="products">
         <ProductComparisionProductsTable
           :products="products"
-          :loading="loading"
+          :loading="loadingProducts"
           :total-products="productsTotal"
           :items-per-page="itemsPerPage"
           :page="productsPage"

@@ -417,8 +417,8 @@ const handleCancel = () => {
                 label="Fecha de Pago"
                 type="date"
                 placeholder="YYYY-MM-DD"
-                :readonly="!isEditMode"
-                :persistent-hint="!isEditMode"
+                hint="Se calcula automáticamente pero puede editarse"
+                persistent-hint
               />
             </VCol>
           </VRow>
