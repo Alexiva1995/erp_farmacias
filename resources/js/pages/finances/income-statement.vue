@@ -444,18 +444,23 @@ onMounted(() => {
 
           <template #item.amount="{ item }">
             <span :class="item.type === 'sale' ? 'text-success' : 'text-error'">
-              {{ item.type === "sale" ? "+" : "-"
-              }}{{ formatCurrency(item.amount) }}
+              {{
+                item.monto_display ||
+                (item.type === "sale" ? "+" : "-") + formatCurrency(item.amount)
+              }}
             </span>
           </template>
 
           <template #item.costs="{ item }">
-            {{ formatCurrency(item.costs) }}
+            {{ item.costos_display || formatCurrency(item.costs) }}
           </template>
 
           <template #item.profit="{ item }">
             <span :class="item.profit >= 0 ? 'text-success' : 'text-error'">
-              {{ item.profit >= 0 ? "+" : "" }}{{ formatCurrency(item.profit) }}
+              {{
+                item.utilidad_display ||
+                (item.profit >= 0 ? "+" : "") + formatCurrency(item.profit)
+              }}
             </span>
           </template>
         </VDataTable>
