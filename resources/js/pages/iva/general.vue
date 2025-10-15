@@ -163,13 +163,13 @@ const fetchAllData = async () => {
   }
 };
 
-// Función para formatear moneda colombiana
+// Función para formatear moneda venezolana (Bolívares)
 const formatCurrency = (amount) => {
-  const formatter = new Intl.NumberFormat("es-CO", {
+  const formatter = new Intl.NumberFormat("es-VE", {
     style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: "VES",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
   return formatter.format(amount);
 };
@@ -177,7 +177,7 @@ const formatCurrency = (amount) => {
 // Formatear fecha para mostrar
 const formatDate = (dateString) => {
   if (!dateString) return "";
-  return new Date(dateString).toLocaleDateString("es-CO", {
+  return new Date(dateString).toLocaleDateString("es-VE", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -332,8 +332,11 @@ onMounted(() => {
           <VRow>
             <!-- Débito Fiscal -->
             <VCol cols="12" md="4">
-              <VCard variant="tonal" color="warning">
-                <VCardText class="text-center">
+              <VCard variant="tonal" color="warning" class="h-100">
+                <VCardText
+                  class="text-center d-flex flex-column"
+                  style="min-height: 180px"
+                >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon
                       icon="tabler-arrow-up-circle"
@@ -350,9 +353,23 @@ onMounted(() => {
                   </div>
 
                   <!-- Información adicional del débito -->
-                  <div v-if="detalleDebito.total_orders_with_iva" class="mt-2">
-                    <VChip color="warning" size="x-small" variant="flat">
+                  <div class="mt-auto pt-2">
+                    <VChip
+                      v-if="detalleDebito.total_orders_with_iva"
+                      color="warning"
+                      size="x-small"
+                      variant="flat"
+                    >
                       {{ detalleDebito.total_orders_with_iva }} órdenes con IVA
+                    </VChip>
+                    <VChip
+                      v-else
+                      color="warning"
+                      size="x-small"
+                      variant="outlined"
+                      style="visibility: hidden"
+                    >
+                      0 órdenes
                     </VChip>
                   </div>
                 </VCardText>
@@ -361,8 +378,11 @@ onMounted(() => {
 
             <!-- Crédito Fiscal -->
             <VCol cols="12" md="4">
-              <VCard variant="tonal" color="info">
-                <VCardText class="text-center">
+              <VCard variant="tonal" color="info" class="h-100">
+                <VCardText
+                  class="text-center d-flex flex-column"
+                  style="min-height: 180px"
+                >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon
                       icon="tabler-arrow-down-circle"
@@ -379,13 +399,24 @@ onMounted(() => {
                   </div>
 
                   <!-- Información adicional del crédito -->
-                  <div
-                    v-if="detalleCredito.total_expenses_with_iva"
-                    class="mt-2"
-                  >
-                    <VChip color="info" size="x-small" variant="flat">
+                  <div class="mt-auto pt-2">
+                    <VChip
+                      v-if="detalleCredito.total_expenses_with_iva"
+                      color="info"
+                      size="x-small"
+                      variant="flat"
+                    >
                       {{ detalleCredito.total_expenses_with_iva }} gastos con
                       IVA
+                    </VChip>
+                    <VChip
+                      v-else
+                      color="info"
+                      size="x-small"
+                      variant="outlined"
+                      style="visibility: hidden"
+                    >
+                      0 gastos
                     </VChip>
                   </div>
                 </VCardText>
@@ -397,9 +428,12 @@ onMounted(() => {
               <VCard
                 variant="tonal"
                 :color="getIvaStatus.color"
-                class="position-relative"
+                class="position-relative h-100"
               >
-                <VCardText class="text-center">
+                <VCardText
+                  class="text-center d-flex flex-column"
+                  style="min-height: 180px"
+                >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon :icon="getIvaStatus.icon" size="28" class="me-2" />
                     <span class="text-h6 font-weight-bold">IVA a Pagar</span>
@@ -417,9 +451,30 @@ onMounted(() => {
                   <div class="text-caption text-medium-emphasis mt-1">
                     {{ getIvaStatus.message }}
                   </div>
+
+                  <!-- Espaciador para mantener altura consistente -->
+                  <div class="mt-auto pt-2">
+                    <VChip
+                      v-if="ivaAPagar < 0"
+                      color="success"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      Saldo a favor
+                    </VChip>
+                    <VChip
+                      v-else
+                      color="transparent"
+                      size="x-small"
+                      variant="outlined"
+                      style="visibility: hidden"
+                    >
+                      Placeholder
+                    </VChip>
+                  </div>
                 </VCardText>
 
-                <!-- Badge para valores negativos -->
+                <!-- Badge para la esquina superior -->
                 <div
                   v-if="ivaAPagar < 0"
                   class="position-absolute"
