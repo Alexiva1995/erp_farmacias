@@ -315,6 +315,12 @@ class SupplierConnectionService
                             break;
                         }
 
+                        $dt = \DateTime::createFromFormat("Y-m-d", "{$value}-01");
+                        if ($dt && $dt->format("Y-m") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
+                            break;
+                        }
+
                         $entry[$meta["target"]] = null;
                         break;
                 }
@@ -589,3 +595,4 @@ class SupplierConnectionService
         return implode(';', $out);
     }
 }
+
