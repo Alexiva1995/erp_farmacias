@@ -14,13 +14,18 @@ class ResignationRepository
      */
     public function storeResignation(array $data): Resignation
     {
-        // Validar que no existe renuncia para este empleado
-        $existing = Resignation::where('employee_id', $data['employee_id'])->first();
+
+        // Validar que no existe renuncia activa para este empleado (excluyendo soft deletes)
+        $existing = Resignation::where('employee_id', $data['employee_id'])->whereNull('deleted_at')->first();
+
         if ($existing) {
+
             throw new \Exception('Ya existe una renuncia para este empleado');
         }
 
-        return Resignation::create($data);
+        $result = Resignation::create($data);
+
+        return $result;
     }
 
     /**
@@ -28,7 +33,7 @@ class ResignationRepository
      */
     public function getAllResignations(): Collection
     {
-        return Resignation::with('employee')->orderBy('created_at', 'desc')->get();
+        return Resignation::with('employee')->whereNull('deleted_at')->orderBy('created_at', 'desc')->get();
     }
 
     /**
@@ -36,7 +41,7 @@ class ResignationRepository
      */
     public function getResignationsPaginated(int $page, int $perPage, array $filters = []): array
     {
-        $query = Resignation::with('employee');
+        $query = Resignation::with('employee')->whereNull('deleted_at');
 
         // Aplicar filtros
         if (!empty($filters['search'])) {
@@ -73,17 +78,18 @@ class ResignationRepository
      */
     public function getResignationStats(): array
     {
-        $total = Resignation::count();
-        $voluntary = Resignation::byType('voluntary')->count();
-        $unjustified = Resignation::byType('unjustified_dismissal')->count();
-        $active = Resignation::byEmployeeStatus('Activo')->count();
-        $inactive = Resignation::byEmployeeStatus('Inactivo')->count();
+        // Solo contar renuncias activas (sin soft delete)
+        $total = Resignation::whereNull('deleted_at')->count();
+        $voluntary = Resignation::whereNull('deleted_at')->byType('voluntary')->count();
+        $unjustified = Resignation::whereNull('deleted_at')->byType('unjustified_dismissal')->count();
+        $active = Resignation::whereNull('deleted_at')->byEmployeeStatus('Activo')->count();
+        $inactive = Resignation::whereNull('deleted_at')->byEmployeeStatus('Inactivo')->count();
 
         $currentMonth = date('Y-m');
         $currentYear = date('Y');
 
-        $thisMonth = Resignation::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$currentMonth])->count();
-        $thisYear = Resignation::whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [$currentYear])->count();
+        $thisMonth = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$currentMonth])->count();
+        $thisYear = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [$currentYear])->count();
 
         return [
             'total' => $total,
@@ -106,11 +112,7 @@ class ResignationRepository
             $resignation->update([
                 'employee_status' => $isActive ? 'Activo' : 'Inactivo'
             ]);
-            Log::info("Updated employee status in resignation", [
-                'employee_id' => $employeeId,
-                'is_active' => $isActive,
-                'resignation_id' => $resignation->id
-            ]);
+
             return true;
         }
         return false;
@@ -129,7 +131,10 @@ class ResignationRepository
      */
     public function getResignationByEmployeeId(int $employeeId): ?Resignation
     {
-        return Resignation::where('employee_id', $employeeId)->first();
+
+        $result = Resignation::where('employee_id', $employeeId)->whereNull('deleted_at')->first();
+
+        return $result;
     }
 
     /**
@@ -139,9 +144,20 @@ class ResignationRepository
     {
         $resignation = Resignation::find($id);
         if ($resignation) {
-            $resignation->update($data);
+            // Solo actualizar campos específicos, mantener request_date original
+            $updateData = [
+                'employee_position' => $data['employee_position'] ?? $resignation->employee_position,
+                'resignation_type' => $data['resignation_type'] ?? $resignation->resignation_type,
+                'effective_date' => $data['effective_date'] ?? $resignation->effective_date,
+                // No incluir request_date para mantener el valor original
+                // updated_at se actualiza automáticamente por Laravel
+            ];
+
+            $result = $resignation->update($updateData);
+
             return true;
         }
+
         return false;
     }
 

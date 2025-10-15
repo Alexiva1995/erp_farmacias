@@ -23,5 +23,8 @@ class CreateExpenseData extends Data
         public DateTime     $expense_date,
         public int          $user_id,
         public string       $count,
+        public ?string      $status,
+        public string       $type_of_expense,
+
     ) {}
 }

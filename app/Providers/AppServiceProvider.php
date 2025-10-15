@@ -130,6 +130,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Expenses::class)
             ->give(ExpensesServices::class);
 
+        $this->app->when(ExpensesController::class)
+            ->needs(Transaction::class)
+            ->give(TransactionServices::class);
+
         $this->app->when(ExpenseCategoryController::class)
             ->needs(ExpenseCategory::class)
             ->give(ExpenseCategoryServices::class);

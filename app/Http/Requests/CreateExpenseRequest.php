@@ -125,6 +125,7 @@ class CreateExpenseRequest extends FormRequest
             "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
+            "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
         ]);
     }
 }

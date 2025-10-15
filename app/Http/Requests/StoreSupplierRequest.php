@@ -36,9 +36,9 @@ class StoreSupplierRequest extends FormRequest
             'payment_method' => ['in:Bs,Divisas'],
             'cash_payment' => ['boolean'],
             'charges_igtf' => ['boolean'],
-            'supplier_payment_method' => 'required|string',
-            'supplier_payment_days' => 'sometimes|numeric|min:0',
-            'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
+            //'supplier_payment_method' => 'required|string',
+            //'supplier_payment_days' => 'sometimes|numeric|min:0',
+            'payment_due_type' => 'required|in:invoice_date,early_payment,expiration_date,custom',
             'custom_due_days' => 'nullable|integer|min:1',
             'payment_due_reference' => 'required|in:receipt_date,issue_date',
         ];

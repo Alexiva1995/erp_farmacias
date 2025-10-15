@@ -10,7 +10,7 @@ const props = defineProps({
   selectedEmployee: { type: Object, default: null },
 });
 
-const emit = defineEmits(["update:modelValue", "refresh-table"]);
+const emit = defineEmits(["update:modelValue", "refresh-table", "close"]);
 
 const settlement = ref(null);
 const percentage = ref(100);
@@ -72,7 +72,7 @@ const submitForm = async () => {
 };
 
 const closeDialog = () => {
-  emit("update:modelValue", false);
+  emit("close");
 };
 </script>
 
@@ -101,7 +101,17 @@ const closeDialog = () => {
         <VTable density="comfortable">
           <thead>
             <tr>
-              <th style="width: 70%" class="text-start font-weight-bold">
+              <td style="width: 70%" class="font-weight-bold">
+                Fecha de inicio
+              </td>
+              <td></td>
+              <td class="font-weight-bold">
+                {{ settlement?.starting_date }}
+              </td>
+            </tr>
+
+            <tr>
+              <th style="width: 60%" class="text-start font-weight-bold">
                 Liquidación
               </th>
               <th class="font-weight-bold">Días</th>

@@ -562,14 +562,14 @@
     {
         "supplier_id": "23",
         "type": "api",
-        "host": "http://www.cobeca.com:8080/pedidofl/api/Login",
+        "host": "https://comparadores.drogueriascobeca.com/api/Login",
         "port": null,
-        "username": "f31373",
-        "password": "eyJpdiI6IlEzMnR6cmUydFhEWFZndGNnNnA1Nmc9PSIsInZhbHVlIjoiSHZ3Z2FHWUZlc21yVm5VS0toR3cxdz09IiwibWFjIjoiMzU1MDQxZDg4OTI4NjMzN2IwZGU3YzUwZDFmNzdhNDVkZTdiZjBkOTQ0NTcwNDY3Y2M3ZGMyZTc1MGUzOGQwNCIsInRhZyI6IiJ9",
-        "path": "http://www.cobeca.com:8080/pedidofl/api/Articulos?cod_drogueria=3",
+        "username": "F31373",
+        "password": "eyJpdiI6InptaXB1anJHd0ZoUHMrMnZHVXVpL1E9PSIsInZhbHVlIjoiWDZPbnliZTF6NnBZUVNkYUY0M0tZQT09IiwibWFjIjoiNWFhNzQ2NWMwMzM0MTlhOTU1ZGNmNTE0NzMyYTQ5MzE0ZTQ2ZDI3ZmU2OTljZDg5ZDFjMTVhOTAxODM1NzlhZCIsInRhZyI6IiJ9",
+        "path": "https://comparadores.drogueriascobeca.com/api/articulos/drogueria",
         "pasv": false,
         "has_header": true,
-        "invoice_path": null,
+        "invoice_path": "https://comparadores.drogueriascobeca.com/api/facturas/resumen",
         "structure": {
             "13": {
                 "file_field": "cod_barra",
@@ -595,6 +595,82 @@
                 "file_field": "existencia",
                 "type": "integer",
                 "target": "quantity"
+            }
+        },
+        "invoice_structure": {
+            "separator": ";",
+            "decimal_separator": ".",
+            "decimals": 2,
+            "mode": "flat",
+            "header": {
+                "1": {
+                    "field": "invoice_number",
+                    "type": "integer"
+                },
+                "13": {
+                    "field": "control_number",
+                    "type": "string"
+                },
+                "6": {
+                    "field": "exp_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "4": {
+                    "field": "total_amount",
+                    "type": "decimal"
+                },
+                "16": {
+                    "field": "tax_amount",
+                    "type": "decimal"
+                }
+            },
+            "lines": {
+                "26": {
+                    "field": "fact_num",
+                    "type": "integer"
+                },
+                "49": {
+                    "field": "numcon",
+                    "type": "string"
+                },
+                "27": {
+                    "field": "codigo_producto",
+                    "type": "string"
+                },
+                "48": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "28": {
+                    "field": "descripcion_producto",
+                    "type": "string"
+                },
+                "33": {
+                    "field": "quantity",
+                    "type": "integer"
+                },
+                "45": {
+                    "field": "unit_cost",
+                    "type": "decimal"
+                },
+                "29": {
+                    "field": "lot_number",
+                    "type": "string"
+                },
+                "30": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "37": {
+                    "field": "porcentaje_iva",
+                    "type": "decimal"
+                },
+                "43": {
+                    "field": "total_cost",
+                    "type": "decimal"
+                }
             }
         },
         "parse_using": null
