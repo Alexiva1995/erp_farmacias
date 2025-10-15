@@ -13,6 +13,9 @@ import { onMounted, reactive, watch } from 'vue';
 
 // const route= useRouter()
 
+const isDeductible = ref(false);
+const hasInvoice = ref(false);
+
 const modal= reactive({
   statu:false,
   titulo:"Nuevo",
@@ -129,7 +132,7 @@ function cargarErrores(errores){
 
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Gasto Recurrente"
+  modal.titulo="Añadir Nuevo Gasto"
 }
 
 function cerrarModal(payload){
@@ -148,7 +151,9 @@ watch(
       page,
       itemsPerPage,
       sortBy,
-      orderBy
+      orderBy,
+      isDeductible,
+      hasInvoice
   ],
   async () =>{
     actualizarTabla()
@@ -176,6 +181,8 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    isDeductible: isDeductible.value,
+    hasInvoice: hasInvoice.value,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -207,6 +214,8 @@ function limpliarFiltros(){
   category_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
+  isDeductible.value=false
+  hasInvoice.value=false
 }
 
 
@@ -346,6 +355,8 @@ onMounted(async () => {
       v-model:category_id_filtro="category_id_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
+      v-model:isDeductible="isDeductible"
+      v-model:hasInvoice="hasInvoice"
       :categorias="statuModule.categorias"
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"

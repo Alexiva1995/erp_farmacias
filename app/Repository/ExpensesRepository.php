@@ -148,6 +148,15 @@ class ExpensesRepository
             $consulta->orderBy("name", "ASC");
         }
 
+
+        if (array_key_exists("hasInvoice", $filtros) && $filtros["hasInvoice"] === 1) {
+            $consulta->where("has_invoice", 1);
+        }
+
+        if (array_key_exists("isDeductible", $filtros) && $filtros["isDeductible"] === 1) {
+            $consulta->where("is_deductible", 1);
+        }
+
         return $consulta;
     }
 

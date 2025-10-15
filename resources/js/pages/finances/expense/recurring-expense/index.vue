@@ -133,7 +133,7 @@ function cargarErrores(errores){
 
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Gasto Recurrente"
+  modal.titulo="Añadir Nuevo Gasto Recurrente"
 }
 
 function cerrarModal(payload){

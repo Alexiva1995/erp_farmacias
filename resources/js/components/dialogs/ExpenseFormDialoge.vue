@@ -1,8 +1,5 @@
 <script setup lang="js">
 
-
-
-
 const props= defineProps({
   type_of_expense:{type:String, required: true, default: () => 'normal'},
   modalFormulario: {type: Boolean, required: true},

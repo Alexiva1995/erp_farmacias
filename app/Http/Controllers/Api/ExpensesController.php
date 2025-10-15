@@ -115,6 +115,14 @@ class ExpensesController extends Controller
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
         }
 
+        if ($request->has("hasInvoice")) {
+            $filtros["hasInvoice"] = (bool) $request->hasInvoice ? 1 : 0;
+        }
+
+        if ($request->has("isDeductible")) {
+            $filtros["isDeductible"] = (bool) $request->isDeductible ? 1 : 0;
+        }
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
