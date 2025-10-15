@@ -156,7 +156,8 @@ class ExpensesServices implements Expenses
         $disk->putFileAs($relativeDir, $file, $filename);
 
         // Construir URL pública
-        $url = $disk->url($relativeDir . '/' . $filename);
+        //$url = $disk->url($relativeDir . '/' . $filename);
+        $url = $relativeDir . '/' . $filename;
 
         return [
             'file_name' => $uuid,

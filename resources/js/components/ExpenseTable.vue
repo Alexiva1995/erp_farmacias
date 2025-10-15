@@ -15,7 +15,8 @@ const props= defineProps({
 const emit= defineEmits(["edit",'delete','update:options'])
 
 function verImagne(item){
-  window.open(item.url_file,"_blank")
+  const fullUrl = import.meta.env.VITE_BASE_STORAGE_URL +  item.url_file;
+  window.open(fullUrl, "_blank");
 }
 
 const headers = [
