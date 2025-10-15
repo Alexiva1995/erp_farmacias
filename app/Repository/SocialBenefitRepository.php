@@ -101,8 +101,18 @@ class SocialBenefitRepository
 
     $settlement = Employee::query()
       ->select([
-        DB::raw("COALESCE(ROUND((SUM(pd.amount) / 3) * {$currency}, 2), 0) as amount"),
-        DB::raw("TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) AS active_years"),
+        DB::raw("COALESCE(ROUND(
+        SUM(pd.amount) / 
+            CASE COUNT(pd.id)
+              WHEN 6 THEN 3
+              WHEN 5 THEN 2.5
+              WHEN 4 THEN 2
+              WHEN 3 THEN 1.5
+              WHEN 2 THEN 1
+              ELSE 1
+            END
+        * {$currency}, 2), 0) as amount"),
+        DB::raw("TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()) AS active_years")
       ])
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
@@ -111,7 +121,7 @@ class SocialBenefitRepository
       ->where('employees.id', $employee->id)
       ->where('sc.name', 'Salario Base')
       ->groupBy(['employees.id', 'employees.created_at'])
-      ->orderByDesc('pd.created_at')
+      ->orderByDesc(DB::raw('MAX(pd.created_at)'))
       ->limit(6)
       ->first();
 
