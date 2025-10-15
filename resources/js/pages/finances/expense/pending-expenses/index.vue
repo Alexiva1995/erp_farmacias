@@ -5,7 +5,7 @@ import PendingExpenseTable from '@/components/PendingExpenseTable.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfGastos from '@/utils/pdfGastos';
-// import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 import { onMounted, reactive, watch } from 'vue';
 // import { useRouter } from "vue-router";
 // const route= useRouter()
@@ -186,10 +186,26 @@ async function exportarExcel(formato){
 
 }
 
+function confirmarEstado(payload){
+ const statusText = payload.status == 'Cancelled' ? 'Cancelar': 'Aprobar'
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: `¡Desea ${statusText} el estado del producto!`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      cambiarEstado(payload)
+    }
+  });
+}
 
 async function cambiarEstado(payload){
-  // console.log("estado => ",payload)
-
+const statusText = payload.status == 'Cancelled' ? 'Cancelado': 'Aprobado'
   let respuestaApi=await axios.post("/finances/expenses/change-status",payload)
   if(respuestaApi.status!=200){
     toast.error("Error al cambiar el estado del gasto")
@@ -199,6 +215,7 @@ async function cambiarEstado(payload){
   statuModule.loadingApp=true
   await actualizarTabla()
   statuModule.loadingApp=false
+  toast.success(`El gasto fue ${statusText}`)
 }
 
 onMounted(async () => {
@@ -232,7 +249,7 @@ onMounted(async () => {
         :items-per-page="itemsPerPage"
         :page="page"
         @update:options="updateTableOptions"
-        @cambiarEstado="cambiarEstado"
+        @cambiarEstado="confirmarEstado"
       />
     </VCard>
   </div>

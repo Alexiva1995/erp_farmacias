@@ -19,7 +19,7 @@ const headers = [
   { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
   { title: 'Categoria', key: 'category.name', sortable: false },
   { title: 'Monto', key: 'amount', sortable: true },
-  { title: 'Monto USD', key: 'amount_usd', sortable: true },
+  { title: 'USD', key: 'amount_usd', sortable: true },
   { title: 'Moneda', key: 'currency', sortable: true },
   { title: 'Cuenta', key: 'count', sortable: true },
   { title: 'Deducible', key: 'is_deductible', sortable: false, value: (item) => {
@@ -33,7 +33,6 @@ const headers = [
       return "No"
     }
   }},
-  { title: 'Estatu', key: 'status', sortable: false},
   { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
     const fechaStr = item.created_at.replace('Z', '');
     const fecha = dayjs(fechaStr).format('DD/MM/YYYY');
@@ -57,6 +56,7 @@ const headers = [
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
+
       <template #item.acciones="{ item }">
         <VRow>
           <VCol>

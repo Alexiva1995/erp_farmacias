@@ -45,7 +45,7 @@ const headers = [
     const fecha = dayjs(fechaStr).format('DD/MM/YYYY');
     return fecha;
   }},
-  { title: 'Acciones', key: 'acciones', sortable: false },
+  { title: 'Accion', key: 'acciones', sortable: false },
 ];
 </script>
 <template>
@@ -83,10 +83,12 @@ const headers = [
       </template> -->
 
       <template #item.acciones="{ item }">
-        <IconBtn @click="() => verImagne(item)" v-if="item.url_file"
-          ><VIcon icon="tabler-photo-search"
-        /></IconBtn>
-        
+          <IconBtn 
+        @click="() => verImagne(item)" 
+        :disabled="!item.url_file" 
+    >
+        <VIcon icon="tabler-photo-search" />
+    </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>
