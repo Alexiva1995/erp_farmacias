@@ -9,6 +9,7 @@ const props=defineProps({
   fechaDesde_filtro: {type: String, requiered: true, default: () => "" },
   isDeductible: Boolean,
   hasInvoice: Boolean,
+  showAddButton: { type: Boolean, required: false, default: true }, 
 })
 
 const currencies=["BS","USD", "COP"];
@@ -138,7 +139,7 @@ const emit=defineEmits([
           </VListItem>
         </VList>
       </VMenu>
-      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')">
+      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')" v-if="props.showAddButton" >
         Agregar Gasto
       </VBtn>
     </VCardActions>

@@ -358,6 +358,7 @@ onMounted(async () => {
       v-model:isDeductible="isDeductible"
       v-model:hasInvoice="hasInvoice"
       :categorias="statuModule.categorias"
+      :show-add-button="true" 
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
