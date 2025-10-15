@@ -12,7 +12,7 @@ class IslrQueryService
 {
     /**
      * Calcula la renta bruta anual: 
-     * Total Fiscal - Expenses con IVA - Expenses con is_deductible
+     * Total Fiscal (sin restar nada)
      * 
      * @param int $year Año a calcular (por defecto año actual)
      * @return float Total de renta bruta en BS
@@ -25,18 +25,7 @@ class IslrQueryService
         $fiscalTotal = FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])
             ->sum('total_amount');
 
-        $totalExpensesIva = Expense::where('status', Expense::STATUS_APPROVED)
-            ->where('has_invoice', true)
-            ->where('is_deductible', null)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->sum('amount_bs');
-
-        $totalExpensesDeductible = Expense::where('status', Expense::STATUS_APPROVED)
-            ->where('is_deductible', true)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->sum('amount_bs');
-
-        return (float) ($fiscalTotal - $totalExpensesIva - $totalExpensesDeductible);
+        return (float) $fiscalTotal;
     }
 
     /**
@@ -82,7 +71,7 @@ class IslrQueryService
 
     /**
      * Obtiene el detalle de ingresos brutos con información adicional
-     * Renta Bruta = Total Fiscal - Expenses con IVA - Expenses con is_deductible
+     * Renta Bruta = Total Fiscal (sin restar nada)
      * 
      * @param int $year Año a consultar
      * @return array
@@ -116,7 +105,8 @@ class IslrQueryService
 
         $totalExpensesDeductible = $expensesDeductible->sum('amount_bs');
 
-        $grossIncome = $fiscalTotal - $totalExpensesIva - $totalExpensesDeductible;
+        // Renta Bruta ahora es solo el total fiscal
+        $grossIncome = $fiscalTotal;
 
         return [
             'gross_income' => $grossIncome,
@@ -206,7 +196,8 @@ class IslrQueryService
             $expensesIvaAmount = $monthlyExpensesIva[$i] ?? 0;
             $deductions = $monthlyDeductions[$i] ?? 0;
 
-            $grossIncome = $fiscalAmount - $expensesIvaAmount - $deductions;
+            // Renta Bruta ahora es solo el fiscal total
+            $grossIncome = $fiscalAmount;
 
             $netIncome = $fiscalAmount - $deductions;
 
