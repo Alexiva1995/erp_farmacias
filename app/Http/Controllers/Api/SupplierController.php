@@ -292,11 +292,17 @@ class SupplierController extends Controller
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
         $userId = auth()->id() ?? 1;
+        \Log::info('Supplier Controller', ['Before validation', $request->all()]);
 
         $validated = $request->validated();
+        \Log::info('Supplier Controller', ['File', $validated['file']]);
         unset($validated["file"]);
 
+        \Log::info('Supplier Controller', ['After validation', $request->validated()]);
+
         $path = $request->file("file")->store("temp", ["disk" => "local"]);
+
+        \Log::info('Supplier Controller', ['File stored at', $path]);
 
         ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
 
