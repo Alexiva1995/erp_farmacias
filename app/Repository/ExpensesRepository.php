@@ -32,6 +32,7 @@ class ExpensesRepository
         $gasto->currency = $data->currency;
         $gasto->has_invoice = $data->has_invoice;
         $gasto->is_deductible = $data->is_deductible;
+        $gasto->iva = $data->iva;
         // $gasto->expense_date = $data->expense_date;
         $gasto->user_id = $data->user_id;
         $gasto->count = $data->count;
@@ -76,6 +77,7 @@ class ExpensesRepository
         $expense->currency = $data->currency;
         $expense->has_invoice = $data->has_invoice;
         $expense->is_deductible = $data->is_deductible;
+        $expense->iva = $data->iva;
         $expense->user_id = $data->user_id;
         $expense->count = $data->count;
         $expense->type_of_expense = $data->type_of_expense;

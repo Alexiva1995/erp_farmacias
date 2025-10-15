@@ -14,6 +14,7 @@ class CreateExpenseRecurrenceData extends CreateExpenseData
         public string       $currency,
         public bool|null    $has_invoice,
         public bool|null    $is_deductible,
+        public bool         $iva = false,
         // public DateTime $expense_date,
         public int          $user_id,
         public string       $count,

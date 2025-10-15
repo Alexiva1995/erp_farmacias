@@ -38,6 +38,7 @@ class CreateExpenseRecurrenceRequest extends FormRequest
             "currency"               =>    "required|string|max:10",
             "has_invoice"            =>    "nullable|boolean:strict",
             "is_deductible"          =>    "nullable|boolean:strict",
+            "iva"                    =>    "nullable|boolean:strict",
             // "expense_date"           =>    "required|date",
             "user_id"                =>    "required|numeric|exists:users,id",
             "count"                  =>    [
@@ -97,6 +98,9 @@ class CreateExpenseRecurrenceRequest extends FormRequest
             // Reglas para 'is_deductible'
             'is_deductible.boolean' => 'El campo deducible debe ser verdadero o falso.',
 
+             // Reglas para 'iva'
+            'iva.boolean' => 'El campo iva debe ser verdadero o falso.',
+
             // Reglas para 'expense_date'
             // 'expense_date.required' => 'La fecha del gasto es obligatoria.',
             // 'expense_date.date' => 'La fecha debe ser una fecha válida.',
@@ -136,6 +140,7 @@ class CreateExpenseRecurrenceRequest extends FormRequest
             "currency"                =>    $this->currency,
             "has_invoice"             =>    $this->has_invoice,
             "is_deductible"           =>    $this->is_deductible,
+            "iva"                     =>    $this->iva,
             // "expense_date"            =>    new \DateTime($this->expense_date),
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,

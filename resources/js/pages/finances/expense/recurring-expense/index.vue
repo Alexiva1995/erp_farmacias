@@ -34,6 +34,7 @@ const formulario= reactive({
   currency:"USD",
   has_invoice:false,
   is_deductible:false,
+  iva:false,
   // expense_date:"",
   user_id:"",
   count:"",
@@ -50,6 +51,7 @@ const formularioError= reactive({
   currency:"",
   has_invoice:"",
   is_deductible:"",
+  iva:"",
   // expense_date:null,
   count:"",
   // file_factura:null,
@@ -79,6 +81,7 @@ function insertarDatosAlFormulario(datos){
   formulario.currency=datos.currency
   formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
+  formulario.iva=datos.iva
   // formulario.expense_date=datos.expense_date
   formulario.count=datos.count
   formulario.recurrence=datos.recurrence
@@ -94,6 +97,7 @@ function limpiarDatosFormulario(){
   formulario.currency="BS"
   formulario.has_invoice=false
   formulario.is_deductible=false
+  formulario.iva=false
   // formulario.expense_date=""
   formulario.count=""
   // formulario.file_factura=null
@@ -110,6 +114,7 @@ function limpiarErroresFormulario(){
   formularioError.currency=""
   formularioError.has_invoice=false
   formularioError.is_deductible=false
+  formularioError.iva=false
   // formularioError.expense_date=""
   formularioError.count=""
   formularioError.recurrence=""
@@ -125,6 +130,7 @@ function cargarErrores(errores){
   formularioError.currency=(errores.currency)?errores.currency.join(", "):""
   formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
   formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
+  formularioError.iva=(errores.iva)?errores.iva.join(", "):""
   // formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
   formularioError.count=(errores.count)?errores.count.join(", "):""
   formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
@@ -330,8 +336,6 @@ async function exportarExcel(formato){
   }
 
 }
-
-
 
 onMounted(async () => {
   statuModule.loadingApp=true
