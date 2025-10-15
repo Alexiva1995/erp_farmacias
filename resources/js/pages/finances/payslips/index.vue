@@ -1,4 +1,5 @@
 <script setup>
+import FinalizePayslipFormDialog from "@/components/dialogs/FinalizePayslipFormDialog.vue";
 import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -10,6 +11,9 @@ const page = ref(1);
 const totalPayslips = ref(0);
 const itemsPerPage = ref(10);
 const payslips = ref([]);
+
+const selectedPayslip = ref(null);
+const showFinalizeDialog = ref(false);
 
 const fetchPayslips = async () => {
   loading.value = true;
@@ -26,27 +30,14 @@ const fetchPayslips = async () => {
 
 onMounted(() => fetchPayslips());
 
-const handleFinalizePayslip = async (id) => {
-  try {
-    const form = new FormData();
-    form.append("_method", "PUT");
-    const { data } = await axios.post(
-      `/finances/payslips/${id}/finalize`,
-      form
-    );
+const handleFinalizePayslip = (payslip) => {
+  showFinalizeDialog.value = true;
+  selectedPayslip.value = payslip;
+};
 
-    if (data.status) {
-      toast.success("El estado de la nómina ha sido actualizado exitosamente");
-
-      fetchPayslips();
-    } else {
-      toast.error(
-        "No se pudo actualizar el estado de la nómina, intente de nuevo"
-      );
-    }
-  } catch (error) {
-    toast.error("Hubo un error al actualizar el estado de la nómina");
-  }
+const handleClosePayslip = () => {
+  showFinalizeDialog.value = false;
+  selectedPayslip.value = {};
 };
 
 const handleDownloadExcel = async (id) => {
@@ -97,6 +88,13 @@ const handleDownloadPdf = async (id, type) => {
 
 <template>
   <div>
+    <FinalizePayslipFormDialog
+      v-model="showFinalizeDialog"
+      :selected-payslip="selectedPayslip"
+      @refresh-table="fetchPayslips"
+      @close="handleClosePayslip"
+    />
+
     <PayslipTable
       :page="page"
       :items-per-page="itemsPerPage"
