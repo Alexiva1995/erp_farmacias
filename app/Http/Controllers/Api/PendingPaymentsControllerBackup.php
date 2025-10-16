@@ -89,7 +89,21 @@ class PendingPaymentsController extends Controller
 
             $invoices = $query->get();
 
-            // Log removido para pruebas
+            Log::info('Facturas encontradas en PendingPayments:', [
+                'total_facturas' => $invoices->count(),
+                'facturas' => $invoices->map(function ($invoice) {
+                    return [
+                        'id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'supplier_id' => $invoice->supplier_id,
+                        'supplier_name' => $invoice->supplier->name ?? 'N/A',
+                        'status' => $invoice->status,
+                        'payment_date' => $invoice->payment_date,
+                        'currency' => $invoice->currency,
+                        'total_amount' => $invoice->total_amount
+                    ];
+                })
+            ]);
 
             // CORRECCIÓN CRÍTICA: No recalcular total_usd, usar el de la BD
             // $invoices ya tiene el total_usd correcto desde la base de datos

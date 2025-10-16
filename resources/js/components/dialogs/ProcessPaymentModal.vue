@@ -52,7 +52,7 @@ const roundToTwoDecimals = (value) => {
   return parseFloat(parseFloat(value).toFixed(2));
 };
 
-// Validaciones de monto
+// Validaciones de monto - CORRECCIÓN ISSUE #2: Flexibilidad total
 const validatePaymentAmount = (value) => {
   const errors = [];
 
@@ -84,46 +84,9 @@ const validatePaymentAmount = (value) => {
     return errors;
   }
 
-  // Validaciones según el tipo de pago
-  const paymentType = form.value.payment_type;
-  const suggestedAmount = suggestedAmountInLocalCurrency.value;
-  const tolerance = 0.01; // Tolerancia de 1 centavo para diferencias de redondeo
-
-  if (paymentType === "full") {
-    // Para pagos completos, el monto debe ser exactamente el sugerido
-    if (Math.abs(numValue - suggestedAmount) > tolerance) {
-      errors.push(
-        `❌ Para pago completo, el monto debe ser exactamente ${formatCurrency(
-          suggestedAmount,
-          form.value.payment_currency
-        )}`
-      );
-      return errors;
-    }
-  } else if (paymentType === "partial") {
-    // Para pagos parciales, el monto debe ser menor o igual al sugerido
-    if (numValue > suggestedAmount + tolerance) {
-      errors.push(
-        `❌ Para pago parcial, el monto no puede exceder ${formatCurrency(
-          suggestedAmount,
-          form.value.payment_currency
-        )}`
-      );
-      return errors;
-    }
-
-    // Validar que el monto parcial sea razonable (al menos 1% del total)
-    const minPartialAmount = suggestedAmount * 0.01;
-    if (numValue < minPartialAmount) {
-      errors.push(
-        `❌ El pago parcial debe ser al menos ${formatCurrency(
-          minPartialAmount,
-          form.value.payment_currency
-        )} (1% del total)`
-      );
-      return errors;
-    }
-  }
+  // CORRECCIÓN ISSUE #2: Eliminar validaciones restrictivas
+  // El usuario puede pagar cualquier monto (más o menos que el sugerido)
+  // Solo validamos que sea un número positivo válido
 
   return errors;
 };
@@ -208,7 +171,7 @@ const totalInUSD = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
   return selectedInvoices.value.reduce((sum, invoice) => {
     // Siempre usar total_usd de la base de datos para el "Total a Pagar"
-    return sum + parseFloat(invoice.total_amount_usd || 0);
+    return sum + parseFloat(invoice.total_usd || 0);
   }, 0);
 });
 
@@ -753,6 +716,29 @@ onMounted(() => {
 
         <!-- Formulario de pago -->
         <VForm @submit.prevent="processPayment">
+          <!-- CORRECCIÓN ISSUE #2: Mostrar monto de referencia en USD -->
+          <VRow>
+            <VCol cols="12">
+              <VAlert type="info" variant="outlined" class="mb-4">
+                <template #title>
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-currency-dollar" class="me-2" />
+                    Monto de Referencia de la Factura
+                  </div>
+                </template>
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-primary mb-2">
+                    {{ formatCurrency(totalInUSD, "USD") }}
+                  </div>
+                  <div class="text-body-2 text-medium-emphasis">
+                    Este es el monto de la factura en USD. Puede pagar más o
+                    menos según su conveniencia.
+                  </div>
+                </div>
+              </VAlert>
+            </VCol>
+          </VRow>
+
           <VRow>
             <VCol cols="12" md="6">
               <VSelect
@@ -803,18 +789,11 @@ onMounted(() => {
                 :prepend-inner-icon="amountFieldState === 'error' ? '❌' : '💲'"
                 :hint="
                   amountFieldState === 'success'
-                    ? form.payment_type === 'full'
-                      ? '✅ Monto correcto - Listo para procesar pago completo'
-                      : '✅ Monto válido - Listo para procesar pago parcial'
-                    : form.payment_type === 'full'
-                    ? `Monto requerido para pago completo: ${formatCurrency(
-                        suggestedAmountInLocalCurrency.value,
-                        form.payment_currency
-                      )}`
-                    : `Monto sugerido (máximo): ${formatCurrency(
-                        suggestedAmountInLocalCurrency.value,
-                        form.payment_currency
-                      )} - Puede ser menor para pago parcial`
+                    ? '✅ Monto válido - Listo para procesar'
+                    : `Monto de referencia: ${formatCurrency(
+                        totalInUSD,
+                        'USD'
+                      )} - Puede pagar más o menos según su conveniencia`
                 "
                 persistent-hint
                 @input="validateAmountRealtime"
