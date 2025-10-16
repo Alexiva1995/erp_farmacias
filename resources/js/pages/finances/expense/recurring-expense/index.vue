@@ -72,6 +72,8 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
+const isDeductible = ref(false);
+const hasInvoice = ref(false);
 
 function insertarDatosAlFormulario(datos){
   formulario.id=datos.id
@@ -159,7 +161,9 @@ watch(
       page,
       itemsPerPage,
       sortBy,
-      orderBy
+      orderBy,
+      isDeductible,
+      hasInvoice
   ],
   async () =>{
     actualizarTabla()
@@ -229,6 +233,8 @@ async function consultarGastos(){
     sortBy:sortBy.value,
     orderBy:orderBy.value,
     type_of_expense:type_of_expense,
+    isDeductible: isDeductible.value,
+    hasInvoice: hasInvoice.value,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -260,6 +266,8 @@ function limpliarFiltros(){
   category_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
+  isDeductible.value=false
+  hasInvoice.value=false
 }
 
 
@@ -357,6 +365,8 @@ onMounted(async () => {
       v-model:category_id_filtro="category_id_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
+      v-model:isDeductible="isDeductible"
+      v-model:hasInvoice="hasInvoice"
       :categorias="statuModule.categorias"
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
