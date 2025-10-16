@@ -41,8 +41,12 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             "status" => "processing",
         ]);
 
+        \Log::info('Supplier Job', ['status data' => $status]);
+
         $supplierConnection = $this->supplier->connections->first();
         if (is_null($supplierConnection) && !$this->filePath) {
+            \Log::info('Supplier Job', ['supplier' => $this->supplier->id]);
+            \Log::info('Supplier Job', ['connection not found']);
             $status->update([
                 "status" => "failed",
                 "message" => "Este proveedor no posee una conexión registrada",
@@ -51,6 +55,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         }
 
         $structure = $supplierConnection->structure ?? null;
+        \Log::info('Supplier Job', ['structure', $structure]);
 
         try {
             $results = [];
@@ -67,6 +72,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         'structure' => $this->columnMap
                     ];
                     $queryService->storeConnection($data);
+                    \Log::info('Supplier Job', ['stored connection']);
                 }
 
                 $import = new SupplierImport(
@@ -83,10 +89,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     currencyCol: $this->columnMap["currency"] ?: null,
                 );
 
+                \Log::info('Supplier Job', ['import file', $import]);
+
                 $absolutePath = Storage::disk("local")->path($this->filePath);
+
+                \Log::info('Supplier Job', ['file absolute path', $absolutePath]);
 
                 Excel::import($import, $absolutePath);
                 $results = ["products" => $import->getRows()->toArray(), "invoices" => []];
+
+                \Log::info('Supplier Job', ['results', count($results)]);
 
                 unlink($absolutePath);
             } else {
