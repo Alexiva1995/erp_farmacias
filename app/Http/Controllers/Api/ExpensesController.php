@@ -29,7 +29,6 @@ class ExpensesController extends Controller
 
     public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
-        // dd($request->data->toArray());
         $expense = $this->expenses->crearGasto($request->data);
 
         return ApiResponse::success($expense, "ok");
@@ -113,6 +112,14 @@ class ExpensesController extends Controller
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
             $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->has("hasInvoice")) {
+            $filtros["hasInvoice"] = (bool) $request->hasInvoice ? 1 : 0;
+        }
+
+        if ($request->has("isDeductible")) {
+            $filtros["isDeductible"] = (bool) $request->isDeductible ? 1 : 0;
         }
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
