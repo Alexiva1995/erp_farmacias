@@ -4,8 +4,10 @@ namespace App\Repository;
 
 use App\Models\Employee;
 use App\Models\ExchangeRate;
+use App\Models\Expense;
 use App\Models\Payslip;
 use App\Models\PayslipDetails;
+use App\Models\Transaction;
 use App\Models\UsersSalaryDetails;
 use Artisan;
 use Carbon\Carbon;
@@ -92,8 +94,51 @@ class PayslipRepository
     return true;
   }
 
-  public function finalize(Payslip $payslip)
+  public function finalize(Payslip $payslip, array $data)
   {
+    $currency = $data['currency'];
+    $count = $data['count'];
+    $total = $data['payed'];
+    $exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', $currency === 'BS' ? 'USD' : 'COP')
+      ->first();
+
+    $total_bs = round($payslip->total * $exchange_rate->rate, 2);
+
+    Expense::create([
+      'name' => 'Nómina',
+      'category_id' => 1,
+      'amount' => $total,
+      'amount_usd' => $payslip->total,
+      'amount_bs' => $total_bs,
+      'currency' => $currency,
+      'expense_date' => now(),
+      'user_id' => auth()->user()->id,
+      'count' => $count,
+      'is_deductible' => true,
+      'type_of_expense' => 'Normal'
+    ]);
+
+    $type = match ($count) {
+      'Efectivo' => 'CASH',
+      'Tarjeta' => 'CARD',
+      'Pago móvil' => 'MOBILE',
+      'Transferencia' => 'TRANSFER',
+      'Binance' => 'BINANCE',
+      'Paypal' => 'PAYPAL'
+    };
+
+    Transaction::create([
+      'user_id' => auth()->user()->id,
+      'category_id' => 1,
+      'exchange_rate_id' => $currency === 'BS' ? $exchange_rate->id : null,
+      'description' => 'Pago de nómina',
+      'currency' => $currency,
+      'type' => $type,
+      'amount' => $total,
+      'movement_type' => 'OUT',
+      'transaction_date' => now()
+    ]);
     return $payslip->update(['status' => 1]);
   }
 
