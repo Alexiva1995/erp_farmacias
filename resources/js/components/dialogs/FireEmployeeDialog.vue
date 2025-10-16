@@ -22,6 +22,12 @@ const payed = ref(null);
 const currency = ref(null);
 const count = ref(null);
 
+const countsFilterByCurrency = {
+  USD: ["Efectivo", "Binance", "Paypal"],
+  COP: ["Efectivo", "Transferencia"],
+  BS: ["Efectivo", "Tarjeta", "Pago móvil", "Transferencia"],
+};
+
 const fetchSettlement = async () => {
   if (!props.selectedEmployee?.id) return;
   if (!props.modelValue) return;
@@ -377,7 +383,7 @@ const closeDialog = () => {
                   item-title="title"
                   item-value="value"
                   :items="
-                    ['USD', 'BS'].map((currency) => ({
+                    Object.keys(countsFilterByCurrency).map((currency) => ({
                       title: currency,
                       value: currency,
                     }))
@@ -394,14 +400,13 @@ const closeDialog = () => {
                   item-title="title"
                   item-value="value"
                   :items="
-                    [
-                      'Efectivo',
-                      'Tarjeta',
-                      'Pago móvil',
-                      'Transferencia',
-                      'Binance',
-                      'Paypal',
-                    ].map((account) => ({
+                    (
+                      countsFilterByCurrency[currency] ?? [
+                        ...new Set(
+                          Object.values(countsFilterByCurrency).flat()
+                        ),
+                      ]
+                    ).map((account) => ({
                       title: account,
                       value: account,
                     }))
