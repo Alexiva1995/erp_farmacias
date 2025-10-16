@@ -67,6 +67,7 @@ const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
 const status= ["Approved","Cancelled"];
+const type_of_expense = ["Normal"];
 
 const loading = ref(false)
 
@@ -187,6 +188,7 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    type_of_expense:type_of_expense,
     isDeductible: isDeductible.value,
     hasInvoice: hasInvoice.value,
   }

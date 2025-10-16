@@ -27,7 +27,7 @@ const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
-const type_of_expense= "normal";
+const type_of_expense = ["Normal","Recurrente"];
 const status= ["Pending"];
 
 const loading = ref(false)

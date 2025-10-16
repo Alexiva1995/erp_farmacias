@@ -63,7 +63,8 @@ const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
-const status= ["Pending"];
+const status= ["Approved","Cancelled"];
+const type_of_expense = ["Recurrente"];
 
 const loading = ref(false)
 
@@ -227,6 +228,7 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    type_of_expense:type_of_expense,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -372,7 +374,7 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Gastos">
+    <VCard>
       <VDivider />
       <RecurringExpenseTable
         :items="statuModule.items"
