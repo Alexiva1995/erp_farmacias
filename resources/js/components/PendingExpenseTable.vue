@@ -39,7 +39,7 @@ const headers = [
     return fecha;
   }},
   { title: 'Usuario', key: 'user.username', sortable: false },
-  { title: 'Acciones', key: 'acciones', sortable: false },
+  { title: 'Acciones', key: 'actions', sortable: false },
 ];
 </script>
 <template>
@@ -57,26 +57,21 @@ const headers = [
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
 
-      <template #item.acciones="{ item }">
-        <VRow>
-          <VCol>
-            <VIcon
-              icon="tabler-check"
-              @click="
-                () => emit('cambiarEstado', { id: item.id, status: 'Approved' })
-              "
-            />
-          </VCol>
-          <VCol>
-            <VIcon
-              icon="tabler-x"
-              @click="
-                () =>
-                  emit('cambiarEstado', { id: item.id, status: 'Cancelled' })
-              "
-            />
-          </VCol>
-        </VRow>
+      <template #item.actions="{ item }">
+        <div class="d-flex align-center gap-2">
+          <VIcon
+            icon="tabler-check"
+            @click="
+              () => emit('cambiarEstado', { id: item.id, status: 'Approved' })
+            "
+          />
+          <VIcon
+            icon="tabler-x"
+            @click="
+              () => emit('cambiarEstado', { id: item.id, status: 'Cancelled' })
+            "
+          />
+        </div>
       </template>
       <!-- <template #item.acciones="{ item }">
         <IconBtn @click="emit('edit', item.id)"
