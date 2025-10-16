@@ -418,6 +418,11 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
         });
 
+        // ISSUE #3: Rutas para facturas indexadas
+        Route::prefix("invoices")->group(function () {
+            Route::put("/{invoiceId}/toggle-indexed", [PendingPaymentsController::class, "toggleIndexedStatus"]);
+        });
+
         // payment history
         Route::prefix("payment-history")->group(function () {
             Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
