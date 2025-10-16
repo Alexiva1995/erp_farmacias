@@ -144,7 +144,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -172,7 +173,7 @@
             "6": {
                 "file_field": "precio_unitario_final",
                 "type": "decimal",
-                "target": "unit_cost"
+                "target": "unit_cost_usd"
             },
             "7": {
                 "file_field": "stock_disponible",

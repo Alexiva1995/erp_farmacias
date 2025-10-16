@@ -123,10 +123,10 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        try { 
+        try {
             $connector = new Connector(['timeout' => 1800]);
             $client = (new Browser($connector))->withTimeout(1800.0);
-        
+
             $loginResponse = Http::post($connection->host, [
                 "usuario" => $connection->username,
                 "clave" => FtpCrypt::decrypt($connection->password),
@@ -135,8 +135,8 @@ class SupplierConnectionService
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
 
-            $productResponse = $this->fetchFromAPI( $loginResponse->json()["token"], $payload, $client, $connection->path);        
-            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);    
+            $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
+            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
 
             $productData = $this->parseDynamicContent($productCsvString, $connection);
 
@@ -145,9 +145,9 @@ class SupplierConnectionService
                 $seenInvoiceNumbers = [];
                 $invoiceResults = [];
 
-                
+
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
-                $invoiceResponse = $this->fetchFromAPI( $loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
+                $invoiceResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
 
                 foreach ($invoiceResponse as $invoice) {
                     $cod_invoice = $invoice['InvoiceCode'] ?? null;
@@ -184,10 +184,10 @@ class SupplierConnectionService
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
-                    } 
+                    }
                 }
             }
-            
+
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
@@ -290,6 +290,11 @@ class SupplierConnectionService
                                 break;
                             }
 
+                            if ($meta["target"] === "unit_cost_usd") {
+                                $entry["unit_cost_usd"] = $newValue;
+                                break;
+                            }
+
                             // Si ya tiene el precio en bs y usd
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
@@ -364,6 +369,15 @@ class SupplierConnectionService
                 }
             }
 
+            if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
+                $entry["unit_cost"] = number_format(
+                    (float) ($entry["unit_cost_usd"] * $usdCurrency->rate),
+                    2,
+                    ".",
+                    ""
+                );
+            }
+
             //$entry["quantity"] = $quantity;
 
             // if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
@@ -407,7 +421,6 @@ class SupplierConnectionService
         $bufferLines = [];
 
         $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
-
         $barcodes = [];
 
         foreach ($lines as $line) {
@@ -451,7 +464,19 @@ class SupplierConnectionService
                 }
 
                 $barcode = $lineData['barcode'] ?? null;
-                $lineData['product_id'] = $products[$barcode]->id ?? null;
+
+                // ✅ Buscar o crear producto
+                if ($barcode) {
+                    $product = $products->get($barcode);
+                    if (!$product) {
+                        // Crear producto si no existe
+                        $product = $this->createProductFromInvoice($lineData, $connection->supplier_id);
+                        if ($product) {
+                            $products->put($barcode, $product);
+                        }
+                    }
+                    $lineData['product_id'] = $product?->id;
+                }
 
                 // Agrupar por número de factura
                 if (!isset($invoiceGroups[$invoiceNumber])) {
@@ -469,6 +494,9 @@ class SupplierConnectionService
                 $seenInvoiceNumbers[] = $number;
             }
         } else {
+            // ✅ Variable para guardar el exchange_rate del header actual
+            $currentExchangeRate = null;
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
                 $tipo = trim($cols[0] ?? "");
@@ -484,20 +512,25 @@ class SupplierConnectionService
 
                     $invoiceNumber = $header['invoice_number'] ?? null;
                     if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
-                        $bufferLines = []; // limpiar igual
-                        continue; // ya existe, saltar
+                        $bufferLines = [];
+                        continue;
                     }
 
-                    if(in_array($connection->supplier_id, [15])) {
+                    if (in_array($connection->supplier_id, [15])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
+
                         $header["total_amount"] = $totalUSD * $exchangeRate;
 
-                        if(isset($header["tax_amount"])){
-                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                        if (isset($header["tax_amount"])) {
+                            $header["taxable_base"] = floatval($header["tax_amount"]);
+                            $header["tax_amount"] = $header["taxable_base"] * 0.16;
                             $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
-                        } else 
+                        } else {
                             $header["exempt_amount"] = $header["total_amount"];
+                        }
+
                         $header["status_payment"] = 0;
                     }
 
@@ -507,7 +540,7 @@ class SupplierConnectionService
                     ];
 
                     $seenInvoiceNumbers[] = $invoiceNumber;
-                    $bufferLines = []; // limpiar para el próximo bloque
+                    $bufferLines = [];
                 }
 
                 if ($tipo === "R") {
@@ -520,7 +553,18 @@ class SupplierConnectionService
                     }
 
                     $barcode = $lineData["barcode"] ?? null;
-                    $lineData["product_id"] = $products[$barcode]->id ?? null;
+
+                    // ✅ Solo crear producto si no existe
+                    if ($barcode) {
+                        $product = $products->get($barcode);
+                        if (!$product) {
+                            $product = $this->createProductFromInvoice($lineData, $connection->supplier_id);
+                            if ($product) {
+                                $products->put($barcode, $product);
+                            }
+                        }
+                        $lineData['product_id'] = $product?->id;
+                    }
 
                     $unitCost = floatval($lineData["unit_cost"] ?? 0);
                     $quantity = intval($lineData["quantity"] ?? 0);
@@ -532,6 +576,58 @@ class SupplierConnectionService
         }
 
         return $invoices;
+    }
+
+    private function createProductFromInvoice(array $lineData, int $supplierId): ?Product
+    {
+        $barcode = $lineData['barcode'] ?? null;
+
+        if (!$barcode) {
+            return null;
+        }
+
+        // Verificar si ya existe
+        if (Product::where('barcode', $barcode)->exists()) {
+            return Product::where('barcode', $barcode)->first();
+        }
+
+        try {
+            $productName = $lineData['descripcion_producto'] ?? 'Producto desde factura';
+
+            $newProduct = Product::create([
+                'barcode' => $barcode,
+                'name' => $productName,
+                'active_ingredient' => 'N/A',
+                'laboratory_id' => null,
+                'origin_id' => null,
+                'category_id' => null,
+                'group_id' => null,
+                'unit_cost' => floatval($lineData['unit_cost'] ?? 0),
+                'sale_price' => floatval($lineData['unit_cost'] ?? 0),
+                'iva' => 0,
+                'is_colombian_origin' => false,
+                'psychotropic' => false,
+                'stock' => 0,
+                'sales_average' => 0,
+                'is_deleted' => false,
+            ]);
+
+            Log::info('✅ Producto creado desde factura', [
+                'supplier_id' => $supplierId,
+                'barcode' => $barcode,
+                'product_id' => $newProduct->id,
+                'name' => $newProduct->name
+            ]);
+
+            return $newProduct;
+        } catch (\Exception $e) {
+            Log::error('❌ Error al crear producto desde factura', [
+                'supplier_id' => $supplierId,
+                'barcode' => $barcode,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     private function castValue(string $raw, array $meta): mixed
@@ -587,8 +683,8 @@ class SupplierConnectionService
                 'Accept' => 'application/json'
             ],
             $method === 'post' ? json_encode($data) : null
-        )->then(function (ResponseInterface $response)  use (&$productResponse) {
-            $productResponse = json_decode((string)$response->getBody(), true);
+        )->then(function (ResponseInterface $response) use (&$productResponse) {
+            $productResponse = json_decode((string) $response->getBody(), true);
         }, function (\Exception $e) {
             echo 'Error: ' . $e->getMessage() . PHP_EOL;
         });
