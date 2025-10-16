@@ -55,6 +55,12 @@ class SocialBenefitRepository
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->where('employees.is_active', true)
       ->whereNull('employees.deleted_at')
+      ->where(function ($query) use ($search) {
+        $query->where('employees.name', 'LIKE', "%{$search}%")
+          ->orWhere('employees.last_name', 'LIKE', "%{$search}%")
+          ->orWhere('employees.identification', 'LIKE', "%{$search}%")
+          ->orWhere('users.email', 'LIKE', "%{$search}%");
+      })
       ->groupBy(
         'employees.id',
         'employees.name',
