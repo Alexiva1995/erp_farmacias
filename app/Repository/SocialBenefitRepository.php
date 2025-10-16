@@ -137,23 +137,19 @@ class SocialBenefitRepository
       ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
       ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->leftJoin(
-        DB::raw('( SELECT DATE(created_at) AS rate_date, rate
-                    FROM exchange_rates
-                    WHERE currency_code = \'USD\'
-                    ORDER BY created_at DESC ) AS er'),
-        'er.rate_date',
-        '=',
-        DB::raw('DATE(ps.payslip_date)')
-      )
       ->where('employees.id', $employee->id)
       ->whereIn('sc.name', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
-      ->groupBy(['sc.name', 'ps.id', 'pd.amount'])
       ->select(
         'sc.name as concept_name',
-        DB::raw('pd.amount * er.rate AS amount_usd')
+        DB::raw('pd.amount * (
+            SELECT rate
+            FROM exchange_rates
+            WHERE currency_code = \'USD\'
+              AND DATE(created_at) = DATE(ps.payslip_date)
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) AS amount_usd')
       );
-
     \Log::info('Repository', context: ['sub-query' => $sub]);
 
     $deductions = DB::query()
