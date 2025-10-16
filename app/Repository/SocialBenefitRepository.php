@@ -169,8 +169,8 @@ class SocialBenefitRepository
 
     \Log::info('Repository', ['deductions' => $deductions]);
 
-    $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears - 1);
-    $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears - 1);
+    $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears === 0 ? 0 : $activeYears - 1);
+    $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears === 0 ? 0 : $activeYears - 1);
     $vacBonusVoucherDays = $vacationVoucherDays;
     $earningsVoucherDays = 30 * $activeYears;
 
