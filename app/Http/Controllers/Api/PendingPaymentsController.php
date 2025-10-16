@@ -231,8 +231,8 @@ class PendingPaymentsController extends Controller
                             'total_amount' => $displayAmount, // Monto restante (indexado si aplica)
                             'total_usd' => $invoice->total_usd, // CORRECCIÓN: Mantener USD original fijo
                             'invoiceRemainingUSD' => $invoiceRemainingUSD, // Alias para compatibilidad
-                            'remaining_amount' => $displayAmount, // Monto restante para columna visual
-                            'remaining_amount_usd' => $invoice->total_usd, // CORRECCIÓN: Mantener USD original fijo
+                            'remaining_amount' => $this->calculateRemainingAmountForInvoice($invoice), // Monto restante real
+                            'remaining_amount_usd' => $this->calculateRemainingAmountUSDForInvoice($invoice), // Monto restante USD real
                             'original_amount' => $displayOriginalAmount, // Monto original (indexado si aplica)
                             'original_amount_usd' => $invoice->total_usd, // Monto original en USD
                             'currency' => $invoice->currency,
@@ -375,20 +375,44 @@ class PendingPaymentsController extends Controller
                 }
             }
 
-            // 2. Verificar duplicados (mismo monto, misma fecha, mismas facturas)
-            $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
-                ->where('payment_date', $request->payment_date)
-                ->where('payment_method', $request->payment_currency)
-                ->whereHas('invoices', function ($query) use ($request) {
-                    $query->whereIn('id', $request->invoice_ids);
-                })
-                ->first();
+            // 2. Verificar duplicados (versión mejorada para pagos parciales)
+            // CORRECCIÓN: Para pagos parciales, ser más permisivo
+            if ($request->payment_type === 'partial') {
+                // Solo bloquear si tiene la misma referencia Y es exactamente el mismo pago
+                if (!empty($request->reference)) {
+                    $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
+                        ->where('payment_date', $request->payment_date)
+                        ->where('payment_method', $request->payment_currency)
+                        ->where('reference', $request->reference)
+                        ->whereHas('invoices', function ($query) use ($request) {
+                            $query->whereIn('id', $request->invoice_ids);
+                        })
+                        ->first();
 
-            if ($duplicatePayment) {
-                return ApiResponse::error(
-                    'Ya existe un pago idéntico registrado para estas facturas. Por favor, verifica los datos.',
-                    400
-                );
+                    if ($duplicatePayment) {
+                        return ApiResponse::error(
+                            'Ya existe un pago idéntico registrado para estas facturas con la misma referencia. Por favor, usa una referencia diferente.',
+                            400
+                        );
+                    }
+                }
+                // Si no hay referencia, permitir el pago (pagos parciales legítimos)
+            } else {
+                // Para pagos completos, mantener validación estricta
+                $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
+                    ->where('payment_date', $request->payment_date)
+                    ->where('payment_method', $request->payment_currency)
+                    ->whereHas('invoices', function ($query) use ($request) {
+                        $query->whereIn('id', $request->invoice_ids);
+                    })
+                    ->first();
+
+                if ($duplicatePayment) {
+                    return ApiResponse::error(
+                        'Ya existe un pago idéntico registrado para estas facturas. Por favor, verifica los datos.',
+                        400
+                    );
+                }
             }
 
             DB::beginTransaction();
@@ -774,11 +798,13 @@ class PendingPaymentsController extends Controller
      */
     private function determinePaymentStatusCorrected($invoiceIds, $currentPaymentUSD, $totalAmountUSD): int
     {
-        // Obtener el total pagado anteriormente en USD para estas facturas
-        // (excluyendo el pago actual que aún no se ha registrado)
+        // CORRECCIÓN CRÍTICA: Obtener solo pagos anteriores (excluyendo el actual)
+        // Usar created_at < now() - 1 segundo para excluir el pago que se está procesando
         $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
             $query->whereIn('id', $invoiceIds);
-        })->get();
+        })
+            ->where('created_at', '<', now()->subSecond())
+            ->get();
 
         $previousPaymentsUSD = 0;
         foreach ($payments as $payment) {
@@ -800,7 +826,7 @@ class PendingPaymentsController extends Controller
         // Solo marcar como pagada si el monto pagado es MAYOR que el total (con tolerancia mínima)
         $tolerance = 0.01; // 1 centavo de tolerancia para diferencias de redondeo
 
-        if ($totalPaidUSD > ($totalAmountUSD - $tolerance)) {
+        if ($totalPaidUSD >= ($totalAmountUSD - $tolerance)) {
             return 1; // paid - La factura queda completamente pagada
         } else {
             return 0; // pending - La factura aún tiene saldo pendiente
@@ -1212,5 +1238,72 @@ class PendingPaymentsController extends Controller
         } catch (\Exception $e) {
             return ApiResponse::error('Error al actualizar el estado de indexación: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Calcular monto restante para una factura individual considerando pagos parciales
+     */
+    private function calculateRemainingAmountForInvoice(Invoice $invoice): float
+    {
+        // Obtener todos los pagos para esta factura
+        $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+            $query->where('id', $invoice->id);
+        })->get();
+
+        $totalPaidUSD = 0;
+        foreach ($payments as $payment) {
+            if ($payment->payment_method === 'USD') {
+                $totalPaidUSD += $payment->amount;
+            } else {
+                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                if ($exchangeRate) {
+                    $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                }
+            }
+        }
+
+        // Calcular monto restante en USD
+        $remainingAmountUSD = max(0, $invoice->total_usd - $totalPaidUSD);
+
+        // Convertir a moneda original de la factura
+        if ($invoice->currency === 'Bs') {
+            $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first();
+            if ($exchangeRate) {
+                return round($remainingAmountUSD * $exchangeRate->rate, 2);
+            }
+        } elseif ($invoice->currency === 'COP') {
+            $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
+            if ($exchangeRate) {
+                return round($remainingAmountUSD * $exchangeRate->rate, 2);
+            }
+        }
+
+        return $remainingAmountUSD; // Para USD
+    }
+
+    /**
+     * Calcular monto restante USD para una factura individual considerando pagos parciales
+     */
+    private function calculateRemainingAmountUSDForInvoice(Invoice $invoice): float
+    {
+        // Obtener todos los pagos para esta factura
+        $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+            $query->where('id', $invoice->id);
+        })->get();
+
+        $totalPaidUSD = 0;
+        foreach ($payments as $payment) {
+            if ($payment->payment_method === 'USD') {
+                $totalPaidUSD += $payment->amount;
+            } else {
+                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                if ($exchangeRate) {
+                    $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                }
+            }
+        }
+
+        // Retornar monto restante en USD
+        return max(0, $invoice->total_usd - $totalPaidUSD);
     }
 }

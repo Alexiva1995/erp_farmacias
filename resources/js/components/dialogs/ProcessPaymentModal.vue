@@ -255,7 +255,12 @@ const amountInUSD = computed(() => {
 // Monto restante para pagos parciales
 const remainingAmount = computed(() => {
   if (form.value.payment_type === "partial") {
-    return roundToTwoDecimals(totalInUSD.value - amountInUSD.value);
+    // CORRECCIÓN: Mostrar monto restante ANTES del pago actual
+    const totalPaidUSD = paidAmountUSD.value;
+    const currentPaymentUSD = amountInUSD.value;
+    const remainingBeforeCurrentPayment = totalPaidUSD - currentPaymentUSD;
+
+    return roundToTwoDecimals(totalInUSD.value - remainingBeforeCurrentPayment);
   }
   return 0;
 });
@@ -263,7 +268,10 @@ const remainingAmount = computed(() => {
 // Porcentaje pagado
 const paymentPercentage = computed(() => {
   if (totalInUSD.value === 0) return 0;
-  return roundToTwoDecimals((amountInUSD.value / totalInUSD.value) * 100);
+
+  // CORRECCIÓN: Calcular porcentaje considerando pagos anteriores + pago actual
+  const totalPaidUSD = paidAmountUSD.value;
+  return roundToTwoDecimals((totalPaidUSD / totalInUSD.value) * 100);
 });
 
 const currentExchangeRate = computed(() => {
@@ -346,12 +354,16 @@ const updatePaymentAmount = () => {
     return;
   }
 
-  form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+  // CORRECCIÓN: No establecer monto sugerido automáticamente
+  // El usuario debe ingresar el monto manualmente
+  // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
 };
 
 // Establecer monto por defecto cuando cambia la moneda
 const setDefaultAmount = () => {
-  form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+  // CORRECCIÓN: No establecer monto sugerido automáticamente
+  // El usuario debe ingresar el monto manualmente
+  // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
 };
 
 // Función helper para obtener tasa de cambio
@@ -389,7 +401,8 @@ const fetchPaymentInfo = async () => {
       // Si hay pagos previos, ajustar el monto sugerido
       if (paymentInfo.value.has_previous_payments) {
         form.value.payment_type = "partial"; // Cambiar automáticamente a parcial
-        form.value.payment_amount = paymentInfo.value.remaining_amount;
+        // CORRECCIÓN: No establecer monto sugerido automáticamente
+        // form.value.payment_amount = paymentInfo.value.remaining_amount;
       }
     }
   } catch (error) {
@@ -554,17 +567,21 @@ const paidAmountUSD = computed(() => {
   const paymentAmount = form.value.payment_amount || 0;
   const paymentCurrency = form.value.payment_currency;
 
+  let currentPaymentUSD = 0;
   if (paymentCurrency === "USD") {
-    return paymentAmount;
+    currentPaymentUSD = paymentAmount;
+  } else {
+    // Convertir a USD
+    const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
+    const rate = exchangeRates.value[currencyKey];
+    if (rate) {
+      currentPaymentUSD = roundToTwoDecimals(paymentAmount / rate);
+    }
   }
 
-  // Convertir a USD
-  const currencyKey = paymentCurrency === "VES" ? "BS" : paymentCurrency;
-  const rate = exchangeRates.value[currencyKey];
-
-  if (!rate) return 0;
-
-  return roundToTwoDecimals(paymentAmount / rate);
+  // CORRECCIÓN: Incluir pagos anteriores + pago actual
+  const previousPaymentsUSD = paymentInfo.value.total_paid_usd || 0;
+  return previousPaymentsUSD + currentPaymentUSD;
 });
 
 // Porcentaje de ahorro
@@ -580,6 +597,43 @@ const savingsPercentage = computed(() => {
   return roundToTwoDecimals(percentage);
 });
 
+// Función para obtener la moneda original de la factura
+const getOriginalCurrency = () => {
+  if (selectedInvoices.value.length > 0) {
+    return selectedInvoices.value[0].currency;
+  }
+  return "USD";
+};
+
+// Función para calcular el monto restante en la moneda original
+const getRemainingAmountInOriginalCurrency = () => {
+  if (form.value.payment_type === "partial" && remainingAmount.value > 0) {
+    const originalCurrency = getOriginalCurrency();
+
+    if (originalCurrency === "USD") {
+      return remainingAmount.value;
+    }
+
+    // CORRECCIÓN: Mapear correctamente las monedas a las claves de exchangeRates
+    let currencyKey;
+    if (originalCurrency === "Bs" || originalCurrency === "VES") {
+      currencyKey = "BS";
+    } else if (originalCurrency === "COP") {
+      currencyKey = "COP";
+    } else {
+      currencyKey = originalCurrency;
+    }
+
+    const rate = exchangeRates.value[currencyKey];
+
+    if (rate) {
+      return roundToTwoDecimals(remainingAmount.value * rate);
+    }
+  }
+
+  return 0;
+};
+
 // Watchers
 watch(
   () => props.modelValue,
@@ -588,7 +642,8 @@ watch(
       selectedInvoices.value = [...props.invoices];
       await fetchExchangeRates();
       await fetchPaymentInfo(); // Obtener información de pagos previos
-      form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+      // CORRECCIÓN: No establecer monto sugerido automáticamente
+      // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
     }
   }
 );
@@ -596,7 +651,8 @@ watch(
 watch(
   () => form.value.payment_currency,
   () => {
-    form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+    // CORRECCIÓN: No establecer monto sugerido automáticamente
+    // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
   }
 );
 
@@ -605,7 +661,8 @@ watch(
   () => selectedInvoices.value,
   async () => {
     await fetchPaymentInfo();
-    form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+    // CORRECCIÓN: No establecer monto sugerido automáticamente
+    // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
   },
   { deep: true }
 );
@@ -622,10 +679,11 @@ watch(
 watch(
   () => form.value.payment_type,
   () => {
-    // Si es pago completo, establecer el monto sugerido
-    if (form.value.payment_type === "full") {
-      form.value.payment_amount = suggestedAmountInLocalCurrency.value;
-    }
+    // CORRECCIÓN: No establecer monto sugerido automáticamente
+    // El usuario debe ingresar el monto manualmente
+    // if (form.value.payment_type === "full") {
+    //   form.value.payment_amount = suggestedAmountInLocalCurrency.value;
+    // }
     // Si es pago parcial, permitir que el usuario ingrese un monto menor
     validateAmountRealtime();
   }
@@ -865,7 +923,16 @@ onMounted(() => {
                         {{ formatCurrency(paidAmountUSD, "USD") }}
                       </div>
                       <div class="text-caption text-medium-emphasis">
-                        Monto Pagado
+                        Total Pagado (Incluye este pago)
+                      </div>
+                      <div
+                        v-if="paymentInfo.has_previous_payments"
+                        class="text-caption text-info mt-1"
+                      >
+                        Anterior:
+                        {{
+                          formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
+                        }}
                       </div>
                     </div>
                   </VCol>
@@ -890,13 +957,39 @@ onMounted(() => {
                   <div class="text-subtitle-2 mb-2">
                     📊 Información del Pago Parcial
                   </div>
+
+                  <!-- Información de pagos anteriores -->
+                  <div
+                    v-if="paymentInfo.has_previous_payments"
+                    class="mb-3 pa-2 bg-info-lighten-5 rounded"
+                  >
+                    <div class="text-caption text-info">
+                      <strong>Pagos anteriores:</strong>
+                      {{
+                        formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
+                      }}
+                    </div>
+                    <div class="text-caption text-info">
+                      <strong>Pago actual:</strong>
+                      {{ formatCurrency(amountInUSD, "USD") }}
+                    </div>
+                  </div>
+
                   <div>
-                    <strong>Progreso del pago:</strong>
+                    <strong>Progreso total del pago:</strong>
                     {{ paymentPercentage }}%
                   </div>
                   <div>
-                    <strong>Monto restante:</strong>
+                    <strong>Monto restante ANTES de este pago:</strong>
                     {{ formatCurrency(remainingAmount, "USD") }}
+                    <span v-if="getOriginalCurrency() !== 'USD'">
+                      ({{
+                        formatCurrency(
+                          getRemainingAmountInOriginalCurrency(),
+                          getOriginalCurrency()
+                        )
+                      }})
+                    </span>
                   </div>
                   <div class="mt-2">
                     <VProgressLinear
