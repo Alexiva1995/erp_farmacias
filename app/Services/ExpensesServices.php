@@ -156,7 +156,8 @@ class ExpensesServices implements Expenses
         $disk->putFileAs($relativeDir, $file, $filename);
 
         // Construir URL pública
-        $url = $disk->url($relativeDir . '/' . $filename);
+        //$url = $disk->url($relativeDir . '/' . $filename);
+        $url = $relativeDir . '/' . $filename;
 
         return [
             'file_name' => $uuid,
@@ -185,11 +186,13 @@ class ExpensesServices implements Expenses
                 "currency"                =>    $expense->currency,
                 "has_invoice"             =>    $expense->has_invoice,
                 "is_deductible"           =>    $expense->is_deductible,
+                "iva"                     =>    $expense->iva,
                 "expense_date"            =>    $hoy->format('Y-m-d'),
                 "user_id"                 =>    $expense->user_id,
                 "count"                   =>    $expense->count,
                 "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
                 "status"                  =>   "Pending",
+                "amount_bs"              =>    $expense->amount_bs,
             ]);
             $expenseNormal = $this->crearGasto($expenseNormalData);
             Log::info("gastos normal creado del recurrente");
@@ -213,12 +216,14 @@ class ExpensesServices implements Expenses
                 "currency"                =>   $expense->currency,
                 "has_invoice"             =>   $expense->has_invoice,
                 "is_deductible"           =>   $expense->is_deductible,
+                "iva"                     =>   $expense->iva,
                 "user_id"                 =>   $expense->user_id,
                 "count"                   =>   $expense->count,
                 "type_of_expense"         =>   Expense::TYPE_OF_EXPENSE_RECURRENTE,
                 "recurrence"              =>   $expense->recurrence,
                 "next_expense_date"       =>   $next_expense_date,
                 "status"                  =>   "Pending",
+                "amount_bs"              =>    $expense->amount_bs,
             ]);
             $expenseRecurrenteEdit = $this->expensesRepository->editExpenseRecurring($expenseRecurenteData);
             Log::info("actualización del gastos recurrente");

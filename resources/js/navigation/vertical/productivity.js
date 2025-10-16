@@ -20,6 +20,14 @@ export default [
       {
         title: 'Productos Por Empleados',
         to: 'productivity-product',
+      },
+      {
+        title: 'Tareas Por Empleados',
+        to: 'productivity-employee-task',
+      },
+      {
+        title: 'Mis Actividades de Limpieza',
+        to: 'productivity-my-cleaning-activities',
       }
     ],
   }, 

@@ -1030,10 +1030,10 @@ class PendingPaymentsController extends Controller
                 ->whereBetween('expense_date', [$startDate, $endDate])
                 ->get();
 
-            // Calcular 16% del amount_usd para cada gasto con IVA
+            // Calcular 16% del amount_bs para cada gasto con IVA (en bolívares)
             $creditoFiscal = 0;
             foreach ($expensesWithIva as $expense) {
-                $creditoFiscal += $expense->amount_usd * 0.16;
+                $creditoFiscal += $expense->amount_bs * 0.16;
             }
 
             return ApiResponse::success([
@@ -1044,7 +1044,7 @@ class PendingPaymentsController extends Controller
                 'credito_fiscal' => round($creditoFiscal, 2),
                 'detalle_credito' => [
                     'total_expenses_with_iva' => $expensesWithIva->count(),
-                    'total_amount_expenses' => $expensesWithIva->sum('amount_usd'),
+                    'total_amount_expenses' => $expensesWithIva->sum('amount_bs'),
                     'iva_calculated' => round($creditoFiscal, 2)
                 ]
             ], 'Crédito fiscal obtenido exitosamente');
@@ -1053,6 +1053,7 @@ class PendingPaymentsController extends Controller
             return ApiResponse::error('Error al calcular crédito fiscal: ' . $e->getMessage(), 500);
         }
     }
+
     public function getExpensesHistory(Request $request): JsonResponse
     {
         try {
@@ -1088,13 +1089,14 @@ class PendingPaymentsController extends Controller
 
             // Formatear los registros para el frontend
             $formattedRecords = $records->map(function ($expense) {
-                // Calcular el IVA (16% del amount_usd)
-                $ivaAmount = $expense->amount_usd * 0.16;
+                // Calcular el IVA (16% del amount_bs en lugar de amount_usd)
+                $ivaAmount = $expense->amount_bs * 0.16;
 
                 return [
                     'id' => $expense->id,
                     'name' => $expense->name,
                     'category_name' => $expense->category->name ?? 'Sin categoría',
+                    'amount_bs' => (float) $expense->amount_bs,
                     'amount_usd' => (float) $expense->amount_usd,
                     'currency' => $expense->currency,
                     'expense_date' => $expense->expense_date,
@@ -1114,9 +1116,9 @@ class PendingPaymentsController extends Controller
                 ];
             });
 
-            // Calcular totales para la página actual
+            // Calcular totales para la página actual usando amount_bs
             $pageTotals = [
-                'total_amount' => $formattedRecords->sum('amount_usd'),
+                'total_amount' => $formattedRecords->sum('amount_bs'),
                 'total_iva' => $formattedRecords->sum('iva_amount'),
                 'total_expenses' => $formattedRecords->count()
             ];

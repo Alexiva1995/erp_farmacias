@@ -25,7 +25,8 @@ const montoConDeducciones = computed(() => islrData.value.net_income || 0);
 const impuestoISLR = computed(() => {
   if (unidadesTributarias.value === 0) return 0;
 
-  const utCalculadas = rentaBruta.value / unidadesTributarias.value;
+  // Usar el monto con deducciones en lugar de la renta bruta
+  const utCalculadas = montoConDeducciones.value / unidadesTributarias.value;
   let impuesto = 0;
 
   if (utCalculadas <= 2000) {
@@ -47,7 +48,8 @@ const tramoISLR = computed(() => {
   if (unidadesTributarias.value === 0)
     return { tramo: "N/A", tasa: 0, ajuste: 0 };
 
-  const utCalculadas = rentaBruta.value / unidadesTributarias.value;
+  // Usar el monto con deducciones en lugar de la renta bruta
+  const utCalculadas = montoConDeducciones.value / unidadesTributarias.value;
 
   if (utCalculadas <= 2000) {
     return { tramo: "Hasta 2.000 UT", tasa: 15, ajuste: 0 };
@@ -246,7 +248,7 @@ onMounted(() => {
               {{ formatCurrency(rentaBruta) }}
             </div>
             <p class="text-body-1 text-medium-emphasis">
-              Ingresos totales sin deducciones
+              Total de ingresos fiscales
             </p>
             <VChip color="success" variant="outlined" size="small" class="mt-3">
               Año {{ selectedYear }}
@@ -256,7 +258,7 @@ onMounted(() => {
           <VCardActions class="px-4 py-3 bg-grey-lighten-5">
             <VIcon color="success" size="small">mdi-information</VIcon>
             <span class="text-body-2 text-medium-emphasis ml-1">
-              Monto restando costo y deducciones
+              Sumatoria total de FiscalHistory
             </span>
           </VCardActions>
         </VCard>
@@ -283,7 +285,7 @@ onMounted(() => {
               {{ formatCurrency(montoConDeducciones) }}
             </div>
             <p class="text-body-1 text-medium-emphasis">
-              Ingreso neto después de deducciones
+              Ingreso neto después de costos y deducciones
             </p>
             <VChip
               v-if="deducciones > 0"
@@ -308,7 +310,7 @@ onMounted(() => {
           <VCardActions class="px-4 py-3 bg-grey-lighten-5">
             <VIcon color="primary" size="small">mdi-information</VIcon>
             <span class="text-body-2 text-medium-emphasis ml-1">
-              Monto restando solo deducciones
+              IBG menos costos y deducciones
             </span>
           </VCardActions>
         </VCard>
@@ -353,7 +355,7 @@ onMounted(() => {
           <VCardActions class="px-4 py-3 bg-grey-lighten-5">
             <VIcon color="warning" size="small">mdi-information</VIcon>
             <span class="text-body-2 text-medium-emphasis ml-1">
-              Impuesto calculado según tramos progresivos
+              Calculado sobre el monto con deducciones
             </span>
           </VCardActions>
         </VCard>

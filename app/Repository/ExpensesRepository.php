@@ -32,12 +32,14 @@ class ExpensesRepository
         $gasto->currency = $data->currency;
         $gasto->has_invoice = $data->has_invoice;
         $gasto->is_deductible = $data->is_deductible;
+        $gasto->iva = $data->iva;
         // $gasto->expense_date = $data->expense_date;
         $gasto->user_id = $data->user_id;
         $gasto->count = $data->count;
         $gasto->type_of_expense = $data->type_of_expense;
         $gasto->recurrence = $data->recurrence;
         $gasto->next_expense_date = $data->next_expense_date;
+        $gasto->amount_bs = $data->amount_bs;
         $gasto->status = "Pending";
         $gasto->save();
         return $gasto;
@@ -76,12 +78,14 @@ class ExpensesRepository
         $expense->currency = $data->currency;
         $expense->has_invoice = $data->has_invoice;
         $expense->is_deductible = $data->is_deductible;
+        $expense->iva = $data->iva;
         $expense->user_id = $data->user_id;
         $expense->count = $data->count;
         $expense->type_of_expense = $data->type_of_expense;
         $expense->recurrence = $data->recurrence;
         $expense->next_expense_date = $data->next_expense_date;
         $expense->status = $data->status;
+        $expense->amount_bs = $data->amount_bs;
         $expense->save();
         return $expense;
     }
@@ -115,7 +119,9 @@ class ExpensesRepository
         }
 
         if (array_key_exists("type_of_expense", $filtros)) {
-            $consulta->where("type_of_expense", "=", $filtros["type_of_expense"]);
+            if (count($filtros) > 0) {
+                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
+            }
         }
 
         if (array_key_exists("count", $filtros)) {
@@ -146,6 +152,15 @@ class ExpensesRepository
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
             $consulta->orderBy("name", "ASC");
+        }
+
+
+        if (array_key_exists("hasInvoice", $filtros) && $filtros["hasInvoice"] === 1) {
+            $consulta->where("has_invoice", 1);
+        }
+
+        if (array_key_exists("isDeductible", $filtros) && $filtros["isDeductible"] === 1) {
+            $consulta->where("is_deductible", 1);
         }
 
         return $consulta;
