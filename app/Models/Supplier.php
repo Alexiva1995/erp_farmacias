@@ -39,7 +39,8 @@ class Supplier extends Model
         'is_deleted',
         'payment_due_type',
         'custom_due_days',
-        'payment_due_reference'
+        'payment_due_reference',
+        'invoice_date_reference'
     ];
 
     protected $casts = [
