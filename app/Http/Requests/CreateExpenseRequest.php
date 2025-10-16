@@ -39,6 +39,7 @@ class CreateExpenseRequest extends FormRequest
             "currency"               =>    "required|string|max:10",
             "has_invoice"            =>    "nullable|boolean:strict",
             "is_deductible"          =>    "nullable|boolean:strict",
+            "iva"                    =>    "nullable|boolean:strict",
             "expense_date"           =>    "required|date",
             "user_id"                =>    "required|numeric|exists:users,id",
             "count"                  =>    [
@@ -53,6 +54,7 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_PAYPAL,
                 ])
             ],
+            'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
         ];
     }
 
@@ -88,6 +90,9 @@ class CreateExpenseRequest extends FormRequest
             // Reglas para 'is_deductible'
             'is_deductible.boolean' => 'El campo deducible debe ser verdadero o falso.',
 
+            // Reglas para 'iva'
+            'iva.boolean' => 'El campo iva debe ser verdadero o falso.',
+
             // Reglas para 'expense_date'
             'expense_date.required' => 'La fecha del gasto es obligatoria.',
             'expense_date.date' => 'La fecha debe ser una fecha válida.',
@@ -101,6 +106,10 @@ class CreateExpenseRequest extends FormRequest
             'count.required' => 'El método de pago es obligatorio.',
             'count.string' => 'El método de pago debe ser una cadena de texto.',
             'count.in' => 'El método de pago seleccionado no es válido.',
+
+            // Reglas para 'amount_bs'
+            'amount_bs.required_if' => 'El Monto Bs es obligatorio si el gasto tiene IVA o es Deducible.',
+            'amount_bs.numeric' => 'El monto en USD debe ser un valor numérico.',
         ];
     }
 
@@ -122,10 +131,12 @@ class CreateExpenseRequest extends FormRequest
             "currency"                =>    $this->currency,
             "has_invoice"             =>    $this->has_invoice,
             "is_deductible"           =>    $this->is_deductible,
+            "iva"                     =>    $this->iva,
             "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
             "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
+            "amount_bs"              =>    $this->amount_bs,
         ]);
     }
 }

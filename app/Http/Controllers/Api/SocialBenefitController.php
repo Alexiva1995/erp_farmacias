@@ -36,7 +36,9 @@ class SocialBenefitController extends Controller
 
     public function getSettlementData(Employee $employee)
     {
+        \Log::info('Controller', ['employee' => $employee]);
         $result = $this->socialBenefitServices->getSettlementData($employee);
+        \Log::info('Controller', ['result' => $result]);
 
         return ApiResponse::success($result);
     }

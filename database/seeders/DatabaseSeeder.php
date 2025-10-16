@@ -28,7 +28,8 @@ class DatabaseSeeder extends Seeder
             ExchangeRateSeeder::class,
             SupplierConnectionSeeder::class,
             RolesSeeder::class,
-            CashClosingSeeder::class
+            CashClosingSeeder::class,
+            ExpensesCategoriesSeeder::class
         ]);
     }
 }

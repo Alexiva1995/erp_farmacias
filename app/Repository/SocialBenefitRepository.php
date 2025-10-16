@@ -98,6 +98,7 @@ class SocialBenefitRepository
     $currency = round(ExchangeRate::where('currency_code', 'USD')
       ->whereDate('created_at', now()->today())
       ->value('rate') ?? 1, 2);
+    \Log::info('Repository', ['currency' => $currency]);
 
     $settlement = Employee::query()
       ->select([
@@ -125,9 +126,12 @@ class SocialBenefitRepository
       ->limit(6)
       ->first();
 
+    \Log::info('Repository', ['settlement' => $settlement]);
     $amount = round((float) $settlement?->amount ?? 0, 2);
     $activeYears = (int) $settlement?->active_years ?? 1;
     $dailyWage = $amount === 0 ? 0 : round($amount / 30);
+
+    \Log::info('Repository', ['amount' => $amount, 'activeYears' => $activeYears, 'dailyWage' => $dailyWage]);
 
     $sub = DB::table('employees')
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
@@ -135,22 +139,20 @@ class SocialBenefitRepository
       ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
       ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->leftJoin(
-        DB::raw('( SELECT DATE(created_at) AS rate_date, rate
-                    FROM exchange_rates
-                    WHERE currency_code = \'USD\'
-                    ORDER BY created_at DESC ) AS er'),
-        'er.rate_date',
-        '=',
-        DB::raw('DATE(ps.payslip_date)')
-      )
       ->where('employees.id', $employee->id)
       ->whereIn('sc.name', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
-      ->groupBy(['sc.name', 'ps.id', 'pd.amount'])
       ->select(
         'sc.name as concept_name',
-        DB::raw('pd.amount * er.rate AS amount_usd')
+        DB::raw('pd.amount * (
+            SELECT rate
+            FROM exchange_rates
+            WHERE currency_code = \'USD\'
+              AND DATE(created_at) = DATE(ps.payslip_date)
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) AS amount_usd')
       );
+    \Log::info('Repository', context: ['sub-query' => $sub]);
 
     $deductions = DB::query()
       ->fromSub($sub, 'x')
@@ -161,29 +163,60 @@ class SocialBenefitRepository
     ', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
       ->first();
 
+    \Log::info('Repository', ['deductions' => $deductions]);
+
     $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears - 1);
     $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears - 1);
     $vacBonusVoucherDays = $vacationVoucherDays;
     $earningsVoucherDays = 30 * $activeYears;
+
+    \Log::info('Repository', [
+      'socialBenefitsDays' => $socialBenefitsDays,
+      'vacationVoucherDays' => $vacationVoucherDays,
+      'earningsVoucherDays' => $earningsVoucherDays
+    ]);
 
     $socialBenefitsAmount = round($socialBenefitsDays * $dailyWage, 2);
     $vacationVoucherAmount = round($vacationVoucherDays * $dailyWage, 2);
     $vacBonusVoucherAmount = round($vacBonusVoucherDays * $dailyWage, 2);
     $earningsVoucherAmount = round($earningsVoucherDays * $dailyWage, 2);
 
+    \Log::info('Repository', [
+      'socialBenefitsAmount' => $socialBenefitsAmount,
+      'vacationVoucherAmount' => $vacationVoucherAmount,
+      'vacBonusVoucherAmount' => $vacBonusVoucherAmount,
+      'earningsVoucherAmount' => $earningsVoucherAmount
+    ]);
+
     $totalSettlementAmount = round($socialBenefitsAmount
       + $vacationVoucherAmount
       + $vacBonusVoucherAmount
       + $earningsVoucherAmount, 2);
 
+    \Log::info('Repository', [
+      'totalSettlementAmount' => $totalSettlementAmount,
+    ]);
+
     $totalDeductions = round((float) $deductions->vacation_voucher
       + (float) $deductions->vacation_bonus_voucher
       + (float) $deductions->earnings_voucher, 2);
+
+    \Log::info('Repository', [
+      'totalDeductions' => $totalDeductions,
+    ]);
 
     $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
     $totalDeductionsUsd = round($totalDeductions / $currency, 2);
     $finalUsd = round($totalSettlementUsd - $totalDeductionsUsd, 2);
     $startDate = $employee->created_at->format('d/m/Y');
+
+    \Log::info('Repository', [
+      'totalSettlementUsd' => $totalSettlementUsd,
+      'totalDeductionsUsd' => $totalDeductionsUsd,
+      'finalUsd' => $finalUsd,
+      'startDate' => $startDate,
+      'employee resignation date' => $employee->resignation?->effective_date,
+    ]);
 
     return [
       'amount' => $amount,

@@ -162,6 +162,29 @@ const getCurrencySymbol = computed(() => {
   return symbolMap[formData.value.currency] || "Bs.";
 });
 
+// Función para limpiar el formulario manteniendo el proveedor
+const resetFormFields = () => {
+  const currentSupplierId = formData.value.supplier_id;
+
+  formData.value = {
+    supplier_id: currentSupplierId,
+    invoice_number: "",
+    control_number: "",
+    exp_date: null,
+    payment_date: null,
+    received_date: null,
+    created_invoice_date: null,
+    currency: "Bs",
+    discount_rule_id: null,
+    exempt_amount: 0,
+    taxable_base: 0,
+    tax_amount: 0,
+    exchange_rate: 0,
+    total_amount: 0,
+    total_usd: 0,
+  };
+};
+
 watch(
   () => formData.value.supplier_id,
   (newSupplierId) => {
@@ -318,12 +341,15 @@ const handleSubmit = async () => {
     if (props.isEditMode) {
       await axios.put(`/invoices/${props.invoiceId}/data`, payload);
       toast.success("Factura actualizada con éxito.");
+      emit("invoice-saved");
+      emit("back-to-list");
     } else {
       await axios.post("/invoices", payload);
       toast.success("Factura registrada con éxito.");
+      emit("invoice-saved");
+      // Limpiar campos después de registrar, manteniendo el proveedor
+      resetFormFields();
     }
-    emit("invoice-saved");
-    emit("back-to-list");
   } catch (error) {
     console.error("Error al procesar la factura:", error);
     if (error.response && error.response.status === 422) {

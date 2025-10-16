@@ -20,6 +20,7 @@ class EditExpenseData extends Data
         public string       $currency,
         public bool|null    $has_invoice,
         public bool|null    $is_deductible,
+        public bool         $iva = false,
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y/m/d')]
         public DateTime     $expense_date,
         public int          $user_id,

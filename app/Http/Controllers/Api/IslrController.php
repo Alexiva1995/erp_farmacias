@@ -29,7 +29,8 @@ class IslrController extends Controller
         $fiscalTotal = \App\Models\FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])
             ->sum('total_amount');
 
-        $netIncome = $fiscalTotal - $deductions;
+        // Monto con Deducciones: Total Fiscal - Costos - Deducciones
+        $netIncome = $fiscalTotal - $costs - $deductions;
 
         return response()->json([
             'data' => [

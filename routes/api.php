@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
+use App\Http\Controllers\Api\EmployeeCleaningActivityController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IslrController;
 use App\Http\Controllers\Api\EmployeeLaboratoryController;
@@ -531,5 +532,16 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
         Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
         Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']); // Nueva
+    });
+    Route::prefix('employee-cleaning-activities')->group(function () {
+        Route::get('/', [EmployeeCleaningActivityController::class, 'index']);
+        Route::post('/', [EmployeeCleaningActivityController::class, 'store']);
+        Route::delete('/{employee}/{activityId}', [EmployeeCleaningActivityController::class, 'destroy']);
+        Route::patch('/{employee}/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateStatus']);
+        Route::get('/stats', [EmployeeCleaningActivityController::class, 'stats']);
+    });
+    Route::prefix('my-cleaning-activities')->group(function () {
+        Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
+        Route::patch('/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
 });
