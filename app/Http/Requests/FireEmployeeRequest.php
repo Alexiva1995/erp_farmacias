@@ -16,7 +16,7 @@ class FireEmployeeRequest extends FormRequest
     return [
       'percentage' => 'required|integer',
       'total' => 'required|decimal:0,2',
-      'currency' => 'required|in:USD,BS',
+      'currency' => 'required|in:USD,BS,COP',
       'count' => 'required|in:Efectivo,Tarjeta,Pago móvil,Transferencia,Binance,Paypal',
       'payed' => 'required|decimal:0,2|min:1.0',
     ];
@@ -28,10 +28,19 @@ class FireEmployeeRequest extends FormRequest
       $currency = $this->input('currency');
       $count = $this->input('count');
 
-      if (in_array($count, ['Binance', 'Paypal']) && $currency !== 'USD') {
+      $allowedCountsByCurrency = [
+        'USD' => ['Efectivo', 'Binance', 'Paypal'],
+        'COP' => ['Efectivo', 'Transferencia'],
+        'BS' => ['Efectivo', 'Tarjeta', 'Pago móvil', 'Transferencia'],
+      ];
+
+      if (
+        !isset($allowedCountsByCurrency[$currency]) ||
+        !in_array($count, $allowedCountsByCurrency[$currency])
+      ) {
         $validator->errors()->add(
-          'currency',
-          'Las cuentas Binance y PayPal solo aceptan pagos en USD.'
+          'count',
+          "El método de pago '{$count}' no está permitido para la moneda {$currency}."
         );
       }
     });
