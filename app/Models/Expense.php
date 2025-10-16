@@ -44,6 +44,12 @@ class Expense extends Model
         'type_of_expense',
     ];
 
+     protected $casts = [
+        'is_deductible' => 'boolean',
+        'has_invoice' => 'boolean', 
+        'iva' => 'boolean',
+    ];
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategory::class, 'category_id');

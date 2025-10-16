@@ -516,7 +516,7 @@ class SupplierConnectionService
                         continue;
                     }
 
-                    if (in_array($connection->supplier_id, [15])) {
+                    if (in_array($connection->supplier_id, [15, 38])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
@@ -524,8 +524,7 @@ class SupplierConnectionService
                         $header["total_amount"] = $totalUSD * $exchangeRate;
 
                         if (isset($header["tax_amount"])) {
-                            $header["taxable_base"] = floatval($header["tax_amount"]);
-                            $header["tax_amount"] = $header["taxable_base"] * 0.16;
+                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
                             $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
                         } else {
                             $header["exempt_amount"] = $header["total_amount"];
