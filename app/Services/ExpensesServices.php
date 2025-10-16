@@ -192,6 +192,7 @@ class ExpensesServices implements Expenses
                 "count"                   =>    $expense->count,
                 "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
                 "status"                  =>   "Pending",
+                "amount_bs"              =>    $expense->amount_bs,
             ]);
             $expenseNormal = $this->crearGasto($expenseNormalData);
             Log::info("gastos normal creado del recurrente");
@@ -222,6 +223,7 @@ class ExpensesServices implements Expenses
                 "recurrence"              =>   $expense->recurrence,
                 "next_expense_date"       =>   $next_expense_date,
                 "status"                  =>   "Pending",
+                "amount_bs"              =>    $expense->amount_bs,
             ]);
             $expenseRecurrenteEdit = $this->expensesRepository->editExpenseRecurring($expenseRecurenteData);
             Log::info("actualización del gastos recurrente");

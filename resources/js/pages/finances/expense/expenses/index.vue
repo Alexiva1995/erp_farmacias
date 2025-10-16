@@ -34,6 +34,7 @@ const formulario= reactive({
   category_id:"",
   amount:"",
   amount_usd:"",
+  amount_bs:"",
   currency:"USD",
   has_invoice:false,
   is_deductible:false,
@@ -51,6 +52,7 @@ const formularioError= reactive({
   category_id:"",
   amount:"",
   amount_usd:"",
+  amount_bs:"",
   currency:"",
   has_invoice:"",
   is_deductible:"",
@@ -82,6 +84,7 @@ function insertarDatosAlFormulario(datos){
   formulario.category_id=datos.category_id
   formulario.amount=datos.amount
   formulario.amount_usd=datos.amount_usd
+  formulario.amount_bs=datos.amount_bs
   formulario.currency=datos.currency
   formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
@@ -96,6 +99,7 @@ function limpiarDatosFormulario(){
   formulario.category_id=""
   formulario.amount=""
   formulario.amount_usd=""
+  formulario.amount_bs=""
   formulario.currency="BS"
   formulario.has_invoice=false
   formulario.is_deductible=false
@@ -111,6 +115,7 @@ function limpiarErroresFormulario(){
   formularioError.category_id=""
   formularioError.amount=""
   formularioError.amount_usd=""
+  formularioError.amount_bs=""
   formularioError.currency=""
   formularioError.has_invoice=false
   formularioError.is_deductible=false
@@ -127,6 +132,7 @@ function cargarErrores(errores){
   formularioError.category_id=(errores.category_id)?errores.category_id.join(", "):""
   formularioError.amount=(errores.amount)?errores.amount.join(", "):""
   formularioError.amount_usd=(errores.amount_usd)?errores.amount_usd.join(", "):""
+  formularioError.amount_bs=(errores.amount_bs)?errores.amount_bs.join(", "):""
   formularioError.currency=(errores.currency)?errores.currency.join(", "):""
   formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
   formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""

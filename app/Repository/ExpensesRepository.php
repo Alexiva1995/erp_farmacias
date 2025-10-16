@@ -39,6 +39,7 @@ class ExpensesRepository
         $gasto->type_of_expense = $data->type_of_expense;
         $gasto->recurrence = $data->recurrence;
         $gasto->next_expense_date = $data->next_expense_date;
+        $gasto->amount_bs = $data->amount_bs;
         $gasto->status = "Pending";
         $gasto->save();
         return $gasto;
@@ -84,6 +85,7 @@ class ExpensesRepository
         $expense->recurrence = $data->recurrence;
         $expense->next_expense_date = $data->next_expense_date;
         $expense->status = $data->status;
+        $expense->amount_bs = $data->amount_bs;
         $expense->save();
         return $expense;
     }

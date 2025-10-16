@@ -183,6 +183,19 @@ function submitForm(){
               </VCheckbox>
             </div>
           </VCol>
+
+            <VCol
+            cols="12" sm="6" md="6"
+            v-if="props.formData.iva == true || props.formData.is_deductible === true"
+          ><VTextField
+              v-model="props.formData.amount_bs"
+              :error-messages="props.formError.amount_bs"
+              label="Monto Bs"
+              type="number"
+              variant="outlined"
+            />
+          </VCol>
+
         </VRow>
         <VRow>
           <VCol

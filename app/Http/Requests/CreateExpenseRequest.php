@@ -54,6 +54,7 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_PAYPAL,
                 ])
             ],
+            'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
         ];
     }
 
@@ -105,6 +106,10 @@ class CreateExpenseRequest extends FormRequest
             'count.required' => 'El método de pago es obligatorio.',
             'count.string' => 'El método de pago debe ser una cadena de texto.',
             'count.in' => 'El método de pago seleccionado no es válido.',
+
+            // Reglas para 'amount_bs'
+            'amount_bs.required_if' => 'El Monto Bs es obligatorio si el gasto tiene IVA o es Deducible.',
+            'amount_bs.numeric' => 'El monto en USD debe ser un valor numérico.',
         ];
     }
 
@@ -131,6 +136,7 @@ class CreateExpenseRequest extends FormRequest
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
             "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
+            "amount_bs"              =>    $this->amount_bs,
         ]);
     }
 }

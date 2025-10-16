@@ -26,6 +26,7 @@ class CreateExpenseData extends Data
         public string       $count,
         public ?string      $status,
         public string       $type_of_expense,
+        public float        $amount_bs,
 
     ) {}
 }

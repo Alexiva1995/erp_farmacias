@@ -62,7 +62,7 @@ class CreateExpenseRecurrenceRequest extends FormRequest
                     Expense::RECURRENCE_ANUAL,
                 ])
             ],
-
+            'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
         ];
     }
 
@@ -119,6 +119,10 @@ class CreateExpenseRecurrenceRequest extends FormRequest
             'recurrence.required' => 'La recurrencia es obligatoria.',
             'recurrence.string' => 'La recurrencia debe ser una cadena de texto.',
             'recurrence.in' => 'La recurrencia seleccionada no es válida.',
+
+            // Reglas para 'amount_bs'
+            'amount_bs.required_if' => 'El Monto Bs es obligatorio si el gasto tiene IVA o es Deducible.',
+            'amount_bs.numeric' => 'El monto en USD debe ser un valor numérico.',
         ];
     }
 
@@ -147,6 +151,7 @@ class CreateExpenseRecurrenceRequest extends FormRequest
             "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_RECURRENTE,
             "recurrence"              =>    $this->recurrence,
             // "next_expense_date"       =>    $this->next_expense_date,
+            "amount_bs"              =>    $this->amount_bs,
         ]);
     }
 }

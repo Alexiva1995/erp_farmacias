@@ -23,5 +23,6 @@ class EditExpenseRecurrenceData extends CreateExpenseData
         public string       $recurrence,
         public ?string      $next_expense_date = null,
         public ?string      $status,
+        public float        $amount_bs,
     ) {}
 }
