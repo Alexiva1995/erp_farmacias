@@ -96,14 +96,14 @@ class PayslipRepository
 
   public function finalize(Payslip $payslip, array $data)
   {
-    $exchange_rate = ExchangeRate::orderByDesc('created_at')
-      ->where('currency_code', 'USD')
-      ->first();
-
-    $total_bs = round($payslip->total * $exchange_rate->rate, 2);
     $currency = $data['currency'];
     $count = $data['count'];
     $total = $data['payed'];
+    $exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', $currency === 'BS' ? 'USD' : 'COP')
+      ->first();
+
+    $total_bs = round($payslip->total * $exchange_rate->rate, 2);
 
     Expense::create([
       'name' => 'Nómina',
@@ -115,7 +115,8 @@ class PayslipRepository
       'expense_date' => now(),
       'user_id' => auth()->user()->id,
       'count' => $count,
-      'is_deductible' => true
+      'is_deductible' => true,
+      'type_of_expense' => 'Normal'
     ]);
 
     $type = match ($count) {

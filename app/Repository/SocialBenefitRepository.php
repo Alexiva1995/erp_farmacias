@@ -240,7 +240,8 @@ class SocialBenefitRepository
       'expense_date' => now(),
       'user_id' => auth()->user()->id,
       'count' => $count,
-      'is_deductible' => true
+      'is_deductible' => true,
+      'type_of_expense' => 'Normal'
     ]);
 
     $type = match ($count) {
