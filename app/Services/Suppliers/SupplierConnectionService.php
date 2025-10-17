@@ -96,8 +96,9 @@ class SupplierConnectionService
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                    $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
-                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $connection->supplier_id === 2 ? $filename : null);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
@@ -266,7 +267,7 @@ class SupplierConnectionService
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
-            //$quantity = 0;
+            $quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -285,8 +286,7 @@ class SupplierConnectionService
                             $newValue = number_format((float) $value, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $entry["quantity"] = $value;
-                                //$quantity += $newValue;
+                                $quantity += $value;
                                 break;
                             }
 
@@ -364,7 +364,8 @@ class SupplierConnectionService
                 }
             }
 
-            //$entry["quantity"] = $quantity;
+            if(!isset($entry["quantity"]))
+                $entry["quantity"] = $quantity;
 
             // if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
             //     $stock = 0;
@@ -397,7 +398,7 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = [], ?string $overrideInvoiceNumber = null): array
     {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
@@ -439,7 +440,9 @@ class SupplierConnectionService
                     $header[$meta['field']] = $this->castValue($raw, $meta);
                 }
 
-                $invoiceNumber = $header['invoice_number'] ?? null;
+                $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
+                $header['invoice_number'] = $invoiceNumber;
+
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
 
@@ -482,7 +485,9 @@ class SupplierConnectionService
                         $header[$meta["field"]] = $value;
                     }
 
-                    $invoiceNumber = $header['invoice_number'] ?? null;
+                    $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
+                    $header['invoice_number'] = $invoiceNumber;
+
                     if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
                         $bufferLines = []; // limpiar igual
                         continue; // ya existe, saltar
@@ -499,6 +504,10 @@ class SupplierConnectionService
                         } else
                             $header["exempt_amount"] = $header["total_amount"];
                         $header["status_payment"] = 0;
+                    } elseif ($connection->supplier_id === 2) {
+                        if (isset($header["tax_amount"])) {
+                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16;
+                        }
                     }
 
                     $invoices = [

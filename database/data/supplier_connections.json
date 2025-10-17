@@ -510,15 +510,27 @@
                     "type": "string"
                 },
                 "1": {
+                    "field": "created_invoice_date",
+                    "type": "date"
+                },
+                "2": {
                     "field": "exp_date",
                     "type": "date"
                 },
-                "5": {
+                "3": {
+                    "field": "exempt_amount",
+                    "type": "decimal"
+                },
+                "4": {
                     "field": "tax_amount",
                     "type": "decimal"
                 },
                 "6": {
                     "field": "total_amount",
+                    "type": "decimal"
+                },
+                "18": {
+                    "field": "exchange_rate",
                     "type": "decimal"
                 }
             },
