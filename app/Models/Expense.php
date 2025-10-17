@@ -33,7 +33,8 @@ class Expense extends Model
         'iva',
         'status',
         'count',
-        'amount_bs'
+        'amount_bs',
+        'type_of_expense'
     ];
 
     public function category(): BelongsTo
