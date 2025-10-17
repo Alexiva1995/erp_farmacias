@@ -99,11 +99,16 @@ class PayslipRepository
     $currency = $data['currency'];
     $count = $data['count'];
     $total = $data['payed'];
-    $exchange_rate = ExchangeRate::orderByDesc('created_at')
-      ->where('currency_code', $currency === 'BS' ? 'USD' : 'COP')
+
+    $cop_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'COP')
       ->first();
 
-    $total_bs = round($payslip->total * $exchange_rate->rate, 2);
+    $bs_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'BS')
+      ->first();
+
+    $total_bs = round($payslip->total * $bs_exchange_rate->rate, 2);
 
     Expense::create([
       'name' => 'Nómina',
@@ -128,10 +133,16 @@ class PayslipRepository
       'Paypal' => 'PAYPAL'
     };
 
+    $exchange_rate_id = $currency === 'BS'
+      ? $bs_exchange_rate->id
+      : ($currency === 'COP'
+        ? $cop_exchange_rate->id
+        : null);
+
     Transaction::create([
       'user_id' => auth()->user()->id,
       'category_id' => 1,
-      'exchange_rate_id' => $currency === 'BS' ? $exchange_rate->id : null,
+      'exchange_rate_id' => $exchange_rate_id,
       'description' => 'Pago de nómina',
       'currency' => $currency,
       'type' => $type,
