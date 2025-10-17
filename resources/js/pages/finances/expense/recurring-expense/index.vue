@@ -13,7 +13,7 @@ import { onMounted, reactive, watch } from 'vue';
 
 // const route= useRouter()
 
-const modal= reactive({
+/*const modal= reactive({
   statu:false,
   titulo:"Nuevo",
 })
@@ -360,10 +360,12 @@ onMounted(async () => {
   await actualizarTabla()
   statuModule.categorias=categorias
   statuModule.loadingApp=false
-})
+})*/
 </script>
+
 <template>
-  <LoaderComponent :loadingApp="statuModule.loadingApp" />
+<!-- 
+<LoaderComponent :loadingApp="statuModule?.loadingApp" />
   <div>
     <FiltrosGastoRecurrente
       v-model:currency="currency"
@@ -373,7 +375,7 @@ onMounted(async () => {
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       v-model:isDeductible="isDeductible"
       v-model:hasInvoice="hasInvoice"
-      :categorias="statuModule.categorias"
+      :categorias="statuModule?.categorias"
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
@@ -401,5 +403,5 @@ onMounted(async () => {
         @update:options="updateTableOptions"
       />
     </VCard>
-  </div>
+  </div>-->
 </template>
