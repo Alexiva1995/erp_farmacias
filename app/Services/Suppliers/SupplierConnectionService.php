@@ -55,7 +55,6 @@ class SupplierConnectionService
             if ($ftp === false) {
                 throw new Exception('No se pudo conectar al servidor FTP');
             }
-
             $login = ftp_login($ftp, $user, $pass);
             if ($login === false) {
                 throw new Exception('Credenciales inválidas');
@@ -287,11 +286,6 @@ class SupplierConnectionService
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
                                 $entry["quantity"] = $value;
                                 //$quantity += $newValue;
-                                break;
-                            }
-
-                            if ($meta["target"] === "unit_cost_usd") {
-                                $entry["unit_cost_usd"] = $newValue;
                                 break;
                             }
 
