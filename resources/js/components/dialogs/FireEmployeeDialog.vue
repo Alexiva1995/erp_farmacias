@@ -80,6 +80,11 @@ const amountToPay = computed(() =>
 );
 
 const submitForm = async () => {
+  if (step.value === "employee") {
+    step.value = "payment";
+    return;
+  }
+
   try {
     const payload = {
       percentage: percentage.value,
@@ -101,8 +106,17 @@ const submitForm = async () => {
     } else {
       toast.error("No se pudo procesar la liquidación del empleado");
     }
-  } catch {
+  } catch (error) {
     toast.error("Hubo un error procesando la liquidación del empleado");
+
+    if (error.response.status === 422) {
+      errors.value = error.response.data.errors;
+    }
+
+    if (errors.value.percentage) {
+      step.value = "employee";
+      return;
+    }
   }
 };
 
@@ -331,6 +345,7 @@ const closeDialog = () => {
                   placeholder="50"
                   :clearable="true"
                   control-variant="hidden"
+                  :error-messages="errors.percentage"
                 />
               </VCol>
               <VCol cols="3">
