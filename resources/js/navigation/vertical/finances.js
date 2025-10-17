@@ -35,10 +35,10 @@ export default [
             title: 'Gastos Pendientes',
             to: 'finances-expense-pending-expenses',
           },
-          {
+          /*{
             title: 'Gastos Recurrentes',
             to: 'finances-expense-recurring-expense',
-          }
+          }*/
         ],
       },
       {
