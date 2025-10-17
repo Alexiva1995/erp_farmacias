@@ -62,10 +62,35 @@ class PaymentProcessingService
     }
 
     /**
-     * Verificar pagos duplicados
+     * Verificar pagos duplicados (versión mejorada para pagos parciales)
      */
     public function checkDuplicatePayment(array $data): ?string
     {
+        // CORRECCIÓN: Para pagos parciales, ser más permisivo
+        // Solo considerar duplicado si es exactamente el mismo pago con referencia
+
+        // Si es pago parcial, permitir múltiples pagos con el mismo monto
+        if ($data['payment_type'] === 'partial') {
+            // Solo bloquear si tiene la misma referencia Y es exactamente el mismo pago
+            if (!empty($data['reference'])) {
+                $duplicatePayment = InvoicePayment::where('amount', $data['payment_amount'])
+                    ->where('payment_date', $data['payment_date'])
+                    ->where('payment_method', $data['payment_currency'])
+                    ->where('reference', $data['reference'])
+                    ->whereHas('invoices', function ($query) use ($data) {
+                        $query->whereIn('id', $data['invoice_ids']);
+                    })
+                    ->first();
+
+                if ($duplicatePayment) {
+                    return 'Ya existe un pago idéntico registrado para estas facturas con la misma referencia. Por favor, usa una referencia diferente.';
+                }
+            }
+            // Si no hay referencia, permitir el pago (pagos parciales legítimos)
+            return null;
+        }
+
+        // Para pagos completos, mantener validación estricta
         $duplicatePayment = InvoicePayment::where('amount', $data['payment_amount'])
             ->where('payment_date', $data['payment_date'])
             ->where('payment_method', $data['payment_currency'])
@@ -106,9 +131,12 @@ class PaymentProcessingService
     public function determinePaymentStatus(array $invoiceIds, float $currentPaymentUSD, float $totalAmountUSD): int
     {
         // Obtener el total pagado anteriormente en USD para estas facturas
+        // EXCLUIR el pago actual usando created_at < now() para evitar contar el pago que se está procesando
         $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
             $query->whereIn('id', $invoiceIds);
-        })->get();
+        })
+            ->where('created_at', '<', now())
+            ->get();
 
         $previousPaymentsUSD = 0;
         foreach ($payments as $payment) {
@@ -128,10 +156,12 @@ class PaymentProcessingService
         // Usar tolerancia muy pequeña para evitar problemas de redondeo
         $tolerance = 0.01;
 
-        if ($totalPaidUSD > ($totalAmountUSD - $tolerance)) {
+        // CORRECCIÓN: Si el pago actual es menor al total, siempre es parcial (0)
+        // Solo es completo (1) si el total pagado >= total de la factura
+        if ($totalPaidUSD >= ($totalAmountUSD - $tolerance)) {
             return 1; // paid
         } else {
-            return 0; // pending
+            return 0; // pending/partial
         }
     }
 
