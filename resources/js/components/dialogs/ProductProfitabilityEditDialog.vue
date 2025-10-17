@@ -137,10 +137,11 @@ console.log(props.product);
 
           <!--VNumberInput v-model="percentage" :label="props.product.percentage" :placeholder="props.product.percentage" /-->
           <VTextField
+              label="Rentabilidad"
               v-model="percentage"
               :label="props.product.percentage"
               :placeholder="props.product.percentage"
-              type="number"
+              type="text"
           />
               
           <!--v-card-actions class="justify-between">

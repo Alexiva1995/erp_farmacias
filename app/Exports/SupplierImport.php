@@ -16,7 +16,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
     public function __construct(
         private readonly int $supplierId,
         private readonly int $startRow,
-        private readonly string $codSupplierCol,
+        private readonly ?string $codSupplierCol,
         private readonly string $nameCol,
         private readonly ?string $barcodeCol,
         private readonly ?string $qtyCol,
@@ -36,6 +36,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
     public function collection(Collection $rows)
     {
         if ($this->hasRun) {
+            \Log::info('Supplier import', ['Prevent doble run']);
             return;
         }
 
@@ -45,9 +46,9 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         if (
             $this->supplierId === "null" ||
             $this->startRow === "null" ||
-            $this->codSupplierCol === "null" ||
             $this->nameCol === "null"
         ) {
+            \Log::info('Supplier import', ['Fields supplierId, startRow or name not defined']);
             throw new \Exception("Los campos no se encuentran definidos");
         }
 
@@ -83,6 +84,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             ->map(function ($row) use ($now, $currency, $toNumber) {
                 // Skip processing if $row is null or not an array/object
                 if (is_null($row) || (is_array($row) && empty($row)) || (is_object($row) && empty((array) $row))) {
+                    \Log::info('Supplier import', ['Row null or not array']);
                     return null;
                 }
 

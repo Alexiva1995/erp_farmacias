@@ -12,7 +12,7 @@ class IslrQueryService
 {
     /**
      * Calcula la renta bruta anual: 
-     * Total Fiscal - Expenses con IVA - Expenses con is_deductible
+     * Total Fiscal (sin restar nada)
      * 
      * @param int $year Año a calcular (por defecto año actual)
      * @return float Total de renta bruta en BS
@@ -25,33 +25,12 @@ class IslrQueryService
         $fiscalTotal = FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])
             ->sum('total_amount');
 
-        $expensesWithIva = Expense::where('status', Expense::STATUS_APPROVED)
-            ->where('has_invoice', true)
-            ->where('is_deductible', null)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
-
-        $totalExpensesIva = 0;
-        foreach ($expensesWithIva as $expense) {
-            $totalExpensesIva += $this->convertToBolivares($expense->amount, $expense->currency);
-        }
-
-        $expensesDeductible = Expense::where('status', Expense::STATUS_APPROVED)
-            ->where('is_deductible', true)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
-
-        $totalExpensesDeductible = 0;
-        foreach ($expensesDeductible as $expense) {
-            $totalExpensesDeductible += $this->convertToBolivares($expense->amount, $expense->currency);
-        }
-
-        return (float) ($fiscalTotal - $totalExpensesIva - $totalExpensesDeductible);
+        return (float) $fiscalTotal;
     }
 
     /**
      * Calcula las deducciones: Expenses aprobados con is_deductible = true
-     * Convierte todas las monedas a bolívares (BS)
+     * Utiliza el campo amount_bs directamente
      * 
      * @param int $year Año a calcular (por defecto año actual)
      * @return float Total de deducciones en BS
@@ -61,22 +40,17 @@ class IslrQueryService
         $startDate = Carbon::create($year, 1, 1)->startOfDay();
         $endDate = Carbon::create($year, 12, 31)->endOfDay();
 
-        $expenses = Expense::where('status', Expense::STATUS_APPROVED)
+        $totalDeductions = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
-
-        $totalDeductions = 0;
-        foreach ($expenses as $expense) {
-            $totalDeductions += $this->convertToBolivares($expense->amount, $expense->currency);
-        }
+            ->sum('amount_bs');
 
         return (float) $totalDeductions;
     }
 
     /**
      * Calcula los costos: Expenses aprobados con has_invoice = true
-     * Convierte todas las monedas a bolívares (BS)
+     * Utiliza el campo amount_bs directamente
      * 
      * @param int $year Año a calcular (por defecto año actual)
      * @return float Total de costos en BS
@@ -86,23 +60,18 @@ class IslrQueryService
         $startDate = Carbon::create($year, 1, 1)->startOfDay();
         $endDate = Carbon::create($year, 12, 31)->endOfDay();
 
-        $expenses = Expense::where('status', Expense::STATUS_APPROVED)
+        $totalCosts = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('has_invoice', true)
             ->where('is_deductible', null)
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
-
-        $totalCosts = 0;
-        foreach ($expenses as $expense) {
-            $totalCosts += $this->convertToBolivares($expense->amount, $expense->currency);
-        }
+            ->sum('amount_bs');
 
         return (float) $totalCosts;
     }
 
     /**
      * Obtiene el detalle de ingresos brutos con información adicional
-     * Renta Bruta = Total Fiscal - Expenses con IVA - Expenses con is_deductible
+     * Renta Bruta = Total Fiscal (sin restar nada)
      * 
      * @param int $year Año a consultar
      * @return array
@@ -125,11 +94,7 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $expensesWithIva->each(function ($expense) {
-            $expense->amount_in_bs = $this->convertToBolivares($expense->amount, $expense->currency);
-        });
-
-        $totalExpensesIva = $expensesWithIva->sum('amount_in_bs');
+        $totalExpensesIva = $expensesWithIva->sum('amount_bs');
 
         $expensesDeductible = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
@@ -138,13 +103,10 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $expensesDeductible->each(function ($expense) {
-            $expense->amount_in_bs = $this->convertToBolivares($expense->amount, $expense->currency);
-        });
+        $totalExpensesDeductible = $expensesDeductible->sum('amount_bs');
 
-        $totalExpensesDeductible = $expensesDeductible->sum('amount_in_bs');
-
-        $grossIncome = $fiscalTotal - $totalExpensesIva - $totalExpensesDeductible;
+        // Renta Bruta ahora es solo el total fiscal
+        $grossIncome = $fiscalTotal;
 
         return [
             'gross_income' => $grossIncome,
@@ -180,11 +142,7 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $records->each(function ($expense) {
-            $expense->amount_in_bs = $this->convertToBolivares($expense->amount, $expense->currency);
-        });
-
-        $total = $records->sum('amount_in_bs');
+        $total = $records->sum('amount_bs');
 
         return [
             'total' => $total,
@@ -212,37 +170,25 @@ class IslrQueryService
             ->pluck('total', 'month')
             ->toArray();
 
-        $expensesWithIva = Expense::where('status', Expense::STATUS_APPROVED)
+        $monthlyExpensesIva = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('has_invoice', true)
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
+            ->selectRaw('MONTH(expense_date) as month, SUM(amount_bs) as total')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->pluck('total', 'month')
+            ->toArray();
 
-        $monthlyExpensesIva = [];
-        foreach ($expensesWithIva as $expense) {
-            $month = Carbon::parse($expense->expense_date)->month;
-            $amountInBS = $this->convertToBolivares($expense->amount, $expense->currency);
-
-            if (!isset($monthlyExpensesIva[$month])) {
-                $monthlyExpensesIva[$month] = 0;
-            }
-            $monthlyExpensesIva[$month] += $amountInBS;
-        }
-
-        $expensesDeductible = Expense::where('status', Expense::STATUS_APPROVED)
+        $monthlyDeductions = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->get();
-
-        $monthlyDeductions = [];
-        foreach ($expensesDeductible as $expense) {
-            $month = Carbon::parse($expense->expense_date)->month;
-            $amountInBS = $this->convertToBolivares($expense->amount, $expense->currency);
-
-            if (!isset($monthlyDeductions[$month])) {
-                $monthlyDeductions[$month] = 0;
-            }
-            $monthlyDeductions[$month] += $amountInBS;
-        }
+            ->selectRaw('MONTH(expense_date) as month, SUM(amount_bs) as total')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->pluck('total', 'month')
+            ->toArray();
 
         $monthlyData = [];
         for ($i = 1; $i <= 12; $i++) {
@@ -250,7 +196,8 @@ class IslrQueryService
             $expensesIvaAmount = $monthlyExpensesIva[$i] ?? 0;
             $deductions = $monthlyDeductions[$i] ?? 0;
 
-            $grossIncome = $fiscalAmount - $expensesIvaAmount - $deductions;
+            // Renta Bruta ahora es solo el fiscal total
+            $grossIncome = $fiscalAmount;
 
             $netIncome = $fiscalAmount - $deductions;
 
@@ -266,31 +213,6 @@ class IslrQueryService
         }
 
         return $monthlyData;
-    }
-
-    /**
-     * Convierte un monto a bolívares según la moneda
-     * 
-     * @param float $amount Monto a convertir
-     * @param string $currency Moneda del monto (BS, USD, COP)
-     * @return float Monto en bolívares
-     */
-    private function convertToBolivares(float $amount, string $currency): float
-    {
-        if (strtoupper($currency) == 'BS') {
-            return $amount;
-        }
-
-        $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'BS')
-            ->latest('created_at')
-            ->first();
-
-        if (!$exchangeRate) {
-            \Log::warning("No se encontró tasa de cambio para {$currency}. Gasto no convertido.");
-            return 0;
-        }
-
-        return $amount * $exchangeRate->rate;
     }
 
     /**
@@ -347,6 +269,13 @@ class IslrQueryService
             ->orderBy('effective_date', 'desc')
             ->get();
     }
+
+    /**
+     * Obtiene una declaración por año
+     * 
+     * @param int $year
+     * @return IslrDeclaration|null
+     */
     public function getDeclarationByYear(int $year): ?IslrDeclaration
     {
         return IslrDeclaration::forYear($year)->first();
