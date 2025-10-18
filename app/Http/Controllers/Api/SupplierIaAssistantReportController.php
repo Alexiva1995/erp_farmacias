@@ -150,7 +150,7 @@ class SupplierIaAssistantReportController extends Controller
                 if ($itemsBusqueda) {
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $respuestaConsulta[$index]->solicitar = ($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2;
+                    $respuestaConsulta[$index]->solicitar = ceil(($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
                 }
             }
         }

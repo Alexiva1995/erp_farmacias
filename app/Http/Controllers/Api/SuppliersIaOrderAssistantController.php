@@ -72,8 +72,6 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
-        $respuestaConsulta2 = null;
-
         if ($respuesta["tipo_filtracion"] == "average") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
@@ -82,18 +80,20 @@ class SuppliersIaOrderAssistantController extends Controller
         } else {
 
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-            $filtros["orderBy"] = "ASC";
-            $filtros["sortBy"] = "id";
-            $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
+            // $filtros["orderBy"] = "ASC";
+            // $filtros["sortBy"] = "id";
+            // $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
 
-        $respuesta["paginate"]->each(function ($items) use ($respuestaConsulta2, $filtros) {
+        $respuesta["paginate"]->each(function ($items) use ($filtros) {
             $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
             if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
-                $busqueda = Algoritmo::busquedaBinariaAsociativa($respuestaConsulta2->toArray(), "id", $items->id);
-                if ($busqueda != -1) {
-                    $itemsBusqueda = $respuestaConsulta2[$busqueda];
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] =  $items->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+                if ($itemsBusqueda) {
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
                     $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
@@ -148,7 +148,6 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
 
-        $respuestaConsulta2 = null;
 
         if ($filtrosFallas["tipo_filtracion"] == "average") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
@@ -156,9 +155,6 @@ class SuppliersIaOrderAssistantController extends Controller
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
         } else {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-            $filtrosFallas["orderBy"] = "ASC";
-            $filtrosFallas["sortBy"] = "id";
-            $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
         }
 
         if ($productosFallas == null) {
@@ -175,9 +171,11 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($filtrosFallas["tipo_filtracion"] != "average" && $filtrosFallas["tipo_filtracion"] != "sales") {
             for ($index = 0; $index < count($productosFallas); $index++) {
                 # code...
-                $busqueda = Algoritmo::busquedaBinariaAsociativa($respuestaConsulta2->toArray(), "id", $productosFallas[$index]->id);
-                if ($busqueda != -1) {
-                    $itemsBusqueda = $respuestaConsulta2[$busqueda];
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] =  $productosFallas[$index]->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosFallas)->first();
+                if ($itemsBusqueda) {
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
                     $productosFallas[$index]->solicitar = ceil(($productosFallas[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
