@@ -82,6 +82,11 @@ class ProductServices implements Product
         return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros, $filtros["itemsPerPage"]);
     }
 
+    public function filtrarIndividualProductForAssistantReportTypeSalesToArray(array $filtros): array
+    {
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesToArray($filtros);
+    }
+
     public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport
     {
         $query = null;
@@ -152,5 +157,9 @@ class ProductServices implements Product
         });
 
         return $productosActualizados;
+    }
+    function consultProductById(int $id): ?ModelsProduct
+    {
+        return $this->consultProductById($id);
     }
 }
