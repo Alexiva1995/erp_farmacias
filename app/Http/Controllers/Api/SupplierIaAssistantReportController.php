@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\Product;
+use App\Helpers\Algoritmo;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use DateTime;
 use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierIaAssistantReportController extends Controller
@@ -58,17 +60,33 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         $respuestaConsulta = null;
+        $respuestaConsulta2 = null;
 
         if ($filtros["tipo_filtracion"] == "average") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
         }
         if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
+        } else {
+            $filtros["orderBy"] = "ASC";
+            $filtros["sortBy"] = "id";
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
+            $respuestaConsulta2 = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         }
 
-        $respuestaConsulta->each(function ($items) {
+        // O(n^2)
+        $respuestaConsulta->each(function ($items) use ($respuestaConsulta2, $filtros) {
             $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+                $busqueda = Algoritmo::busquedaBinariaAsociativa($respuestaConsulta2->toArray(), "id", $items->id);
+                if ($busqueda != -1) {
+                    $itemsBusqueda = $respuestaConsulta2[$busqueda];
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $items->solicitar = $items->solicitar + $itemsBusqueda->solicitar;
+                }
+            }
         });
 
 
