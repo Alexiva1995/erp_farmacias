@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\AutoOrder;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
+use App\Helpers\Algoritmo;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Product as ModelsProduct;
@@ -71,16 +72,33 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
+        $respuestaConsulta2 = null;
+
         if ($respuesta["tipo_filtracion"] == "average") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
         if ($respuesta["tipo_filtracion"] == "sales") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+        } else {
+
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            $filtros["orderBy"] = "ASC";
+            $filtros["sortBy"] = "id";
+            $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
 
-        $respuesta["paginate"]->each(function ($items) {
+        $respuesta["paginate"]->each(function ($items) use ($respuestaConsulta2, $filtros) {
             $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+                $busqueda = Algoritmo::busquedaBinariaAsociativa($respuestaConsulta2->toArray(), "id", $items->id);
+                if ($busqueda != -1) {
+                    $itemsBusqueda = $respuestaConsulta2[$busqueda];
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $items->solicitar = $items->solicitar + $itemsBusqueda->solicitar;
+                }
+            }
         });
 
         // dd($respuesta["paginate"]->items());

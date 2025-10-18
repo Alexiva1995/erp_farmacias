@@ -64,13 +64,12 @@ class SupplierIaAssistantReportController extends Controller
 
         if ($filtros["tipo_filtracion"] == "average") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
-        }
-        if ($filtros["tipo_filtracion"] == "sales") {
+        } else if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
         } else {
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
             $filtros["orderBy"] = "ASC";
             $filtros["sortBy"] = "id";
-            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
             $respuestaConsulta2 = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         }
 
