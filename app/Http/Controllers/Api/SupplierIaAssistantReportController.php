@@ -66,7 +66,7 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
         } else if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
-        } else {
+        } else { // combinar
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
             $filtros["orderBy"] = "ASC";
             $filtros["sortBy"] = "id";
@@ -83,7 +83,7 @@ class SupplierIaAssistantReportController extends Controller
                     $itemsBusqueda = $respuestaConsulta2[$busqueda];
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $items->solicitar = $items->solicitar + $itemsBusqueda->solicitar;
+                    $items->solicitar = ($items->solicitar + $itemsBusqueda->solicitar) / 2;
                 }
             }
         });
