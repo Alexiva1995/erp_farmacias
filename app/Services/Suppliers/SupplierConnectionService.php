@@ -65,14 +65,14 @@ class SupplierConnectionService
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
         // Productos
-        $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
-        if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
-            $content = file_get_contents($tempFile);
-            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-            $productData = $this->parseDynamicContent($content_encoded, $connection);
-        } else {
-            throw new Exception("No se pudo guardar los productos");
-        }
+        // $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
+        // if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+        //     $content = file_get_contents($tempFile);
+        //     $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+        //     $productData = $this->parseDynamicContent($content_encoded, $connection);
+        // } else {
+        //     throw new Exception("No se pudo guardar los productos");
+        // }
 
         // Facturas (si tiene ruta definida)
         $invoiceResults = [];
@@ -412,9 +412,13 @@ class SupplierConnectionService
 
         foreach ($lines as $line) {
             $cols = explode($separator, $line);
+            if ($separator == "\t") {
+                $cols = explode(';', $this->convertLineToCSV($line));
+            }
+
             $tipo = trim($cols[0] ?? "");
 
-            if ($tipo === "R" && $barcodeField !== false) {
+            if ($tipo === "R" || $tipo === '01' && $barcodeField !== false) {
                 $barcode = trim($cols[$barcodeField] ?? "");
                 if ($barcode !== "") {
                     $barcodes[] = $barcode;
@@ -471,9 +475,12 @@ class SupplierConnectionService
         } else {
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
+                if ($separator === "\t") {
+                    $cols = explode(";", $this->convertLineToCSV($line));
+                }
                 $tipo = trim($cols[0] ?? "");
 
-                if ($tipo === "E") {
+                if ($tipo === "E" || $tipo === '02') {
                     $header = [];
 
                     foreach ($structure["header"] as $index => $meta) {
@@ -497,7 +504,7 @@ class SupplierConnectionService
                     $bufferLines = []; // limpiar para el próximo bloque
                 }
 
-                if ($tipo === "R") {
+                if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
 
                     foreach ($structure["lines"] as $index => $meta) {
@@ -642,6 +649,127 @@ class SupplierConnectionService
         }
 
         return implode(';', $out);
+    }
+
+    public function convertLineToCSV(string $line): string
+    {
+        $originalLine = $line;
+
+        // Reemplaza caracteres no deseados (espacio duro \xA0 y tabuladores) por un espacio normal
+        $line = preg_replace('/[\x{a0}\t]/u', ' ', $line);
+
+        if (preg_match('/^01\s/', $line)) {
+            // Verifica si la línea comienza con "01" seguido de un espacio (tipo de registro 01)
+
+            // Divide la línea en dos partes:
+            // - $parts[1]: todo desde el inicio hasta antes de los últimos 5 números
+            // - $parts[2]: los últimos 5 números (y posiblemente más) al final de la línea
+            if (preg_match('/^(01\s+\d+\s+\S+\s+[A-Z]\s+.*?)\s+(\d+\s+\d+\s+\d+\s+\d+\s+\d+.*)$/', $line, $parts)) {
+                $prefix = $parts[1];
+                $numericTail = $parts[2];
+
+                // Extrae los campos del encabezado del registro 01:
+                // - Grupo 1: número de factura
+                // - Grupo 2: código del proveedor
+                // - Grupo 3: categoría (una letra mayúscula)
+                // - Grupo 4: nombre del producto (el resto de la cadena)
+                if (preg_match('/^01\s+(\d+)\s+(\S+)\s+([A-Z])\s+(.+)$/', $prefix, $head)) {
+                    $invoice = $head[1];
+                    $cod_supplier = $head[2];
+                    $category = $head[3];
+                    $name = trim($head[4]);
+
+                    // Divide la parte numérica final en un máximo de 10 elementos usando espacios como delimitador
+                    $nums = preg_split('/\s+/', trim($numericTail), 10);
+                    $exisMerida = $nums[0];
+                    $unit_cost_raw = $nums[1];
+                    $exisCaracas = $nums[2];
+                    $exisOriente = $nums[3];
+
+                    // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
+                    preg_match('/\b(\d{12,13})\b/', $line, $b);
+
+                    // Busca una fecha en formato dd/mm/aaaa rodeada por límites de palabra
+                    preg_match('/\b(\d{2}\/\d{2}\/\d{4})\b/', $line, $e);
+
+                    $barcode = $b[1] ?? '';
+                    $expiration = $e[1] ?? '';
+
+                    // Si se encontraron código de barras, fecha de vencimiento y la existencia es numérica...
+                    if ($barcode && $expiration && is_numeric($exisMerida)) {
+                        // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
+                        $name = str_replace(';', '', $name);
+
+                        // Devuelve la línea formateada como CSV con punto y coma como delimitador
+                        return implode(';', [
+                            '01',
+                            $invoice,
+                            $cod_supplier,
+                            $category,
+                            $name,
+                            $exisMerida,
+                            $unit_cost_raw,
+                            $exisCaracas,
+                            $exisOriente,
+                            $barcode,
+                            $expiration
+                        ]);
+                    }
+                }
+            }
+        } elseif (preg_match('/^02\s/', $line)) {
+            // Verifica si la línea comienza con "02" seguido de un espacio (tipo de registro 02)
+
+            // Normaliza nuevamente espacios duros y tabuladores a espacios simples
+            $line = preg_replace('/[\x{a0}\t]/u', ' ', $line);
+
+            // Normaliza abreviaturas de "a.m." y "p.m." (con o sin puntos y espacios) a " AM " y " PM "
+            $line = preg_replace('/\s*a\s*\.?\s*m\s*\.?\s*/i', ' AM ', $line);
+            $line = preg_replace('/\s*p\s*\.?\s*m\s*\.?\s*/i', ' PM ', $line);
+
+            // Reduce múltiples espacios consecutivos a un solo espacio y elimina espacios al inicio/final
+            $line = preg_replace('/\s+/', ' ', trim($line));
+
+            // Extrae la fecha, hora y AM/PM de la línea (espera formato: dd/mm/yyyy hh:mm:ss AM/PM)
+            if (!preg_match('/(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s+([AP]M)/i', $line, $dtMatch)) {
+                throw new Exception("Datetime not found in 02 line: $originalLine");
+            }
+
+            $datePart = $dtMatch[1]; // Fecha en formato dd/mm/yyyy
+
+            // Convierte la fecha a formato Y-m-d (estándar MySQL)
+            try {
+                $dateTimeObj = \DateTime::createFromFormat('d/m/Y', $datePart);
+                if (!$dateTimeObj) {
+                    throw new Exception("Invalid date format: $datePart");
+                }
+                $mysqlDate = $dateTimeObj->format('Y-m-d'); // Ej: "2025-08-04"
+            } catch (Exception $e) {
+                throw new Exception("Failed to parse date: $datePart");
+            }
+
+            // Divide toda la línea en partes usando espacios como separadores
+            $parts = preg_split('/\s+/', $line);
+            if (count($parts) < 5) {
+                throw new Exception("Too few fields in 02 line");
+            }
+
+            // El segundo campo es el ID de factura
+            $id = $parts[1];
+            // Los dos últimos campos deben ser valores numéricos (montos, cantidades, etc.)
+            $last1 = $parts[count($parts) - 2] ?? '';
+            $last2 = $parts[count($parts) - 1] ?? '';
+
+            if (!is_numeric($last1) || !is_numeric($last2)) {
+                throw new Exception("Final fields not numeric in 02 line");
+            }
+
+            // Formato de salida para registro 02: tipo;id_factura;campo_numerico_1;fecha(Y-m-d);campo_numerico_2
+            return implode(';', ['02', $id, $last1, $mysqlDate, $last2]);
+        }
+
+        // Si la línea no coincide con ninguno de los formatos esperados, lanza una excepción
+        throw new Exception("Failed to parse line: $originalLine");
     }
 }
 
