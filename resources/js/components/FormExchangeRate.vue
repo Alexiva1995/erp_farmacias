@@ -4,8 +4,9 @@ import Swal from "sweetalert2";
 
 const props = defineProps({
   dollar: { type: Number, required: true },
-  //bolivares: { type: Number, required: true },
   pesos: { type: Number, required: true },
+  idDollar: { type: Number, required: false },
+  idPesos: { type: Number, required: false },
   dateUpdateDollar : { type: Date, required: false },
   dateUpdatePesos : { type: Date, required: false },
   dateColorDollar: { type: String, required: true },
@@ -17,8 +18,9 @@ const emit = defineEmits(["refresh"]);
 const pesos = ref()
 
 const sudmitPesos = async () => {
-    let time;
+    //let time;
     let data = {
+      "id": props.idPesos,
       "currency_code": "COP",
       "rate" : parseFloat(pesos.value)
     }
@@ -27,6 +29,7 @@ const sudmitPesos = async () => {
       const response = await axios.post('/finances/exchange-rates/store', data)
       
       Swal.fire("Se ha actualizado el peso");
+      console.log(response);
       setTimeout(() => {
         emit("refresh")
         
@@ -40,13 +43,15 @@ const sudmitPesos = async () => {
 const updateBCVDollar = async () => {
 
     let data = {
-      "currency_code": "USD",
+      "exchange_id": props.idDollar,
+      "currency_code": "BS",
     }
     
     try {
       const response = await axios.post('/finances/exchange-rates/updateBCVDollar', data)
       
       Swal.fire("Se ha actualizado el dolar BCV");
+      console.log(response);
       setTimeout(() => {
         emit("refresh")
         
@@ -68,33 +73,6 @@ const updateBCVDollar = async () => {
           <span class="mr-2">Tasa de Cambio</span>
         </VCardTitle>
         <VCardText>
-          
-            
-
-            <!--VRow no-gutters>
-              <label class="text-sm">Dolar BCV <VChip :color="dateColorDollar">{{ dateUpdateDollar }}</VChip></label>
-              <VCol cols="10">
-
-                
-                <VTextField
-                  id="dollar"
-                  v-model="props.dollar"
-                  placeholder="$"
-                  persistent-placeholder
-                  class="mb-2 mt-2"
-                />
-              </VCol>
-              <VCol cols="2">
-                <VBtn @click="updateBCVDollar" class="mb-2 mt-2 ml-2">
-                  Actualizar
-                </VBtn>
-              </VCol>
-            </VRow-->
-        
-            
-
-            
-            
 
             <VRow no-gutters>
 
@@ -116,14 +94,6 @@ const updateBCVDollar = async () => {
                   persistent-placeholder
                   class="mb-2 mt-2"
                 />
-                <!--VBtn
-                  color="secondary"
-                  variant="tonal"
-                  type="reset"
-                  class="me-4 w-100"
-                >
-                  cancelar
-                </VBtn-->
 
               </VCol>
 
