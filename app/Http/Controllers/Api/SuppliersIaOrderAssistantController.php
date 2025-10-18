@@ -96,7 +96,7 @@ class SuppliersIaOrderAssistantController extends Controller
                     $itemsBusqueda = $respuestaConsulta2[$busqueda];
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $items->solicitar = ($items->solicitar + $itemsBusqueda->solicitar) / 2;
+                    $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
                 }
             }
         });
@@ -180,7 +180,7 @@ class SuppliersIaOrderAssistantController extends Controller
                     $itemsBusqueda = $respuestaConsulta2[$busqueda];
                     $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
                     $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $productosFallas[$index]->solicitar = ($productosFallas[$index]->solicitar + $itemsBusqueda->solicitar) / 2;
+                    $productosFallas[$index]->solicitar = ceil(($productosFallas[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
                 }
             }
         }

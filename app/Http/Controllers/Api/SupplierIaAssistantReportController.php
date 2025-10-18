@@ -60,7 +60,6 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         $respuestaConsulta = null;
-        $respuestaConsulta2 = null;
 
         if ($filtros["tipo_filtracion"] == "average") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
@@ -70,21 +69,20 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
             $filtros["orderBy"] = "ASC";
             $filtros["sortBy"] = "id";
-            $respuestaConsulta2 = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         }
 
-        // O(n^2)
-        $respuestaConsulta->each(function ($items) use ($respuestaConsulta2, $filtros) {
+
+        $respuestaConsulta->each(function ($items) use ($filtros) {
             $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
-            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
-                $busqueda = Algoritmo::busquedaBinariaAsociativa($respuestaConsulta2->toArray(), "id", $items->id);
-                if ($busqueda != -1) {
-                    $itemsBusqueda = $respuestaConsulta2[$busqueda];
-                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $items->solicitar = ($items->solicitar + $itemsBusqueda->solicitar) / 2;
-                }
+            $filtros["orderBy"] = "ASC";
+            $filtros["sortBy"] = "id";
+            $filtros["id"] = $items->id;
+            $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+            if ($itemsBusqueda) {
+                $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
             }
         });
 
@@ -131,11 +129,30 @@ class SupplierIaAssistantReportController extends Controller
 
         $respuestaConsulta = null;
 
+
         if ($filtros["tipo_filtracion"] == "average") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
-        }
-        if ($filtros["tipo_filtracion"] == "sales") {
+        } else if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
+        } else { // combinar
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+        }
+
+
+        if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+            for ($index = 0; $index < count($respuestaConsulta); $index++) {
+                $itemsBusqueda = null;
+                # code...
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] = $respuestaConsulta[$index]->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+                if ($itemsBusqueda) {
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $respuestaConsulta[$index]->solicitar = ($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2;
+                }
+            }
         }
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);

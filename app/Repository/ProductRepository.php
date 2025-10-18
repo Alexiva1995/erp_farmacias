@@ -831,7 +831,9 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
-
+        if (array_key_exists("id", $filtros) && !empty($filtros["id"])) {
+            $consulta->where("id", $filtros["id"]);
+        }
 
         if (array_key_exists("is_colombia", $filtros)) {
             if ($filtros["is_colombia"] == true) {
