@@ -755,7 +755,76 @@
         "path": "Clientes/d719/inventario.txt",
         "pasv": true,
         "has_header": true,
-        "invoice_path": "",
+        "invoice_path": "Clientes/d719/Factura",
+        "invoice_structure": {
+            "separator": "\t",
+            "mode": "grouped",
+            "filter": {
+                "starts_with": "",
+                "ends_with": ".txt"
+            },
+            "header": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "string"
+                },
+                "2": {
+                    "field": "total_amount",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "3": {
+                    "field": "exp_date",
+                    "type": "datetime",
+                    "format": "d/m/Y g:i:s A"
+                },
+                "4": {
+                    "field": "total_usd",
+                    "type": "decimal",
+                    "decimals": 2
+                }
+            },
+            "lines": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "string"
+                },
+                "2": {
+                    "field": "cod_supplier",
+                    "type": "string"
+                },
+                "4": {
+                    "field": "name",
+                    "type": "string"
+                },
+                "5": {
+                    "field": "quantity",
+                    "type": "integer"
+                },
+                "9": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "10": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                },
+                "6": {
+                    "field": "unit_cost",
+                    "type": "decimal",
+                    "decimals": 2
+                }
+            }
+        },
         "structure": {
             "0": {
                 "file_field": "codigo",
