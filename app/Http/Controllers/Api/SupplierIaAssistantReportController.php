@@ -67,22 +67,22 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
         } else { // combinar
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
-            $filtros["orderBy"] = "ASC";
-            $filtros["sortBy"] = "id";
         }
 
 
         $respuestaConsulta->each(function ($items) use ($filtros) {
             $items = $this->product->calcularAOProduct($items);
             $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
-            $filtros["orderBy"] = "ASC";
-            $filtros["sortBy"] = "id";
-            $filtros["id"] = $items->id;
-            $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
-            if ($itemsBusqueda) {
-                $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] = $items->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+                if ($itemsBusqueda) {
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+                }
             }
         });
 

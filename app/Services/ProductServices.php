@@ -89,14 +89,31 @@ class ProductServices implements Product
 
     public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport
     {
-        $query = null;
+        $respuestaConsulta = null;
         if ($filtros["tipo_filtracion"] == "average") {
-            $query = $this->productRepository->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
         }
         if ($filtros["tipo_filtracion"] == "sales") {
-            $query = $this->productRepository->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSelesWithoutPaginate($filtros);
+        } else {
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
         }
-        return new AssistantReportProductExport($query);
+        if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+            for ($index = 0; $index < count($respuestaConsulta); $index++) {
+                $itemsBusqueda = null;
+                # code...
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] = $respuestaConsulta[$index]->id;
+                $itemsBusqueda = $this->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+                if ($itemsBusqueda) {
+                    $itemsBusqueda = $this->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $respuestaConsulta[$index]->solicitar = ceil(($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
+                }
+            }
+        }
+        return new AssistantReportProductExport($respuestaConsulta);
     }
 
     public function calcularAOProduct(ModelsProduct $producto): ModelsProduct
