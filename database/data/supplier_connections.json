@@ -659,7 +659,7 @@
         "port": null,
         "username": "D719-foraneo",
         "password": "eyJpdiI6Ilc5T1hqTlpzd2N4WUdYWEkzVFBVVkE9PSIsInZhbHVlIjoiQ0ZUbXNwdDllcXRNUENrSDdna3I0UT09IiwibWFjIjoiNTY0OTE4NDhjOWUxMjkwZmM4ZWQ5NGRiNGFmNmZjMmIzNmYxYWM5NWRmOWQ1NzM0MzhkNTgzNDhiNzNkMDI0OCIsInRhZyI6IiJ9",
-        "path": "Clientes/d719/inventario.txt",
+        "path": "Clientes/d719/Inventario.txt",
         "pasv": true,
         "has_header": true,
         "invoice_path": "Clientes/d719/Factura",

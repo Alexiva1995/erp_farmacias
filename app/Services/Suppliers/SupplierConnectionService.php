@@ -64,14 +64,14 @@ class SupplierConnectionService
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
         // Productos
-        // $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
-        // if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
-        //     $content = file_get_contents($tempFile);
-        //     $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-        //     $productData = $this->parseDynamicContent($content_encoded, $connection);
-        // } else {
-        //     throw new Exception("No se pudo guardar los productos");
-        // }
+        $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
+        if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+            $content = file_get_contents($tempFile);
+            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+            $productData = $this->parseDynamicContent($content_encoded, $connection);
+        } else {
+            throw new Exception("No se pudo guardar los productos");
+        }
 
         // Facturas (si tiene ruta definida)
         $invoiceResults = [];
