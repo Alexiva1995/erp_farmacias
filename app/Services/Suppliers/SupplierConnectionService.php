@@ -123,10 +123,10 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        try { 
+        try {
             $connector = new Connector(['timeout' => 1800]);
             $client = (new Browser($connector))->withTimeout(1800.0);
-        
+
             $loginResponse = Http::post($connection->host, [
                 "usuario" => $connection->username,
                 "clave" => FtpCrypt::decrypt($connection->password),
@@ -135,8 +135,8 @@ class SupplierConnectionService
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
 
-            $productResponse = $this->fetchFromAPI( $loginResponse->json()["token"], $payload, $client, $connection->path);        
-            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);    
+            $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
+            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
 
             $productData = $this->parseDynamicContent($productCsvString, $connection);
 
@@ -145,9 +145,9 @@ class SupplierConnectionService
                 $seenInvoiceNumbers = [];
                 $invoiceResults = [];
 
-                
+
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
-                $invoiceResponse = $this->fetchFromAPI( $loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
+                $invoiceResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
 
                 foreach ($invoiceResponse as $invoice) {
                     $cod_invoice = $invoice['InvoiceCode'] ?? null;
@@ -184,10 +184,10 @@ class SupplierConnectionService
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
-                    } 
+                    }
                 }
             }
-            
+
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
@@ -342,6 +342,12 @@ class SupplierConnectionService
                             break;
                         }
 
+                        $dt = \DateTime::createFromFormat("Y-m-d", "{$value}-01");
+                        if ($dt && $dt->format("Y-m") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
+                            break;
+                        }
+
                         $entry[$meta["target"]] = null;
                         break;
                 }
@@ -482,6 +488,19 @@ class SupplierConnectionService
                         continue; // ya existe, saltar
                     }
 
+                    if (in_array($connection->supplier_id, [15, 38])) {
+                        $totalUSD = floatval($header["total_usd"] ?? 0);
+                        $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $header["total_amount"] = $totalUSD * $exchangeRate;
+
+                        if (isset($header["tax_amount"])) {
+                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                            $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                        } else
+                            $header["exempt_amount"] = $header["total_amount"];
+                        $header["status_payment"] = 0;
+                    }
+
                     $invoices = [
                         "header" => $header,
                         "lines" => $bufferLines,
@@ -568,8 +587,8 @@ class SupplierConnectionService
                 'Accept' => 'application/json'
             ],
             $method === 'post' ? json_encode($data) : null
-        )->then(function (ResponseInterface $response)  use (&$productResponse) {
-            $productResponse = json_decode((string)$response->getBody(), true);
+        )->then(function (ResponseInterface $response) use (&$productResponse) {
+            $productResponse = json_decode((string) $response->getBody(), true);
         }, function (\Exception $e) {
             echo 'Error: ' . $e->getMessage() . PHP_EOL;
         });
@@ -582,7 +601,8 @@ class SupplierConnectionService
     public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): array
     {
         $supplierId = $connection->supplier_id;
-        $config = config("suppliers.{$supplierId}");
+        //$config = config("suppliers.{$supplierId}");
+        $config = require app_path("SupplierConfigs/{$supplierId}.php");
 
         if (!isset($config[$endpoint])) {
             throw new \Exception("No se encontró configuración para {$endpoint} en proveedor {$supplierId}");

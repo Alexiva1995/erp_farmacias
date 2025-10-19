@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
+use App\Http\Controllers\Api\EmployeeCleaningActivityController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IslrController;
 use App\Http\Controllers\Api\EmployeeLaboratoryController;
@@ -292,18 +293,18 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
     });
 
-    Route::prefix("expenses")->group(function () {
-        Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-        Route::post("/create", [ExpensesController::class, "createExpense"]);
-        Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
-        Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
-        Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
-        Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
-        Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
-        Route::prefix("category")->group(function () {
-            Route::get("/", [ExpenseCategoryController::class, "getAll"]);
-        });
-    });
+    // Route::prefix("expenses")->group(function () {
+    //     Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
+    //     Route::post("/create", [ExpensesController::class, "createExpense"]);
+    //     Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
+    //     Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+    //     Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
+    //     Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
+    //     Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
+    //     Route::prefix("category")->group(function () {
+    //         Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+    //     });
+    // });
 
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
@@ -417,6 +418,11 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
         });
 
+        // ISSUE #3: Rutas para facturas indexadas
+        Route::prefix("invoices")->group(function () {
+            Route::put("/{invoiceId}/toggle-indexed", [PendingPaymentsController::class, "toggleIndexedStatus"]);
+        });
+
         // payment history
         Route::prefix("payment-history")->group(function () {
             Route::get("/", [PendingPaymentsController::class, "getPaymentHistory"]);
@@ -431,7 +437,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
-            Route::get('/{payslip}/data', [PayslipController::class, 'getData']);
+            Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
@@ -454,7 +460,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
         Route::prefix("expenses")->group(function () {
             Route::post("/", [ExpensesController::class, "filterWithoutPaginate"]);
-            Route::post("/create", [ExpensesController::class, "createExpense"]);
+            Route::post("/create-normal", [ExpensesController::class, "createExpense"]);
+            //Route::post("/create-recurrence", [ExpensesController::class, "createExpenseRecurrente"]);
             Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
             Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
             Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
@@ -525,5 +532,16 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
         Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
         Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']); // Nueva
+    });
+    Route::prefix('employee-cleaning-activities')->group(function () {
+        Route::get('/', [EmployeeCleaningActivityController::class, 'index']);
+        Route::post('/', [EmployeeCleaningActivityController::class, 'store']);
+        Route::delete('/{employee}/{activityId}', [EmployeeCleaningActivityController::class, 'destroy']);
+        Route::patch('/{employee}/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateStatus']);
+        Route::get('/stats', [EmployeeCleaningActivityController::class, 'stats']);
+    });
+    Route::prefix('my-cleaning-activities')->group(function () {
+        Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
+        Route::patch('/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
 });

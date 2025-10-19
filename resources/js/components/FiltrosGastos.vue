@@ -6,7 +6,10 @@ const props=defineProps({
   category_id_filtro:{type: String,requiered: true},
   categorias:{type: Array,requiered: true, default:() => []},
   fechaHasta_filtro: {type: String, requiered: true, default: () => "" },
-  fechaDesde_filtro: {type: String, requiered: true, default: () => "" }
+  fechaDesde_filtro: {type: String, requiered: true, default: () => "" },
+  isDeductible: Boolean,
+  hasInvoice: Boolean,
+  showAddButton: { type: Boolean, required: false, default: true }, 
 })
 
 const currencies=["BS","USD", "COP"];
@@ -20,6 +23,9 @@ const emit=defineEmits([
   "clear",
   "export-excel",
   "export-pdf",
+  "add",
+  "update:isDeductible",
+  "update:hasInvoice",
 ])
 </script>
 <template>
@@ -34,6 +40,22 @@ const emit=defineEmits([
             clearable
             @update:model-value="emit('update:buscardor_filtro', $event)"
           />
+          <div class="d-flex align-center gap-4">
+            <VCheckbox
+              label="Deducibles"
+              :model-value="props.isDeductible"
+              @update:model-value="emit('update:isDeductible', $event)"
+              hide-details
+            />
+            
+            <VCheckbox
+              label="Facturas"
+              :model-value="props.hasInvoice"
+              @update:model-value="emit('update:hasInvoice', $event)"
+              hide-details
+            />
+          </div>
+        
         </VCol>
         <VCol cols="12" sm="6" md="2">
           <VSelect
@@ -117,6 +139,9 @@ const emit=defineEmits([
           </VListItem>
         </VList>
       </VMenu>
+      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')" v-if="props.showAddButton" >
+        Agregar Gasto
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>

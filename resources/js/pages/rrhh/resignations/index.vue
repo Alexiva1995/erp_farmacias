@@ -28,14 +28,11 @@ const fetchResignations = async () => {
     if (data.success) {
       resignations.value = data.data;
     } else {
-      console.error("API returned success: false", data);
+
       toast.error("Error en la respuesta del servidor");
     }
   } catch (error) {
-    console.error("Error fetching resignations:", error);
-    console.error("Error response:", error.response);
-    console.error("Error status:", error.response?.status);
-    console.error("Error data:", error.response?.data);
+
     toast.error(
       `Error al cargar las renuncias: ${
         error.response?.data?.message || error.message
@@ -53,7 +50,7 @@ const fetchStats = async () => {
       stats.value = data.data;
     }
   } catch (error) {
-    console.error("Error fetching stats:", error);
+
   }
 };
 
@@ -78,15 +75,16 @@ const confirmToggleStatus = async () => {
       `Empleado ${newStatus.value ? "activado" : "desactivado"} exitosamente`
     );
 
-    // Actualizar la lista
+    // Actualizar la lista y estadísticas
     fetchResignations();
+    fetchStats();
 
     // Cerrar modal
     showConfirmDialog.value = false;
     employeeToToggle.value = null;
     newStatus.value = null;
   } catch (error) {
-    console.error("Error toggling employee status:", error);
+
     toast.error("Error al cambiar el estado del empleado");
   }
 };
@@ -124,7 +122,7 @@ const downloadResignationPDF = async (resignation) => {
 
     toast.success("Carta de renuncia descargada exitosamente");
   } catch (error) {
-    console.error("Error downloading PDF:", error);
+
     toast.error("No se pudo descargar la carta de renuncia");
   }
 };
@@ -184,7 +182,7 @@ const editResignation = async (resignation) => {
       }
     }
   } catch (error) {
-    console.error("Error loading resignation for edit:", error);
+
     toast.error("No se pudieron cargar los datos para edición");
   }
 };
@@ -227,9 +225,10 @@ const deleteResignation = async (resignation) => {
 
       toast.success("Renuncia eliminada exitosamente");
       fetchResignations(); // Recargar la lista
+      fetchStats(); // Actualizar estadísticas
     }
   } catch (error) {
-    console.error("Error deleting resignation:", error);
+
     toast.error("No se pudo eliminar la renuncia");
   }
 };

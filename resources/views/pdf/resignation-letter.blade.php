@@ -80,7 +80,13 @@
 <body>
     <!-- Header con Logo -->
     <div class="header">
-        <img src="file://{{ base_path('public/images/logoDonative.png') }}" alt="Farmacia Barrio Sucre" class="logo">
+        @if(file_exists(public_path('images/logoDonative.png')))
+        <img src="{{ public_path('images/logoDonative.png') }}" alt="Farmacia Barrio Sucre" class="logo">
+        @else
+        <div style="text-align: center; font-size: 24px; font-weight: bold; color: #333;">
+            FARMACIA BARRIO SUCRE 2024 C.A.
+        </div>
+        @endif
     </div>
 
     <!-- Información del Destinatario -->

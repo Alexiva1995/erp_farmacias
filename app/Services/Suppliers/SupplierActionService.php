@@ -20,22 +20,22 @@ class SupplierActionService
     public function createSupplier(array $validatedData): Supplier
     {
         return DB::transaction(function () use ($validatedData) {
-            $paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
-            $paymentDays = $validatedData['supplier_payment_days'] ?? null;
-            unset($validatedData['supplier_payment_method']);
-            unset($validatedData['supplier_payment_days']);
+            //$paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
+            //$paymentDays = $validatedData['supplier_payment_days'] ?? null;
+            //unset($validatedData['supplier_payment_method']);
+            //unset($validatedData['supplier_payment_days']);
 
             $supplier = Supplier::create($validatedData);
 
-            if ($paymentMethodType) {
-                SupplierPaymentMethod::create([
-                    'supplier_id' => $supplier->id,
-                    'type' => $paymentMethodType,
-                    'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                ]);
-            }
+            // if ($paymentMethodType) {
+            //     SupplierPaymentMethod::create([
+            //         'supplier_id' => $supplier->id,
+            //         'type' => $paymentMethodType,
+            //         'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //     ]);
+            // }
 
-            $supplier->load('paymentMethods');
+            //$supplier->load('paymentMethods');
 
             return $supplier;
         });
@@ -51,31 +51,31 @@ class SupplierActionService
     public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
     {
         return DB::transaction(function () use ($supplier, $validatedData) {
-            $paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
-            $paymentDays = $validatedData['supplier_payment_days'] ?? null;
-            unset($validatedData['supplier_payment_method']);
-            unset($validatedData['supplier_payment_days']);
+            //$paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
+            //$paymentDays = $validatedData['supplier_payment_days'] ?? null;
+            //unset($validatedData['supplier_payment_method']);
+            //unset($validatedData['supplier_payment_days']);
 
             $supplier->update($validatedData);
 
-            if ($paymentMethodType) {
-                $existingPaymentMethod = $supplier->paymentDate;
+            // if ($paymentMethodType) {
+            //     $existingPaymentMethod = $supplier->paymentDate;
 
-                if ($existingPaymentMethod) {
-                    $existingPaymentMethod->update([
-                        'type' => $paymentMethodType,
-                        'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                    ]);
-                } else {
-                    SupplierPaymentMethod::create([
-                        'supplier_id' => $supplier->id,
-                        'type' => $paymentMethodType,
-                        'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                    ]);
-                }
-            }
+            //     if ($existingPaymentMethod) {
+            //         $existingPaymentMethod->update([
+            //             'type' => $paymentMethodType,
+            //             'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //         ]);
+            //     } else {
+            //         SupplierPaymentMethod::create([
+            //             'supplier_id' => $supplier->id,
+            //             'type' => $paymentMethodType,
+            //             'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //         ]);
+            //     }
+            // }
 
-            $supplier->load('paymentDate');
+            // $supplier->load('paymentDate');
 
             return $supplier;
         });

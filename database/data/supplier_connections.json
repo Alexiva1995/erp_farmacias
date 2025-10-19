@@ -203,11 +203,15 @@
                     "format": "d/m/Y"
                 },
                 "8": {
-                    "field": "total_amount",
+                    "field": "total_usd",
                     "type": "decimal"
                 },
                 "13": {
                     "field": "tax_amount",
+                    "type": "decimal"
+                },
+                "14": {
+                    "field": "exchange_rate",
                     "type": "decimal"
                 }
             },

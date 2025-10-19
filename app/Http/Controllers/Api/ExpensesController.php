@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\Expenses;
+use App\Contracts\Transaction;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeStatusExpenseRequest;
+use App\Http\Requests\CreateExpenseRecurrenceRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use App\Http\Requests\UploadFileInvoiceExpenseRequest;
+use App\Models\Expense;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -19,17 +22,24 @@ class ExpensesController extends Controller
     //TODO: 
 
     public function __construct(
-        protected Expenses $expenses
+        protected Expenses $expenses,
+        protected Transaction $transaction
     ) {}
 
 
     public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
-        // dd($request->data->toArray());
-        $expense = $this->expenses->crearGasto($request->data->toArray());
+        $expense = $this->expenses->crearGasto($request->data);
 
         return ApiResponse::success($expense, "ok");
     }
+
+    /*public function createExpenseRecurrente(CreateExpenseRecurrenceRequest $request): JsonResponse
+    {
+        $expense = $this->expenses->crearGastoRecurrente($request->data);
+
+        return ApiResponse::success($expense, "ok");
+    }*/
 
     public function editExpense(EditExpenseRequest $request): JsonResponse
     {
@@ -95,9 +105,21 @@ class ExpensesController extends Controller
             $filtros["status"] = $request->status;
         }
 
+        if ($request->filled("type_of_expense")) {
+            $filtros["type_of_expense"] = $request->type_of_expense;
+        }
+
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
             $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->has("hasInvoice")) {
+            $filtros["hasInvoice"] = (bool) $request->hasInvoice ? 1 : 0;
+        }
+
+        if ($request->has("isDeductible")) {
+            $filtros["isDeductible"] = (bool) $request->isDeductible ? 1 : 0;
         }
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
@@ -136,6 +158,10 @@ class ExpensesController extends Controller
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
         }
 
+        if ($request->filled("type_of_expense")) {
+            $filtros["type_of_expense"] = $request->type_of_expense;
+        }
+
         $respuestaConsulta = $this->expenses->filterWithoutPaginate($filtros);
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);
@@ -168,6 +194,10 @@ class ExpensesController extends Controller
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
         }
 
+        if ($request->filled("type_of_expense")) {
+            $filtros["type_of_expense"] = $request->type_of_expense;
+        }
+
         $excel = $this->expenses->exportExcel($filtros);
 
         $fileName = 'gastos-pendientes-' . now()->format('Y-m-d') . '.' . $request->formato;
@@ -179,6 +209,26 @@ class ExpensesController extends Controller
     {
 
         $respuestaConsulta = $this->expenses->changeStatus($request->data->id, $request->data->status);
+        $expense = $this->expenses->consultById($request->data->id);
+
+        if ($expense->count == "Tarjeta") {
+            $expense->count = "CARD";
+        } else if ($expense->count == "Efectivo") {
+            $expense->count = "CASH";
+        } else if ($expense->count == "Transferencia") {
+            $expense->count = "TRANSFER";
+        } else if ($expense->count == "Pago Móvil") {
+            $expense->count = "MOBILE";
+        } else if ($expense->count == "Binance") {
+            $expense->count = "BINANCE";
+        } else if ($expense->count == "PayPal") {
+            $expense->count = "PAYPAL";
+        }
+
+        if ($request->data->status == Expense::STATUS_APPROVED) {
+            $transaction = $this->transaction->createTransactionSalida($expense);
+        }
+
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);
     }

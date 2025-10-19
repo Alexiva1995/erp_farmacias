@@ -56,6 +56,18 @@ class Employee extends Model
         return $this->belongsToMany(Product::class, 'employee_product')
             ->withTimestamps();
     }
+
+    /**
+     * Un empleado puede tener asignadas muchas actividades de limpieza.
+     * Una actividad de limpieza puede estar asignada a muchos empleados.
+     */
+    public function cleaningActivities(): BelongsToMany
+    {
+        return $this->belongsToMany(CleaningActivity::class, 'employee_cleaning_activity')
+            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+            ->withTimestamps();
+    }
+
     public function settlement()
     {
         return $this->hasOne(EmployeeSettlement::class);
