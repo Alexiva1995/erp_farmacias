@@ -16,6 +16,11 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_id = products.id)';
 
+    public function consultProductById(int $id): ?Product
+    {
+        return Product::find($id);
+    }
+
     public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
     {
         return Product::query()->orderBy($sortBy, $orderBy)->get();
@@ -558,6 +563,14 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
+    public function filtrarProductforIaOrderAssistantTypeSalesToArray($filtros): array
+    {
+
+        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
+
+        return $consulta->get()->toArray();
+    }
+
 
 
     // public function consultarProductosSinProveedor()
@@ -818,7 +831,9 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
-
+        if (array_key_exists("id", $filtros) && !empty($filtros["id"])) {
+            $consulta->where("id", $filtros["id"]);
+        }
 
         if (array_key_exists("is_colombia", $filtros)) {
             if ($filtros["is_colombia"] == true) {
@@ -892,5 +907,13 @@ class ProductRepository
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
 
         return $consulta->paginate($perPage);
+    }
+
+    public function filtrarIndividualProductForAssistantReportTypeSalesToArray($filtros): array
+    {
+
+        $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
+
+        return $consulta->get()->toArray();
     }
 }

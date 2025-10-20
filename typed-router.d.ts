@@ -91,3 +91,12 @@ declare module 'vue-router/auto-routes' {
     'tpv-returns-user': RouteRecordInfo<'tpv-returns-user', '/tpv/returnsUser', Record<never, never>, Record<never, never>>,
   }
 }
+RecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
+    'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
+    'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
+    'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
+    'tpv-returns': RouteRecordInfo<'tpv-returns', '/tpv/returns', Record<never, never>, Record<never, never>>,
+    'tpv-returns-supervisor': RouteRecordInfo<'tpv-returns-supervisor', '/tpv/returnsSupervisor', Record<never, never>, Record<never, never>>,
+    'tpv-returns-user': RouteRecordInfo<'tpv-returns-user', '/tpv/returnsUser', Record<never, never>, Record<never, never>>,
+  }
+}

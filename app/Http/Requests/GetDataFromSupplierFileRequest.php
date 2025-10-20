@@ -27,7 +27,7 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "name" => ["required", "string"],
             "barcode_match" => ["nullable", "required", "string"],
             "quantity" => ["nullable", "required", "string"],
-            "currency" => ["nullable", "required", "decimal:0,2"],
+            "currency" => ["nullable", "decimal:0,2"],
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "required", "string"],

@@ -33,9 +33,9 @@ class ExchangeRateServices implements ExchangeRate
         return $this->exchangeRateRepository->consultOneBCV();
     }
 
-    public function updateBCVDollar(): Model
+    public function updateBCVDollar(array $data): Model
     {
-        return $this->exchangeRateRepository->updateBCVDollar();
+        return $this->exchangeRateRepository->updateBCVDollar($data);
     }
 
     /*
