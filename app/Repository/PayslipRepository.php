@@ -25,10 +25,30 @@ class PayslipRepository
 
   public function generate(Carbon $date, string $name, Collection $details): bool
   {
+    $exchange_rate = ExchangeRate::where('created_at', '=', $date->format('Y-m-d'))
+      ->where('currency_code', '=', 'BS')
+      ->first();
+
+    if (!isset($exchange_rate)) {
+      $exitCode = Artisan::call("app:update-exchange-rate");
+
+      if ($exitCode === 0) {
+        $exchange_rate = ExchangeRate::where("currency_code", "BS")
+          ->whereDate("created_at", Carbon::today())
+          ->first();
+
+      } else {
+        \Log::error("Failed to fetch exchange rate");
+        throw new \Exception("No se pudo guardar la tasa del día BS");
+      }
+    }
+
+
     $payslip = Payslip::create([
       'payslip_date' => $date->format('Y-m-d'),
       'name' => $name,
       'total' => 0,
+      'exchange_rate_id' => $exchange_rate->id
     ]);
 
     foreach ($details as $detail) {
@@ -155,7 +175,7 @@ class PayslipRepository
 
   public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $type === 'full' ? 1 : $this->todayUsdRate();
+    $currency = $type === 'full' ? 1 : $payslip->exchange_rate->rate;
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;
