@@ -36,6 +36,7 @@ const tipoDeVistaOpcion = [
 const tipoFiltracionOpcion = [
   { title: "Promedio", value: "average" },
   { title: "Ventas", value: "sales" },
+  { title: "Combinado", value: "combinado" },
 ];
 
 const lapsoDeTiempoOpciones = [

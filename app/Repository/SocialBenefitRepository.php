@@ -57,6 +57,12 @@ class SocialBenefitRepository
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->where('employees.is_active', true)
       ->whereNull('employees.deleted_at')
+      ->where(function ($query) use ($search) {
+        $query->where('employees.name', 'LIKE', "%{$search}%")
+          ->orWhere('employees.last_name', 'LIKE', "%{$search}%")
+          ->orWhere('employees.identification', 'LIKE', "%{$search}%")
+          ->orWhere('users.email', 'LIKE', "%{$search}%");
+      })
       ->groupBy(
         'employees.id',
         'employees.name',
@@ -95,8 +101,8 @@ class SocialBenefitRepository
 
   public function getSettlementData(Employee $employee): array
   {
-    $currency = round(ExchangeRate::where('currency_code', 'USD')
-      ->whereDate('created_at', now()->today())
+    $currency = round(ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'BS')
       ->value('rate') ?? 1, 2);
     \Log::info('Repository', ['currency' => $currency]);
 
@@ -165,8 +171,8 @@ class SocialBenefitRepository
 
     \Log::info('Repository', ['deductions' => $deductions]);
 
-    $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears - 1);
-    $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears - 1);
+    $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears === 0 ? 0 : $activeYears - 1);
+    $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears === 0 ? 0 : $activeYears - 1);
     $vacBonusVoucherDays = $vacationVoucherDays;
     $earningsVoucherDays = 30 * $activeYears;
 
@@ -254,11 +260,15 @@ class SocialBenefitRepository
     $percentage = (float) ($data['percentage'] ?? 100);
     $total = round((float) $data['total'], 2);
 
-    $exchange_rate = ExchangeRate::orderByDesc('created_at')
-      ->where('currency_code', 'USD')
+    $cop_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'COP')
       ->first();
 
-    $total_bs = round($total * $exchange_rate->rate, 2);
+    $bs_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'BS')
+      ->first();
+
+    $total_bs = round($total * $bs_exchange_rate->rate, 2);
     $currency = $data['currency'];
     $count = $data['count'];
     $payed = $data['payed'];
@@ -267,8 +277,8 @@ class SocialBenefitRepository
       'name' => "Despido de empleado ID: {$employee->id}",
       'category_id' => 1,
       'amount' => $payed,
-      'amount_usd' => $total,
-      'amount_bs' => $total_bs,
+      'amount_usd' => abs($total),
+      'amount_bs' => abs($total_bs),
       'currency' => $currency,
       'expense_date' => now(),
       'user_id' => auth()->user()->id,
@@ -286,10 +296,16 @@ class SocialBenefitRepository
       'Paypal' => 'PAYPAL'
     };
 
+    $exchange_rate_id = $currency === 'BS'
+      ? $bs_exchange_rate->id
+      : ($currency === 'COP'
+        ? $cop_exchange_rate->id
+        : null);
+
     Transaction::create([
       'user_id' => auth()->user()->id,
       'category_id' => 1,
-      'exchange_rate_id' => $currency === 'BS' ? $exchange_rate->id : null,
+      'exchange_rate_id' => $exchange_rate_id,
       'description' => "Despido de empleado ID: {$employee->id}",
       'currency' => $currency,
       'type' => $type,

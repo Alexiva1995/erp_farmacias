@@ -57,6 +57,7 @@ class ExchangeRateCreateRequest extends FormRequest
     protected function passedValidation()
     {
         $this->data = ExchangeRateCreateData::from([
+            "id"             => $this->id,
             "currency_code"  => $this->currency_code,
             "rate"           => $this->rate,
             "source"         => $this->source,
