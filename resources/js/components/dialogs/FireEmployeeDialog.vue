@@ -16,6 +16,7 @@ const step = ref("employee");
 const settlement = ref(null);
 const percentage = ref(100);
 const exchangeRate = ref(1);
+const showSalaryDetails = ref(false);
 
 const errors = ref({});
 const payed = ref(null);
@@ -123,6 +124,24 @@ const submitForm = async () => {
 const closeDialog = () => {
   emit("close");
 };
+
+// Funciones auxiliares para formateo
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-VE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 </script>
 
 <template>
@@ -163,6 +182,57 @@ const closeDialog = () => {
                   <td></td>
                   <td class="font-weight-bold">
                     {{ settlement?.starting_date }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Últimos {{ settlement?.average_salary_count || 0 }} salarios
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    <VBtn
+                      v-if="settlement?.last_salaries?.length > 0"
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      @click="showSalaryDetails = !showSalaryDetails"
+                      class="mb-2"
+                    >
+                      <VIcon start>tabler-calendar</VIcon>
+                      {{ showSalaryDetails ? "Ocultar" : "Ver" }} detalles
+                    </VBtn>
+                    <div
+                      v-if="
+                        showSalaryDetails &&
+                        settlement?.last_salaries?.length > 0
+                      "
+                      class="mt-2"
+                    >
+                      <div
+                        v-for="(salary, index) in settlement.last_salaries"
+                        :key="index"
+                        class="mb-1 pa-2 bg-grey-lighten-5 rounded text-caption"
+                      >
+                        {{ formatCurrency(salary.amount_bs) }} Bs. ({{
+                          formatDate(salary.payslip_date)
+                        }})
+                      </div>
+                    </div>
+                    <div
+                      v-if="!settlement?.last_salaries?.length"
+                      class="text-caption text-grey"
+                    >
+                      No hay salarios registrados
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Promedio
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.average_salary || 0) }} Bs.
                   </td>
                 </tr>
                 <tr>

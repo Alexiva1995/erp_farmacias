@@ -6,6 +6,8 @@ namespace App\Repository;
 use App\Models\Employee;
 use App\Models\ExchangeRate;
 use App\Models\Expense;
+use App\Models\Payslip;
+use App\Models\PayslipDetails;
 use App\Models\SalaryConcept;
 use App\Models\Transaction;
 use App\Models\UsersSalaryDetails;
@@ -76,57 +78,6 @@ class SocialBenefitRepository
                 END) AS earnings_voucher"),
 
         // Información de pagos anuales
-        DB::raw("EXISTS(
-                  SELECT 1 FROM users_salary_details usd2 
-                  JOIN salary_concepts sc2 ON sc2.id = usd2.salary_concept_id 
-                  WHERE usd2.user_id = users.id 
-                  AND sc2.name = 'Vacaciones' 
-                  AND YEAR(usd2.created_at) = YEAR(NOW())
-                ) AS vacation_paid_this_year"),
-
-        DB::raw("EXISTS(
-                  SELECT 1 FROM users_salary_details usd3 
-                  JOIN salary_concepts sc3 ON sc3.id = usd3.salary_concept_id 
-                  WHERE usd3.user_id = users.id 
-                  AND sc3.name = 'Bono Vacacional' 
-                  AND YEAR(usd3.created_at) = YEAR(NOW())
-                ) AS bonus_paid_this_year"),
-
-        DB::raw("EXISTS(
-                  SELECT 1 FROM users_salary_details usd4 
-                  JOIN salary_concepts sc4 ON sc4.id = usd4.salary_concept_id 
-                  WHERE usd4.user_id = users.id 
-                  AND sc4.name = 'Utilidades' 
-                  AND YEAR(usd4.created_at) = YEAR(NOW())
-                ) AS utilities_paid_this_year"),
-
-        // Fechas de último pago
-        DB::raw("(
-                  SELECT DATE_FORMAT(MAX(usd5.created_at), '%d/%m/%Y')
-                  FROM users_salary_details usd5 
-                  JOIN salary_concepts sc5 ON sc5.id = usd5.salary_concept_id 
-                  WHERE usd5.user_id = users.id 
-                  AND sc5.name = 'Vacaciones' 
-                  AND YEAR(usd5.created_at) = YEAR(NOW())
-                ) AS vacation_last_payment_date"),
-
-        DB::raw("(
-                  SELECT DATE_FORMAT(MAX(usd6.created_at), '%d/%m/%Y')
-                  FROM users_salary_details usd6 
-                  JOIN salary_concepts sc6 ON sc6.id = usd6.salary_concept_id 
-                  WHERE usd6.user_id = users.id 
-                  AND sc6.name = 'Bono Vacacional' 
-                  AND YEAR(usd6.created_at) = YEAR(NOW())
-                ) AS bonus_last_payment_date"),
-
-        DB::raw("(
-                  SELECT DATE_FORMAT(MAX(usd7.created_at), '%d/%m/%Y')
-                  FROM users_salary_details usd7 
-                  JOIN salary_concepts sc7 ON sc7.id = usd7.salary_concept_id 
-                  WHERE usd7.user_id = users.id 
-                  AND sc7.name = 'Utilidades' 
-                  AND YEAR(usd7.created_at) = YEAR(NOW())
-                ) AS utilities_last_payment_date"),
       ])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
       ->leftJoin('roles', 'roles.id', '=', 'users.role_id')
@@ -153,49 +104,6 @@ class SocialBenefitRepository
       ->paginate($perPage);
   }
 
-  /**
-   * Verificar si ya se pagó un concepto específico en el año actual
-   */
-  public function hasPaidThisYear(Employee $employee, string $conceptName): bool
-  {
-    $currentYear = Carbon::now()->year;
-
-    $hasPaid = UsersSalaryDetails::where('user_id', $employee->user_id)
-      ->whereHas('concept', function ($query) use ($conceptName) {
-        $query->where('name', $conceptName);
-      })
-      ->whereYear('created_at', $currentYear)
-      ->exists();
-
-    Log::info('Repository', [
-      'employee_id' => $employee->id,
-      'concept_name' => $conceptName,
-      'current_year' => $currentYear,
-      'has_paid' => $hasPaid
-    ]);
-
-    return $hasPaid;
-  }
-
-  /**
-   * Obtener información de pagos anuales para un empleado
-   */
-  public function getAnnualPaymentStatus(Employee $employee): array
-  {
-    $currentYear = Carbon::now()->year;
-
-    $vacationPaid = $this->hasPaidThisYear($employee, 'Vacaciones');
-    $bonusPaid = $this->hasPaidThisYear($employee, 'Bono Vacacional');
-    $utilitiesPaid = $this->hasPaidThisYear($employee, 'Utilidades');
-
-    return [
-      'vacation_paid' => $vacationPaid,
-      'bonus_paid' => $bonusPaid,
-      'utilities_paid' => $utilitiesPaid,
-      'current_year' => $currentYear
-    ];
-  }
-
   public function payment(Employee $employee, array $data): bool
   {
     $options = [
@@ -206,28 +114,21 @@ class SocialBenefitRepository
 
     $conceptName = $options[$data['payment']];
 
-    // Verificar si ya se pagó este concepto en el año actual
-    if ($this->hasPaidThisYear($employee, $conceptName)) {
-      Log::warning('Repository', [
-        'message' => "Ya se pagó {$conceptName} para este empleado en el año actual",
-        'employee_id' => $employee->id,
-        'concept' => $conceptName
-      ]);
-      throw new \Exception("Ya se pagó {$conceptName} para este empleado en el año actual");
-    }
-
     $concept = SalaryConcept::create([
       'name' => $conceptName,
       'type' => 'salary',
       'frequency' => 'monthly',
     ]);
 
-    $concept = $employee->user->salaries()
+    $salaryDetail = $employee->user->salaries()
       ->create([
         'amount' => $data['amount'],
         'user_id' => $employee->user->id,
         'salary_concept_id' => $concept->id,
       ]);
+
+    // Generar automáticamente el payslip_detail para que aparezca en deducciones
+    $this->generatePayslipDetailForPayment($salaryDetail, $data['amount']);
 
     Log::info('Repository', [
       'message' => "Pago de {$conceptName} registrado exitosamente",
@@ -236,6 +137,52 @@ class SocialBenefitRepository
     ]);
 
     return true;
+  }
+
+  /**
+   * Generar payslip_detail automáticamente para pagos individuales
+   */
+  private function generatePayslipDetailForPayment($salaryDetail, $amount): void
+  {
+    try {
+      // Buscar o crear un payslip para la fecha actual
+      $payslip = Payslip::firstOrCreate(
+        [
+          'payslip_date' => Carbon::now()->format('Y-m-d'),
+          'name' => 'Pago Individual - ' . Carbon::now()->format('Y-m-d'),
+        ],
+        [
+          'payslip_date' => Carbon::now()->format('Y-m-d'),
+          'name' => 'Pago Individual - ' . Carbon::now()->format('Y-m-d'),
+          'total' => 0, // Se calculará después
+          'status' => 1, // 1 = generado
+        ]
+      );
+
+      // Crear el payslip_detail
+      PayslipDetails::create([
+        'payslip_id' => $payslip->id,
+        'users_salary_details_id' => $salaryDetail->id,
+        'amount' => $amount,
+      ]);
+
+      // Actualizar el total del payslip
+      $totalAmount = PayslipDetails::where('payslip_id', $payslip->id)->sum('amount');
+      $payslip->update(['total' => $totalAmount]);
+
+      Log::info('Repository', [
+        'message' => 'Payslip detail generado automáticamente',
+        'payslip_id' => $payslip->id,
+        'salary_detail_id' => $salaryDetail->id,
+        'amount' => $amount
+      ]);
+    } catch (\Exception $e) {
+      Log::error('Repository', [
+        'message' => 'Error generando payslip detail automáticamente',
+        'error' => $e->getMessage(),
+        'salary_detail_id' => $salaryDetail->id
+      ]);
+    }
   }
 
   public function getSettlementData(Employee $employee): array
@@ -277,10 +224,24 @@ class SocialBenefitRepository
 
     Log::info('Repository', ['settlement' => $settlement]);
     $amount = round((float) $settlement?->amount ?? 0, 2);
-    $activeYears = (int) $settlement?->active_years ?? 1;
-    $dailyWage = $amount === 0 ? 0 : round($amount / 30);
+    // Usar el cálculo de Carbon en lugar del SQL que puede fallar
+    // $activeYears = (int) $settlement?->active_years ?? 1;
 
-    Log::info('Repository', ['amount' => $amount, 'activeYears' => $activeYears, 'dailyWage' => $dailyWage]);
+    // Calcular salario promedio usando los últimos 6 salarios en Bolívares
+    $averageSalaryData = $this->calculateAverageSalaryForBenefits($employee);
+    Log::info('Repository', ['average_salary_data' => $averageSalaryData]);
+
+    // Usar el salario promedio si está disponible, sino usar el amount calculado
+    $baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
+    $dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30);
+
+    Log::info('Repository', [
+      'amount' => $amount,
+      'activeYears' => $activeYears,
+      'dailyWage' => $dailyWage,
+      'baseSalary' => $baseSalary,
+      'averageSalaryData' => $averageSalaryData
+    ]);
 
     $sub = DB::table('employees')
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
@@ -393,6 +354,11 @@ class SocialBenefitRepository
       'final_usd' => $finalUsd,
       'resignation_date' => $employee->resignation?->effective_date,
       'starting_date' => $startDate,
+      'base_salary' => $baseSalary,
+      'average_salary' => $averageSalaryData['average_salary'],
+      'average_salary_count' => $averageSalaryData['salaries_count'],
+      'last_salaries' => $averageSalaryData['last_salaries'],
+      'calculation_details' => $averageSalaryData['calculation_details'],
     ];
   }
 
@@ -508,5 +474,77 @@ class SocialBenefitRepository
 
       throw $e;
     }
+  }
+
+  /**
+   * Obtener los últimos salarios de un empleado en Bolívares
+   */
+  public function getEmployeeLastSalariesInBs(Employee $employee, int $count = 6): array
+  {
+    $currentDate = $this->getCurrentDateForMySQL();
+
+    $salaries = DB::table('employees')
+      ->select([
+        'pd.amount as amount_bs',
+        'ps.payslip_date',
+        'er.rate as exchange_rate',
+        DB::raw("pd.amount * er.rate AS amount_bs_calculated")
+      ])
+      ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
+      ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
+      ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
+      ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
+      ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
+      ->leftJoin('exchange_rates as er', function ($join) {
+        $join->on(DB::raw("DATE_FORMAT(er.created_at, '%Y-%m-%d')"), '=', DB::raw("DATE_FORMAT(ps.payslip_date, '%Y-%m-%d')"))
+          ->where('er.currency_code', '=', 'USD');
+      })
+      ->where('employees.id', $employee->id)
+      ->where('sc.name', 'Salario Base')
+      ->whereNotNull('pd.amount')
+      ->whereNotNull('er.rate')
+      ->orderByDesc('ps.payslip_date')
+      ->limit($count)
+      ->get();
+
+    return $salaries->map(function ($salary) {
+      return [
+        'amount_bs' => round($salary->amount_bs_calculated, 2),
+        'payslip_date' => $salary->payslip_date,
+        'exchange_rate' => $salary->exchange_rate
+      ];
+    })->toArray();
+  }
+
+  /**
+   * Calcular el salario promedio para prestaciones sociales
+   */
+  public function calculateAverageSalaryForBenefits(Employee $employee): array
+  {
+    $lastSalaries = $this->getEmployeeLastSalariesInBs($employee, 6);
+
+    if (empty($lastSalaries)) {
+      return [
+        'average_salary' => 0,
+        'salaries_count' => 0,
+        'last_salaries' => [],
+        'calculation_details' => 'No se encontraron salarios registrados'
+      ];
+    }
+
+    $salariesCount = count($lastSalaries);
+    $totalAmount = array_sum(array_column($lastSalaries, 'amount_bs'));
+    $averageQuincenal = $totalAmount / $salariesCount;
+    $averageMonthly = $averageQuincenal * 2; // Convertir de quincenal a mensual
+
+    return [
+      'average_salary' => round($averageMonthly, 2),
+      'salaries_count' => $salariesCount,
+      'last_salaries' => $lastSalaries,
+      'calculation_details' => "Promedio de {$salariesCount} salarios: " .
+        number_format($totalAmount, 2) . " Bs. ÷ {$salariesCount} = " .
+        number_format($averageQuincenal, 2) . " Bs. × 2 = " .
+        number_format($averageMonthly, 2) . " Bs."
+    ];
   }
 }
