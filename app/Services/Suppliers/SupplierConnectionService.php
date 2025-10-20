@@ -232,6 +232,7 @@ class SupplierConnectionService
             }
         }
 
+        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
@@ -242,7 +243,6 @@ class SupplierConnectionService
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
-        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
