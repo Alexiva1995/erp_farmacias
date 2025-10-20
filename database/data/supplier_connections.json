@@ -199,7 +199,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
