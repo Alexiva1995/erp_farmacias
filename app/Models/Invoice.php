@@ -73,7 +73,8 @@ class Invoice extends Model
         'total_amount',
         'taxable_base',
         'exempt_amount',
-        'status_payment'
+        'status_payment',
+        'created_invoice_date'
     ];
 
     protected $fillableFromHeader = self::FILLABLEHEADER;
