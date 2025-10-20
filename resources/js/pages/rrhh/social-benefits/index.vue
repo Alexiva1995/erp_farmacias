@@ -82,11 +82,20 @@ const handlePayEmployee = async (id, type, amount) => {
       toast.success(`Se registró el pago de ${payments[type]}`);
       showPaymentDialog.value = false;
       selectedEmployee.value = {};
+      // Refrescar la tabla para mostrar los datos actualizados
+      await fetchEmployees();
     } else {
       toast.error(`No se pudo procesar el pago de ${payments[type]}`);
     }
   } catch (error) {
-    toast.error("Hubo un error al agregar el pago del empleado");
+    if (error.response?.status === 422) {
+      toast.error(
+        error.response.data.message ||
+          "Ya se pagó este concepto para este empleado en el año actual"
+      );
+    } else {
+      toast.error("Hubo un error al agregar el pago del empleado");
+    }
   }
 };
 
