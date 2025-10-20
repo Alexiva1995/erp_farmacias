@@ -13,45 +13,30 @@ const selectedPayment = ref(null);
 const date = new Date();
 
 const options = computed(() => {
-  const lessThanYear = props.selectedEmployee?.active_years < 1;
-
   return [
     {
       title: "Vacaciones",
       value: "vacation_voucher",
       props: {
-        disabled: lessThanYear,
+        disabled: false,
       },
     },
     {
       title: "Bono Vacacional",
       value: "vacation_bonus_voucher",
       props: {
-        disabled: lessThanYear,
+        disabled: false,
       },
     },
     {
       title: "Utilidades",
       value: "earnings_voucher",
       props: {
-        disabled: false, // Permitir selección siempre, validar en el mensaje
+        disabled: false,
       },
     },
   ];
 });
-
-const getLastPaymentDate = (paymentType) => {
-  switch (paymentType) {
-    case "vacation_voucher":
-      return props.selectedEmployee?.vacation_last_payment_date;
-    case "vacation_bonus_voucher":
-      return props.selectedEmployee?.bonus_last_payment_date;
-    case "earnings_voucher":
-      return props.selectedEmployee?.utilities_last_payment_date;
-    default:
-      return null;
-  }
-};
 
 const getPaymentConceptName = (paymentType) => {
   switch (paymentType) {
@@ -67,16 +52,8 @@ const getPaymentConceptName = (paymentType) => {
 };
 
 const isPaymentAlreadyMade = (paymentType) => {
-  switch (paymentType) {
-    case "vacation_voucher":
-      return props.selectedEmployee?.vacation_paid_this_year;
-    case "vacation_bonus_voucher":
-      return props.selectedEmployee?.bonus_paid_this_year;
-    case "earnings_voucher":
-      return props.selectedEmployee?.utilities_paid_this_year;
-    default:
-      return false;
-  }
+  // Validación removida - los pagos se reflejan en deducciones
+  return false;
 };
 
 const closeDialog = () => {
