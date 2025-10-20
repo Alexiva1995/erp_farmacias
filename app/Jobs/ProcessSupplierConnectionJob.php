@@ -41,12 +41,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             "status" => "processing",
         ]);
 
-        \Log::info('Supplier Job', ['status data' => $status]);
-
         $supplierConnection = $this->supplier->connections->first();
         if (is_null($supplierConnection) && !$this->filePath) {
-            \Log::info('Supplier Job', ['supplier' => $this->supplier->id]);
-            \Log::info('Supplier Job', ['connection not found']);
             $status->update([
                 "status" => "failed",
                 "message" => "Este proveedor no posee una conexión registrada",
@@ -55,7 +51,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         }
 
         $structure = $supplierConnection->structure ?? null;
-        \Log::info('Supplier Job', ['structure', $structure]);
+
 
         try {
             $results = [];
@@ -65,44 +61,46 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     $data = [
                         'supplier_id' => $this->supplier->id,
                         'type' => 'file',
-                        'host' => 'excel',
+                        'host' => "{$this->supplier->name} (Excel)",
                         'pasv' => 0,
                         'has_header' => 0,
                         'last_connection' => now()->format('Y-m-d'),
                         'structure' => $this->columnMap
                     ];
                     $queryService->storeConnection($data);
-                    \Log::info('Supplier Job', ['stored connection']);
                 }
+
+                if (!Storage::disk('local')->exists($this->filePath)) {
+                    throw new \Exception("Archivo subido no encontrado: {$this->filePath}");
+                }
+
+                $absolutePath = Storage::disk('local')->path($this->filePath);
 
                 $import = new SupplierImport(
                     supplierId: (int) $this->supplier->id,
                     startRow: (int) ($this->columnMap["start_row"] ?? 1),
-                    codSupplierCol: $this->columnMap["cod_supplier"] ?: null,
+                    codSupplierCol: $this->columnMap["cod_supplier"] ?? null,
                     nameCol: $this->columnMap["name"],
-                    barcodeCol: $this->columnMap["barcode_match"] ?: null,
-                    qtyCol: $this->columnMap["quantity"] ?: null,
-                    costBsCol: $this->columnMap["unit_cost"] ?: null,
-                    costUsdCol: $this->columnMap["unit_cost_usd"] ?: null,
-                    activeIngredientCol: $this->columnMap["active_ingredient"] ?: null,
-                    expirationCol: $this->columnMap["expiration"] ?: null,
-                    currencyCol: $this->columnMap["currency"] ?: null,
+                    barcodeCol: $this->columnMap["barcode_match"] ?? null,
+                    qtyCol: $this->columnMap["quantity"] ?? null,
+                    costBsCol: $this->columnMap["unit_cost"] ?? null,
+                    costUsdCol: $this->columnMap["unit_cost_usd"] ?? null,
+                    activeIngredientCol: $this->columnMap["active_ingredient"] ?? null,
+                    expirationCol: $this->columnMap["expiration"] ?? null,
+                    currencyCol: $this->columnMap["currency"] ?? null,
                 );
 
-                \Log::info('Supplier Job', ['import file', $import]);
-
-                $absolutePath = Storage::disk("local")->path($this->filePath);
-
-                \Log::info('Supplier Job', ['file absolute path', $absolutePath]);
-
                 Excel::import($import, $absolutePath);
-                $results = ["products" => $import->getRows()->toArray(), "invoices" => []];
 
-                \Log::info('Supplier Job', ['results', count($results)]);
+                $products = $import->getRows();
+                $results = [
+                    "products" => $products->isNotEmpty() ? $products->toArray() : [],
+                    "invoices" => []
+                ];
 
-                unlink($absolutePath);
+                Storage::disk('local')->delete($this->filePath);
             } else {
-                $results = $connectionService->fetchData($supplierConnection);
+                $results = $connectionService->fetchData($this->supplier->connections->first());
             }
 
             $queryService->storeSupplierConnectionData($this->supplier, $results);
@@ -118,12 +116,21 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 "count_product" => count($results["products"]),
                 "count_invoice" => count($results["invoices"]),
             ]);
+
         } catch (\Throwable $e) {
-            \Log::error($e);
+            \Log::error('Supplier import failed', [
+                'supplier_id' => $this->supplier->id,
+                'file' => $this->filePath ?? 'none',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             $status->update([
                 "status" => "failed",
                 "message" => $e->getMessage(),
             ]);
+
+            throw $e;
         }
     }
 }
