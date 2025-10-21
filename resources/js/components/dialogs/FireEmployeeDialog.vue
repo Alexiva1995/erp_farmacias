@@ -236,6 +236,24 @@ const formatDate = (dateString) => {
                   </td>
                 </tr>
                 <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Diario
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.daily_wage || 0) }} Bs.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Integral
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.integral_salary || 0) }} Bs.
+                  </td>
+                </tr>
+                <tr>
                   <th style="width: 70%" class="text-start font-weight-bold">
                     Liquidación
                   </th>
