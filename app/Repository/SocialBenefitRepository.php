@@ -301,7 +301,7 @@ class SocialBenefitRepository
     }
     
     // VACACIONES: Fórmula base con fracciones + bonificación por años completados
-    $vacationVoucherDays = 15 * $activeYears; // Fracción permitida
+    $vacationVoucherDays = round(15 * $activeYears); // Redondear a entero
     // Bonificación: +1 día por cada año completo adicional
     if ($completedYears >= 2) {
       $vacationBonusDays = ($completedYears - 1) * 1; // -1 porque el primer año ya está incluido
@@ -312,7 +312,7 @@ class SocialBenefitRepository
     $vacBonusVoucherDays = $vacationVoucherDays;
     
     // UTILIDADES: Fórmula base con fracciones (sin bonificación)
-    $earningsVoucherDays = 30 * $activeYears; // Fracción permitida
+    $earningsVoucherDays = round(30 * $activeYears); // Redondear a entero
 
     Log::info('Repository', [
       'socialBenefitsDays' => $socialBenefitsDays,

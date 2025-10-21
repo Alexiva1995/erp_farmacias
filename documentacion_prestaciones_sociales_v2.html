@@ -446,73 +446,74 @@ Schedule::command('app:schedule-automatic-social-benefits')->dailyAt('06:00');
                 </ul>
             </div>
 
-            <h3>🔧 Corrección de Fórmulas de Prestaciones Sociales</h3>
-            <div class="implementation-step">
-                <h4>📋 Descripción</h4>
-                <p>Implementación de correcciones fundamentales en las fórmulas de cálculo de prestaciones sociales según especificaciones del jefe, permitiendo prestaciones fraccionadas y nuevas reglas de bonificación.</p>
-                
-                <h4>🔧 Problema Resuelto</h4>
-                <div class="error">
-                    <strong>Problema:</strong> Las fórmulas anteriores bloqueaban completamente las prestaciones para empleados con menos de 1 año de antigüedad, y las fórmulas de cálculo no seguían las reglas de negocio correctas.<br>
-                    <strong>Solución:</strong> Eliminada la regla de negocio fundamental restrictiva e implementadas nuevas fórmulas con prestaciones fraccionadas y bonificaciones por años completados.
-                </div>
-                
-                <h4>⚙️ Nuevas Fórmulas Implementadas</h4>
-                
-                <h5>🏢 Prestaciones Sociales</h5>
-                <div class="formula">
-                    REGLA ESPECIAL:<br>
-                    Si meses < 6: días = meses × 5<br>
-                    Si meses ≥ 6: días = 30<br>
-                    Bonificación: +2 días por cada año completo adicional (a partir del 2do año)
-                </div>
-                
-                <h5>🏖️ Vacaciones</h5>
-                <div class="formula">
-                    FÓRMULA BASE: días = 15 × años (fracciones permitidas)<br>
-                    Bonificación: +1 día por cada año completo adicional (a partir del 2do año)
-                </div>
-                
-                <h5>🎁 Bono Vacacional</h5>
-                <div class="formula">
-                    IGUAL QUE VACACIONES<br>
-                    Fórmula: días = 15 × años + bonificaciones
-                </div>
-                
-                <h5>💰 Utilidades</h5>
-                <div class="formula">
-                    FÓRMULA SIMPLE: días = 30 × años (fracciones permitidas)<br>
-                    Sin bonificaciones adicionales
-                </div>
-                
-                <h4>📊 Ejemplos Prácticos</h4>
-                <div class="test-result">
-                    <strong>Empleado con 6 meses:</strong><br>
-                    - Prestaciones Sociales: 30 días (regla especial)<br>
-                    - Vacaciones: 7.5 días (15 × 0.5)<br>
-                    - Bono Vacacional: 7.5 días<br>
-                    - Utilidades: 15 días (30 × 0.5)<br>
-                    <strong>Total: 60 días</strong>
-                </div>
-                
-                <div class="test-result">
-                    <strong>Empleado con 2 años:</strong><br>
-                    - Prestaciones Sociales: 32 días (30 + 2 bonificación)<br>
-                    - Vacaciones: 31 días (30 + 1 bonificación)<br>
-                    - Bono Vacacional: 31 días<br>
-                    - Utilidades: 60 días<br>
-                    <strong>Total: 154 días</strong>
-                </div>
-                
-                <h4>✅ Beneficios</h4>
-                <ul>
-                    <li><strong>Prestaciones Fraccionadas:</strong> Los empleados con menos de 1 año ahora tienen derecho a prestaciones</li>
-                    <li><strong>Fórmulas Simplificadas:</strong> Eliminadas fórmulas complejas con restas problemáticas</li>
-                    <li><strong>Bonificaciones Claras:</strong> Sistema transparente de bonificaciones por años completados</li>
-                    <li><strong>Reglas Especiales:</strong> Prestaciones sociales con regla especial para menos de 6 meses</li>
-                    <li><strong>Consistencia:</strong> Todas las fórmulas siguen la misma lógica base</li>
-                </ul>
+        <h3>🔧 Corrección de Fórmulas de Prestaciones Sociales</h3>
+        <div class="implementation-step">
+            <h4>📋 Descripción</h4>
+            <p>Implementación de correcciones fundamentales en las fórmulas de cálculo de prestaciones sociales según especificaciones del jefe, permitiendo prestaciones fraccionadas y nuevas reglas de bonificación.</p>
+            
+            <h4>🔧 Problema Resuelto</h4>
+            <div class="error">
+                <strong>Problema:</strong> Las fórmulas anteriores bloqueaban completamente las prestaciones para empleados con menos de 1 año de antigüedad, y las fórmulas de cálculo no seguían las reglas de negocio correctas.<br>
+                <strong>Solución:</strong> Eliminada la regla de negocio fundamental restrictiva e implementadas nuevas fórmulas con prestaciones fraccionadas y bonificaciones por años completados.
             </div>
+            
+            <h4>⚙️ Nuevas Fórmulas Implementadas</h4>
+            
+            <h5>🏢 Prestaciones Sociales</h5>
+            <div class="formula">
+                REGLA ESPECIAL:<br>
+                Si meses < 6: días = meses × 5<br>
+                Si meses ≥ 6: días = 30<br>
+                Bonificación: +2 días por cada año completo adicional (a partir del 2do año)
+            </div>
+            
+            <h5>🏖️ Vacaciones</h5>
+            <div class="formula">
+                FÓRMULA BASE: días = round(15 × años) (redondeado a entero)<br>
+                Bonificación: +1 día por cada año completo adicional (a partir del 2do año)
+            </div>
+            
+            <h5>🎁 Bono Vacacional</h5>
+            <div class="formula">
+                IGUAL QUE VACACIONES<br>
+                Fórmula: días = round(15 × años) + bonificaciones
+            </div>
+            
+            <h5>💰 Utilidades</h5>
+            <div class="formula">
+                FÓRMULA SIMPLE: días = round(30 × años) (redondeado a entero)<br>
+                Sin bonificaciones adicionales
+            </div>
+            
+            <h4>📊 Ejemplos Prácticos</h4>
+            <div class="test-result">
+                <strong>Empleado con 6 meses:</strong><br>
+                - Prestaciones Sociales: 30 días (regla especial)<br>
+                - Vacaciones: 8 días (round(15 × 0.5))<br>
+                - Bono Vacacional: 8 días<br>
+                - Utilidades: 15 días (round(30 × 0.5))<br>
+                <strong>Total: 61 días</strong>
+            </div>
+            
+            <div class="test-result">
+                <strong>Empleado con 2 años:</strong><br>
+                - Prestaciones Sociales: 32 días (30 + 2 bonificación)<br>
+                - Vacaciones: 31 días (30 + 1 bonificación)<br>
+                - Bono Vacacional: 31 días<br>
+                - Utilidades: 60 días<br>
+                <strong>Total: 154 días</strong>
+            </div>
+            
+            <h4>✅ Beneficios</h4>
+            <ul>
+                <li><strong>Prestaciones Fraccionadas:</strong> Los empleados con menos de 1 año ahora tienen derecho a prestaciones</li>
+                <li><strong>Fórmulas Simplificadas:</strong> Eliminadas fórmulas complejas con restas problemáticas</li>
+                <li><strong>Bonificaciones Claras:</strong> Sistema transparente de bonificaciones por años completados</li>
+                <li><strong>Reglas Especiales:</strong> Prestaciones sociales con regla especial para menos de 6 meses</li>
+                <li><strong>Consistencia:</strong> Todas las fórmulas siguen la misma lógica base</li>
+                <li><strong>Días Enteros:</strong> Todos los días se muestran como números enteros para mejor legibilidad</li>
+            </ul>
+        </div>
 
             <h3>💸 Deducciones Automáticas</h3>
             <div class="implementation-step">
