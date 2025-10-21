@@ -48,7 +48,7 @@ class PayslipRepository
       'payslip_date' => $date->format('Y-m-d'),
       'name' => $name,
       'total' => 0,
-      'exchange_rate_id' => $exchange_rate->id
+      'exchange_rate' => $exchange_rate->rate
     ]);
 
     foreach ($details as $detail) {
@@ -175,7 +175,7 @@ class PayslipRepository
 
   public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $type === 'full' ? 1 : $payslip->exchange_rate->rate;
+    $currency = $type === 'full' ? 1 : $payslip->exchange_rate;
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;
