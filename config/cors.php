@@ -17,7 +17,7 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        env('FRONTEND_URL', 'http://farmacia-vue.test'),
+        env('VITE_API_URL', 'http://farmacia-vue.test'),
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'http://localhost:8000',

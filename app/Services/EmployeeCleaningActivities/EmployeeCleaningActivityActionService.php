@@ -235,4 +235,152 @@ class EmployeeCleaningActivityActionService
 
         return $data;
     }
+    public function updateExecutionStatus(int $employeeId, int $executionId, array $data, $photo = null): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            $execution = \App\Models\CleaningActivityExecution::where('id', $executionId)
+                ->where('employee_id', $employeeId)
+                ->firstOrFail();
+
+            // Verificar que la ejecución esté pendiente
+            if (!$execution->isPending()) {
+                throw new \Exception('Solo se pueden procesar ejecuciones en estado Pendiente');
+            }
+
+            $updateData = [
+                'status' => $data['status'],
+                'updated_at' => now(),
+            ];
+
+            // Si el estado es Procesada, manejar la foto
+            if ($data['status'] === 'Procesada') {
+                if (!$photo) {
+                    throw new \Exception('La foto es requerida para marcar como procesada');
+                }
+
+                // Guardar la foto
+                $photoPath = $photo->store('cleaning_activities_photos', 'public');
+                $updateData['photo'] = $photoPath;
+                $updateData['completed_date'] = now();
+            }
+
+            // Agregar notas si existen
+            if (isset($data['notes'])) {
+                $updateData['notes'] = $data['notes'];
+            }
+
+            $execution->update($updateData);
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al actualizar el estado: ' . $e->getMessage());
+        }
+    }
+    public function approveExecution(int $executionId, int $supervisorId, ?string $notes = null): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            $execution = \App\Models\CleaningActivityExecution::findOrFail($executionId);
+
+            // Verificar que esté en estado Procesada
+            if (!$execution->isProcessed()) {
+                throw new \Exception('Solo se pueden aprobar ejecuciones en estado Procesada');
+            }
+
+            $execution->update([
+                'status' => 'Completada',
+                'approved_by' => $supervisorId,
+                'approved_date' => now(),
+                'notes' => $notes ?? $execution->notes,
+            ]);
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al aprobar la ejecución: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rechaza una ejecución y la devuelve a Pendiente (supervisor)
+     * 
+     * @param int $executionId
+     * @param int $supervisorId
+     * @param string $rejectionReason
+     * @return bool
+     * @throws \Exception
+     */
+    public function rejectExecution(int $executionId, int $supervisorId, string $rejectionReason): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            $execution = \App\Models\CleaningActivityExecution::findOrFail($executionId);
+
+            // Verificar que esté en estado Procesada
+            if (!$execution->isProcessed()) {
+                throw new \Exception('Solo se pueden rechazar ejecuciones en estado Procesada');
+            }
+
+            // Eliminar la foto anterior si existe
+            if ($execution->photo) {
+                \Storage::disk('public')->delete($execution->photo);
+            }
+
+            $execution->update([
+                'status' => 'Pendiente',
+                'rejection_reason' => $rejectionReason,
+                'completed_date' => null,
+                'photo' => null,
+            ]);
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al rechazar la ejecución: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancela una ejecución (supervisor)
+     * 
+     * @param int $executionId
+     * @param int $supervisorId
+     * @param string $cancellationReason
+     * @return bool
+     * @throws \Exception
+     */
+    public function cancelExecution(int $executionId, int $supervisorId, string $cancellationReason): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            $execution = \App\Models\CleaningActivityExecution::findOrFail($executionId);
+
+            // Solo se pueden cancelar ejecuciones Procesadas o Pendientes
+            if (!in_array($execution->status, ['Pendiente', 'Procesada'])) {
+                throw new \Exception('Solo se pueden cancelar ejecuciones Pendientes o Procesadas');
+            }
+
+            $execution->update([
+                'status' => 'Cancelada',
+                'rejection_reason' => $cancellationReason,
+                'approved_by' => $supervisorId,
+                'approved_date' => now(),
+            ]);
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al cancelar la ejecución: ' . $e->getMessage());
+        }
+    }
 }

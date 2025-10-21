@@ -542,6 +542,13 @@ Route::middleware("auth:sanctum")->group(function () {
     });
     Route::prefix('my-cleaning-activities')->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
-        Route::patch('/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
+        Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
+    });
+    Route::prefix('supervisor')->middleware(['auth:sanctum'])->group(function () {
+        Route::get('/cleaning-executions', [EmployeeCleaningActivityController::class, 'supervisorExecutions']);
+        Route::get('/cleaning-executions/stats', [EmployeeCleaningActivityController::class, 'supervisorStats']);
+        Route::post('/cleaning-executions/{executionId}/approve', [EmployeeCleaningActivityController::class, 'approveExecution']);
+        Route::post('/cleaning-executions/{executionId}/reject', [EmployeeCleaningActivityController::class, 'rejectExecution']);
+        Route::post('/cleaning-executions/{executionId}/cancel', [EmployeeCleaningActivityController::class, 'cancelExecution']);
     });
 });
