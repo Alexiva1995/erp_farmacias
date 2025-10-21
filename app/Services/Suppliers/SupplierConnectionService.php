@@ -364,7 +364,7 @@ class SupplierConnectionService
                 }
             }
 
-            if(!isset($entry["quantity"]))
+            if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
 
             if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
@@ -445,7 +445,6 @@ class SupplierConnectionService
                     $raw = $cols[$index] ?? '';
                     $lineData[$meta['field']] = $this->castValue($raw, $meta);
                 }
-
                 $barcode = $lineData['barcode'] ?? null;
 
                 // ✅ Buscar o crear producto
@@ -495,7 +494,6 @@ class SupplierConnectionService
                         $value = $this->castValue($raw, $meta);
                         $header[$meta["field"]] = $value;
                     }
-
                     $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
                     $header['invoice_number'] = $invoiceNumber;
 
@@ -538,7 +536,6 @@ class SupplierConnectionService
                         $value = $this->castValue($raw, $meta);
                         $lineData[$meta["field"]] = $value;
                     }
-
                     $barcode = $lineData["barcode"] ?? null;
 
                     // ✅ Solo crear producto si no existe
@@ -561,7 +558,7 @@ class SupplierConnectionService
                 }
             }
         }
-        
+
         return $invoices;
     }
 
@@ -620,12 +617,12 @@ class SupplierConnectionService
     private function castValue(string $raw, array $meta): mixed
     {
         $value = trim($raw);
-
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
             "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
-            "date" => $this->parseDate($value, $meta["format"] ?? null),
+            "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
+            "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
             default => $value,
         };
     }

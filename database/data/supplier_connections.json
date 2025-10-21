@@ -261,6 +261,10 @@
                 "13": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
+                },
+                "14": {
+                    "field": "tax_enabled",
+                    "type": "boolean"
                 }
             }
         },
