@@ -15,3 +15,4 @@ Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');
 Schedule::job(new GeneratePayslipJob())->lastDayOfMonth('00:00');
 Schedule::command("app:execute-recurring-expenses")->daily();
+Schedule::command('app:schedule-automatic-social-benefits')->dailyAt('06:00');

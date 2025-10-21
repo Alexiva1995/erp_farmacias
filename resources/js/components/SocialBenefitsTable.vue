@@ -16,7 +16,7 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
-const emit = defineEmits(["update:options", "pay-employee", "fire-employee"]);
+const emit = defineEmits(["update:options", "fire-employee"]);
 </script>
 <template>
   <VCard>
@@ -30,13 +30,6 @@ const emit = defineEmits(["update:options", "pay-employee", "fire-employee"]);
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.actions="{ item }">
-        <VTooltip text="Pagar a empleado" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('pay-employee', item)">
-              <VIcon icon="tabler-currency-dollar" />
-            </IconBtn>
-          </template>
-        </VTooltip>
         <VTooltip text="Despedir empleado" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('fire-employee', item)">
