@@ -39,3 +39,4 @@ Schedule::call(function () {
     ->hourly()
     ->name('mark-overdue-executions')
     ->withoutOverlapping();
+Schedule::command('app:schedule-automatic-social-benefits')->dailyAt('06:00');

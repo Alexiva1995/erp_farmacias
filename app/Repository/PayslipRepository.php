@@ -25,7 +25,7 @@ class PayslipRepository
 
   public function generate(Carbon $date, string $name, Collection $details): bool
   {
-    $exchange_rate = ExchangeRate::where('created_at', '=', $date->format('Y-m-d'))
+    $exchange_rate = ExchangeRate::orderByDesc('created_at')
       ->where('currency_code', '=', 'BS')
       ->first();
 
@@ -33,8 +33,8 @@ class PayslipRepository
       $exitCode = Artisan::call("app:update-exchange-rate");
 
       if ($exitCode === 0) {
-        $exchange_rate = ExchangeRate::where("currency_code", "BS")
-          ->whereDate("created_at", Carbon::today())
+        $exchange_rate = ExchangeRate::orderByDesc('created_at')
+          ->where('currency_code', '=', 'BS')
           ->first();
 
       } else {
