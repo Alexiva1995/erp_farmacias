@@ -235,11 +235,15 @@ class SocialBenefitRepository
     $baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
     $dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30);
 
+    // Calcular salario integral según fórmula: Salario Diario + [(30 × Salario Diario) ÷ 360] + [(15 × Salario Diario) ÷ 360]
+    $integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
+
     Log::info('Repository', [
       'amount' => $amount,
       'activeYears' => $activeYears,
       'dailyWage' => $dailyWage,
       'baseSalary' => $baseSalary,
+      'integralSalary' => $integralSalary,
       'averageSalaryData' => $averageSalaryData
     ]);
 
@@ -286,10 +290,11 @@ class SocialBenefitRepository
       'earningsVoucherDays' => $earningsVoucherDays
     ]);
 
-    $socialBenefitsAmount = round($socialBenefitsDays * $dailyWage, 2);
-    $vacationVoucherAmount = round($vacationVoucherDays * $dailyWage, 2);
-    $vacBonusVoucherAmount = round($vacBonusVoucherDays * $dailyWage, 2);
-    $earningsVoucherAmount = round($earningsVoucherDays * $dailyWage, 2);
+    // Usar salario integral para cálculos de prestaciones sociales
+    $socialBenefitsAmount = round($socialBenefitsDays * $integralSalary, 2);
+    $vacationVoucherAmount = round($vacationVoucherDays * $integralSalary, 2);
+    $vacBonusVoucherAmount = round($vacBonusVoucherDays * $integralSalary, 2);
+    $earningsVoucherAmount = round($earningsVoucherDays * $integralSalary, 2);
 
     Log::info('Repository', [
       'socialBenefitsAmount' => $socialBenefitsAmount,
@@ -335,6 +340,7 @@ class SocialBenefitRepository
       'active_years' => $activeYears,
       'currency' => $currency,
       'daily_wage' => $dailyWage,
+      'integral_salary' => round($integralSalary, 2),
       'social_benefits_days' => $socialBenefitsDays,
       'social_benefits_amount' => $socialBenefitsAmount,
       'vacation_voucher_days' => $vacationVoucherDays,
