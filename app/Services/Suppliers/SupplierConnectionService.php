@@ -92,6 +92,7 @@ class SupplierConnectionService
                 if (!str_ends_with($filePath, ".txt")) {
                     continue;
                 }
+
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
@@ -769,10 +770,9 @@ class SupplierConnectionService
 
                     // Divide la parte numérica final en un máximo de 10 elementos usando espacios como delimitador
                     $nums = preg_split('/\s+/', trim($numericTail), 10);
-                    $exisMerida = $nums[0];
-                    $unit_cost_raw = $nums[1];
-                    $exisCaracas = $nums[2];
-                    $exisOriente = $nums[3];
+                    $quantity = $nums[0];
+                    $unit_cost = $nums[1];
+                    $total_cost = $nums[4];
 
                     // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
                     preg_match('/\b(\d{12,13})\b/', $line, $b);
@@ -783,8 +783,8 @@ class SupplierConnectionService
                     $barcode = $b[1] ?? '';
                     $expiration = $e[1] ?? '';
 
-                    // Si se encontraron código de barras, fecha de vencimiento y la existencia es numérica...
-                    if ($barcode && $expiration && is_numeric($exisMerida)) {
+                    // Si se encontraron código de barras, fecha de vencimiento
+                    if ($barcode && $expiration) {
                         // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
                         $name = str_replace(';', '', $name);
 
@@ -793,12 +793,10 @@ class SupplierConnectionService
                             '01',
                             $invoice,
                             $cod_supplier,
-                            $category,
                             $name,
-                            $exisMerida,
-                            $unit_cost_raw,
-                            $exisCaracas,
-                            $exisOriente,
+                            $quantity,
+                            $unit_cost,
+                            $total_cost,
                             $barcode,
                             $expiration
                         ]);
@@ -844,16 +842,13 @@ class SupplierConnectionService
 
             // El segundo campo es el ID de factura
             $id = $parts[1];
+            $total_amount = $parts[3];
             // Los dos últimos campos deben ser valores numéricos (montos, cantidades, etc.)
-            $last1 = $parts[count($parts) - 2] ?? '';
-            $last2 = $parts[count($parts) - 1] ?? '';
+            $exchange_rate = $parts[count($parts) - 2] ?? '';
+            $total_usd = $parts[count($parts) - 1] ?? '';
 
-            if (!is_numeric($last1) || !is_numeric($last2)) {
-                throw new Exception("Final fields not numeric in 02 line");
-            }
-
-            // Formato de salida para registro 02: tipo;id_factura;campo_numerico_1;fecha(Y-m-d);campo_numerico_2
-            return implode(';', ['02', $id, $last1, $mysqlDate, $last2]);
+            // Formato de salida para registro 02: tipo;id_factura;total_amount;fecha(Y-m-d);exchange_rate;total_usd
+            return implode(';', ['02', $id, $total_amount, $mysqlDate, $exchange_rate, $total_usd]);
         }
 
         // Si la línea no coincide con ninguno de los formatos esperados, lanza una excepción
