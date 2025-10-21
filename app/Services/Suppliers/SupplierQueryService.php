@@ -168,15 +168,15 @@ class SupplierQueryService
             $existingInvoiceNumbers = Invoice::whereIn(
                 'invoice_number',
                 collect($invoices)->pluck('header.invoice_number')->filter()->unique()
-            )->pluck('invoice_number')->toArray(); 
-            
+            )->pluck('invoice_number')->toArray();
+
             $filteredInvoices = collect($invoices)
                 ->filter(function ($invoice) use ($existingInvoiceNumbers) {
                     $number = $invoice['header']['invoice_number'] ?? null;
                     return $number && !in_array($number, $existingInvoiceNumbers);
                 })->values()->toArray();
 
-            DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices ) {
+            DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices) {
                 $supplier->productSuppliers()->delete();
                 foreach (array_chunk($uniqueProducts, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
@@ -184,7 +184,7 @@ class SupplierQueryService
 
                 //InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
                 //$supplier->invoices()->delete();
-                foreach ($filteredInvoices  as $invoice) {
+                foreach ($filteredInvoices as $invoice) {
                     $header = $invoice['header'];
                     $lines = $invoice['lines'];
 

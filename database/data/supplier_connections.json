@@ -13,7 +13,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -67,7 +68,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
