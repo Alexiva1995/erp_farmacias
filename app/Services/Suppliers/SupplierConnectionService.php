@@ -4,6 +4,8 @@ namespace App\Services\Suppliers;
 
 use App\Models\ExchangeRate;
 use App\Models\Product;
+use App\Models\ProductLot;
+use App\Models\ProductSupplier;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
 use Exception;
@@ -158,7 +160,7 @@ class SupplierConnectionService
 
                     $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
                     $invoiceDetailsResponse = $this->fetchFromAPI($loginResponse->json()["token"], [], $client, $payloadInvoiceDetails['url'], 'get');
-dd($invoiceDetailsResponse);
+
                     $flatData = [];
 
                     foreach ($invoiceDetailsResponse as $detail) {
@@ -182,7 +184,6 @@ dd($invoiceDetailsResponse);
                     
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-                   
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
@@ -398,7 +399,7 @@ dd($invoiceDetailsResponse);
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
     {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
@@ -410,6 +411,7 @@ dd($invoiceDetailsResponse);
         $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
 
         $barcodes = [];
+        $mode = $structure['mode'] ?? 'grouped';
 
         foreach ($lines as $line) {
             $cols = explode($separator, $line);
@@ -421,11 +423,18 @@ dd($invoiceDetailsResponse);
                     $barcodes[] = $barcode;
                 }
             }
+
+            $barcodeIndexFlat = array_search('barcode', array_column($structure['lines'], 'field'));
+            if ($mode === 'flat' && $barcodeIndexFlat !== false) {
+                $originalIndex = array_keys($structure['lines'])[$barcodeIndexFlat];
+                $barcode = trim($cols[$originalIndex] ?? "");
+                if ($barcode !== "") {
+                     $barcodes[] = $barcode;
+                 }
+            }
         }
 
         $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
-
-        $mode = $structure['mode'] ?? 'grouped';
         
         if ($mode === 'flat') {
             $invoiceGroups = [];
@@ -487,7 +496,74 @@ dd($invoiceDetailsResponse);
                 $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
 
                 $barcode = $lineData['barcode'] ?? null;
-                $lineData['product_id'] = $products[$barcode]->id ?? null;
+                //$lineData['product_id'] = $products[$barcode]->id ?? null;
+                $product = $products[$barcode] ?? null;
+
+                 if (!$product && $barcode) {
+                    Log::info("Creando producto por factura: {$barcode}");
+                      $product = Product::firstOrCreate(
+                        ['barcode' => $barcode],
+                        [
+                        'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
+                        'unit_cost' => $unitCost,
+                        'sale_price' => null,
+                        'stock' => 0,
+                        'active_ingredient' => $lineData['descripcion_producto'],
+                        'sales_average' => 0,
+                    ]);
+
+                    $products->put($barcode, $product);
+                }
+
+                $lineData['product_id'] = $product->id ?? null;
+                $supplierId = $connection->supplier_id;
+                $codSupplier = $lineData['codigo_producto'] ?? null;
+                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                $unitCostUsd = ($exchangeRate > 0) ? number_format($unitCost / $exchangeRate, 2, '.', '') : 0.00;
+
+                // CREAR o ACTUALIZAR REGISTRO EN PRODUCT_SUPPLIERS
+                    if ($product && $codSupplier && $supplierId) {
+                        ProductSupplier::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'supplier_id' => $supplierId
+                        ],
+                        [
+                            'cod_supplier' => $codSupplier,
+                            'unit_cost' => $unitCost,
+                            'unit_cost_usd' => $unitCostUsd,
+                            'barcode_match' => $lineData['barcode'], 
+                            'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
+                            'expiration' => $lineData['expiration_date'] ?? null, 
+                            'quantity' => $quantity, 
+                            'connection_date' => now(),
+                        ]
+                        );
+                    }
+
+                     if ($product && $quantity > 0) {
+                        $lotNumber = $lineData['lot_number'] ?? 'N/A';
+                        $expirationDate = $lineData['expiration_date'] ?? null;
+
+                        $lot = ProductLot::where('product_id', $product->id)->where('lot_number', $lotNumber)->where('expiration_date', $expirationDate)->first();
+
+                        if ($lot) {
+                            $lot->increment('quantity', $quantity);
+                            $lot->update([
+                                'unit_cost' => $unitCost,
+                                'supplier_id' => $supplierId,
+                            ]);
+                        }else{
+                            ProductLot::create([
+                                'product_id' => $product->id,
+                                'lot_number' => $lineData['lot_number'] ?? 'N/A',
+                                'quantity' => $quantity,
+                                'unit_cost' => $unitCost,
+                                'supplier_id' => $supplierId,
+                                'expiration_date' => $lineData['expiration_date'] ?? null,
+                            ]);
+                        }
+                    }
 
                 // Agrupar por número de factura
                 if (!isset($invoiceGroups[$invoiceNumber])) {
