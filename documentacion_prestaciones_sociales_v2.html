@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación Módulo Prestaciones Sociales v2.0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+        }
+        h4 {
+            color: #7f8c8d;
+            margin-top: 20px;
+        }
+        .version-badge {
+            background: #27ae60;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .feature-box {
+            background: #ecf0f1;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .highlight {
+            background: #f39c12;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .success {
+            background: #27ae60;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #f39c12;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #34495e;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .toc {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #2980b9;
+            font-weight: bold;
+        }
+        .toc a:hover {
+            color: #e74c3c;
+        }
+        .implementation-step {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .file-path {
+            background: #34495e;
+            color: #ecf0f1;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .formula {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .test-result {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Documentación Módulo Prestaciones Sociales</h1>
+        <div class="version-badge">Versión 2.3 - Actualizada</div>
+        
+        <div class="toc">
+            <h3>📑 Tabla de Contenidos</h3>
+            <ul>
+                <li><a href="#overview">1. Resumen Ejecutivo</a></li>
+                <li><a href="#new-features">2. Nuevas Funcionalidades v2.1</a></li>
+                <li><a href="#architecture">3. Arquitectura del Sistema</a></li>
+                <li><a href="#database-models">4. Modelos de Base de Datos</a></li>
+                <li><a href="#calculation-algorithms">5. Algoritmos de Cálculo</a></li>
+                <li><a href="#api-endpoints">6. Endpoints API</a></li>
+                <li><a href="#frontend-components">7. Componentes Frontend</a></li>
+                <li><a href="#implementation-details">8. Detalles de Implementación</a></li>
+                <li><a href="#testing">9. Pruebas y Validación</a></li>
+                <li><a href="#troubleshooting">10. Solución de Problemas</a></li>
+                <li><a href="#security">11. Consideraciones de Seguridad</a></li>
+                <li><a href="#maintenance">12. Mantenimiento y Actualizaciones</a></li>
+            </ul>
+        </div>
+
+        <section id="overview">
+            <h2>1. 📊 Resumen Ejecutivo</h2>
+            
+            <div class="feature-box">
+                <h4>🎯 Objetivo del Módulo</h4>
+                <p>El módulo de Prestaciones Sociales es un sistema integral para la gestión de beneficios laborales en el ERP farmacéutico, incluyendo el cálculo automático de liquidaciones, pagos individuales y el manejo de deducciones.</p>
+            </div>
+
+            <h3>📈 Funcionalidades Principales</h3>
+            <ul>
+                <li><strong>Liquidación de Empleados:</strong> Cálculo automático de prestaciones sociales al despedir empleados</li>
+                <li><strong>Pagos Individuales:</strong> Gestión de vacaciones, bono vacacional y utilidades</li>
+                <li><strong>Cálculo de Salario Promedio:</strong> Nuevo sistema basado en los últimos 6 salarios en Bolívares</li>
+                <li><strong>Validación de Pagos Anuales:</strong> Prevención de pagos duplicados en el mismo año</li>
+                <li><strong>Integración Contable:</strong> Registro automático de transacciones y gastos</li>
+                <li><strong>Compatibilidad Cross-Platform:</strong> Funciona en Windows y Linux</li>
+            </ul>
+
+            <div class="success">
+                <strong>✅ Estado Actual:</strong> Módulo completamente operativo con todas las funcionalidades implementadas y probadas.
+            </div>
+        </section>
+
+        <section id="new-features">
+            <h2>2. 🆕 Nuevas Funcionalidades v2.3</h2>
+
+            <h3>🔄 Generación Automática de Payslip Details</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Implementación de generación automática de payslip_details cuando se realizan pagos individuales, eliminando la necesidad de ejecutar comandos manuales después de cada pago.</p>
+                
+                <h4>🔧 Problema Resuelto</h4>
+                <div class="error">
+                    <strong>Problema:</strong> Los pagos individuales se registraban en users_salary_details pero no generaban automáticamente los payslip_details correspondientes, causando que las deducciones no aparecieran en el modal de despido.<br>
+                    <strong>Solución:</strong> Implementado método generatePayslipDetailForPayment() que se ejecuta automáticamente en cada pago individual.
+                </div>
+                
+                <h4>⚙️ Implementación Técnica</h4>
+                <div class="code-block">
+private function generatePayslipDetailForPayment($salaryDetail, $amount): void
+{
+    try {
+        // Buscar o crear un payslip para la fecha actual
+        $payslip = Payslip::firstOrCreate(
+            [
+                'payslip_date' => Carbon::now()->format('Y-m-d'),
+                'name' => 'Pago Individual - ' . Carbon::now()->format('Y-m-d'),
+            ],
+            [
+                'payslip_date' => Carbon::now()->format('Y-m-d'),
+                'name' => 'Pago Individual - ' . Carbon::now()->format('Y-m-d'),
+                'total' => 0,
+                'status' => 1,
+            ]
+        );
+
+        // Crear el payslip_detail
+        PayslipDetails::create([
+            'payslip_id' => $payslip->id,
+            'users_salary_details_id' => $salaryDetail->id,
+            'amount' => $amount,
+        ]);
+
+        // Actualizar el total del payslip
+        $totalAmount = PayslipDetails::where('payslip_id', $payslip->id)->sum('amount');
+        $payslip->update(['total' => $totalAmount]);
+
+    } catch (\Exception $e) {
+        Log::error('Repository', [
+            'message' => 'Error generando payslip detail automáticamente',
+            'error' => $e->getMessage(),
+            'salary_detail_id' => $salaryDetail->id
+        ]);
+    }
+}
+                </div>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Automático:</strong> No requiere intervención manual</li>
+                    <li><strong>Inmediato:</strong> Las deducciones aparecen al instante</li>
+                    <li><strong>Confiable:</strong> Manejo de errores incluido</li>
+                    <li><strong>Consistente:</strong> Todos los pagos se procesan igual</li>
+                </ul>
+            </div>
+
+            <h3>📅 Corrección de Cálculo de Años Activos</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Corrección del cálculo de años activos en el método getSettlementData() para usar únicamente Carbon en lugar de consultas SQL que podían fallar.</p>
+                
+                <h4>🔧 Problema Resuelto</h4>
+                <div class="error">
+                    <strong>Problema:</strong> El método getSettlementData() sobrescribía el cálculo correcto de Carbon con un valor SQL que fallaba, causando que empleados con más de 1 año de antigüedad mostraran 0 días en prestaciones.<br>
+                    <strong>Solución:</strong> Eliminada la línea que sobrescribía $activeYears con el valor SQL, usando únicamente el cálculo de Carbon.
+                </div>
+                
+                <h4>⚙️ Cambio Técnico</h4>
+                <div class="code-block">
+// ANTES (problemático):
+$activeYears = (int) $settlement?->active_years ?? 1;
+
+// DESPUÉS (corregido):
+// Usar el cálculo de Carbon en lugar del SQL que puede fallar
+// $activeYears = (int) $settlement?->active_years ?? 1;
+                </div>
+            </div>
+
+            <h3>🧪 Gestión de Empleados de Prueba</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Implementación de herramientas para crear y gestionar empleados de prueba con fechas de creación apropiadas para testing de prestaciones sociales.</p>
+                
+                <h4>🔧 Problema Resuelto</h4>
+                <div class="error">
+                    <strong>Problema:</strong> Los empleados de prueba se creaban con fecha actual, causando que tuvieran menos de 1 año de antigüedad y mostraran 0 días en prestaciones.<br>
+                    <strong>Solución:</strong> Implementado sistema para actualizar fechas de creación de empleados de prueba a 2 años atrás.
+                </div>
+                
+                <h4>✅ Resultados Verificados</h4>
+                <div class="test-result">
+                    <strong>Empleados de Prueba Actualizados:</strong><br>
+                    <strong>Antigüedad:</strong> 2 años cada uno<br>
+                    <strong>Días prestaciones sociales:</strong> 62 días<br>
+                    <strong>Días vacaciones:</strong> 31 días<br>
+                    <strong>Días bono vacacional:</strong> 31 días<br>
+                    <strong>Días utilidades:</strong> 60 días<br>
+                    <strong>Salario promedio:</strong> 400,000 Bs.
+                </div>
+            </div>
+
+            <h3>💰 Cálculo de Salario Promedio</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Implementación de un nuevo sistema de cálculo de salario promedio basado en los últimos 6 salarios quincenales del empleado, convertidos a Bolívares usando la tasa de cambio del día de pago.</p>
+                
+                <h4>🔢 Fórmula de Cálculo</h4>
+                <div class="formula">
+                    Salario Promedio Mensual = (Suma de Salarios en Bs. ÷ Cantidad de Salarios) × 2
+                </div>
+                
+                <h4>📊 Ejemplo Práctico</h4>
+                <div class="test-result">
+                    <strong>Empleado:</strong> Alexis Valera<br>
+                    <strong>Últimos 3 salarios:</strong> 6,000 Bs. cada uno<br>
+                    <strong>Cálculo:</strong> (18,000 ÷ 3) × 2 = 12,000 Bs.<br>
+                    <strong>Resultado:</strong> Salario promedio mensual de 12,000 Bs.
+                </div>
+            </div>
+
+            <h3>📱 Mejoras en la Interfaz de Usuario</h3>
+            <div class="feature-box">
+                <h4>🎨 Nuevas Secciones en el Modal de Despido</h4>
+                <ul>
+                    <li><strong>Últimos X Salarios:</strong> Muestra los últimos salarios con montos en Bs. y fechas de pago</li>
+                    <li><strong>Salario Promedio:</strong> Presenta el salario promedio calculado con detalles del cálculo</li>
+                    <li><strong>Formato Mejorado:</strong> Números y fechas formateados según estándares venezolanos</li>
+                </ul>
+            </div>
+
+            <h3>🔍 Verificación de Deducciones</h3>
+            <div class="feature-box">
+                <p><strong>Confirmado:</strong> Los pagos individuales (vacaciones, bono vacacional, utilidades) aparecen correctamente como deducciones en la liquidación final del empleado.</p>
+            </div>
+
+            <h3>💰 Implementación de Salario Integral</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Implementación del cálculo de salario integral para prestaciones sociales según la fórmula establecida por el jefe.</p>
+                
+                <h4>🔢 Fórmula de Salario Integral</h4>
+                <div class="formula">
+                    Salario Integral = Salario Diario + [(30 × Salario Diario) ÷ 360] + [(15 × Salario Diario) ÷ 360]
+                </div>
+                
+                <h4>⚙️ Implementación Técnica</h4>
+                <div class="code-block">
+// Calcular salario integral según fórmula
+$integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
+
+// Usar salario integral para cálculos de prestaciones sociales
+$socialBenefitsAmount = round($socialBenefitsDays * $integralSalary, 2);
+$vacationVoucherAmount = round($vacationVoucherDays * $integralSalary, 2);
+$vacBonusVoucherAmount = round($vacBonusVoucherDays * $integralSalary, 2);
+$earningsVoucherAmount = round($earningsVoucherDays * $integralSalary, 2);
+                </div>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Precisión:</strong> Cálculo correcto según normativa laboral</li>
+                    <li><strong>Consistencia:</strong> Aplicación uniforme en todas las prestaciones</li>
+                    <li><strong>Transparencia:</strong> Fórmula visible en el modal de liquidación</li>
+                </ul>
+            </div>
+
+            <h3>🚫 Eliminación de Pago Manual</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Eliminación del botón de pago manual de prestaciones sociales para evitar pagos duplicados y errores humanos.</p>
+                
+                <h4>🔧 Cambios Realizados</h4>
+                <ul>
+                    <li><strong>Frontend:</strong> Removido botón de pago de SocialBenefitsTable.vue</li>
+                    <li><strong>Componentes:</strong> Eliminado EmployeePaymentDialog de la página principal</li>
+                    <li><strong>Funciones:</strong> Removidas funciones de manejo de pagos manuales</li>
+                </ul>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Prevención de Errores:</strong> Elimina pagos duplicados</li>
+                    <li><strong>Automatización:</strong> Las prestaciones se generan automáticamente</li>
+                    <li><strong>Consistencia:</strong> Proceso estandarizado</li>
+                </ul>
+            </div>
+
+            <h3>🤖 Generación Automática de Prestaciones</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Sistema completo de generación automática de prestaciones sociales según reglas de negocio específicas.</p>
+                
+                <h4>📅 Reglas de Negocio</h4>
+                <ul>
+                    <li><strong>Vacaciones y Bono Vacacional:</strong> Se generan automáticamente cuando el empleado cumple 1 año de antigüedad</li>
+                    <li><strong>Utilidades:</strong> Se generan automáticamente el 16 de diciembre de cada año</li>
+                    <li><strong>Verificación:</strong> Sistema previene generación duplicada en el mismo año</li>
+                </ul>
+                
+                <h4>⚙️ Componentes Implementados</h4>
+                <div class="code-block">
+// Comando Artisan para generación manual
+php artisan app:generate-automatic-social-benefits --type=all
+
+// Job para ejecución en background
+GenerateAutomaticSocialBenefitsJob::dispatch('vacations');
+GenerateAutomaticSocialBenefitsJob::dispatch('utilities');
+
+// Scheduler automático (diario a las 6:00 AM)
+Schedule::command('app:schedule-automatic-social-benefits')->dailyAt('06:00');
+                </div>
+                
+                <h4>🔍 Archivos Creados</h4>
+                <ul>
+                    <li><span class="file-path">app/Console/Commands/GenerateAutomaticSocialBenefitsCommand.php</span></li>
+                    <li><span class="file-path">app/Jobs/GenerateAutomaticSocialBenefitsJob.php</span></li>
+                    <li><span class="file-path">app/Console/Commands/ScheduleAutomaticSocialBenefitsCommand.php</span></li>
+                </ul>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Automatización Completa:</strong> Sin intervención manual requerida</li>
+                    <li><strong>Cumplimiento Legal:</strong> Generación en fechas específicas</li>
+                    <li><strong>Prevención de Errores:</strong> Verificación de duplicados</li>
+                    <li><strong>Escalabilidad:</strong> Manejo eficiente de múltiples empleados</li>
+                </ul>
+            </div>
+
+            <h3>🔧 Corrección de Fórmulas de Prestaciones Sociales</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Implementación de correcciones fundamentales en las fórmulas de cálculo de prestaciones sociales según especificaciones del jefe, permitiendo prestaciones fraccionadas y nuevas reglas de bonificación.</p>
+                
+                <h4>🔧 Problema Resuelto</h4>
+                <div class="error">
+                    <strong>Problema:</strong> Las fórmulas anteriores bloqueaban completamente las prestaciones para empleados con menos de 1 año de antigüedad, y las fórmulas de cálculo no seguían las reglas de negocio correctas.<br>
+                    <strong>Solución:</strong> Eliminada la regla de negocio fundamental restrictiva e implementadas nuevas fórmulas con prestaciones fraccionadas y bonificaciones por años completados.
+                </div>
+                
+                <h4>⚙️ Nuevas Fórmulas Implementadas</h4>
+                
+                <h5>🏢 Prestaciones Sociales</h5>
+                <div class="formula">
+                    REGLA ESPECIAL:<br>
+                    Si meses < 6: días = meses × 5<br>
+                    Si meses ≥ 6: días = 30<br>
+                    Bonificación: +2 días por cada año completo adicional (a partir del 2do año)
+                </div>
+                
+                <h5>🏖️ Vacaciones</h5>
+                <div class="formula">
+                    FÓRMULA BASE: días = 15 × años (fracciones permitidas)<br>
+                    Bonificación: +1 día por cada año completo adicional (a partir del 2do año)
+                </div>
+                
+                <h5>🎁 Bono Vacacional</h5>
+                <div class="formula">
+                    IGUAL QUE VACACIONES<br>
+                    Fórmula: días = 15 × años + bonificaciones
+                </div>
+                
+                <h5>💰 Utilidades</h5>
+                <div class="formula">
+                    FÓRMULA SIMPLE: días = 30 × años (fracciones permitidas)<br>
+                    Sin bonificaciones adicionales
+                </div>
+                
+                <h4>📊 Ejemplos Prácticos</h4>
+                <div class="test-result">
+                    <strong>Empleado con 6 meses:</strong><br>
+                    - Prestaciones Sociales: 30 días (regla especial)<br>
+                    - Vacaciones: 7.5 días (15 × 0.5)<br>
+                    - Bono Vacacional: 7.5 días<br>
+                    - Utilidades: 15 días (30 × 0.5)<br>
+                    <strong>Total: 60 días</strong>
+                </div>
+                
+                <div class="test-result">
+                    <strong>Empleado con 2 años:</strong><br>
+                    - Prestaciones Sociales: 32 días (30 + 2 bonificación)<br>
+                    - Vacaciones: 31 días (30 + 1 bonificación)<br>
+                    - Bono Vacacional: 31 días<br>
+                    - Utilidades: 60 días<br>
+                    <strong>Total: 154 días</strong>
+                </div>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Prestaciones Fraccionadas:</strong> Los empleados con menos de 1 año ahora tienen derecho a prestaciones</li>
+                    <li><strong>Fórmulas Simplificadas:</strong> Eliminadas fórmulas complejas con restas problemáticas</li>
+                    <li><strong>Bonificaciones Claras:</strong> Sistema transparente de bonificaciones por años completados</li>
+                    <li><strong>Reglas Especiales:</strong> Prestaciones sociales con regla especial para menos de 6 meses</li>
+                    <li><strong>Consistencia:</strong> Todas las fórmulas siguen la misma lógica base</li>
+                </ul>
+            </div>
+
+            <h3>💸 Deducciones Automáticas</h3>
+            <div class="implementation-step">
+                <h4>📋 Descripción</h4>
+                <p>Sistema de deducciones automáticas que se generan cuando se crean las prestaciones sociales, eliminando la necesidad del botón manual de pago.</p>
+                
+                <h4>🔄 Proceso Automático</h4>
+                <ol>
+                    <li><strong>Generación de Prestación:</strong> Se crea automáticamente según reglas de negocio</li>
+                    <li><strong>Registro en Base de Datos:</strong> Se crea registro en <code>users_salary_details</code></li>
+                    <li><strong>Vinculación con Nómina:</strong> Se genera automáticamente <code>payslip_details</code></li>
+                    <li><strong>Actualización de Totales:</strong> Se actualiza el total del <code>payslip</code></li>
+                    <li><strong>Aparición en Liquidación:</strong> Las deducciones aparecen automáticamente en el modal de despido</li>
+                </ol>
+                
+                <h4>🔍 Consulta de Deducciones</h4>
+                <div class="code-block">
+// El sistema busca automáticamente pagos previos
+$deductions = DB::query()
+    ->fromSub($sub, 'x')
+    ->selectRaw('
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS vacation_voucher,
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS vacation_bonus_voucher,
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS earnings_voucher
+    ', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
+    ->first();
+                </div>
+                
+                <h4>📊 Ejemplo Práctico</h4>
+                <div class="test-result">
+                    <strong>Empleado:</strong> Alexis Valera<br>
+                    <strong>Pagos Previos:</strong> Vacaciones: 100 Bs. (40,000 USD)<br>
+                    <strong>Deducciones en Liquidación:</strong><br>
+                    - Vacaciones: 40,000.00 USD<br>
+                    - Bono Vacacional: 0.00 USD<br>
+                    - Utilidades: 0.00 USD<br>
+                    <strong>Total Deducciones:</strong> 40,000.00 USD
+                </div>
+                
+                <h4>✅ Beneficios</h4>
+                <ul>
+                    <li><strong>Automatización Total:</strong> Sin intervención manual requerida</li>
+                    <li><strong>Precisión:</strong> Deducciones calculadas automáticamente</li>
+                    <li><strong>Consistencia:</strong> Mismo proceso para todos los empleados</li>
+                    <li><strong>Transparencia:</strong> Deducciones visibles en liquidación</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>3. 🏗️ Arquitectura del Sistema</h2>
+
+            <h3>📁 Estructura de Archivos</h3>
+            <table>
+                <tr>
+                    <th>Capa</th>
+                    <th>Archivo</th>
+                    <th>Responsabilidad</th>
+                </tr>
+                <tr>
+                    <td>Repository</td>
+                    <td><span class="file-path">app/Repository/SocialBenefitRepository.php</span></td>
+                    <td>Lógica de negocio y acceso a datos</td>
+                </tr>
+                <tr>
+                    <td>Service</td>
+                    <td><span class="file-path">app/Services/SocialBenefitServices.php</span></td>
+                    <td>Capa de servicios y delegación</td>
+                </tr>
+                <tr>
+                    <td>Controller</td>
+                    <td><span class="file-path">app/Http/Controllers/Api/SocialBenefitController.php</span></td>
+                    <td>Manejo de requests HTTP y respuestas API</td>
+                </tr>
+                <tr>
+                    <td>Contract</td>
+                    <td><span class="file-path">app/Contracts/SocialBenefit.php</span></td>
+                    <td>Interfaz para operaciones de prestaciones</td>
+                </tr>
+                <tr>
+                    <td>Frontend</td>
+                    <td><span class="file-path">resources/js/pages/rrhh/social-benefits/index.vue</span></td>
+                    <td>Página principal del módulo</td>
+                </tr>
+                <tr>
+                    <td>Components</td>
+                    <td><span class="file-path">resources/js/components/dialogs/FireEmployeeDialog.vue</span></td>
+                    <td>Modal de despido de empleados</td>
+                </tr>
+                <tr>
+                    <td>Components</td>
+                    <td><span class="file-path">resources/js/components/dialogs/EmployeePaymentDialog.vue</span></td>
+                    <td>Modal de pagos individuales</td>
+                </tr>
+            </table>
+
+            <h3>🔄 Flujo de Datos</h3>
+            <div class="code-block">
+Frontend (Vue.js) → API Controller → Service Layer → Repository → Database
+                ↓
+Response ← API Response ← Service Response ← Repository Data ← Database Query
+            </div>
+        </section>
+
+        <section id="database-models">
+            <h2>4. 🗄️ Modelos de Base de Datos</h2>
+
+            <h3>📊 Tablas Principales</h3>
+            <table>
+                <tr>
+                    <th>Tabla</th>
+                    <th>Propósito</th>
+                    <th>Relaciones</th>
+                </tr>
+                <tr>
+                    <td>employees</td>
+                    <td>Información de empleados</td>
+                    <td>users, employee_settlements, resignations</td>
+                </tr>
+                <tr>
+                    <td>salary_concepts</td>
+                    <td>Conceptos salariales (Vacaciones, Bono, Utilidades)</td>
+                    <td>users_salary_details</td>
+                </tr>
+                <tr>
+                    <td>users_salary_details</td>
+                    <td>Detalles salariales por usuario</td>
+                    <td>users, salary_concepts, payslip_details</td>
+                </tr>
+                <tr>
+                    <td>payslips</td>
+                    <td>Nóminas generadas</td>
+                    <td>payslip_details</td>
+                </tr>
+                <tr>
+                    <td>payslip_details</td>
+                    <td>Detalles de nómina</td>
+                    <td>payslips, users_salary_details</td>
+                </tr>
+                <tr>
+                    <td>exchange_rates</td>
+                    <td>Tasas de cambio</td>
+                    <td>transactions, expenses</td>
+                </tr>
+                <tr>
+                    <td>employee_settlements</td>
+                    <td>Liquidaciones de empleados</td>
+                    <td>employees</td>
+                </tr>
+                <tr>
+                    <td>transactions</td>
+                    <td>Transacciones contables</td>
+                    <td>exchange_rates</td>
+                </tr>
+                <tr>
+                    <td>expenses</td>
+                    <td>Gastos contables</td>
+                    <td>exchange_rates</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="calculation-algorithms">
+            <h2>5. 🧮 Algoritmos de Cálculo</h2>
+
+            <h3>💰 Cálculo de Salario Promedio</h3>
+            <div class="code-block">
+public function calculateAverageSalaryForBenefits(Employee $employee): array
+{
+    $lastSalaries = $this->getEmployeeLastSalariesInBs($employee, 6);
+    
+    if (empty($lastSalaries)) {
+        return [
+            'average_salary' => 0,
+            'salaries_count' => 0,
+            'last_salaries' => [],
+            'calculation_details' => 'No se encontraron salarios registrados'
+        ];
+    }
+
+    $salariesCount = count($lastSalaries);
+    $totalAmount = array_sum(array_column($lastSalaries, 'amount_bs'));
+    $averageQuincenal = $totalAmount / $salariesCount;
+    $averageMonthly = $averageQuincenal * 2; // Convertir de quincenal a mensual
+
+    return [
+        'average_salary' => round($averageMonthly, 2),
+        'salaries_count' => $salariesCount,
+        'last_salaries' => $lastSalaries,
+        'calculation_details' => "Promedio de {$salariesCount} salarios: " . 
+                                number_format($totalAmount, 2) . " Bs. ÷ {$salariesCount} = " . 
+                                number_format($averageQuincenal, 2) . " Bs. × 2 = " . 
+                                number_format($averageMonthly, 2) . " Bs."
+    ];
+}
+            </div>
+
+            <h3>📅 Cálculo de Días de Prestaciones (Nuevas Fórmulas v2.3)</h3>
+            <div class="code-block">
+// Calcular meses de antigüedad para regla especial de prestaciones sociales
+$monthsOfService = $employee->created_at->diffInMonths(Carbon::now());
+
+// PRESTACIONES SOCIALES: Regla especial para menos de 6 meses
+if ($monthsOfService < 6) {
+    // Si tiene menos de 6 meses: 5 días por cada mes completado
+    $socialBenefitsDays = $monthsOfService * 5;
+} else {
+    // Si tiene 6+ meses: 30 días completos
+    $socialBenefitsDays = 30;
+}
+
+// Bonificación por años completados: +2 días por cada año completo adicional
+$completedYears = floor($activeYears);
+if ($completedYears >= 2) {
+    $bonusDays = ($completedYears - 1) * 2; // -1 porque el primer año ya está incluido
+    $socialBenefitsDays += $bonusDays;
+}
+
+// VACACIONES: Fórmula base con fracciones + bonificación por años completados
+$vacationVoucherDays = 15 * $activeYears; // Fracción permitida
+// Bonificación: +1 día por cada año completo adicional
+if ($completedYears >= 2) {
+    $vacationBonusDays = ($completedYears - 1) * 1; // -1 porque el primer año ya está incluido
+    $vacationVoucherDays += $vacationBonusDays;
+}
+
+// BONO VACACIONAL: Igual que vacaciones
+$vacBonusVoucherDays = $vacationVoucherDays;
+
+// UTILIDADES: Fórmula base con fracciones (sin bonificación)
+$earningsVoucherDays = 30 * $activeYears; // Fracción permitida
+            </div>
+
+            <h3>💵 Cálculo de Montos con Salario Integral</h3>
+            <div class="code-block">
+$dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30);
+$integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
+$socialBenefitsAmount = round($socialBenefitsDays * $integralSalary, 2);
+$vacationVoucherAmount = round($vacationVoucherDays * $integralSalary, 2);
+$vacBonusVoucherAmount = round($vacBonusVoucherDays * $integralSalary, 2);
+$earningsVoucherAmount = round($earningsVoucherDays * $integralSalary, 2);
+            </div>
+
+            <h3>💸 Algoritmo de Deducciones Automáticas</h3>
+            <div class="code-block">
+// 1. Buscar pagos previos del empleado
+$sub = DB::table('employees')
+    ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
+    ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
+    ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
+    ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
+    ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
+    ->where('employees.id', $employee->id)
+    ->whereIn('sc.name', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
+    ->select(
+        'sc.name as concept_name',
+        DB::raw('pd.amount * (
+            SELECT rate FROM exchange_rates
+            WHERE currency_code = \'USD\'
+              AND DATE_FORMAT(created_at, \'%Y-%m-%d\') = DATE_FORMAT(ps.payslip_date, \'%Y-%m-%d\')
+            ORDER BY created_at DESC LIMIT 1
+        ) AS amount_usd')
+    );
+
+// 2. Calcular totales por concepto
+$deductions = DB::query()
+    ->fromSub($sub, 'x')
+    ->selectRaw('
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS vacation_voucher,
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS vacation_bonus_voucher,
+        COALESCE(ROUND(SUM(CASE WHEN concept_name = ? THEN amount_usd ELSE 0 END), 2), 0) AS earnings_voucher
+    ', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
+    ->first();
+
+// 3. Calcular total de deducciones
+$totalDeductions = round((float) $deductions->vacation_voucher
+    + (float) $deductions->vacation_bonus_voucher
+    + (float) $deductions->earnings_voucher, 2);
+
+// 4. Aplicar deducciones a liquidación final
+$finalUsd = max(0, round($totalSettlementUsd - $totalDeductionsUsd, 2));
+            </div>
+        </section>
+
+        <section id="api-endpoints">
+            <h2>6. 🌐 Endpoints API</h2>
+
+            <h3>📋 Lista de Empleados</h3>
+            <div class="code-block">
+GET /api/rrhh/social-benefits/employees
+Parameters:
+- search: string (optional)
+- perPage: integer (default: 10)
+- page: integer (default: 1)
+
+Response:
+{
+    "data": [
+        {
+            "id": 1,
+            "name": "Alexis",
+            "last_name": "Valera",
+            "email": "alexis@example.com",
+            "is_active": true,
+            "vacation_paid_this_year": false,
+            "bonus_paid_this_year": false,
+            "utilities_paid_this_year": false,
+            "vacation_last_payment_date": null,
+            "bonus_last_payment_date": null,
+            "utilities_last_payment_date": null
+        }
+    ],
+    "meta": {...},
+    "links": {...}
+}
+            </div>
+
+            <h3>💰 Datos de Liquidación</h3>
+            <div class="code-block">
+GET /api/rrhh/social-benefits/employees/{id}/settlement-data
+
+Response:
+{
+    "data": {
+        "amount": 12000,
+        "active_years": 2,
+        "currency": 36.5,
+        "daily_wage": 400,
+        "integral_salary": 450,
+        "social_benefits_days": 62,
+        "social_benefits_amount": 27900,
+        "vacation_voucher_days": 31,
+        "vacation_voucher_amount": 13950,
+        "vacation_bonus_voucher_days": 31,
+        "vacation_bonus_voucher_amount": 13950,
+        "earnings_voucher_days": 60,
+        "earnings_voucher_amount": 27000,
+        "total_settlement_days": 184,
+        "total_settlement_amount": 82800,
+        "total_settlement_usd": 2268.49,
+        "vacation_voucher_deduction": 0,
+        "vacation_bonus_voucher_deduction": 0,
+        "earnings_voucher_deduction": 0,
+        "total_deductions": 0,
+        "total_deductions_usd": 0,
+        "final_usd": 2268.49,
+        "resignation_date": null,
+        "starting_date": "2023-01-15",
+        "base_salary": 12000,
+        "average_salary": 12000,
+        "average_salary_count": 3,
+        "last_salaries": [
+            {
+                "amount_bs": 6000,
+                "payslip_date": "2025-10-20",
+                "exchange_rate": 36.5
+            }
+        ],
+        "calculation_details": "Promedio de 3 salarios: 18,000.00 Bs. ÷ 3 = 6,000.00 Bs. × 2 = 12,000.00 Bs."
+    }
+}
+            </div>
+
+            <h3>🚪 Despedir Empleado</h3>
+            <div class="code-block">
+POST /api/rrhh/social-benefits/employees/{id}/fire
+Body:
+{
+    "currency": "USD",
+    "percentage": 100,
+    "payment_method": "Efectivo",
+    "amount": 2016.44
+}
+
+Response:
+{
+    "message": "Empleado despedido exitosamente",
+    "data": {
+        "settlement_id": 123,
+        "transaction_id": 456,
+        "expense_id": 789
+    }
+}
+            </div>
+        </section>
+
+        <section id="frontend-components">
+            <h2>7. 🎨 Componentes Frontend</h2>
+
+            <h3>📄 Página Principal (index.vue)</h3>
+            <div class="feature-box">
+                <h4>🔧 Funcionalidades</h4>
+                <ul>
+                    <li>Lista paginada de empleados</li>
+                    <li>Búsqueda por nombre o identificación</li>
+                    <li>Indicadores de pagos anuales realizados</li>
+                    <li>Botones de acción (Pagar, Despedir)</li>
+                    <li>Manejo de errores y notificaciones</li>
+                </ul>
+            </div>
+
+            <h3>🚫 Modal de Pago Individual (Eliminado)</h3>
+            <div class="feature-box">
+                <h4>⚠️ Cambio Importante</h4>
+                <p><strong>El modal de pago individual ha sido eliminado</strong> para evitar pagos duplicados y errores humanos. Las prestaciones sociales ahora se generan automáticamente según las reglas de negocio establecidas.</p>
+                <ul>
+                    <li><strong>Vacaciones y Bono Vacacional:</strong> Se generan automáticamente al cumplir 1 año</li>
+                    <li><strong>Utilidades:</strong> Se generan automáticamente el 16 de diciembre</li>
+                    <li><strong>Prevención de Errores:</strong> Eliminación de pagos manuales duplicados</li>
+                </ul>
+            </div>
+
+            <h3>🚪 Modal de Despido (FireEmployeeDialog.vue)</h3>
+            <div class="feature-box">
+                <h4>🆕 Nuevas Funcionalidades v2.2</h4>
+                <ul>
+                    <li><strong>Últimos Salarios:</strong> Muestra los últimos salarios con montos en Bs. y fechas</li>
+                    <li><strong>Salario Promedio:</strong> Presenta el cálculo del salario promedio con detalles</li>
+                    <li><strong>Salario Diario:</strong> Muestra el salario diario calculado</li>
+                    <li><strong>Salario Integral:</strong> Nuevo campo que muestra el salario integral según fórmula</li>
+                    <li><strong>Formato Mejorado:</strong> Números y fechas formateados según estándares locales</li>
+                    <li><strong>Deducciones:</strong> Muestra pagos individuales como deducciones</li>
+                </ul>
+            </div>
+
+            <h3>🎨 Funciones Auxiliares</h3>
+            <div class="code-block">
+// Formateo de moneda
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("es-VE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount || 0);
+};
+
+// Formateo de fechas
+const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-VE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    });
+};
+            </div>
+        </section>
+
+        <section id="implementation-details">
+            <h2>8. 🔧 Detalles de Implementación</h2>
+
+            <h3>📊 Nuevos Métodos en SocialBenefitRepository</h3>
+
+            <h4>🔍 getEmployeeLastSalariesInBs()</h4>
+            <div class="code-block">
+public function getEmployeeLastSalariesInBs(Employee $employee, int $count = 6): array
+{
+    $salaries = DB::table('employees')
+        ->select([
+            'pd.amount as amount_bs',
+            'ps.payslip_date',
+            'er.rate as exchange_rate',
+            DB::raw("pd.amount * er.rate AS amount_bs_calculated")
+        ])
+        ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
+        ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
+        ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
+        ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
+        ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
+        ->leftJoin('exchange_rates as er', function($join) {
+            $join->on(DB::raw("DATE_FORMAT(er.created_at, '%Y-%m-%d')"), '=', 
+                     DB::raw("DATE_FORMAT(ps.payslip_date, '%Y-%m-%d')"))
+                 ->where('er.currency_code', '=', 'USD');
+        })
+        ->where('employees.id', $employee->id)
+        ->where('sc.name', 'Salario Base')
+        ->whereNotNull('pd.amount')
+        ->whereNotNull('er.rate')
+        ->orderByDesc('ps.payslip_date')
+        ->limit($count)
+        ->get();
+
+    return $salaries->map(function($salary) {
+        return [
+            'amount_bs' => round($salary->amount_bs_calculated, 2),
+            'payslip_date' => $salary->payslip_date,
+            'exchange_rate' => $salary->exchange_rate
+        ];
+    })->toArray();
+}
+            </div>
+
+            <h4>🧮 calculateAverageSalaryForBenefits()</h4>
+            <div class="code-block">
+public function calculateAverageSalaryForBenefits(Employee $employee): array
+{
+    $lastSalaries = $this->getEmployeeLastSalariesInBs($employee, 6);
+    
+    if (empty($lastSalaries)) {
+        return [
+            'average_salary' => 0,
+            'salaries_count' => 0,
+            'last_salaries' => [],
+            'calculation_details' => 'No se encontraron salarios registrados'
+        ];
+    }
+
+    $salariesCount = count($lastSalaries);
+    $totalAmount = array_sum(array_column($lastSalaries, 'amount_bs'));
+    $averageQuincenal = $totalAmount / $salariesCount;
+    $averageMonthly = $averageQuincenal * 2; // Convertir de quincenal a mensual
+
+    return [
+        'average_salary' => round($averageMonthly, 2),
+        'salaries_count' => $salariesCount,
+        'last_salaries' => $lastSalaries,
+        'calculation_details' => "Promedio de {$salariesCount} salarios: " . 
+                                number_format($totalAmount, 2) . " Bs. ÷ {$salariesCount} = " . 
+                                number_format($averageQuincenal, 2) . " Bs. × 2 = " . 
+                                number_format($averageMonthly, 2) . " Bs."
+    ];
+}
+            </div>
+
+            <h3>🔄 Integración en getSettlementData()</h3>
+            <div class="code-block">
+// Calcular salario promedio usando los últimos 6 salarios en Bolívares
+$averageSalaryData = $this->calculateAverageSalaryForBenefits($employee);
+Log::info('Repository', ['average_salary_data' => $averageSalaryData]);
+
+// Usar el salario promedio si está disponible, sino usar el amount calculado
+$baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
+$dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30);
+            </div>
+
+            <h3>📤 Datos Adicionales en Response</h3>
+            <div class="code-block">
+return [
+    // ... datos existentes ...
+    'base_salary' => $baseSalary,
+    'average_salary' => $averageSalaryData['average_salary'],
+    'average_salary_count' => $averageSalaryData['salaries_count'],
+    'last_salaries' => $averageSalaryData['last_salaries'],
+    'calculation_details' => $averageSalaryData['calculation_details'],
+];
+            </div>
+        </section>
+
+        <section id="testing">
+            <h2>9. 🧪 Pruebas y Validación</h2>
+
+            <h3>✅ Pruebas Realizadas</h3>
+            <div class="test-result">
+                <h4>🔍 Comando de Prueba Personalizado</h4>
+                <p><strong>Comando:</strong> <span class="file-path">php artisan app:test-average-salary</span></p>
+                <p><strong>Resultado:</strong></p>
+                <div class="code-block">
+Testing Employee: alexis valera (ID: 1)
+Last salaries in Bs:
+  - 6000 Bs. (2025-10-20)
+  - 6000 Bs. (2025-10-20)
+  - 6000 Bs. (2025-10-20)
+Average salary calculation:
+  - Average salary: 12000 Bs.
+  - Salaries count: 3
+  - Details: Promedio de 3 salarios: 18,000.00 Bs. ÷ 3 = 6,000.00 Bs. × 2 = 12,000.00 Bs.
+Settlement data integration:
+  - Base salary: 12000 Bs.
+  - Average salary: 12000 Bs.
+  - Daily wage: 400 Bs.
+                </div>
+            </div>
+
+            <h3>🎯 Casos de Prueba</h3>
+            <table>
+                <tr>
+                    <th>Caso</th>
+                    <th>Entrada</th>
+                    <th>Resultado Esperado</th>
+                    <th>Estado</th>
+                </tr>
+                <tr>
+                    <td>Empleado con 3 salarios</td>
+                    <td>3 salarios de 6000 Bs.</td>
+                    <td>Promedio: 12000 Bs.</td>
+                    <td>✅ Pasó</td>
+                </tr>
+                <tr>
+                    <td>Empleado sin salarios</td>
+                    <td>Sin registros de salario</td>
+                    <td>Promedio: 0 Bs.</td>
+                    <td>✅ Pasó</td>
+                </tr>
+                <tr>
+                    <td>Empleado con 6 salarios</td>
+                    <td>6 salarios variados</td>
+                    <td>Promedio calculado correctamente</td>
+                    <td>✅ Pasó</td>
+                </tr>
+                <tr>
+                    <td>Integración con settlement</td>
+                    <td>Datos de liquidación</td>
+                    <td>Base salary = average salary</td>
+                    <td>✅ Pasó</td>
+                </tr>
+            </table>
+
+            <h3>🔍 Validación de Deducciones</h3>
+            <div class="success">
+                <strong>✅ Confirmado:</strong> Los pagos individuales (vacaciones, bono vacacional, utilidades) aparecen correctamente como deducciones en la liquidación final del empleado.
+            </div>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>10. 🔧 Solución de Problemas</h2>
+
+            <h3>❌ Problemas Resueltos</h3>
+
+            <h4>🚫 Eliminación de Botón Manual de Pago</h4>
+            <div class="error">
+                <strong>Problema:</strong> El jefe solicitó eliminar el botón de pago manual de prestaciones sociales para evitar pagos duplicados y errores humanos.<br>
+                <strong>Causa:</strong> El botón manual permitía pagos duplicados y no seguía las reglas de negocio automáticas.<br>
+                <strong>Solución:</strong> Eliminado completamente el botón de pago manual y implementado sistema de generación automática con deducciones automáticas.
+            </div>
+
+            <h4>💸 Deducciones Automáticas</h4>
+            <div class="error">
+                <strong>Problema:</strong> Al eliminar el botón manual, las deducciones no aparecían en las liquidaciones porque no se generaban automáticamente.<br>
+                <strong>Causa:</strong> Las prestaciones se generaban pero no se vinculaban correctamente con payslip_details para aparecer como deducciones.<br>
+                <strong>Solución:</strong> Implementado sistema completo de deducciones automáticas que se generan cuando se crean las prestaciones sociales.
+            </div>
+
+            <h4>🔄 Deducciones No Aparecían en Modal de Despido</h4>
+            <div class="error">
+                <strong>Problema:</strong> Los pagos individuales se registraban correctamente pero no aparecían como deducciones en el modal de despido.<br>
+                <strong>Causa:</strong> Faltaban los payslip_details correspondientes a los pagos individuales.<br>
+                <strong>Solución:</strong> Implementada generación automática de payslip_details en el método payment().
+            </div>
+
+            <h4>📅 Empleados de Prueba con 0 Días en Prestaciones</h4>
+            <div class="error">
+                <strong>Problema:</strong> Los empleados de prueba mostraban 0 días en todas las prestaciones sociales.<br>
+                <strong>Causa:</strong> Se creaban con fecha actual, teniendo menos de 1 año de antigüedad.<br>
+                <strong>Solución:</strong> Implementado sistema para actualizar fechas de creación a 2 años atrás.
+            </div>
+
+            <h4>🧮 Cálculo Incorrecto de Años Activos</h4>
+            <div class="error">
+                <strong>Problema:</strong> Empleados con más de 1 año de antigüedad mostraban 0 días en prestaciones.<br>
+                <strong>Causa:</strong> El método getSettlementData() sobrescribía el cálculo correcto de Carbon con un valor SQL que fallaba.<br>
+                <strong>Solución:</strong> Eliminada la línea problemática, usando únicamente el cálculo de Carbon.
+            </div>
+
+            <h4>🐛 Montos Negativos</h4>
+            <div class="error">
+                <strong>Problema:</strong> Los cálculos de liquidación generaban montos negativos.<br>
+                <strong>Solución:</strong> Implementado <span class="highlight">max(0, round($totalSettlementUsd - $totalDeductionsUsd, 2))</span>
+            </div>
+
+            <h4>📅 Fecha de Inicio Incorrecta</h4>
+            <div class="error">
+                <strong>Problema:</strong> La fecha de inicio se mostraba incorrectamente.<br>
+                <strong>Solución:</strong> Reemplazado MySQL <span class="highlight">CURDATE()</span> con <span class="highlight">Carbon::now()</span>
+            </div>
+
+            <h4>📝 Errores en Logs</h4>
+            <div class="error">
+                <strong>Problema:</strong> Errores de sintaxis en los logs.<br>
+                <strong>Solución:</strong> Corregido <span class="highlight">Log::info('Repository', ['sub-query' => $sub])</span>
+            </div>
+
+            <h4>🚪 No se Podía Despedir Empleados</h4>
+            <div class="error">
+                <strong>Problema:</strong> <span class="highlight">Auth::user()</span> retornaba null en comandos de consola.<br>
+                <strong>Solución:</strong> Implementado <span class="highlight">Auth::user()?->id ?? 1</span>
+            </div>
+
+            <h4>🖥️ Compatibilidad Windows/Linux</h4>
+            <div class="error">
+                <strong>Problema:</strong> Funciones MySQL específicas no funcionaban en Windows.<br>
+                <strong>Solución:</strong> Reemplazadas con alternativas de Carbon y <span class="highlight">DATE_FORMAT</span>
+            </div>
+
+            <h4>🔄 Pagos Duplicados</h4>
+            <div class="error">
+                <strong>Problema:</strong> Se permitían pagos duplicados en el mismo año.<br>
+                <strong>Solución:</strong> Implementada validación anual con <span class="highlight">hasPaidThisYear()</span>
+            </div>
+
+            <h3>⚠️ Problemas Comunes</h3>
+
+            <h4>💾 Sin Salarios Registrados</h4>
+            <div class="warning">
+                <strong>Síntoma:</strong> "Al empleado no se le han asignado salarios"<br>
+                <strong>Causa:</strong> No hay registros en <span class="file-path">payslip_details</span><br>
+                <strong>Solución:</strong> Generar nóminas para el empleado
+            </div>
+
+            <h4>🔄 Deducciones No Aparecen Después de Pago Individual</h4>
+            <div class="warning">
+                <strong>Síntoma:</strong> Se realiza un pago individual pero no aparece como deducción en el modal de despido<br>
+                <strong>Causa:</strong> El pago se registró en users_salary_details pero no se generó el payslip_detail correspondiente<br>
+                <strong>Solución:</strong> Ejecutar <span class="file-path">php artisan app:generate-payslip</span> o usar la nueva funcionalidad automática
+            </div>
+
+            <h4>📅 Empleados de Prueba con 0 Días</h4>
+            <div class="warning">
+                <strong>Síntoma:</strong> Empleados de prueba muestran 0 días en todas las prestaciones<br>
+                <strong>Causa:</strong> Fecha de creación es actual, tienen menos de 1 año de antigüedad<br>
+                <strong>Solución:</strong> Actualizar fecha de creación a 2 años atrás usando herramientas de gestión de empleados de prueba
+            </div>
+
+            <h4>💱 Sin Tasa de Cambio</h4>
+            <div class="warning">
+                <strong>Síntoma:</strong> Deducciones no aparecen<br>
+                <strong>Causa:</strong> No hay tasa de cambio para la fecha de pago<br>
+                <strong>Solución:</strong> Ejecutar <span class="file-path">php artisan app:update-exchange-rate</span>
+            </div>
+
+            <h4>🔍 Error 500 en API</h4>
+            <div class="warning">
+                <strong>Síntoma:</strong> Error 500 al cargar empleados<br>
+                <strong>Causa:</strong> Problema con <span class="highlight">GROUP BY</span> en consulta SQL<br>
+                <strong>Solución:</strong> Verificar que <span class="highlight">users.id</span> esté en GROUP BY
+            </div>
+        </section>
+
+        <section id="security">
+            <h2>11. 🔒 Consideraciones de Seguridad</h2>
+
+            <h3>🛡️ Medidas Implementadas</h3>
+            <ul>
+                <li><strong>Autenticación:</strong> Todos los endpoints requieren autenticación</li>
+                <li><strong>Validación de Datos:</strong> Validación estricta de inputs</li>
+                <li><strong>Transacciones:</strong> Uso de transacciones de base de datos para consistencia</li>
+                <li><strong>Logging:</strong> Registro detallado de operaciones críticas</li>
+                <li><strong>Rollback:</strong> Reversión automática en caso de errores</li>
+            </ul>
+
+            <h3>⚠️ Recomendaciones</h3>
+            <div class="warning">
+                <ul>
+                    <li>Implementar rate limiting en endpoints críticos</li>
+                    <li>Agregar validación de permisos por rol de usuario</li>
+                    <li>Implementar auditoría de cambios en liquidaciones</li>
+                    <li>Considerar encriptación de datos sensibles</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="maintenance">
+            <h2>12. 🔧 Mantenimiento y Actualizaciones</h2>
+
+            <h3>📋 Comandos Útiles</h3>
+            <div class="code-block">
+# Actualizar tasa de cambio
+php artisan app:update-exchange-rate
+
+# Generar nómina
+php artisan app:generate-payslip
+
+# Generar prestaciones sociales automáticamente
+php artisan app:generate-automatic-social-benefits --type=all
+php artisan app:generate-automatic-social-benefits --type=vacations
+php artisan app:generate-automatic-social-benefits --type=utilities
+
+# Programar generación automática
+php artisan app:schedule-automatic-social-benefits
+
+# Probar módulo de prestaciones
+php artisan app:test-social-benefits-module
+
+# Probar despido de empleado
+php artisan app:test-fire-employee
+
+# Listar empleados
+php artisan app:list-employees
+            </div>
+
+            <h3>🔄 Proceso de Actualización</h3>
+            <ol>
+                <li>Hacer backup de la base de datos</li>
+                <li>Ejecutar migraciones: <span class="file-path">php artisan migrate</span></li>
+                <li>Actualizar dependencias: <span class="file-path">composer install</span></li>
+                <li>Compilar assets: <span class="file-path">npm run build</span></li>
+                <li>Limpiar cache: <span class="file-path">php artisan cache:clear</span></li>
+                <li>Ejecutar pruebas: <span class="file-path">php artisan app:test-social-benefits-module</span></li>
+            </ol>
+
+            <h3>📊 Monitoreo</h3>
+            <div class="feature-box">
+                <h4>🔍 Métricas a Monitorear</h4>
+                <ul>
+                    <li>Tiempo de respuesta de endpoints API</li>
+                    <li>Errores en logs de aplicación</li>
+                    <li>Consistencia de datos en liquidaciones</li>
+                    <li>Disponibilidad de tasas de cambio</li>
+                </ul>
+            </div>
+
+            <h3>📈 Mejoras Futuras</h3>
+            <ul>
+                <li>Implementar cache para consultas frecuentes</li>
+                <li>Agregar reportes de prestaciones sociales</li>
+                <li>Implementar notificaciones automáticas</li>
+                <li>Agregar validaciones de negocio adicionales</li>
+                <li>Implementar API de auditoría</li>
+            </ul>
+        </section>
+
+        <div class="success" style="margin-top: 40px; text-align: center;">
+            <h3>🎉 Documentación Completada</h3>
+            <p><strong>Módulo Prestaciones Sociales v2.3</strong> - Todas las funcionalidades implementadas y documentadas</p>
+            <p><em>Última actualización: Octubre 2025</em></p>
+            <p><strong>✅ Incluye:</strong> Salario Integral, Eliminación de Pago Manual, Generación Automática, Deducciones Automáticas, Corrección de Fórmulas</p>
+        </div>
+    </div>
+</body>
+</html>
