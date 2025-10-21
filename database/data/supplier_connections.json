@@ -599,6 +599,11 @@
                 "file_field": "existencia",
                 "type": "integer",
                 "target": "quantity"
+            },
+            "12": {
+                "file_field": "cod_articulo", 
+                "type": "string",
+                "target": "cod_supplier"
             }
         },
         "invoice_structure": {

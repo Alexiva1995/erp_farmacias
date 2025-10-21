@@ -170,24 +170,32 @@ class SupplierConnectionService
 
                         // Prefijar claves del detalle
                         $prefixedDetail = [];
-                        foreach ($detail as $key => $value) {
-                            $prefixedDetail["detail_$key"] = $value;
-                        }
 
+                        $detailMapping = [
+                            'FinalPrice' => 'unit_cost',
+                        ];
+
+                        foreach ($detail as $key => $value) {
+                            if (isset($detailMapping[$key])) {
+                                $prefixedDetail[$detailMapping[$key]] = $value;
+                            } else {
+                                $prefixedDetail["detail_$key"] = $value;
+                            }
+                        }
+                   
                         // Combinar sin colisión
                         $flatRow = array_merge($prefixedHeader, $prefixedDetail);
                         $flatData[] = $flatRow;
                     }
-
+                    
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-
+                    dd($parsed);
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
                 }
             }
-
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
@@ -205,7 +213,7 @@ class SupplierConnectionService
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
         $has_header = $connection->has_header;
-
+;
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
         $barcodes = [];
@@ -263,9 +271,10 @@ class SupplierConnectionService
             ];
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
+
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
-
+           
             //$quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
@@ -402,7 +411,7 @@ class SupplierConnectionService
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
-
+       
         $invoices = [];
         $bufferLines = [];
 
@@ -425,20 +434,20 @@ class SupplierConnectionService
         $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
 
         $mode = $structure['mode'] ?? 'grouped';
-
+        
         if ($mode === 'flat') {
             $invoiceGroups = [];
-
+            
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
-
+                
                 // Encabezado desde la misma línea
                 $header = [];
                 foreach ($structure['header'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
                     $header[$meta['field']] = $this->castValue($raw, $meta);
                 }
-
+                
                 $invoiceNumber = $header['invoice_number'] ?? null;
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
@@ -447,9 +456,10 @@ class SupplierConnectionService
                 $lineData = [];
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
+                    Log::info('$raw'.$raw);
                     $lineData[$meta['field']] = $this->castValue($raw, $meta);
                 }
-
+              
                 $barcode = $lineData['barcode'] ?? null;
                 $lineData['product_id'] = $products[$barcode]->id ?? null;
 
@@ -463,7 +473,7 @@ class SupplierConnectionService
 
                 $invoiceGroups[$invoiceNumber]['lines'][] = $lineData;
             }
-
+            
             foreach ($invoiceGroups as $number => $invoice) {
                 $invoices = $invoice;
                 $seenInvoiceNumbers[] = $number;
@@ -536,8 +546,11 @@ class SupplierConnectionService
 
     private function castValue(string $raw, array $meta): mixed
     {
-        $value = trim($raw);
-
+        //$value = trim($raw);
+        $value = trim(str_replace('"', '', $raw));
+      //  dd($value);
+        Log::info("castValue".$value);
+        Log::info("meta".$meta["type"]);
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
@@ -578,7 +591,7 @@ class SupplierConnectionService
     public function fetchFromAPI($token, $data, $client, $path, $method = 'post'): array
     {
         $productResponse = [];
-
+        
         $client->{$method}(
             $path,
             [
@@ -592,9 +605,9 @@ class SupplierConnectionService
         }, function (\Exception $e) {
             echo 'Error: ' . $e->getMessage() . PHP_EOL;
         });
-
+        
         Loop::run();
-
+       
         return $productResponse;
     }
 
