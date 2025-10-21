@@ -28,7 +28,11 @@ export default [
       {
         title: 'Mis Actividades de Limpieza',
         to: 'productivity-my-cleaning-activities',
-      }
+      },
+      {
+        title: 'Revision de Actividades de Limpieza',
+        to: 'productivity-supervisor-cleaning-activities',
+      },
     ],
   }, 
 ]

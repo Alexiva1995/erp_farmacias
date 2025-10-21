@@ -40,7 +40,7 @@ class StoreSupplierRequest extends FormRequest
             //'supplier_payment_days' => 'sometimes|numeric|min:0',
             'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|integer|min:1',
-            'payment_due_reference' => 'required|in:receipt_date,issue_date',
+            'payment_due_reference' => 'required_unless:payment_due_type,invoice_date|in:issue_date,receipt_date',
             'invoice_date_reference' => 'required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date',
         ];
     }

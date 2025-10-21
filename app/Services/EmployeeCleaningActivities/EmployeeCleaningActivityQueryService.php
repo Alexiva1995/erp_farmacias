@@ -262,4 +262,205 @@ class EmployeeCleaningActivityQueryService
 
         return $activities;
     }
+    public function getMyExecutions(array $data): LengthAwarePaginator
+    {
+        // Obtener el empleado del usuario logueado
+        $user = auth()->user();
+        $employee = $user->employee;
+
+        if (!$employee) {
+            throw new \Exception('No tienes un perfil de empleado asociado');
+        }
+
+        // Obtener ejecuciones del empleado con la actividad relacionada
+        $query = \App\Models\CleaningActivityExecution::with('cleaningActivity')
+            ->where('employee_id', $employee->id);
+
+        // Búsqueda por nombre de actividad
+        if (!empty($data['q'])) {
+            $search = $data['q'];
+            $query->whereHas('cleaningActivity', function ($q) use ($search) {
+                $q->where('activity', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filtro por estado
+        if (!empty($data['status'])) {
+            $query->where('status', $data['status']);
+        }
+
+        // Ordenamiento
+        if (!empty($data['sortBy']) && !empty($data['orderBy'])) {
+            $sortBy = $data['sortBy'];
+            $orderBy = $data['orderBy'];
+
+            if ($sortBy === 'activity_name') {
+                $query->join('cleaning_activities', 'cleaning_activity_executions.cleaning_activity_id', '=', 'cleaning_activities.id')
+                    ->select('cleaning_activity_executions.*')
+                    ->orderBy('cleaning_activities.activity', $orderBy);
+            } elseif ($sortBy === 'scheduled_date') {
+                $query->orderBy('scheduled_date', $orderBy);
+            } elseif ($sortBy === 'due_date') { // NUEVO
+                $query->orderBy('due_date', $orderBy);
+            } elseif ($sortBy === 'completed_date') {
+                $query->orderBy('completed_date', $orderBy);
+            } elseif ($sortBy === 'status') {
+                $query->orderBy('status', $orderBy);
+            } else {
+                $query->orderBy($sortBy, $orderBy);
+            }
+        } else {
+            // Ordenar por fecha límite por defecto (más urgentes primero)
+            $query->orderBy('due_date', 'asc');
+        }
+
+        // Paginación
+        $itemsPerPage = $data['itemsPerPage'] ?? 10;
+        $executions = $query->paginate($itemsPerPage);
+
+        // Transformar datos
+        $executions->getCollection()->transform(function ($execution) {
+            return [
+                'execution_id' => $execution->id,
+                'activity_id' => $execution->cleaning_activity_id,
+                'activity_name' => $execution->cleaningActivity->activity,
+                'description' => $execution->cleaningActivity->description,
+                'frequency' => $execution->cleaningActivity->frequency,
+                'status' => $execution->status,
+                'scheduled_date' => $execution->scheduled_date,
+                'due_date' => $execution->due_date, // NUEVO
+                'completed_date' => $execution->completed_date,
+                'approved_date' => $execution->approved_date,
+                'photo' => $execution->photo,
+                'notes' => $execution->notes,
+                'rejection_reason' => $execution->rejection_reason,
+                // Información adicional útil
+                'is_late' => $execution->isLate(), // NUEVO
+                'days_until_due' => $execution->daysUntilDue(), // NUEVO
+                'is_due_soon' => $execution->isDueSoon(), // NUEVO
+            ];
+        });
+
+        return $executions;
+    }
+    public function getSupervisorExecutions(array $data): LengthAwarePaginator
+    {
+        // Obtener ejecuciones con empleado y actividad relacionados
+        $query = \App\Models\CleaningActivityExecution::with(['employee', 'cleaningActivity', 'approvedBy'])
+            ->whereIn('status', ['Procesada', 'Completada', 'Vencida', 'Cancelada']); // Mostrar procesadas y completadas
+
+        // Búsqueda por nombre de empleado o actividad
+        if (!empty($data['q'])) {
+            $search = $data['q'];
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('employee', function ($empQuery) use ($search) {
+                    $empQuery->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhereRaw("CONCAT(name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                })
+                    ->orWhereHas('cleaningActivity', function ($actQuery) use ($search) {
+                        $actQuery->where('activity', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        // Filtro por estado
+        if (!empty($data['status'])) {
+            $query->where('status', $data['status']);
+        }
+
+        // Filtro por empleado
+        if (!empty($data['employee_id'])) {
+            $query->where('employee_id', $data['employee_id']);
+        }
+
+        // Filtro por rango de fechas
+        if (!empty($data['date_from'])) {
+            $query->whereDate('completed_date', '>=', $data['date_from']);
+        }
+        if (!empty($data['date_to'])) {
+            $query->whereDate('completed_date', '<=', $data['date_to']);
+        }
+
+        // Ordenamiento
+        if (!empty($data['sortBy']) && !empty($data['orderBy'])) {
+            $sortBy = $data['sortBy'];
+            $orderBy = $data['orderBy'];
+
+            if ($sortBy === 'employee_name') {
+                $query->join('employees', 'cleaning_activity_executions.employee_id', '=', 'employees.id')
+                    ->select('cleaning_activity_executions.*')
+                    ->orderBy('employees.name', $orderBy)
+                    ->orderBy('employees.last_name', $orderBy);
+            } elseif ($sortBy === 'activity_name') {
+                $query->join('cleaning_activities', 'cleaning_activity_executions.cleaning_activity_id', '=', 'cleaning_activities.id')
+                    ->select('cleaning_activity_executions.*')
+                    ->orderBy('cleaning_activities.activity', $orderBy);
+            } else {
+                $query->orderBy($sortBy, $orderBy);
+            }
+        } else {
+            // Por defecto: Procesadas primero, luego por fecha de completado
+            $query->orderByRaw("FIELD(status, 'Procesada', 'Completada', 'Vencida', 'Cancelada')")
+                ->orderBy('completed_date', 'desc');
+        }
+
+        // Paginación
+        $itemsPerPage = $data['itemsPerPage'] ?? 10;
+        $executions = $query->paginate($itemsPerPage);
+
+        // Transformar datos
+        $executions->getCollection()->transform(function ($execution) {
+            return [
+                'execution_id' => $execution->id,
+                'employee_id' => $execution->employee_id,
+                'employee_name' => $execution->employee ? trim($execution->employee->name . ' ' . $execution->employee->last_name) : 'N/A',
+                'activity_id' => $execution->cleaning_activity_id,
+                'activity_name' => $execution->cleaningActivity->activity,
+                'description' => $execution->cleaningActivity->description,
+                'frequency' => $execution->cleaningActivity->frequency,
+                'status' => $execution->status,
+                'scheduled_date' => $execution->scheduled_date,
+                'due_date' => $execution->due_date,
+                'completed_date' => $execution->completed_date,
+                'approved_date' => $execution->approved_date,
+                'approved_by' => $execution->approvedBy ? $execution->approvedBy->name : null,
+                'photo' => $execution->photo,
+                'notes' => $execution->notes,
+                'rejection_reason' => $execution->rejection_reason,
+            ];
+        });
+
+        return $executions;
+    }
+
+    /**
+     * Obtiene estadísticas para el supervisor
+     * 
+     * @return array
+     */
+    public function getSupervisorStats(): array
+    {
+        $pending = \App\Models\CleaningActivityExecution::where('status', 'Procesada')->count();
+        $approved = \App\Models\CleaningActivityExecution::where('status', 'Completada')->count();
+        $rejected = \App\Models\CleaningActivityExecution::whereNotNull('rejection_reason')->count();
+        $overdue = \App\Models\CleaningActivityExecution::where('status', 'Vencida')->count();
+        $cancelled = \App\Models\CleaningActivityExecution::where('status', 'Cancelada')->count();
+
+        // Actividades procesadas hoy
+        $todayProcessed = \App\Models\CleaningActivityExecution::where('status', 'Procesada')
+            ->whereDate('completed_date', today())
+            ->count();
+
+        return [
+            'pending_review' => $pending,
+            'approved_total' => $approved,
+            'rejected_total' => $rejected,
+            'overdue_total' => $overdue,
+            'cancelled_total' => $cancelled,
+            'processed_today' => $todayProcessed,
+        ];
+    }
+
 }
