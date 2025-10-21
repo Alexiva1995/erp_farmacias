@@ -280,26 +280,26 @@ class SocialBenefitRepository
     Log::info('Repository', ['deductions' => $deductions]);
 
     // NUEVAS FÓRMULAS SEGÚN CORRECCIONES DEL JEFE
-    
+
     // Calcular meses de antigüedad para regla especial de prestaciones sociales
     $monthsOfService = $employee->created_at->diffInMonths(Carbon::now());
-    
+
     // PRESTACIONES SOCIALES: Regla especial para menos de 6 meses
     if ($monthsOfService < 6) {
       // Si tiene menos de 6 meses: 5 días por cada mes completado
-      $socialBenefitsDays = $monthsOfService * 5;
+      $socialBenefitsDays = round($monthsOfService * 5); // Redondear a entero
     } else {
       // Si tiene 6+ meses: 30 días completos
       $socialBenefitsDays = 30;
     }
-    
+
     // Bonificación por años completados: +2 días por cada año completo adicional
     $completedYears = floor($activeYears);
     if ($completedYears >= 2) {
       $bonusDays = ($completedYears - 1) * 2; // -1 porque el primer año ya está incluido en los 30 días
       $socialBenefitsDays += $bonusDays;
     }
-    
+
     // VACACIONES: Fórmula base con fracciones + bonificación por años completados
     $vacationVoucherDays = round(15 * $activeYears); // Redondear a entero
     // Bonificación: +1 día por cada año completo adicional
@@ -307,10 +307,10 @@ class SocialBenefitRepository
       $vacationBonusDays = ($completedYears - 1) * 1; // -1 porque el primer año ya está incluido
       $vacationVoucherDays += $vacationBonusDays;
     }
-    
+
     // BONO VACACIONAL: Igual que vacaciones
     $vacBonusVoucherDays = $vacationVoucherDays;
-    
+
     // UTILIDADES: Fórmula base con fracciones (sin bonificación)
     $earningsVoucherDays = round(30 * $activeYears); // Redondear a entero
 
