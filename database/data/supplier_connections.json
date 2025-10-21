@@ -632,6 +632,10 @@
                 "16": {
                     "field": "tax_amount",
                     "type": "decimal"
+                },
+                "15": {
+                    "field": "exchange_rate",
+                    "type": "decimal"
                 }
             },
             "lines": {

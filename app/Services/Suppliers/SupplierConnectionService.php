@@ -456,7 +456,15 @@ class SupplierConnectionService
                         $header['exempt_amount'] = $header["total_amount"];
                     }
                 }
-                
+
+                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                $totalAmount = floatval($header['total_amount'] ?? 0);
+                if ($exchangeRate > 0) {
+                    $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
+                } else {
+                    $header['total_usd'] = 0.00;
+                }
+
                 $invoiceNumber = $header['invoice_number'] ?? null;
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
@@ -507,7 +515,7 @@ class SupplierConnectionService
                         continue; // ya existe, saltar
                     }
 
-                    if (in_array($connection->supplier_id, [15, 38, 23])) {
+                    if (in_array($connection->supplier_id, [15, 38])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $header["total_amount"] = $totalUSD * $exchangeRate;
