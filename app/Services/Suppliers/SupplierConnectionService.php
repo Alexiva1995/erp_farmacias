@@ -190,7 +190,7 @@ class SupplierConnectionService
                     
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-                    dd($parsed);
+                   
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
@@ -448,6 +448,15 @@ class SupplierConnectionService
                     $header[$meta['field']] = $this->castValue($raw, $meta);
                 }
                 
+                if (in_array($connection->supplier_id, [23])) {
+                    if (isset($header["tax_amount"])) {
+                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                        $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                    }else{
+                        $header['exempt_amount'] = $header["total_amount"];
+                    }
+                }
+                
                 $invoiceNumber = $header['invoice_number'] ?? null;
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
@@ -498,7 +507,7 @@ class SupplierConnectionService
                         continue; // ya existe, saltar
                     }
 
-                    if (in_array($connection->supplier_id, [15, 38])) {
+                    if (in_array($connection->supplier_id, [15, 38, 23])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $header["total_amount"] = $totalUSD * $exchangeRate;
