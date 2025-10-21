@@ -158,7 +158,7 @@ class SupplierConnectionService
 
                     $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
                     $invoiceDetailsResponse = $this->fetchFromAPI($loginResponse->json()["token"], [], $client, $payloadInvoiceDetails['url'], 'get');
-
+dd($invoiceDetailsResponse);
                     $flatData = [];
 
                     foreach ($invoiceDetailsResponse as $detail) {
@@ -171,16 +171,8 @@ class SupplierConnectionService
                         // Prefijar claves del detalle
                         $prefixedDetail = [];
 
-                        $detailMapping = [
-                            'FinalPrice' => 'unit_cost',
-                        ];
-
-                        foreach ($detail as $key => $value) {
-                            if (isset($detailMapping[$key])) {
-                                $prefixedDetail[$detailMapping[$key]] = $value;
-                            } else {
-                                $prefixedDetail["detail_$key"] = $value;
-                            }
+                         foreach ($detail as $key => $value) {
+                           $prefixedDetail["detail_$key"] = $value;
                         }
                    
                         // Combinar sin colisión
@@ -471,12 +463,29 @@ class SupplierConnectionService
 
                 // Línea de producto
                 $lineData = [];
+                $ivaTaxValue = 0;
+                $lineData['tax_enabled'] = 0;
+
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
                     Log::info('$raw'.$raw);
-                    $lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    $value = $this->castValue($raw, $meta);
+                    $lineData[$meta['field']] = $value;
+
+                    if ($meta["field"] === "porcentaje_iva" && is_numeric($value)) {
+                        $ivaTaxValue = floatval($value);
+                    }
                 }
               
+                if ($ivaTaxValue > 0) {
+                    $lineData['tax_enabled'] = 1;
+                }
+
+                $unitCost = floatval($lineData["unit_cost"] ?? 0);
+                $quantity = intval($lineData["quantity"] ?? 0);
+                $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
+
                 $barcode = $lineData['barcode'] ?? null;
                 $lineData['product_id'] = $products[$barcode]->id ?? null;
 
