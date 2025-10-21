@@ -685,11 +685,16 @@
                     "decimals": 2
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "datetime",
                     "format": "d/m/Y g:i:s A"
                 },
                 "4": {
+                    "field": "exchange_rate",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "5": {
                     "field": "total_usd",
                     "type": "decimal",
                     "decimals": 2
@@ -708,27 +713,32 @@
                     "field": "cod_supplier",
                     "type": "string"
                 },
-                "4": {
+                "3": {
                     "field": "name",
                     "type": "string"
                 },
-                "5": {
+                "4": {
                     "field": "quantity",
                     "type": "integer"
                 },
-                "9": {
-                    "field": "barcode",
-                    "type": "string"
-                },
-                "10": {
-                    "field": "expiration_date",
-                    "type": "date",
-                    "format": "d/m/Y"
-                },
-                "6": {
+                "5": {
                     "field": "unit_cost",
                     "type": "decimal",
                     "decimals": 2
+                },
+                "6": {
+                    "field": "total_cost",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "7": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "8": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
                 }
             }
         },
