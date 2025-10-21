@@ -537,7 +537,7 @@ watch(
               />
             </VCol>
 
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="6" v-if="formData.payment_due_type !== 'invoice_date'">
               <VSelect
                 v-model="formData.payment_due_reference"
                 :items="[
