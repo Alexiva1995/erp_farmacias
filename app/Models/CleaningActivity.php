@@ -70,4 +70,18 @@ class CleaningActivity extends Model
     {
         return $query->orderBy($sortBy, $order);
     }
+
+    public function executions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class);
+    }
+
+    /**
+     * Ejecuciones pendientes de esta actividad
+     */
+    public function pendingExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class)
+            ->where('status', 'Pendiente');
+    }
 }

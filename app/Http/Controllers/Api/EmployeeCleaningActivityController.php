@@ -107,13 +107,13 @@ class EmployeeCleaningActivityController extends Controller
     }
 
     /**
-     * Obtener actividades del empleado logueado
+     * Obtener ejecuciones programadas del empleado logueado
      */
     public function myActivities(Request $request)
     {
         try {
             $data = $request->all();
-            $result = $this->queryService->getMyActivities($data);
+            $result = $this->queryService->getMyExecutions($data);
 
             return ApiResponse::success([
                 'data' => $result->items(),
@@ -128,18 +128,17 @@ class EmployeeCleaningActivityController extends Controller
     }
 
     /**
-     * Actualizar el estado de una actividad del empleado logueado
+     * Actualizar el estado de una ejecución del empleado logueado
      */
-    public function updateMyActivityStatus(Request $request, int $activityId)
+    public function updateMyActivityStatus(Request $request, int $executionId)
     {
         try {
             $validated = $request->validate([
-                'status' => 'required|in:Pendiente,Completada,Cancelada',
-                'completed_date' => 'nullable|date',
+                'status' => 'required|in:Pendiente,Procesada',
+                'photo' => 'required_if:status,Procesada|image|mimes:jpeg,png,jpg|max:5120',
                 'notes' => 'nullable|string|max:500',
             ]);
 
-            // Obtener el empleado del usuario logueado
             $user = auth()->user();
             $employee = $user->employee;
 
@@ -147,16 +146,136 @@ class EmployeeCleaningActivityController extends Controller
                 return ApiResponse::error('No tienes un perfil de empleado asociado', 403);
             }
 
-            $result = $this->actionService->updateActivityStatus(
+            $result = $this->actionService->updateExecutionStatus(
                 $employee->id,
-                $activityId,
-                $validated
+                $executionId,
+                $validated,
+                $request->file('photo')
             );
 
             return ApiResponse::success([
                 'status' => $result,
                 'message' => 'Estado actualizado correctamente'
             ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // MÉTODOS PARA SUPERVISOR
+    // =========================================================================
+
+    /**
+     * Obtener ejecuciones para revisión del supervisor
+     */
+    public function supervisorExecutions(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $result = $this->queryService->getSupervisorExecutions($data);
+
+            return ApiResponse::success([
+                'data' => $result->items(),
+                'total' => $result->total(),
+                'current_page' => $result->currentPage(),
+                'per_page' => $result->perPage(),
+                'last_page' => $result->lastPage(),
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Aprobar una ejecución (supervisor)
+     */
+    public function approveExecution(Request $request, int $executionId)
+    {
+        try {
+            $validated = $request->validate([
+                'notes' => 'nullable|string|max:500',
+            ]);
+
+            $user = auth()->user();
+
+            $result = $this->actionService->approveExecution(
+                $executionId,
+                $user->id,
+                $validated['notes'] ?? null
+            );
+
+            return ApiResponse::success([
+                'status' => $result,
+                'message' => 'Actividad aprobada exitosamente'
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Rechazar una ejecución y devolverla a pendiente (supervisor)
+     */
+    public function rejectExecution(Request $request, int $executionId)
+    {
+        try {
+            $validated = $request->validate([
+                'rejection_reason' => 'required|string|max:500',
+            ]);
+
+            $user = auth()->user();
+
+            $result = $this->actionService->rejectExecution(
+                $executionId,
+                $user->id,
+                $validated['rejection_reason']
+            );
+
+            return ApiResponse::success([
+                'status' => $result,
+                'message' => 'Actividad devuelta al empleado'
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Cancelar una ejecución (supervisor)
+     */
+    public function cancelExecution(Request $request, int $executionId)
+    {
+        try {
+            $validated = $request->validate([
+                'cancellation_reason' => 'required|string|max:500',
+            ]);
+
+            $user = auth()->user();
+
+            $result = $this->actionService->cancelExecution(
+                $executionId,
+                $user->id,
+                $validated['cancellation_reason']
+            );
+
+            return ApiResponse::success([
+                'status' => $result,
+                'message' => 'Actividad cancelada'
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
+     * Obtener estadísticas del supervisor
+     */
+    public function supervisorStats()
+    {
+        try {
+            $stats = $this->queryService->getSupervisorStats();
+            return ApiResponse::success($stats);
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage());
         }

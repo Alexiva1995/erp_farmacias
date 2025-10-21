@@ -15,3 +15,27 @@ Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');
 Schedule::job(new GeneratePayslipJob())->lastDayOfMonth('00:00');
 Schedule::command("app:execute-recurring-expenses")->daily();
+Schedule::command('cleaning:generate-executions --days=0')
+    ->dailyAt('00:01')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onSuccess(function () {
+        \Log::info('Ejecuciones de limpieza generadas exitosamente');
+    })
+    ->onFailure(function () {
+        \Log::error('Fallo al generar ejecuciones de limpieza');
+    });
+
+Schedule::call(function () {
+    $overdueCount = \App\Models\CleaningActivityExecution::where('status', 'Pendiente')
+        ->where('due_date', '<', now()->startOfDay())
+        ->update([
+            'status' => 'Vencida',
+            'updated_at' => now()
+        ]);
+
+    \Log::info("Ejecuciones vencidas actualizadas: {$overdueCount}");
+})
+    ->hourly()
+    ->name('mark-overdue-executions')
+    ->withoutOverlapping();

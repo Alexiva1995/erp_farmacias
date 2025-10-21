@@ -22,7 +22,7 @@ const isStatusDialogVisible = ref(false);
 const currentActivity = ref({});
 const dialogErrors = ref({});
 
-// Función para obtener las actividades del empleado logueado
+// Función para obtener las ejecuciones del empleado logueado
 const fetchMyActivities = async () => {
   loading.value = true;
   const params = {
@@ -43,8 +43,8 @@ const fetchMyActivities = async () => {
     myActivities.value = response.data.data.data;
     totalRecords.value = response.data.data.total;
   } catch (error) {
-    console.error("Error al obtener las actividades:", error);
-    toast.error("Error al obtener tus actividades asignadas.");
+    console.error("Error al obtener las ejecuciones:", error);
+    toast.error("Error al obtener tus actividades programadas.");
   } finally {
     loading.value = false;
   }
@@ -96,14 +96,22 @@ const handleUpdateStatus = (activity) => {
   isStatusDialogVisible.value = true;
 };
 
-const handleSaveStatus = async (statusData) => {
+const handleSaveStatus = async (formData) => {
   try {
-    await axios.patch(
-      `/my-cleaning-activities/${currentActivity.value.activity_id}/status`,
-      statusData
+    // Usar execution_id en lugar de activity_id
+    await axios.post(
+      `/my-cleaning-activities/${currentActivity.value.execution_id}/status`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
 
-    toast.success("Estado actualizado con éxito");
+    toast.success(
+      "Actividad procesada con éxito. Esperando aprobación del supervisor."
+    );
     isStatusDialogVisible.value = false;
     await fetchMyActivities();
   } catch (error) {
@@ -112,7 +120,7 @@ const handleSaveStatus = async (statusData) => {
       toast.error("Por favor, corrige los errores en el formulario.");
     } else {
       console.error("Error al actualizar el estado:", error);
-      toast.error("Hubo un error al actualizar el estado.");
+      toast.error("Hubo un error al procesar la actividad.");
     }
   }
 };
