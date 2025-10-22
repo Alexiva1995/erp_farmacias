@@ -137,12 +137,12 @@ class SupplierConnectionService
 
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
-            
+
             $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
             $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
-            
+
             $productData = $this->parseDynamicContent($productCsvString, $connection);
-            
+
             // Facturas (si tiene ruta definida)
             if (!empty($connection->invoice_path)) {
                 $seenInvoiceNumbers = [];
@@ -185,13 +185,13 @@ class SupplierConnectionService
 
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-                    
+
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
                 }
             }
-            
+
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
@@ -579,11 +579,16 @@ class SupplierConnectionService
 
                 if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
+                    $hasIvaTax = false;
 
                     foreach ($structure["lines"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
                         $lineData[$meta["field"]] = $value;
+
+                        if ($meta["field"] === "porcentaje_iva" && is_numeric($value) && $value == 16) {
+                            $hasIvaTax = true;
+                        }
                     }
                     $barcode = $lineData["barcode"] ?? null;
 
@@ -602,7 +607,10 @@ class SupplierConnectionService
                     $unitCost = floatval($lineData["unit_cost"] ?? 0);
                     $quantity = intval($lineData["quantity"] ?? 0);
                     $lineData["total_cost"] = $unitCost * $quantity;
-                    $lineData["tax_enabled"] = $lineData["porcentaje_iva"] == 16;
+
+                    if ($hasIvaTax) {
+                        $lineData["tax_enabled"] = 1;
+                    }
 
                     $bufferLines[] = $lineData;
                 }
@@ -666,15 +674,19 @@ class SupplierConnectionService
 
     private function castValue(string $raw, array $meta): mixed
     {
-        //$value = trim($raw);
         $value = trim(str_replace('"', '', $raw));
-        //  dd($value);
-        Log::info("castValue" . $value);
-        Log::info("meta" . $meta["type"]);
+
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
-            "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
+            "decimal" => is_numeric($value)
+            ? number_format(
+                (float) $value / (isset($meta['decimals']) && $meta['decimals'] ? 100 : 1),
+                2,
+                ".",
+                ""
+            )
+            : null,
             "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
             "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
             default => $value,
