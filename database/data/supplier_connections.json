@@ -13,7 +13,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -67,7 +68,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
@@ -616,6 +617,11 @@
                 "file_field": "existencia",
                 "type": "integer",
                 "target": "quantity"
+            },
+            "12": {
+                "file_field": "cod_articulo", 
+                "type": "string",
+                "target": "cod_supplier"
             }
         },
         "invoice_structure": {
@@ -644,6 +650,10 @@
                 "16": {
                     "field": "tax_amount",
                     "type": "decimal"
+                },
+                "15": {
+                    "field": "exchange_rate",
+                    "type": "decimal"
                 }
             },
             "lines": {
@@ -671,7 +681,7 @@
                     "field": "quantity",
                     "type": "integer"
                 },
-                "45": {
+                "15": {
                     "field": "unit_cost",
                     "type": "decimal"
                 },
@@ -684,7 +694,7 @@
                     "type": "date",
                     "format": "d/m/Y"
                 },
-                "37": {
+                "12": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
                 },

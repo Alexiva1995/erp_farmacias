@@ -70,6 +70,7 @@ declare module 'vue-router/auto-routes' {
     'productivity-laboratory': RouteRecordInfo<'productivity-laboratory', '/productivity/laboratory', Record<never, never>, Record<never, never>>,
     'productivity-my-cleaning-activities': RouteRecordInfo<'productivity-my-cleaning-activities', '/productivity/myCleaningActivities', Record<never, never>, Record<never, never>>,
     'productivity-product': RouteRecordInfo<'productivity-product', '/productivity/product', Record<never, never>, Record<never, never>>,
+    'productivity-supervisor-cleaning-activities': RouteRecordInfo<'productivity-supervisor-cleaning-activities', '/productivity/supervisorCleaningActivities', Record<never, never>, Record<never, never>>,
     'rrhh-employees': RouteRecordInfo<'rrhh-employees', '/rrhh/employees', Record<never, never>, Record<never, never>>,
     'rrhh-employees-id': RouteRecordInfo<'rrhh-employees-id', '/rrhh/employees/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'rrhh-resignations': RouteRecordInfo<'rrhh-resignations', '/rrhh/resignations', Record<never, never>, Record<never, never>>,
@@ -83,15 +84,6 @@ declare module 'vue-router/auto-routes' {
     'suppliers-supplieriaorderassistant': RouteRecordInfo<'suppliers-supplieriaorderassistant', '/suppliers/supplieriaorderassistant', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistantreport': RouteRecordInfo<'suppliers-supplieriaorderassistantreport', '/suppliers/supplieriaorderassistantreport', Record<never, never>, Record<never, never>>,
     'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
-    'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
-    'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
-    'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
-    'tpv-returns': RouteRecordInfo<'tpv-returns', '/tpv/returns', Record<never, never>, Record<never, never>>,
-    'tpv-returns-supervisor': RouteRecordInfo<'tpv-returns-supervisor', '/tpv/returnsSupervisor', Record<never, never>, Record<never, never>>,
-    'tpv-returns-user': RouteRecordInfo<'tpv-returns-user', '/tpv/returnsUser', Record<never, never>, Record<never, never>>,
-  }
-}
-RecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-order-general': RouteRecordInfo<'tpv-order-general', '/tpv/orderGeneral', Record<never, never>, Record<never, never>>,
     'tpv-order-user': RouteRecordInfo<'tpv-order-user', '/tpv/orderUser', Record<never, never>, Record<never, never>>,
     'tpv-quotation': RouteRecordInfo<'tpv-quotation', '/tpv/quotation', Record<never, never>, Record<never, never>>,
