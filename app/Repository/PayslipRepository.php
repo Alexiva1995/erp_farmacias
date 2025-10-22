@@ -25,10 +25,30 @@ class PayslipRepository
 
   public function generate(Carbon $date, string $name, Collection $details): bool
   {
+    $exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', '=', 'BS')
+      ->first();
+
+    if (!isset($exchange_rate)) {
+      $exitCode = Artisan::call("app:update-exchange-rate");
+
+      if ($exitCode === 0) {
+        $exchange_rate = ExchangeRate::orderByDesc('created_at')
+          ->where('currency_code', '=', 'BS')
+          ->first();
+
+      } else {
+        \Log::error("Failed to fetch exchange rate");
+        throw new \Exception("No se pudo guardar la tasa del día BS");
+      }
+    }
+
+
     $payslip = Payslip::create([
       'payslip_date' => $date->format('Y-m-d'),
       'name' => $name,
       'total' => 0,
+      'exchange_rate' => $exchange_rate->rate
     ]);
 
     foreach ($details as $detail) {
@@ -99,11 +119,16 @@ class PayslipRepository
     $currency = $data['currency'];
     $count = $data['count'];
     $total = $data['payed'];
-    $exchange_rate = ExchangeRate::orderByDesc('created_at')
-      ->where('currency_code', $currency === 'BS' ? 'USD' : 'COP')
+
+    $cop_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'COP')
       ->first();
 
-    $total_bs = round($payslip->total * $exchange_rate->rate, 2);
+    $bs_exchange_rate = ExchangeRate::orderByDesc('created_at')
+      ->where('currency_code', 'BS')
+      ->first();
+
+    $total_bs = round($payslip->total * $bs_exchange_rate->rate, 2);
 
     Expense::create([
       'name' => 'Nómina',
@@ -128,10 +153,16 @@ class PayslipRepository
       'Paypal' => 'PAYPAL'
     };
 
+    $exchange_rate_id = $currency === 'BS'
+      ? $bs_exchange_rate->id
+      : ($currency === 'COP'
+        ? $cop_exchange_rate->id
+        : null);
+
     Transaction::create([
       'user_id' => auth()->user()->id,
       'category_id' => 1,
-      'exchange_rate_id' => $currency === 'BS' ? $exchange_rate->id : null,
+      'exchange_rate_id' => $exchange_rate_id,
       'description' => 'Pago de nómina',
       'currency' => $currency,
       'type' => $type,
@@ -144,7 +175,7 @@ class PayslipRepository
 
   public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $type === 'full' ? 1 : $this->todayUsdRate();
+    $currency = $type === 'full' ? 1 : $payslip->exchange_rate;
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;

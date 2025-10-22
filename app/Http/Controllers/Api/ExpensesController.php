@@ -34,12 +34,12 @@ class ExpensesController extends Controller
         return ApiResponse::success($expense, "ok");
     }
 
-    public function createExpenseRecurrente(CreateExpenseRecurrenceRequest $request): JsonResponse
+    /*public function createExpenseRecurrente(CreateExpenseRecurrenceRequest $request): JsonResponse
     {
         $expense = $this->expenses->crearGastoRecurrente($request->data);
 
         return ApiResponse::success($expense, "ok");
-    }
+    }*/
 
     public function editExpense(EditExpenseRequest $request): JsonResponse
     {

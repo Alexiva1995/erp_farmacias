@@ -13,7 +13,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -67,7 +68,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
@@ -144,7 +145,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -172,7 +174,7 @@
             "6": {
                 "file_field": "precio_unitario_final",
                 "type": "decimal",
-                "target": "unit_cost"
+                "target": "unit_cost_usd"
             },
             "7": {
                 "file_field": "stock_disponible",
@@ -270,8 +272,8 @@
         "type": "ftp",
         "host": "strixposback.gotdns.com",
         "port": null,
-        "username": "CL103740",
-        "password": "eyJpdiI6ImF0dmhLQ2pSS08zZFc2c0Uybm9qZlE9PSIsInZhbHVlIjoiRVArUlQyRXRsV3dSWVp4N2ZubTE4UnR3R2tJbm90akI4dkNwelFuNys0OD0iLCJtYWMiOiIwYzVhOTc2NzcxYmU5NGM3MWEzMTBhMTc1M2EzYTlmOGQ4MDBmNDBmODFmOWQ4YzUyNmU1N2UwYTRhY2M2YWRlIiwidGFnIjoiIn0=",
+        "username": "CL103740@strixposback.gotdns.com",
+        "password": "eyJpdiI6InN6UHZ2VGwxVzJ6b0o3TGYzT1pBUXc9PSIsInZhbHVlIjoiMTRobC9YV2kwNHZXV3ZXZXhjR3Njdz09IiwibWFjIjoiNmQ5YmRjNjg3N2NiNWJlMmYyN2VjMzllNjhhZWUwYjdkMjM5Y2JjY2RkOWNmYzA3MWMzMzczZTE2NDYyMTNlMiIsInRhZyI6IiJ9",
         "path": "inventario05-08-2025_21:54:42.txt",
         "pasv": false,
         "has_header": false,
@@ -510,15 +512,27 @@
                     "type": "string"
                 },
                 "1": {
+                    "field": "created_invoice_date",
+                    "type": "date"
+                },
+                "2": {
                     "field": "exp_date",
                     "type": "date"
                 },
-                "5": {
+                "3": {
+                    "field": "exempt_amount",
+                    "type": "decimal"
+                },
+                "4": {
                     "field": "tax_amount",
                     "type": "decimal"
                 },
                 "6": {
                     "field": "total_amount",
+                    "type": "decimal"
+                },
+                "18": {
+                    "field": "exchange_rate",
                     "type": "decimal"
                 }
             },
@@ -731,7 +745,7 @@
             "6": {
                 "file_field": "precio_final",
                 "type": "decimal",
-                "target": "unit_cost"
+                "target": "unit_cost_usd"
             },
             "7": {
                 "file_field": "stock",
@@ -748,10 +762,89 @@
         "port": null,
         "username": "D719-foraneo",
         "password": "eyJpdiI6Ilc5T1hqTlpzd2N4WUdYWEkzVFBVVkE9PSIsInZhbHVlIjoiQ0ZUbXNwdDllcXRNUENrSDdna3I0UT09IiwibWFjIjoiNTY0OTE4NDhjOWUxMjkwZmM4ZWQ5NGRiNGFmNmZjMmIzNmYxYWM5NWRmOWQ1NzM0MzhkNTgzNDhiNzNkMDI0OCIsInRhZyI6IiJ9",
-        "path": "Clientes/d719/inventario.txt",
+        "path": "Clientes/d719/Inventario.txt",
         "pasv": true,
         "has_header": true,
-        "invoice_path": "",
+        "invoice_path": "Clientes/d719/Factura",
+        "invoice_structure": {
+            "separator": "\t",
+            "mode": "grouped",
+            "filter": {
+                "starts_with": "",
+                "ends_with": ".txt"
+            },
+            "header": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "string"
+                },
+                "2": {
+                    "field": "total_amount",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "3": {
+                    "field": "created_invoice_date",
+                    "type": "datetime",
+                    "format": "d/m/Y g:i:s A"
+                },
+                "4": {
+                    "field": "exchange_rate",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "5": {
+                    "field": "total_usd",
+                    "type": "decimal",
+                    "decimals": 2
+                }
+            },
+            "lines": {
+                "0": {
+                    "field": "tipo",
+                    "type": "string"
+                },
+                "1": {
+                    "field": "invoice_number",
+                    "type": "string"
+                },
+                "2": {
+                    "field": "cod_supplier",
+                    "type": "string"
+                },
+                "3": {
+                    "field": "name",
+                    "type": "string"
+                },
+                "4": {
+                    "field": "quantity",
+                    "type": "integer"
+                },
+                "5": {
+                    "field": "unit_cost",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "6": {
+                    "field": "total_cost",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "7": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "8": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
+                }
+            }
+        },
         "structure": {
             "0": {
                 "file_field": "codigo",

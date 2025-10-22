@@ -16,6 +16,7 @@ const step = ref("employee");
 const settlement = ref(null);
 const percentage = ref(100);
 const exchangeRate = ref(1);
+const showSalaryDetails = ref(false);
 
 const errors = ref({});
 const payed = ref(null);
@@ -80,6 +81,11 @@ const amountToPay = computed(() =>
 );
 
 const submitForm = async () => {
+  if (step.value === "employee") {
+    step.value = "payment";
+    return;
+  }
+
   try {
     const payload = {
       percentage: percentage.value,
@@ -101,13 +107,40 @@ const submitForm = async () => {
     } else {
       toast.error("No se pudo procesar la liquidación del empleado");
     }
-  } catch {
+  } catch (error) {
     toast.error("Hubo un error procesando la liquidación del empleado");
+
+    if (error.response.status === 422) {
+      errors.value = error.response.data.errors;
+    }
+
+    if (errors.value.percentage) {
+      step.value = "employee";
+      return;
+    }
   }
 };
 
 const closeDialog = () => {
   emit("close");
+};
+
+// Funciones auxiliares para formateo
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-VE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 </script>
 
@@ -142,6 +175,84 @@ const closeDialog = () => {
           <VTabsWindowItem value="employee">
             <VTable density="comfortable">
               <thead>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Fecha de inicio
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ settlement?.starting_date }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Últimos {{ settlement?.average_salary_count || 0 }} salarios
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    <VBtn
+                      v-if="settlement?.last_salaries?.length > 0"
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      @click="showSalaryDetails = !showSalaryDetails"
+                      class="mb-2"
+                    >
+                      <VIcon start>tabler-calendar</VIcon>
+                      {{ showSalaryDetails ? "Ocultar" : "Ver" }} detalles
+                    </VBtn>
+                    <div
+                      v-if="
+                        showSalaryDetails &&
+                        settlement?.last_salaries?.length > 0
+                      "
+                      class="mt-2"
+                    >
+                      <div
+                        v-for="(salary, index) in settlement.last_salaries"
+                        :key="index"
+                        class="mb-1 pa-2 bg-grey-lighten-5 rounded text-caption"
+                      >
+                        {{ formatCurrency(salary.amount_bs) }} Bs. ({{
+                          formatDate(salary.payslip_date)
+                        }})
+                      </div>
+                    </div>
+                    <div
+                      v-if="!settlement?.last_salaries?.length"
+                      class="text-caption text-grey"
+                    >
+                      No hay salarios registrados
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Promedio
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.average_salary || 0) }} Bs.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Diario
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.daily_wage || 0) }} Bs.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width: 70%" class="font-weight-bold">
+                    Salario Integral
+                  </td>
+                  <td></td>
+                  <td class="font-weight-bold">
+                    {{ formatCurrency(settlement?.integral_salary || 0) }} Bs.
+                  </td>
+                </tr>
                 <tr>
                   <th style="width: 70%" class="text-start font-weight-bold">
                     Liquidación
@@ -322,6 +433,7 @@ const closeDialog = () => {
                   placeholder="50"
                   :clearable="true"
                   control-variant="hidden"
+                  :error-messages="errors.percentage"
                 />
               </VCol>
               <VCol cols="3">

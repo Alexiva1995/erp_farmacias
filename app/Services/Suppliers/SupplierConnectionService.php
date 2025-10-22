@@ -57,7 +57,6 @@ class SupplierConnectionService
             if ($ftp === false) {
                 throw new Exception('No se pudo conectar al servidor FTP');
             }
-
             $login = ftp_login($ftp, $user, $pass);
             if ($login === false) {
                 throw new Exception('Credenciales inválidas');
@@ -95,11 +94,13 @@ class SupplierConnectionService
                 if (!str_ends_with($filePath, ".txt")) {
                     continue;
                 }
+
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                    $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
-                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $connection->supplier_id === 2 ? $filename : null);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
@@ -216,23 +217,25 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
-        $usdCurrency = ExchangeRate::where("currency_code", "USD")
-            ->whereDate("created_at", \Carbon\Carbon::today())
+        $usdCurrency = ExchangeRate::orderByDesc('created_at')
+            ->where('currency_code', '=', 'BS')
             ->first();
 
         if (!isset($usdCurrency)) {
             $exitCode = Artisan::call("app:update-exchange-rate");
 
             if ($exitCode === 0) {
-                $usdCurrency = ExchangeRate::where("currency_code", "USD")
-                    ->whereDate("created_at", \Carbon\Carbon::today())
+                $exchange_rate = ExchangeRate::orderByDesc('created_at')
+                    ->where('currency_code', '=', 'BS')
                     ->first();
+
             } else {
-                Log::error("Failed to fetch exchange rate");
-                throw new \Exception("No se pudo guardar la tasa del día USD");
+                \Log::error("Failed to fetch exchange rate");
+                throw new \Exception("No se pudo guardar la tasa del día BS");
             }
         }
 
+        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
@@ -243,7 +246,6 @@ class SupplierConnectionService
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
-        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
@@ -267,8 +269,8 @@ class SupplierConnectionService
 
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
-           
-            //$quantity = 0;
+
+            $quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -287,8 +289,7 @@ class SupplierConnectionService
                             $newValue = number_format((float) $value, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $entry["quantity"] = $value;
-                                //$quantity += $newValue;
+                                $quantity += $value;
                                 break;
                             }
 
@@ -366,32 +367,17 @@ class SupplierConnectionService
                 }
             }
 
-            //$entry["quantity"] = $quantity;
+            if (!isset($entry["quantity"]))
+                $entry["quantity"] = $quantity;
 
-            // if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
-            //     $stock = 0;
-
-            //     if ($entry['supplier_id'] == 2) {
-            //         foreach (['exisMerida', 'exisCaracas', 'exisOriente'] as $campo) {
-            //             $stock += intval($entry[$campo] ?? 0);
-            //         }
-            //     } else
-            //         $stock = $entry['quantity'];
-
-            //     $newProduct = Product::create([
-            //         'barcode' => $entry['barcode_match'],
-            //         'name' => $entry['name'] ?? 'Producto sin nombre',
-            //         'unit_cost' => $entry['unit_cost'] ?? 0,
-            //         'sale_price' => $entry['unit_cost'] ?? 0,
-            //         'stock' => $stock,
-            //         'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
-            //         'sales_average' => $entry['sales_average'] ?? 0
-            //     ]);
-
-            //     $entry['product_id'] = $newProduct->id;
-
-            //     $products->put($missingBarcode, $newProduct); // actualiza el cache local
-            // }
+            if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
+                $entry["unit_cost"] = number_format(
+                    (float) ($entry["unit_cost_usd"] * $usdCurrency->rate),
+                    2,
+                    ".",
+                    ""
+                );
+            }
 
             return $entry;
         });
@@ -399,7 +385,7 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+    public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = [], ?string $overrideInvoiceNumber = null): array
     {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
@@ -409,15 +395,18 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
         $bufferLines = [];
 
         $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
-
         $barcodes = [];
         $mode = $structure['mode'] ?? 'grouped';
 
         foreach ($lines as $line) {
             $cols = explode($separator, $line);
+            if ($separator == "\t") {
+                $cols = explode(';', $this->convertLineToCSV($line));
+            }
+
             $tipo = trim($cols[0] ?? "");
 
-            if ($tipo === "R" && $barcodeField !== false) {
+            if ($tipo === "R" || $tipo === '01' && $barcodeField !== false) {
                 $barcode = trim($cols[$barcodeField] ?? "");
                 if ($barcode !== "") {
                     $barcodes[] = $barcode;
@@ -466,9 +455,17 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                     $header['total_usd'] = 0.00;
                 }
 
-                $invoiceNumber = $header['invoice_number'] ?? null;
+                $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
+                $header['invoice_number'] = $invoiceNumber;
+
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
+
+                if ($connection->supplier_id === 2) {
+                    if (isset($header["tax_amount"])) {
+                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16;
+                    }
+                }
 
                 // Línea de producto
                 $lineData = [];
@@ -496,74 +493,19 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                 $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
 
                 $barcode = $lineData['barcode'] ?? null;
-                //$lineData['product_id'] = $products[$barcode]->id ?? null;
-                $product = $products[$barcode] ?? null;
 
-                 if (!$product && $barcode) {
-                    Log::info("Creando producto por factura: {$barcode}");
-                      $product = Product::firstOrCreate(
-                        ['barcode' => $barcode],
-                        [
-                        'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
-                        'unit_cost' => $unitCost,
-                        'sale_price' => null,
-                        'stock' => 0,
-                        'active_ingredient' => $lineData['descripcion_producto'],
-                        'sales_average' => 0,
-                    ]);
-
-                    $products->put($barcode, $product);
-                }
-
-                $lineData['product_id'] = $product->id ?? null;
-                $supplierId = $connection->supplier_id;
-                $codSupplier = $lineData['codigo_producto'] ?? null;
-                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
-                $unitCostUsd = ($exchangeRate > 0) ? number_format($unitCost / $exchangeRate, 2, '.', '') : 0.00;
-
-                // CREAR o ACTUALIZAR REGISTRO EN PRODUCT_SUPPLIERS
-                    if ($product && $codSupplier && $supplierId) {
-                        ProductSupplier::updateOrCreate(
-                        [
-                            'product_id' => $product->id,
-                            'supplier_id' => $supplierId
-                        ],
-                        [
-                            'cod_supplier' => $codSupplier,
-                            'unit_cost' => $unitCost,
-                            'unit_cost_usd' => $unitCostUsd,
-                            'barcode_match' => $lineData['barcode'], 
-                            'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
-                            'expiration' => $lineData['expiration_date'] ?? null, 
-                            'quantity' => $quantity, 
-                            'connection_date' => now(),
-                        ]
-                        );
-                    }
-
-                     if ($product && $quantity > 0) {
-                        $lotNumber = $lineData['lot_number'] ?? 'N/A';
-                        $expirationDate = $lineData['expiration_date'] ?? null;
-
-                        $lot = ProductLot::where('product_id', $product->id)->where('lot_number', $lotNumber)->where('expiration_date', $expirationDate)->first();
-
-                        if ($lot) {
-                            $lot->increment('quantity', $quantity);
-                            $lot->update([
-                                'unit_cost' => $unitCost,
-                                'supplier_id' => $supplierId,
-                            ]);
-                        }else{
-                            ProductLot::create([
-                                'product_id' => $product->id,
-                                'lot_number' => $lineData['lot_number'] ?? 'N/A',
-                                'quantity' => $quantity,
-                                'unit_cost' => $unitCost,
-                                'supplier_id' => $supplierId,
-                                'expiration_date' => $lineData['expiration_date'] ?? null,
-                            ]);
+                // ✅ Buscar o crear producto
+                if ($barcode) {
+                    $product = $products->get($barcode);
+                    if (!$product) {
+                        // Crear producto si no existe
+                        $product = $this->createProductFromInvoice($lineData, $connection->supplier_id);
+                        if ($product) {
+                            $products->put($barcode, $product);
                         }
                     }
+                    $lineData['product_id'] = $product?->id;
+                }
 
                 // Agrupar por número de factura
                 if (!isset($invoiceGroups[$invoiceNumber])) {
@@ -581,11 +523,17 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                 $seenInvoiceNumbers[] = $number;
             }
         } else {
+            // ✅ Variable para guardar el exchange_rate del header actual
+            $currentExchangeRate = null;
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
+                if ($separator === "\t") {
+                    $cols = explode(";", $this->convertLineToCSV($line));
+                }
                 $tipo = trim($cols[0] ?? "");
 
-                if ($tipo === "E") {
+                if ($tipo === "E" || $tipo === '02') {
                     $header = [];
 
                     foreach ($structure["header"] as $index => $meta) {
@@ -594,22 +542,28 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                         $header[$meta["field"]] = $value;
                     }
 
-                    $invoiceNumber = $header['invoice_number'] ?? null;
+                    $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
+                    $header['invoice_number'] = $invoiceNumber;
+
                     if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
-                        $bufferLines = []; // limpiar igual
-                        continue; // ya existe, saltar
+                        $bufferLines = [];
+                        continue;
                     }
 
-                    if (in_array($connection->supplier_id, [15, 38])) {
+                    if (in_array($connection->supplier_id, [9, 15, 38])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
+
                         $header["total_amount"] = $totalUSD * $exchangeRate;
 
                         if (isset($header["tax_amount"])) {
                             $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
                             $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
-                        } else
+                        } else {
                             $header["exempt_amount"] = $header["total_amount"];
+                        }
+
                         $header["status_payment"] = 0;
                     }
 
@@ -619,10 +573,10 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                     ];
 
                     $seenInvoiceNumbers[] = $invoiceNumber;
-                    $bufferLines = []; // limpiar para el próximo bloque
+                    $bufferLines = [];
                 }
 
-                if ($tipo === "R") {
+                if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
 
                     foreach ($structure["lines"] as $index => $meta) {
@@ -632,11 +586,23 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
                     }
 
                     $barcode = $lineData["barcode"] ?? null;
-                    $lineData["product_id"] = $products[$barcode]->id ?? null;
+
+                    // ✅ Solo crear producto si no existe
+                    if ($barcode) {
+                        $product = $products->get($barcode);
+                        if (!$product) {
+                            $product = $this->createProductFromInvoice($lineData, $connection->supplier_id);
+                            if ($product) {
+                                $products->put($barcode, $product);
+                            }
+                        }
+                        $lineData['product_id'] = $product?->id;
+                    }
 
                     $unitCost = floatval($lineData["unit_cost"] ?? 0);
                     $quantity = intval($lineData["quantity"] ?? 0);
                     $lineData["total_cost"] = $unitCost * $quantity;
+                    $lineData["tax_enabled"] = $lineData["porcentaje_iva"] == 16;
 
                     $bufferLines[] = $lineData;
                 }
@@ -644,6 +610,58 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
         }
 
         return $invoices;
+    }
+
+    private function createProductFromInvoice(array $lineData, int $supplierId): ?Product
+    {
+        $barcode = $lineData['barcode'] ?? null;
+
+        if (!$barcode) {
+            return null;
+        }
+
+        // Verificar si ya existe
+        if (Product::where('barcode', $barcode)->exists()) {
+            return Product::where('barcode', $barcode)->first();
+        }
+
+        try {
+            $productName = $lineData['descripcion_producto'] ?? 'Producto desde factura';
+
+            $newProduct = Product::create([
+                'barcode' => $barcode,
+                'name' => $productName,
+                'active_ingredient' => 'N/A',
+                'laboratory_id' => null,
+                'origin_id' => null,
+                'category_id' => null,
+                'group_id' => null,
+                'unit_cost' => floatval($lineData['unit_cost'] ?? 0),
+                'sale_price' => floatval($lineData['unit_cost'] ?? 0),
+                'iva' => 0,
+                'is_colombian_origin' => false,
+                'psychotropic' => false,
+                'stock' => 0,
+                'sales_average' => 0,
+                'is_deleted' => false,
+            ]);
+
+            Log::info('✅ Producto creado desde factura', [
+                'supplier_id' => $supplierId,
+                'barcode' => $barcode,
+                'product_id' => $newProduct->id,
+                'name' => $newProduct->name
+            ]);
+
+            return $newProduct;
+        } catch (\Exception $e) {
+            Log::error('❌ Error al crear producto desde factura', [
+                'supplier_id' => $supplierId,
+                'barcode' => $barcode,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     private function castValue(string $raw, array $meta): mixed
@@ -770,5 +788,120 @@ public function invoiceTxtParser(string $content, SupplierConnection $connection
         }
 
         return implode(';', $out);
+    }
+
+    public function convertLineToCSV(string $line): string
+    {
+        $originalLine = $line;
+
+        // Reemplaza caracteres no deseados (espacio duro \xA0 y tabuladores) por un espacio normal
+        $line = preg_replace('/[\x{a0}\t]/u', ' ', $line);
+
+        if (preg_match('/^01\s/', $line)) {
+            // Verifica si la línea comienza con "01" seguido de un espacio (tipo de registro 01)
+
+            // Divide la línea en dos partes:
+            // - $parts[1]: todo desde el inicio hasta antes de los últimos 5 números
+            // - $parts[2]: los últimos 5 números (y posiblemente más) al final de la línea
+            if (preg_match('/^(01\s+\d+\s+\S+\s+[A-Z]\s+.*?)\s+(\d+\s+\d+\s+\d+\s+\d+\s+\d+.*)$/', $line, $parts)) {
+                $prefix = $parts[1];
+                $numericTail = $parts[2];
+
+                // Extrae los campos del encabezado del registro 01:
+                // - Grupo 1: número de factura
+                // - Grupo 2: código del proveedor
+                // - Grupo 3: categoría (una letra mayúscula)
+                // - Grupo 4: nombre del producto (el resto de la cadena)
+                if (preg_match('/^01\s+(\d+)\s+(\S+)\s+([A-Z])\s+(.+)$/', $prefix, $head)) {
+                    $invoice = $head[1];
+                    $cod_supplier = $head[2];
+                    $category = $head[3];
+                    $name = trim($head[4]);
+
+                    // Divide la parte numérica final en un máximo de 10 elementos usando espacios como delimitador
+                    $nums = preg_split('/\s+/', trim($numericTail), 10);
+                    $quantity = $nums[0];
+                    $unit_cost = $nums[1];
+                    $total_cost = $nums[4];
+
+                    // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
+                    preg_match('/\b(\d{12,13})\b/', $line, $b);
+
+                    // Busca una fecha en formato dd/mm/aaaa rodeada por límites de palabra
+                    preg_match('/\b(\d{2}\/\d{2}\/\d{4})\b/', $line, $e);
+
+                    $barcode = $b[1] ?? '';
+                    $expiration = $e[1] ?? '';
+
+                    // Si se encontraron código de barras, fecha de vencimiento
+                    if ($barcode && $expiration) {
+                        // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
+                        $name = str_replace(';', '', $name);
+
+                        // Devuelve la línea formateada como CSV con punto y coma como delimitador
+                        return implode(';', [
+                            '01',
+                            $invoice,
+                            $cod_supplier,
+                            $name,
+                            $quantity,
+                            $unit_cost,
+                            $total_cost,
+                            $barcode,
+                            $expiration
+                        ]);
+                    }
+                }
+            }
+        } elseif (preg_match('/^02\s/', $line)) {
+            // Verifica si la línea comienza con "02" seguido de un espacio (tipo de registro 02)
+
+            // Normaliza nuevamente espacios duros y tabuladores a espacios simples
+            $line = preg_replace('/[\x{a0}\t]/u', ' ', $line);
+
+            // Normaliza abreviaturas de "a.m." y "p.m." (con o sin puntos y espacios) a " AM " y " PM "
+            $line = preg_replace('/\s*a\s*\.?\s*m\s*\.?\s*/i', ' AM ', $line);
+            $line = preg_replace('/\s*p\s*\.?\s*m\s*\.?\s*/i', ' PM ', $line);
+
+            // Reduce múltiples espacios consecutivos a un solo espacio y elimina espacios al inicio/final
+            $line = preg_replace('/\s+/', ' ', trim($line));
+
+            // Extrae la fecha, hora y AM/PM de la línea (espera formato: dd/mm/yyyy hh:mm:ss AM/PM)
+            if (!preg_match('/(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s+([AP]M)/i', $line, $dtMatch)) {
+                throw new Exception("Datetime not found in 02 line: $originalLine");
+            }
+
+            $datePart = $dtMatch[1]; // Fecha en formato dd/mm/yyyy
+
+            // Convierte la fecha a formato Y-m-d (estándar MySQL)
+            try {
+                $dateTimeObj = \DateTime::createFromFormat('d/m/Y', $datePart);
+                if (!$dateTimeObj) {
+                    throw new Exception("Invalid date format: $datePart");
+                }
+                $mysqlDate = $dateTimeObj->format('Y-m-d'); // Ej: "2025-08-04"
+            } catch (Exception $e) {
+                throw new Exception("Failed to parse date: $datePart");
+            }
+
+            // Divide toda la línea en partes usando espacios como separadores
+            $parts = preg_split('/\s+/', $line);
+            if (count($parts) < 5) {
+                throw new Exception("Too few fields in 02 line");
+            }
+
+            // El segundo campo es el ID de factura
+            $id = $parts[1];
+            $total_amount = $parts[3];
+            // Los dos últimos campos deben ser valores numéricos (montos, cantidades, etc.)
+            $exchange_rate = $parts[count($parts) - 2] ?? '';
+            $total_usd = $parts[count($parts) - 1] ?? '';
+
+            // Formato de salida para registro 02: tipo;id_factura;total_amount;fecha(Y-m-d);exchange_rate;total_usd
+            return implode(';', ['02', $id, $total_amount, $mysqlDate, $exchange_rate, $total_usd]);
+        }
+
+        // Si la línea no coincide con ninguno de los formatos esperados, lanza una excepción
+        throw new Exception("Failed to parse line: $originalLine");
     }
 }

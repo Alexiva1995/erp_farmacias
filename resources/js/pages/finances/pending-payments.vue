@@ -544,9 +544,19 @@ const getRemainingAmountClass = (item) => {
 
 // ISSUE #3: Función para obtener monto a mostrar (considerando indexación)
 const getDisplayAmount = (item) => {
-  // Si la factura está indexada y tiene datos de indexación
+  // CORRECCIÓN: Para facturas indexadas, calcular el monto restante indexado
   if (item.is_indexed && item.indexed_data && item.indexed_data.is_indexed) {
-    return item.indexed_data.indexed_amount;
+    // Calcular el porcentaje pagado
+    const originalAmount = parseFloat(item.indexed_data.original_amount_usd);
+    const remainingAmountUSD = parseFloat(item.remaining_amount_usd);
+    const paidAmountUSD = originalAmount - remainingAmountUSD;
+    const paidPercentage = paidAmountUSD / originalAmount;
+
+    // Aplicar el mismo porcentaje al monto indexado
+    const indexedAmount = parseFloat(item.indexed_data.indexed_amount);
+    const remainingIndexedAmount = indexedAmount * (1 - paidPercentage);
+
+    return Math.round(remainingIndexedAmount);
   }
 
   // Si no está indexada, usar el monto restante normal
@@ -555,9 +565,10 @@ const getDisplayAmount = (item) => {
 
 // ISSUE #3: Función para obtener monto USD a mostrar (considerando indexación)
 const getDisplayAmountUSD = (item) => {
-  // Si la factura está indexada y tiene datos de indexación
+  // CORRECCIÓN: Para facturas indexadas, usar el monto restante USD real
   if (item.is_indexed && item.indexed_data && item.indexed_data.is_indexed) {
-    return item.indexed_data.indexed_amount_usd;
+    // Para facturas indexadas, el monto USD restante ya está calculado correctamente
+    return item.remaining_amount_usd || item.total_usd;
   }
 
   // Si no está indexada, usar el USD restante normal

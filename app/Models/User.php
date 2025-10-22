@@ -133,4 +133,8 @@ class User extends Authenticatable
     {
         return $this->hasMany(UsersSalaryDetails::class);
     }
+    public function approvedExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class, 'approved_by');
+    }
 }

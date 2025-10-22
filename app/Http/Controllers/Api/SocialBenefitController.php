@@ -11,9 +11,7 @@ use Illuminate\Http\Request;
 
 class SocialBenefitController extends Controller
 {
-    public function __construct(protected SocialBenefitServices $socialBenefitServices)
-    {
-    }
+    public function __construct(protected SocialBenefitServices $socialBenefitServices) {}
 
     public function index(Request $request)
     {
@@ -28,10 +26,14 @@ class SocialBenefitController extends Controller
 
     public function payment(Employee $employee, Request $request)
     {
-        $data = $request->all();
-        $result = $this->socialBenefitServices->payment($employee, $data);
+        try {
+            $data = $request->all();
+            $result = $this->socialBenefitServices->payment($employee, $data);
 
-        return ApiResponse::success(['status' => $result]);
+            return ApiResponse::success(['status' => $result]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        }
     }
 
     public function getSettlementData(Employee $employee)
