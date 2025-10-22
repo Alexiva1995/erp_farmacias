@@ -39,7 +39,10 @@ const fetchSettlement = async () => {
     );
     settlement.value = data.data;
 
-    if (settlement.value.amount === 0) {
+    if (
+      settlement.value.base_salary === 0 &&
+      settlement.value.average_salary === 0
+    ) {
       toast.warning(
         "Al empleado no se le han asignado salarios, no se puede procesar la liquidación"
       );

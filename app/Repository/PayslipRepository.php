@@ -25,10 +25,17 @@ class PayslipRepository
 
   public function generate(Carbon $date, string $name, Collection $details): bool
   {
+    // Obtener el exchange_rate del día de la nómina
+    $exchangeRate = ExchangeRate::where('currency_code', 'USD')
+      ->whereDate('created_at', $date->format('Y-m-d'))
+      ->orderByDesc('created_at')
+      ->value('rate') ?? 1;
+
     $payslip = Payslip::create([
       'payslip_date' => $date->format('Y-m-d'),
       'name' => $name,
       'total' => 0,
+      'exchange_rate' => $exchangeRate,
     ]);
 
     foreach ($details as $detail) {
