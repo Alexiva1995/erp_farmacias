@@ -523,7 +523,7 @@
                     "field": "exempt_amount",
                     "type": "decimal"
                 },
-                "4": {
+                "5": {
                     "field": "tax_amount",
                     "type": "decimal"
                 },
@@ -615,7 +615,7 @@
                 "target": "quantity"
             },
             "12": {
-                "file_field": "cod_articulo", 
+                "file_field": "cod_articulo",
                 "type": "string",
                 "target": "cod_supplier"
             }

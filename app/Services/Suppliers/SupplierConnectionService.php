@@ -379,6 +379,9 @@ class SupplierConnectionService
                 );
             }
 
+            if ($supplierId === 2) 
+                $entry["unit_cost_with_discount"] = floatval($entry["unit_cost"]) * 0.94;
+
             return $entry;
         });
 
@@ -461,12 +464,6 @@ class SupplierConnectionService
                 if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
                     continue;
 
-                if ($connection->supplier_id === 2) {
-                    if (isset($header["tax_amount"])) {
-                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16;
-                    }
-                }
-
                 // Línea de producto
                 $lineData = [];
                 $ivaTaxValue = 0;
@@ -474,7 +471,7 @@ class SupplierConnectionService
 
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    Log::info('$raw'.$raw);
+                    //Log::info('$raw'.$raw);
                     //$lineData[$meta['field']] = $this->castValue($raw, $meta);
                     $value = $this->castValue($raw, $meta);
                     $lineData[$meta['field']] = $value;
@@ -505,6 +502,12 @@ class SupplierConnectionService
                         }
                     }
                     $lineData['product_id'] = $product?->id;
+                }
+
+                if ($connection->supplier_id === 2) {
+                    if (isset($header["tax_amount"])) {
+                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16;
+                    }
                 }
 
                 // Agrupar por número de factura
@@ -646,12 +649,12 @@ class SupplierConnectionService
                 'is_deleted' => false,
             ]);
 
-            Log::info('✅ Producto creado desde factura', [
-                'supplier_id' => $supplierId,
-                'barcode' => $barcode,
-                'product_id' => $newProduct->id,
-                'name' => $newProduct->name
-            ]);
+            // Log::info('✅ Producto creado desde factura', [
+            //     'supplier_id' => $supplierId,
+            //     'barcode' => $barcode,
+            //     'product_id' => $newProduct->id,
+            //     'name' => $newProduct->name
+            // ]);
 
             return $newProduct;
         } catch (\Exception $e) {
@@ -669,8 +672,8 @@ class SupplierConnectionService
         //$value = trim($raw);
         $value = trim(str_replace('"', '', $raw));
       //  dd($value);
-        Log::info("castValue".$value);
-        Log::info("meta".$meta["type"]);
+        //Log::info("castValue".$value);
+        //Log::info("meta".$meta["type"]);
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
