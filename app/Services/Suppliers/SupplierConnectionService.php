@@ -216,20 +216,21 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
-        $usdCurrency = ExchangeRate::where("currency_code", "USD")
-            ->whereDate("created_at", \Carbon\Carbon::today())
+        $usdCurrency = ExchangeRate::orderByDesc('created_at')
+            ->where('currency_code', '=', 'BS')
             ->first();
 
         if (!isset($usdCurrency)) {
             $exitCode = Artisan::call("app:update-exchange-rate");
 
             if ($exitCode === 0) {
-                $usdCurrency = ExchangeRate::where("currency_code", "USD")
-                    ->whereDate("created_at", \Carbon\Carbon::today())
+                $exchange_rate = ExchangeRate::orderByDesc('created_at')
+                    ->where('currency_code', '=', 'BS')
                     ->first();
+
             } else {
-                Log::error("Failed to fetch exchange rate");
-                throw new \Exception("No se pudo guardar la tasa del día USD");
+                \Log::error("Failed to fetch exchange rate");
+                throw new \Exception("No se pudo guardar la tasa del día BS");
             }
         }
 
@@ -364,7 +365,7 @@ class SupplierConnectionService
                 }
             }
 
-            if(!isset($entry["quantity"]))
+            if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
 
             if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
@@ -504,7 +505,7 @@ class SupplierConnectionService
                         continue;
                     }
 
-                    if (in_array($connection->supplier_id, [15, 38])) {
+                    if (in_array($connection->supplier_id, [9, 15, 38])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
@@ -556,12 +557,13 @@ class SupplierConnectionService
                     $unitCost = floatval($lineData["unit_cost"] ?? 0);
                     $quantity = intval($lineData["quantity"] ?? 0);
                     $lineData["total_cost"] = $unitCost * $quantity;
+                    $lineData["tax_enabled"] = $lineData["porcentaje_iva"] == 16;
 
                     $bufferLines[] = $lineData;
                 }
             }
         }
-        
+
         return $invoices;
     }
 
