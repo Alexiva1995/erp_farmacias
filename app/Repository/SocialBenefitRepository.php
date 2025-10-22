@@ -22,11 +22,11 @@ class SocialBenefitRepository
   /**
    * Calcular años de antigüedad usando Carbon (compatible cross-platform)
    */
-  private function calculateActiveYears($createdAt): int
+  private function calculateActiveYears($createdAt): float
   {
     $startDate = Carbon::parse($createdAt);
     $currentDate = Carbon::now();
-    return $startDate->diffInYears($currentDate);
+    return $startDate->diffInYears($currentDate, true); // true para obtener valor decimal
   }
 
   /**
@@ -279,10 +279,40 @@ class SocialBenefitRepository
 
     Log::info('Repository', ['deductions' => $deductions]);
 
-    $socialBenefitsDays = 30 * $activeYears + 2 * ($activeYears === 0 ? 0 : $activeYears - 1);
-    $vacationVoucherDays = 15 * $activeYears + 1 * ($activeYears === 0 ? 0 : $activeYears - 1);
+    // NUEVAS FÓRMULAS SEGÚN CORRECCIONES DEL JEFE
+
+    // Calcular meses de antigüedad para regla especial de prestaciones sociales
+    $monthsOfService = $employee->created_at->diffInMonths(Carbon::now());
+
+    // PRESTACIONES SOCIALES: Regla especial para menos de 6 meses
+    if ($monthsOfService < 6) {
+      // Si tiene menos de 6 meses: 5 días por cada mes completado
+      $socialBenefitsDays = round($monthsOfService * 5); // Redondear a entero
+    } else {
+      // Si tiene 6+ meses: 30 días completos
+      $socialBenefitsDays = 30;
+    }
+
+    // Bonificación por años completados: +2 días por cada año completo adicional
+    $completedYears = floor($activeYears);
+    if ($completedYears >= 2) {
+      $bonusDays = ($completedYears - 1) * 2; // -1 porque el primer año ya está incluido en los 30 días
+      $socialBenefitsDays += $bonusDays;
+    }
+
+    // VACACIONES: Fórmula base con fracciones + bonificación por años completados
+    $vacationVoucherDays = round(15 * $activeYears); // Redondear a entero
+    // Bonificación: +1 día por cada año completo adicional
+    if ($completedYears >= 2) {
+      $vacationBonusDays = ($completedYears - 1) * 1; // -1 porque el primer año ya está incluido
+      $vacationVoucherDays += $vacationBonusDays;
+    }
+
+    // BONO VACACIONAL: Igual que vacaciones
     $vacBonusVoucherDays = $vacationVoucherDays;
-    $earningsVoucherDays = 30 * $activeYears;
+
+    // UTILIDADES: Fórmula base con fracciones (sin bonificación)
+    $earningsVoucherDays = round(30 * $activeYears); // Redondear a entero
 
     Log::info('Repository', [
       'socialBenefitsDays' => $socialBenefitsDays,
@@ -483,18 +513,20 @@ class SocialBenefitRepository
   }
 
   /**
-   * Obtener los últimos salarios de un empleado en Bolívares
+   * Obtener los últimos salarios de un empleado en Bolívares con detección automática de moneda
    */
   public function getEmployeeLastSalariesInBs(Employee $employee, int $count = 6): array
   {
     $currentDate = $this->getCurrentDateForMySQL();
 
-    $salaries = DB::table('employees')
+    // Primero intentar obtener salarios con conversión USD->Bs
+    $salariesWithUsdConversion = DB::table('employees')
       ->select([
-        'pd.amount as amount_bs',
+        'pd.amount as amount_original',
         'ps.payslip_date',
         'er.rate as exchange_rate',
-        DB::raw("pd.amount * er.rate AS amount_bs_calculated")
+        DB::raw("pd.amount * er.rate AS amount_bs_calculated"),
+        DB::raw("'USD' as detected_currency")
       ])
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
@@ -513,11 +545,75 @@ class SocialBenefitRepository
       ->limit($count)
       ->get();
 
+    // Si no hay salarios con conversión USD, obtener salarios directos en Bs
+    if ($salariesWithUsdConversion->isEmpty()) {
+      $salariesDirectBs = DB::table('employees')
+        ->select([
+          'pd.amount as amount_original',
+          'ps.payslip_date',
+          DB::raw('1 as exchange_rate'),
+          DB::raw('pd.amount AS amount_bs_calculated'),
+          DB::raw("'BS' as detected_currency")
+        ])
+        ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
+        ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
+        ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
+        ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
+        ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
+        ->where('employees.id', $employee->id)
+        ->where('sc.name', 'Salario Base')
+        ->whereNotNull('pd.amount')
+        ->orderByDesc('ps.payslip_date')
+        ->limit($count)
+        ->get();
+
+      $salaries = $salariesDirectBs;
+    } else {
+      $salaries = $salariesWithUsdConversion;
+    }
+
+    // Detectar automáticamente la moneda basada en los montos
+    if ($salaries->isNotEmpty()) {
+      $avgAmount = $salaries->avg('amount_original');
+      $hasUsdRates = $salaries->where('exchange_rate', '>', 1)->isNotEmpty();
+
+      // Si los montos son muy bajos (< 50) y hay tasas USD, probablemente están en USD
+      if ($avgAmount < 50 && $hasUsdRates) {
+        // Mantener conversión USD->Bs
+        Log::info('Repository', [
+          'message' => 'Salarios detectados como USD, aplicando conversión',
+          'employee_id' => $employee->id,
+          'avg_amount' => $avgAmount,
+          'has_usd_rates' => $hasUsdRates
+        ]);
+      } else {
+        // Los montos son altos o no hay tasas USD, probablemente están en Bs
+        $salaries = $salaries->map(function ($salary) {
+          return (object) [
+            'amount_original' => $salary->amount_original,
+            'payslip_date' => $salary->payslip_date,
+            'exchange_rate' => 1,
+            'amount_bs_calculated' => $salary->amount_original,
+            'detected_currency' => 'BS'
+          ];
+        });
+
+        Log::info('Repository', [
+          'message' => 'Salarios detectados como Bs, usando montos directos',
+          'employee_id' => $employee->id,
+          'avg_amount' => $avgAmount,
+          'has_usd_rates' => $hasUsdRates
+        ]);
+      }
+    }
+
     return $salaries->map(function ($salary) {
       return [
         'amount_bs' => round($salary->amount_bs_calculated, 2),
+        'amount_original' => round($salary->amount_original, 2),
+        'exchange_rate' => $salary->exchange_rate,
         'payslip_date' => $salary->payslip_date,
-        'exchange_rate' => $salary->exchange_rate
+        'detected_currency' => $salary->detected_currency
       ];
     })->toArray();
   }
