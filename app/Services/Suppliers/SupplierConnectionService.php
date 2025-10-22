@@ -137,12 +137,12 @@ class SupplierConnectionService
 
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
-
+            
             $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
             $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
-
+            
             $productData = $this->parseDynamicContent($productCsvString, $connection);
-
+            
             // Facturas (si tiene ruta definida)
             if (!empty($connection->invoice_path)) {
                 $seenInvoiceNumbers = [];
@@ -185,11 +185,13 @@ class SupplierConnectionService
 
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
+                    
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
                 }
             }
+            
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
