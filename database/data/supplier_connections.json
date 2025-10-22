@@ -613,6 +613,11 @@
                 "file_field": "existencia",
                 "type": "integer",
                 "target": "quantity"
+            },
+            "12": {
+                "file_field": "cod_articulo", 
+                "type": "string",
+                "target": "cod_supplier"
             }
         },
         "invoice_structure": {
@@ -641,6 +646,10 @@
                 "16": {
                     "field": "tax_amount",
                     "type": "decimal"
+                },
+                "15": {
+                    "field": "exchange_rate",
+                    "type": "decimal"
                 }
             },
             "lines": {
@@ -668,7 +677,7 @@
                     "field": "quantity",
                     "type": "integer"
                 },
-                "45": {
+                "15": {
                     "field": "unit_cost",
                     "type": "decimal"
                 },
@@ -681,7 +690,7 @@
                     "type": "date",
                     "format": "d/m/Y"
                 },
-                "37": {
+                "12": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
                 },
