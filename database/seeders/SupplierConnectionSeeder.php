@@ -20,9 +20,8 @@ class SupplierConnectionSeeder extends Seeder
             fn(array $item) => [
                 ...$item,
                 "structure" => json_encode($item["structure"]),
+                "parse_using" => json_encode($item["parse_using"]),
                 "invoice_structure" => isset($item["invoice_structure"]) ? json_encode($item["invoice_structure"]) : null,
-
-
             ],
             $supplier_connections,
         );

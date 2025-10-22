@@ -12,15 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceQueryService
 {
-    /**
-     * Construye una consulta filtrada para las facturas.
-     *
-     * @param Request $request
-     * @return Builder
-     */
-    public function getFilteredQuery(Request $request): Builder
+    public function getInvoicesQuery(Request $request): Builder
     {
         $query = Invoice::query()->with('supplier');
+
+        if ($request->filled('status')) {
+            $statuses = is_array($request->status) ? $request->status : [$request->status];
+            $query->whereIn('status', $statuses);
+        }
 
         if ($request->filled('q')) {
             $query->where(function ($q) use ($request) {
@@ -36,18 +35,16 @@ class InvoiceQueryService
             $query->where('supplier_id', $request->supplierId);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'Loaded');
+        $dateColumn = 'exp_date';
+        if ($request->input('status') && in_array('pending', (array) $request->input('status'))) {
+            $dateColumn = 'received_date';
         }
 
         if ($request->filled('startDate')) {
-            $query->whereDate('exp_date', '>=', $request->startDate);
+            $query->whereDate($dateColumn, '>=', $request->startDate);
         }
-
         if ($request->filled('endDate')) {
-            $query->whereDate('exp_date', '<=', $request->endDate);
+            $query->whereDate($dateColumn, '<=', $request->endDate);
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
@@ -64,34 +61,125 @@ class InvoiceQueryService
 
         return $query;
     }
-    public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
+
+    public function getInvoiceDetails(Invoice $invoice): Collection
     {
-        $configuredProducts = SuppliersConfigProduct::query()
-            ->where('supplier_id', $invoice->supplier_id)
-            ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
-            ->select(
-                'products.id as product_id',
-                'products.name as product_name',
-                'suppliers_config_products.price as supplier_price'
-            )
-            ->get();
-        return $configuredProducts->map(function ($productData) {
-            return [
-                'id' => 'new-' . $productData->product_id,
-                'invoice_id' => null,
-                'product' => [
-                    'id' => $productData->product_id,
-                    'name' => $productData->product_name,
-                ],
-                'quantity' => 1,
-                'unit_cost' => $productData->supplier_price,
+        $invoice->load([
+            'details.product.laboratory',
+            'returns.product.laboratory',
+            'supplier.autoOrders.details.productSupplier.product.laboratory'
+        ]);
+
+        $normalDetails = $invoice->details->map(function ($detail) {
+            $detail->is_return = false;
+            return $detail;
+        });
+
+        $returnDetails = $invoice->returns->map(function ($returnItem) {
+            $unitCostUSD = ($returnItem->quantity > 0)
+                ? ($returnItem->amount_refunded / $returnItem->quantity)
+                : 0;
+
+            return (object) [
+                'id' => 'return_' . $returnItem->id,
+                'product_id' => $returnItem->product_id,
+                'product' => $returnItem->product,
+                'quantity' => $returnItem->quantity,
+                'unit_cost' => $unitCostUSD,
+                'total_cost' => $returnItem->amount_refunded,
+                'lot_number' => $returnItem->lot_number,
+                'expiration_date' => $returnItem->expiration_date,
+                'location' => 'N/A',
+                'tax_enabled' => $returnItem->product->iva,
+                'is_return' => true,
             ];
         });
+
+        if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
+            $autoOrderDetails = collect();
+
+            foreach ($invoice->supplier->autoOrders as $autoOrder) {
+                foreach ($autoOrder->details as $autoOrderDetail) {
+                    if ($autoOrderDetail->productSupplier && $autoOrderDetail->productSupplier->product) {
+                        $product = $autoOrderDetail->productSupplier->product;
+
+                        $autoOrderDetails->push((object) [
+                            'id' => 'auto_' . $autoOrderDetail->id,
+                            'product_id' => $product->id,
+                            'product' => $product,
+                            'quantity' => $autoOrderDetail->quantity,
+                            'unit_cost' => $autoOrderDetail->unit_cost,
+                            'total_cost' => $autoOrderDetail->subtotal,
+                            'lot_number' => '',
+                            'location' => 'Por Asignar',
+                            'tax_enabled' => $product->iva ?? false,
+                            'is_return' => false,
+                            'expiration_date' => $autoOrderDetail->productSupplier->expiration,
+                            'auto_order_detail_id' => $autoOrderDetail->id,
+                        ]);
+                    }
+                }
+            }
+
+            return $autoOrderDetails;
+        }
+
+        $mergedArray = array_merge($normalDetails->all(), $returnDetails->all());
+        return collect($mergedArray);
     }
+
+
+    public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
+    {
+        if ($invoice->details()->exists()) {
+
+            return $invoice->details()->with(['product.laboratory'])->get();
+        } else {
+
+            $configuredProducts = SuppliersConfigProduct::query()
+                ->where('supplier_id', $invoice->supplier_id)
+                ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
+                ->select(
+                    'products.id as product_id',
+                    'products.name as product_name',
+                    'suppliers_config_products.price as supplier_price'
+                )
+                ->get();
+
+            return $configuredProducts->map(function ($productData) {
+                return [
+                    'id' => 'new-' . $productData->product_id,
+                    'invoice_id' => null,
+                    'product' => [
+                        'id' => $productData->product_id,
+                        'name' => $productData->product_name,
+                    ],
+                    'quantity' => 1,
+                    'unit_cost' => $productData->supplier_price,
+                    'lot_number' => null,
+                    'expiration_date' => null,
+                    'location' => null,
+                    'total_cost' => $productData->supplier_price,
+                ];
+            });
+        }
+    }
+
     public function getInvoiceById(Invoice $invoice): Invoice
     {
         $invoice->load(['supplier', 'discountRule']);
 
         return $invoice;
+    }
+    public function calculateSupplierDebts(): float
+    {
+        $totalDebts = Invoice::where(function ($query) {
+            $query->where('status_payment', 0)
+                ->orWhereNull('status_payment');
+        })
+            ->where('total_usd', '>', 0)
+            ->sum('total_usd');
+
+        return (float) ($totalDebts ?? 0);
     }
 }

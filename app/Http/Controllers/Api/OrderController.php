@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Exceptions\InsufficientStockException;
 use App\Contracts\Order as OrderContract;
 
-
 class OrderController extends Controller
 {
 
@@ -31,7 +30,8 @@ class OrderController extends Controller
         protected OrderContract $orderContract,
         private OrderActionService $orderActionService,
         private OrderQueryService $orderQueryService,
-    ) {}
+    ) {
+    }
     public function index(Request $request)
     {
         $query = $this->orderQueryService->getFilteredQueryProduct($request);
@@ -45,7 +45,7 @@ class OrderController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    public function  consultByIdentification(Request $request)
+    public function consultByIdentification(Request $request)
     {
         $buscarPorIdentificaion = $this->client->consultByIdentification($request->Identification);
         if (!$buscarPorIdentificaion) {
@@ -75,15 +75,18 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-             $sellerId = Auth::id();
-            //$sellerId = 3; //para realizar pruebas
+            $sellerId = Auth::id();
+            // $sellerId = 2;
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
+
+
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
+
             if ($openOrder) {
                 return ApiResponse::success([
-                    'order' => $openOrder->toArray()
+                    'order' => $openOrder,
                 ], "Orden abierta de vendedor encontrada.", 200);
             } else {
                 return ApiResponse::success([
@@ -172,13 +175,17 @@ class OrderController extends Controller
 
     public function completeOrder(Order $orderId, Request $request)
     {
-
         if ($orderId->details()->doesntExist()) {
             return ApiResponse::error('No hay productos en la orden', 500);
         }
 
         try {
-            $this->orderActionService->complete($orderId, $request);
+            //$sellerId = Auth::id();
+            $sellerId = 2; //para realizar pruebas
+
+            $result = $this->orderActionService->complete($orderId, $request, $sellerId);
+            return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
+
         } catch (\Exception $e) {
             Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
@@ -254,12 +261,12 @@ class OrderController extends Controller
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
     }
-  
-     public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
+
+    public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse
     {
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
-            "page"         => $request->page,
+            "page" => $request->page,
         ];
 
 
@@ -271,5 +278,118 @@ class OrderController extends Controller
         $repuesta = $this->orderContract->filtrarOrdenesWithPsychotropicsforPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
-     }
+    }
+
+    public function reserveOrder(Order $order): JsonResponse
+    {
+        //$sellerId = Auth::id();
+        $sellerId = 2; //para realizar pruebas
+        $existingReservedOrder = Order::where('seller_id', $sellerId)
+            ->where('status', 'Reserved')
+            ->first();
+
+        if ($existingReservedOrder) {
+            return ApiResponse::error('Ya tienes una orden reservada.', 409);
+        }
+
+        if ($order->status !== 'Pending') {
+            return ApiResponse::error('Solo se pueden reservada órdenes abiertas.', 400);
+        }
+
+        try {
+            $order = $this->orderActionService->reserveOrder($order, $sellerId);
+            return ApiResponse::success($order, 'Orden reservada exitosamente.', 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reservada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo reservada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function reserveAddOrder(Order $order): JsonResponse
+    {
+        try {
+            //$sellerId = Auth::id();
+            $sellerId = 2; //para realizar pruebas
+            $order = $this->orderActionService->reserveAndAddOrder($order, $sellerId);
+            return ApiResponse::success($order, 'Orden agregada exitosamente.', 200);
+        } catch (\Exception $e) {
+            Log::error('Error al agregar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
+        }
+    }
+    public function getDebitoFiscal(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date'
+            ]);
+
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+
+            $debitoFiscalData = $this->orderQueryService->getDebitoFiscal($startDate, $endDate);
+
+            return ApiResponse::success([
+                'periodo' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ],
+                'debito_fiscal' => $debitoFiscalData['total_debito'],
+                'detalle_debito' => [
+                    'total_orders_with_iva' => $debitoFiscalData['total_records'],
+                    'total_iva_amount' => $debitoFiscalData['total_iva_amount'],
+                    'total_spe_amount' => $debitoFiscalData['total_spe_amount'] ?? 0,
+                ]
+            ], 'Débito fiscal obtenido exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener débito fiscal: ' . $e->getMessage());
+            return ApiResponse::error('Error al obtener débito fiscal: ' . $e->getMessage(), 500);
+        }
+    }
+    public function getFiscalHistoryData(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date',
+                'page' => 'integer|min:1',
+                'itemsPerPage' => 'integer|min:1|max:100'
+            ]);
+
+            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+            $page = $request->page ?? 1;
+            $itemsPerPage = $request->itemsPerPage ?? 10;
+
+            $fiscalData = $this->orderQueryService->getFiscalHistoryRecords(
+                $startDate,
+                $endDate,
+                $page,
+                $itemsPerPage
+            );
+
+            return ApiResponse::success($fiscalData, 'Registros de fiscal history obtenidos exitosamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener registros de fiscal history: ' . $e->getMessage());
+            return ApiResponse::error('Error al obtener registros de fiscal history: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function cancelledOrder(Order $order)
+    {
+        if ($order->status !== Order::COMPLETED) {
+            return ApiResponse::error('Solo se pueden cancelar órdenes completadas.', 400);
+        }
+        try {
+            $abandonedOrder = $this->orderActionService->cancelledOrder($order);
+            return ApiResponse::success('Orden cancelada exitosamente.', ['order' => $abandonedOrder]);
+        } catch (\Exception $e) {
+            Log::error('Error al cancelada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo cancelada la orden: ' . $e->getMessage(), 500);
+        }
+    }
+
 }

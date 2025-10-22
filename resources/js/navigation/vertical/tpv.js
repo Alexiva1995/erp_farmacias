@@ -23,6 +23,22 @@ export default [
         to: 'tpv-order-user',
        // meta: { roles: ['user'] }
       },
+      {
+        title: 'Creditos',
+        to: 'tpv-credit',
+      },
+      {
+        title: 'Devoluciones',
+        to: 'tpv-returns',
+      },
+      {
+        title: 'Devoluciones Usuario',
+        to: 'tpv-returns-user',
+      },
+      {
+        title: 'Devoluciones Supervisor',
+        to: 'tpv-returns-supervisor',
+      },
     ],
   },
 ]

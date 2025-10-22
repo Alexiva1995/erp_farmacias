@@ -27,7 +27,8 @@ class Client extends Model
         'address',
         'birthdate', // De la rama 5.0-CRM
         'company_id', // De la rama 5.0-CRM
-        'balance', // De la rama pedidos
+        'balance', // De la rama pedidos,
+        'is_spe'
     ];
 
     // Casts para los campos de fecha de la rama 5.0-CRM

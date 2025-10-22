@@ -2,12 +2,21 @@
 
 namespace App\Services\Suppliers;
 
-use App\Jobs\FetchSupplierConnectionData;
+use App\Models\ExchangeRate;
 use App\Models\Product;
+use App\Models\ProductLot;
+use App\Models\ProductSupplier;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
+use Psr\Http\Message\ResponseInterface;
+use React\Http\Browser;
+use React\Socket\Connector;
+use React\EventLoop\Loop;
+use GuzzleHttp\Psr7\Request;
 
 class SupplierConnectionService
 {
@@ -22,64 +31,90 @@ class SupplierConnectionService
             case "api":
                 return $this->fetchFromHttp($connection);
             default:
-                throw new \Exception("Tipo de conexión no soportado");
+                throw new Exception("Tipo de conexión no soportado");
         }
     }
 
     public function fetchFromFtp(SupplierConnection $connection)
     {
-        $ftp = ftp_connect($connection->host, $connection->port ?? 21, 10);
-        if (!$ftp) {
-            throw new \Exception("No se pudo conectar al servidor FTP");
+        $host = $connection->host;
+        $port = $connection->port ?? 21;
+        $user = $connection->username;
+        $pass = FtpCrypt::decrypt($connection->password);
+
+        // Valida la conexión en texto plano
+        $ftp = @ftp_connect($host, $port, 10);
+        if ($ftp === false) {
+            throw new Exception('No se pudo conectar al servidor FTP');
         }
 
-        $login = ftp_login(
-            $ftp,
-            $connection->username,
-            FtpCrypt::decrypt($connection->password),
-        );
+        $login = @ftp_login($ftp, $user, $pass);
+        if ($login === false) {
+            @ftp_close($ftp);
 
-        if (!$login) {
-            throw new \Exception("Credenciales inválidas");
+            // Si el inicio fallo usa ssl para intentar conectarse de nuevo
+            $ftp = @ftp_ssl_connect($host, $port, 90);
+            if ($ftp === false) {
+                throw new Exception('No se pudo conectar al servidor FTP');
+            }
+
+            $login = ftp_login($ftp, $user, $pass);
+            if ($login === false) {
+                throw new Exception('Credenciales inválidas');
+            }
         }
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
-        if (ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+        if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
             $content = file_get_contents($tempFile);
-            $content_encoded = mb_convert_encoding(
-                $content,
-                "UTF-8",
-                "ISO-8859-1",
-            ); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
             $productData = $this->parseDynamicContent($content_encoded, $connection);
         } else {
-            throw new \Exception("No se pudo guardar los productos");
+            throw new Exception("No se pudo guardar los productos");
         }
 
         // Facturas (si tiene ruta definida)
         $invoiceResults = [];
+        $seenInvoiceNumbers = [];
+
         if (!empty($connection->invoice_path)) {
             $files = ftp_nlist($ftp, $connection->invoice_path);
-            foreach ($files as $filePath) {
-                if (!str_ends_with($filePath, '.txt')) continue;
-                $tempInvoice = tempnam(sys_get_temp_dir(), 'inv_');
+            $filter = $connection->invoice_structure['filter'] ?? null;
 
-                if (ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+            $startsWith = $filter['starts_with'] ?? '';
+            $endsWith = $filter['ends_with'] ?? '.txt';
+            $files = array_filter($files, function ($file) use ($startsWith, $endsWith) {
+                $name = basename($file);
+                return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
+            });
+
+            foreach ($files as $filePath) {
+                if (!str_ends_with($filePath, ".txt")) {
+                    continue;
+                }
+                $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
+
+                if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $invoiceContent = file_get_contents($tempInvoice);
-                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection);
-                    $invoiceResults[] = $parsed;
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers);
+
+                    if (!empty($parsed) && !empty($parsed['header'])) {
+                        $invoiceResults[] = $parsed;
+                    }
                 }
             }
         }
 
-        ftp_close($ftp);
+        if ($ftp !== false) {
+            @ftp_close($ftp);
+        }
 
         return [
-            'products' => $productData ?? [],
-            'invoices' => $invoiceResults,
+            "products" => $productData ?? [],
+            "invoices" => $invoiceResults,
         ];
     }
 
@@ -90,28 +125,77 @@ class SupplierConnectionService
 
     public function fetchFromHttp(SupplierConnection $connection)
     {
-        $user = $connection->username;
-        $password = FtpCrypt::decrypt($connection->password);
-
-        $response = Http::post($connection->host, [
-            "usuario" => $user,
-            "clave" => $password,
-        ]);
-        $token = $response->json()["token"];
-
         try {
-            $response = Http::withHeaders([
-                "autorizacion" => $token,
-            ])
-                ->timeout(600)
-                ->get($connection->path);
+            $connector = new Connector(['timeout' => 1800]);
+            $client = (new Browser($connector))->withTimeout(1800.0);
 
-            if ($response->successful()) {
-                return $response->json();
-            } else {
-                throw new \Exception("La petición a la API falló");
+            $loginResponse = Http::post($connection->host, [
+                "usuario" => $connection->username,
+                "clave" => FtpCrypt::decrypt($connection->password),
+            ]);
+
+            // Productos
+            $payload = $this->buildPayload($connection, 'productos');
+
+            $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
+            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
+
+            $productData = $this->parseDynamicContent($productCsvString, $connection);
+
+            // Facturas (si tiene ruta definida)
+            if (!empty($connection->invoice_path)) {
+                $seenInvoiceNumbers = [];
+                $invoiceResults = [];
+
+
+                $payloadInvoice = $this->buildPayload($connection, 'facturas');
+                $invoiceResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
+
+                foreach ($invoiceResponse as $invoice) {
+                    $cod_invoice = $invoice['InvoiceCode'] ?? null;
+
+                    if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
+                        continue;
+                    }
+
+                    $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
+                    $invoiceDetailsResponse = $this->fetchFromAPI($loginResponse->json()["token"], [], $client, $payloadInvoiceDetails['url'], 'get');
+
+                    $flatData = [];
+
+                    foreach ($invoiceDetailsResponse as $detail) {
+                        // Prefijar claves del encabezado
+                        $prefixedHeader = [];
+                        foreach ($invoice as $key => $value) {
+                            $prefixedHeader["header_$key"] = $value;
+                        }
+
+                        // Prefijar claves del detalle
+                        $prefixedDetail = [];
+
+                         foreach ($detail as $key => $value) {
+                           $prefixedDetail["detail_$key"] = $value;
+                        }
+                   
+                        // Combinar sin colisión
+                        $flatRow = array_merge($prefixedHeader, $prefixedDetail);
+                        $flatData[] = $flatRow;
+                    }
+                    
+                    $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
+                    $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
+                    if (!empty($parsed) && !empty($parsed['header'])) {
+                        $invoiceResults[] = $parsed;
+                    }
+                }
             }
+            return [
+                "products" => $productData ?? [],
+                "invoices" => $invoiceResults ?? [],
+            ];
         } catch (\Exception $e) {
+            Log::alert("Supplier connection service");
+            Log::error($e);
             throw new \Exception("No se pudo establecer la conexión");
         }
     }
@@ -122,8 +206,9 @@ class SupplierConnectionService
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
         $has_header = $connection->has_header;
-
+;
         $lines = array_filter(explode("\n", trim($content)), "trim");
+
         $barcodes = [];
 
         // ignora la primera fila si contiene encabezados en vez de registros
@@ -131,17 +216,41 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
+        $usdCurrency = ExchangeRate::where("currency_code", "USD")
+            ->whereDate("created_at", \Carbon\Carbon::today())
+            ->first();
+
+        if (!isset($usdCurrency)) {
+            $exitCode = Artisan::call("app:update-exchange-rate");
+
+            if ($exitCode === 0) {
+                $usdCurrency = ExchangeRate::where("currency_code", "USD")
+                    ->whereDate("created_at", \Carbon\Carbon::today())
+                    ->first();
+            } else {
+                Log::error("Failed to fetch exchange rate");
+                throw new \Exception("No se pudo guardar la tasa del día USD");
+            }
+        }
+
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
-            $cols = explode(";", $line);
+            if (!empty($structure_for_parsing)) {
+                $line = $this->parseFixedWidth($line, $structure_for_parsing);
+            }
+            $cols = explode(';', $line);
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
+        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use ($structure, $now, $supplierId, $products) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing) {
+            if (!empty($structure_for_parsing)) {
+                $line = $this->parseFixedWidth($line, $structure_for_parsing);
+            }
             $cols = explode(";", $line);
             $entry = [
                 "supplier_id" => $supplierId,
@@ -150,10 +259,16 @@ class SupplierConnectionService
                 "connection_date" => $now,
                 "laboratory" => null,
                 "product_id" => null,
+                "unit_cost_with_discount" => null,
+                "unit_cost_usd_with_discount" => null,
             ];
 
-            $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
+            $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
 
+            $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
+            $missingBarcode = false;
+           
+            //$quantity = 0;
             foreach ($table_structure as $index => $meta) {
                 $raw = $cols[$index] ?? "";
                 $value = trim($raw);
@@ -163,37 +278,120 @@ class SupplierConnectionService
                         $entry[$meta["target"]] = $value;
                         break;
 
+                    case "integer":
+                        $entry[$meta["target"]] = $value;
+                        break;
+
                     case "decimal":
-                        $entry[$meta["target"]] = is_numeric($value) ? number_format((float) $value, 2, ".", "") : null;
+                        if (is_numeric($value)) {
+                            $newValue = number_format((float) $value, 2, ".", "");
+
+                            if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
+                                $entry["quantity"] = $value;
+                                //$quantity += $newValue;
+                                break;
+                            }
+
+                            // Si ya tiene el precio en bs y usd
+                            if ($hasUnitCostUsd) {
+                                $entry[$meta["target"]] = $newValue;
+                                break;
+                            } else {
+                                // Precio en bs calcula con la tasa  usd del dia
+                                if (isset($meta["currency"]) && $meta["currency"] === "usd") {
+                                    $entry[$meta["target"]] = number_format(
+                                        (float) ($newValue * $usdCurrency->rate),
+                                        2,
+                                        ".",
+                                        "",
+                                    );
+                                    $entry["unit_cost_usd"] = $newValue;
+
+                                    break;
+                                } else {
+                                    // Obtiene el equivalente de bs en usd
+                                    $entry[$meta["target"]] = $newValue;
+                                    $entry["unit_cost_usd"] = number_format(
+                                        (float) ($newValue / $usdCurrency->rate),
+                                        2,
+                                        ".",
+                                        "",
+                                    );
+
+                                    break;
+                                }
+                            }
+                        } else {
+                            $entry[$meta["target"]] = null;
+                        }
                         break;
 
                     case "date":
-                        if ($value === "0000-00-00") {
+                        if ($value === "0000-00-00" || $value === "-0001-11-30" || strtoupper($value) === "NULL" || trim($value) === "") {
                             $entry[$meta["target"]] = null;
                             break;
                         }
 
-                        if (\Datetime::createFromFormat("Y-m-d", $value)) {
-                            $entry[$meta["target"]] = $value;
+                        $dt = \DateTime::createFromFormat("Y-m-d", $value);
+                        if ($dt && $dt->format("Y-m-d") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
                             break;
                         }
 
-                        if ($value === "NULL") {
-                            $entry[$meta["target"]] = null;
+                        $dt = \DateTime::createFromFormat("d/m/Y", $value);
+                        if ($dt && $dt->format("d/m/Y") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
                             break;
                         }
 
-                        $entry[$meta["target"]] =
-                            $value === "" ? null : \DateTime::createFromFormat("d/m/Y", $value)?->format("Y-m-d");
+                        $dt = \DateTime::createFromFormat("Y-m-d", "{$value}-01");
+                        if ($dt && $dt->format("Y-m") === $value) {
+                            $entry[$meta["target"]] = $dt->format("Y-m-d");
+                            break;
+                        }
+
+                        $entry[$meta["target"]] = null;
                         break;
                 }
 
                 if ($meta["target"] === "barcode_match" && $value !== "") {
                     $product = $products->get($value);
-                    $entry["laboratory"] = $product?->laboratory?->name;
-                    $entry["product_id"] = $product?->id;
+
+                    if ($product) {
+                        $entry["laboratory"] = $product?->laboratory?->name;
+                        $entry["product_id"] = $product?->id;
+                    } else {
+                        $missingBarcode = true; // lo marcamos para crear luego
+                    }
                 }
             }
+
+            //$entry["quantity"] = $quantity;
+
+            // if ($missingBarcode && !Product::where('barcode', $entry['barcode_match'])->exists()) {
+            //     $stock = 0;
+
+            //     if ($entry['supplier_id'] == 2) {
+            //         foreach (['exisMerida', 'exisCaracas', 'exisOriente'] as $campo) {
+            //             $stock += intval($entry[$campo] ?? 0);
+            //         }
+            //     } else
+            //         $stock = $entry['quantity'];
+
+            //     $newProduct = Product::create([
+            //         'barcode' => $entry['barcode_match'],
+            //         'name' => $entry['name'] ?? 'Producto sin nombre',
+            //         'unit_cost' => $entry['unit_cost'] ?? 0,
+            //         'sale_price' => $entry['unit_cost'] ?? 0,
+            //         'stock' => $stock,
+            //         'active_ingredient' => $entry['active_ingredient'] ?? 'Producto FTP',
+            //         'sales_average' => $entry['sales_average'] ?? 0
+            //     ]);
+
+            //     $entry['product_id'] = $newProduct->id;
+
+            //     $products->put($missingBarcode, $newProduct); // actualiza el cache local
+            // }
 
             return $entry;
         });
@@ -201,17 +399,19 @@ class SupplierConnectionService
         return $result->toArray();
     }
 
-    public function invoiceTxtParser(string $content, SupplierConnection $connection): array    {
+public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = []): array
+    {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
-
+       
         $invoices = [];
         $bufferLines = [];
 
         $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
 
         $barcodes = [];
+        $mode = $structure['mode'] ?? 'grouped';
 
         foreach ($lines as $line) {
             $cols = explode($separator, $line);
@@ -223,62 +423,352 @@ class SupplierConnectionService
                     $barcodes[] = $barcode;
                 }
             }
+
+            $barcodeIndexFlat = array_search('barcode', array_column($structure['lines'], 'field'));
+            if ($mode === 'flat' && $barcodeIndexFlat !== false) {
+                $originalIndex = array_keys($structure['lines'])[$barcodeIndexFlat];
+                $barcode = trim($cols[$originalIndex] ?? "");
+                if ($barcode !== "") {
+                     $barcodes[] = $barcode;
+                 }
+            }
         }
 
-        $products = Product::whereIn('barcode', array_unique($barcodes))->get()->keyBy('barcode');
-
-        foreach ($lines as $line) {
-            $cols = explode($separator, $line);
-            $tipo = trim($cols[0] ?? "");
-
-            if ($tipo === "E") {
+        $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
+        
+        if ($mode === 'flat') {
+            $invoiceGroups = [];
+            
+            foreach ($lines as $line) {
+                $cols = explode($separator, $line);
+                
+                // Encabezado desde la misma línea
                 $header = [];
-
-                foreach ($structure["header"] as $index => $meta) {
-                    $raw = $cols[$index] ?? "";
-                    $value = $this->castValue($raw, $meta);
-                    $header[$meta["field"]] = $value;
+                foreach ($structure['header'] as $index => $meta) {
+                    $raw = $cols[$index] ?? '';
+                    $header[$meta['field']] = $this->castValue($raw, $meta);
+                }
+                
+                if (in_array($connection->supplier_id, [23])) {
+                    if (isset($header["tax_amount"])) {
+                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                        $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                    }else{
+                        $header['exempt_amount'] = $header["total_amount"];
+                    }
                 }
 
-                $invoices = [
-                    "header" => $header,
-                    "lines" => $bufferLines,
-                ];
+                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                $totalAmount = floatval($header['total_amount'] ?? 0);
+                if ($exchangeRate > 0) {
+                    $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
+                } else {
+                    $header['total_usd'] = 0.00;
+                }
 
-                $bufferLines = []; // limpiar para el próximo bloque
-            }
+                $invoiceNumber = $header['invoice_number'] ?? null;
+                if (!$invoiceNumber || in_array($invoiceNumber, $seenInvoiceNumbers))
+                    continue;
 
-            if ($tipo === "R") {
+                // Línea de producto
                 $lineData = [];
+                $ivaTaxValue = 0;
+                $lineData['tax_enabled'] = 0;
 
-                foreach ($structure["lines"] as $index => $meta) {
-                    $raw = $cols[$index] ?? "";
+                foreach ($structure['lines'] as $index => $meta) {
+                    $raw = $cols[$index] ?? '';
+                    Log::info('$raw'.$raw);
+                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
                     $value = $this->castValue($raw, $meta);
-                    $lineData[$meta["field"]] = $value;
-                }
+                    $lineData[$meta['field']] = $value;
 
-                $barcode = $lineData["barcode"] ?? null;
-                $lineData["product_id"] = $products[$barcode]->id ?? null;
+                    if ($meta["field"] === "porcentaje_iva" && is_numeric($value)) {
+                        $ivaTaxValue = floatval($value);
+                    }
+                }
+              
+                if ($ivaTaxValue > 0) {
+                    $lineData['tax_enabled'] = 1;
+                }
 
                 $unitCost = floatval($lineData["unit_cost"] ?? 0);
                 $quantity = intval($lineData["quantity"] ?? 0);
-                $lineData["total_cost"] = $unitCost * $quantity;
+                $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
 
-                $bufferLines[] = $lineData;
+                $barcode = $lineData['barcode'] ?? null;
+                //$lineData['product_id'] = $products[$barcode]->id ?? null;
+                $product = $products[$barcode] ?? null;
+
+                 if (!$product && $barcode) {
+                    Log::info("Creando producto por factura: {$barcode}");
+                      $product = Product::firstOrCreate(
+                        ['barcode' => $barcode],
+                        [
+                        'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
+                        'unit_cost' => $unitCost,
+                        'sale_price' => null,
+                        'stock' => 0,
+                        'active_ingredient' => $lineData['descripcion_producto'],
+                        'sales_average' => 0,
+                    ]);
+
+                    $products->put($barcode, $product);
+                }
+
+                $lineData['product_id'] = $product->id ?? null;
+                $supplierId = $connection->supplier_id;
+                $codSupplier = $lineData['codigo_producto'] ?? null;
+                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                $unitCostUsd = ($exchangeRate > 0) ? number_format($unitCost / $exchangeRate, 2, '.', '') : 0.00;
+
+                // CREAR o ACTUALIZAR REGISTRO EN PRODUCT_SUPPLIERS
+                    if ($product && $codSupplier && $supplierId) {
+                        ProductSupplier::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'supplier_id' => $supplierId
+                        ],
+                        [
+                            'cod_supplier' => $codSupplier,
+                            'unit_cost' => $unitCost,
+                            'unit_cost_usd' => $unitCostUsd,
+                            'barcode_match' => $lineData['barcode'], 
+                            'name' => $lineData['descripcion_producto'] ?? 'Producto de Factura',
+                            'expiration' => $lineData['expiration_date'] ?? null, 
+                            'quantity' => $quantity, 
+                            'connection_date' => now(),
+                        ]
+                        );
+                    }
+
+                     if ($product && $quantity > 0) {
+                        $lotNumber = $lineData['lot_number'] ?? 'N/A';
+                        $expirationDate = $lineData['expiration_date'] ?? null;
+
+                        $lot = ProductLot::where('product_id', $product->id)->where('lot_number', $lotNumber)->where('expiration_date', $expirationDate)->first();
+
+                        if ($lot) {
+                            $lot->increment('quantity', $quantity);
+                            $lot->update([
+                                'unit_cost' => $unitCost,
+                                'supplier_id' => $supplierId,
+                            ]);
+                        }else{
+                            ProductLot::create([
+                                'product_id' => $product->id,
+                                'lot_number' => $lineData['lot_number'] ?? 'N/A',
+                                'quantity' => $quantity,
+                                'unit_cost' => $unitCost,
+                                'supplier_id' => $supplierId,
+                                'expiration_date' => $lineData['expiration_date'] ?? null,
+                            ]);
+                        }
+                    }
+
+                // Agrupar por número de factura
+                if (!isset($invoiceGroups[$invoiceNumber])) {
+                    $invoiceGroups[$invoiceNumber] = [
+                        'header' => $header,
+                        'lines' => [],
+                    ];
+                }
+
+                $invoiceGroups[$invoiceNumber]['lines'][] = $lineData;
+            }
+            
+            foreach ($invoiceGroups as $number => $invoice) {
+                $invoices = $invoice;
+                $seenInvoiceNumbers[] = $number;
+            }
+        } else {
+            foreach ($lines as $line) {
+                $cols = explode($separator, $line);
+                $tipo = trim($cols[0] ?? "");
+
+                if ($tipo === "E") {
+                    $header = [];
+
+                    foreach ($structure["header"] as $index => $meta) {
+                        $raw = $cols[$index] ?? "";
+                        $value = $this->castValue($raw, $meta);
+                        $header[$meta["field"]] = $value;
+                    }
+
+                    $invoiceNumber = $header['invoice_number'] ?? null;
+                    if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
+                        $bufferLines = []; // limpiar igual
+                        continue; // ya existe, saltar
+                    }
+
+                    if (in_array($connection->supplier_id, [15, 38])) {
+                        $totalUSD = floatval($header["total_usd"] ?? 0);
+                        $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $header["total_amount"] = $totalUSD * $exchangeRate;
+
+                        if (isset($header["tax_amount"])) {
+                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                            $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                        } else
+                            $header["exempt_amount"] = $header["total_amount"];
+                        $header["status_payment"] = 0;
+                    }
+
+                    $invoices = [
+                        "header" => $header,
+                        "lines" => $bufferLines,
+                    ];
+
+                    $seenInvoiceNumbers[] = $invoiceNumber;
+                    $bufferLines = []; // limpiar para el próximo bloque
+                }
+
+                if ($tipo === "R") {
+                    $lineData = [];
+
+                    foreach ($structure["lines"] as $index => $meta) {
+                        $raw = $cols[$index] ?? "";
+                        $value = $this->castValue($raw, $meta);
+                        $lineData[$meta["field"]] = $value;
+                    }
+
+                    $barcode = $lineData["barcode"] ?? null;
+                    $lineData["product_id"] = $products[$barcode]->id ?? null;
+
+                    $unitCost = floatval($lineData["unit_cost"] ?? 0);
+                    $quantity = intval($lineData["quantity"] ?? 0);
+                    $lineData["total_cost"] = $unitCost * $quantity;
+
+                    $bufferLines[] = $lineData;
+                }
             }
         }
+
         return $invoices;
     }
 
-    private function castValue(string $raw, array $meta): mixed {
-        $value = trim($raw);
-
+    private function castValue(string $raw, array $meta): mixed
+    {
+        //$value = trim($raw);
+        $value = trim(str_replace('"', '', $raw));
+      //  dd($value);
+        Log::info("castValue".$value);
+        Log::info("meta".$meta["type"]);
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
             "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
-            "date" => \DateTime::createFromFormat($meta["format"] ?? "Y-m-d", $value)?->format("Y-m-d"),
+            "date" => $this->parseDate($value, $meta["format"] ?? null),
             default => $value,
         };
+    }
+
+    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    {
+        if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
+            return null;
+        }
+
+        $formats = array_filter([
+            $preferredFormat,
+            "Y-m-d",
+            "d/m/Y",
+            "d-m-Y",
+            "m/d/Y",
+            "Ymd",
+            "Y-m-d\TH:i:s",
+            "Y-m-d\TH:i:s.u\Z",
+            "Y-m-d\TH:i:sP",
+        ]);
+
+        foreach ($formats as $format) {
+            $date = \DateTime::createFromFormat($format, $value);
+            if ($date && $date->format($format) === $value) {
+                return $date->format("Y-m-d");
+            }
+        }
+
+        return null;
+    }
+
+    public function fetchFromAPI($token, $data, $client, $path, $method = 'post'): array
+    {
+        $productResponse = [];
+        
+        $client->{$method}(
+            $path,
+            [
+                'autorizacion' => $token,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ],
+            $method === 'post' ? json_encode($data) : null
+        )->then(function (ResponseInterface $response) use (&$productResponse) {
+            $productResponse = json_decode((string) $response->getBody(), true);
+        }, function (\Exception $e) {
+            echo 'Error: ' . $e->getMessage() . PHP_EOL;
+        });
+        
+        Loop::run();
+       
+        return $productResponse;
+    }
+
+    public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): array
+    {
+        $supplierId = $connection->supplier_id;
+        //$config = config("suppliers.{$supplierId}");
+        $config = require app_path("SupplierConfigs/{$supplierId}.php");
+
+        if (!isset($config[$endpoint])) {
+            throw new \Exception("No se encontró configuración para {$endpoint} en proveedor {$supplierId}");
+        }
+
+        $payload = $config[$endpoint];
+
+        if (is_callable($payload)) {
+            return $payload($connection, $extra);
+        }
+
+        return $payload;
+    }
+
+    public function convertJsonArrayToCsvString(array $data): string
+    {
+        if (empty($data)) {
+            return '';
+        }
+
+        $csv = fopen('php://temp', 'r+');
+
+        // Escribir encabezados
+        fputcsv($csv, array_keys($data[0]), ';');
+
+        // Escribir filas
+        foreach ($data as $row) {
+            fputcsv($csv, array_map(function ($value) {
+                return is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value;
+            }, $row), ';');
+        }
+
+        rewind($csv);
+        $csvContent = stream_get_contents($csv);
+        fclose($csv);
+
+        return $csvContent;
+    }
+
+    public function parseFixedWidth(string $line, array $map, string $encoding = 'UTF-8'): string
+    {
+        $offset = 0;
+        $out = [];
+
+        foreach ($map as $field) {
+            $width = (int) $field->width;
+            $slice = mb_substr($line, $offset, $width, $encoding);
+            $out[] = trim($slice);
+            $offset += $width;
+        }
+
+        return implode(';', $out);
     }
 }

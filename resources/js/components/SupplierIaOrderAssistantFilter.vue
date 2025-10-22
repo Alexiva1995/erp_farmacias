@@ -1,19 +1,32 @@
 <script setup>
 const props = defineProps({
+  selectConDescuento: Boolean,
   tipo_de_vista: Boolean,
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
   stock: String,
+  selectedLaboratory: String,
+  selectedGroup: String,
+  laboratories: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
+  "update:selectConDescuento",
   "update:tipo_de_vista",
   "update:tipo_de_filtracion",
   "update:lapso_de_tiempo",
   "update:stock",
+  "update:selectedLaboratory",
+  "update:selectedGroup",
   "clear",
   "generarPedido",
 ]);
+
+const precio = [
+  { title: "Full", value: true },
+  { title: "Descuento", value: false },
+];
 
 const tipoDeVistaOpcion = [
   { title: "Grupal", value: true },
@@ -45,11 +58,47 @@ const stockOpciones = [
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
+            :model-value="props.selectedLaboratory"
+            :items="props.laboratories"
+            label="Laboratorio"
+            placeholder="Escribe para buscar un laboratorio"
+            item-title="name"
+            item-value="id"
+            clearable
+            chips="true"
+            multiple="true"
+            @update:model-value="emit('update:selectedLaboratory', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VAutocomplete
+            :model-value="props.selectedGroup"
+            :items="props.groups"
+            label="Grupos"
+            placeholder="Escribe para buscar un grupo"
+            item-title="name"
+            item-value="id"
+            clearable
+            chips="true"
+            multiple="true"
+            @update:model-value="emit('update:selectedGroup', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.tipo_de_vista"
             label="Tipo de vista"
             :items="tipoDeVistaOpcion"
             @update:model-value="emit('update:tipo_de_vista', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="4">
+          <VSelect
+            :model-value="props.selectConDescuento"
+            label="Precio"
+            :items="precio"
+            @update:model-value="emit('update:selectConDescuento', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
@@ -87,7 +136,11 @@ const stockOpciones = [
       </VBtn>
 
       <VSpacer />
-      <VBtn color="success" variant="flat" @click="emit('generarPedido')">
+      <VBtn
+        prepend-icon="tabler-plus"
+        color="primary"
+        @click="emit('generarPedido')"
+      >
         Generar Pedido
       </VBtn>
     </VCardActions>

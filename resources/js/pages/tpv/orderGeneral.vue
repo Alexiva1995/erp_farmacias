@@ -1,12 +1,11 @@
 <script setup>
-import OrderTable from "@/components/OrderTable.vue";
-import { toast } from "@/plugins/sweetalert";
-import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
-import QuotationFilters from "@/components/QuotationFilters.vue";
 import OrderFiltersGeneral from "@/components/OrderFiltersGeneral.vue";
+import OrderTable from "@/components/OrderTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
-import OrderViewModal from "@/components/dialogs/OrderViewModal.VUE";
+import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { onMounted, ref, watch } from "vue";
 
 const ordersCompleted = ref([]);
 const totalOrdersCompleted = ref(0);
@@ -139,15 +138,15 @@ const fetchOrderAll = async () => {
     ...(currencyFilterAll.value !== null && {
       currency: currencyFilterAll.value,
     }),
-     ...(stateFilterAll.value !== null && {
+    ...(stateFilterAll.value !== null && {
       state: stateFilterAll.value,
     }),
     ...(startDateFilterAll.value !== null && {
-            start_date: startDateFilterAll.value,
-        }),
-        ...(endDateFilterAll.value !== null && {
-            end_date: endDateFilterAll.value,
-        }),
+      start_date: startDateFilterAll.value,
+    }),
+    ...(endDateFilterAll.value !== null && {
+      end_date: endDateFilterAll.value,
+    }),
     page: pageOrdersAll.value,
     itemsPerPage: itemsPerPageOrdersAll.value,
     sortBy: sortByOrdersAll.value,
@@ -176,12 +175,12 @@ const fetchOrderAbandoned = async () => {
     ...(currencyFilterAbandoned.value !== null && {
       currency: currencyFilterAbandoned.value,
     }),
-      ...(startDateFilterAbandoned.value !== null && {
-            start_date: startDateFilterAbandoned.value,
-        }),
-        ...(endDateFilterAbandoned.value !== null && {
-            end_date: endDateFilterAbandoned.value,
-        }),
+    ...(startDateFilterAbandoned.value !== null && {
+      start_date: startDateFilterAbandoned.value,
+    }),
+    ...(endDateFilterAbandoned.value !== null && {
+      end_date: endDateFilterAbandoned.value,
+    }),
     page: pageOrdersAbandoned.value,
     itemsPerPage: itemsPerPageOrdersAbandoned.value,
     sortBy: sortByOrdersAbandoned.value,
@@ -210,12 +209,12 @@ const fetchOrderCancelled = async () => {
     ...(currencyFilterCancelled.value !== null && {
       currency: currencyFilterCancelled.value,
     }),
-      ...(startDateFilterCancelled.value !== null && {
-            start_date: startDateFilterCancelled.value,
-        }),
-        ...(endDateFilterCancelled.value !== null && {
-            end_date: endDateFilterCancelled.value,
-        }),
+    ...(startDateFilterCancelled.value !== null && {
+      start_date: startDateFilterCancelled.value,
+    }),
+    ...(endDateFilterCancelled.value !== null && {
+      end_date: endDateFilterCancelled.value,
+    }),
     page: pageOrdersCancelled.value,
     itemsPerPage: itemsPerPageOrdersCancelled.value,
     sortBy: sortByOrdersCancelled.value,
@@ -275,7 +274,7 @@ watch(
     sortByOrdersAll,
     orderByOrdersAll,
     startDateFilterAll,
-    endDateFilterAll
+    endDateFilterAll,
   ],
   () => {
     clearTimeout(debounceTimerAll);
@@ -297,7 +296,7 @@ watch(
     sortByOrdersAbandoned,
     orderByOrdersAbandoned,
     startDateFilterAbandoned,
-    endDateFilterAbandoned
+    endDateFilterAbandoned,
   ],
   () => {
     clearTimeout(debounceTimerAbandoned);
@@ -318,8 +317,8 @@ watch(
     filterSearchQueryCancelled,
     sortByOrdersCancelled,
     orderByOrdersCancelled,
-     startDateFilterCancelled,
-    endDateFilterCancelled
+    startDateFilterCancelled,
+    endDateFilterCancelled,
   ],
   () => {
     clearTimeout(debounceTimerCancelled);
@@ -355,7 +354,7 @@ const handleClearFiltersAbandoned = () => {
   currencyFilterAbandoned.value = null;
   sortByOrdersAbandoned.value = undefined;
   orderByOrdersAbandoned.value = undefined;
-    startDateFilterAbandoned.value = null;
+  startDateFilterAbandoned.value = null;
   endDateFilterAbandoned.value = null;
 };
 
@@ -365,7 +364,7 @@ const handleClearFiltersCancelled = () => {
   currencyFilterCancelled.value = null;
   sortByOrdersCancelled.value = undefined;
   orderByOrdersCancelled.value = undefined;
-    startDateFilterCancelled.value = null;
+  startDateFilterCancelled.value = null;
   endDateFilterCancelled.value = null;
 };
 
@@ -436,7 +435,6 @@ const updateTableOptionsOrdersCancelled = (options) => {
 const printOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
-    console.log(response);
     if (response.data && response.data.data && response.data.data.order) {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
@@ -554,12 +552,11 @@ const handleCloseViewModal = () => {
 
 const handleViewOrder = async (orderId) => {
   try {
-    const response = await axios.get(`/tpv/orders/${orderId}/print`); // Llama al endpoint de impresión
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
     if (response.data && response.data.data && response.data.data.order) {
-      // Prepara y asigna los datos de la misma manera que en `printOrder`
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
-      orderItems.value = response.data.data.order.details.map(detail => ({
+      orderItems.value = response.data.data.order.details.map((detail) => ({
         title: detail.product.name,
         selectedQuantity: detail.quantity,
         taxRate: detail.product.iva,
@@ -568,23 +565,24 @@ const handleViewOrder = async (orderId) => {
         price: parseFloat(detail.price),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
-      changeAmountForPrint.value = parseFloat(response.data.data.order.money_returns);
+      changeAmountForPrint.value = parseFloat(
+        response.data.data.order.money_returns
+      );
       amountForPrint.value = parseFloat(response.data.data.order.total_amount);
-      creditAmountForPrint.value = response.data.data.hasCreditPayment ? parseFloat(response.data.data.order.total_amount) : 0;
+      creditAmountForPrint.value = response.data.data.hasCreditPayment
+        ? parseFloat(response.data.data.order.total_amount)
+        : 0;
       creditForPrint.value = response.data.data.hasCreditPayment;
-      
-      // Abre el modal
       viewModal.value = true;
     } else {
       console.error("Respuesta de API con formato incorrecto:", response.data);
-      toast.error('La respuesta del servidor no tiene el formato esperado.');
+      toast.error("La respuesta del servidor no tiene el formato esperado.");
     }
   } catch (error) {
     console.error("Error al obtener los detalles de la orden:", error);
     toast.error("Error al obtener los detalles de la orden.");
   }
 };
-
 </script>
 <template>
   <div>
@@ -660,7 +658,7 @@ const handleViewOrder = async (orderId) => {
         :headers="headers"
         @update:options="updateTableOptionsOrdersCancelled"
         @print-order="printOrder"
-         @view-order="handleViewOrder"
+        @view-order="handleViewOrder"
       />
     </VCard>
     <div class="mb-5"></div>
@@ -686,7 +684,7 @@ const handleViewOrder = async (orderId) => {
         :headers="headers"
         @update:options="updateTableOptionsOrdersAbandoned"
         @print-order="printOrder"
-         @view-order="handleViewOrder"
+        @view-order="handleViewOrder"
       />
     </VCard>
 

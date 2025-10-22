@@ -14,7 +14,7 @@ const headers = [
   { title: "Producto", key: "name", sortable: true },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
+  { title: "Stock", key: "lote_quantity", sortable: true },
   {
     title: "Preferencia",
     key: "preferencia_product",
@@ -34,13 +34,19 @@ const headers = [
         : 0,
   },
   {
-    title: "Solicitar ",
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
+  },
+  {
+    title: "Análisis",
     key: "solicitar",
     sortable: true,
-    value: (item) =>
+    value: (item) => {
       item.solicitar != "" && item.solicitar != null
         ? parseFloat(item.solicitar).toFixed(2)
-        : 0,
+        : 0;
+    },
   },
 ];
 
@@ -77,6 +83,11 @@ const groupBy = [{ key: "group.name" }];
             }}</span>
           </div>
         </div>
+      </template>
+      <template #item.solicitar="{ item }">
+        <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
+          >{{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}</span
+        >
       </template>
     </VDataTableServer>
   </VCard>

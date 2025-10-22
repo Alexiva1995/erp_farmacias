@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
+use App\Http\Requests\GetDataFromSupplierFileRequest;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
+use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
-use App\Models\SupplierConnectionStatus;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -26,7 +30,8 @@ class SupplierController extends Controller
     public function __construct(
         private SupplierQueryService $supplierQueryService,
         private SupplierActionService $supplierActionService,
-    ) {}
+    ) {
+    }
 
     /**
      * Display a listing of the suppliers.
@@ -60,9 +65,7 @@ class SupplierController extends Controller
      */
     public function store(StoreSupplierRequest $request)
     {
-        $supplier = $this->supplierActionService->createSupplier(
-            $request->validated(),
-        );
+        $supplier = $this->supplierActionService->createSupplier($request->validated());
 
         return response()->json(
             [
@@ -81,10 +84,7 @@ class SupplierController extends Controller
      */
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
-        $updatedSupplier = $this->supplierActionService->updateSupplier(
-            $supplier,
-            $request->validated(),
-        );
+        $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
 
         return response()->json(
             [
@@ -111,13 +111,12 @@ class SupplierController extends Controller
      * Summary of connectionServiceSupplier
      * @return mixed|\Illuminate\Http\JsonResponse
      */
-    public function connectionServiceSupplier(
-        Supplier $supplier,
-    ) {
+    public function connectionServiceSupplier(Supplier $supplier, Request $request)
+    {
         $userId = auth()->id() ?? 1;
         ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        return response()->json(['status' => 'queued']);
+        return response()->json(["status" => "queued"]);
     }
 
     /**
@@ -127,14 +126,9 @@ class SupplierController extends Controller
     public function getConnectionStatus()
     {
         $userId = auth()->id() ?? 1;
-        $statuses = SupplierConnectionStatus::with('supplier')
-            ->where('user_id', $userId)
-            ->whereIn('status', ['completed', 'failed'])
-            ->where('created_at', '>=', now()->subMinutes(10)) // últimos 10 min
-            ->latest()
-            ->get();
+        $statuses = $this->supplierQueryService->getRecentConnectionStatusesForUser($userId);
 
-        return response()->json(['statuses' => $statuses]);
+        return response()->json(["statuses" => $statuses]);
     }
 
     /**
@@ -144,29 +138,24 @@ class SupplierController extends Controller
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storePaymentRules(
-        UpdatePaymentRuleSupplierRequest $request,
-        Supplier $supplier,
-    ) {
+    public function storePaymentRules(UpdatePaymentRuleSupplierRequest $request, Supplier $supplier)
+    {
         $validated = $request->validated();
 
         $createdRules = [];
 
-        foreach ($validated["rules"] as $rule) {
+        foreach ($validated['rules'] as $rule) {
             $ruleData = [
-                "days" => $rule["days"],
-                "discount_percentage" => $rule["discount_percentage"],
+                'days' => $rule['days'],
+                'discount_percentage' => $rule['discount_percentage'],
             ];
 
-            $createdRules[] = $this->supplierActionService->createPaymentRule(
-                $supplier,
-                $ruleData,
-            );
+            $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
 
         return response()->json([
-            "message" => "Reglas registradas correctamente.",
-            "rules" => $createdRules,
+            'message' => 'Reglas registradas correctamente.',
+            'rules' => $createdRules,
         ]);
     }
 
@@ -174,7 +163,7 @@ class SupplierController extends Controller
     {
         $rules = $this->supplierQueryService->getPaymentRules($supplier);
 
-        return response()->json(["payment_rules" => $rules]);
+        return response()->json(['payment_rules' => $rules]);
     }
 
     /**
@@ -184,14 +173,9 @@ class SupplierController extends Controller
      * @param Supplier $supplier
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storeLaboratory(
-        StoreSupplierLaboratoryRequest $request,
-        Supplier $supplier,
-    ) {
-        $link = $this->supplierActionService->attachLaboratory(
-            $supplier,
-            $request->validated(),
-        );
+    public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
+    {
+        $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
 
         return response()->json([
             "message" => "Laboratorio vinculado con éxito.",
@@ -220,9 +204,7 @@ class SupplierController extends Controller
      */
     public function getPendingInvoices(Supplier $supplier)
     {
-        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate(
-            $supplier,
-        );
+        $grouped = $this->supplierQueryService->getUnpaidInvoicesByDate($supplier);
         return response()->json(["pending_invoices" => $grouped]);
     }
 
@@ -233,10 +215,8 @@ class SupplierController extends Controller
         return response()->json(["supplier_discount" => $discounts]);
     }
 
-    public function storeDiscounts(
-        StoreDiscountsRequest $request,
-        Supplier $supplier,
-    ) {
+    public function storeDiscounts(StoreDiscountsRequest $request, Supplier $supplier)
+    {
         $validated = $request->validated();
 
         $createdDiscounts = [];
@@ -247,15 +227,122 @@ class SupplierController extends Controller
                 "discount_percentage" => $rule["discount_percentage"],
             ];
 
-            $createdDiscounts[] = $this->supplierActionService->createDiscount(
-                $supplier,
-                $discountData,
-            );
+            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
         }
 
         return response()->json([
             "message" => "Descuentos registrados correctamente.",
             "discounts" => $createdDiscounts,
+        ]);
+    }
+
+    public function getSupplierConnections(Request $request)
+    {
+        $results = $this->supplierQueryService->getSupplierConnections($request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getSupplierProducts(Supplier $supplier, Request $request)
+    {
+        $results = $this->supplierQueryService->getSupplierProducts($supplier, $request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getProducts(Request $request)
+    {
+        $results = $this->supplierQueryService->getProducts($request);
+
+        return response()->json([
+            "data" => $results->items(),
+            "total" => $results->total(),
+        ]);
+    }
+
+    public function getLaboratories()
+    {
+        $results = $this->supplierQueryService->getAvailableLaboratories();
+
+        return response()->json($results);
+    }
+
+    public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
+    {
+        $productId = $request->productId;
+        $discount = $request->boolean("discount");
+        $product = ProductSupplier::find($productId);
+
+        if ($discount && empty($product->unit_cost_usd_with_discount)) {
+            return ApiResponse::error('Este producto no posee descuentos');
+        }
+
+        $results = $this->supplierQueryService->addProductToOrder($request);
+
+        return $results
+            ? ApiResponse::success()
+            : ApiResponse::error();
+    }
+
+    public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
+    {
+        $userId = auth()->id() ?? 1;
+        \Log::info('Supplier Controller', ['Before validation', $request->all()]);
+
+        try {
+            // This will throw ValidationException if invalid
+            $validated = $request->validated();
+        } catch (ValidationException $e) {
+            \Log::error('Supplier Controller Validation failed in importData', [
+                'errors' => $e->errors(),
+                'input' => $request->all(),
+                'supplier_id' => $supplier->id,
+                'user_id' => $userId,
+            ]);
+
+            // Optionally re-throw or return custom response
+            throw $e; // Let Laravel handle the 422 response
+        }
+
+        \Log::info('Supplier Controller', ['File', $validated['file']]);
+        unset($validated["file"]);
+
+        try {
+            $path = $request->file("file")->store("temp", ["disk" => "local"]);
+            \Log::info('Supplier Controller', ['File stored at', $path]);
+        } catch (\Exception $e) {
+            \Log::error('File storage failed in importData', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'supplier_id' => $supplier->id,
+                'user_id' => $userId,
+            ]);
+
+            return response()->json(['error' => 'Failed to store file'], 500);
+        }
+
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
+
+        return response()->json(["status" => "queued"]);
+    }
+
+    public function deleteProducts(Supplier $supplier)
+    {
+        return $this->supplierQueryService->deleteProducts($supplier);
+    }
+
+    public function getSupplierFirstConnection(Supplier $supplier)
+    {
+        $result = $this->supplierQueryService->getSupplierFirstConnection($supplier);
+
+        return response()->json([
+            'data' => $result
         ]);
     }
 }

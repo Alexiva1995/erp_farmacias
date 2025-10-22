@@ -16,28 +16,67 @@ class Invoice extends Model
         'payment_date',
         'received_date',
         'currency',
+        'is_indexed', // ISSUE #3: Campo para facturas indexadas
         'discount_rule_id',
         'exempt_amount',
         'taxable_base',
         'tax_amount',
         'total_amount',
+        'total_amount_discount',
         'exchange_rate',
         'total_usd',
         'status',
+        'status_payment',
         'uploaded_by',
         'registered_by',
         'ordered_by',
+        'created_invoice_date'
+    ];
+
+    /**
+     * ISSUE #3: Casts para manejo correcto de tipos de datos
+     */
+    protected $casts = [
+        'is_indexed' => 'boolean',
+        'exp_date' => 'date',
+        'payment_date' => 'date',
+        'received_date' => 'date',
+        'created_invoice_date' => 'date',
+        'total_amount' => 'decimal:2',
+        'total_amount_discount' => 'decimal:2',
+        'exchange_rate' => 'decimal:4',
+        'total_usd' => 'decimal:2',
+        'exempt_amount' => 'decimal:2',
+        'taxable_base' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+    ];
+
+    /**
+     * ISSUE #3: Valores por defecto para nuevos registros
+     */
+    protected $attributes = [
+        'is_indexed' => false, // Por defecto las facturas NO están indexadas
+        'status' => 'loaded',
+        'status_payment' => 0,
+        'exempt_amount' => 0.00,
+        'taxable_base' => 0.00,
+        'tax_amount' => 0.00,
     ];
 
     public const FILLABLEHEADER = [
         'invoice_number',
         'control_number',
         'exp_date',
+        'total_usd',
         'tax_amount',
+        'exchange_rate',
         'total_amount',
+        'taxable_base',
+        'exempt_amount',
+        'status_payment'
     ];
 
-    protected $fillableFromHeader  = self::FILLABLEHEADER;
+    protected $fillableFromHeader = self::FILLABLEHEADER;
 
     protected $appends = ['outstanding_debt'];
 
@@ -90,7 +129,32 @@ class Invoice extends Model
     {
         return $this->hasMany(PsychotropicControl::class);
     }
+    public function returns()
+    {
+        return $this->hasMany(InvoiceReturn::class);
+    }
 
+    public function isApproved(): bool
+    {
+        return $this->status === 'ordered';
+    }
+
+    public function canBeApproved(): bool
+    {
+        return $this->status === 'to_order';
+    }
+    public function getTotalReturns(): float
+    {
+        return $this->returns()->sum('amount_refunded');
+    }
+
+    /**
+     * Obtiene la cantidad total de productos devueltos
+     */
+    public function getTotalReturnedQuantity(): float
+    {
+        return $this->returns()->sum('quantity');
+    }
     public function getOutstandingDebtAttribute(): float
     {
         // Suma de pagos registrados

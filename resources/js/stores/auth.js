@@ -6,7 +6,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   
   const isAuthenticated = computed(() => !!user.value)
-  const isAdmin = computed(() => user.value?.is_admin ?? false)
+  const isAdmin = computed(() => user.value?.role_id === 1)
 
   async function fetchUser() {
     try {
