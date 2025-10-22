@@ -142,6 +142,21 @@ const availableProducts = computed(() => {
   );
 });
 
+// Computed para formatear productos con ID
+const productsWithIdLabel = computed(() => {
+  return props.products.map((product) => ({
+    ...product,
+    displayLabel: `${product.id} - ${product.name}`,
+  }));
+});
+
+const availableProductsWithId = computed(() => {
+  return availableProducts.value.map((product) => ({
+    ...product,
+    displayLabel: `${product.id} - ${product.name}`,
+  }));
+});
+
 const getProductColor = (index) => {
   const colors = [
     "success",
@@ -215,8 +230,8 @@ const getProductColor = (index) => {
               <div class="d-flex gap-2">
                 <VAutocomplete
                   v-model="formData.new_product_id"
-                  :items="availableProducts"
-                  item-title="name"
+                  :items="availableProductsWithId"
+                  item-title="displayLabel"
                   item-value="id"
                   label="Agregar Producto"
                   placeholder="Busca un producto"
@@ -224,7 +239,15 @@ const getProductColor = (index) => {
                   :disabled="!formData.employee_id"
                   clearable
                   class="flex-grow-1"
-                />
+                >
+                  <template #item="{ props: itemProps, item }">
+                    <VListItem v-bind="itemProps">
+                      <VListItemTitle>
+                        {{ item.raw.name }}
+                      </VListItemTitle>
+                    </VListItem>
+                  </template>
+                </VAutocomplete>
                 <VBtn
                   color="success"
                   :disabled="!formData.new_product_id || !formData.employee_id"
@@ -284,28 +307,39 @@ const getProductColor = (index) => {
                       </template>
 
                       <VListItemTitle>
-                        <!-- Modo normal: mostrar nombre -->
+                        <!-- Modo normal: mostrar ID y nombre -->
                         <div
                           v-if="editingProduct !== product.id"
-                          class="d-flex align-center"
+                          class="d-flex align-center gap-2"
                         >
+                          <VChip size="small" color="primary" variant="tonal">
+                            {{ product.id }}
+                          </VChip>
                           <span class="text-body-1 font-weight-medium">
                             {{ product.name }}
                           </span>
                         </div>
 
-                        <!-- Modo edición: mostrar select -->
+                        <!-- Modo edición: mostrar select con ID -->
                         <VAutocomplete
                           v-else
                           v-model="tempProductId"
-                          :items="props.products"
-                          item-title="name"
+                          :items="productsWithIdLabel"
+                          item-title="displayLabel"
                           item-value="id"
                           density="compact"
                           variant="outlined"
                           hide-details
                           class="mt-1"
-                        />
+                        >
+                          <template #item="{ props: itemProps, item }">
+                            <VListItem v-bind="itemProps">
+                              <VListItemTitle>
+                                {{ item.raw.name }}
+                              </VListItemTitle>
+                            </VListItem>
+                          </template>
+                        </VAutocomplete>
                       </VListItemTitle>
 
                       <template #append>

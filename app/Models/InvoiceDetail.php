@@ -27,6 +27,7 @@ class InvoiceDetail extends Model
         'expiration_date',
         'total_cost',
         'product_id',
+        'tax_enabled'
     ];
 
     protected $fillableDetails = self::FILLABLEDETAILS;

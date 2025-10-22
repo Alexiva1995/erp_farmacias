@@ -41,7 +41,13 @@ class Expense extends Model
         'status',
         'count',
         'amount_bs',
-        'type_of_expense',
+        'type_of_expense'
+    ];
+
+     protected $casts = [
+        'is_deductible' => 'boolean',
+        'has_invoice' => 'boolean', 
+        'iva' => 'boolean',
     ];
 
     public function category(): BelongsTo

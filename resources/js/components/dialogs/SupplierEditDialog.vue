@@ -31,12 +31,12 @@ const dias = [
   { label: "Sábado", value: "saturday" },
 ];
 
-const paymentMethodOptions = [
+/*const paymentMethodOptions = [
   { label: "Fecha de vencimiento", value: "due_date" },
   { label: "Pronto Pago", value: "early_payment" },
   { label: "Fecha de creación", value: "creation_date" },
   { label: "Días de crédito", value: "credit_days" },
-];
+];*/
 
 const isNewSupplier = computed(() => !formData.value.id);
 
@@ -506,12 +506,24 @@ watch(
                 :items="[
                   { title: 'Fecha de la factura', value: 'invoice_date' },
                   { title: 'Pronto pago', value: 'early_payment' },
-                  { title: 'Fecha de vencimiento', value: 'expiration_date' },
                   { title: 'Otro (personalizado)', value: 'custom' },
                 ]"
                 label="Fecha Límite de Pago"
                 variant="outlined"
                 :error-messages="formErrors.payment_due_type"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6" v-if="formData.payment_due_type === 'invoice_date'">
+              <VSelect
+                v-model="formData.invoice_date_reference"
+                :items="[
+                  { title: 'Fecha de Recibo', value: 'receipt_date' },
+                  { title: 'Fecha de Vencimiento', value: 'expiration_date' },
+                ]"
+                label="Referencia de Fecha de Factura"
+                variant="outlined"
+                :error-messages="formErrors.invoice_date_reference"
               />
             </VCol>
 
@@ -525,7 +537,7 @@ watch(
               />
             </VCol>
 
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="6" v-if="formData.payment_due_type !== 'invoice_date'">
               <VSelect
                 v-model="formData.payment_due_reference"
                 :items="[
