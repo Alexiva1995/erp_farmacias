@@ -677,7 +677,7 @@
                     "field": "quantity",
                     "type": "integer"
                 },
-                "15": {
+                "40": {
                     "field": "unit_cost",
                     "type": "decimal"
                 },
@@ -690,7 +690,7 @@
                     "type": "date",
                     "format": "d/m/Y"
                 },
-                "12": {
+                "37": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
                 },
