@@ -619,7 +619,7 @@
                 "target": "quantity"
             },
             "12": {
-                "file_field": "cod_articulo", 
+                "file_field": "cod_articulo",
                 "type": "string",
                 "target": "cod_supplier"
             }
@@ -803,8 +803,7 @@
                 },
                 "5": {
                     "field": "total_usd",
-                    "type": "decimal",
-                    "decimals": 2
+                    "type": "decimal"
                 }
             },
             "lines": {
