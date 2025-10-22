@@ -200,7 +200,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
@@ -262,6 +262,10 @@
                 "13": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
+                },
+                "14": {
+                    "field": "tax_enabled",
+                    "type": "boolean"
                 }
             }
         },
@@ -272,7 +276,7 @@
         "type": "ftp",
         "host": "strixposback.gotdns.com",
         "port": null,
-        "username": "CL103740@strixposback.gotdns.com",
+        "username": "CL103740",
         "password": "eyJpdiI6InN6UHZ2VGwxVzJ6b0o3TGYzT1pBUXc9PSIsInZhbHVlIjoiMTRobC9YV2kwNHZXV3ZXZXhjR3Njdz09IiwibWFjIjoiNmQ5YmRjNjg3N2NiNWJlMmYyN2VjMzllNjhhZWUwYjdkMjM5Y2JjY2RkOWNmYzA3MWMzMzczZTE2NDYyMTNlMiIsInRhZyI6IiJ9",
         "path": "inventario05-08-2025_21:54:42.txt",
         "pasv": false,
