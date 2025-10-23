@@ -579,6 +579,7 @@ class SupplierConnectionService
 
                 if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
+                    $hasIvaTax = false;
 
                     $hasIvaTax = false;
 
