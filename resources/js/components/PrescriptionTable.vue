@@ -1,22 +1,23 @@
 <script setup>
 const props = defineProps({
-  packs: { type: Array, required: true },
+  prescriptions: { type: Array, required: true },
   loading: { type: Boolean, default: false },
-  totalPacks: { type: Number, required: true },
+  totalPrescriptions: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-pack", "delete-pack", "view-pack"]);
+const emit = defineEmits(["update:options", "edit-prescription", "delete-prescription", "view-prescription"]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Nombre", key: "name", sortable: true, width: "25%" },
-  { title: "Productos", key: "products_count", sortable: true, width: "120px" },
-  { title: "Precio Total", key: "total_price", sortable: true, width: "120px" },
-  { title: "Cant. Máx.", key: "max_quantity", sortable: true, width: "120px" },
-  { title: "Fecha Límite", key: "max_sale_date", sortable: true, width: "140px" },
+  { title: "Descuento %", key: "discount_percentage", sortable: true, width: "120px" },
+  { title: "Productos", key: "products_count", sortable: true, width: "100px" },
+  { title: "Costo Total", key: "total_cost", sortable: true, width: "120px" },
+  { title: "Fecha Inicio", key: "start_date", sortable: true, width: "120px" },
+  { title: "Fecha Fin", key: "end_date", sortable: true, width: "120px" },
   { title: "Estado", key: "is_active", sortable: true, width: "100px" },
+  { title: "Vigente", key: "is_currently_active", sortable: true, width: "140px" },
   { title: "Acciones", key: "actions", sortable: false, align: "center", width: "120px" },
 ];
 
@@ -32,16 +33,16 @@ const formatCurrency = (amount) => {
   }).format(amount || 0);
 };
 
-const handleEdit = (pack) => {
-  emit('edit-pack', pack);
+const handleEdit = (prescription) => {
+  emit('edit-prescription', prescription);
 };
 
-const handleDelete = (pack) => {
-  emit('delete-pack', pack);
+const handleDelete = (prescription) => {
+  emit('delete-prescription', prescription);
 };
 
-const handleView = (pack) => {
-  emit('view-pack', pack);
+const handleView = (prescription) => {
+  emit('view-prescription', prescription);
 };
 
 </script>
@@ -52,34 +53,39 @@ const handleView = (pack) => {
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
-      :items="props.packs"
-      :items-length="props.totalPacks"
+      :items="props.prescriptions"
+      :items-length="props.totalPrescriptions"
       :loading="props.loading"
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.products_count="{ item }">
+      <template #item.discount_percentage="{ item }">
         <VChip variant="outlined" color="primary" size="small">
-          {{ Object.keys(item.pack_config || {}).length }}
+          {{ item.discount_percentage }}%
         </VChip>
       </template>
 
-      <template #item.total_price="{ item }">
+      <template #item.products_count="{ item }">
+        <VChip variant="outlined" color="info" size="small">
+          {{ item.products_count || 0 }}
+        </VChip>
+      </template>
+
+      <template #item.total_cost="{ item }">
         <span class="font-weight-bold">
-          {{ formatCurrency(item.total_price) }}
+          {{ formatCurrency(item.total_cost) }}
         </span>
       </template>
 
-      <template #item.max_quantity="{ item }">
-        <span v-if="item.max_quantity" class="text-caption">
-          {{ item.max_quantity }}
-        </span>
-        <span v-else class="text-disabled text-caption">Ilimitado</span>
-      </template>
-
-      <template #item.max_sale_date="{ item }">
+      <template #item.start_date="{ item }">
         <span class="text-caption">
-          {{ formatDate(item.max_sale_date) }}
+          {{ formatDate(item.start_date) }}
+        </span>
+      </template>
+
+      <template #item.end_date="{ item }">
+        <span class="text-caption">
+          {{ formatDate(item.end_date) }}
         </span>
       </template>
 
@@ -90,6 +96,16 @@ const handleView = (pack) => {
           size="small"
         >
           {{ item.is_active ? 'Activo' : 'Inactivo' }}
+        </VChip>
+      </template>
+
+      <template #item.is_currently_active="{ item }">
+        <VChip
+          :color="item.is_currently_active ? 'success' : 'warning'"
+          variant="flat"
+          size="small"
+        >
+          {{ item.is_currently_active ? 'Sí' : 'No' }}
         </VChip>
       </template>
 
