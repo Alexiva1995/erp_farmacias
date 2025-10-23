@@ -1,30 +1,19 @@
 <script setup>
-import { computed } from 'vue';
-
 const props = defineProps({
   searchQuery: String,
   idSearchQuery: String,
+  mode: String,
   loading: { type: Boolean, default: false },
-  mode: { type: String, default: "packs" },
   showAddButton: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
   "update:searchQuery",
   "update:idSearchQuery",
+  "update:mode",
   "clear",
-  "add-pack",
+  "add-prescription",
 ]);
-
-const searchQuery = computed({
-  get: () => props.searchQuery,
-  set: (value) => emit('update:searchQuery', value)
-});
-
-const idSearchQuery = computed({
-  get: () => props.idSearchQuery,
-  set: (value) => emit('update:idSearchQuery', value)
-});
 </script>
 
 <template>
@@ -32,18 +21,28 @@ const idSearchQuery = computed({
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">
-          <AppTextField
-            v-model="idSearchQuery"
+          <VTextField
+            :model-value="idSearchQuery"
+            @update:model-value="(value) => emit('update:idSearchQuery', value)"
             placeholder="Buscar por ID"
+            variant="outlined"
             clearable
             :disabled="props.loading"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
-          <AppTextField
-            v-model="searchQuery"
-            placeholder="Buscar por Nombre"
-            clearable
+          <VSelect
+            :model-value="mode"
+            @update:model-value="(value) => emit('update:mode', value)"
+            :items="[
+              { title: 'Todas las ofertas', value: 'all' },
+              { title: 'Ofertas activas', value: 'active' },
+              { title: 'Ofertas inactivas', value: 'inactive' },
+            ]"
+            item-title="title"
+            item-value="value"
+            label="Filtrar por estado"
+            variant="outlined"
             :disabled="props.loading"
           />
         </VCol>
@@ -66,10 +65,10 @@ const idSearchQuery = computed({
         v-if="props.showAddButton"
         color="primary"
         prepend-icon="tabler-plus"
-        @click="emit('add-pack')"
+        @click="emit('add-prescription')"
         :disabled="props.loading"
       >
-        Añadir Pack
+        Añadir Oferta de Receta
       </VBtn>
     </VCardActions>
   </VCard>
