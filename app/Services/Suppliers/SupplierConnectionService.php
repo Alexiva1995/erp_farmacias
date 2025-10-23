@@ -174,22 +174,24 @@ class SupplierConnectionService
                         // Prefijar claves del detalle
                         $prefixedDetail = [];
 
-                         foreach ($detail as $key => $value) {
-                           $prefixedDetail["detail_$key"] = $value;
+                        foreach ($detail as $key => $value) {
+                            $prefixedDetail["detail_$key"] = $value;
                         }
-                   
+
                         // Combinar sin colisión
                         $flatRow = array_merge($prefixedHeader, $prefixedDetail);
                         $flatData[] = $flatRow;
                     }
-                    
+
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
+
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
                 }
             }
+
             return [
                 "products" => $productData ?? [],
                 "invoices" => $invoiceResults ?? [],
@@ -207,7 +209,7 @@ class SupplierConnectionService
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
         $has_header = $connection->has_header;
-;
+        ;
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
         $barcodes = [];
@@ -393,7 +395,7 @@ class SupplierConnectionService
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
         $separator = $structure["separator"] ?? ";";
-       
+
         $invoices = [];
         $bufferLines = [];
 
@@ -421,31 +423,31 @@ class SupplierConnectionService
                 $originalIndex = array_keys($structure['lines'])[$barcodeIndexFlat];
                 $barcode = trim($cols[$originalIndex] ?? "");
                 if ($barcode !== "") {
-                     $barcodes[] = $barcode;
-                 }
+                    $barcodes[] = $barcode;
+                }
             }
         }
 
         $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
-        
+
         if ($mode === 'flat') {
             $invoiceGroups = [];
-            
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
-                
+
                 // Encabezado desde la misma línea
                 $header = [];
                 foreach ($structure['header'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
                     $header[$meta['field']] = $this->castValue($raw, $meta);
                 }
-                
+
                 if (in_array($connection->supplier_id, [23])) {
                     if (isset($header["tax_amount"])) {
                         $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
                         $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
-                    }else{
+                    } else {
                         $header['exempt_amount'] = $header["total_amount"];
                     }
                 }
@@ -480,7 +482,7 @@ class SupplierConnectionService
                         $ivaTaxValue = floatval($value);
                     }
                 }
-              
+
                 if ($ivaTaxValue > 0) {
                     $lineData['tax_enabled'] = 1;
                 }
@@ -520,7 +522,7 @@ class SupplierConnectionService
 
                 $invoiceGroups[$invoiceNumber]['lines'][] = $lineData;
             }
-            
+
             foreach ($invoiceGroups as $number => $invoice) {
                 $invoices = $invoice;
                 $seenInvoiceNumbers[] = $number;
@@ -544,7 +546,6 @@ class SupplierConnectionService
                         $value = $this->castValue($raw, $meta);
                         $header[$meta["field"]] = $value;
                     }
-
                     $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
                     $header['invoice_number'] = $invoiceNumber;
 
@@ -581,13 +582,19 @@ class SupplierConnectionService
 
                 if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
+                    $hasIvaTax = false;
+
+                    $hasIvaTax = false;
 
                     foreach ($structure["lines"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
                         $lineData[$meta["field"]] = $value;
-                    }
 
+                        if ($meta["field"] === "porcentaje_iva" && is_numeric($value) && $value == 16) {
+                            $hasIvaTax = true;
+                        }
+                    }
                     $barcode = $lineData["barcode"] ?? null;
 
                     // ✅ Solo crear producto si no existe
@@ -605,7 +612,10 @@ class SupplierConnectionService
                     $unitCost = floatval($lineData["unit_cost"] ?? 0);
                     $quantity = intval($lineData["quantity"] ?? 0);
                     $lineData["total_cost"] = $unitCost * $quantity;
-                    $lineData["tax_enabled"] = $lineData["porcentaje_iva"] == 16;
+
+                    if ($hasIvaTax) {
+                        $lineData["tax_enabled"] = 1;
+                    }
 
                     $bufferLines[] = $lineData;
                 }
@@ -669,16 +679,20 @@ class SupplierConnectionService
 
     private function castValue(string $raw, array $meta): mixed
     {
-        //$value = trim($raw);
         $value = trim(str_replace('"', '', $raw));
-      //  dd($value);
-        //Log::info("castValue".$value);
-        //Log::info("meta".$meta["type"]);
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
-            "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
-            "date" => $this->parseDate($value, $meta["format"] ?? null),
+            "decimal" => is_numeric($value)
+            ? number_format(
+                (float) $value / (isset($meta['decimals']) && $meta['decimals'] ? 100 : 1),
+                2,
+                ".",
+                ""
+            )
+            : null,
+            "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
+            "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
             default => $value,
         };
     }
@@ -714,7 +728,7 @@ class SupplierConnectionService
     public function fetchFromAPI($token, $data, $client, $path, $method = 'post'): array
     {
         $productResponse = [];
-        
+
         $client->{$method}(
             $path,
             [
@@ -728,9 +742,9 @@ class SupplierConnectionService
         }, function (\Exception $e) {
             echo 'Error: ' . $e->getMessage() . PHP_EOL;
         });
-        
+
         Loop::run();
-       
+
         return $productResponse;
     }
 
