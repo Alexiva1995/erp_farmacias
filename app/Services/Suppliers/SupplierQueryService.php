@@ -164,7 +164,7 @@ class SupplierQueryService
                 ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
                 ->toArray();
-
+         
             $existingInvoiceNumbers = Invoice::whereIn(
                 'invoice_number',
                 collect($invoices)->pluck('header.invoice_number')->filter()->unique()
