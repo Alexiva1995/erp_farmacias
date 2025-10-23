@@ -17,7 +17,7 @@ const dateColorPesos = ref('success');
 const getDollarBCV = async () => {
   try {
     const response = await axios.get(
-      'http://127.0.0.1:8000/api/finances/exchange-rates/consultOneBCV'
+      '/finances/exchange-rates/consultOneBCV'
     );
 
     const fechaRecibida = new Date(response.data.updated_at);
@@ -51,7 +51,7 @@ const getDollarBCV = async () => {
 const getCOP = async () => {
   try {
     const response = await axios.get(
-      'http://127.0.0.1:8000/api/finances/exchange-rates/consultOneCOP'
+      '/finances/exchange-rates/consultOneCOP'
     );
     //profitability.value = response.data.default_profitability_percentage;
     const fechaRecibida = new Date(response.data.updated_at);

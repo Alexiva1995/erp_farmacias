@@ -1,4 +1,4 @@
-<script s <script setup>
+<script setup>
 import { ref } from "vue";
 
 const props = defineProps({
@@ -14,12 +14,16 @@ const emit = defineEmits([
   "sort",
 ]);
 
+// Estados actualizados
 const statusOptions = [
   { title: "Pendiente", value: "Pendiente" },
+  { title: "Procesada", value: "Procesada" },
   { title: "Completada", value: "Completada" },
+  { title: "Vencida", value: "Vencida" },
   { title: "Cancelada", value: "Cancelada" },
 ];
 
+// Opciones de ordenamiento actualizadas
 const sortOptions = [
   {
     title: "Actividad A-Z",
@@ -34,15 +38,27 @@ const sortOptions = [
     order: "desc",
   },
   {
-    title: "Más Recientes",
+    title: "Más Urgente (Vence pronto)",
+    icon: "tabler-clock-exclamation",
+    key: "due_date",
+    order: "asc",
+  },
+  {
+    title: "Menos Urgente",
     icon: "tabler-clock",
-    key: "assigned_date",
+    key: "due_date",
+    order: "desc",
+  },
+  {
+    title: "Más Recientes",
+    icon: "tabler-calendar-plus",
+    key: "scheduled_date",
     order: "desc",
   },
   {
     title: "Más Antiguas",
-    icon: "tabler-clock",
-    key: "assigned_date",
+    icon: "tabler-calendar-minus",
+    key: "scheduled_date",
     order: "asc",
   },
 ];

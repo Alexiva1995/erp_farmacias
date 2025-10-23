@@ -4,6 +4,8 @@ namespace App\Services\Suppliers;
 
 use App\Models\ExchangeRate;
 use App\Models\Product;
+use App\Models\ProductLot;
+use App\Models\ProductSupplier;
 use App\Models\SupplierConnection;
 use App\Helpers\FtpCrypt;
 use Exception;
@@ -92,6 +94,7 @@ class SupplierConnectionService
                 if (!str_ends_with($filePath, ".txt")) {
                     continue;
                 }
+
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
@@ -170,6 +173,7 @@ class SupplierConnectionService
 
                         // Prefijar claves del detalle
                         $prefixedDetail = [];
+
                         foreach ($detail as $key => $value) {
                             $prefixedDetail["detail_$key"] = $value;
                         }
@@ -205,7 +209,7 @@ class SupplierConnectionService
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
         $has_header = $connection->has_header;
-
+        ;
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
         $barcodes = [];
@@ -215,23 +219,25 @@ class SupplierConnectionService
             array_shift($lines);
         }
 
-        $usdCurrency = ExchangeRate::where("currency_code", "USD")
-            ->whereDate("created_at", \Carbon\Carbon::today())
+        $usdCurrency = ExchangeRate::orderByDesc('created_at')
+            ->where('currency_code', '=', 'BS')
             ->first();
 
         if (!isset($usdCurrency)) {
             $exitCode = Artisan::call("app:update-exchange-rate");
 
             if ($exitCode === 0) {
-                $usdCurrency = ExchangeRate::where("currency_code", "USD")
-                    ->whereDate("created_at", \Carbon\Carbon::today())
+                $exchange_rate = ExchangeRate::orderByDesc('created_at')
+                    ->where('currency_code', '=', 'BS')
                     ->first();
+
             } else {
-                Log::error("Failed to fetch exchange rate");
-                throw new \Exception("No se pudo guardar la tasa del día USD");
+                \Log::error("Failed to fetch exchange rate");
+                throw new \Exception("No se pudo guardar la tasa del día BS");
             }
         }
 
+        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
@@ -242,7 +248,6 @@ class SupplierConnectionService
             $barcodes[] = trim($cols[$barcodeKey] ?? "");
         }
 
-        $structure_for_parsing = json_decode($connection->parse_using);
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
@@ -263,6 +268,7 @@ class SupplierConnectionService
             ];
 
             $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
+
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
@@ -363,7 +369,7 @@ class SupplierConnectionService
                 }
             }
 
-            if(!isset($entry["quantity"]))
+            if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
 
             if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
@@ -392,6 +398,7 @@ class SupplierConnectionService
 
         $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
         $barcodes = [];
+        $mode = $structure['mode'] ?? 'grouped';
 
         foreach ($lines as $line) {
             $cols = explode($separator, $line);
@@ -407,11 +414,18 @@ class SupplierConnectionService
                     $barcodes[] = $barcode;
                 }
             }
+
+            $barcodeIndexFlat = array_search('barcode', array_column($structure['lines'], 'field'));
+            if ($mode === 'flat' && $barcodeIndexFlat !== false) {
+                $originalIndex = array_keys($structure['lines'])[$barcodeIndexFlat];
+                $barcode = trim($cols[$originalIndex] ?? "");
+                if ($barcode !== "") {
+                    $barcodes[] = $barcode;
+                }
+            }
         }
 
         $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
-
-        $mode = $structure['mode'] ?? 'grouped';
 
         if ($mode === 'flat') {
             $invoiceGroups = [];
@@ -424,6 +438,23 @@ class SupplierConnectionService
                 foreach ($structure['header'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
                     $header[$meta['field']] = $this->castValue($raw, $meta);
+                }
+
+                if (in_array($connection->supplier_id, [23])) {
+                    if (isset($header["tax_amount"])) {
+                        $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                        $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                    } else {
+                        $header['exempt_amount'] = $header["total_amount"];
+                    }
+                }
+
+                $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                $totalAmount = floatval($header['total_amount'] ?? 0);
+                if ($exchangeRate > 0) {
+                    $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
+                } else {
+                    $header['total_usd'] = 0.00;
                 }
 
                 $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
@@ -440,10 +471,28 @@ class SupplierConnectionService
 
                 // Línea de producto
                 $lineData = [];
+                $ivaTaxValue = 0;
+                $lineData['tax_enabled'] = 0;
+
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    $lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    Log::info('$raw' . $raw);
+                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    $value = $this->castValue($raw, $meta);
+                    $lineData[$meta['field']] = $value;
+
+                    if ($meta["field"] === "porcentaje_iva" && is_numeric($value)) {
+                        $ivaTaxValue = floatval($value);
+                    }
                 }
+
+                if ($ivaTaxValue > 0) {
+                    $lineData['tax_enabled'] = 1;
+                }
+
+                $unitCost = floatval($lineData["unit_cost"] ?? 0);
+                $quantity = intval($lineData["quantity"] ?? 0);
+                $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
 
                 $barcode = $lineData['barcode'] ?? null;
 
@@ -494,7 +543,6 @@ class SupplierConnectionService
                         $value = $this->castValue($raw, $meta);
                         $header[$meta["field"]] = $value;
                     }
-
                     $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
                     $header['invoice_number'] = $invoiceNumber;
 
@@ -503,7 +551,7 @@ class SupplierConnectionService
                         continue;
                     }
 
-                    if (in_array($connection->supplier_id, [15, 38])) {
+                    if (in_array($connection->supplier_id, [9, 15, 38])) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
@@ -531,13 +579,19 @@ class SupplierConnectionService
 
                 if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
+                    $hasIvaTax = false;
+
+                    $hasIvaTax = false;
 
                     foreach ($structure["lines"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
                         $lineData[$meta["field"]] = $value;
-                    }
 
+                        if ($meta["field"] === "porcentaje_iva" && is_numeric($value) && $value == 16) {
+                            $hasIvaTax = true;
+                        }
+                    }
                     $barcode = $lineData["barcode"] ?? null;
 
                     // ✅ Solo crear producto si no existe
@@ -556,11 +610,15 @@ class SupplierConnectionService
                     $quantity = intval($lineData["quantity"] ?? 0);
                     $lineData["total_cost"] = $unitCost * $quantity;
 
+                    if ($hasIvaTax) {
+                        $lineData["tax_enabled"] = 1;
+                    }
+
                     $bufferLines[] = $lineData;
                 }
             }
         }
-        
+
         return $invoices;
     }
 
@@ -618,13 +676,21 @@ class SupplierConnectionService
 
     private function castValue(string $raw, array $meta): mixed
     {
-        $value = trim($raw);
+        $value = trim(str_replace('"', '', $raw));
 
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,
-            "decimal" => is_numeric($value) ? number_format((float) $value, 2, ".", "") : null,
-            "date" => $this->parseDate($value, $meta["format"] ?? null),
+            "decimal" => is_numeric($value)
+            ? number_format(
+                (float) $value / (isset($meta['decimals']) && $meta['decimals'] ? 100 : 1),
+                2,
+                ".",
+                ""
+            )
+            : null,
+            "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
+            "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
             default => $value,
         };
     }
@@ -769,10 +835,9 @@ class SupplierConnectionService
 
                     // Divide la parte numérica final en un máximo de 10 elementos usando espacios como delimitador
                     $nums = preg_split('/\s+/', trim($numericTail), 10);
-                    $exisMerida = $nums[0];
-                    $unit_cost_raw = $nums[1];
-                    $exisCaracas = $nums[2];
-                    $exisOriente = $nums[3];
+                    $quantity = $nums[0];
+                    $unit_cost = $nums[1];
+                    $total_cost = $nums[4];
 
                     // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
                     preg_match('/\b(\d{12,13})\b/', $line, $b);
@@ -783,8 +848,8 @@ class SupplierConnectionService
                     $barcode = $b[1] ?? '';
                     $expiration = $e[1] ?? '';
 
-                    // Si se encontraron código de barras, fecha de vencimiento y la existencia es numérica...
-                    if ($barcode && $expiration && is_numeric($exisMerida)) {
+                    // Si se encontraron código de barras, fecha de vencimiento
+                    if ($barcode && $expiration) {
                         // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
                         $name = str_replace(';', '', $name);
 
@@ -793,12 +858,10 @@ class SupplierConnectionService
                             '01',
                             $invoice,
                             $cod_supplier,
-                            $category,
                             $name,
-                            $exisMerida,
-                            $unit_cost_raw,
-                            $exisCaracas,
-                            $exisOriente,
+                            $quantity,
+                            $unit_cost,
+                            $total_cost,
                             $barcode,
                             $expiration
                         ]);
@@ -844,16 +907,13 @@ class SupplierConnectionService
 
             // El segundo campo es el ID de factura
             $id = $parts[1];
+            $total_amount = $parts[3];
             // Los dos últimos campos deben ser valores numéricos (montos, cantidades, etc.)
-            $last1 = $parts[count($parts) - 2] ?? '';
-            $last2 = $parts[count($parts) - 1] ?? '';
+            $exchange_rate = $parts[count($parts) - 2] ?? '';
+            $total_usd = $parts[count($parts) - 1] ?? '';
 
-            if (!is_numeric($last1) || !is_numeric($last2)) {
-                throw new Exception("Final fields not numeric in 02 line");
-            }
-
-            // Formato de salida para registro 02: tipo;id_factura;campo_numerico_1;fecha(Y-m-d);campo_numerico_2
-            return implode(';', ['02', $id, $last1, $mysqlDate, $last2]);
+            // Formato de salida para registro 02: tipo;id_factura;total_amount;fecha(Y-m-d);exchange_rate;total_usd
+            return implode(';', ['02', $id, $total_amount, $mysqlDate, $exchange_rate, $total_usd]);
         }
 
         // Si la línea no coincide con ninguno de los formatos esperados, lanza una excepción
