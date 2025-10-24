@@ -25,32 +25,17 @@ class PayslipRepository
 
   public function generate(Carbon $date, string $name, Collection $details): bool
   {
-    $exchange_rate = ExchangeRate::orderByDesc('created_at')
-      ->where('currency_code', '=', 'BS')
-      ->first();
-
-    if (!isset($exchange_rate)) {
-      $exitCode = Artisan::call("app:update-exchange-rate");
-
-      if ($exitCode === 0) {
-        $exchange_rate = ExchangeRate::orderByDesc('created_at')
-          ->where('currency_code', '=', 'BS')
-          ->first();
-
-      } else {
-        \Log::error("Failed to fetch exchange rate");
-        throw new \Exception("No se pudo guardar la tasa del día BS");
-      }
-    }
-
+// Obtener el exchange_rate del día de la nómina
+$exchangeRate = ExchangeRate::where('currency_code', 'USD')
+  ->whereDate('created_at', $date->format('Y-m-d'))
+  ->orderByDesc('created_at')
+  ->value('rate') ?? 1;
 
     $payslip = Payslip::create([
       'payslip_date' => $date->format('Y-m-d'),
       'name' => $name,
       'total' => 0,
-      'exchange_rate' => $exchange_rate->rate
-    ]);
-
+      'exchange_rate' => $exchangeRate,
     foreach ($details as $detail) {
       PayslipDetails::create([
         'payslip_id' => $payslip->id,

@@ -199,7 +199,7 @@ class SocialBenefitRepository
     $settlement = Employee::query()
       ->select([
         DB::raw("COALESCE(ROUND(
-        SUM(pd.amount) / 
+        SUM(pd.amount * ps.exchange_rate) / 
             CASE COUNT(pd.id)
               WHEN 6 THEN 3
               WHEN 5 THEN 2.5
@@ -214,9 +214,11 @@ class SocialBenefitRepository
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
       ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
+      ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->where('employees.id', $employee->id)
       ->where('sc.name', 'Salario Base')
+      ->whereNotNull('ps.exchange_rate')
       ->groupBy(['employees.id', 'employees.created_at'])
       ->orderByDesc(DB::raw('MAX(pd.created_at)'))
       ->limit(6)
@@ -257,14 +259,7 @@ class SocialBenefitRepository
       ->whereIn('sc.name', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
       ->select(
         'sc.name as concept_name',
-        DB::raw('pd.amount * (
-            SELECT rate
-            FROM exchange_rates
-            WHERE currency_code = \'USD\'
-              AND DATE_FORMAT(created_at, \'%Y-%m-%d\') = DATE_FORMAT(ps.payslip_date, \'%Y-%m-%d\')
-            ORDER BY created_at DESC
-            LIMIT 1
-        ) AS amount_usd')
+        DB::raw('pd.amount * ps.exchange_rate AS amount_usd')
       );
     Log::info('Repository', ['sub-query' => $sub]);
 
@@ -519,13 +514,13 @@ class SocialBenefitRepository
   {
     $currentDate = $this->getCurrentDateForMySQL();
 
-    // Primero intentar obtener salarios con conversión USD->Bs
+    // Primero intentar obtener salarios con conversión USD->Bs usando exchange_rate específico de cada nómina
     $salariesWithUsdConversion = DB::table('employees')
       ->select([
         'pd.amount as amount_original',
         'ps.payslip_date',
-        'er.rate as exchange_rate',
-        DB::raw("pd.amount * er.rate AS amount_bs_calculated"),
+        'ps.exchange_rate as exchange_rate',
+        DB::raw("pd.amount * ps.exchange_rate AS amount_bs_calculated"),
         DB::raw("'USD' as detected_currency")
       ])
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
@@ -533,14 +528,10 @@ class SocialBenefitRepository
       ->leftJoin('payslip_details as pd', 'pd.users_salary_details_id', '=', 'usd.id')
       ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->leftJoin('exchange_rates as er', function ($join) {
-        $join->on(DB::raw("DATE_FORMAT(er.created_at, '%Y-%m-%d')"), '=', DB::raw("DATE_FORMAT(ps.payslip_date, '%Y-%m-%d')"))
-          ->where('er.currency_code', '=', 'USD');
-      })
       ->where('employees.id', $employee->id)
       ->where('sc.name', 'Salario Base')
       ->whereNotNull('pd.amount')
-      ->whereNotNull('er.rate')
+      ->whereNotNull('ps.exchange_rate')
       ->orderByDesc('ps.payslip_date')
       ->limit($count)
       ->get();

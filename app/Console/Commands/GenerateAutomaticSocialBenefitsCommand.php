@@ -276,6 +276,12 @@ class GenerateAutomaticSocialBenefitsCommand extends Command
     private function generatePayslipDetail($salaryDetail, $amount, $conceptName)
     {
         try {
+            // Obtener el exchange_rate del día actual
+            $exchangeRate = ExchangeRate::where('currency_code', 'USD')
+                ->whereDate('created_at', Carbon::now()->format('Y-m-d'))
+                ->orderByDesc('created_at')
+                ->value('rate') ?? 1;
+
             // Buscar o crear un payslip para la fecha actual
             $payslip = Payslip::firstOrCreate(
                 [
@@ -287,6 +293,7 @@ class GenerateAutomaticSocialBenefitsCommand extends Command
                     'name' => "Prestación Automática - {$conceptName} - " . Carbon::now()->format('Y-m-d'),
                     'total' => 0,
                     'status' => 1,
+                    'exchange_rate' => $exchangeRate,
                 ]
             );
 
