@@ -106,6 +106,10 @@
                     "field": "descripcion_producto",
                     "type": "string"
                 },
+                "8": {
+                    "field": "total_amount",
+                    "type": "decimal"
+                },
                 "6": {
                     "field": "quantity",
                     "type": "integer"
@@ -619,7 +623,7 @@
                 "target": "quantity"
             },
             "12": {
-                "file_field": "cod_articulo", 
+                "file_field": "cod_articulo",
                 "type": "string",
                 "target": "cod_supplier"
             }
