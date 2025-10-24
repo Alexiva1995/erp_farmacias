@@ -104,7 +104,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             }
 
             $queryService->storeSupplierConnectionData($this->supplier, $results);
-            $queryService->addDiscountsToProducts($this->supplier);
+            if(!in_array($this->supplier->id, [2]))
+                $queryService->addDiscountsToProducts($this->supplier);
 
             if (!$this->filePath) {
                 $supplierConnection->update(["last_connection" => now()->today()]);

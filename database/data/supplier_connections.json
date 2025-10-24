@@ -527,7 +527,7 @@
                     "field": "exempt_amount",
                     "type": "decimal"
                 },
-                "4": {
+                "5": {
                     "field": "tax_amount",
                     "type": "decimal"
                 },
