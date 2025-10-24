@@ -365,5 +365,17 @@ class ProductController extends Controller
                 'data' => []
             ], 500);
         }
+    public function getInventoryValue(Request $request)
+    {
+        $inventoryValue = $this->productQueryService->calculateInventoryValue();
+
+        return response()->json([
+            'data' => [
+                'total_value' => $inventoryValue,
+                'currency' => 'USD',
+                'calculated_at' => now()->toISOString()
+            ],
+            'message' => 'Valor del inventario calculado con éxito.'
+        ], 200);
     }
 }

@@ -58,6 +58,7 @@ class InvoiceController extends Controller
             'taxable_base' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|gt:0',
+            'created_invoice_date' => 'required|date',
         ];
         $currency = $request->input('currency');
 
@@ -65,8 +66,8 @@ class InvoiceController extends Controller
             $rules['exchange_rate'] = 'required|numeric|gt:0';
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         } else {
-            $rules['exchange_rate'] = 'nullable|numeric|gt:0';
-            $rules['total_usd'] = 'nullable|numeric|gt:0';
+            $rules['exchange_rate'] = 'nullable|numeric';
+            $rules['total_usd'] = 'nullable|numeric';
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -173,6 +174,7 @@ class InvoiceController extends Controller
             'taxable_base' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|gt:0',
+            'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
         ];
         $currency = $request->input('currency');
 
@@ -183,7 +185,6 @@ class InvoiceController extends Controller
             $rules['exchange_rate'] = 'nullable|numeric|gt:0';
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         }
-
         $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
@@ -264,5 +265,20 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
+    }
+
+    public function getSupplierDebts(Request $request)
+    {
+        $supplierDebts = $this->invoiceQueryService->calculateSupplierDebts();
+
+        return response()->json([
+            'data' => [
+                'total_debts' => $supplierDebts,
+                'currency' => 'USD',
+                'calculated_at' => now()->toISOString(),
+                'description' => 'Facturas pendientes de pago a proveedores'
+            ],
+            'message' => 'Deudas con proveedores calculadas con éxito.'
+        ], 200);
     }
 }

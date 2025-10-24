@@ -1,67 +1,55 @@
 <script setup>
-import InventoryCycleFilters from "@/components/InventoryCycleFilters.vue";
-import ProductHistoryTable from "@/components/ProductHistoryTable.vue";
+import CycleSummaryFilters from "@/components/CycleSummaryFilters.vue";
+import CycleSummaryTable from "@/components/CycleSummaryTable.vue";
+import CycleDetailsModal from "@/components/dialogs/CycleDetailsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
 
-const products = ref([]);
-const totalProduct = ref(0);
+const cycles = ref([]);
+const totalCycles = ref(0);
 const loading = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-const searchQuery = ref("");
-const selectedLaboratory = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
-const laboratories = ref([]);
+const cycleStatus = ref(null);
 const isLoadingFilters = ref(false);
 
-const fetchSelectOptions = async () => {
-  isLoadingFilters.value = true;
-  try {
-    const labResponse = await axios.get("/laboratories");
-    laboratories.value = labResponse.data.data;
-  } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
-    toast.error("No se pudieron cargar los filtros.");
-    laboratories.value = [];
-  } finally {
-    isLoadingFilters.value = false;
-  }
-};
+// Modal state
+const showCycleDetailsModal = ref(false);
+const selectedCycleId = ref(null);
 
-const fetchProducts = async () => {
+const fetchCycles = async () => {
   loading.value = true;
 
   const params = {
-    history: true,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    cycleStatus: cycleStatus.value,
   };
 
+  // Remover parámetros null o vacíos
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
 
   try {
-    const response = await axios.get("/products/count", {
+    const response = await axios.get("/inventory/cycle/summary", {
       params,
     });
-    products.value = response.data.data;
-    totalProduct.value = response.data.total;
+    cycles.value = response.data.data;
+    totalCycles.value = response.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener el historial de conteos:", error);
-    toast.error("No se pudo cargar el historial.");
+    console.error("Hubo un error al obtener el resumen de ciclos:", error);
+    toast.error("No se pudo cargar el resumen de ciclos.");
   } finally {
     loading.value = false;
   }
@@ -69,30 +57,21 @@ const fetchProducts = async () => {
 
 let debounceTimer;
 watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    searchQuery,
-    selectedLaboratory,
-    startDate,
-    endDate,
-  ],
+  [page, itemsPerPage, sortBy, orderBy, startDate, endDate, cycleStatus],
   () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
+    debounceTimer = setTimeout(() => fetchCycles(), 300);
   },
   { deep: true }
 );
 
-watch([searchQuery, selectedLaboratory, startDate, endDate], () => {
+// Resetear página cuando se cambian los filtros
+watch([startDate, endDate, cycleStatus], () => {
   page.value = 1;
 });
 
 onMounted(() => {
-  fetchSelectOptions();
-  fetchProducts();
+  fetchCycles();
 });
 
 const updateTableOptions = (options) => {
@@ -108,10 +87,9 @@ const updateTableOptions = (options) => {
 };
 
 const handleClearFilters = () => {
-  searchQuery.value = "";
-  selectedLaboratory.value = null;
   startDate.value = null;
   endDate.value = null;
+  cycleStatus.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -120,28 +98,38 @@ const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
+
+const viewCycleDetails = (cycleId) => {
+  selectedCycleId.value = cycleId;
+  showCycleDetailsModal.value = true;
+};
 </script>
 
 <template>
   <div>
-    <InventoryCycleFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
+    <CycleSummaryFilters
       v-model:startDate="startDate"
       v-model:endDate="endDate"
-      :laboratories="laboratories"
+      v-model:cycleStatus="cycleStatus"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
     />
 
-    <ProductHistoryTable
-      :products="products"
+    <CycleSummaryTable
+      :cycles="cycles"
       :loading="loading"
-      :total-product="totalProduct"
+      :total-cycles="totalCycles"
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @view-cycle-details="viewCycleDetails"
+    />
+
+    <!-- Modal de detalles del ciclo -->
+    <CycleDetailsModal
+      v-model="showCycleDetailsModal"
+      :cycle-id="selectedCycleId"
     />
   </div>
 </template>

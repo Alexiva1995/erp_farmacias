@@ -25,9 +25,11 @@ class Invoice extends Model
         'exchange_rate',
         'total_usd',
         'status',
+        'status_payment',
         'uploaded_by',
         'registered_by',
         'ordered_by',
+        'created_invoice_date'
     ];
 
     public const FILLABLEHEADER = [
