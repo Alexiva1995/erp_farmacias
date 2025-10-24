@@ -530,7 +530,7 @@ class SupplierConnectionService
 
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
-                if ($separator === "\t") {
+                if ($connection->supplier_id === 27) {
                     $cols = explode(";", $this->convertLineToCSV($line));
                 }
                 $tipo = trim($cols[0] ?? "");
@@ -556,7 +556,9 @@ class SupplierConnectionService
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
 
-                        $header["total_amount"] = $totalUSD * $exchangeRate;
+                        if ($connection->supplier_id !== 9) {
+                            $header["total_amount"] = $totalUSD * $exchangeRate;
+                        }
 
                         if (isset($header["tax_amount"])) {
                             $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
