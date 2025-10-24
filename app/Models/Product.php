@@ -289,10 +289,6 @@ class Product extends Model
     {
         $this->attributes['name'] = Str::upper($value);
     }
-    public function invoiceCounts()
-    {
-        return $this->hasMany(InvoiceCount::class);
-    }
 
     /**
      * Obtener la fecha de expiración más próxima del producto
