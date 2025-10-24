@@ -289,4 +289,65 @@ class Product extends Model
     {
         $this->attributes['name'] = Str::upper($value);
     }
+    public function invoiceCounts()
+    {
+        return $this->hasMany(InvoiceCount::class);
+    }
+
+    /**
+     * Obtener la fecha de expiración más próxima del producto
+     */
+    public function getNextExpirationAttribute()
+    {
+        $nextLot = $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->first();
+
+        return $nextLot ? $nextLot->expiration_date : null;
+    }
+
+    /**
+     * Obtener el lote con la fecha de expiración más próxima
+     */
+    public function getNextExpiringLotAttribute()
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->first();
+    }
+
+    /**
+     * Obtener todos los lotes con stock disponibles, ordenados por expiración
+     */
+    public function getAvailableLotsAttribute()
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->get();
+    }
+
+    /**
+     * Verificar si el producto tiene stock disponible
+     */
+    public function getHasStockAttribute(): bool
+    {
+        return $this->stock > 0;
+    }
+
+    /**
+     * Obtener el stock total disponible
+     */
+    public function getAvailableStockAttribute(): int
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->sum('quantity');
+    }
 }

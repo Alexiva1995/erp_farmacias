@@ -49,6 +49,13 @@ use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ReturnsController;
+use App\Http\Controllers\Api\IndividualOfferController;
+use App\Http\Controllers\Api\CategoryOfferController;
+use App\Http\Controllers\Api\CompanyOfferController;
+use App\Http\Controllers\Api\DoctorOfferController;
+use App\Http\Controllers\Api\ExpirationOfferController;
+use App\Http\Controllers\Api\ProductPackController;
+use App\Http\Controllers\Api\PrescriptionOfferController;
 use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
 
@@ -82,6 +89,8 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de Productos
     Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/productsAll', [ProductController::class, 'getProducts']);
+    Route::get('/products/autocomplete', [ProductController::class, 'forAutocomplete']);
     Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
@@ -109,6 +118,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de Expiraciones
     Route::get("/products/expirations", [ExpirationController::class, "index"]);
+    Route::get("/products/expirations-all", [ExpirationController::class, "getExpiringAll"]);
     Route::put("/lots/{lot}/expire", [ExpirationController::class, "expire"]);
     Route::post("/lots/expire-multiple", [ExpirationController::class, "expireMultiple"]);
     Route::get("/expired-logs/summary", [ExpirationController::class, "getSummary"]);
@@ -199,6 +209,55 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+        // Rutas de Promociones
+        Route::prefix("promotions")->group(function () {
+            Route::prefix("individual")->group(function () {
+                Route::get('/', [IndividualOfferController::class, "index"]);
+                Route::post('/', [IndividualOfferController::class, "store"]);
+                Route::put('/{id}', [IndividualOfferController::class, "update"]);
+                Route::delete('/{id}', [IndividualOfferController::class, 'destroy']);
+            });
+            Route::prefix("category")->group(function () {
+                Route::get('/', [CategoryOfferController::class, "index"]);
+                Route::post('/', [CategoryOfferController::class, "store"]);
+                Route::put('/{id}', [CategoryOfferController::class, "update"]);
+                Route::delete('/{id}', [CategoryOfferController::class, 'destroy']);
+            });
+            Route::prefix("company-offer")->group(function () {
+                Route::get('/', [CompanyOfferController::class, "index"]);
+                Route::post('/', [CompanyOfferController::class, "store"]);
+                Route::put('/{id}', [CompanyOfferController::class, "update"]);
+                Route::delete('/{id}', [CompanyOfferController::class, 'destroy']);
+            });
+            Route::prefix("doctor-offer")->group(function () {
+                Route::get('/', [DoctorOfferController::class, "index"]);
+                Route::post('/', [DoctorOfferController::class, "store"]);
+                Route::put('/{id}', [DoctorOfferController::class, "update"]);
+                Route::delete('/{id}', [DoctorOfferController::class, 'destroy']);
+            });
+            Route::prefix("expiration-offer")->group(function () {
+                Route::get('/', [ExpirationOfferController::class, "index"]);
+                Route::post('/', [ExpirationOfferController::class, "store"]);
+                Route::put('/{id}', [ExpirationOfferController::class, "update"]);
+                Route::delete('/{id}', [ExpirationOfferController::class, 'destroy']);
+                Route::get('/available-product-lots', [ExpirationOfferController::class, 'getAvailableProductLots']);
+            });
+            Route::prefix("product-packs")->group(function () {
+                Route::get('/', [ProductPackController::class, "index"]);
+                Route::post('/', [ProductPackController::class, "store"]);
+                Route::get('/{id}', [ProductPackController::class, "show"]);
+                Route::put('/{id}', [ProductPackController::class, "update"]);
+                Route::delete('/{id}', [ProductPackController::class, 'destroy']);
+            });
+            Route::prefix("prescription-offer")->group(function () {
+                Route::get('/', [PrescriptionOfferController::class, "index"]);
+                Route::post('/', [PrescriptionOfferController::class, "store"]);
+                Route::get('/{id}', [PrescriptionOfferController::class, "show"]);
+                Route::put('/{id}', [PrescriptionOfferController::class, "update"]);
+                Route::delete('/{id}', [PrescriptionOfferController::class, 'destroy']);
+            });
+        });
+    });
         Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
         Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);
     });

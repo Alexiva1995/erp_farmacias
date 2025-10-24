@@ -14,8 +14,7 @@ class ExpirationController extends Controller
     public function __construct(
         private ExpirationQueryService $queryService,
         private ExpirationActionService $actionService
-    ) {
-    }
+    ) {}
 
     /**
      * Obtiene una lista de lotes próximos a vencer.
@@ -34,6 +33,18 @@ class ExpirationController extends Controller
     }
 
     /**
+     * Obtiene una lista de lotes próximos a vencer sin paginar.
+     */
+    public function getExpiringAll(Request $request)
+    {
+        $query = $this->queryService->getExpiringLotsQuery($request);
+
+        $allResults = $query->get();
+
+        return response()->json($allResults);
+    }
+
+    /**
      * Marca un lote como caducado (sin redistribuir el costo).
      */
     public function expire(ProductLot $lot)
@@ -42,7 +53,6 @@ class ExpirationController extends Controller
             $this->actionService->expireLot($lot);
 
             return response()->json(['message' => 'Lote marcado como caducado con éxito.'], 200);
-
         } catch (\Exception $e) {
             $statusCode = $e->getCode() === 400 ? 400 : 500;
             return response()->json(['message' => $e->getMessage()], $statusCode);
@@ -64,7 +74,6 @@ class ExpirationController extends Controller
             );
 
             return response()->json($previewData);
-
         } catch (\Exception $e) {
             $statusCode = is_numeric($e->getCode()) && $e->getCode() > 0 ? $e->getCode() : 500;
             return response()->json(['message' => $e->getMessage()], $statusCode);
@@ -102,7 +111,6 @@ class ExpirationController extends Controller
                     'message' => $result['message']
                 ], 400);
             }
-
         } catch (\Exception $e) {
             $statusCode = $e->getCode() === 400 ? 400 : 500;
             return response()->json(['message' => $e->getMessage()], $statusCode);
@@ -121,7 +129,6 @@ class ExpirationController extends Controller
                 'has_adjustment' => $hasAdjustment,
                 'month' => $month
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
