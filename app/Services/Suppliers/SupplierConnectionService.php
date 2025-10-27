@@ -67,12 +67,44 @@ class SupplierConnectionService
 
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
-        if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
-            $content = file_get_contents($tempFile);
-            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-            $productData = $this->parseDynamicContent($content_encoded, $connection);
+
+        
+        if ($connection->path === '/') {
+            // Listar todos los archivos en la raíz
+            $files = ftp_nlist($ftp, $connection->path);
+
+            // Filtrar solo los que parecen inventario
+            $inventoryFiles = array_filter($files, function ($file) {
+                $name = basename($file);
+                return str_starts_with($name, 'inventario') && str_ends_with($name, '.txt');
+            });
+
+            // Ordenar por nombre (asumiendo que el nombre incluye fecha/hora)
+            usort($inventoryFiles, function ($a, $b) {
+                return strcmp($b, $a); // orden descendente
+            });
+
+            $latestFile = $inventoryFiles[0] ?? null;
+
+            if (!$latestFile) {
+                throw new Exception("No se encontró archivo de inventario en la raíz");
+            }
+
+            if (@ftp_get($ftp, $tempFile, $latestFile, FTP_BINARY)) {
+                $content = file_get_contents($tempFile);
+                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+                $productData = $this->parseDynamicContent($content_encoded, $connection);
+            } else {
+                throw new Exception("No se pudo guardar los productos");
+            }
         } else {
-            throw new Exception("No se pudo guardar los productos");
+            if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+                $content = file_get_contents($tempFile);
+                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+                $productData = $this->parseDynamicContent($content_encoded, $connection);
+            } else {
+                throw new Exception("No se pudo guardar los productos");
+            }
         }
 
         // Facturas (si tiene ruta definida)
