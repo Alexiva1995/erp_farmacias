@@ -4,6 +4,10 @@ import { createApp } from 'vue';
 
 import axiosInstance from '@/plugins/axios';
 
+import { Ability } from '@casl/ability';
+import { abilitiesPlugin } from '@casl/vue';
+import { buildAbilityForRules } from '@/plugins/ability.js';
+
 import '@core-scss/template/index.scss';
 import '@styles/print.scss';
 import '@styles/styles.scss';
@@ -15,6 +19,11 @@ async function startApp() {
     console.log("✅ CSRF cookie obtained successfully.");
 
     const app = createApp(App)
+
+    const initialRules = buildAbilityForRules(null);
+    app.use(abilitiesPlugin, new Ability(initialRules), {
+      use$Can: true, 
+    });
 
     registerPlugins(app)
 

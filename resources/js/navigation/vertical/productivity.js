@@ -8,30 +8,30 @@ export default [
         size: 'sm',
       },
     },
+     action: 'manage',
+    subject: 'productividad',
     children: [
       {
-        title: 'Tareas de Limpieza',
-        to: 'productivity-cleaning',
+        title: 'Mi Limpieza',
+        to: 'productivity-my-cleaning-activities',
       },
       {
-        title: 'Laboratorios Por Empleados',
+        title: 'Laboratorios',
         to: 'productivity-laboratory',
       },
       {
-        title: 'Productos Por Empleados',
+        title: 'Productos',
         to: 'productivity-product',
       },
       {
-        title: 'Tareas Por Empleados',
+        title: 'Tareas',
         to: 'productivity-employee-task',
-      },
-      {
-        title: 'Mis Actividades de Limpieza',
-        to: 'productivity-my-cleaning-activities',
       },
       {
         title: 'Revision de Actividades de Limpieza',
         to: 'productivity-supervisor-cleaning-activities',
+        action: 'manage',
+        subject: 'supervisor',
       },
     ],
   }, 
