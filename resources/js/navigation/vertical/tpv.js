@@ -14,16 +14,14 @@ export default [
         to: 'tpv-quotation',
       },
       {
+        title: 'Punto de Venta',
+        to: 'tpv-order-user',
+      },
+       {
         title: 'Pedidos',
         to: 'tpv-order-general',
-
-        // meta: { roles: ['admin'] }
-      },
-      {
-        title: 'Pedidos Usuario',
-        to: 'tpv-order-user',
-
-        // meta: { roles: ['user'] }
+        action: 'manage',
+        subject: 'admin',
       },
       {
         title: 'Creditos',
@@ -31,50 +29,71 @@ export default [
       },
       {
         title: 'Devoluciones',
-        to: 'tpv-returns',
+        action: 'manage',
+        subject: 'admin',
+        children: [
+          {
+           title: 'General',
+            to: 'tpv-returns',
+          },
+          {
+          title: 'Devoluciones Supervisor',
+          to: 'tpv-returns-supervisor',
+        },
+         {
+          title: 'Devoluciones Usuario',
+          to: 'tpv-returns-user',
+        },
+        ],
       },
       {
-        title: 'Devoluciones Usuario',
+        title: 'Devoluciones',
         to: 'tpv-returns-user',
+        action: 'manage',
+        subject: 'user',
       },
       {
-        title: 'Devoluciones Supervisor',
+        title: 'Devoluciones',
         to: 'tpv-returns-supervisor',
+        action: 'manage',
+        subject: 'supervisor',
       },
       {
         title: 'Promociones',
+        action: 'manage',
+        subject: 'admin',
         children: [
           {
             title: 'Pack de Productos',
             to: 'tpv-pack-offer',
           },
           {
-            title: 'Oferta Individual',
+            title: 'Individual',
 
             to: 'tpv-individual-offer',
           },
           {
-            title: 'Oferta por Categoria',
+            title: 'Categoria',
 
             to: 'tpv-category-offer',
           },
           {
-            title: 'Oferta por Empresa',
+            title: 'Empresa',
 
             to: 'tpv-company-offer',
           },
           {
-            title: 'Oferta por Medico',
+            title: 'Medico',
 
             to: 'tpv-doctor-offer',
           },
           {
-            title: 'Oferta por Recipe',
+            title: 'Recipe',
 
             to: 'tpv-prescription-offer',
           },
           {
-            title: 'Oferta de Caducidad',
+            title: 'Caducidad',
 
             to: 'tpv-expiration-offer',
           },

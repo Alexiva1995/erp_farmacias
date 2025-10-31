@@ -4,29 +4,29 @@ export default [
     icon: {
       is: 'font-awesome-icon', 
       props: {
-        icon: ['fas', 'boxes-stacked'],
+        icon: ['fas', 'file-invoice'],
         size: 'sm',
       },
     },
     children: [
       {
-        title: 'Registrar Facturas',
+        title: 'Registrar',
         to: 'invoice-register',
       },
       {
-        title: 'Facturas Pendientes',
+        title: 'Pendientes',
         to: 'invoice-invoices',
       },
       {
-        title: 'Facturas Cargadas',
+        title: 'Cargadas',
         to: 'invoice-invoice-loaded',
       },
       {
-        title: 'Facturas Por Ordenar',
+        title: 'Por Ordenar',
         to: 'invoice-invoice-for-order',
       },
       {
-        title: 'Facturas Ordenadas',
+        title: 'Ordenadas',
         to: 'invoice-invoice-ordered',
       },
     ],

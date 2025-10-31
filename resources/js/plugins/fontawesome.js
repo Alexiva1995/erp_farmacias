@@ -1,5 +1,5 @@
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faBoxesStacked } from '@fortawesome/free-solid-svg-icons'
+import { faBoxesStacked , faFileInvoice} from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import {
@@ -27,6 +27,7 @@ library.add(
   faPencilAlt,
   faEye,
   faBoxesStacked,
+  faFileInvoice,
   faBarcode,
   faFileLines,
   faAddressBook,
