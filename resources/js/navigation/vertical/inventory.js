@@ -17,6 +17,19 @@ export default [
         title: 'Grupos de Productos',
         to: 'inventory-group-products',
       },
+       {
+        title: 'Lotes',
+        children: [
+        {
+          title: 'Listado de lotes',
+          to: 'lot-list',
+        },
+        {
+          title: 'Productos sin lote',
+          to: 'lot-products',
+        }
+        ],
+      },
       {
         title: 'Caducidad',
         to: 'inventory-expirations',
@@ -32,6 +45,37 @@ export default [
       {
         title: 'Control de Stock',
         to: 'inventory-stock',
+        action: 'manage',
+        subject: 'admin',
+      },
+       {
+        title: 'Inventario Ciclicos',
+        children: [
+        {
+          title: 'Inventarios Pendientes',
+          to: 'cyclics-cyclic',
+          action: 'manage',
+          subject: 'supervisor',
+        },
+        {
+          title: 'Inventarios Ciclicos',
+          to: 'cyclics-users',
+          action: 'manage',
+          subject: 'user',
+        },
+        {
+          title: 'Historial',
+          to: 'cyclics-history',
+          action: 'manage',
+          subject: 'cyclic-history',
+        },
+        {
+          title: 'Cierre de Inventario',
+          to: 'cyclics-closing',
+          action: 'manage',
+          subject: 'closing-cyclics',
+        }
+        ]
       }
     ],
   }, 
