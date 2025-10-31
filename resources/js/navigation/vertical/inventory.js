@@ -19,13 +19,6 @@ export default [
       },
        {
         title: 'Lotes',
-        icon: {
-        is: 'font-awesome-icon', 
-        props: {
-          icon: ['fas', 'barcode'],
-          size: 'sm',
-        },
-        },
         children: [
         {
           title: 'Listado de lotes',
@@ -57,13 +50,6 @@ export default [
       },
        {
         title: 'Inventario Ciclicos',
-        icon: {
-        is: 'font-awesome-icon', 
-        props: {
-        icon: ['fas', 'boxes-stacked'],
-          size: 'sm',
-        },
-        },
         children: [
         {
           title: 'Inventarios Pendientes',

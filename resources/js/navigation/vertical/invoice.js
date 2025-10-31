@@ -4,7 +4,7 @@ export default [
     icon: {
       is: 'font-awesome-icon', 
       props: {
-        icon: ['fas', 'boxes-stacked'],
+        icon: ['fas', 'file-invoice'],
         size: 'sm',
       },
     },
