@@ -125,7 +125,6 @@ declare module 'vue' {
     ProductDescriptionEditor: typeof import('./resources/js/@core/components/ProductDescriptionEditor.vue')['default']
     ProductEditDialog: typeof import('./resources/js/components/dialogs/ProductEditDialog.vue')['default']
     ProductFilters: typeof import('./resources/js/components/ProductFilters.vue')['default']
-    ProductHistoryTable: typeof import('./resources/js/components/ProductHistoryTable.vue')['default']
     ProductLotDialog: typeof import('./resources/js/components/dialogs/ProductLotDialog.vue')['default']
     ProductLotEditDialog: typeof import('./resources/js/components/dialogs/ProductLotEditDialog.vue')['default']
     ProductProfitabilityEditDialog: typeof import('./resources/js/components/dialogs/ProductProfitabilityEditDialog.vue')['default']
@@ -194,5 +193,6 @@ declare module 'vue' {
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

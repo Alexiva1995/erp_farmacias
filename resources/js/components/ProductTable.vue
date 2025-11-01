@@ -20,13 +20,20 @@ const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true, width: "40%" },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
+  {
+    title: "Stock",
+    key: "valid_stock",
+    sortable: true,
+    value: (item) => {
+      return item.stock_calculado;
+    },
+  },
   { title: "Exp.", key: "next_expiration", sortable: true },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
-
+// TODO: hay que modificar la funcion para que muestr la fecha de vencimiento apesar de que los lotes ya esten todos vencidos (puede que se tenga que modificar la consulta en el backend)
 const nextExpirationDate = (product) => {
   if (
     !product.lots ||
@@ -41,7 +48,8 @@ const nextExpirationDate = (product) => {
     const expirationDate = new Date(lot.expiration_date);
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
-  if (validLots.length === 0) return "Todos expiraron";
+  // if (validLots.length === 0) return "Todos expiraron";
+  if (validLots.length === 0) return product.ultima_fecha_vencimiento;
   validLots.sort(
     (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
   );

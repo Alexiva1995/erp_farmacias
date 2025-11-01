@@ -68,12 +68,11 @@ class ProductQueryService
 
                 case 1:
                     $query->whereDoesntHave('profitability')
-                    ->orWhereHas('profitability', function ($q) {
-                        $q->where('is_locked', '!=', 1);
-                    });
+                        ->orWhereHas('profitability', function ($q) {
+                            $q->where('is_locked', '!=', 1);
+                        });
                     break;
             }
-            
         }
 
         $hasStock = $filters['hasStock'] ?? null;
@@ -165,8 +164,20 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
+        $this->subColummn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+
+    public function subColummn(Builder $query): Builder
+    {
+        return $query->addSelect([
+            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) as stock_calculado'),
+            'ultima_fecha_vencimiento' => DB::table('product_lots')
+                ->selectRaw('MAX(expiration_date)')
+                ->whereColumn('product_lots.product_id', 'products.id'),
+            // ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()')),
+        ]);
     }
 }

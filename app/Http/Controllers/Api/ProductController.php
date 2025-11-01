@@ -17,8 +17,7 @@ class ProductController extends Controller
     public function __construct(
         private ProductQueryService $productQueryService,
         private ProductActionService $productActionService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {

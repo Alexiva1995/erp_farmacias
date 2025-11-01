@@ -390,14 +390,14 @@ const submitForm = () => {
             <VDivider class="my-6" />
 
             <!-- 1. Contenedor flexible para el título y el botón -->
-            <div class="d-flex align-center mb-4">
+            <!-- 2. Botón de "Editar Lotes" que navega a la nueva ruta -->
+            <!-- <div class="d-flex align-center mb-4">
               <p class="text-h6 font-weight-medium">Lotes del Producto</p>
               <VSpacer />
-              <!-- 2. Botón de "Editar Lotes" que navega a la nueva ruta -->
-              <VBtn to="/lot/list" color="primary" prepend-icon="tabler-edit">
+                <VBtn to="/lot/list" color="primary" prepend-icon="tabler-edit">
                 Editar Lotes
               </VBtn>
-            </div>
+            </div> -->
 
             <VDataTable
               :headers="lotHeaders"

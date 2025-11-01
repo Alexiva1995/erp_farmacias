@@ -8,6 +8,8 @@ import { onMounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 
+// 6879
+
 const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
@@ -44,7 +46,8 @@ const fetchSelectOptions = async () => {
       axios.get("/origins"),
       axios.get("/categories"),
     ]);
-    laboratories.value = labResponse.data.data;
+    console.log("laboratories response:", labResponse);
+    laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
   } catch (error) {
