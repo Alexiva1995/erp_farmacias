@@ -106,6 +106,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/groups/{group}", [GroupController::class, "update"]);
     Route::delete("/groups/{group}", [GroupController::class, "destroy"]);
     Route::get("/groups/consult-all", [GroupController::class, "consultAll"]);
+    Route::post("/groups/{group}/associate-products", [GroupController::class, "associateProducts"]);
 
     // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
     Route::get("/laboratories", [ResourceController::class, "getLaboratories"]);
