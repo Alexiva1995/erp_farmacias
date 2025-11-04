@@ -2,7 +2,6 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
-
 import ProductLotCreateDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotEditDialog from "@/components/dialogs/ProductLotEditDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
