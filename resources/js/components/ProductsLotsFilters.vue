@@ -6,21 +6,27 @@ const props = defineProps({
   searchQuery: { type: String, required: true },
   itemsPerPage: { type: Number, required: true },
   selectedLaboratory: [Number, String, null],
+  selectedOrigin: [Number, String, null],
   stockStatusFilter: [Boolean, null],
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   addLotLoading: { type: Boolean, default: false },
+  isStrictSearch: Boolean,
+  isAdmin: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   "update:searchQuery",
   "update:itemsPerPage",
   "update:selectedLaboratory",
+  "update:selectedOrigin",
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
+  "update:isStrictSearch",
   "clear",
   "add-lot",
   "sort",
@@ -179,16 +185,17 @@ watch(
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Lote, Producto, Proveedor..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
+          
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -201,8 +208,18 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
+            :model-value="props.selectedOrigin"
+            label="Origen"
+            :items="props.origins"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:selectedOrigin', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -212,7 +229,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Vencimiento Desde"
@@ -224,9 +241,14 @@ watch(
             }"
             @update:model-value="emit('update:startDate', $event)"
           />
+          <VCheckbox
+            label="Búsqueda Estricta"
+            :model-value="props.isStrictSearch"
+            @update:model-value="emit('update:isStrictSearch', $event)"
+          />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Vencimiento Hasta"
@@ -301,6 +323,7 @@ watch(
         @click="emit('add-lot')"
         :loading="props.addLotLoading"
         :disabled="props.addLotLoading"
+        v-if="props.isAdmin"
       >
         Agregar Lote
       </VBtn>

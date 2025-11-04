@@ -6,6 +6,7 @@ import { onMounted, ref, watch } from "vue";
 import ProductLotDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const productLots = ref([]);
 const totalProductLots = ref(0);
@@ -17,26 +18,37 @@ const orderBy = ref("desc");
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
+const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
 const laboratories = ref([]);
+const origins = ref([]);
 const isLoadingFilters = ref(false);
 
 const isLotDialogVisible = ref(false);
 const availableProducts = ref([]);
 const availableSuppliers = ref([]);
+const availableOrigins = ref([]);
 const isLoadingDialogData = ref(false);
 
 const isEditingMode = ref(false);
 const currentLotToEdit = ref(null);
 
+const isStrictSearch = ref(false);
+
+const { isAdmin } = useAuthStore();
+
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const labResponse = await axios.get("/laboratories");
+    const [labResponse, originResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+    ]);
     laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -50,6 +62,7 @@ const fetchProductLots = async () => {
   const params = {
     search: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
+    originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -59,6 +72,7 @@ const fetchProductLots = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    isStrictSearch: isStrictSearch.value,
   };
 
   Object.keys(params).forEach(
@@ -86,9 +100,11 @@ watch(
     orderBy,
     searchQuery,
     selectedLaboratory,
+    selectedOrigin,
     stockStatusFilter,
     startDate,
     endDate,
+    isStrictSearch,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -98,7 +114,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   }
@@ -124,9 +140,11 @@ const handleSort = (sortOptions) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
+  selectedOrigin.value=null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
+  isStrictSearch.value = false;
   // sortBy.value = "id";
   // orderBy.value = "desc";
 };
@@ -134,13 +152,15 @@ const handleClearFilters = () => {
 const handleAddLot = async () => {
   isLoadingDialogData.value = true;
   try {
-    const [productsResponse, suppliersResponse] = await Promise.all([
+    const [productsResponse, suppliersResponse, originsResponse] = await Promise.all([
       axios.get("/products/all"),
       axios.get("/available-suppliers"),
+      axios.get("/origins"),
     ]);
 
     availableProducts.value = productsResponse.data;
     availableSuppliers.value = suppliersResponse.data.data;
+    availableOrigins.value = originsResponse.data;
 
     isEditingMode.value = false;
     currentLotToEdit.value = null;
@@ -157,7 +177,9 @@ const handleEditLot = async (lotToEdit) => {
   isLoadingDialogData.value = true;
   try {
     const suppliersResponse = await axios.get("/available-suppliers");
+    const originsResponse = await axios.get("/origins");
     availableSuppliers.value = suppliersResponse.data.data;
+    availableOrigins.value = originsResponse.data;
 
     isEditingMode.value = true;
     currentLotToEdit.value = lotToEdit;
@@ -213,12 +235,16 @@ const handleSaveLot = (lotData) => {
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"
       v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
+      :origins="origins"
       :loading="isLoadingFilters"
       :add-lot-loading="isLoadingDialogData"
+      :is-admin="isAdmin"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
@@ -239,6 +265,7 @@ const handleSaveLot = (lotData) => {
       :loading="isLoadingDialogData"
       :products="availableProducts"
       :suppliers="availableSuppliers"
+      :origins="availableOrigins"
       :is-editing="isEditingMode"
       :lot-to-edit="currentLotToEdit"
       @save="handleSaveLot"

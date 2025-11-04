@@ -7,6 +7,7 @@ import ProductLotCreateDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotEditDialog from "@/components/dialogs/ProductLotEditDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const productLots = ref([]);
 const totalProductLots = ref(0);
@@ -18,11 +19,13 @@ const orderBy = ref("desc");
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
+const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
 const laboratories = ref([]);
+const origins = ref([]);
 const isLoadingFilters = ref(false);
 
 const isCreateDialogVisible = ref(false);
@@ -37,11 +40,19 @@ const productIdToEdit = ref(null);
 const productStockToEdit = ref(0);
 const isLoadingEditData = ref(false);
 
+const isStrictSearch = ref(false);
+
+const { isAdmin } = useAuthStore();
+
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const labResponse = await axios.get("/laboratories");
+    const [labResponse, originResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+    ]);
     laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
   } catch (error) {
     toast.error("No se pudieron cargar los filtros.");
   } finally {
@@ -54,6 +65,7 @@ const fetchProductLots = async () => {
   const params = {
     search: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
+    originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -63,6 +75,7 @@ const fetchProductLots = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    isStrictSearch: isStrictSearch.value,
   };
 
   Object.keys(params).forEach(
@@ -89,9 +102,11 @@ watch(
     orderBy,
     searchQuery,
     selectedLaboratory,
+    selectedOrigin,
     stockStatusFilter,
     startDate,
     endDate,
+    isStrictSearch,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -101,7 +116,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   }
@@ -127,11 +142,13 @@ const handleSort = (sortOptions) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
+  selectedOrigin.value=null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   sortBy.value = "id";
   orderBy.value = "desc";
+  isStrictSearch.value = false;
 };
 
 const handleAddLot = async () => {
@@ -141,7 +158,6 @@ const handleAddLot = async () => {
       axios.get("/products-without-lots"),
       axios.get("/available-suppliers"),
     ]);
-
     availableProducts.value = productsResponse.data.data;
     availableSuppliers.value = suppliersResponse.data.data;
     isCreateDialogVisible.value = true;
@@ -275,12 +291,16 @@ const handleUpdateLot = async (lotsToSave) => {
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"
       v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
+      :origins="origins"
       :loading="isLoadingFilters"
       :add-lot-loading="isLoadingDialogData"
+      :is-admin="isAdmin"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
@@ -302,6 +322,7 @@ const handleUpdateLot = async (lotsToSave) => {
       :loading="isLoadingDialogData"
       :products="availableProducts"
       :suppliers="availableSuppliers"
+      :origins="origins"
       @save="handleCreateLot"
     />
 
