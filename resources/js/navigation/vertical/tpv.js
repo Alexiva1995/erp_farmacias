@@ -32,18 +32,19 @@ export default [
         action: 'manage',
         subject: 'admin',
         children: [
-          {
-           title: 'General',
-            to: 'tpv-returns',
-          },
-          {
-          title: 'Devoluciones Supervisor',
-          to: 'tpv-returns-supervisor',
-        },
          {
-          title: 'Devoluciones Usuario',
+          title: 'Usuario',
           to: 'tpv-returns-user',
         },
+        {
+          title: 'Supervisor',
+          to: 'tpv-returns-supervisor',
+        },
+          {
+           title: 'Generales',
+            to: 'tpv-returns',
+          },
+          
         ],
       },
       {

@@ -11,7 +11,9 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'admin'); 
       can('manage', 'cyclic-history');
       can('manage', 'closing-cyclics');
-      can('manage', 'suppliers');
+      can('manage', 'suppliers-list');
+      can('manage', 'suppliers-purchase-orders-list');
+      can('manage', 'suppliers-purchase-orders-history-list');
       can('manage', 'finances-pending-payments');
       can('manage', 'finances-payment-history');
       can('manage', 'finances-cashout');
@@ -24,7 +26,9 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'supervisor'); 
       can('manage', 'cyclic-history');
       can('manage', 'closing-cyclics');
-      can('manage', 'suppliers');
+      can('manage', 'suppliers-list');
+      can('manage', 'suppliers-purchase-orders-list');
+      can('manage', 'suppliers-purchase-orders-history-list');
       can('manage', 'finances-pending-payments');
       can('manage', 'finances-payment-history');
       can('manage', 'finances-cashout');
@@ -32,11 +36,14 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'finances-cash-closure');
       can('manage', 'finances-cash-closure-user');
       can('manage', 'productividad');
+      can('manage', 'comparadorAssistence');
     }
 
     if (user.role_id === 3) {
       can('manage', 'user'); 
       can('manage', 'productividad');
+      can('manage', 'productividad');
+      can('manage', 'comparador');
     }
     // ... otros permisos para otros roles
   }

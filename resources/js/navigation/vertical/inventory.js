@@ -51,32 +51,32 @@ export default [
        {
         title: 'Inventario Ciclicos',
         children: [
-        {
-          title: 'Inventarios Pendientes',
-          to: 'cyclics-cyclic',
-          action: 'manage',
-          subject: 'supervisor',
-        },
-        {
-          title: 'Inventarios Ciclicos',
-          to: 'cyclics-users',
-          action: 'manage',
-          subject: 'user',
-        },
-        {
+                  {
           title: 'Historial',
           to: 'cyclics-history',
           action: 'manage',
           subject: 'cyclic-history',
         },
-        {
+         {
           title: 'Cierre de Inventario',
           to: 'cyclics-closing',
           action: 'manage',
           subject: 'closing-cyclics',
+        },
+        {
+          title: 'Pendientes',
+          to: 'cyclics-cyclic',
+          action: 'manage',
+          subject: 'supervisor',
         }
         ]
-      }
+      },
+      {
+        title: 'Inventarios Ciclicos',
+        to: 'cyclics-users',
+        action: 'manage',
+        subject: 'user',
+      },
     ],
   }, 
 ]

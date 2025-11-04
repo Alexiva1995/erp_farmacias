@@ -8,20 +8,24 @@ export default [
         size: "sm",
       },
     },
-    action: 'manage', 
-    subject: 'suppliers',
     children: [
       {
         title: "Lista",
         to: "suppliers-list",
+        action: 'manage',
+        subject: 'suppliers-list',
       },
       {
         title: "Ordenes de Compra",
         to: "suppliers-purchase-orders-list",
+        action: 'manage',
+        subject: 'suppliers-purchase-orders-list',
       },
       {
         title: "Historial de Ordenes de Compra",
         to: "suppliers-purchase-orders-history-list",
+        action: 'manage',
+        subject: 'suppliers-purchase-orders-history-list',
       },
       {
         title: "IA Assistence",
@@ -41,9 +45,17 @@ export default [
       {
         title: 'Comparador',
         to: 'suppliers-product-comparator-list',
+        action: 'manage',
+        subject: 'comparadorAssistence',
       }
     ],
-      }
+      },
+      {
+        title: "Comparador",
+        to: 'suppliers-product-comparator-list',
+        action: 'manage',
+        subject: 'comparador',
+      },
     ],
   },
 ];
