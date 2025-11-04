@@ -50,7 +50,7 @@ const formatDate = (dateString) => {
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{
               item.product.name
             }}</span>
-            <span class="text-sm text-disabled">{{ item.lot_number }}</span>
+            <span class="text-sm text-disabled">{{ item.lot_number }} <span class="text-sm text-disabled" v-if=' item.lot_number && item.product.laboratory?.name'>-</span> {{ item.product.laboratory?.name }}</span>   
           </div>
         </div>
       </template>
