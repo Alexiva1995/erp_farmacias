@@ -18,5 +18,5 @@ import tpv from './tpv'
 
 
 
-export default [...inventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...suppliers, ...invoice, ...productivity]
+export default [...inventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity]
 
