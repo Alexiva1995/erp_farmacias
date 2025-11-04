@@ -13,8 +13,9 @@ export const formatDateTime = (isoString, type = 'date') => {
     }
 
     const date = new Date(isoString);
-    const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-    const timeOptions = { hour: 'numeric', minute: 'numeric', hour12: true };
+    const utcOptions = { timeZone: 'UTC' };
+    const dateOptions = {...utcOptions, day: 'numeric', month: 'long', year: 'numeric' };
+    const timeOptions = {...utcOptions, hour: 'numeric', minute: 'numeric', hour12: true };
 
     switch (type) {
         case 'date':

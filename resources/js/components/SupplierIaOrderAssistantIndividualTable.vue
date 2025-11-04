@@ -35,6 +35,11 @@ const headers = [
         : 0,
   },
   {
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
+  },
+  {
     title: "Análisis",
     key: "solicitar",
     sortable: true,

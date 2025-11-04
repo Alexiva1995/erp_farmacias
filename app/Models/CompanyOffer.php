@@ -21,6 +21,7 @@ class CompanyOffer extends Model
         return $this->belongsTo(Company::class);
     }
 
+    /* Relacion con las escalas*/
     public function scales()
     {
         return $this->hasMany(CompanyOfferScale::class);

@@ -435,7 +435,6 @@ const updateTableOptionsOrdersCancelled = (options) => {
 const printOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
-    console.log(response);
     if (response.data && response.data.data && response.data.data.order) {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
@@ -553,9 +552,8 @@ const handleCloseViewModal = () => {
 
 const handleViewOrder = async (orderId) => {
   try {
-    const response = await axios.get(`/tpv/orders/${orderId}/print`); // Llama al endpoint de impresión
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
     if (response.data && response.data.data && response.data.data.order) {
-      // Prepara y asigna los datos de la misma manera que en `printOrder`
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
@@ -575,8 +573,6 @@ const handleViewOrder = async (orderId) => {
         ? parseFloat(response.data.data.order.total_amount)
         : 0;
       creditForPrint.value = response.data.data.hasCreditPayment;
-
-      // Abre el modal
       viewModal.value = true;
     } else {
       console.error("Respuesta de API con formato incorrecto:", response.data);

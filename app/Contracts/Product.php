@@ -5,6 +5,7 @@ namespace App\Contracts;
 
 use App\Exports\AssistantReportProductExport;
 use App\Exports\StockProductExport;
+use App\Models\Product as ModelsProduct;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -12,6 +13,7 @@ interface Product
 {
 
     public function consultProduct(): Collection;
+    public function consultProductById(int $id): ?ModelsProduct;
     public function filtrarStock(array $filtros): LengthAwarePaginator;
     public function filtrarStockWithoutPaginate(array $filtros): Collection;
     public function exportExcel(array $filtros): StockProductExport;
@@ -24,4 +26,9 @@ interface Product
     public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator;
     public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection;
     public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport;
+    public function calcularAOProduct(ModelsProduct $producto): ModelsProduct;
+    public function calcularAOProducts(Collection $productos): Collection;
+    public function removerProductosConPedidosAutomaticos(Collection $productos): Collection;
+    public function actualizarElSolicitadoConElAO(Collection $productos): Collection;
+    public function filtrarIndividualProductForAssistantReportTypeSalesToArray(array $filtros): array;
 }

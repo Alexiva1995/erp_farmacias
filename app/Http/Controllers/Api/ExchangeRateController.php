@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
 use App\Contracts\ExchangeRate;
 use App\Http\Controllers\Controller;
@@ -22,9 +22,18 @@ class ExchangeRateController extends Controller
 
     public function store(ExchangeRateCreateRequest $request)
     {
-        //dd($request->data);
-        $this->exchangeRate->store($request->data->all());
-        return response()->json("store funcionando");
+        // puede ser que se requiera hacer lo mismo como el valor del dolar
+        if ($request->data->id == null) {
+            
+            $this->exchangeRate->store($request->data->all());
+            return response()->json("Se ha creado la tasa de cambio COP");
+        }
+        else {
+            $this->exchangeRate->updateBCVDollar($request->data->all());
+            return response()->json("Tasa de cambio actualizado");
+        }
+        
+        
     }
 
     public function apiDollar()
@@ -48,13 +57,28 @@ class ExchangeRateController extends Controller
     {
         $response = Http::get('https://ve.dolarapi.com/v1/dolares');
 
-        $data = [
-            "currency_code" => "USD",
-            "rate"          => $response[0]['promedio'],
-            "source"        => null,
-        ];
+        
 
-        $this->exchangeRate->store($data);
-        return response()->json("Dolar BCV actualizado");
+        if($request->exchange_id == null) {
+            $data = [
+                "currency_code" => "BS",
+                "rate"          => $response[0]['promedio'],
+                "source"        => null,
+            ];
+            $this->exchangeRate->store($data);
+            return response()->json($data);
+        }
+        else {
+            $data = [
+                "id"   => $request->exchange_id,
+                "currency_code" => "BS",
+                "rate"          => $response[0]['promedio'],
+                "source"        => null,
+            ];
+            
+            $this->exchangeRate->updateBCVDollar($data);
+            return response()->json($data);
+            
+        }
     }
 }

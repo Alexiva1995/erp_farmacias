@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\AutoOrder;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
+use App\Helpers\Algoritmo;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Product as ModelsProduct;
@@ -76,7 +77,34 @@ class SuppliersIaOrderAssistantController extends Controller
         }
         if ($respuesta["tipo_filtracion"] == "sales") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+        } else {
+
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            // $filtros["orderBy"] = "ASC";
+            // $filtros["sortBy"] = "id";
+            // $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
+
+        $respuesta["paginate"]->each(function ($items) use ($filtros) {
+            $items = $this->product->calcularAOProduct($items);
+            $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] =  $items->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+                if ($itemsBusqueda) {
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+                }
+            }
+        });
+
+        // dd($respuesta["paginate"]->items());
+
+        // $respuesta["paginate"]->items = $this->product->calcularAOProduct(collect($respuesta["paginate"]->data));
+
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -86,9 +114,9 @@ class SuppliersIaOrderAssistantController extends Controller
         $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
         $dateToday = new DateTime("now", $timeZone);
         $respuesta = [
-            // "productos" => [],
+            "listaDeProductos" => [],
+            "productos" => [],
             "productosFallas" => [],
-            "productosExceso" => [],
             "productos_a_reponer" => [],
             "productos_oportunidad_unica" => [],
         ];
@@ -120,16 +148,42 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
 
+
         if ($filtrosFallas["tipo_filtracion"] == "average") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-        }
-        if ($filtrosFallas["tipo_filtracion"] == "sales") {
+        } else if ($filtrosFallas["tipo_filtracion"] == "sales") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
+        } else {
+            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         }
 
         if ($productosFallas == null) {
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
+
+        $productosFallas = $this->product->calcularAOProducts($productosFallas);
+
+        $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
+
+        $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
+
+
+        if ($filtrosFallas["tipo_filtracion"] != "average" && $filtrosFallas["tipo_filtracion"] != "sales") {
+            for ($index = 0; $index < count($productosFallas); $index++) {
+                # code...
+                $filtros["orderBy"] = "ASC";
+                $filtros["sortBy"] = "id";
+                $filtros["id"] =  $productosFallas[$index]->id;
+                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosFallas)->first();
+                if ($itemsBusqueda) {
+                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+                    $productosFallas[$index]->solicitar = ceil(($productosFallas[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
+                }
+            }
+        }
+
+
 
         $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"], $request->con_descuento);
@@ -140,11 +194,11 @@ class SuppliersIaOrderAssistantController extends Controller
         $filtrosConExistencia = [
             "tipo_filtracion"   => $request->tipo_filtracion,
             "lapso_de_tiempo"   => "1 year",
-            "stock"             => "all",
+            // "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
             "orderBy"           => "asc",
-            "sortBy"            => "stock",
+            "sortBy"            => "name",
         ];
 
         if ($request->filled("laboratoryId")) {
@@ -164,12 +218,29 @@ class SuppliersIaOrderAssistantController extends Controller
         }
         if ($filtrosConExistencia["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
+        } else {
+            $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosConExistencia);
         }
 
-        // $respuesta["productos"] = $productos;
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProducts($productos, $request->con_descuento);
+        $productos = $this->product->calcularAOProducts($productos);
+
+
+        $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
+
+
+        $productos = $this->product->actualizarElSolicitadoConElAO($productos);
+
+
+
+        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
         $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
+
+
+
+
+        // $items = $this->product->calcularAOProduct($items);
+        // $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
 
 
 
@@ -207,21 +278,13 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock"             => "all",
             "dateToday"         => null,
             "previousDate"      => null,
-            "sin_proveedor"     => true,
             "orderBy"           => "asc",
             "sortBy"            => "name",
+            "ids"               =>  $request->ids ?? null,
 
         ];
 
-
-        // if ($request->filled("laboratoryId")) {
-        //     $filtros["laboratoryId"] = $request->laboratoryId;
-        // }
-
-        // if ($request->filled("groups")) {
-        //     $filtros["groups"] = $request->groups;
-        // }
-
+        // $idsProductos=[];
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
@@ -237,7 +300,19 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
-        $productos = $this->productSupplier->getTheLowestLotCost($productos);
+
+
+        foreach ($request->idsConFantante as $key => $value) {
+
+            for ($index = 0; $index < count($productos); $index++) {
+
+                if ($productos[$index]->id == $value["id"]) {
+                    $productos[$index]->stockFaltante = $value["solicitar"];
+                }
+            }
+        }
+
+        // $productos = $this->productSupplier->getTheLowestLotCost($productos);
 
         return ApiResponse::success($productos, "ok", 200);
     }

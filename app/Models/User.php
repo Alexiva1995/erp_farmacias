@@ -118,4 +118,23 @@ class User extends Authenticatable
     {
         return $this->hasMany(PsychotropicControl::class);
     }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function salaries()
+    {
+        return $this->hasMany(UsersSalaryDetails::class);
+    }
+    public function approvedExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class, 'approved_by');
+    }
 }
