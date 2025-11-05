@@ -359,8 +359,8 @@ onMounted(() => {
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ item.name }}</span
                 >
-                <span class="text-sm text-disabled"
-                  >{{ item.active_ingredient }}
+                <span class="text-sm text-disabled">
+                  {{ item.active_ingredient }} {{ item.laboratory?.name }}
                 </span>
               </div>
             </div>
