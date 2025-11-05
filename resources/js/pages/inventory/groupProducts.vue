@@ -17,7 +17,8 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
-
+const isLoadingFilters = ref(false);
+const isStrictSearch = ref(false);
 const searchQuery = ref("");
 
 const isGroupDialogVisible = ref(false);
@@ -34,6 +35,7 @@ const fetchGroups = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -53,7 +55,7 @@ const fetchGroups = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, isStrictSearch],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchGroups(), 300);
@@ -61,7 +63,7 @@ watch(
   { deep: true }
 );
 
-watch(searchQuery, () => {
+watch([searchQuery], () => {
   page.value = 1;
 });
 
@@ -173,6 +175,8 @@ const clearFormErrors = () => {
   <div>
     <GroupFilters
       v-model:searchQuery="searchQuery"
+      v-model:isStrictSearch="isStrictSearch"
+      :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @add-group="handleAddGroup"
     />
