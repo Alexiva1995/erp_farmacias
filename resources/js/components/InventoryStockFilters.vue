@@ -118,7 +118,7 @@ const handleClear = () => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -126,13 +126,13 @@ const handleClear = () => {
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
@@ -140,19 +140,20 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
+            label="Stock"
+            placeholder="Stock"
             :items="stockOptions"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -163,10 +164,10 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -176,7 +177,7 @@ const handleClear = () => {
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stock"
             label="Stock"
@@ -185,7 +186,7 @@ const handleClear = () => {
             @update:model-value="emit('update:stock', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="1">
+        <VCol cols="12" sm="3" md="1">
           <VSelect
             :model-value="props.days"
             label="Dias"
