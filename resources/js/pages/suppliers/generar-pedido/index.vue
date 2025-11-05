@@ -112,17 +112,17 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
 }
 
 function seleccionarProductosParaElDetalle(){
-  // TODO: falta obtener los productos que no estan en falla
-  // lo que se puede hacer es hacer comparar la lista productosEnFalla y los que coincidan eliminarlos de la otra lista (trabajar con una copia) y solo dejar los que no coincidan
-  // luego uniar las dos listas y eso si guardarlo en un estado
   module.detalleOrder=[]
   let productosEnFalla=verificarSiHayProductosEnFallaEnLaLista([...module.productoFallas],[...module.productosOportunidadUnica])
-  // console.log("productos en falla que puedan ser que tenga una oportunidad unica =>",productosEnFalla)
-  let productosSinFallas=removerProductosConProveedores([...productosEnFalla],[...module.productosOportunidadUnica])
-  // console.log("productos con oportunidad unica de mercado sin falla =>",productosSinFallas)
-  let detalles = [...productosEnFalla,...productosSinFallas]
-  module.detalleOrder=detalles
 
+  let productosSinFallas=removerProductosConProveedores([...productosEnFalla],[...module.productosOportunidadUnica])
+
+  let detalles = [...productosEnFalla,...productosSinFallas]
+
+  // NUEVO FILTRO: Solo incluir productos con reponer > 0
+  detalles = detalles.filter(producto => producto.reponer > 0)
+
+  module.detalleOrder=detalles
 }
 
 // esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
