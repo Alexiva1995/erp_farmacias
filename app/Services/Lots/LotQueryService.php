@@ -107,8 +107,7 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory'])
-            ->with(['product.origin'])
+            ->with(['product.laboratory', 'product.origin'])
             ->whereHas('product', function ($productQuery) {
                 $productQuery->whereRaw('
                     stock != (
@@ -119,7 +118,9 @@ class LotQueryService
                 ');
             });
 
-        if ($request->has('search') && !empty($request->search)) {
+        $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
+
+        /*if ($request->has('search') && !empty($request->search)) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('lot_number', 'like', "%{$searchTerm}%")
@@ -127,7 +128,42 @@ class LotQueryService
                         $productQuery->where('name', 'like', "%{$searchTerm}%");
                     });
             });
-        }
+        }*/
+
+    if ($request->has('search') && !empty($request->search)) {
+        $searchTerm = $request->search;
+        
+        $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
+            if ($isStrictSearch) {
+                $q->where('lot_number', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
+                        $productQuery->where('name', 'like', "%{$searchTerm}%")
+                            ->orWhere('active_ingredient', 'like', "%{$searchTerm}%") 
+                            ->orWhere('barcode', 'like', $searchTerm)
+                            ->orWhere('id', $searchTerm);
+                    });
+            } else {
+
+                $words = explode(' ', $searchTerm);
+                $q->where(function ($wordClauses) use ($words) {
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $wordClauses->where(function ($fieldClauses) use ($word) {
+                            $fieldClauses->orWhere('lot_number', 'like', "%{$word}%")
+                                ->orWhereHas('product', function ($productQuery) use ($word) {
+                                    $productQuery->where('name', 'like', "%{$word}%")
+                                        ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                        ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                            $labQuery->where('name', 'like', "%{$word}%");
+                                        });
+                                });
+                        });
+                    }
+                });
+            }
+        });
+    }
 
         if ($request->has('laboratoryId') && !empty($request->laboratoryId)) {
             $query->whereHas('product', function ($productQuery) use ($request) {
