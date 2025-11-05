@@ -26,7 +26,9 @@ class Client extends Model
         'phone',
         'address',
         'birthdate', // De la rama 5.0-CRM
-        'company_id' // De la rama 5.0-CRM
+        'company_id', // De la rama 5.0-CRM
+        'balance', // De la rama pedidos,
+        'is_spe'
     ];
 
     // Casts para los campos de fecha de la rama 5.0-CRM
@@ -69,5 +71,10 @@ class Client extends Model
     public function credits()
     {
         return $this->hasMany(Credit::class);
+    }
+
+    public function pendingCredits()
+    {
+        return $this->hasMany(Credit::class)->where('status', 'Active');
     }
 }

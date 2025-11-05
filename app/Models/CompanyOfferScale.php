@@ -16,6 +16,7 @@ class CompanyOfferScale extends Model
         'discount_percentage',
     ];
 
+    /* Relacion con CompanyOffer*/
     public function offer()
     {
         return $this->belongsTo(CompanyOffer::class, 'company_offer_id');

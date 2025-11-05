@@ -2,11 +2,11 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
-
 import ProductLotCreateDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotEditDialog from "@/components/dialogs/ProductLotEditDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const productLots = ref([]);
 const totalProductLots = ref(0);
@@ -18,11 +18,13 @@ const orderBy = ref("desc");
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
+const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
 const laboratories = ref([]);
+const origins = ref([]);
 const isLoadingFilters = ref(false);
 
 const isCreateDialogVisible = ref(false);
@@ -35,14 +37,22 @@ const lotsForEditing = ref([]);
 const productNameToEdit = ref("");
 const productIdToEdit = ref(null);
 const productStockToEdit = ref(0);
+const isLoadingEditData = ref(false);
+
+const isStrictSearch = ref(false);
+
+const { isAdmin } = useAuthStore();
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const labResponse = await axios.get("/laboratories");
+    const [labResponse, originResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/origins"),
+    ]);
     laboratories.value = labResponse.data;
+    origins.value = originResponse.data;
   } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
   } finally {
     isLoadingFilters.value = false;
@@ -54,6 +64,7 @@ const fetchProductLots = async () => {
   const params = {
     search: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
+    originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -63,6 +74,7 @@ const fetchProductLots = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    isStrictSearch: isStrictSearch.value,
   };
 
   Object.keys(params).forEach(
@@ -74,7 +86,6 @@ const fetchProductLots = async () => {
     productLots.value = response.data?.data.data || [];
     totalProductLots.value = response.data?.data.total || 0;
   } catch (error) {
-    console.error("Error al obtener los lotes:", error);
     toast.error("No se pudieron cargar los lotes.");
   } finally {
     loading.value = false;
@@ -90,9 +101,11 @@ watch(
     orderBy,
     searchQuery,
     selectedLaboratory,
+    selectedOrigin,
     stockStatusFilter,
     startDate,
     endDate,
+    isStrictSearch,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -102,7 +115,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   }
@@ -128,11 +141,13 @@ const handleSort = (sortOptions) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
+  selectedOrigin.value=null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   sortBy.value = "id";
   orderBy.value = "desc";
+  isStrictSearch.value = false;
 };
 
 const handleAddLot = async () => {
@@ -142,12 +157,10 @@ const handleAddLot = async () => {
       axios.get("/products-without-lots"),
       axios.get("/available-suppliers"),
     ]);
-
     availableProducts.value = productsResponse.data.data;
     availableSuppliers.value = suppliersResponse.data.data;
     isCreateDialogVisible.value = true;
   } catch (error) {
-    console.error("Error al obtener datos para el modal:", error);
     toast.error("No se pudieron cargar los datos para crear el lote.");
   } finally {
     isLoadingDialogData.value = false;
@@ -161,8 +174,6 @@ const handleCreateLot = async (lotData) => {
     isCreateDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
-    console.error("Error al crear el lote:", error);
-
     if (error.response && error.response.status === 422) {
       const errors = error.response.data.errors;
       if (errors && errors.quantity && errors.quantity[0]) {
@@ -181,6 +192,8 @@ const handleCreateLot = async (lotData) => {
 };
 
 const handleEditLot = async (lotToEdit) => {
+  isLoadingEditData.value = true;
+
   try {
     const product = lotToEdit.product;
 
@@ -188,36 +201,44 @@ const handleEditLot = async (lotToEdit) => {
     productIdToEdit.value = product.id;
     productStockToEdit.value = product.stock;
 
-    lotsForEditing.value = productLots.value.filter(
-      (lot) => lot.product.id === product.id
-    );
+    const [lotsResponse, stockResponse] = await Promise.all([
+      axios.get(`/lots/product/${product.id}`),
+      axios.get(`/lots/available-stock/${product.id}`),
+    ]);
 
-    try {
-      const stockResponse = await axios.get(
-        `/lots/available-stock/${product.id}`
-      );
-      const stockInfo = stockResponse.data.data;
+    lotsForEditing.value = lotsResponse.data?.data?.data || [];
 
-      if (stockInfo.product_stock !== productStockToEdit.value) {
-        productStockToEdit.value = stockInfo.product_stock;
-      }
+    const stockInfo = stockResponse.data.data;
+    if (stockInfo.product_stock !== productStockToEdit.value) {
+      productStockToEdit.value = stockInfo.product_stock;
+    }
 
-      if (stockInfo.has_discrepancy && stockInfo.available_stock > 0) {
+    if (stockInfo.has_discrepancy) {
+      const lotsSum = stockInfo.lots_sum;
+      const productStock = stockInfo.product_stock;
+
+      if (lotsSum < productStock) {
         toast.info(
           `Este producto tiene ${stockInfo.available_stock} unidades disponibles para asignar en lotes.`
         );
+      } else if (lotsSum > productStock) {
+        toast.warning(
+          `Este producto tiene ${
+            lotsSum - productStock
+          } unidades de exceso en lotes. El stock del producto es ${productStock}.`
+        );
       }
-    } catch (stockError) {
-      console.warn(
-        "No se pudo obtener información actualizada de stock:",
-        stockError
-      );
     }
 
     isEditDialogVisible.value = true;
   } catch (error) {
-    console.error("Error al preparar la edición del lote:", error);
-    toast.error("No se pudo abrir el editor de lotes.");
+    if (error.response?.status === 404) {
+      toast.error("No se encontraron lotes para este producto.");
+    } else {
+      toast.error("No se pudo abrir el editor de lotes.");
+    }
+  } finally {
+    isLoadingEditData.value = false;
   }
 };
 
@@ -235,8 +256,6 @@ const handleUpdateLot = async (lotsToSave) => {
     isEditDialogVisible.value = false;
     fetchProductLots();
   } catch (error) {
-    console.error("Error al guardar los cambios de los lotes:", error);
-
     if (error.response && error.response.status === 422) {
       const errorData = error.response.data;
 
@@ -271,12 +290,16 @@ const handleUpdateLot = async (lotsToSave) => {
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"
       v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
+      :origins="origins"
       :loading="isLoadingFilters"
       :add-lot-loading="isLoadingDialogData"
+      :is-admin="isAdmin"
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
@@ -288,6 +311,7 @@ const handleUpdateLot = async (lotsToSave) => {
       :loading="loading"
       :items-per-page="itemsPerPage"
       :page="page"
+      :edit-loading="isLoadingEditData"
       @update:options="updateTableOptions"
       @edit-lot="handleEditLot"
     />
@@ -297,6 +321,7 @@ const handleUpdateLot = async (lotsToSave) => {
       :loading="isLoadingDialogData"
       :products="availableProducts"
       :suppliers="availableSuppliers"
+      :origins="origins"
       @save="handleCreateLot"
     />
 

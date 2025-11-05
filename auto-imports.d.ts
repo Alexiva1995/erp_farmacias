@@ -50,6 +50,7 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
   const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
+  const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -110,6 +111,13 @@ declare global {
   const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
   const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
   const pdfDoctorsGenerator: typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']
+  const pdfEmployeesGenerator: typeof import('./resources/js/utils/pdfEmployeesGenerator.js')['default']
+  const pdfGastos: typeof import('./resources/js/utils/pdfGastos.js')['default']
+  const pdfPayslipGenerator: typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']
+  const pdfProductsAssistantReportGenerator: typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']
+  const pdfProductsWithoutSuppliersGenerator: typeof import('./resources/js/utils/pdfProductsWithoutSuppliersGenerator.js')['default']
+  const pdfPurchaseOrderGenerator: typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['default']
+  const pdfStockProductsGenerator: typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
@@ -202,7 +210,9 @@ declare global {
   const useCssVars: typeof import('vue')['useCssVars']
   const useCurrentElement: typeof import('@vueuse/core')['useCurrentElement']
   const useCycleList: typeof import('@vueuse/core')['useCycleList']
+  const useCyclicTable: typeof import('./resources/js/composables/useCyclicTable.js')['useCyclicTable']
   const useDark: typeof import('@vueuse/core')['useDark']
+  const useDataTable: typeof import('./resources/js/composables/useDataTable.js')['useDataTable']
   const useDateFormat: typeof import('@vueuse/core')['useDateFormat']
   const useDebounce: typeof import('@vueuse/core')['useDebounce']
   const useDebounceFn: typeof import('@vueuse/core')['useDebounceFn']
@@ -415,6 +425,7 @@ declare module 'vue' {
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
+    readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
@@ -475,6 +486,12 @@ declare module 'vue' {
     readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
     readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
     readonly pdfDoctorsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']>
+    readonly pdfGastos: UnwrapRef<typeof import('./resources/js/utils/pdfGastos.js')['default']>
+    readonly pdfPayslipGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']>
+    readonly pdfProductsAssistantReportGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']>
+    readonly pdfProductsWithoutSuppliersGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsWithoutSuppliersGenerator.js')['default']>
+    readonly pdfPurchaseOrderGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['default']>
+    readonly pdfStockProductsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
@@ -567,7 +584,9 @@ declare module 'vue' {
     readonly useCssVars: UnwrapRef<typeof import('vue')['useCssVars']>
     readonly useCurrentElement: UnwrapRef<typeof import('@vueuse/core')['useCurrentElement']>
     readonly useCycleList: UnwrapRef<typeof import('@vueuse/core')['useCycleList']>
+    readonly useCyclicTable: UnwrapRef<typeof import('./resources/js/composables/useCyclicTable.js')['useCyclicTable']>
     readonly useDark: UnwrapRef<typeof import('@vueuse/core')['useDark']>
+    readonly useDataTable: UnwrapRef<typeof import('./resources/js/composables/useDataTable.js')['useDataTable']>
     readonly useDateFormat: UnwrapRef<typeof import('@vueuse/core')['useDateFormat']>
     readonly useDebounce: UnwrapRef<typeof import('@vueuse/core')['useDebounce']>
     readonly useDebounceFn: UnwrapRef<typeof import('@vueuse/core')['useDebounceFn']>

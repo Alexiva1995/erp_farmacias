@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProductLot extends Model
 {
@@ -34,6 +35,7 @@ class ProductLot extends Model
     ];
     protected $casts = [
         'expiration_date' => 'datetime',
+        'quantity' => 'int',
     ];
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
@@ -71,4 +73,70 @@ class ProductLot extends Model
     {
         return $this->hasMany(InventoryMovement::class);
     }
+
+    /**
+     * Nueva relación: Muchos a muchos con ExpirationOffer
+     */
+    public function expirationOffers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ExpirationOffer::class,
+            'expiration_offer_product_lot',
+            'product_lot_id',
+            'expiration_offer_id'
+        )->withTimestamps();
+    }
+
+    /**
+     * Accesor para verificar si el lote está próximo a expirar
+     */
+    public function getIsExpiringSoonAttribute(): bool
+    {
+        if (!$this->expiration_date) {
+            return false;
+        }
+
+        $monthsToExpire = $this->expiration_date->diffInMonths(now());
+        return $monthsToExpire <= 6; // Considerar próximo a expirar si tiene 6 meses o menos
+    }
+
+    /**
+     * Accesor para obtener meses hasta la expiración
+     */
+    public function getMonthsToExpirationAttribute(): int
+    {
+        if (!$this->expiration_date) {
+            return 999; // Valor alto para lotes sin fecha de expiración
+        }
+
+        return max(0, $this->expiration_date->diffInMonths(now()));
+    }
+
+    /**
+     * Scope para lotes que expiran en X meses
+     */
+    public function scopeExpiringInMonths($query, $months)
+    {
+        return $query->whereRaw("TIMESTAMPDIFF(MONTH, NOW(), expiration_date) <= ?", [$months])
+                    ->whereRaw("TIMESTAMPDIFF(MONTH, NOW(), expiration_date) >= 0");
+    }
+
+    /**
+     * Scope para lotes con stock disponible
+     */
+    public function scopeWithStock($query)
+    {
+        return $query->where('quantity', '>', 0);
+    }
+
+    /**
+     * Scope para lotes sin ofertas activas
+     */
+    public function scopeWithoutActiveOffers($query)
+    {
+        return $query->whereDoesntHave('expirationOffers', function ($q) {
+            $q->where('is_active', true);
+        });
+    }
+
 }

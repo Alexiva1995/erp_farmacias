@@ -9,6 +9,13 @@ class Order extends Model
 {
     use HasFactory;
 
+    const PENDING = 'Pending';
+    const ABANDONED = 'Abandoned'; 
+    const RESERVED = 'Reserved';       
+    const CLOSED = 'closed';
+    const CANCELLED = 'Cancelled';
+    const COMPLETED = 'Completed';
+
     protected $fillable = [
         'client_id',
         'seller_id',
@@ -16,10 +23,13 @@ class Order extends Model
         'total_amount',
         'money_returns',
         'currency',
+        'total_cost',
         'order_date',
         'status',
         'has_multiple_currencies',
         'payment_methods',
+        'usd_conversion',
+        'total_amount_usd'
     ];
 
     protected $casts = [

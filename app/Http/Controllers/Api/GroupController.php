@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AssociateProductToGroupRequest;
 use App\Http\Requests\GroupProduct\StoreGroupRequest;
 use App\Http\Requests\GroupProduct\UpdateGroupRequest;
 use App\Models\GroupsProduct;
 use App\Services\Groups\GroupActionService;
 use App\Services\Groups\GroupQueryService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GroupController extends Controller
@@ -84,5 +87,21 @@ class GroupController extends Controller
         }
 
         return response()->json(['message' => 'Grupo no encontrado.'], 404);
+    }
+
+    /**
+     * consultat todos los grupos
+     */
+    public function consultAll(): JsonResponse
+    {
+        $respuesta = $this->queryService->consultAll();
+        return ApiResponse::success($respuesta, "ok", 200);
+    }
+
+    public function associateProducts(AssociateProductToGroupRequest $request, GroupsProduct $group)
+    {
+        $this->actionService->associateProducts($group, $request->validated());
+
+        return ApiResponse::success(['message' => "Productos asociados al grupo ($group->name) exitosamente"], "ok", 200);
     }
 }

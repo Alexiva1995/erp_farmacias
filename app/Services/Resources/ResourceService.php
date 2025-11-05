@@ -84,9 +84,9 @@ class ResourceService
      */
     public function getAllExchangeRate(): Collection
     {
-        return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
+      //  return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
             return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
-        });
+       // });
     }
 
 
@@ -105,6 +105,19 @@ class ResourceService
         // });
         $product->loadMissing('laboratory');
 
+        return $product;
+    }
+
+    public function loadProductDetails(Product $product): Product
+    {
+        $product->load([
+            'laboratory',
+        ]);
+
+         if (!$product) {
+            throw new ModelNotFoundException("Producto no encontrado.");
+        }
+        $product->loadSum('lots', 'quantity');
         return $product;
     }
 

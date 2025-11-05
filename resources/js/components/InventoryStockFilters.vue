@@ -115,10 +115,10 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -126,13 +126,13 @@ const handleClear = () => {
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
@@ -140,19 +140,20 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
+            label="Estado Stock"
+            placeholder="Stock"
             :items="stockOptions"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -163,10 +164,10 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -176,15 +177,7 @@ const handleClear = () => {
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            :model-value="props.days"
-            label="Dias"
-            :items="diasVencimientos"
-            @update:model-value="emit('update:days', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stock"
             label="Stock"
@@ -193,25 +186,12 @@ const handleClear = () => {
             @update:model-value="emit('update:stock', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <v-checkbox
-            v-model="props.expProd"
-            color="primary"
-            label="Pos. Exp"
-            @update:model-value="emit('update:expProd', $event)"
-            hide-details
-          ></v-checkbox>
-        </VCol>
       </VRow>
     </VCardText>
 
-    <VDivider />
+
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-
       <!-- <div class="d-flex align-center gap-2">
         <VMenu>
           <template #activator="{ props: menuProps }">
@@ -255,9 +235,40 @@ const handleClear = () => {
           {{ getSelectedSortTitle() }}
         </VChip>
       </div> -->
+<div class="d-flex align-center mt-3 mb-2">
+    <VSelect
+            :model-value="props.days"
+            label="Dias"
+            :items="diasVencimientos"
+            @update:model-value="emit('update:days', $event)"
+          />
+  </div> 
+<div class="d-flex align-center mt-3 mb-2">
+    <VCheckbox
+      :model-value="props.expProd"
+      @update:model-value="emit('update:expProd', $event)"
+      color="error"  class="me-2"
+    >
+      <template #label>
+        <div class="d-flex align-center">
+          <VIcon icon="tabler-calendar-time" class="me-2" size="20" />
+          <span class="text-subtitle-1 font-weight-medium">
+            ¿Próximo a Expirar?
+          </span>
+        </div>
+      </template>
+    </VCheckbox>
+
+    <VChip v-if="props.expProd" color="error" size="small" class="ms-2">
+      <VIcon icon="tabler-alert-triangle" size="14" class="me-1" />
+      Filtrando por Expiración
+    </VChip>
+  </div>
 
       <VSpacer />
-
+      <VBtn color="secondary" variant="outlined" @click="handleClear">
+        Limpiar Filtros
+      </VBtn>
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn

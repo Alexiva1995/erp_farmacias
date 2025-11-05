@@ -14,6 +14,11 @@ return new class extends Migration
         Schema::create('exchange_rates', function (Blueprint $table) {
             $table->id(); // Equivalente a BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
             $table->string('currency_code', 10);
+            /*$table->enum('currency_code', [
+                //ExchangeRate::USD,
+                ExchangeRate::VEF,
+                ExchangeRate::COP,
+            ]);*/
             $table->decimal('rate', 10, 4);
             $table->string('source', 50)->nullable();
             $table->timestamps(); // Maneja created_at y updated_at con timestamps por defecto

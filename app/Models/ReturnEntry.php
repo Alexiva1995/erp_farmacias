@@ -9,8 +9,12 @@ class ReturnEntry extends Model
 {
     protected $table = 'returns';
 
+    const CREATED = 'Created';
+    const APPROVED = 'Approved'; 
+
     protected $fillable = [
         'order_id',
+        'generated_by_id',
         'product_id',
         'quantity',
         'amount_refunded',

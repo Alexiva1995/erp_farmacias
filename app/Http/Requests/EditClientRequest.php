@@ -33,11 +33,11 @@ class EditClientRequest extends FormRequest
     {
         return [
             //
-            "id"                     =>    "required|numeric|exists:clients,id",
-            "name"                   =>    "required|string|max:255",
-            "last_name"              =>    "nullable|string|max:255",
-            "email"                  =>    "nullable|string|max:255|email:rfc,dns",
-            "identification_type"    =>    [
+            "id" => "required|numeric|exists:clients,id",
+            "name" => "required|string|max:255",
+            "last_name" => "nullable|string|max:255",
+            "email" => "nullable|string|max:255|email:rfc,dns",
+            "identification_type" => [
                 "required",
                 "string",
                 Rule::in([
@@ -48,11 +48,12 @@ class EditClientRequest extends FormRequest
                 ]),
 
             ],
-            "identification"         =>    "required|string|min:7|max:9",
-            "phone"                  =>    "required|string|max:50",
-            "address"                =>    "required|string",
-            "company_id"             =>    "nullable|exists:companies,id",
-            "birthdate"              =>    "nullable|date",
+            "identification" => "required|string|min:7|max:9",
+            "phone" => "required|string|max:50",
+            "address" => "required|string",
+            "company_id" => "nullable|exists:companies,id",
+            "birthdate" => "nullable|date",
+            "is_spe" => "nullable|boolean",
         ];
     }
 
@@ -119,16 +120,17 @@ class EditClientRequest extends FormRequest
     protected function passedValidation()
     {
         $this->client = EditClientData::from([
-            "id"                      =>    $this->id,
-            "name"                    =>    $this->name,
-            "last_name"               =>    $this->last_name,
-            "identification_type"     =>    $this->identification_type,
-            "identification"          =>    $this->identification,
-            "phone"                   =>    $this->phone,
-            "address"                 =>    $this->address,
-            "company_id"              =>    $this->company_id,
-            "email"                   =>    $this->email,
-            "birthdate"               =>    $this?->birthdate,
+            "id" => $this->id,
+            "name" => $this->name,
+            "last_name" => $this->last_name,
+            "identification_type" => $this->identification_type,
+            "identification" => $this->identification,
+            "phone" => $this->phone,
+            "address" => $this->address,
+            "company_id" => $this->company_id,
+            "email" => $this->email,
+            "birthdate" => $this?->birthdate,
+            "is_spe" => $this->is_spe,
         ]);
     }
 }
