@@ -49,7 +49,7 @@ const updateOptions = (options) => {
             <VIcon icon="tabler-eye" />
           </IconBtn>
           <IconBtn @click="$emit('edit-group', item)">
-            <VIcon icon="tabler-edit" />
+            <VIcon icon="tabler-backspace" />
           </IconBtn>
           <IconBtn @click="$emit('delete-group', item.id)">
             <VIcon icon="tabler-trash" />
