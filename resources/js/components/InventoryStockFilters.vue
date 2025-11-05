@@ -143,7 +143,7 @@ const handleClear = () => {
         <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
-            label="Stock"
+            label="Estado Stock"
             placeholder="Stock"
             :items="stockOptions"
             clearable
@@ -186,24 +186,12 @@ const handleClear = () => {
             @update:model-value="emit('update:stock', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="1">
-          <VSelect
-            :model-value="props.days"
-            label="Dias"
-            :items="diasVencimientos"
-            @update:model-value="emit('update:days', $event)"
-          />
-        </VCol>
       </VRow>
     </VCardText>
 
-    <VDivider />
+
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-
       <!-- <div class="d-flex align-center gap-2">
         <VMenu>
           <template #activator="{ props: menuProps }">
@@ -247,7 +235,14 @@ const handleClear = () => {
           {{ getSelectedSortTitle() }}
         </VChip>
       </div> -->
-
+<div class="d-flex align-center mt-3 mb-2">
+    <VSelect
+            :model-value="props.days"
+            label="Dias"
+            :items="diasVencimientos"
+            @update:model-value="emit('update:days', $event)"
+          />
+  </div> 
 <div class="d-flex align-center mt-3 mb-2">
     <VCheckbox
       :model-value="props.expProd"
@@ -271,7 +266,9 @@ const handleClear = () => {
   </div>
 
       <VSpacer />
-
+      <VBtn color="secondary" variant="outlined" @click="handleClear">
+        Limpiar Filtros
+      </VBtn>
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn
