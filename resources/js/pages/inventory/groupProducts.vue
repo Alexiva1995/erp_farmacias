@@ -1,5 +1,7 @@
 <script setup>
+import AddProductsToGroupDialog from "@/components/dialogs/AddProductsToGroupDialog.vue";
 import GroupEditDialog from "@/components/dialogs/GroupEditDialog.vue";
+import ShowGroupProductsDialog from "@/components/dialogs/ShowGroupProductsDialog.vue";
 import GroupFilters from "@/components/GroupFilters.vue";
 import GroupTable from "@/components/GroupTable.vue";
 import axios from "@/plugins/axios";
@@ -18,6 +20,8 @@ const orderBy = ref();
 
 const searchQuery = ref("");
 
+const isGroupDialogVisible = ref(false);
+const isAddProductsDialogVisible = ref(false);
 const isEditDialogVisible = ref(false);
 const currentGroup = ref({});
 const groupFormErrors = ref({});
@@ -76,6 +80,16 @@ const handleEditGroup = (group) => {
   currentGroup.value = { ...group };
   groupFormErrors.value = {};
   isEditDialogVisible.value = true;
+};
+
+const handleAddProducts = (group) => {
+  isAddProductsDialogVisible.value = true;
+  currentGroup.value = group;
+};
+
+const handleShowGroup = (group) => {
+  isGroupDialogVisible.value = true;
+  currentGroup.value = group;
 };
 
 const handleDeleteGroup = async (id) => {
@@ -163,6 +177,16 @@ const clearFormErrors = () => {
       @add-group="handleAddGroup"
     />
 
+    <AddProductsToGroupDialog
+      v-model="isAddProductsDialogVisible"
+      :selected-group="currentGroup"
+    />
+
+    <ShowGroupProductsDialog
+      v-model="isGroupDialogVisible"
+      :selected-group="currentGroup"
+    />
+
     <GroupTable
       :groups="groups"
       :loading="loading"
@@ -170,7 +194,9 @@ const clearFormErrors = () => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @add-products="handleAddProducts"
       @edit-group="handleEditGroup"
+      @show-group="handleShowGroup"
       @delete-group="handleDeleteGroup"
     />
 
