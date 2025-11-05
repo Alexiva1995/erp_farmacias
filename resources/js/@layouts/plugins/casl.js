@@ -11,12 +11,14 @@ import { useAbility } from '@casl/vue'
  * @param {string} subject CASL Subject // https://casl.js.org/v4/en/guide/intro#basics
  */
 export const can = (action, subject) => {
-  const vm = getCurrentInstance()
+  const ability = useAbility()
+  return ability.can(action, subject)
+ /* const vm = getCurrentInstance()
   if (!vm)
     return false
   const localCan = vm.proxy && '$can' in vm.proxy
     
-  return localCan ? vm.proxy?.$can(action, subject) : true
+  return localCan ? vm.proxy?.$can(action, subject) : false*/
 }
 
 /**
@@ -25,7 +27,9 @@ export const can = (action, subject) => {
  * @param {object} item navigation object item
  */
 export const canViewNavMenuGroup = item => {
-  const hasAnyVisibleChild = item.children.some(i => can(i.action, i.subject))
+  const isChildVisible = child => !(child.action && child.subject) || can(child.action, child.subject);
+  const hasAnyVisibleChild = item.children.some(isChildVisible);
+  //const hasAnyVisibleChild = item.children.some(i => can(i.action, i.subject))
 
   // If subject and action is defined in item => Return based on children visibility (Hide group if no child is visible)
   // Else check for ability using provided subject and action along with checking if has any visible child

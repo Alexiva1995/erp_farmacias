@@ -17,6 +17,11 @@ class InvoicePayment extends Model
         'photo_url',
     ];
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_by');
+    }
+
     public function payer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payment_by');

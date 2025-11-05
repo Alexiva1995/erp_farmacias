@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
 use App\Contracts\Profitability;
 use App\Models\ProfitabilitySettings;
@@ -31,21 +31,9 @@ class ProfitabilityController extends Controller
 
     public function editProfitabilityProduct(ProfitabilityProductEditRequest $request)
     {
-        //return dump($request->profitability);
         $this->profitability->editProduct($request->profitability->all());
         return response()->json("Se ha actualizado el porcentaje");
     }
-
-    /*public function edit(Request $request, $id)
-    {
-        $editar = [
-            'default_profitability_percentage' => $request->default_profitability_percentage,
-            'id'                 => $id
-        ];
-        $this->profitability->edit($editar);
-
-        return response()->json("Se ha actualizado el porcentaje");
-    }*/
 
     public function store(Request $request)
     {
