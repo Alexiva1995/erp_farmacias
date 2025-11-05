@@ -33,6 +33,8 @@ declare module 'vue-router/auto-routes' {
     'inventory-expirations': RouteRecordInfo<'inventory-expirations', '/inventory/expirations', Record<never, never>, Record<never, never>>,
     'inventory-group-products': RouteRecordInfo<'inventory-group-products', '/inventory/groupProducts', Record<never, never>, Record<never, never>>,
     'inventory-products': RouteRecordInfo<'inventory-products', '/inventory/products', Record<never, never>, Record<never, never>>,
+    'inventory-psychotropics': RouteRecordInfo<'inventory-psychotropics', '/inventory/psychotropics', Record<never, never>, Record<never, never>>,
+    'inventory-stock': RouteRecordInfo<'inventory-stock', '/inventory/stock', Record<never, never>, Record<never, never>>,
     'inventory-traceability': RouteRecordInfo<'inventory-traceability', '/inventory/traceability', Record<never, never>, Record<never, never>>,
     'login': RouteRecordInfo<'login', '/login', Record<never, never>, Record<never, never>>,
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,
