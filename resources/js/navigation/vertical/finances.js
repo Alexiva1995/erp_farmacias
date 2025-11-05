@@ -71,13 +71,8 @@ export default [
           },
       {
         title: 'Gasto',
-        icon: {
-          is: 'font-awesome-icon', 
-          props: {
-            icon: ['fas', 'chart-simple'],
-            size: 'sm',
-          },
-        },
+        action: 'manage',
+        subject: 'admin',
         children: [
           {
             title: 'Gastos',
@@ -86,14 +81,18 @@ export default [
           {
             title: 'Gastos Pendientes',
             to: 'finances-expense-pending-expenses',
-            action: 'manage',
-            subject: 'admin',
           },
           /*{
             title: 'Gastos Recurrentes',
             to: 'finances-expense-recurring-expense',
           }*/
         ],
+      },
+      {
+        title: 'Gastos',
+        to: 'finances-expense-expenses',
+        action: 'manage',
+        subject: 'gastos-expenses',
       },
        {
             title: 'Balance General',

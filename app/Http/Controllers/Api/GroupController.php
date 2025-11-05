@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AssociateProductToGroupRequest;
 use App\Http\Requests\GroupProduct\StoreGroupRequest;
 use App\Http\Requests\GroupProduct\UpdateGroupRequest;
 use App\Models\GroupsProduct;
@@ -17,7 +18,8 @@ class GroupController extends Controller
     public function __construct(
         private GroupQueryService $queryService,
         private GroupActionService $actionService
-    ) {}
+    ) {
+    }
 
     /**
      * Obtiene una lista paginada de grupos.
@@ -94,5 +96,12 @@ class GroupController extends Controller
     {
         $respuesta = $this->queryService->consultAll();
         return ApiResponse::success($respuesta, "ok", 200);
+    }
+
+    public function associateProducts(AssociateProductToGroupRequest $request, GroupsProduct $group)
+    {
+        $this->actionService->associateProducts($group, $request->validated());
+
+        return ApiResponse::success(['message' => "Productos asociados al grupo ($group->name) exitosamente"], "ok", 200);
     }
 }
