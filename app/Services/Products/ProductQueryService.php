@@ -178,6 +178,12 @@ class ProductQueryService
                 ->selectRaw('MAX(expiration_date)')
                 ->whereColumn('product_lots.product_id', 'products.id'),
             // ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()')),
+            // 'fecha_vencimiento_siguiente_lote' => DB::table('product_lots')
+            //     ->whereColumn('product_lots.product_id', 'products.id')
+            //     ->selectRaw('MIN(expiration_date)')
+            //     ->where('product_lots.quantity', '>', 0)
+            //     ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
+            //     ->orderBy('product_lots.expiration_date', 'ASC'),
         ]);
     }
 }
