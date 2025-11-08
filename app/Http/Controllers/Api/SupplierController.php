@@ -17,6 +17,7 @@ use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -292,11 +293,15 @@ class SupplierController extends Controller
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
         $userId = auth()->id() ?? 1;
-
         $validated = $request->validated();
+
         unset($validated["file"]);
 
-        $path = $request->file("file")->store("temp", ["disk" => "local"]);
+        try {
+            $path = $request->file("file")->store("temp", ["disk" => "local"]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to store file'], 500);
+        }
 
         ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
 
@@ -306,5 +311,14 @@ class SupplierController extends Controller
     public function deleteProducts(Supplier $supplier)
     {
         return $this->supplierQueryService->deleteProducts($supplier);
+    }
+
+    public function getSupplierFirstConnection(Supplier $supplier)
+    {
+        $result = $this->supplierQueryService->getSupplierFirstConnection($supplier);
+
+        return response()->json([
+            'data' => $result
+        ]);
     }
 }

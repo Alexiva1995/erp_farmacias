@@ -1,16 +1,16 @@
 <script setup>
-import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderFilters from "@/components/OrderFilters.vue";
-import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
-import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
-import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
-import BuysModal from "@/components/dialogs/BuysModal.vue";
-import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
-import { useAuthStore } from "@/stores/auth";
+import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
+import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
+import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
+import BuysModal from "@/components/dialogs/BuysModal.vue";
+import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -54,6 +54,7 @@ const newClientFormData = ref({
   birthdate: "",
   company_id: null,
   address: "",
+  is_spe: false,
 });
 
 const newClientFormErrors = reactive({
@@ -67,6 +68,7 @@ const newClientFormErrors = reactive({
   address: "",
   birthdate: "",
   company_id: "",
+  is_spe: "",
 });
 
 const companies = ref([]);
@@ -176,6 +178,7 @@ onMounted(() => {
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
+  console.log(product);
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
@@ -185,7 +188,9 @@ const formatOrderItemForFrontend = (backendItem) => {
     price: parseFloat(product.sale_price) || 0,
     price_bs: parseFloat(product.price_bs) || 0,
     price_cop: parseFloat(product.price_cop) || 0,
-    availableQuantity: parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
+    unitCost: parseFloat(product.unit_cost) || 0,
+    availableQuantity:
+      parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
@@ -227,6 +232,17 @@ onMounted(async () => {
   } finally {
     isLoadingInitialOrder.value = false;
   }
+});
+
+
+const totalOrderCost = computed(() => {
+  let totalCost = 0;
+  orderItems.value.forEach((item) => {
+  const cost = item.unitCost || 0; 
+  const quantity = item.selectedQuantity || 0;
+  totalCost += cost * quantity;
+  });
+  return parseFloat(totalCost.toFixed(2));
 });
 
 const updateTableOptions = (options) => {
@@ -375,6 +391,7 @@ function cargarErrores(errores) {
   newClientFormErrors.company_id = errores.company_id
     ? errores.company_id.join(", ")
     : "";
+  newClientFormErrors.is_spe = errores.is_spe ? errores.is_spe.join(", ") : ""; // Nuevo campo agregado
 }
 
 const handleSaveNewClient = async (formData) => {
@@ -409,6 +426,7 @@ function limpiarDatosFormulario() {
   newClientFormData.address = "";
   newClientFormData.birthdate = null;
   newClientFormData.company_id = "";
+  newClientFormData.is_spe = false; // Nuevo campo agregado
 }
 
 function limpiarErroresFormulario() {
@@ -422,6 +440,7 @@ function limpiarErroresFormulario() {
   newClientFormErrors.address = "";
   newClientFormErrors.birthdate = "";
   newClientFormErrors.company_id = "";
+  newClientFormErrors.is_spe = ""; // Nuevo campo agregado
 }
 
 const clearFormErrors = () => {
@@ -437,20 +456,45 @@ const totalOrderAmount = computed(() => {
 });
 
 const myCalculatedTotal = computed(() => {
-  let valor = totalProductsAmount.value + totalIVAAmount.value;
+  let valor = totalProductsAmount.value + totalIVAAmount.value; // Ahora totalIVAAmount ya incluye el descuento SPE
   if (selectedDisplayCurrency.value === "COP") {
     return roundUpToNearestHundred(valor);
   }
   return parseFloat(valor.toFixed(2));
 });
+const totalSPESavings = computed(() => {
+  if (!selectedClient.value?.is_spe) return 0;
 
+  let totalOriginalIVA = 0;
+  orderItems.value.forEach((item) => {
+    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    totalOriginalIVA += price * quantity * taxRate;
+  });
+
+  // El ahorro es el 75% del IVA original
+  const savings = totalOriginalIVA * 0.75;
+  if (selectedDisplayCurrency.value === "COP") {
+    return roundUpToNearestHundred(savings);
+  }
+  return parseFloat(savings.toFixed(2));
+});
 const totalIVAAmount = computed(() => {
   let totalIVA = 0;
   orderItems.value.forEach((item) => {
     const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    totalIVA += price * quantity * taxRate;
+
+    let ivaAmount = price * quantity * taxRate;
+
+    // Si el cliente es SPE, aplicar solo el 25% del IVA (descuento del 75%)
+    if (selectedClient.value?.is_spe) {
+      ivaAmount = ivaAmount * 0.25;
+    }
+
+    totalIVA += ivaAmount;
   });
   return totalIVA;
 });
@@ -464,14 +508,20 @@ const totalProductsAmount = computed(() => {
   });
   return total;
 });
-
 const totalAmountBs = computed(() => {
   let total = 0;
   orderItems.value.forEach((item) => {
     const basePriceBs = item.price_bs || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceBs * quantity * (1 + taxRate);
+
+    // Aplicar descuento SPE si corresponde
+    let effectiveTaxRate = taxRate;
+    if (selectedClient.value?.is_spe) {
+      effectiveTaxRate = taxRate * 0.25;
+    }
+
+    total += basePriceBs * quantity * (1 + effectiveTaxRate);
   });
   return total;
 });
@@ -482,7 +532,14 @@ const totalAmountUsd = computed(() => {
     const basePriceUsd = item.price || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceUsd * quantity * (1 + taxRate);
+
+    // Aplicar descuento SPE si corresponde
+    let effectiveTaxRate = taxRate;
+    if (selectedClient.value?.is_spe) {
+      effectiveTaxRate = taxRate * 0.25;
+    }
+
+    total += basePriceUsd * quantity * (1 + effectiveTaxRate);
   });
   return total;
 });
@@ -493,7 +550,14 @@ const totalAmountCop = computed(() => {
     const basePriceCop = item.price_cop || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceCop * quantity * (1 + taxRate);
+
+    // Aplicar descuento SPE si corresponde
+    let effectiveTaxRate = taxRate;
+    if (selectedClient.value?.is_spe) {
+      effectiveTaxRate = taxRate * 0.25;
+    }
+
+    total += basePriceCop * quantity * (1 + effectiveTaxRate);
   });
   return total;
 });
@@ -511,6 +575,8 @@ const updateOrderTotalsInBackend = async () => {
   try {
     const payload = {
       total_amount: total,
+      total_amount_usd: totalAmountUsd.value,
+      total_cost: totalOrderCost.value,
       currency: selectedDisplayCurrency.value,
     };
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
@@ -640,7 +706,6 @@ const addProductToOrder = async ({ productId, quantity }) => {
     );
 
     if (existingItemIndex !== -1) {
-        
       orderItems.value[existingItemIndex] =
         formatOrderItemForFrontend(backendOrderItem);
       toast.success(
@@ -763,34 +828,45 @@ const cancelarOrder = async () => {
 
 const reserverOrder = async () => {
   try {
-    const response = await axios.patch(`/tpv/order/${openOrderData.value.id}/reserve`);
-      hasOpenOrder.value = false;
-      openOrderData.value = null;
-      selectedClient.value = null;
-      orderItems.value = [];
+    const response = await axios.patch(
+      `/tpv/order/${openOrderData.value.id}/reserve`
+    );
+    hasOpenOrder.value = false;
+    openOrderData.value = null;
+    selectedClient.value = null;
+    orderItems.value = [];
     reservedOrderData.value = response.data.data.reserved_order;
     toast.success("Orden reservada exitosamente.");
-
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
 
-    if (error.response?.data?.message.includes("Ya tienes una orden reservada")) {
-     try {
-        const checkResponse = await axios.get("/tpv/order/seller/my-open-order");
+    if (
+      error.response?.data?.message.includes("Ya tienes una orden reservada")
+    ) {
+      try {
+        const checkResponse = await axios.get(
+          "/tpv/order/seller/my-open-order"
+        );
         if (checkResponse.data.data) {
           openOrderData.value = checkResponse.data.data.order.pending_order;
-          reservedOrderData.value = checkResponse.data.data.order.reserved_order;
-          toast.info("Ya hay una orden reservada. La orden abierta se mantiene.");
+          reservedOrderData.value =
+            checkResponse.data.data.order.reserved_order;
+          toast.info(
+            "Ya hay una orden reservada. La orden abierta se mantiene."
+          );
           return;
         }
       } catch (checkError) {
-        console.error("Error al verificar el estado de las órdenes:", checkError);
+        console.error(
+          "Error al verificar el estado de las órdenes:",
+          checkError
+        );
       }
     }
-     console.error(
+    console.error(
       "Error al reservar la orden:",
       error.response ? error.response.data : error.message
     );
@@ -815,8 +891,9 @@ const handleBuysCompletion = async (
   switchStates
 ) => {
   try {
-
-  const balanceUsed = paymentsData.some(payment => payment.type === 'balance');
+    const balanceUsed = paymentsData.some(
+      (payment) => payment.type === "balance"
+    );
 
     const payload = {
       order_id: orderId,
@@ -830,6 +907,7 @@ const handleBuysCompletion = async (
       credit: credit,
       changeAmount: changeAmount,
       changeAmountUSD: changeAmountUSD,
+      spe: switchStates.spe,
     };
 
     const response = await axios.post(
@@ -891,24 +969,22 @@ const handleBuysCompletion = async (
         window.print();
       }
 
-
       if (response.data.data.order) {
-                hasOpenOrder.value = true;
-                openOrderData.value = response.data.data.order;
-                selectedClient.value = openOrderData.value.client;
-                reservedOrderData.value = null;
-                orderItems.value = openOrderData.value.details.map((item) =>
-                    formatOrderItemForFrontend(item)
-                );
-            } else {
-                hasOpenOrder.value = false;
-                openOrderData.value = null;
-                selectedClient.value = null;
-                orderItems.value = [];
-                reservedOrderData.value = null;
-                clientIdentification.value = "";
-            }
-
+        hasOpenOrder.value = true;
+        openOrderData.value = response.data.data.order;
+        selectedClient.value = openOrderData.value.client;
+        reservedOrderData.value = null;
+        orderItems.value = openOrderData.value.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
+        hasOpenOrder.value = false;
+        openOrderData.value = null;
+        selectedClient.value = null;
+        orderItems.value = [];
+        reservedOrderData.value = null;
+        clientIdentification.value = "";
+      }
     } else {
       toast.error(
         `Error inesperado al finalizar la compra: ${
@@ -976,15 +1052,17 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 };
 
 const addReserverOrder = async () => {
- try {
-    const response = await axios.patch(`/tpv/order/${reservedOrderData.value.id}/reserveAdd`);
+  try {
+    const response = await axios.patch(
+      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`
+    );
     const { pending_order, reserved_order } = response.data.data;
 
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-    console.log('dentro de add reserver');
+    console.log("dentro de add reserver");
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
@@ -996,16 +1074,14 @@ const addReserverOrder = async () => {
     await nextTick();
     toast.success("Orden agregada exitosamente.");
     return response.data.data.order;
-
   } catch (error) {
-     console.error(
+    console.error(
       "Error al agregar la orden:",
       error.response ? error.response.data : error.message
     );
     toast.error(errorMessage);
   }
-
-}
+};
 </script>
 <template>
   <div>
@@ -1103,7 +1179,6 @@ const addReserverOrder = async () => {
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
       />
-
     </div>
   </div>
 </template>

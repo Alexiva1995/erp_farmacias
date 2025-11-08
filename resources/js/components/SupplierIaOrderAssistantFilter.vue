@@ -36,6 +36,7 @@ const tipoDeVistaOpcion = [
 const tipoFiltracionOpcion = [
   { title: "Promedio", value: "average" },
   { title: "Ventas", value: "sales" },
+  { title: "Combinado", value: "combinado" },
 ];
 
 const lapsoDeTiempoOpciones = [
@@ -54,10 +55,10 @@ const stockOpciones = [
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -71,7 +72,7 @@ const stockOpciones = [
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :model-value="props.selectedGroup"
             :items="props.groups"
@@ -85,7 +86,7 @@ const stockOpciones = [
             @update:model-value="emit('update:selectedGroup', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.tipo_de_vista"
             label="Tipo de vista"
@@ -93,7 +94,7 @@ const stockOpciones = [
             @update:model-value="emit('update:tipo_de_vista', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.selectConDescuento"
             label="Precio"

@@ -62,7 +62,7 @@ const emit = defineEmits([
         <VCol cols="12" md="6">
           <VCheckbox
             :model-value="props.showOverdueOnly"
-            label="Solo vencidos"
+            label="Pagos vencidos"
             @update:model-value="emit('update:showOverdueOnly', $event)"
           />
         </VCol>

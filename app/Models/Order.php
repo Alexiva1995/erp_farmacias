@@ -23,10 +23,13 @@ class Order extends Model
         'total_amount',
         'money_returns',
         'currency',
+        'total_cost',
         'order_date',
         'status',
         'has_multiple_currencies',
         'payment_methods',
+        'usd_conversion',
+        'total_amount_usd'
     ];
 
     protected $casts = [

@@ -1,6 +1,7 @@
 <script setup>
 import navItems from '@/navigation/vertical'
 import { themeConfig } from '@themeConfig'
+import { useAuthStore } from '@/stores/auth'
 
 // Components
 import Footer from '@/layouts/components/Footer.vue'
@@ -10,9 +11,13 @@ import NavBarI18n from '@core/components/I18n.vue'
 
 // @layouts plugin
 import { VerticalNavLayout } from '@layouts'
+
+const authStore = useAuthStore()
+
 </script>
 
 <template>
+<template v-if="authStore.isLoaded">
   <VerticalNavLayout :nav-items="navItems">
     <!-- 👉 navbar -->
     <template #navbar="{ toggleVerticalOverlayNavActive }">
@@ -51,4 +56,8 @@ import { VerticalNavLayout } from '@layouts'
     <!-- 👉 Customizer -->
     <!-- <TheCustomizer /> -->
   </VerticalNavLayout>
+  </template>
+  <div v-else class="d-flex justify-center align-center" style="height: 100vh;">
+    Cargando aplicación...
+  </div>
 </template>

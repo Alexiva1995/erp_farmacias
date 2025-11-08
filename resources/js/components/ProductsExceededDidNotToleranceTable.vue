@@ -26,8 +26,8 @@ const productosTable = computed(() => {
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo A.</th>
-          <th>Stock A.</th>
           <th>Costo P.</th>
+          <th>Stock A.</th>
           <th>Sugerencia</th>
         </tr>
       </thead>
@@ -53,11 +53,11 @@ const productosTable = computed(() => {
             <VIcon icon="tabler-currency-dollar" />
             {{ parseFloat(item.product.unit_cost).toFixed(2) }}
           </td>
-          <td>{{ item.product.stock }}</td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
             {{ parseFloat(item.precio_final_supplier).toFixed(2) }}
           </td>
+          <td>{{ item.product.stock }}</td>
           <td class="row">
             <VTextField
               type="number"

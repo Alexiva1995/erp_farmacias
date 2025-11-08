@@ -159,7 +159,7 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'lockedValue' => $request->lockedValue, // <- para el filtro de profitability.is_locked
+            'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
         ];
 

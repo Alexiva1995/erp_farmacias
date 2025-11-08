@@ -7,6 +7,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
+
+    const STATUS_PENDING = "Pending";
+    const STATUS_CANCELLED = "Cancelled";
+    const STATUS_APPROVED = "Approved";
+
+    const COUNT_EFECTIVO = "Efectivo"; // BS, USD, COP
+    const COUNT_TARJETA = "Tarjeta"; // BS,
+    const COUNT_PAGO_MOVIL = "Pago Móvil"; // BS,
+    const COUNT_TRANSFERENCIA = "Transferencia"; // BS, COP
+    const COUNT_BINANCE = "Binance"; // USD
+    const COUNT_PAYPAL = "PayPal"; // USD
+
+    const TYPE_OF_EXPENSE_NORMAL = "Normal";
+    const TYPE_OF_EXPENSE_RECURRENTE = "Recurrente";
+
+    const RECURRENCE_MENSUAL = "Mensual";
+    const RECURRENCE_SEMESTRAL = "Semestral";
+    const RECURRENCE_ANUAL = "Anual";
+
+
     protected $fillable = [
         'name',
         'category_id',
@@ -17,6 +37,17 @@ class Expense extends Model
         'is_deductible',
         'expense_date',
         'user_id',
+        'iva',
+        'status',
+        'count',
+        'amount_bs',
+        'type_of_expense'
+    ];
+
+     protected $casts = [
+        'is_deductible' => 'boolean',
+        'has_invoice' => 'boolean', 
+        'iva' => 'boolean',
     ];
 
     public function category(): BelongsTo

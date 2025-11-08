@@ -28,17 +28,19 @@ class InvoiceActionService
                 'exp_date' => $data['exp_date'],
                 'payment_date' => $data['payment_date'] ?? null,
                 'received_date' => $data['received_date'],
+                'created_invoice_date' => $data['created_invoice_date'],
                 'exempt_amount' => $data['exempt_amount'] ?? 0,
                 'taxable_base' => $data['taxable_base'] ?? 0,
                 'tax_amount' => $data['tax_amount'] ?? 0,
-                'exchange_rate' => $data['exchange_rate'],
+                'exchange_rate' => $data['currency'] === 'USD' ? 1 : $data['exchange_rate'],
                 'total_amount' => $data['total_amount'],
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
                 'registered_by' => 1,
-                'uploaded_by' => 1
+                'uploaded_by' => 1,
+                'status_payment' => 0,
             ];
 
             return Invoice::create($invoiceData);
@@ -116,19 +118,14 @@ class InvoiceActionService
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
 
-                $unitCostUSD = $unitCostInInvoiceCurrency;
-                if ($currency !== 'USD') {
-                    $unitCostUSD = round($unitCostInInvoiceCurrency / $rate, 2);
-                }
-
-                $totalCostUSD = $quantity * $unitCostUSD;
+                $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
                 if ($taxEnabled) {
-                    $totalCostUSD = $totalCostUSD * 1.16;
+                    $totalCostInInvoiceCurrency = $totalCostInInvoiceCurrency * 1.16;
                 }
-                $totalCostUSD = round($totalCostUSD, 2);
+                $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
 
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
-                    $refundAmount = $totalCostUSD;
+                    $refundAmount = $totalCostInInvoiceCurrency;
 
                     InvoiceReturn::create([
                         'invoice_id' => $invoice->id,
@@ -143,8 +140,8 @@ class InvoiceActionService
                     $invoice->details()->create([
                         'product_id' => $productId,
                         'quantity' => $quantity,
-                        'unit_cost' => $unitCostUSD,
-                        'total_cost' => $totalCostUSD,
+                        'unit_cost' => $unitCostInInvoiceCurrency,
+                        'total_cost' => $totalCostInInvoiceCurrency,
                         'lot_number' => $detail['lot_number'],
                         'expiration_date' => $detail['expiration_date'],
                         'location' => $detail['location'],

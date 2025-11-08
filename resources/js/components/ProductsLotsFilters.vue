@@ -6,21 +6,27 @@ const props = defineProps({
   searchQuery: { type: String, required: true },
   itemsPerPage: { type: Number, required: true },
   selectedLaboratory: [Number, String, null],
+  selectedOrigin: [Number, String, null],
   stockStatusFilter: [Boolean, null],
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   addLotLoading: { type: Boolean, default: false },
+  isStrictSearch: Boolean,
+  isAdmin: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   "update:searchQuery",
   "update:itemsPerPage",
   "update:selectedLaboratory",
+  "update:selectedOrigin",
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
+  "update:isStrictSearch",
   "clear",
   "add-lot",
   "sort",
@@ -176,10 +182,10 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Lote, Producto, Proveedor..."
@@ -188,31 +194,43 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="Buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
+          <VSelect
+            :model-value="props.selectedOrigin"
+            label="Origen"
+            placeholder="Buscar un origen"
+            :items="props.origins"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:selectedOrigin', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
             :items="stockOptions"
+            placeholder="Stock"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Vencimiento Desde"
@@ -226,7 +244,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Vencimiento Hasta"
@@ -293,6 +311,34 @@ watch(
         </VChip>
       </div>
 
+      <div class="d-flex align-center mt-3 mb-2">
+        <VCheckbox
+          :model-value="props.isStrictSearch"
+          @update:model-value="emit('update:isStrictSearch', $event)"
+          color="primary"
+          class="me-2"
+        >
+          <template #label>
+            <div class="d-flex align-center">
+              <VIcon icon="tabler-search" class="me-2" size="20" />
+              <span class="text-subtitle-1 font-weight-medium">
+                ¿Búsqueda Estricta?
+              </span>
+            </div>
+          </template>
+        </VCheckbox>
+
+        <VChip
+          v-if="props.isStrictSearch"
+          color="primary"
+          size="small"
+          class="ms-2"
+        >
+          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+          Modo Estricto Activo
+        </VChip>
+      </div>
+
       <VSpacer />
 
       <VBtn
@@ -301,6 +347,7 @@ watch(
         @click="emit('add-lot')"
         :loading="props.addLotLoading"
         :disabled="props.addLotLoading"
+        v-if="props.isAdmin"
       >
         Agregar Lote
       </VBtn>

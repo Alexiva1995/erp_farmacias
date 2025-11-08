@@ -316,7 +316,7 @@ watch(
                 variant="tonal"
                 density="default"
                 size="small"
-                draggable="false"
+                :draggable="false"
               >
                 <span class="font-weight-medium">
                   {{ totalSelectedQuantity }}</span

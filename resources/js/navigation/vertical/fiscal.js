@@ -10,8 +10,20 @@ export default [
     },
     children: [
       {
-        title: 'Listado de Histórico',
+        title: 'Facturas',
         to: 'fiscal-history',
+      },
+        {
+        title: 'IVA',
+        to: 'iva-general',
+        action: 'manage',
+        subject: 'admin',
+      },
+       {
+        title: 'ISRL',
+        to: 'islr-general',
+        action: 'manage',
+        subject: 'admin',
       },
     ],
   },
