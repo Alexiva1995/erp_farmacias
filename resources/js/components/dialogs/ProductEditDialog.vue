@@ -1,7 +1,10 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import { computed, ref, watch } from "vue";
+
+const authStore = useAuthStore();
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -272,6 +275,7 @@ const submitForm = () => {
                 type="number"
                 prefix="$"
                 variant="outlined"
+                :readonly="!authStore.isAdmin"
                 :error-messages="formErrors.unit_cost"
               />
             </VCol>
@@ -339,8 +343,8 @@ const submitForm = () => {
 
           <template v-if="!isNewProduct">
             <VDivider class="my-6" />
-
-            <VSheet color="#f5f5f5" variant="tonal" rounded="lg" class="pa-4">
+            <!-- se removio el color => #f5f5f5 Grupo de Productos por que en modo oscuro el fondo de componente tiene fondo blanco y desentona con el modo oscuro se ve igual de todas maneras si usas el modo blanco-->
+            <VSheet color="" variant="tonal" rounded="lg" class="pa-4">
               <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
 
               <div

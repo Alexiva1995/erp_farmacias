@@ -3,12 +3,12 @@ import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
-
-// 6879
+const authStore = useAuthStore();
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -125,7 +125,7 @@ watch(
   }
 );
 
-onMounted(() => {
+onMounted(async () => {
   fetchSelectOptions();
   fetchProducts();
 });
@@ -306,6 +306,7 @@ const handleSort = (sortOptions) => {
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
+      :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"
       @export="handleExport"
       @add-product="handleAddProduct"
