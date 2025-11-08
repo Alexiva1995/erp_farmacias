@@ -31,13 +31,38 @@ class ProductQueryService
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
+        // if (!empty($filters['q'])) {
+        //     $searchTerm = "%{$filters['q']}%";
+        //     $query->where(function ($subQuery) use ($searchTerm) {
+        //         $subQuery->where('name', 'like', $searchTerm)
+        //             ->orWhere('active_ingredient', 'like', $searchTerm)
+        //             ->orWhere('barcode', 'like', $searchTerm)
+        //             ->orWhere('id', 'like', $searchTerm);
+        //     });
+        // }
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm)
-                    ->orWhere('barcode', 'like', $searchTerm)
-                    ->orWhere('id', 'like', $searchTerm);
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+
+                if ($isStrictSearch) {
+                    $subQuery->where('name', 'like', "%{$searchTerm}%")
+                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                        ->orWhere('barcode', 'like', $searchTerm)
+                        ->orWhere('id', 'like', $searchTerm);
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $subQuery->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where('name', 'like', "%{$word}%")
+                                ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                    $labQuery->where('name', 'like', "%{$word}%");
+                                });
+                        });
+                    }
+                }
             });
         }
 
@@ -161,6 +186,7 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $this->applyFilters($query, $filters);
