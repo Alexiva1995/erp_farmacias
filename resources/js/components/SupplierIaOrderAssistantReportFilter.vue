@@ -29,7 +29,6 @@ const lapsoDeTiempoOpciones = [
   { title: "1 Mes", value: "1 month" },
   { title: "3 Meses", value: "3 month" },
   { title: "6 Meses", value: "6 month" },
-  { title: "12 Meses o 1 año", value: "1 year" },
   { title: "12 Meses", value: "12 month" },
   { title: "18 Meses", value: "18 month" },
   { title: "24 Meses", value: "24 month" },
@@ -37,10 +36,10 @@ const lapsoDeTiempoOpciones = [
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard title="" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="12" md="12">
+        <VCol cols="12" sm="12" md="2">
           <VAutocomplete
             :items="props.products"
             label="Productos"
@@ -53,7 +52,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:selectProducts', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             :items="props.laboratories"
             label="Laboratorio"
@@ -67,7 +66,7 @@ const lapsoDeTiempoOpciones = [
           >
           </VAutocomplete>
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.tipo_de_filtracion"
             label="Calcular Por"
@@ -75,7 +74,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:tipo_de_filtracion', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.lapso_de_tiempo"
             label="Lapso de tiempo"
@@ -83,7 +82,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:lapso_de_tiempo', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <v-checkbox
             :model-value="props.checkColombia"
             label="Colombia"
@@ -92,9 +91,6 @@ const lapsoDeTiempoOpciones = [
         </VCol>
       </VRow>
     </VCardText>
-
-    <VDivider />
-
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
