@@ -14,9 +14,15 @@ const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: false },
-  { title: "Costo Min", key: "cost_min", sortable: true },
-  { title: "Costo Max", key: "cost_max", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
+  // { title: "Costo Min", key: "cost_min", sortable: true },
+  // { title: "Costo Max", key: "cost_max", sortable: true },
+  // { title: "Costo", key: "unit_cost", sortable: true },
+  { title: "Costo", key: "unit_cost", sortable: false },
+  {
+    title: "Costo P",
+    key: "product_suppliers",
+    sortable: false,
+  },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "lote_quantity", sortable: true },
   {
@@ -74,6 +80,21 @@ const headers = [
             }}</span>
           </div>
         </div>
+      </template>
+      <template #item.unit_cost="{ item }">
+        <!-- <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"></span -->
+        (<span :style="'color:#28c76f'">{{ item.cost_min }}</span> -
+        <span :style="'color:#dd4d4f'">{{ item.cost_max }}</span> -
+        <span :style="'color:#288bc7'">{{ item.unit_cost }}</span
+        >)
+      </template>
+      <template #item.product_suppliers="{ item }">
+        <span v-if="item.product_suppliers.length > 0"
+          >{{ item.product_suppliers[0].unit_cost_usd_with_discount }} ({{
+            item.product_suppliers[0].laboratory
+          }})</span
+        >
+        <span v-if="item.product_suppliers.length == 0">Sin Proveedor</span>
       </template>
       <template #item.solicitar="{ item }">
         <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
