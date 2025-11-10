@@ -31,18 +31,30 @@ const stockOptions = [
 
 const sortOptions = [
   {
-    title: "Precio mayor",
+    title: "Más Vendidos",
+    icon: "tabler-trending-up",
+    key: "most_sold",
+    order: "desc",
+  },
+  {
+    title: "Mayor Cantidad",
     icon: "tabler-arrow-up",
     key: "sale_price",
     order: "desc",
   },
   {
-    title: "Precio Menor",
+    title: "Menor Cantidad",
     icon: "tabler-arrow-down",
     key: "sale_price",
     order: "asc",
   },
   {
+    title: "Pronto a Vencer",
+    icon: "tabler-calendar-time",
+    key: "next_expiration",
+    order: "asc",
+  },
+    {
     title: "Más Unidades",
     icon: "tabler-plus",
     key: "valid_stock",
@@ -53,19 +65,7 @@ const sortOptions = [
     icon: "tabler-minus",
     key: "valid_stock",
     order: "asc",
-  },
-  {
-    title: "Fecha pronto a Vencer",
-    icon: "tabler-calendar-time",
-    key: "next_expiration",
-    order: "asc",
-  },
-  {
-    title: "Más Vendidos",
-    icon: "tabler-trending-up",
-    key: "most_sold",
-    order: "desc",
-  },
+  }
 ];
 
 const authStore = useAuthStore();
@@ -169,10 +169,10 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -180,13 +180,13 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="Buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
@@ -194,17 +194,18 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
             :items="stockOptions"
+            placeholder="Stock"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Vencimiento Desde"
@@ -218,7 +219,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Vencimiento Hasta"
