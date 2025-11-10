@@ -218,15 +218,6 @@ const formatDate = (dateString) => {
   <div>
     <VRow>
       <VCol cols="12">
-        <CashCloseFilters
-          v-model:searchQuery="filters.searchQuery"
-          v-model:startDate="filters.startDate"
-          v-model:endDate="filters.endDate"
-          @clear="handleClearFilters"
-        />
-      </VCol>
-
-      <VCol cols="12">
         <VCard class="position-relative">
           <VCardTitle>Resumen del Cierre de Inventario</VCardTitle>
           <VDivider />
@@ -322,6 +313,15 @@ const formatDate = (dateString) => {
         </VCard>
       </VCol>
 
+      <VCol cols="12">
+        <CashCloseFilters
+          v-model:searchQuery="filters.searchQuery"
+          v-model:startDate="filters.startDate"
+          v-model:endDate="filters.endDate"
+          @clear="handleClearFilters"
+        />
+      </VCol>
+      
       <VCol cols="12">
         <CashCloseTable :items="counts" :loading="loading" />
       </VCol>
