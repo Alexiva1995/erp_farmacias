@@ -164,13 +164,13 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros de Resumen de Ciclos" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Fecha de Inicio Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -180,10 +180,10 @@ watch(
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Fecha de Inicio Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -193,13 +193,13 @@ watch(
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.cycleStatus"
             :items="cycleStatusOptions"
             :loading="props.loading"
             label="Estado del Ciclo"
-            placeholder="Selecciona un estado"
+            placeholder="Ciclo"
             item-title="title"
             item-value="value"
             clearable
