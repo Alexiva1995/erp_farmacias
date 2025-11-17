@@ -29,7 +29,7 @@ const stockOptions = [
   { title: "Sin Stock", value: false },
 ];
 
-const sortOptions = [
+/*const sortOptions = [
   {
     title: "Más Vendidos",
     icon: "tabler-trending-up",
@@ -66,6 +66,57 @@ const sortOptions = [
     key: "valid_stock",
     order: "asc",
   }
+];*/
+
+const sortOptions = [
+  {
+    title: "Más Recientes",
+    icon: "tabler-calendar-plus",
+    key: "created_at",
+    order: "desc",
+  },
+  {
+    title: "Más Antiguos",
+    icon: "tabler-calendar-minus",
+    key: "created_at",
+    order: "asc",
+  },
+   {
+    title: "Más Vendidos",
+    icon: "tabler-trending-up",
+    key: "most_sold",
+    order: "desc",
+  },
+  {
+    title: "Mayor Cantidad",
+    icon: "tabler-arrow-up",
+    key: "valid_stock",
+    order: "desc",
+  },
+  {
+    title: "Menor Cantidad",
+    icon: "tabler-arrow-down",
+    key: "valid_stock",
+    order: "asc",
+  },
+  {
+    title: "Pronto a Vencer",
+    icon: "tabler-calendar-time",
+    key: "next_expiration",
+    order: "asc",
+  },
+  {
+    title: "Producto A-Z",
+    icon: "tabler-sort-ascending-letters",
+    key: "product.name",
+    order: "asc",
+  },
+  {
+    title: "Producto Z-A",
+    icon: "tabler-sort-descending-letters",
+    key: "product.name",
+    order: "desc",
+  },
 ];
 
 const authStore = useAuthStore();
@@ -208,7 +259,7 @@ watch(
         <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -222,7 +273,7 @@ watch(
         <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
