@@ -167,7 +167,7 @@ const productHeaders = [
                   size="20"
                   class="me-2"
                 />
-                Quitar
+                <VIcon v-else icon="tabler-trash" />
               </VBtn>
             </template>
           </VDataTable>
@@ -181,7 +181,7 @@ const productHeaders = [
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="grow w-0 mr-4"
         >
           Cancelar
         </VBtn>
@@ -189,7 +189,7 @@ const productHeaders = [
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
+          class="grow w-0"
         >
           Guardar
         </VBtn>
