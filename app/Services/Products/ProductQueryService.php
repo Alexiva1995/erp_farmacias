@@ -131,10 +131,12 @@ class ProductQueryService
      */
     private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
-        if (empty($sortBy)) {
+        /*if (empty($sortBy)) {
             return $query->orderBy('products.name', 'asc');
-        }
+        }*/
 
+        $sortBy = $sortBy ?? 'name';
+        
         switch ($sortBy) {
             case 'laboratory.name':
                 return $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -153,10 +155,16 @@ class ProductQueryService
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'id':
-            case 'name':
-            case 'unit_cost':
+            case 'product.name':
+                return $query->orderBy('products.name', $orderBy);
+                break;
+           case 'created_at':
+                return $query->orderBy('created_at', $orderBy);
+                break;
             case 'sale_price':
                 return $query->orderBy("products.{$sortBy}", $orderBy);
+            default:
+                 return $query->orderBy('products.name', $orderBy);
         }
 
         return $query;
