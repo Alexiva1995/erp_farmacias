@@ -31,13 +31,38 @@ class ProductQueryService
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
+        // if (!empty($filters['q'])) {
+        //     $searchTerm = "%{$filters['q']}%";
+        //     $query->where(function ($subQuery) use ($searchTerm) {
+        //         $subQuery->where('name', 'like', $searchTerm)
+        //             ->orWhere('active_ingredient', 'like', $searchTerm)
+        //             ->orWhere('barcode', 'like', $searchTerm)
+        //             ->orWhere('id', 'like', $searchTerm);
+        //     });
+        // }
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm)
-                    ->orWhere('barcode', 'like', $searchTerm)
-                    ->orWhere('id', 'like', $searchTerm);
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+
+                if ($isStrictSearch) {
+                    $subQuery->where('name', 'like', "%{$searchTerm}%")
+                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                        ->orWhere('barcode', 'like', $searchTerm)
+                        ->orWhere('id', 'like', $searchTerm);
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $subQuery->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where('name', 'like', "%{$word}%")
+                                ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                    $labQuery->where('name', 'like', "%{$word}%");
+                                });
+                        });
+                    }
+                }
             });
         }
 
@@ -73,7 +98,6 @@ class ProductQueryService
                         });
                     break;
             }
-
         }
 
         $hasStock = $filters['hasStock'] ?? null;
@@ -162,20 +186,30 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $this->applyFilters($query, $filters);
+        $this->subColummn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }
-    public function calculateInventoryValue(): float
-    {
-        $totalValue = Product::selectRaw('SUM(stock * unit_cost) as total_value')
-            ->where('stock', '>', 0)
-            ->where('unit_cost', '>', 0)
-            ->value('total_value');
 
-        return (float) ($totalValue ?? 0);
+    public function subColummn(Builder $query): Builder
+    {
+        return $query->addSelect([
+            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) as stock_calculado'),
+            'ultima_fecha_vencimiento' => DB::table('product_lots')
+                ->selectRaw('MAX(expiration_date)')
+                ->whereColumn('product_lots.product_id', 'products.id'),
+            // ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()')),
+            // 'fecha_vencimiento_siguiente_lote' => DB::table('product_lots')
+            //     ->whereColumn('product_lots.product_id', 'products.id')
+            //     ->selectRaw('MIN(expiration_date)')
+            //     ->where('product_lots.quantity', '>', 0)
+            //     ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
+            //     ->orderBy('product_lots.expiration_date', 'ASC'),
+        ]);
     }
 }
