@@ -20,7 +20,7 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'finances-payslips');
       can('manage', 'finances-cash-closure');
       can('manage', 'finances-cash-closure-user');
-      can('manage', 'comparador');
+      can('manage', 'comparadorAssistence');
     }
 
     if (user.role_id === 2) {
@@ -45,7 +45,7 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'user'); 
       can('manage', 'productividad');
       can('manage', 'productividad');
-      can('manage', 'comparador');
+      can('manage', 'comparadorAssistence');
       can('manage', 'gastos-expenses');
     }
     // ... otros permisos para otros roles

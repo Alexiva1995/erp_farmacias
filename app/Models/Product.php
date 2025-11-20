@@ -45,7 +45,6 @@ class Product extends Model
         'barcode',
         'photo_url',
         'sales_average',
-        'group_id',
         'cycle_id',
         'is_deleted',
         'stock',

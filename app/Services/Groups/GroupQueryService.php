@@ -15,10 +15,40 @@ class GroupQueryService
      */
     private function applyFilters(Builder $query, Request $request): Builder
     {
-        if ($request->filled('q')) {
-            $searchTerm = "%{$request->q}%";
-            $query->where('name', 'like', $searchTerm);
+        $filters = [
+            'q' => $request->q,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        if (!empty($filters['q'])) {
+            $searchTerm = "%{$filters['q']}%";
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $subQuery->where('groups_products.name', 'like', $searchTerm)
+                        ->orWhereHas('products', function ($productQuery) use ($searchTerm) {
+                            $productQuery->where('name', 'like', $searchTerm)
+                                ->orWhere('active_ingredient', 'like', $searchTerm)
+                                ->orWhere('barcode', 'like', $searchTerm)
+                                ->orWhere('id', 'like', $searchTerm);
+                        });
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $searchWord = "%{$word}%";
+                        $subQuery->where(function ($wordQuery) use ($searchWord) {
+                            $wordQuery->where('groups_products.name', 'like', $searchWord)
+                                ->orWhereHas('products', function ($productQuery) use ($searchWord) {
+                                    $productQuery->where('name', 'like', $searchWord)
+                                        ->orWhere('active_ingredient', 'like', $searchWord);
+                                });
+                        });
+                    }
+                }
+            });
         }
+
         return $query;
     }
 
@@ -41,7 +71,7 @@ class GroupQueryService
      */
     public function getPaginatedGroups(Request $request): LengthAwarePaginator
     {
-        $query = GroupsProduct::query();
+        $query = GroupsProduct::query()->with(['products']);
         $this->applyFilters($query, $request);
         $this->applySorting($query, $request);
 

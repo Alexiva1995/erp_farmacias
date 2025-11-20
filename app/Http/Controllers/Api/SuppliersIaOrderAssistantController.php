@@ -15,6 +15,7 @@ use DateTime;
 use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class SuppliersIaOrderAssistantController extends Controller
 {
@@ -24,23 +25,24 @@ class SuppliersIaOrderAssistantController extends Controller
         protected Product $product,
         protected ProductSupplier $productSupplier,
         protected AutoOrder $autoOrder
-    ) {}
+    ) {
+    }
 
 
     public function filtrarPaginate(Request $request): JsonResponse
     {
         $respuesta = [
-            "tipo_filtracion"  => $request->tipo_filtracion,
-            "tipo_vista"       => $request->tipo_vista,
-            "paginate"         => [],
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "tipo_vista" => $request->tipo_vista,
+            "paginate" => [],
         ];
 
         $filtros = [
-            "itemsPerPage"      => $request->itemsPerPage,
-            "page"              => $request->page,
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "tipo_vista"        => $request->tipo_vista,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "itemsPerPage" => $request->itemsPerPage,
+            "page" => $request->page,
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "tipo_vista" => $request->tipo_vista,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
@@ -60,7 +62,6 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
-
         if ($request->filled("lapso_de_tiempo")) {
             $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
             $dateToday = new DateTime("now", $timeZone);
@@ -72,39 +73,66 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
+        // Obtener datos según el tipo de filtración
         if ($respuesta["tipo_filtracion"] == "average") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        }
-        if ($respuesta["tipo_filtracion"] == "sales") {
+        } elseif ($respuesta["tipo_filtracion"] == "sales") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-        } else {
-
+        } elseif ($respuesta["tipo_filtracion"] == "combinado") {
+            // Para el cálculo combinado, necesitamos obtener datos de promedio como base
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-            // $filtros["orderBy"] = "ASC";
-            // $filtros["sortBy"] = "id";
-            // $respuestaConsulta2 = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
+        } else {
+            // Fallback al promedio si no se especifica un tipo válido
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
 
+        // Procesar cada item para calcular el análisis
         $respuesta["paginate"]->each(function ($items) use ($filtros) {
+            // Calcular AO (Auto Order)
             $items = $this->product->calcularAOProduct($items);
-            $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
-            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
-                $filtros["orderBy"] = "ASC";
-                $filtros["sortBy"] = "id";
-                $filtros["id"] =  $items->id;
-                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
-                if ($itemsBusqueda) {
-                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+
+            if ($filtros["tipo_filtracion"] == "combinado") {
+                // Obtener datos de ventas para este producto específico
+                $filtrosVentas = $filtros;
+                $filtrosVentas["id"] = $items->id;
+                $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
+
+                if ($itemVentas) {
+                    // Calcular AO para el item de ventas también
+                    $itemVentas = $this->product->calcularAOProduct($itemVentas);
+
+                    // Obtener valores correctos para el cálculo
+                    $ventasTotales = $itemVentas->total_sold_completed ?? 0; // Usar total_sold_completed
+                    $promedio = $items->promedio_calculado ?? 0; // Usar promedio_calculado
+                    $stockActual = $items->lote_quantity ?? 0; // Stock actual
+                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0; // Cantidad en auto order
+
+                    // Fórmula: (ventas + promedio) / 2 - stock - AO
+                    $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis (como funciona en promedio)
+                    // Si el resultado es negativo (falta producto), se muestra positivo
+                    // Si el resultado es positivo (exceso de producto), se muestra negativo
+                    $items->solicitar = -$resultado;
+                } else {
+                    // Si no hay datos de ventas, usar solo el promedio menos stock y AO
+                    $promedio = $items->promedio_calculado ?? 0;
+                    $stockActual = $items->lote_quantity ?? 0;
+                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
+
+                    $resultado = $promedio - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis
+                    $items->solicitar = -$resultado;
                 }
+
+                // Redondear el resultado hacia arriba para combinado (mantener el signo)
+                $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
+            } else {
+                // Para "average" y "sales", mantener la lógica original
+                $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
             }
         });
-
-        // dd($respuesta["paginate"]->items());
-
-        // $respuesta["paginate"]->items = $this->product->calcularAOProduct(collect($respuesta["paginate"]->data));
-
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -123,11 +151,11 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productosFallas = null;
         $filtrosFallas = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
-            "laboratoryId"      => $request->laboratoryId,
-            "groups"            => $request->groups,
-            "stock"             => "fallas",
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
+            "laboratoryId" => $request->laboratoryId,
+            "groups" => $request->groups,
+            "stock" => "fallas",
         ];
 
 
@@ -156,7 +184,6 @@ class SuppliersIaOrderAssistantController extends Controller
         } else {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         }
-
         if ($productosFallas == null) {
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
@@ -168,22 +195,12 @@ class SuppliersIaOrderAssistantController extends Controller
         $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
 
 
-        if ($filtrosFallas["tipo_filtracion"] != "average" && $filtrosFallas["tipo_filtracion"] != "sales") {
-            for ($index = 0; $index < count($productosFallas); $index++) {
-                # code...
-                $filtros["orderBy"] = "ASC";
-                $filtros["sortBy"] = "id";
-                $filtros["id"] =  $productosFallas[$index]->id;
-                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosFallas)->first();
-                if ($itemsBusqueda) {
-                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $productosFallas[$index]->solicitar = ceil(($productosFallas[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
-                }
+        if ($filtrosFallas["tipo_filtracion"] == "combinado") {
+            foreach ($productosFallas as $producto) {
+                $producto->solicitar = (($producto->promedio_calculado + $producto->total_sold_completed) / 2 - $producto->lote_quantity - $producto->totalQuantityInAutoOrder) * -1;
             }
+
         }
-
-
 
         $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"], $request->con_descuento);
@@ -192,13 +209,13 @@ class SuppliersIaOrderAssistantController extends Controller
         $productos = null;
 
         $filtrosConExistencia = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => "1 year",
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => "1 year",
             // "stock"             => "all",
-            "dateToday"         => null,
-            "previousDate"      => null,
-            "orderBy"           => "asc",
-            "sortBy"            => "name",
+            "dateToday" => null,
+            "previousDate" => null,
+            "orderBy" => "asc",
+            "sortBy" => "name",
         ];
 
         if ($request->filled("laboratoryId")) {
@@ -209,7 +226,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosConExistencia["groups"] = $request->groups;
         }
 
-        $filtrosConExistencia["dateToday"] =  $dateToday->format("Y-m-d h:m:s");
+        $filtrosConExistencia["dateToday"] = $dateToday->format("Y-m-d h:m:s");
         $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
 
 
@@ -248,6 +265,7 @@ class SuppliersIaOrderAssistantController extends Controller
         return ApiResponse::success($respuesta, "ok", 200);
     }
 
+
     public function generarPreviousDate($cantidad = "0", $tiempo = "days")
     {
         $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
@@ -258,7 +276,6 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generarOrden(Request $request): JsonResponse
     {
-
         $listAutoOrders = $this->autoOrder->createMultiple($request->orders);
 
         return ApiResponse::success($listAutoOrders, "ok", 200);
@@ -272,15 +289,15 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productos = null;
         $filtros = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
             // "lapso_de_tiempo"   => "1 year",
-            "stock"             => "all",
-            "dateToday"         => null,
-            "previousDate"      => null,
-            "orderBy"           => "asc",
-            "sortBy"            => "name",
-            "ids"               =>  $request->ids ?? null,
+            "stock" => "all",
+            "dateToday" => null,
+            "previousDate" => null,
+            "orderBy" => "asc",
+            "sortBy" => "name",
+            "ids" => $request->ids ?? null,
 
         ];
 
