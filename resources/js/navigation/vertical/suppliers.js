@@ -50,12 +50,6 @@ export default [
       }
     ],
       },
-      {
-        title: "Comparador",
-        to: 'suppliers-product-comparator-list',
-        action: 'manage',
-        subject: 'comparador',
-      },
     ],
   },
 ];
