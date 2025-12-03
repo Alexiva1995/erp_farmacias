@@ -11,6 +11,7 @@ const emit = defineEmits([
   "update:options",
   "delete-purchaseOrder",
   "show-purchaseOrder",
+  "show-requested-products",
 ]);
 
 const headers = [
@@ -74,28 +75,38 @@ const headers = [
       <template #item.status="{ item }">
         <span
           class="font-weight-medium"
-          :class="item.status === 0 ? 'text-error' : 'text-success'"
+          :class="item.status ? 'text-success' : 'text-error'"
         >
-          {{ item.status === 0 ? "Pendiente" : "Compleado" }}
+          {{ item.status ? "Compleado" : "Pendiente" }}
         </span>
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip text="Editar Órden de Compra" location="top">
+        <VTooltip text="Ver Productos Solicitados" location="top">
+          <template #activator="{ props }">
+            <IconBtn
+              v-bind="props"
+              @click="emit('show-requested-products', item)"
+            >
+              <VIcon icon="tabler-circle-dashed-check" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Editar Orden de Compra" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('edit-purchaseOrder', item)">
               <VIcon icon="tabler-edit" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Ver Órden de Compra" location="top">
+        <VTooltip text="Ver Orden de Compra" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)">
               <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar Órden de Compra" location="top">
+        <VTooltip text="Eliminar Orden de Compra" location="top">
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"

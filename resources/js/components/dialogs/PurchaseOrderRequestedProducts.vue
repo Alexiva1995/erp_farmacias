@@ -6,39 +6,20 @@ import { ref, watch } from "vue";
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   purchaseOrder: { type: Object, default: () => ({}) },
-  errors: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits([
-  "update:modalValue",
-  "delete-detail",
-  "save",
-  "clearErrors",
-]);
-const details = ref([]);
-const affectedRows = ref(new Map());
-const dirty = ref(false);
-const formErrors = ref({});
-const idToIndex = ref(new Map());
+const emit = defineEmits(["update:modelValue"]);
 
+const loading = ref(false);
+const details = ref([]);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalDetails = ref(0);
 
 const closeDialog = () => {
   emit("update:modelValue", false);
-  formErrors.value = {};
-  idToIndex.value = new Map();
   page.value = 1;
   itemsPerPage.value = 10;
-  emit("clearErrors");
-};
-
-const reset = () => {
-  affectedRows.value = new Map();
-  dirty.value = false;
-  formErrors.value = {};
-  idToIndex.value = new Map();
 };
 
 const formatDate = (dateString) => {
@@ -63,8 +44,8 @@ const detailsHeaders = [
 ];
 
 const fetchPurchaseOrder = async (id) => {
+  loading.value = true;
   try {
-    reset();
     const params = {
       perPage: itemsPerPage.value,
       page: page.value,
@@ -73,40 +54,40 @@ const fetchPurchaseOrder = async (id) => {
       params,
     });
     details.value = data.data;
-    affectedRows.value = new Map(
-      data.data.map((d) => [
-        d.id,
-        { quantity: d.quantity, unit_cost: d.unit_cost },
-      ])
-    );
     totalDetails.value = data.total;
   } catch (error) {
     console.error(error);
     toast.error("Error al obtener los detalles de la orden de compra.");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const updatePurchaseOrderDetailStatus = async (detailId, status) => {
+  try {
+    const { data } = await axios.put(
+      `/suppliers/purchase-orders/details/update-status/${detailId}`,
+      {
+        status,
+      }
+    );
+
+    if (data.status) {
+      toast.success(data.message);
+
+      fetchPurchaseOrder(props.purchaseOrder?.id);
+    } else {
+      toast.error(data.error);
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error("Error al actualizar el estado del producto");
   }
 };
 
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-};
-
-const submitForm = async () => {
-  const affected = details.value.filter(
-    (r) =>
-      r.quantity !== affectedRows.value.get(r.id)?.quantity ||
-      r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost
-  );
-
-  if (!affected.length) {
-    toast.info("Sin cambios que guardar");
-    closeDialog();
-    return;
-  }
-
-  idToIndex.value = new Map(affected.map((d, idx) => [d.id, { index: idx }]));
-
-  emit("save", { details: affected });
 };
 
 watch(
@@ -119,46 +100,14 @@ watch(
   { deep: true }
 );
 
-watch(
-  () => props.errors,
-  (newErrors) => {
-    formErrors.value = newErrors || {};
-  },
-  { deep: true }
-);
-
-watch(
-  details,
-  (rows) => {
-    const changed = rows.some(
-      (r) =>
-        r.quantity !== affectedRows.value.get(r.id)?.quantity ||
-        r.unit_cost !== affectedRows.value.get(r.id)?.unit_cost
-    );
-    dirty.value = changed;
-  },
-  { deep: true }
-);
-
 let debounceTimer;
-watch(
-  [page, itemsPerPage],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(
-      () => fetchPurchaseOrder(props.purchaseOrder.id),
-      300
-    );
-  },
-  { deep: true }
-);
-
-const getError = (row, attr) => {
-  const idx = idToIndex.value.get(row.id)?.index;
-  if (idx === -1) return "";
-  const key = `details.${idx}.${attr}`;
-  return props.errors?.[key]?.[0] || "";
-};
+watch([page, itemsPerPage], () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(
+    () => fetchPurchaseOrder(props.purchaseOrder.id),
+    300
+  );
+});
 </script>
 
 <template>
@@ -172,7 +121,7 @@ const getError = (row, attr) => {
   >
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">Editar Orden de Compra</span>
+        <span class="text-h5 font-weight-bold">Productos Solicitados</span>
 
         <VSpacer />
 
@@ -220,61 +169,40 @@ const getError = (row, attr) => {
           :total="totalDetails"
           @update:options="(options) => updateTableOptions(options)"
         >
+          <template #item.product_name="{ item }">
+            <span :class="item.received ? 'text-success' : 'text-error'">{{
+              item.product_name
+            }}</span>
+          </template>
           <template #item.quantity="{ item }">
-            <VTextField
-              v-model="item.quantity"
-              label=""
-              min="1"
-              type="number"
-              variant="outlined"
-              :error="!!getError(item, 'quantity')"
-              :error-messages="getError(item, 'quantity')"
-            />
+            <span>{{ item.quantity }}</span>
           </template>
           <template #item.subtotal="{ item }">
             <span>{{ (item.unit_cost * item.quantity).toFixed(2) }}</span>
           </template>
           <template #item.actions="{ item }">
-            <VRow>
-              <VTooltip
-                text="Eliminar detalle de Orden de Compra"
-                location="top"
-              >
+            <VRow v-if="item.received == null">
+              <VTooltip text="Aprobar producto" location="top">
                 <template #activator="{ props }">
                   <IconBtn
                     v-bind="props"
-                    @click="emit('delete-detail', item.id)"
+                    @click="updatePurchaseOrderDetailStatus(item.id, true)"
                   >
-                    <VIcon icon="tabler-trash" />
+                    <VIcon icon="tabler-check" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
+              <VTooltip text="Rechazar producto" location="top">
+                <template #activator="{ props }">
+                  <IconBtn
+                    v-bind="props"
+                    @click="updatePurchaseOrderDetailStatus(item.id, false)"
+                  >
+                    <VIcon icon="tabler-x" />
                   </IconBtn>
                 </template>
               </VTooltip>
             </VRow>
-          </template>
-          <template #body.append>
-            <tr class="font-weight-bold">
-              <td :colspan="detailsHeaders.length - 4" class="text-right">
-                Total
-              </td>
-              <td class="text-right">
-                {{
-                  details.reduce(
-                    (sum, r) => Number(sum) + Number(r.quantity),
-                    0
-                  )
-                }}
-              </td>
-              <td :colspan="detailsHeaders.length - 4" class="text-right">
-                Total
-              </td>
-              <td class="text-right">
-                {{
-                  details
-                    .reduce((sum, r) => sum + r.quantity * r.unit_cost, 0)
-                    .toFixed(2)
-                }}
-              </td>
-            </tr>
           </template>
         </VDataTableServer>
       </VSheet>
@@ -287,17 +215,12 @@ const getError = (row, attr) => {
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="grow mr-4"
         >
           Cancelar
         </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          class="flex-grow-1 w-0"
-        >
-          Guardar
+        <VBtn color="primary" variant="flat" @click="submitForm" class="grow">
+          Aceptar
         </VBtn>
       </VCardActions>
     </VCard>
