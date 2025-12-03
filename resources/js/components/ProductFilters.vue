@@ -15,6 +15,7 @@ const props = defineProps({
   mode: { type: String, default: "products" },
   showAddButton: { type: Boolean, default: true },
   addButtonText: { type: String, default: "Añadir Producto" },
+  isStrictSearch: Boolean,
 });
 
 const emit = defineEmits([
@@ -24,6 +25,7 @@ const emit = defineEmits([
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
+  "update:isStrictSearch",
   "clear",
   "export",
   "add-product",
@@ -253,6 +255,13 @@ watch(
               dateFormat: 'Y-m-d',
             }"
             @update:model-value="emit('update:endDate', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VCheckbox
+            label="Búsqueda Estricta"
+            :model-value="props.isStrictSearch"
+            @update:model-value="emit('update:isStrictSearch', $event)"
           />
         </VCol>
       </VRow>

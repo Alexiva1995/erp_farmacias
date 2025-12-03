@@ -30,25 +30,25 @@ export default [
       {
         title: "IA Assistence",
         children: [
-          {
-            title: "Pedidos",
-            to: "suppliers-supplieriaorderassistant",
-            // action: "manage",
-            // subject: "admin",
-          },
-          {
-            title: "Reporte",
-            to: "suppliers-supplieriaorderassistantreport",
-            // action: "manage",
-            // subject: "admin",
-          },
-          {
-            title: "Comparador",
-            to: "suppliers-product-comparator-list",
-            // action: "manage",
-            // subject: "comparadorAssistence",
-          },
-        ],
+      {
+        title: 'Pedidos',
+        to: "suppliers-supplieriaorderassistant",
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
+        title: 'Reporte',
+        to: 'suppliers-supplieriaorderassistantreport',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
+        title: 'Comparador',
+        to: 'suppliers-product-comparator-list',
+        action: 'manage',
+        subject: 'comparadorAssistence',
+      }
+    ],
       },
     ],
   },

@@ -1,4 +1,8 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
+
+const authStore = useAuthStore();
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -16,17 +20,60 @@ const emit = defineEmits([
   "add-product-to-invoice",
 ]);
 
-const headers = [
+const headers = ref([
   { title: "id", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true, width: "40%" },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
-  { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
+  {
+    title: "Producto",
+    key: "name",
+    sortable: true,
+    width: "40%",
+    visible: true,
+  },
+  {
+    title: "Laboratorio",
+    key: "laboratory.name",
+    sortable: true,
+    visible: true,
+  },
+  {
+    title: "Stock",
+    key: "valid_stock",
+    visible: true,
+    sortable: true,
+    value: (item) => {
+      return item.stock_calculado;
+    },
+  },
+  { title: "Exp.", key: "next_expiration", sortable: true, visible: true },
+  {
+    title: "Costo",
+    key: "unit_cost",
+    sortable: true,
+    visible: authStore.isAdmin,
+  },
+  {
+    title: "Precio Venta",
+    key: "sale_price",
+    sortable: true,
+    visible: authStore.isAdmin,
+  },
+  {
+    title: "Acciones",
+    key: "actions",
+    sortable: false,
+    align: "center",
+    visible: true,
+  },
+]);
 
+const visibleHeaders = computed(() =>
+  headers.value.filter((header) => header.visible)
+);
+
+// if(authStore.isAdmin){
+//   headers.push()
+// }
+// TODO: hay que modificar la funcion para que muestr la fecha de vencimiento apesar de que los lotes ya esten todos vencidos (puede que se tenga que modificar la consulta en el backend)
 const nextExpirationDate = (product) => {
   if (
     !product.lots ||
@@ -41,7 +88,8 @@ const nextExpirationDate = (product) => {
     const expirationDate = new Date(lot.expiration_date);
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
-  if (validLots.length === 0) return "Todos expiraron";
+  // if (validLots.length === 0) return "Todos expiraron";
+  if (validLots.length === 0) return product.ultima_fecha_vencimiento;
   validLots.sort(
     (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
   );
@@ -73,7 +121,7 @@ const formatPrice = (price) => {
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
-      :headers="headers"
+      :headers="visibleHeaders"
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
@@ -137,7 +185,10 @@ const formatPrice = (price) => {
           <IconBtn @click="emit('edit-product', item)">
             <VIcon icon="tabler-edit" />
           </IconBtn>
-          <IconBtn @click="emit('delete-product', item.id)">
+          <IconBtn
+            @click="emit('delete-product', item.id)"
+            v-if="authStore.isAdmin"
+          >
             <VIcon icon="tabler-trash" />
           </IconBtn>
         </template>
