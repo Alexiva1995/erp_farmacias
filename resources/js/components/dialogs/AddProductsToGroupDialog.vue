@@ -27,6 +27,7 @@ const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
+const isStrictSearch = ref(false);
 const isLoadingFilters = ref(false);
 
 const laboratories = ref([]);
@@ -58,6 +59,7 @@ const fetchProducts = async () => {
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
+    isStrictSearch: isStrictSearch.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -188,6 +190,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    isStrictSearch,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -328,6 +331,7 @@ onMounted(() => {
           v-model:selectedLaboratory="selectedLaboratory"
           v-model:selectedOrigin="selectedOrigin"
           v-model:stockStatusFilter="stockStatusFilter"
+          v-model:isStrictSearch="isStrictSearch"
           :laboratories="laboratories"
           :origins="origins"
           :loading="isLoadingFilters"
@@ -360,7 +364,8 @@ onMounted(() => {
                   {{ item.name }}</span
                 >
                 <span class="text-sm text-disabled">
-                  {{ item.active_ingredient }} {{ item.laboratory?.name }}
+                  {{ item.active_ingredient }}
+                  {{ item.laboratory ? " - " + item.laboratory?.name : "" }}
                 </span>
               </div>
             </div>

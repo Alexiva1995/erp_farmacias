@@ -233,7 +233,6 @@ function formatearFechaCompleta(fechaInput) {
           variant="outlined"
           @click="close"
           width="100%"
-          class="flex-grow-1 w-0 mr-4"
           >Cancelar</VBtn
         >
         <VBtn
@@ -241,7 +240,6 @@ function formatearFechaCompleta(fechaInput) {
           variant="flat"
           @click="submitForm"
           width="100%"
-          class="flex-grow-1 w-0 mr-4"
           >Guardar Cambios</VBtn
         >
       </VCardActions>

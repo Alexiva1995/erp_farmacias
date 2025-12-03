@@ -65,25 +65,68 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
         } else if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
-        } else { // combinar
+        } else if ($filtros["tipo_filtracion"] == "combinado") { // combinar
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
+        } else {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
         }
 
-
+        // Procesar cada item para calcular el análisis
         $respuestaConsulta->each(function ($items) use ($filtros) {
+            // Calcular AO (Auto Order)
             $items = $this->product->calcularAOProduct($items);
-            $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
-            if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
-                $filtros["orderBy"] = "ASC";
-                $filtros["sortBy"] = "id";
-                $filtros["id"] = $items->id;
-                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
-                if ($itemsBusqueda) {
-                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+            if ($filtros["tipo_filtracion"] == "combinado") {
+                // Obtener datos de ventas para este producto específico
+                $filtrosVentas = $filtros;
+                $filtrosVentas["id"] = $items->id;
+                $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
+                if ($itemVentas) {
+                    // Calcular AO para el item de ventas también
+                    $itemVentas = $this->product->calcularAOProduct($itemVentas);
+
+                    // Obtener valores correctos para el cálculo
+                    $ventasTotales = $itemVentas->total_sold_completed ?? 0; // Usar total_sold_completed
+                    $promedio = $items->promedio_calculado ?? 0; // Usar promedio_calculado
+                    $stockActual = $items->lote_quantity ?? 0; // Stock actual
+                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0; // Cantidad en auto order
+
+                    // Fórmula: (ventas + promedio) / 2 - stock - AO
+                    $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis (como funciona en promedio)
+                    // Si el resultado es negativo (falta producto), se muestra positivo
+                    // Si el resultado es positivo (exceso de producto), se muestra negativo
+                    $items->solicitar = -$resultado;
+                } else {
+                    // Si no hay datos de ventas, usar solo el promedio menos stock y AO
+                    $promedio = $items->promedio_calculado ?? 0;
+                    $stockActual = $items->lote_quantity ?? 0;
+                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
+
+                    $resultado = $promedio - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis
+                    $items->solicitar = -$resultado;
                 }
+
+                // Redondear el resultado hacia arriba para combinado (mantener el signo)
+                $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
+            } else {
+                // Para "average" y "sales", mantener la lógica original
+                $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
             }
+            // $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+            // if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+            //     $filtros["orderBy"] = "ASC";
+            //     $filtros["sortBy"] = "id";
+            //     $filtros["id"] = $items->id;
+            //     $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+            //     if ($itemsBusqueda) {
+            //         $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+            //         $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+            //         $items->solicitar = ceil(($items->solicitar + $itemsBusqueda->solicitar) / 2);
+            //     }
+            // }
         });
 
 
@@ -134,26 +177,67 @@ class SupplierIaAssistantReportController extends Controller
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         } else if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
-        } else { // combinar
+        } else if ($filtros["tipo_filtracion"] == "combinado") { // combinar
+            $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+        } else {
             $respuestaConsulta = $this->product->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         }
 
 
-        if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+        if ($filtros["tipo_filtracion"] == "combinado") {
             for ($index = 0; $index < count($respuestaConsulta); $index++) {
-                $itemsBusqueda = null;
-                # code...
-                $filtros["orderBy"] = "ASC";
-                $filtros["sortBy"] = "id";
-                $filtros["id"] = $respuestaConsulta[$index]->id;
-                $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
-                if ($itemsBusqueda) {
-                    $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
-                    $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-                    $respuestaConsulta[$index]->solicitar = ceil(($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
+                // Obtener datos de ventas para este producto específico
+                $filtrosVentas = $filtros;
+                $filtrosVentas["id"] = $respuestaConsulta[$index]->id;
+                $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
+                if ($itemVentas) {
+                    // Calcular AO para el item de ventas también
+                    $itemVentas = $this->product->calcularAOProduct($itemVentas);
+
+                    // Obtener valores correctos para el cálculo
+                    $ventasTotales = $itemVentas->total_sold_completed ?? 0; // Usar total_sold_completed
+                    $promedio = $respuestaConsulta[$index]->promedio_calculado ?? 0; // Usar promedio_calculado
+                    $stockActual = $respuestaConsulta[$index]->lote_quantity ?? 0; // Stock actual
+                    $autoOrder = $respuestaConsulta[$index]->totalQuantityInAutoOrder ?? 0; // Cantidad en auto order
+
+                    // Fórmula: (ventas + promedio) / 2 - stock - AO
+                    $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis (como funciona en promedio)
+                    // Si el resultado es negativo (falta producto), se muestra positivo
+                    // Si el resultado es positivo (exceso de producto), se muestra negativo
+                    $respuestaConsulta[$index]->solicitar = -$resultado;
+                } else {
+                    // Si no hay datos de ventas, usar solo el promedio menos stock y AO
+                    $promedio = $respuestaConsulta[$index]->promedio_calculado ?? 0;
+                    $stockActual = $respuestaConsulta[$index]->lote_quantity ?? 0;
+                    $autoOrder = $respuestaConsulta[$index]->totalQuantityInAutoOrder ?? 0;
+
+                    $resultado = $promedio - $stockActual - $autoOrder;
+
+                    // Invertir el signo para el análisis
+                    $respuestaConsulta[$index]->solicitar = -$resultado;
                 }
+
+                // Redondear el resultado hacia arriba para combinado (mantener el signo)
+                $respuestaConsulta[$index]->solicitar = $respuestaConsulta[$index]->solicitar > 0 ? ceil($respuestaConsulta[$index]->solicitar) : floor($respuestaConsulta[$index]->solicitar);
             }
         }
+        // if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
+        //     for ($index = 0; $index < count($respuestaConsulta); $index++) {
+        //         $itemsBusqueda = null;
+        //         # code...
+        //         $filtros["orderBy"] = "ASC";
+        //         $filtros["sortBy"] = "id";
+        //         $filtros["id"] = $respuestaConsulta[$index]->id;
+        //         $itemsBusqueda = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
+        //         if ($itemsBusqueda) {
+        //             $itemsBusqueda = $this->product->calcularAOProduct($itemsBusqueda);
+        //             $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
+        //             $respuestaConsulta[$index]->solicitar = ceil(($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
+        //         }
+        //     }
+        // }
 
         return ApiResponse::success($respuestaConsulta, "ok", 200);
     }

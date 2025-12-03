@@ -15,7 +15,6 @@ const headers = [
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Stock", key: "valid_stock", sortable: true },
   { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
 ];
 
 const calculateValidStock = (product) => {
@@ -121,12 +120,6 @@ const formatPrice = (price) => {
 
       <template #item.next_expiration="{ item }">
         <span>{{ nextExpirationDate(item) }}</span>
-      </template>
-
-      <template #item.actions="{ item }">
-        <IconBtn @click="emit('actionVer', item)">
-          <VIcon icon="tabler-eye" />
-        </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>

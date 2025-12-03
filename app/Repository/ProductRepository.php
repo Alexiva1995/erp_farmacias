@@ -687,7 +687,15 @@ class ProductRepository
         $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
 
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with([
+            "laboratory",
+            "lots",
+            "group",
+            "productSuppliers" => function ($query) {
+                $query->select('product_id', 'laboratory_id', 'unit_cost_usd_with_discount')
+                    ->orderBy('unit_cost_usd_with_discount', 'asc')->first();
+            }
+        ]);
 
 
         if (array_key_exists("is_colombia", $filtros)) {
@@ -829,7 +837,15 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with([
+            "laboratory",
+            "lots",
+            "group",
+            "productSuppliers" => function ($query) {
+                $query->select('product_id', 'laboratory', 'unit_cost_usd_with_discount')
+                    ->orderBy('unit_cost_usd_with_discount', 'asc')->first();
+            }
+        ]);
 
         if (array_key_exists("id", $filtros) && !empty($filtros["id"])) {
             $consulta->where("id", $filtros["id"]);
