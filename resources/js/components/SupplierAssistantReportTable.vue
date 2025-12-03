@@ -91,7 +91,7 @@ const headers = [
       <template #item.product_suppliers="{ item }">
         <span v-if="item.product_suppliers.length > 0"
           >{{ item.product_suppliers[0].unit_cost_usd_with_discount }} ({{
-            item.product_suppliers[0].laboratory
+            item.product_suppliers[0].supplier.name
           }})</span
         >
         <span v-if="item.product_suppliers.length == 0">Sin Proveedor</span>
