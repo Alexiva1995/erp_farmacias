@@ -41,6 +41,7 @@ const loading = ref(false);
 const loadingSuppliers = ref(false);
 const loadingRules = ref(false);
 const loadingInvoice = ref(false);
+const expDateError = ref("");
 
 const selectedSupplier = computed(() => {
   return (
@@ -56,6 +57,36 @@ const translatePaymentMethodType = (type) => {
     credit_days: "Días de crédito",
   };
   return translations[type] || type;
+};
+
+const validateExpDate = (date) => {
+  if (!date) {
+    expDateError.value = "";
+    return true;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expDate = new Date(date);
+  expDate.setHours(0, 0, 0, 0);
+
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+  sixMonthsFromNow.setHours(0, 0, 0, 0);
+
+  if (expDate < today) {
+    expDateError.value = "La fecha de vencimiento no puede ser anterior a hoy";
+    return false;
+  }
+
+  if (expDate > sixMonthsFromNow) {
+    expDateError.value = "La fecha de vencimiento no puede ser más de 6 meses en el futuro";
+    return false;
+  }
+
+  expDateError.value = "";
+  return true;
 };
 
 const calculatePaymentDate = () => {
@@ -201,7 +232,8 @@ watch(
 
 watch(
   () => formData.value.exp_date,
-  () => {
+  (newDate) => {
+    validateExpDate(newDate);
     if (!props.isEditMode) calculatePaymentDate();
   }
 );
@@ -303,9 +335,12 @@ const fetchInvoiceData = async () => {
 const fetchSuppliers = async () => {
   loadingSuppliers.value = true;
   try {
-    const response = await axios.get(
-      "/suppliers?include=payment_date,payment_rules"
-    );
+    const response = await axios.get("/suppliers", {
+      params: {
+        include: "payment_date,payment_rules",
+        itemsPerPage: -1, // Obtener todos los proveedores sin paginación
+      },
+    });
     suppliers.value = response.data.data ?? response.data;
   } catch (error) {
     console.error("Error al obtener los proveedores:", error);
@@ -331,6 +366,12 @@ const fetchDiscountRules = async (supplierId) => {
 };
 
 const handleSubmit = async () => {
+  // Validar fecha de vencimiento antes de enviar
+  if (!validateExpDate(formData.value.exp_date)) {
+    toast.error(expDateError.value);
+    return;
+  }
+
   loading.value = true;
 
   const payload = {
@@ -419,6 +460,8 @@ const handleCancel = () => {
                 label="Fecha de Vencimiento"
                 type="date"
                 placeholder="YYYY-MM-DD"
+                :error="!!expDateError"
+                :error-messages="expDateError"
               />
             </VCol>
             <VCol cols="12" md="3">
