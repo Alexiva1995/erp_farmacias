@@ -19,16 +19,17 @@ class SupplierIaAssistantReportController extends Controller
 
     public function __construct(
         protected Product $product
-    ) {}
+    ) {
+    }
 
 
     public function filtrarPaginate(Request $request): JsonResponse
     {
         $filtros = [
-            "itemsPerPage"      => $request->itemsPerPage,
-            "page"              => $request->page,
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "itemsPerPage" => $request->itemsPerPage,
+            "page" => $request->page,
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
         if ($request->filled("product")) {
@@ -49,7 +50,7 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
@@ -138,8 +139,8 @@ class SupplierIaAssistantReportController extends Controller
     public function filtrarWithoutPaginate(Request $request): JsonResponse
     {
         $filtros = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
         if ($request->filled("product")) {
@@ -252,8 +253,8 @@ class SupplierIaAssistantReportController extends Controller
     {
 
         $filtros = [
-            "tipo_filtracion"   => $request->tipo_filtracion,
-            "lapso_de_tiempo"   => $request->lapso_de_tiempo,
+            "tipo_filtracion" => $request->tipo_filtracion,
+            "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
         if ($request->filled("product")) {

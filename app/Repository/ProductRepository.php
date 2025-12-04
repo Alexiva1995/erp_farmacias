@@ -112,7 +112,7 @@ class ProductRepository
         $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
 
         // calcular demanda_ajustada con promedio_calculado
-        $columnas[] =  DB::raw('COALESCE(
+        $columnas[] = DB::raw('COALESCE(
                 (' . $this->subConsultaParaCalcularStockPorLotes . '), 0) - 
                 ((' . $promedio_calculado . ') * 
                 COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
@@ -584,7 +584,6 @@ class ProductRepository
     // }
     public function builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros): Builder
     {
-
         $columnas = [
             'id',
             'name',
@@ -692,8 +691,19 @@ class ProductRepository
             "lots",
             "group",
             "productSuppliers" => function ($query) {
-                $query->select('product_id', 'laboratory_id', 'unit_cost_usd_with_discount')
-                    ->orderBy('unit_cost_usd_with_discount', 'asc')->first();
+                $query->select(
+                    'id',
+                    'product_id',
+                    'supplier_id',
+                    'laboratory',
+                    'unit_cost_usd_with_discount'
+                )
+                    ->with([
+                        'supplier' => function ($q) {
+                            $q->select('id', 'name');
+                        }
+                    ])
+                    ->orderBy('unit_cost_usd_with_discount', 'asc');
             }
         ]);
 
@@ -842,8 +852,19 @@ class ProductRepository
             "lots",
             "group",
             "productSuppliers" => function ($query) {
-                $query->select('product_id', 'laboratory', 'unit_cost_usd_with_discount')
-                    ->orderBy('unit_cost_usd_with_discount', 'asc')->first();
+                $query->select(
+                    'id',
+                    'product_id',
+                    'supplier_id',
+                    'laboratory',
+                    'unit_cost_usd_with_discount'
+                )
+                    ->with([
+                        'supplier' => function ($q) {
+                            $q->select('id', 'name');
+                        }
+                    ])
+                    ->orderBy('unit_cost_usd_with_discount', 'asc');
             }
         ]);
 
