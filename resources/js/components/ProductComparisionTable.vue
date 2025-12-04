@@ -6,6 +6,8 @@ const props = defineProps({
   totalSupplierConnections: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  // Recibimos el valor de búsqueda como prop para v-model
+  searchQuery: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -14,6 +16,8 @@ const emit = defineEmits([
   "update-products",
   "load-products",
   "delete-products",
+  "open-discount-dialog",
+  "update:searchQuery", // Emit para actualizar la búsqueda en el padre
 ]);
 
 const headers = [
@@ -27,6 +31,22 @@ const headers = [
 
 <template>
   <VCard>
+    <!-- Buscador Integrado en la cabecera de la tabla -->
+    <VCardText class="d-flex align-center py-4 gap-4">
+      <div style="max-width: 400px; width: 100%">
+        <AppTextField
+          :model-value="props.searchQuery"
+          placeholder="Nombre del proveedor..."
+          density="compact"
+          prepend-inner-icon="tabler-search"
+          clearable
+          hide-details
+          @update:model-value="emit('update:searchQuery', $event)"
+        />
+      </div>
+      <!-- Aquí podrías poner botones de acción globales si los hubiera -->
+    </VCardText>
+
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -42,13 +62,9 @@ const headers = [
       </template>
 
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
-              {{ item.name }}
-            </span>
-          </div>
-        </div>
+        <span class="text-body-1 font-weight-medium text-high-emphasis">
+          {{ item.name }}
+        </span>
       </template>
 
       <template #item.last_connection="{ item }">
@@ -67,6 +83,7 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
+
         <VTooltip text="Borrar Productos" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('delete-products', item)">
@@ -74,6 +91,19 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
+
+        <VTooltip text="Aplicar Descuento" location="top">
+          <template #activator="{ props }">
+            <IconBtn
+              v-bind="props"
+              color="warning"
+              @click="emit('open-discount-dialog', item)"
+            >
+              <VIcon icon="tabler-percentage" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+
         <VTooltip
           v-if="item.type !== 'NO REGISTRADO' && item.type !== 'ARCHIVO EXCEL'"
           text="Actualizar Productos"
@@ -94,6 +124,7 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
+
         <VTooltip
           v-if="item.type === 'NO REGISTRADO' || item.type === 'ARCHIVO EXCEL'"
           text="Cargar Productos"

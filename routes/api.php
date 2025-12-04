@@ -408,6 +408,7 @@ Route::prefix("suppliers")->group(function () {
     Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
     Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
+    Route::post('/{supplier}/apply-discount', [SupplierController::class, 'applyGlobalDiscount']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
