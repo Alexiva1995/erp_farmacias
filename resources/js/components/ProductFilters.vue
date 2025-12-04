@@ -51,29 +51,29 @@ const sortOptions = [
     order: "asc",
   },
   {
-    title: "Más Unidades",
-    icon: "tabler-plus",
-    key: "valid_stock",
-    order: "desc",
-  },
-  {
-    title: "Menos Unidades",
-    icon: "tabler-minus",
-    key: "valid_stock",
-    order: "asc",
-  },
-  {
-    title: "Fecha pronto a Vencer",
-    icon: "tabler-calendar-time",
-    key: "next_expiration",
-    order: "asc",
-  },
-  {
     title: "Más Vendidos",
     icon: "tabler-trending-up",
     key: "most_sold",
     order: "desc",
   },
+  {
+    title: "Mayor Cantidad",
+    icon: "tabler-arrow-up",
+    key: "valid_stock",
+    order: "desc",
+  },
+  {
+    title: "Menor Cantidad",
+    icon: "tabler-arrow-down",
+    key: "valid_stock",
+    order: "asc",
+  },
+  {
+    title: "Pronto a Vencer",
+    icon: "tabler-calendar-time",
+    key: "next_expiration",
+    order: "asc",
+  }
 ];
 
 const authStore = useAuthStore();
@@ -159,6 +159,7 @@ const isOptionSelected = (option) => {
 
 const handleClear = () => {
   emit("clear");
+  clearSortFilter();
 };
 
 // Computed para título dinámico
@@ -179,13 +180,24 @@ watch(
   },
   { immediate: true }
 );
+
+
+watch(
+  () => props.sortData,
+  (newVal) => {
+    if (!newVal || (newVal.key === undefined && newVal.order === undefined)) {
+      selectedSort.value = null;
+    }
+  },
+  { deep: true }
+);
 </script>
 
 <template>
-  <VCard :title="cardTitle" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -193,26 +205,26 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="Buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.selectedOrigin"
             :items="props.origins"
             :loading="props.loading"
             label="Origen"
-            placeholder="Escribe para buscar un origen"
+            placeholder="Buscar un origen"
             item-title="name"
             item-value="id"
             clearable
@@ -220,20 +232,21 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
             :items="stockOptions"
+            placeholder="Stock"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -244,10 +257,10 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -255,13 +268,6 @@ watch(
               dateFormat: 'Y-m-d',
             }"
             @update:model-value="emit('update:endDate', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VCheckbox
-            label="Búsqueda Estricta"
-            :model-value="props.isStrictSearch"
-            @update:model-value="emit('update:isStrictSearch', $event)"
           />
         </VCol>
       </VRow>
@@ -317,6 +323,36 @@ watch(
           {{ getSelectedSortTitle() }}
         </VChip>
       </div>
+
+
+ <div class="d-flex align-center mt-3 mb-2">
+        <VCheckbox
+          :model-value="props.isStrictSearch"
+          @update:model-value="emit('update:isStrictSearch', $event)"
+          color="primary"
+          class="me-2"
+        >
+          <template #label>
+            <div class="d-flex align-center">
+              <VIcon icon="tabler-search" class="me-2" size="20" />
+              <span class="text-subtitle-1 font-weight-medium">
+                ¿Búsqueda Estricta?
+              </span>
+            </div>
+          </template>
+        </VCheckbox>
+
+        <VChip
+          v-if="props.isStrictSearch"
+          color="primary"
+          size="small"
+          class="ms-2"
+        >
+          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+          Modo Estricto Activo
+        </VChip>
+      </div>
+   
 
       <VSpacer />
 

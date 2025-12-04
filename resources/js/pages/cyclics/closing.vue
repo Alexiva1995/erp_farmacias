@@ -1,5 +1,4 @@
 <script setup>
-import CashCloseFilters from "@/components/CashCloseFilters.vue";
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -218,15 +217,6 @@ const formatDate = (dateString) => {
   <div>
     <VRow>
       <VCol cols="12">
-        <CashCloseFilters
-          v-model:searchQuery="filters.searchQuery"
-          v-model:startDate="filters.startDate"
-          v-model:endDate="filters.endDate"
-          @clear="handleClearFilters"
-        />
-      </VCol>
-
-      <VCol cols="12">
         <VCard class="position-relative">
           <VCardTitle>Resumen del Cierre de Inventario</VCardTitle>
           <VDivider />
@@ -319,6 +309,53 @@ const formatDate = (dateString) => {
 
           <!-- Sección separada para el botón de cierre -->
           <VCardActions class="justify-end pa-4 pt-0"> </VCardActions>
+
+          <VCardText>
+            <VRow>
+              <VCol cols="12" sm="3" md="2">
+                <AppTextField
+                  v-model="filters.searchQuery"
+                  placeholder="Buscar por Producto, Usuario..."
+                  clearable
+                />
+              </VCol>
+
+              <VCol cols="12" sm="2" md="3">
+                <AppDateTimePicker
+                  v-model="filters.startDate"
+                  placeholder="Desde"
+                  clearable
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+              <VCol cols="12" sm="2" md="3">
+                <AppDateTimePicker
+                  v-model="filters.endDate"
+                  placeholder="Hasta"
+                  clearable
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+            </VRow>
+          </VCardText>
+          <VDivider />
+          <VCardActions class="pa-4 px-6">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              @click="handleClearFilters"
+            >
+              Limpiar Filtros
+            </VBtn>
+          </VCardActions>
         </VCard>
       </VCol>
 

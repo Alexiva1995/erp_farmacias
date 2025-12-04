@@ -79,13 +79,39 @@ class InventoryCycleQueryService
 
     private function applyFiltersToProducts(Builder $query, array $filters): Builder
     {
-        if (!empty($filters['q'])) {
+        /*if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
             $query->where(function ($subQuery) use ($searchTerm) {
                 $subQuery->where('name', 'like', $searchTerm)
                     ->orWhere('active_ingredient', 'like', $searchTerm)
                     ->orWhere('barcode', 'like', value: $searchTerm)
                     ->orWhere('id', 'like', $searchTerm);
+            });
+        }*/
+
+        if (!empty($filters['q'])) {
+            $searchTerm = "%{$filters['q']}%";
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+
+                if ($isStrictSearch) {
+                    $subQuery->where('name', 'like', "%{$searchTerm}%")
+                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                        ->orWhere('barcode', 'like', $searchTerm)
+                        ->orWhere('id', 'like', $searchTerm);
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $subQuery->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where('name', 'like', "%{$word}%")
+                                ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                    $labQuery->where('name', 'like', "%{$word}%");
+                                });
+                        });
+                    }
+                }
             });
         }
 
@@ -207,12 +233,13 @@ class InventoryCycleQueryService
             'is_history' => $isHistoryView,
         ];
 
+        
         if ($isHistoryView || $request->cycleId) {
-            $filters['status'] = ['approved', 'rejected'];
+            $filters['status'] = ['approved', 'rejected', 'pending'];
         } else {
-            $filters['status'] = 'pending';
+            $filters['status'] =  'pending';
         }
-
+      
         $query = $this->applyFiltersToCount($query, $filters);
         $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
 
@@ -238,6 +265,7 @@ class InventoryCycleQueryService
             'hasStock' => $request->hasStock,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $query = $this->applyFiltersToProducts($query, $filters);
@@ -311,6 +339,7 @@ class InventoryCycleQueryService
             'q' => $request->q,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $query = $this->applyFiltersToProducts($query, $filters);
