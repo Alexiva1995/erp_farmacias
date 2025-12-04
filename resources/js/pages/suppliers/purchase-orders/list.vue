@@ -1,10 +1,12 @@
 <script setup>
 import PurchaseOrderEditDialog from "@/components/dialogs/PurchaseOrderEditDialog.vue";
+import PurchaseOrderRequestedProducts from "@/components/dialogs/PurchaseOrderRequestedProducts.vue";
 import PurchaseOrderShowDialog from "@/components/dialogs/PurchaseOrderShowDialog.vue";
 import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
 const currentPurchaseOrder = ref({});
@@ -20,6 +22,7 @@ const totalPurchaseOrders = ref(0);
 
 const isEditDialogVisible = ref(false);
 const isShowDialogVisible = ref(false);
+const isShowRequestedProductsVisible = ref(false);
 
 const fetchSuppliers = async () => {
   try {
@@ -91,44 +94,101 @@ const handleShowPurchaseOrder = (purchaseOrder) => {
   isShowDialogVisible.value = true;
 };
 
-const handleDeletePurchaseOrderDetail = async (purchaseOrderDetailId) => {
-  try {
-    await axios.delete(
-      `/suppliers/purchase-orders/details/${purchaseOrderDetailId}`
-    );
-    toast.success("Detalle de Orden de compra eliminado correctamente.");
-    isEditDialogVisible.value = false;
-    currentPurchaseOrder.value = false;
-    fetchPurchaseOrders();
-  } catch (error) {
-    console.error(
-      "Hubo un error al eliminar el detalle de la orden de compra:",
-      error
-    );
-    toast.error("Error al eliminar el detalle de la orden de compra.");
+const handleShowRequestedProducts = (purchaseOrder) => {
+  currentPurchaseOrder.value = { ...purchaseOrder };
+  isShowRequestedProductsVisible.value = true;
+};
+
+const handleDeletePurchaseOrderDetail = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡No podrás revertir la eliminación de este producto para esta orden de compra!",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Eliminar",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/suppliers/purchase-orders/details/${id}`);
+      toast.success("Detalle de Orden de compra eliminado correctamente.");
+      isEditDialogVisible.value = false;
+      currentPurchaseOrder.value = false;
+      fetchPurchaseOrders();
+    } catch (error) {
+      console.error(
+        "Hubo un error al eliminar el detalle de la orden de compra:",
+        error
+      );
+      toast.error("Error al eliminar el detalle de la orden de compra.");
+    }
   }
 };
 
-const handleDeletePurchaseOrder = async (purchaseOrderId) => {
-  try {
-    const { data } = await axios.delete(
-      `/suppliers/purchase-orders/${purchaseOrderId}`
-    );
+const handleDeletePurchaseOrder = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡No podrás revertir la eliminación de esta orden de compra!",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Eliminar",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
 
-    if (data.data.status === "ok") {
-      toast.success("Orden de compra eliminada correctamente.");
-      fetchPurchaseOrders();
-    } else {
-      toast.error(
-        `No se pudo eliminar la orden de compra ${currentPurchaseOrder.value.id}`
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const { data } = await axios.delete(`/suppliers/purchase-orders/${id}`);
+
+      if (data.data.status === "ok") {
+        toast.success("Orden de compra eliminada correctamente.");
+        fetchPurchaseOrders();
+      } else {
+        toast.error(
+          `No se pudo eliminar la orden de compra ${currentPurchaseOrder.value.id}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Hubo un error al eliminar el detalle de la orden de compra:",
+        error
       );
+      toast.error("Error al eliminar la orden de compra.");
     }
-  } catch (error) {
-    console.error(
-      "Hubo un error al eliminar el detalle de la orden de compra:",
-      error
-    );
-    toast.error("Error al eliminar la orden de compra.");
   }
 };
 
@@ -165,7 +225,14 @@ const handleSaveDetails = async (detailsData) => {
 
 <template>
   <div>
+    <PurchaseOrderRequestedProducts
+      v-show="isShowRequestedProductsVisible"
+      v-model="isShowRequestedProductsVisible"
+      :purchaseOrder="currentPurchaseOrder"
+    />
+
     <PurchaseOrderEditDialog
+      v-show="isEditDialogVisible"
       v-model="isEditDialogVisible"
       :purchaseOrder="currentPurchaseOrder"
       :errors="formErrors"
@@ -175,6 +242,7 @@ const handleSaveDetails = async (detailsData) => {
     />
 
     <PurchaseOrderShowDialog
+      v-show="isShowDialogVisible"
       v-model="isShowDialogVisible"
       :purchaseOrder="currentPurchaseOrder"
     />
@@ -195,6 +263,7 @@ const handleSaveDetails = async (detailsData) => {
       @edit-purchaseOrder="handleEditPurchaseOrder"
       @delete-purchaseOrder="handleDeletePurchaseOrder"
       @show-purchaseOrder="handleShowPurchaseOrder"
+      @show-requested-products="handleShowRequestedProducts"
     />
   </div>
 </template>

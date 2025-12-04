@@ -417,6 +417,7 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
     Route::put("/{autoOrder}", [PurchaseOrderController::class, "updateDetails"]);
     Route::get("/history", [PurchaseOrderController::class, "getPurchaseOrderHistory"]);
     Route::get("/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetails"]);
+    Route::put("/details/update-status/{autoOrderDetail}", [PurchaseOrderDetailController::class, "updateDetailStatus"]);
     Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
     Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
 });

@@ -12,20 +12,20 @@ export default [
       {
         title: "Lista",
         to: "suppliers-list",
-        action: 'manage',
-        subject: 'suppliers-list',
+        // action: "manage",
+        // subject: "suppliers-list",
       },
       {
         title: "Ordenes de Compra",
         to: "suppliers-purchase-orders-list",
-        action: 'manage',
-        subject: 'suppliers-purchase-orders-list',
+        // action: "manage",
+        // subject: "suppliers-purchase-orders-list",
       },
       {
         title: "Historial de Ordenes de Compra",
         to: "suppliers-purchase-orders-history-list",
-        action: 'manage',
-        subject: 'suppliers-purchase-orders-history-list',
+        // action: "manage",
+        // subject: "suppliers-purchase-orders-history-list",
       },
       {
         title: "IA Assistence",
