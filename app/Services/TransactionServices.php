@@ -14,7 +14,8 @@ class TransactionServices implements Transaction
 {
   public function __construct(
     protected TransactionRepository $transactionRepository,
-  ) {}
+  ) {
+  }
 
   public function getAll(array $data): array
   {
@@ -28,7 +29,7 @@ class TransactionServices implements Transaction
 
   public function createTransactionSalida(Expense $expense): ?ModelsTransaction
   {
-    $timezone = new DateTimeZone(env("APP_TIMEZONE"));
+    $timeZone = new DateTimeZone(config("app.timezone"));
     $hoy = new DateTime("now", $timezone);
 
     $data = CreateTransactionData::from([

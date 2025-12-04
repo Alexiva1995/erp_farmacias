@@ -1,17 +1,31 @@
 <script setup lang="js">
 import { computed } from 'vue';
 
-const props= defineProps({
-  list: { type: Array, required: true },
+const props = defineProps({
+  paginationData: { type: Object, required: true },
+  loading: { type: Boolean, default: false }
 })
 
+const emit = defineEmits(['change-page']);
+
 const productosTable = computed(() => {
-  return props.list || [];
+  return props.paginationData.data || [];
+});
+
+const totalPages = computed(() => {
+  return props.paginationData.last_page || 1;
+});
+
+const currentPage = computed({
+  get: () => props.paginationData.current_page || 1,
+  set: (val) => emit('change-page', val)
 });
 </script>
 
 <template>
   <VCard>
+    <VProgressLinear v-if="loading" indeterminate color="primary" />
+
     <VTable
       v-if="productosTable.length > 0"
       height="450"
@@ -22,7 +36,10 @@ const productosTable = computed(() => {
         <tr>
           <th>Proveedor</th>
           <th>ID</th>
-          <th>Producto</th>
+
+          <!-- CAMBIO 1: Forzamos el ancho desde el encabezado -->
+          <th style="width: 250px">Producto</th>
+
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo Lot.</th>
@@ -34,27 +51,25 @@ const productosTable = computed(() => {
       </thead>
 
       <tbody>
-        <tr v-for="item in list" :key="item.uuid">
-          <td>
-            {{ item.supplier.name }}
+        <tr v-for="item in productosTable" :key="item.uuid">
+          <td>{{ item.supplier.name }}</td>
+          <td>{{ item.product.id }}</td>
+
+          <td style="width: 220px; max-width: 220px">
+            <div class="text-truncate">
+              {{ item.product.name }}
+            </div>
+
+            <VTooltip activator="parent" location="top">
+              {{ item.product.name }}
+            </VTooltip>
           </td>
-          <td>
-            {{ item.product.id }}
-          </td>
-          <td>
-            {{ item.product.name }}
-          </td>
-          <td>
-            {{ item.product.total_group_sales }}
-          </td>
-          <td>
-            {{ item.product.promedio_calculado }}
-          </td>
+
+          <td>{{ item.product.total_group_sales }}</td>
+          <td>{{ item.product.promedio_calculado }}</td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
-            {{ parseFloat(item.cost_lot).toFixed(2) }} ({{
-              item.cost_lot_data
-            }})
+            {{ parseFloat(item.cost_lot).toFixed(2) }}
           </td>
           <td>
             <VIcon icon="tabler-currency-dollar" />
@@ -69,6 +84,9 @@ const productosTable = computed(() => {
             <VTextField
               type="number"
               v-model="item.reponer"
+              density="compact"
+              hide-details
+              style="min-width: 100px"
               :max="item.productSupplier.quantity"
               :suffix="'/' + item.productSupplier.quantity"
             />
@@ -76,5 +94,27 @@ const productosTable = computed(() => {
         </tr>
       </tbody>
     </VTable>
+
+    <!-- Resto del componente igual... -->
+    <div v-else class="pa-5 text-center text-medium-emphasis">
+      No hay oportunidades de mercado en esta página.
+    </div>
+
+    <VDivider />
+
+    <div class="d-flex align-center justify-end pa-4">
+      <span class="text-sm text-medium-emphasis me-4">
+        Total: {{ props.paginationData.total || 0 }} productos
+      </span>
+      <VPagination
+        v-model="currentPage"
+        :length="totalPages"
+        total-visible="5"
+        size="small"
+        rounded="circle"
+        active-color="primary"
+        :disabled="loading"
+      />
+    </div>
   </VCard>
 </template>

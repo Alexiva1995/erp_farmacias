@@ -433,6 +433,7 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
         Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
         Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
+        Route::post('/unique-opportunity-page', [SuppliersIaOrderAssistantController::class, 'getUniqueOpportunityPagination']);
     });
 });
 

@@ -5,18 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\AutoOrder;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
-use App\Helpers\Algoritmo;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Models\Product as ModelsProduct;
-use App\Models\ProductSupplier as ModelsProductSupplier;
-use App\Models\Supplier;
 use DateTime;
 use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-
+use Illuminate\Pagination\Paginator;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
+use App\Models\Product as ModelsProduct;
 class SuppliersIaOrderAssistantController extends Controller
 {
     //
@@ -63,7 +61,7 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
@@ -139,8 +137,9 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generateListProductoToRequest(Request $request): JsonResponse
     {
-        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $dateToday = new DateTime("now", $timeZone);
+
         $respuesta = [
             "listaDeProductos" => [],
             "productos" => [],
@@ -158,15 +157,10 @@ class SuppliersIaOrderAssistantController extends Controller
             "stock" => "fallas",
         ];
 
-
-        if ($request->filled("laboratoryId")) {
+        if ($request->filled("laboratoryId"))
             $filtrosFallas["laboratoryId"] = $request->laboratoryId;
-        }
-
-        if ($request->filled("groups")) {
+        if ($request->filled("groups"))
             $filtrosFallas["groups"] = $request->groups;
-        }
-
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
@@ -175,8 +169,6 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
         }
 
-
-
         if ($filtrosFallas["tipo_filtracion"] == "average") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         } else if ($filtrosFallas["tipo_filtracion"] == "sales") {
@@ -184,83 +176,28 @@ class SuppliersIaOrderAssistantController extends Controller
         } else {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         }
+
         if ($productosFallas == null) {
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
         $productosFallas = $this->product->calcularAOProducts($productosFallas);
-
         $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
-
         $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
-
 
         if ($filtrosFallas["tipo_filtracion"] == "combinado") {
             foreach ($productosFallas as $producto) {
                 $producto->solicitar = (($producto->promedio_calculado + $producto->total_sold_completed) / 2 - $producto->lote_quantity - $producto->totalQuantityInAutoOrder) * -1;
             }
-
         }
 
-        $respuesta["productos_a_reponer"] = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
-        $respuesta["productos_a_reponer"] = $this->productSupplier->checkTolerance($respuesta["productos_a_reponer"], $request->con_descuento);
+        $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
+        $tempReponer = $this->productSupplier->checkTolerance($tempReponer, $request->con_descuento);
+
+        $respuesta["productos_a_reponer"] = $this->orderByDiscount($tempReponer);
         $respuesta["productosFallas"] = $productosFallas;
-        // codigo para listar porductos que tengan oportunidad unica de mercado
-        $productos = null;
 
-        $filtrosConExistencia = [
-            "tipo_filtracion" => $request->tipo_filtracion,
-            "lapso_de_tiempo" => "1 year",
-            // "stock"             => "all",
-            "dateToday" => null,
-            "previousDate" => null,
-            "orderBy" => "asc",
-            "sortBy" => "name",
-        ];
-
-        if ($request->filled("laboratoryId")) {
-            $filtrosConExistencia["laboratoryId"] = $request->laboratoryId;
-        }
-
-        if ($request->filled("groups")) {
-            $filtrosConExistencia["groups"] = $request->groups;
-        }
-
-        $filtrosConExistencia["dateToday"] = $dateToday->format("Y-m-d h:m:s");
-        $filtrosConExistencia["previousDate"] = $this->generarPreviousDate("1", "year");
-
-
-        if ($filtrosConExistencia["tipo_filtracion"] == "average") {
-            $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosConExistencia);
-        }
-        if ($filtrosConExistencia["tipo_filtracion"] == "sales") {
-            $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosConExistencia);
-        } else {
-            $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosConExistencia);
-        }
-
-        $productos = $this->product->calcularAOProducts($productos);
-
-
-        $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
-
-
-        $productos = $this->product->actualizarElSolicitadoConElAO($productos);
-
-
-
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->checkTolerance($respuesta["productos_oportunidad_unica"], $request->con_descuento);
-        $respuesta["productos_oportunidad_unica"] = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($respuesta["productos_oportunidad_unica"]);
-
-
-
-
-        // $items = $this->product->calcularAOProduct($items);
-        // $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
-
-
-
+        $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -268,7 +205,7 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generarPreviousDate($cantidad = "0", $tiempo = "days")
     {
-        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $fecha = new DateTime("now", $timeZone);
         $fecha->modify("-" . $cantidad . " " . $tiempo);
         return $fecha->format("Y-m-d");
@@ -284,7 +221,7 @@ class SuppliersIaOrderAssistantController extends Controller
     public function consultarProductosSinProveedor(Request $request): JsonResponse
     {
 
-        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $dateToday = new DateTime("now", $timeZone);
 
         $productos = null;
@@ -332,5 +269,139 @@ class SuppliersIaOrderAssistantController extends Controller
         // $productos = $this->productSupplier->getTheLowestLotCost($productos);
 
         return ApiResponse::success($productos, "ok", 200);
+    }
+    private function getOptimizedUniqueOpportunities(Request $request)
+    {
+        // 1. GENERAR LLAVE DE CACHÉ
+        $cacheKey = 'sorted_ids_' . md5(json_encode([
+            'lab' => $request->laboratoryId,
+            'groups' => $request->groups,
+            'tipo' => $request->tipo_filtracion,
+            'desc' => $request->con_descuento,
+        ]));
+
+        // 2. OBTENER LISTA MAESTRA DE IDs (Cacheada)
+        $sortedIds = Cache::remember($cacheKey, 600, function () use ($request) {
+
+            // --- INICIO CÁLCULO GLOBAL ---
+            $timeZone = new DateTimeZone(config("app.timezone"));
+            $dateToday = new DateTime("now", $timeZone);
+
+            $filtros = [
+                "tipo_filtracion" => $request->tipo_filtracion,
+                "lapso_de_tiempo" => "1 year",
+                "dateToday" => $dateToday->format("Y-m-d h:m:s"),
+                "previousDate" => $this->generarPreviousDate("1", "year"), // Usa $this si la funcion esta en el controller, o ajusta segun corresponda
+                "orderBy" => "asc",
+                "sortBy" => "name",
+            ];
+
+            if ($request->filled("laboratoryId"))
+                $filtros["laboratoryId"] = $request->laboratoryId;
+            if ($request->filled("groups"))
+                $filtros["groups"] = $request->groups;
+
+            // Consultas
+            if ($filtros["tipo_filtracion"] == "average") {
+                $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+            } else {
+                $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+            }
+
+            // Cálculos
+            $productos = $this->product->calcularAOProducts($productos);
+            $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
+            $productos = $this->product->actualizarElSolicitadoConElAO($productos);
+
+            // Proveedores
+            $tempOportunidad = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
+            $tempOportunidad = $this->productSupplier->checkTolerance($tempOportunidad, $request->con_descuento);
+            $tempOportunidad = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($tempOportunidad);
+
+            // Ordenar y devolver SOLO IDs
+            $listaOrdenada = $this->orderByDiscount($tempOportunidad);
+
+            return collect($listaOrdenada)->map(function ($item) {
+                return $item['product']->id; // Guardamos solo el ID
+            })->values()->all();
+        });
+
+        // 3. PAGINAR LOS IDs
+        $page = $request->input('page', 1);
+        $perPage = 15;
+
+        $totalItems = count($sortedIds);
+        $idsPaginaActual = collect($sortedIds)->forPage($page, $perPage)->values();
+
+        if ($idsPaginaActual->isEmpty()) {
+            return new \Illuminate\Pagination\LengthAwarePaginator([], $totalItems, $perPage, $page, [
+                'path' => $request->url(),
+                'query' => $request->query()
+            ]);
+        }
+
+        // 4. HIDRATAR (CORRECCIÓN DEL ERROR AQUÍ)
+        // Usamos el Modelo Product directamente, no el servicio ($this->product)
+        $productosDB = ModelsProduct::whereIn('id', $idsPaginaActual)->get();
+
+        // 5. RE-CALCULAR LÓGICA (Solo para 15 items)
+        $productosDB = $this->product->calcularAOProducts($productosDB);
+        $productosDB = $this->product->removerProductosConPedidosAutomaticos($productosDB);
+        $productosDB = $this->product->actualizarElSolicitadoConElAO($productosDB);
+
+        $itemsFinales = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productosDB, $request->con_descuento);
+        $itemsFinales = $this->productSupplier->checkTolerance($itemsFinales, $request->con_descuento);
+        $itemsFinales = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($itemsFinales);
+
+        // 6. RE-ORDENAR (Porque whereIn desordena)
+        $itemsFinalesOrdenados = $this->orderByDiscount($itemsFinales);
+
+        // 7. RETORNAR PAGINADOR
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $itemsFinalesOrdenados,
+            $totalItems,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+    }
+    public function getUniqueOpportunityPagination(Request $request): JsonResponse
+    {
+        $paginacion = $this->getOptimizedUniqueOpportunities($request);
+        return ApiResponse::success($paginacion, "ok", 200);
+    }
+    private function orderByDiscount(array $listaProductos): array
+    {
+        return collect($listaProductos)->sortByDesc(function ($item) {
+            $producto = $item['product'];
+            $oferta = $item['productSupplier'];
+            $precioBase = (float) ($producto->unit_cost ?? 0);
+            $precioOferta = (float) ($oferta->unit_cost_with_discount > 0
+                ? $oferta->unit_cost_with_discount
+                : $oferta->unit_cost);
+            $precioOferta = $precioOferta ?: 0;
+            if ($precioBase <= 0) {
+                return -9999;
+            }
+            $descuento = (($precioBase - $precioOferta) / $precioBase) * 100;
+
+            return $descuento;
+
+        })->values()->all();
+    }
+    private function paginateResult($items, $perPage = 15, $page = null, $options = [])
+    {
+        $page = $page ?: (Paginator::resolveCurrentPage() ?: 1);
+        $items = $items instanceof \Illuminate\Support\Collection ? $items : collect($items);
+
+        $results = $items->forPage($page, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $results,
+            $items->count(),
+            $perPage,
+            $page,
+            $options
+        );
     }
 }

@@ -16,14 +16,15 @@ class InventoryStockController extends Controller
 
     public function __construct(
         protected Product $product
-    ) {}
+    ) {
+    }
 
     public function filter(Request $request)
     {
 
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
-            "page"         => $request->page,
+            "page" => $request->page,
         ];
 
         if ($request->filled("q")) {
@@ -59,7 +60,7 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["days"] = $request->days;
             $previousDate = new DateTime("now", $timeZone);
@@ -113,7 +114,7 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["days"] = $request->days;
             $previousDate = new DateTime("now", $timeZone);
@@ -165,9 +166,9 @@ class InventoryStockController extends Controller
         }
 
         if ($request->filled("days")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
-            $filtros["days"] = (int)$request->days;
+            $filtros["days"] = (int) $request->days;
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
             $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
