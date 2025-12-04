@@ -236,4 +236,5 @@ class ProductSupplierServices implements ProductSupplier
 
         return $productosConOportunidad;
     }
+
 }
