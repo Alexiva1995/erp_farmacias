@@ -119,4 +119,25 @@ class SupplierActionService
     {
         return $supplier->discounts()->create($data);
     }
+    public function applyGlobalDiscount(Supplier $supplier, float $percentage)
+    {
+        $factor = 1 - ($percentage / 100);
+        return \Illuminate\Support\Facades\DB::table('product_suppliers')
+            ->where('supplier_id', $supplier->id)
+            ->update([
+                'unit_cost_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                    ROUND(
+                        COALESCE(NULLIF(unit_cost_with_discount, 0), unit_cost) * {$factor}, 
+                        2
+                    )
+                "),
+                'unit_cost_usd_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                    ROUND(
+                        COALESCE(NULLIF(unit_cost_usd_with_discount, 0), unit_cost_usd) * {$factor}, 
+                        2
+                    )
+                "),
+                'updated_at' => now(),
+            ]);
+    }
 }

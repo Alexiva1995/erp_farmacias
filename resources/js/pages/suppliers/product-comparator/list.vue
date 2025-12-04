@@ -1,10 +1,10 @@
 <script setup>
+import ApplyDiscountDialog from "@/components/dialogs/ApplyDiscountDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
-import ProductsComparisionSuppliersFilter from "@/components/ProductsComparisionSuppliersFilter.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -32,6 +32,9 @@ const enableDiscounts = ref(false);
 const isShowSupplierProductsDialogActive = ref(false);
 const isShowImportFileDialogActive = ref(false);
 
+const isApplyDiscountDialogActive = ref(false);
+const supplierForDiscount = ref(null);
+
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
@@ -48,6 +51,44 @@ const productsTotal = ref(0);
 const enableUsdAmountCol = ref(true);
 const enableDiscountCol = ref(true);
 
+const handleShowDiscountDialog = (supplier) => {
+  supplierForDiscount.value = supplier;
+  isApplyDiscountDialogActive.value = true;
+};
+
+// Lógica para procesar el descuento (se conectará al backend luego)
+const handleApplyDiscount = async ({ supplier, percentage }) => {
+  if (!supplier || !percentage) return;
+
+  try {
+    toast.info(
+      `Procesando descuento del ${percentage}% para ${supplier.name}...`
+    );
+
+    const response = await axios.post(
+      `/suppliers/${supplier.id}/apply-discount`,
+      {
+        percentage: parseFloat(percentage),
+      }
+    );
+
+    if (response.status === 200) {
+      toast.success(
+        response.data.message || "Descuento aplicado correctamente."
+      );
+
+      await fetchProducts();
+    }
+  } catch (error) {
+    console.error("Error al aplicar descuento:", error);
+
+    if (error.response?.data?.message) {
+      toast.error(error.response.data.message);
+    } else {
+      toast.error("No se pudo aplicar el descuento. Intente nuevamente.");
+    }
+  }
+};
 const fetchProducts = async () => {
   const params = {
     page: productsPage.value,
@@ -85,7 +126,9 @@ const fetchSupplierConnections = async () => {
   const params = {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    selectedSupplier: selectedSupplier.value,
+    // CAMBIO IMPORTANTE: Enviamos 'search' en lugar de 'selectedSupplier'
+    // para indicar al backend que es una búsqueda de texto.
+    search: selectedSupplier.value,
   };
 
   Object.keys(params).forEach(
@@ -97,8 +140,8 @@ const fetchSupplierConnections = async () => {
     supplierConnections.value = response.data.data;
     totalSupplierConnections.value = response.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener las órdenes de compra:", error);
-    toast.error("Error al obtener las órdenes de compra.");
+    console.error("Hubo un error al obtener las conexiones:", error);
+    toast.error("Error al obtener las conexiones.");
   } finally {
     loadingSuppliers.value = false;
   }
@@ -334,6 +377,11 @@ const handleDeleteSupplierProducts = async (supplier) => {
       @close-dialog="handleHideImportProductsDialog"
       @refresh-products="fetchProducts"
     />
+    <ApplyDiscountDialog
+      v-model:isDialogVisible="isApplyDiscountDialogActive"
+      :selected-supplier="supplierForDiscount"
+      @submit="handleApplyDiscount"
+    />
 
     <VCard title="Listados" class="mb-6">
       <VCardText>
@@ -341,14 +389,6 @@ const handleDeleteSupplierProducts = async (supplier) => {
           <VTab value="suppliers"> Proveedores </VTab>
           <VTab value="products"> Productos </VTab>
         </VTabs>
-
-        <ProductsComparisionSuppliersFilter
-          v-if="tab === 'suppliers'"
-          v-model:selectedSupplier="selectedSupplier"
-          :suppliers="suppliers"
-          @clear="handleClearSuppliersFilters"
-        />
-
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
           v-model:enable-discounts="enableDiscounts"
@@ -384,6 +424,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
           @update-products="handleCheckSupplierApi"
           @load-products="handleShowImportProductsDialog"
           @delete-products="handleDeleteSupplierProducts"
+          @open-discount-dialog="handleShowDiscountDialog"
         />
       </VTabsWindowItem>
 

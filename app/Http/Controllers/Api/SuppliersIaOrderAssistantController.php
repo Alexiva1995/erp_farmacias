@@ -11,8 +11,7 @@ use DateTime;
 use DateTimeZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\Paginator;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Product as ModelsProduct;
 class SuppliersIaOrderAssistantController extends Controller
@@ -228,7 +227,6 @@ class SuppliersIaOrderAssistantController extends Controller
         $filtros = [
             "tipo_filtracion" => $request->tipo_filtracion,
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
-            // "lapso_de_tiempo"   => "1 year",
             "stock" => "all",
             "dateToday" => null,
             "previousDate" => null,
@@ -265,9 +263,6 @@ class SuppliersIaOrderAssistantController extends Controller
                 }
             }
         }
-
-        // $productos = $this->productSupplier->getTheLowestLotCost($productos);
-
         return ApiResponse::success($productos, "ok", 200);
     }
     private function getOptimizedUniqueOpportunities(Request $request)
@@ -389,19 +384,5 @@ class SuppliersIaOrderAssistantController extends Controller
 
         })->values()->all();
     }
-    private function paginateResult($items, $perPage = 15, $page = null, $options = [])
-    {
-        $page = $page ?: (Paginator::resolveCurrentPage() ?: 1);
-        $items = $items instanceof \Illuminate\Support\Collection ? $items : collect($items);
 
-        $results = $items->forPage($page, $perPage)->values();
-
-        return new LengthAwarePaginator(
-            $results,
-            $items->count(),
-            $perPage,
-            $page,
-            $options
-        );
-    }
 }
