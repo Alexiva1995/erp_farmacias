@@ -44,7 +44,6 @@ const headers = [
           @update:model-value="emit('update:searchQuery', $event)"
         />
       </div>
-      <!-- Aquí podrías poner botones de acción globales si los hubiera -->
     </VCardText>
 
     <VDataTableServer

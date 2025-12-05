@@ -34,11 +34,10 @@ let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laborator
 
 
 const con_descuento= ref(route.query.con_descuento);// descuento o precio full
-const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
-const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
-const groups= ref(gruposList);// grupos
-const laboratoryId= ref(laboratoriosList);// laboratorio
-// const stock= ref(route.query.stock);// Fallas , Execeso o All
+const tipo_de_filtracion= ref(route.query.tipo_filtracion);
+const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);
+const groups= ref(gruposList);
+const laboratoryId= ref(laboratoriosList);
 
 async function generarPedido(page = 1) {
   let data = {

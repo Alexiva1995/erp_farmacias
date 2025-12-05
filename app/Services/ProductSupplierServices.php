@@ -202,17 +202,24 @@ class ProductSupplierServices implements ProductSupplier
     public function obtainProductsWithUniqueMarketOpportunities(array $productos): array
     {
         $productosConOportunidad = [];
-        for ($index = 0; $index < count($productos); $index++) {
-            # code...
-            $producto = $productos[$index];
 
-            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($producto["product"]);
-            if ($lote) {
-                if ((float) $producto["precio_final_supplier"] < (float) $lote->unit_cost) {
-                    $dateLot = new DateTime($lote->created_at);
+        for ($index = 0; $index < count($productos); $index++) {
+            $producto = $productos[$index];
+            $costoBaseProducto = (float) ($producto["product"]->unit_cost ?? 0);
+
+            if ($costoBaseProducto > 0) {
+                if ((float) $producto["precio_final_supplier"] < $costoBaseProducto) {
+                    $fechaReferencia = $producto["product"]->updated_at ?? new \DateTime();
+
+                    if (!($fechaReferencia instanceof \DateTimeInterface)) {
+                        $fechaReferencia = new \DateTime((string) $fechaReferencia);
+                    }
+
                     $producto["checkUniquePurchaseOpportunity"] = true;
-                    $producto["cost_lot"] = $lote->unit_cost;
-                    $producto["cost_lot_data"] = $dateLot->format("d-m-Y");
+
+                    $producto["cost_lot"] = $costoBaseProducto;
+                    $producto["cost_lot_data"] = $fechaReferencia->format("d-m-Y");
+
                     $productos[$index] = $producto;
                     $productosConOportunidad[] = $productos[$index];
                 }
