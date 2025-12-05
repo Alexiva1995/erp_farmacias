@@ -86,6 +86,12 @@ const submitForm = () => {
         ? JSON.stringify(value) !== JSON.stringify(originalValue)
         : value !== originalValue;
 
+
+    if (hasChanged && (key === 'payment_due_type' || key === 'payment_due_reference' || key === 'custom_due_days')) {
+        filteredPayload[key] = value === undefined ? null : value;
+        return;
+    }
+
     const isFilled = Array.isArray(value)
       ? value.length > 0
       : typeof value === "object" && value !== null
@@ -114,6 +120,20 @@ const submitForm = () => {
   //   }
   // }
 
+
+const currentRef = formData.value.invoice_date_reference;
+const originalRef = original.invoice_date_reference;
+
+if (formData.value.payment_due_type === 'invoice_date') {
+    if (currentRef !== originalRef) {
+        filteredPayload.invoice_date_reference = currentRef;
+    } 
+    else if (currentRef !== undefined && currentRef !== null) {
+        filteredPayload.invoice_date_reference = currentRef;
+    }
+
+}
+
   if (
     typeof formData.value.order_days === "object" &&
     Object.keys(formData.value.order_days).length > 0 &&
@@ -124,6 +144,7 @@ const submitForm = () => {
     filteredPayload.order_days = formData.value.order_days;
   }
 
+  console.log(filteredPayload);
   emit("save", filteredPayload);
 };
 
@@ -519,6 +540,7 @@ watch(
                 :items="[
                   { title: 'Fecha de Recibo', value: 'receipt_date' },
                   { title: 'Fecha de Vencimiento', value: 'expiration_date' },
+                  { title: 'Fecha de emisión', value: 'issue_date' },
                 ]"
                 label="Referencia de Fecha de Factura"
                 variant="outlined"

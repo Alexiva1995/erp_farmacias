@@ -214,7 +214,7 @@ const sortedRules = computed(() => {
           :headers="[
             { title: 'Días', key: 'days', sortable: false, },
             { title: '% de Descuento', key: 'discount_percentage', sortable: false, },
-            { title: 'Accion', key: 'actions', sortable: false },
+            { title: 'Acciones', key: 'actions', sortable: false },
           ]"
           :items="sortedRules"
           density="compact"
