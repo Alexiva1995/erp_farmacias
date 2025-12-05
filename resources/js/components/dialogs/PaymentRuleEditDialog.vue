@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -11,51 +11,10 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
-/*const formData = ref({
-  rules: [], // array de rangos
-});
-const formErrors = ref({});*/
-
-/*const addRule = () => {
-  formData.value.rules.push({
-    discount_percentage: null,
-    days: null,
-  });
-};*/
-/*
-const removeRule = (index) => {
-  formData.value.rules.splice(index, 1);
-};*/
-
-/*const submitForm = () => {
-  formErrors.value = {};
-  emit("clearErrors");
-  emit("save", {
-    rules: formData.value.rules,
-  });
-  formData.value.rules = [];
-};*/
-
-/*const closeDialog = () => {
-  emit("update:modelValue", false);
-  formErrors.value = {};
-  emit("clearErrors");
-  formData.value.rules = [];
-};*/
-
-
-/*watch(
-  () => props.errors,
-  (newErrors) => {
-    formErrors.value = newErrors || {};
-    formData.value.rules = [];
-  },
-  { deep: true }
-);*/
-
 const editableRules = ref([]);
 const tempIdCounter = ref(-1);
 const internalErrors = ref({});
+const isEditing = ref(false);
 
 watch(
   () => props.errors,
@@ -89,12 +48,10 @@ const closeDialog = () => {
 
 const validateRuleDiscountPercentage = (rule, index) => {
   const discount_percentage = parseInt(rule.discount_percentage);
-  // Permitir cantidad 0 (se considera como marcado para eliminación)
   if (rule._markedForDeletion) {
     delete internalErrors.value[`discount_percentage_${index}`];
     return true;
   }
-  // Si no es 0, debe ser mayor que 0
   if (isNaN(discount_percentage) || discount_percentage <= 0) {
     internalErrors.value[`discount_percentage_${index}`] =
       "La cantidad debe ser mayor 0";
@@ -110,9 +67,7 @@ const onDiscountPercentageChange = (rule, index) => {
 };
 
 const validateRule = (rule, index) => {
-  // Si el rule está marcado para eliminación (discount_percentage 0), no validar otros campos
   if (rule._markedForDeletion || parseInt(rule.discount_percentage) === 0) {
-    // Limpiar errores para rule marcados para eliminación
     delete internalErrors.value[`days_${index}`];
     return true;
   }
@@ -136,24 +91,17 @@ const addNewRuleRow = () => {
     id: tempIdCounter.value,
     days: 1,
     discount_percentage:1,
+    _markedForEdit: true,
     _markedForDeletion: false,
   });
   tempIdCounter.value--;
 };
 
 
-const removeRule = (index) => {
-  const rule = editableRules.value[index];
-
-  if (rule.id > 0) {
-    // rule existente: marcar para "eliminación" (discount_percentage = 0)
-    rule._markedForDeletion = true;
-    rule.discount_percentage = 0;
-  } else {
-    editableRules.value.splice(index, 1);
-  }
-
-  // Limpiar errores relacionados
+const removeRule = (rule) => {
+  const index = editableRules.value.findIndex(r => r === rule);
+  if (index === -1) return;
+  editableRules.value.splice(index, 1);
   Object.keys(internalErrors.value).forEach((key) => {
     if (key.endsWith(`_${index}`)) {
       delete internalErrors.value[key];
@@ -161,25 +109,24 @@ const removeRule = (index) => {
   });
 };
 
-const restoreRule = (index) => {
-  const rule = editableRules.value[index];
-  rule._markedForDeletion = false;
-  // Si el rule tenía discount_percentage = 0, restaurarlo con cantidad 1
+const restoreRule = (rule) => {
+  const index = editableRules.value.findIndex(r => r === rule);
+  if (index === -1) return;
+
+  rule._markedForDeletion = false,
+  rule._markedForEdit= true;
+
   if (parseInt(rule.discount_percentage) === 0 || !rule.discount_percentage) {
     rule.discount_percentage = 1;
   }
   validateRuleDiscountPercentage(rule, index);
 };
 
-
 const getFieldError = (field, index) => {
   return internalErrors.value[`${field}_${index}`];
 };
 
-
-
 const canSave = computed(() => {
-  // Verificar que todos los rules activos (no marcados para eliminación y con cantidad > 0) tengan datos válidos
 
   if (editableRules.value.length === 0) {
     return true;
@@ -199,14 +146,12 @@ const canSave = computed(() => {
   }
 
   const hasActiveRules = editableRules.value.some(rule => !rule._markedForDeletion);
-
   return allRulesAreValid && (hasActiveRules || editableRules.value.every(rule => rule._markedForDeletion));
 });
 
 const onSave = () => {
   let allFormFieldsValid = true;
   internalErrors.value = {};
-
 
   editableRules.value.forEach((rule, index) => {
     if (!rule._markedForDeletion) {
@@ -224,25 +169,16 @@ const onSave = () => {
     }));
     emit("save", rulesToSave);
   }
-
-  /*let allValid = true;
-  errors.value = {};
-  editableRules.value.forEach((rule, index) => {
-    if (!validateRule(rule, index)) {
-      allValid = false;
-    }
-  });
-
-  if (allValid) {
-    // Preparar datos para envío
-    const rulesToSave = editableRules.value.map((rule) => ({
-      ...rule,
-      // Convertir cantidad 0 a null para rules marcados para eliminación
-      discount_percentage: rule._markedForDeletion ? 0 : rule.discount_percentage,
-    }));
-    emit("save", rulesToSave);
-  }*/
 };
+
+const sortedRules = computed(() => {
+    return editableRules.value.slice().sort((a, b) => {
+        const daysA = parseFloat(a.days) || 0;
+        const daysB = parseFloat(b.days) || 0;
+        return daysA - daysB;
+    });
+});
+
 </script>
 
 <template>
@@ -257,16 +193,12 @@ const onSave = () => {
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center">
         <span class="text-h5 font-weight-bold">Regla de Pronto Pago</span>
-
         <VSpacer />
-
         <VBtn icon variant="text" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-
-      <VDivider />
-
+      <VDivider/>
       <VCardText class="flex-grow-1" style="overflow-y: auto">
             <div class="d-flex align-center mb-4">
           <VSpacer />
@@ -278,22 +210,19 @@ const onSave = () => {
           > Agregar Regla
           </VBtn>
         </div>
-
-
           <VDataTable
           :headers="[
             { title: 'Días', key: 'days', sortable: false, },
             { title: '% de Descuento', key: 'discount_percentage', sortable: false, },
             { title: 'Accion', key: 'actions', sortable: false },
           ]"
-          :items="editableRules"
+          :items="sortedRules"
           density="compact"
           class="rounded-lg"
           no-data-text="No hay reglas registradas para este proveedor."
         >
-          <!-- Fila marcada para eliminación -->
           <template #item="{ item, index }">
-            <tr :class="{ 'bg-grey-100 opacity-60': item._markedForDeletion }">
+            <tr :class="{ 'bg-grey-100 opacity-60': !item._markedForEdit }">
               <td>
                 <VTextField
                   v-model="item.days"
@@ -303,7 +232,7 @@ const onSave = () => {
                   hide-details="auto"
                   density="compact"
                   min="0"
-                  :disabled="item._markedForDeletion"
+                  :disabled="!item._markedForEdit"
                 />
               </td>
               <td>
@@ -315,37 +244,31 @@ const onSave = () => {
                   hide-details="auto"
                   density="compact"
                   @input="onDiscountPercentageChange(item, index)"
-                  :disabled="item._markedForDeletion"
+                  :disabled="!item._markedForEdit"
                 />
               </td>
               <td>
                 <div class="d-flex gap-1">
                   <VBtn
-                    v-if="!item._markedForDeletion"
                     icon="tabler-trash"
                     variant="text"
                     color="error"
                     size="small"
-                    @click="removeRule(index)"
+                    @click="removeRule(item)"
                   />
                   <VBtn
-                    v-else-if="item.id > 0"
-                    icon="tabler-restore"
+                    icon="tabler-edit"
                     variant="text"
                     color="success"
                     size="small"
-                    @click="restoreRule(index)"
+                    @click="restoreRule(item)"
                   />
                 </div>
               </td>
             </tr>
           </template>
         </VDataTable>
-
-
       </VCardText>
-
-      
 
       <VDivider />
 

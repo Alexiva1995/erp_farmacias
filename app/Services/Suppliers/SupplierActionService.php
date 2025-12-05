@@ -100,8 +100,18 @@ class SupplierActionService
      */
     public function createPaymentRule(Supplier $supplier, array $data): PaymentRule
     {
-        dd($data);
-        return $supplier->paymentRules()->create($data);
+
+        $attributes = [];
+        if (isset($data['id']) && $data['id'] > 0) {
+            $attributes['id'] = $data['id'];
+        }
+        $values = [
+            'days' => $data['days'],
+            'discount_percentage' => $data['discount_percentage'],
+            'supplier_id' => $supplier->id,
+        ];
+
+        return $supplier->paymentRules()->updateOrCreate($attributes,$values);
     }
 
     /**

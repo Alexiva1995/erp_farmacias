@@ -251,8 +251,6 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
    const payload = {
       rules: paymentRuleFormData,
     };
-    //const payload = { ...paymentRuleFormData };
-
     await axios.post(url, payload);
 
     toast.success(`Reglas de pago creadas con éxito`);

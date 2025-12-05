@@ -18,6 +18,7 @@ use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Arr;
 
 class SupplierController extends Controller
 {
@@ -144,11 +145,28 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
+        $sentIds = Arr::pluck($validated['rules'], 'id');
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+
+        if (!empty($sentIds)) {
+            $supplier->paymentRules()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->paymentRules()->delete();
+        }
+
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
                 'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
+
+            if (isset($rule['id']) && $rule['id'] > 0) {
+                $ruleData['id'] = $rule['id'];
+            }
 
             $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
