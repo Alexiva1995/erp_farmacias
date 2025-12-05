@@ -418,19 +418,19 @@ watch(
 
           <VDivider class="my-4" />
 
+
           <VRow>
-            <VCol cols="12" md="12">
-              <h6 class="text-subtitle-1 font-weight-medium mt-3 mb-6">
+            <VCol cols="12" md="12" class="pl-4">
+              <h6 class="text-subtitle-1 font-weight-medium mb-4">
                 Días de Despacho
               </h6>
-
-              <VRow>
+              <VRow no-gutters>
                 <VCol
                   v-for="dia in dias"
                   :key="dia.value"
-                  cols="6"
-                  sm="4"
-                  class="pa-0"
+                  cols="6" 
+                  sm="auto"
+                  class="d-flex align-center pr-4"
                 >
                   <VCheckbox
                     v-model="formData.dispatch_days"
@@ -443,7 +443,7 @@ watch(
                 </VCol>
                 <div
                   v-if="formErrors.dispatch_days"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.dispatch_days[0] }}
                 </div>
@@ -451,11 +451,10 @@ watch(
             </VCol>
           </VRow>
 
-          <VRow>
-            <VCol cols="12" md="12">
+          <VRow v-if="formData.dispatch_days.length">
+            <VCol cols="12" md="12" class="pl-4">
               <h6
-                class="text-subtitle-1 font-weight-medium mt-3 mb-6"
-                v-if="formData.dispatch_days.length"
+                class="text-subtitle-1 font-weight-medium mb-4"
               >
                 Días de Pedido por Despacho
               </h6>
@@ -464,19 +463,19 @@ watch(
                 :key="diaDespacho"
                 class="mb-4"
               >
-                <h6 class="text-caption font-weight-medium text-primary mb-2">
+                <h6 class="text-caption font-weight-medium text-primary mb-4">
                   Pedidos requeridos para
                   <strong>{{ diaDespachoLabel(diaDespacho) }}</strong
                   >:
                 </h6>
 
-                <VRow>
+                <VRow no-gutters>
                   <VCol
                     v-for="diaPedido in dias"
                     :key="diaPedido.value"
-                    cols="6"
-                    sm="4"
-                    class="pa-0"
+                    cols="6" 
+                    sm="auto"
+                    class="d-flex align-center pr-4"
                   >
                     <VCheckbox
                       v-model="formData.order_days[diaDespacho]"
@@ -491,7 +490,7 @@ watch(
 
                 <div
                   v-if="formErrors.order_days?.[diaDespacho]"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.order_days[diaDespacho][0] }}
                 </div>

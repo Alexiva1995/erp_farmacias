@@ -247,13 +247,16 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
   try {
-    const payload = { ...paymentRuleFormData };
+
+   const payload = {
+      rules: paymentRuleFormData,
+    };
+    //const payload = { ...paymentRuleFormData };
 
     await axios.post(url, payload);
 
     toast.success(`Reglas de pago creadas con éxito`);
     isPaymentRuleDialogVisible.value = false;
-
     await fetchPaymentRules();
     await fetchSuppliers();
   } catch (error) {

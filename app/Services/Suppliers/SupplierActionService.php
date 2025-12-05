@@ -100,6 +100,7 @@ class SupplierActionService
      */
     public function createPaymentRule(Supplier $supplier, array $data): PaymentRule
     {
+        dd($data);
         return $supplier->paymentRules()->create($data);
     }
 
