@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], default: null },
@@ -41,6 +41,7 @@ const loading = ref(false);
 const loadingSuppliers = ref(false);
 const loadingRules = ref(false);
 const loadingInvoice = ref(false);
+const expDateError = ref("");
 
 const selectedSupplier = computed(() => {
   return (
@@ -58,12 +59,50 @@ const translatePaymentMethodType = (type) => {
   return translations[type] || type;
 };
 
+const validateExpDate = (date) => {
+  if (!date) {
+    expDateError.value = "";
+    return true;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expDate = new Date(date);
+  expDate.setHours(0, 0, 0, 0);
+
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+  sixMonthsFromNow.setHours(0, 0, 0, 0);
+
+  if (expDate < today) {
+    expDateError.value = "La fecha de vencimiento no puede ser anterior a hoy";
+    return false;
+  }
+
+  if (expDate > sixMonthsFromNow) {
+    expDateError.value = "La fecha de vencimiento no puede ser más de 6 meses en el futuro";
+    return false;
+  }
+
+  expDateError.value = "";
+  return true;
+};
+
 const calculatePaymentDate = () => {
-  if (
-    props.isEditMode ||
-    !selectedSupplier.value ||
-    !selectedSupplier.value.payment_date
-  ) {
+  // No calcular en modo edición
+  if (props.isEditMode) {
+    return;
+  }
+
+  // Verificar que haya un proveedor seleccionado
+  if (!selectedSupplier.value) {
+    return;
+  }
+
+  // Verificar que el proveedor tenga configuración de pago
+  if (!selectedSupplier.value.payment_date) {
+    console.warn("El proveedor no tiene configuración de fecha de pago");
     return;
   }
 
@@ -71,12 +110,14 @@ const calculatePaymentDate = () => {
   const paymentDays = selectedSupplier.value.payment_date.days;
   const supplierPaymentRules = selectedSupplier.value.payment_rules || [];
 
+  let calculatedDate = null;
+
   switch (paymentMethod) {
     case "due_date":
       if (formData.value.exp_date) {
         const expDate = new Date(formData.value.exp_date);
         expDate.setDate(expDate.getDate() - 1);
-        formData.value.payment_date = expDate.toISOString().split("T")[0];
+        calculatedDate = expDate.toISOString().split("T")[0];
       }
       break;
 
@@ -88,7 +129,7 @@ const calculatePaymentDate = () => {
         const receivedDate = new Date(formData.value.received_date);
         const daysToAdd = Math.max(0, minDaysRule.days - 1);
         receivedDate.setDate(receivedDate.getDate() + daysToAdd);
-        formData.value.payment_date = receivedDate.toISOString().split("T")[0];
+        calculatedDate = receivedDate.toISOString().split("T")[0];
       }
       break;
 
@@ -103,7 +144,7 @@ const calculatePaymentDate = () => {
         const createdDate = new Date(formData.value.created_invoice_date);
         const daysToAdd = Math.max(0, minDaysRule.days - 1);
         createdDate.setDate(createdDate.getDate() + daysToAdd);
-        formData.value.payment_date = createdDate.toISOString().split("T")[0];
+        calculatedDate = createdDate.toISOString().split("T")[0];
       }
       break;
 
@@ -112,12 +153,26 @@ const calculatePaymentDate = () => {
         const receivedDate = new Date(formData.value.received_date);
         const daysToAdd = Math.max(0, paymentDays - 1);
         receivedDate.setDate(receivedDate.getDate() + daysToAdd);
-        formData.value.payment_date = receivedDate.toISOString().split("T")[0];
+        calculatedDate = receivedDate.toISOString().split("T")[0];
       }
       break;
 
     default:
-      formData.value.payment_date = null;
+      calculatedDate = null;
+  }
+
+  // Asignar la fecha calculada al formulario
+  if (calculatedDate) {
+    formData.value.payment_date = calculatedDate;
+    console.log("Fecha de pago calculada:", calculatedDate, "Método:", paymentMethod);
+  } else {
+    console.log("No se pudo calcular la fecha de pago. Método:", paymentMethod, "Datos disponibles:", {
+      exp_date: formData.value.exp_date,
+      received_date: formData.value.received_date,
+      created_invoice_date: formData.value.created_invoice_date,
+      paymentDays,
+      supplierPaymentRules: supplierPaymentRules.length
+    });
   }
 };
 
@@ -187,34 +242,61 @@ const resetFormFields = () => {
 
 watch(
   () => formData.value.supplier_id,
-  (newSupplierId) => {
+  async (newSupplierId) => {
     formData.value.discount_rule_id = null;
     discountRules.value = [];
     if (newSupplierId) {
-      fetchDiscountRules(newSupplierId);
+      await fetchDiscountRules(newSupplierId);
       if (!props.isEditMode) {
+        // Esperar a que selectedSupplier se actualice
+        await nextTick();
         calculatePaymentDate();
       }
+    } else {
+      // Limpiar fecha de pago si no hay proveedor
+      formData.value.payment_date = null;
     }
   }
 );
 
+// Watcher adicional para cuando selectedSupplier cambie
+watch(
+  () => selectedSupplier.value,
+  async (newSupplier) => {
+    if (!props.isEditMode && newSupplier) {
+      await nextTick();
+      calculatePaymentDate();
+    }
+  },
+  { deep: true }
+);
+
 watch(
   () => formData.value.exp_date,
-  () => {
-    if (!props.isEditMode) calculatePaymentDate();
+  async (newDate) => {
+    validateExpDate(newDate);
+    if (!props.isEditMode) {
+      await nextTick();
+      calculatePaymentDate();
+    }
   }
 );
 watch(
   () => formData.value.received_date,
-  () => {
-    if (!props.isEditMode) calculatePaymentDate();
+  async () => {
+    if (!props.isEditMode) {
+      await nextTick();
+      calculatePaymentDate();
+    }
   }
 );
 watch(
   () => formData.value.created_invoice_date,
-  () => {
-    if (!props.isEditMode) calculatePaymentDate();
+  async () => {
+    if (!props.isEditMode) {
+      await nextTick();
+      calculatePaymentDate();
+    }
   }
 );
 
@@ -303,9 +385,12 @@ const fetchInvoiceData = async () => {
 const fetchSuppliers = async () => {
   loadingSuppliers.value = true;
   try {
-    const response = await axios.get(
-      "/suppliers?include=payment_date,payment_rules"
-    );
+    const response = await axios.get("/suppliers", {
+      params: {
+        include: "payment_date,payment_rules",
+        itemsPerPage: -1, // Obtener todos los proveedores sin paginación
+      },
+    });
     suppliers.value = response.data.data ?? response.data;
   } catch (error) {
     console.error("Error al obtener los proveedores:", error);
@@ -331,6 +416,12 @@ const fetchDiscountRules = async (supplierId) => {
 };
 
 const handleSubmit = async () => {
+  // Validar fecha de vencimiento antes de enviar
+  if (!validateExpDate(formData.value.exp_date)) {
+    toast.error(expDateError.value);
+    return;
+  }
+
   loading.value = true;
 
   const payload = {
@@ -419,6 +510,8 @@ const handleCancel = () => {
                 label="Fecha de Vencimiento"
                 type="date"
                 placeholder="YYYY-MM-DD"
+                :error="!!expDateError"
+                :error-messages="expDateError"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -562,3 +655,4 @@ const handleCancel = () => {
     </VCard>
   </div>
 </template>
+
