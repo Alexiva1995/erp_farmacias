@@ -6,6 +6,7 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
@@ -23,6 +24,8 @@ const totalPurchaseOrders = ref(0);
 const isEditDialogVisible = ref(false);
 const isShowDialogVisible = ref(false);
 const isShowRequestedProductsVisible = ref(false);
+
+const { isAdmin } = useAuthStore();
 
 const fetchSuppliers = async () => {
   try {
@@ -259,6 +262,7 @@ const handleSaveDetails = async (detailsData) => {
       :total-purchaseOrders="totalPurchaseOrders"
       :items-per-page="itemsPerPage"
       :page="page"
+      :is-admin="isAdmin"
       @update:options="updateTableOptions"
       @edit-purchaseOrder="handleEditPurchaseOrder"
       @delete-purchaseOrder="handleDeletePurchaseOrder"

@@ -5,6 +5,7 @@ const props = defineProps({
   totalPurchaseOrders: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isAdmin: { type: Boolean, required: true },
 });
 
 const emit = defineEmits([
@@ -82,7 +83,7 @@ const headers = [
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip text="Ver Productos Solicitados" location="top">
+        <VTooltip text="Gestión de Productos" location="top">
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
@@ -92,7 +93,11 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Editar Orden de Compra" location="top">
+        <VTooltip
+          v-if="props.isAdmin"
+          text="Editar Orden de Compra"
+          location="top"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('edit-purchaseOrder', item)">
               <VIcon icon="tabler-edit" />
@@ -106,7 +111,11 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar Orden de Compra" location="top">
+        <VTooltip
+          v-if="props.isAdmin"
+          text="Eliminar Orden de Compra"
+          location="top"
+        >
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
