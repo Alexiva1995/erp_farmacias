@@ -52,7 +52,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
         $structure = $supplierConnection->structure ?? null;
 
-
         try {
             $results = [];
 
@@ -103,8 +102,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $results = $connectionService->fetchData($this->supplier->connections->first());
             }
 
+            if (isset($results['invoices']) && is_array($results['invoices'])) {
+                foreach ($results['invoices'] as &$invoice) {
+                    $invoice['status'] = 'pending';
+                }
+                unset($invoice);
+            }
+
             $queryService->storeSupplierConnectionData($this->supplier, $results);
-            if(!in_array($this->supplier->id, [2]))
+
+            if (!in_array($this->supplier->id, [2]))
                 $queryService->addDiscountsToProducts($this->supplier);
 
             if (!$this->filePath) {
@@ -119,6 +126,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             ]);
 
         } catch (\Throwable $e) {
+            // ... (Manejo de errores existente) ...
             \Log::error('Supplier import failed', [
                 'supplier_id' => $this->supplier->id,
                 'file' => $this->filePath ?? 'none',

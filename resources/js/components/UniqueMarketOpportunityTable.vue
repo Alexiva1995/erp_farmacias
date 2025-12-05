@@ -40,8 +40,6 @@ const currentPage = computed({
           <th style="width: 400px">Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
-          <th>Costo Lot.</th>
-          <th>Costo A.</th>
           <th>Costo</th>
           <th>Stock A.</th>
           <th>Costo P.</th>
@@ -85,14 +83,6 @@ const currentPage = computed({
 
           <td>{{ item.product.total_group_sales }}</td>
           <td>{{ item.product.promedio_calculado }}</td>
-          <td>
-            <VIcon icon="tabler-currency-dollar" />
-            {{ parseFloat(item.cost_lot).toFixed(2) }}
-          </td>
-          <td>
-            <VIcon icon="tabler-currency-dollar" />
-            {{ parseFloat(item.product.unit_cost).toFixed(2) }}
-          </td>
           <td>
             <span :style="'color:#28c76f'">{{ item.product.cost_min }}</span> -
             <span :style="'color:#dd4d4f'">{{ item.product.cost_max }}</span> -

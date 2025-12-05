@@ -249,6 +249,7 @@ class SuppliersIaOrderAssistantController extends Controller
     }
     private function getOptimizedUniqueOpportunities(Request $request)
     {
+        // 1. GENERAR LLAVE DE CACHÉ
         $cacheKey = 'sorted_ids_' . md5(json_encode([
             'lab' => $request->laboratoryId,
             'groups' => $request->groups,
@@ -256,6 +257,7 @@ class SuppliersIaOrderAssistantController extends Controller
             'desc' => $request->con_descuento,
         ]));
 
+        // Cacheamos solo la lógica pesada de IDs y ordenamiento
         $sortedIds = Cache::remember($cacheKey, 600, function () use ($request) {
 
             $timeZone = new DateTimeZone(config("app.timezone"));
@@ -275,27 +277,32 @@ class SuppliersIaOrderAssistantController extends Controller
             if ($request->filled("groups"))
                 $filtros["groups"] = $request->groups;
 
+            // Obtener productos base
             if ($filtros["tipo_filtracion"] == "average") {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             } else {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             }
 
+            // Cálculos previos para definir oportunidad
             $productos = $this->product->calcularAOProducts($productos);
             $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
             $productos = $this->product->actualizarElSolicitadoConElAO($productos);
 
+            // Filtrado de oportunidades (Aquí usa la lógica de comparación que definimos antes)
             $tempOportunidad = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
             $tempOportunidad = $this->productSupplier->checkTolerance($tempOportunidad, $request->con_descuento);
             $tempOportunidad = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($tempOportunidad);
 
             $listaOrdenada = $this->orderByDiscount($tempOportunidad);
 
+            // Retornamos solo los IDs ordenados
             return collect($listaOrdenada)->map(function ($item) {
                 return $item['product']->id;
             })->values()->all();
         });
 
+        // 2. PAGINACIÓN MANUAL DE LOS IDs
         $page = $request->input('page', 1);
         $perPage = 7;
 
@@ -309,14 +316,18 @@ class SuppliersIaOrderAssistantController extends Controller
             ]);
         }
 
+        // 3. PREPARAR FECHAS PARA SUBQUERIES
         $timeZone = new DateTimeZone(config("app.timezone"));
         $dtNow = new DateTime("now", $timeZone);
         $dateTodayStr = $dtNow->format("Y-m-d H:i:s");
         $previousDateStr = $this->generarPreviousDate("1", "year");
 
+        // 4. HIDRATAR DATOS (Aquí están los cálculos de Lotes solicitados)
         $productosDB = ModelsProduct::select(
             'products.*',
 
+            // --- COSTO MÍNIMO (Basado en ProductLots) ---
+            // Busca en la tabla product_lots el unit_cost más bajo para este producto
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
                 FROM product_lots 
@@ -325,6 +336,8 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
             ) AS cost_min'),
 
+            // --- COSTO MÁXIMO (Basado en ProductLots) ---
+            // Busca en la tabla product_lots el unit_cost más alto para este producto
             DB::raw('(
                 SELECT COALESCE(MAX(unit_cost), 0)
                 FROM product_lots 
@@ -333,6 +346,7 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
             ) AS cost_max'),
 
+            // --- VENTAS GRUPALES ---
             DB::raw("(
                 SELECT COALESCE(SUM(od.quantity), 0)
                 FROM order_details od
@@ -342,20 +356,28 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND o.status = 'Completed'
                 AND o.created_at BETWEEN '$previousDateStr' AND '$dateTodayStr'
             ) AS total_group_sales"),
+
+            // --- PROMEDIO ANUAL ---
             DB::raw('sales_average * 12 AS promedio_calculado')
 
         )
             ->whereIn('id', $idsPaginaActual)
+            // IMPORTANTE: Si necesitas mantener el orden de los IDs sorteados, 
+            // MySQL no garantiza el orden con whereIn, podrías usar FIELD() si es crítico,
+            // pero el reordenamiento en PHP (paso 6) lo soluciona.
             ->get();
 
+        // 5. PROCESAR OBJETOS (Cálculos finales de negocio)
         $productosDB = $this->product->calcularAOProducts($productosDB);
         $productosDB = $this->product->removerProductosConPedidosAutomaticos($productosDB);
         $productosDB = $this->product->actualizarElSolicitadoConElAO($productosDB);
 
+        // 6. RE-ASOCIAR CON PROVEEDORES
         $itemsFinales = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productosDB, $request->con_descuento);
         $itemsFinales = $this->productSupplier->checkTolerance($itemsFinales, $request->con_descuento);
         $itemsFinales = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($itemsFinales);
 
+        // 7. RE-ORDENAR (Para asegurar que coincida con el orden del Cache)
         $itemsFinalesOrdenados = $this->orderByDiscount($itemsFinales);
 
         return new \Illuminate\Pagination\LengthAwarePaginator(

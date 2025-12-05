@@ -87,6 +87,7 @@ declare module 'vue' {
     DailyCashClosingTable: typeof import('./resources/js/components/DailyCashClosingTable.vue')['default']
     DailyCashModal: typeof import('./resources/js/components/dialogs/DailyCashModal.vue')['default']
     DebitoFiscalTable: typeof import('./resources/js/components/DebitoFiscalTable.vue')['default']
+    DeleteOldProductsDialog: typeof import('./resources/js/components/dialogs/DeleteOldProductsDialog.vue')['default']
     DeliveryModal: typeof import('./resources/js/components/dialogs/DeliveryModal.vue')['default']
     DetailHistoryShowDialog: typeof import('./resources/js/components/dialogs/DetailHistoryShowDialog.vue')['default']
     DialogCloseBtn: typeof import('./resources/js/@core/components/DialogCloseBtn.vue')['default']

@@ -428,10 +428,12 @@ const handleSaveProgress = async () => {
     await fetchInvoiceDetails(props.invoiceId);
 
     isEditMode.value = false;
+    return true;
   } catch (error) {
     toast.error(
       error.response?.data?.message || "No se pudo guardar el progreso."
     );
+    return false;
   } finally {
     loading.value = false;
   }
@@ -607,6 +609,15 @@ const handleSearchBarcode = async (barcode) => {
   } finally {
     searchingBarcode.value = false;
   }
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleDateString("es-VE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 };
 
 const handleShowProductSearch = () => {
@@ -858,9 +869,12 @@ const handleFinalizeInvoice = async () => {
     );
     return;
   }
-
-  await handleSaveProgress();
+  const saveSuccessful = await handleSaveProgress();
+  if (!saveSuccessful) {
+    return;
+  }
   loading.value = true;
+
   try {
     const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
     toast.success(response.data.message || "Factura finalizada con éxito.");
@@ -904,13 +918,13 @@ const detailsHeaders = [
     sortable: false,
     width: "10%",
   },
-  {
-    title: "Localización",
-    key: "location",
-    align: "center",
-    sortable: false,
-    width: "10%",
-  },
+  // {
+  //   title: "Localización",
+  //   key: "location",
+  //   align: "center",
+  //   sortable: false,
+  //   width: "10%",
+  // },
   {
     title: "Unidades",
     key: "quantity",
@@ -1071,7 +1085,7 @@ const detailsHeaders = [
                   }}
                 </p>
                 <p class="text-body-1 font-weight-medium mt-1">
-                  {{ invoice[dateField].split("T").at(0) || "N/A" }}
+                  {{ formatDate(invoice[dateField]) || "N/A" }}
                 </p>
               </VCol>
             </VRow>
@@ -1140,7 +1154,11 @@ const detailsHeaders = [
                 <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
                   <span :class="{ 'returned-item': isItemReturned(item) }">
                     {{ item.product_name_with_tax }}
+                    <span class="text-sm text-disabled">{{
+                      item.product.laboratory.name
+                    }}</span>
                   </span>
+                  <span class="text-sm text-disabled"></span>
                   <VTooltip v-if="isNearExpiration(item)" location="top">
                     <template #activator="{ props }">
                       <VIcon
@@ -1206,8 +1224,8 @@ const detailsHeaders = [
                   </span>
                 </div>
               </template>
-              <template #item.location="{ item, index }">
-                <VSelect
+              <!-- <template #item.location="{ item, index }">
+                <VTextField
                   v-if="isLocationMode && !isItemReturned(item)"
                   v-model="invoiceDetails[index].location"
                   :items="locations"
@@ -1222,7 +1240,7 @@ const detailsHeaders = [
                   :class="{ 'returned-item': isItemReturned(item) }"
                   >{{ item.location || "-" }}</span
                 >
-              </template>
+              </template> -->
               <template #item.quantity="{ item }"
                 ><VTextField
                   v-if="isEditableMode && item.id === editingDetailId"
