@@ -339,4 +339,20 @@ class SupplierController extends Controller
             'data' => $result
         ]);
     }
+    public function applyGlobalDiscount(Request $request, Supplier $supplier)
+    {
+        $request->validate([
+            'percentage' => 'required|numeric|min:0.01|max:100',
+        ]);
+
+        $affectedRows = $this->supplierActionService->applyGlobalDiscount(
+            $supplier,
+            $request->percentage
+        );
+
+        return response()->json([
+            'message' => "Descuento aplicado correctamente a {$affectedRows} productos.",
+            'affected_rows' => $affectedRows
+        ]);
+    }
 }

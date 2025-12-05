@@ -24,7 +24,8 @@ class ExpensesServices implements Expenses
 
     public function __construct(
         protected ExpensesRepository $expensesRepository
-    ) {}
+    ) {
+    }
 
 
     public function crearGasto(CreateExpenseData $data): Expense
@@ -37,7 +38,7 @@ class ExpensesServices implements Expenses
     public function crearGastoRecurrente(CreateExpenseRecurrenceData $data): Expense
     {
         $next_expense_date = null;
-        $timezone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $data->status = "Pending";
 
         if ($data->recurrence === Expense::RECURRENCE_MENSUAL) {
@@ -97,7 +98,7 @@ class ExpensesServices implements Expenses
     public function cargarFactura(array $data): Expense
     {
         // Fecha de carga
-        $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $hoy = new DateTime("now", $timeZone);
         $data["date_upload"] = $hoy->format("Y-m-d");
 
@@ -111,7 +112,7 @@ class ExpensesServices implements Expenses
         }
 
 
-        $relativeDir = $this->ensureInvoiceDirectories((string)$id);
+        $relativeDir = $this->ensureInvoiceDirectories((string) $id);
         $meta = $this->storeInvoiceAndGetMeta($file, $relativeDir);
 
 
@@ -172,27 +173,27 @@ class ExpensesServices implements Expenses
         Log::info("ejecutar gastos recurrentes");
         for ($index = 0; $index < count($expenses); $index++) {
             $expense = $expenses[$index];
-            $timezone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $hoy = new DateTime('now', $timezone);
 
             Log::info("gastos programdo");
             Log::info($expense);
 
             $expenseNormalData = CreateExpenseData::from([
-                "name"                    =>    $expense->name,
-                "category_id"             =>    $expense->category_id,
-                "amount"                  =>    $expense->amount,
-                "amount_usd"              =>    $expense->amount_usd,
-                "currency"                =>    $expense->currency,
-                "has_invoice"             =>    $expense->has_invoice,
-                "is_deductible"           =>    $expense->is_deductible,
-                "iva"                     =>    $expense->iva,
-                "expense_date"            =>    $hoy->format('Y-m-d'),
-                "user_id"                 =>    $expense->user_id,
-                "count"                   =>    $expense->count,
-                "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
-                "status"                  =>   "Pending",
-                "amount_bs"              =>    $expense->amount_bs,
+                "name" => $expense->name,
+                "category_id" => $expense->category_id,
+                "amount" => $expense->amount,
+                "amount_usd" => $expense->amount_usd,
+                "currency" => $expense->currency,
+                "has_invoice" => $expense->has_invoice,
+                "is_deductible" => $expense->is_deductible,
+                "iva" => $expense->iva,
+                "expense_date" => $hoy->format('Y-m-d'),
+                "user_id" => $expense->user_id,
+                "count" => $expense->count,
+                "type_of_expense" => Expense::TYPE_OF_EXPENSE_NORMAL,
+                "status" => "Pending",
+                "amount_bs" => $expense->amount_bs,
             ]);
             $expenseNormal = $this->crearGasto($expenseNormalData);
             Log::info("gastos normal creado del recurrente");
@@ -208,22 +209,22 @@ class ExpensesServices implements Expenses
             }
 
             $expenseRecurenteData = EditExpenseRecurrenceData::from([
-                "id"                      =>   $expense->id,
-                "name"                    =>   $expense->name,
-                "category_id"             =>   $expense->category_id,
-                "amount"                  =>   $expense->amount,
-                "amount_usd"              =>   $expense->amount_usd,
-                "currency"                =>   $expense->currency,
-                "has_invoice"             =>   $expense->has_invoice,
-                "is_deductible"           =>   $expense->is_deductible,
-                "iva"                     =>   $expense->iva,
-                "user_id"                 =>   $expense->user_id,
-                "count"                   =>   $expense->count,
-                "type_of_expense"         =>   Expense::TYPE_OF_EXPENSE_RECURRENTE,
-                "recurrence"              =>   $expense->recurrence,
-                "next_expense_date"       =>   $next_expense_date,
-                "status"                  =>   "Pending",
-                "amount_bs"              =>    $expense->amount_bs,
+                "id" => $expense->id,
+                "name" => $expense->name,
+                "category_id" => $expense->category_id,
+                "amount" => $expense->amount,
+                "amount_usd" => $expense->amount_usd,
+                "currency" => $expense->currency,
+                "has_invoice" => $expense->has_invoice,
+                "is_deductible" => $expense->is_deductible,
+                "iva" => $expense->iva,
+                "user_id" => $expense->user_id,
+                "count" => $expense->count,
+                "type_of_expense" => Expense::TYPE_OF_EXPENSE_RECURRENTE,
+                "recurrence" => $expense->recurrence,
+                "next_expense_date" => $next_expense_date,
+                "status" => "Pending",
+                "amount_bs" => $expense->amount_bs,
             ]);
             $expenseRecurrenteEdit = $this->expensesRepository->editExpenseRecurring($expenseRecurenteData);
             Log::info("actualización del gastos recurrente");

@@ -83,10 +83,9 @@ const headers = [
       </template>
       <template #item.unit_cost="{ item }">
         <!-- <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"></span -->
-        (<span :style="'color:#28c76f'">{{ item.cost_min }}</span> -
+        <span :style="'color:#28c76f'">{{ item.cost_min }}</span> -
         <span :style="'color:#dd4d4f'">{{ item.cost_max }}</span> -
-        <span :style="'color:#288bc7'">{{ item.unit_cost }}</span
-        >)
+        <span :style="'color:#288bc7'">{{ item.unit_cost }}</span>
       </template>
       <template #item.product_suppliers="{ item }">
         <span v-if="item.product_suppliers.length > 0"

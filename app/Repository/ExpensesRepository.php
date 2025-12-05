@@ -59,13 +59,13 @@ class ExpensesRepository
         return $gasto;
     }
 
-    public function edit(array $data): Expense | null
+    public function edit(array $data): Expense|null
     {
         Expense::where("id", "=", $data["id"])->update($data);
         return Expense::find($data["id"]);
     }
 
-    public function editExpenseRecurring(EditExpenseRecurrenceData $data): Expense | null
+    public function editExpenseRecurring(EditExpenseRecurrenceData $data): Expense|null
     {
         $expense = $this->consultById($data->id);
         if (!$expense) {
@@ -191,7 +191,7 @@ class ExpensesRepository
 
     public function consultAllExpensesRecurringOfToday(): Collection
     {
-        $timezone = new DateTimeZone(env("APP_TIMEZONE"));
+        $timeZone = new DateTimeZone(config("app.timezone"));
         $hoy = new DateTime('now', $timezone);
 
         $consulta = Expense::query()

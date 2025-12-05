@@ -164,7 +164,7 @@ class SupplierQueryService
                 ->map(fn($group) => $group->sortBy("unit_cost")->first())
                 ->values()
                 ->toArray();
-         
+
             $existingInvoiceNumbers = Invoice::whereIn(
                 'invoice_number',
                 collect($invoices)->pluck('header.invoice_number')->filter()->unique()
@@ -231,7 +231,10 @@ class SupplierQueryService
     {
         $filters = $request->query();
         $perPage = $filters["perPage"] ?? 10;
-        $selectedSupplier = $filters["selectedSupplier"] ?? null;
+
+        // Buscamos el parámetro 'search' (enviado desde el frontend)
+        // O mantenemos compatibilidad si enviasen 'selectedSupplier' como texto
+        $searchTerm = $filters["search"] ?? $filters["selectedSupplier"] ?? null;
 
         $paginated = DB::table("suppliers")
             ->select(
@@ -243,8 +246,9 @@ class SupplierQueryService
                 DB::raw("UPPER(COALESCE(CASE WHEN supplier_connections.type = 'file' THEN 'Archivo Excel' ELSE supplier_connections.type END, 'No registrado')) as type"),
             )
             ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
-            ->when($selectedSupplier, function ($query) use ($selectedSupplier) {
-                $query->where("suppliers.id", $selectedSupplier);
+            ->when($searchTerm, function ($query) use ($searchTerm) {
+                // Buscamos coincidencia parcial en el nombre
+                $query->where("suppliers.name", "LIKE", "%{$searchTerm}%");
             })
             ->paginate($perPage);
 

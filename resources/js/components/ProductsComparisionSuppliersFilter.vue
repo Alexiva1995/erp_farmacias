@@ -1,8 +1,7 @@
 <script setup>
 const props = defineProps({
-  selectedSupplier: [Number, String, null],
-  suppliers: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false },
+  // Ahora es un String porque es texto libre, no un ID
+  selectedSupplier: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:selectedSupplier", "clear"]);
@@ -12,14 +11,11 @@ const emit = defineEmits(["update:selectedSupplier", "clear"]);
   <VCardText>
     <VRow>
       <VCol cols="12" sm="6" md="4">
-        <VAutocomplete
+        <!-- Cambiado de VAutocomplete a AppTextField -->
+        <AppTextField
           :model-value="props.selectedSupplier"
-          :items="props.suppliers"
-          :loading="props.loading"
-          label="Proveedor"
-          placeholder="Escribe para buscar un proveedor"
-          item-title="name"
-          item-value="id"
+          label="Buscar Proveedor"
+          placeholder="Nombre del proveedor..."
           clearable
           @update:model-value="emit('update:selectedSupplier', $event)"
         />

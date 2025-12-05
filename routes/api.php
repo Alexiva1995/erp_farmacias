@@ -408,6 +408,7 @@ Route::prefix("suppliers")->group(function () {
     Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
     Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
+    Route::post('/{supplier}/apply-discount', [SupplierController::class, 'applyGlobalDiscount']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {
@@ -433,6 +434,7 @@ Route::prefix("suppliers-ia-order-assistant")->group(function () {
         Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
         Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
         Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
+        Route::post('/unique-opportunity-page', [SuppliersIaOrderAssistantController::class, 'getUniqueOpportunityPagination']);
     });
 });
 

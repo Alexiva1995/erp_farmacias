@@ -757,7 +757,6 @@ class ProductRepository
     public function builerFiltrarIndividualProductForAssistantReportTypeSales($filtros): Builder
     {
         // solicitar = stock - ventas individuales
-
         $ventasIndividualDelProducto = '
             (
                 SELECT COALESCE(SUM(order_details.quantity), 0)

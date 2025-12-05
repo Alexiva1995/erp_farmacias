@@ -161,7 +161,7 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
@@ -275,7 +275,7 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("lapso_de_tiempo")) {
-            $timeZone = new DateTimeZone(env("APP_TIMEZONE"));
+            $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
