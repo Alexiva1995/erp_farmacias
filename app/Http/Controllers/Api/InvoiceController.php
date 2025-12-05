@@ -281,4 +281,18 @@ class InvoiceController extends Controller
             'message' => 'Deudas con proveedores calculadas con éxito.'
         ], 200);
     }
+
+    public function returnInvoiceToPendingStatus(Invoice $invoice)
+    {
+        $response = $this->invoiceActionService->updateToPendingStatus($invoice);
+
+        return response()->json([
+            'status' => $response['status'],
+            'message' => $response['message'] != null
+                ? $response['message']
+                : ($response['status']
+                    ? 'Se devolvió la factura a pendientes'
+                    : 'No se pudo devolver la factura a pendientes')
+        ], 200);
+    }
 }
