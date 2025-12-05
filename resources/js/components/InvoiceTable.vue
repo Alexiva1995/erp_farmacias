@@ -7,6 +7,7 @@ const props = defineProps({
   totalInvoices: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isAdmin: { type: Boolean, required: true },
   actionsMode: {
     type: String,
     default: "default",
@@ -22,6 +23,7 @@ const emit = defineEmits([
   "reject-invoice",
   "locate-products",
   "view-details",
+  "return-invoice",
 ]);
 
 const headers = [
@@ -89,66 +91,86 @@ const processedInvoices = computed(() => {
       </template>
 
       <template #item.actions="{ item }">
-        <div v-if="props.actionsMode === 'approval'">
-          <VTooltip text="Revisar y Aprobar">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                color="primary"
-                variant="tonal"
-                size="small"
-                @click="emit('edit-invoice', item)"
-              >
-                <VIcon icon="tabler-eye" class="me-2" />
-                Revisar
-              </VBtn>
-            </template>
-          </VTooltip>
-        </div>
+        <div class="d-flex ga-2">
+          <div v-if="props.isAdmin">
+            <VBtn
+              v-bind="props"
+              color="primary"
+              variant="tonal"
+              size="small"
+              @click="emit('return-invoice', item.id)"
+            >
+              <VIcon icon="tabler-arrow-back-up" class="me-2" />
+              Devolver
+            </VBtn>
+          </div>
 
-        <div v-else-if="props.actionsMode === 'location'">
-          <VBtn
-            color="primary"
-            variant="tonal"
-            size="small"
-            @click="emit('locate-products', item)"
-            ><VIcon icon="tabler-map-pin" class="me-2" />Ubicar Productos</VBtn
-          >
-        </div>
+          <div v-if="props.actionsMode === 'approval'">
+            <VTooltip text="Revisar y Aprobar">
+              <template #activator="{ props }">
+                <VBtn
+                  v-bind="props"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  @click="emit('edit-invoice', item)"
+                >
+                  <VIcon icon="tabler-eye" class="me-2" />
+                  Revisar
+                </VBtn>
+              </template>
+            </VTooltip>
+          </div>
 
-        <div v-else-if="props.actionsMode === 'ordered'">
-          <VTooltip text="Ver Detalles">
-            <template #activator="{ props }">
-              <IconBtn v-bind="props" @click="emit('view-details', item)">
-                <VIcon icon="tabler-eye" />
-              </IconBtn>
-            </template>
-          </VTooltip>
-          <VTooltip text="Descargar Boucher (Próximamente)">
-            <template #activator="{ props }">
-              <IconBtn v-bind="props">
-                <VIcon icon="tabler-download" />
-              </IconBtn>
-            </template>
-          </VTooltip>
-        </div>
+          <div v-else-if="props.actionsMode === 'location'">
+            <VBtn
+              color="primary"
+              variant="tonal"
+              size="small"
+              @click="emit('locate-products', item)"
+              ><VIcon icon="tabler-map-pin" class="me-2" />Ubicar
+              Productos</VBtn
+            >
+          </div>
 
-        <div v-else class="d-flex">
-          <VTooltip text="Editar Factura"
-            ><template #activator="{ props }"
-              ><IconBtn v-bind="props" @click="emit('edit-invoice-form', item)"
-                ><VIcon icon="tabler-edit" /></IconBtn></template
-          ></VTooltip>
-          <VTooltip text="Ver Productos"
-            ><template #activator="{ props }"
-              ><IconBtn v-bind="props" @click="emit('edit-invoice', item)"
-                ><VIcon icon="tabler-package" /></IconBtn></template
-          ></VTooltip>
-          <VTooltip text="Eliminar"
-            ><template #activator="{ props }"
-              ><IconBtn v-bind="props" @click="emit('delete-invoice', item.id)"
-                ><VIcon icon="tabler-trash" /></IconBtn></template
-          ></VTooltip>
+          <div v-else-if="props.actionsMode === 'ordered'">
+            <VTooltip text="Ver Detalles">
+              <template #activator="{ props }">
+                <IconBtn v-bind="props" @click="emit('view-details', item)">
+                  <VIcon icon="tabler-eye" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+            <VTooltip text="Descargar Boucher (Próximamente)">
+              <template #activator="{ props }">
+                <IconBtn v-bind="props">
+                  <VIcon icon="tabler-download" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+          </div>
+
+          <div v-else class="d-flex">
+            <VTooltip text="Editar Factura"
+              ><template #activator="{ props }"
+                ><IconBtn
+                  v-bind="props"
+                  @click="emit('edit-invoice-form', item)"
+                  ><VIcon icon="tabler-edit" /></IconBtn></template
+            ></VTooltip>
+            <VTooltip text="Ver Productos"
+              ><template #activator="{ props }"
+                ><IconBtn v-bind="props" @click="emit('edit-invoice', item)"
+                  ><VIcon icon="tabler-package" /></IconBtn></template
+            ></VTooltip>
+            <VTooltip text="Eliminar"
+              ><template #activator="{ props }"
+                ><IconBtn
+                  v-bind="props"
+                  @click="emit('delete-invoice', item.id)"
+                  ><VIcon icon="tabler-trash" /></IconBtn></template
+            ></VTooltip>
+          </div>
         </div>
       </template>
     </VDataTableServer>

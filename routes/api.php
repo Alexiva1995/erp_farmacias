@@ -379,6 +379,7 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
     Route::put('/{invoice}/data', 'updateData')->name('updateData');
     Route::post('/{invoice}/approve', 'approve')->name('approve');
     Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/return-pending', 'returnInvoiceToPendingStatus')->name('return.pending');
     Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
     Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');

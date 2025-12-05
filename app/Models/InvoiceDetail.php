@@ -43,8 +43,8 @@ class InvoiceDetail extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function autoOrder(): BelongsTo
+    public function autoOrderDetail(): BelongsTo
     {
-        return $this->belongsTo(AutoOrder::class);
+        return $this->belongsTo(AutoOrderDetail::class);
     }
 }

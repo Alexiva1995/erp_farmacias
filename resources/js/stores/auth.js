@@ -1,8 +1,8 @@
+import { buildAbilityForRules } from '@/plugins/ability.js';
 import axios from '@/plugins/axios';
+import { useAbility } from '@casl/vue';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { buildAbilityForRules } from '@/plugins/ability.js';
-import { useAbility } from '@casl/vue';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
