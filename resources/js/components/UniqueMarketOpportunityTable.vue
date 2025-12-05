@@ -37,16 +37,15 @@ const currentPage = computed({
           <th>Proveedor</th>
           <th>ID</th>
 
-          <!-- CAMBIO 1: Forzamos el ancho desde el encabezado -->
-          <th style="width: 250px">Producto</th>
-
+          <th style="width: 400px">Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo Lot.</th>
           <th>Costo A.</th>
+          <th>Costo</th>
           <th>Stock A.</th>
           <th>Costo P.</th>
-          <th>Sugerencia</th>
+          <th style="width: 100px">Sugerencia</th>
         </tr>
       </thead>
 
@@ -56,12 +55,31 @@ const currentPage = computed({
           <td>{{ item.product.id }}</td>
 
           <td style="width: 220px; max-width: 220px">
-            <div class="text-truncate">
-              {{ item.product.name }}
+            <div class="d-flex align-center gap-x-4">
+              <VAvatar
+                v-if="item.product.photo_url"
+                size="38"
+                variant="tonal"
+                rounded
+                :image="item.product.photo_url"
+              />
+              <div class="d-flex flex-column" style="min-width: 0">
+                <span
+                  class="text-body-2 font-weight-medium text-high-emphasis text-truncate"
+                >
+                  {{ item.product.name }}
+                </span>
+                <span class="text-caption text-disabled text-truncate">
+                  {{
+                    item.product.laboratory ? item.product.laboratory.name : ""
+                  }}
+                </span>
+              </div>
             </div>
 
             <VTooltip activator="parent" location="top">
               {{ item.product.name }}
+              {{ item.product.laboratory ? item.product.laboratory.name : "" }}
             </VTooltip>
           </td>
 
@@ -74,6 +92,11 @@ const currentPage = computed({
           <td>
             <VIcon icon="tabler-currency-dollar" />
             {{ parseFloat(item.product.unit_cost).toFixed(2) }}
+          </td>
+          <td>
+            <span :style="'color:#28c76f'">{{ item.product.cost_min }}</span> -
+            <span :style="'color:#dd4d4f'">{{ item.product.cost_max }}</span> -
+            <span :style="'color:#288bc7'">{{ item.product.unit_cost }}</span>
           </td>
           <td>{{ item.product.stock }}</td>
           <td>
