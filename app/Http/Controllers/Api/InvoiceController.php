@@ -220,7 +220,31 @@ class InvoiceController extends Controller
             'details.*.is_return' => 'boolean',
         ];
 
-        $validator = Validator::make($request->all(), $rules);
+        $messages = [
+            'invoice.required' => 'Faltan los datos de la cabecera de la factura.',
+            'invoice.supplier_discount_id.exists' => 'El descuento seleccionado no es válido.',
+
+            'details.present' => 'La lista de productos es obligatoria.',
+            'details.array' => 'El formato de la lista de productos es incorrecto.',
+
+            'details.*.product.id.exists' => 'Uno de los productos enviados no existe en la base de datos.',
+
+            'details.*.quantity.required' => 'La cantidad es obligatoria para todos los productos.',
+            'details.*.quantity.min' => 'La cantidad de los productos debe ser al menos 1.',
+
+            'details.*.unit_cost.required' => 'El costo es obligatorio.',
+            'details.*.unit_cost.min' => 'El costo no puede ser negativo.',
+
+            'details.*.lot_number.required' => 'El N° de Lote es obligatorio para todos los productos.',
+            'details.*.lot_number.max' => 'El N° de Lote es demasiado largo (máx 100 caracteres).',
+
+            'details.*.expiration_date.required' => 'La Fecha de Vencimiento es obligatoria para todos los productos.',
+            'details.*.expiration_date.date' => 'El formato de fecha de vencimiento es inválido.',
+
+            'details.*.location.max' => 'La ubicación es demasiado larga.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);

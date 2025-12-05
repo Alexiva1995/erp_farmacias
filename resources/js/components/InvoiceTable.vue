@@ -43,6 +43,14 @@ const formatCurrency = (value, currency) => {
     minimumFractionDigits: 2,
   }).format(value);
 };
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleDateString("es-VE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
 
 const processedInvoices = computed(() => {
   return props.invoices.map((invoice) => ({ ...invoice }));
@@ -75,6 +83,9 @@ const processedInvoices = computed(() => {
             >{{ formatCurrency(item.total_usd, "USD") }}</span
           >
         </div>
+      </template>
+      <template #item.exp_date="{ item }">
+        {{ formatDate(item.exp_date) }}
       </template>
 
       <template #item.actions="{ item }">
