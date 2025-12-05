@@ -170,9 +170,16 @@ watch([page, itemsPerPage], () => {
           @update:options="(options) => updateTableOptions(options)"
         >
           <template #item.product_name="{ item }">
-            <span :class="item.received ? 'text-success' : 'text-error'">{{
-              item.product_name
-            }}</span>
+            <span
+              :class="
+                item.received == null
+                  ? 'text-primary'
+                  : item.received
+                  ? 'text-success'
+                  : 'text-error'
+              "
+              >{{ item.product_name }}</span
+            >
           </template>
           <template #item.quantity="{ item }">
             <span>{{ item.quantity }}</span>
@@ -186,6 +193,7 @@ watch([page, itemsPerPage], () => {
                 <template #activator="{ props }">
                   <IconBtn
                     v-bind="props"
+                    class="text-success"
                     @click="updatePurchaseOrderDetailStatus(item.id, true)"
                   >
                     <VIcon icon="tabler-check" />
@@ -196,6 +204,7 @@ watch([page, itemsPerPage], () => {
                 <template #activator="{ props }">
                   <IconBtn
                     v-bind="props"
+                    class="text-error"
                     @click="updatePurchaseOrderDetailStatus(item.id, false)"
                   >
                     <VIcon icon="tabler-x" />
