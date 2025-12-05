@@ -16,6 +16,7 @@ class Invoice extends Model
         'payment_date',
         'received_date',
         'currency',
+        'is_indexed', // ISSUE #3: Campo para facturas indexadas
         'discount_rule_id',
         'exempt_amount',
         'taxable_base',
@@ -25,6 +26,7 @@ class Invoice extends Model
         'exchange_rate',
         'total_usd',
         'status',
+        'status_payment',
         'uploaded_by',
         'registered_by',
         'ordered_by',
@@ -32,12 +34,48 @@ class Invoice extends Model
         'status_payment',
     ];
 
+    /**
+     * ISSUE #3: Casts para manejo correcto de tipos de datos
+     */
+    protected $casts = [
+        'is_indexed' => 'boolean',
+        'exp_date' => 'date',
+        'payment_date' => 'date',
+        'received_date' => 'date',
+        'created_invoice_date' => 'date',
+        'total_amount' => 'decimal:2',
+        'total_amount_discount' => 'decimal:2',
+        'exchange_rate' => 'decimal:4',
+        'total_usd' => 'decimal:2',
+        'exempt_amount' => 'decimal:2',
+        'taxable_base' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+    ];
+
+    /**
+     * ISSUE #3: Valores por defecto para nuevos registros
+     */
+    protected $attributes = [
+        'is_indexed' => false, // Por defecto las facturas NO están indexadas
+        'status' => 'loaded',
+        'status_payment' => 0,
+        'exempt_amount' => 0.00,
+        'taxable_base' => 0.00,
+        'tax_amount' => 0.00,
+    ];
+
     public const FILLABLEHEADER = [
         'invoice_number',
         'control_number',
         'exp_date',
+        'total_usd',
         'tax_amount',
+        'exchange_rate',
         'total_amount',
+        'taxable_base',
+        'exempt_amount',
+        'status_payment',
+        'created_invoice_date'
     ];
 
     protected $fillableFromHeader = self::FILLABLEHEADER;

@@ -1,12 +1,16 @@
 <script setup>
 import axios from '@/plugins/axios';
+import Swal from "sweetalert2";
 
 const props = defineProps({
   dollar: { type: Number, required: true },
-  //bolivares: { type: Number, required: true },
   pesos: { type: Number, required: true },
-  dateUpdate : { type: Date, required: false },
-  dateColor: { type: String, required: true },
+  idDollar: { type: Number, required: false },
+  idPesos: { type: Number, required: false },
+  dateUpdateDollar : { type: Date, required: false },
+  dateUpdatePesos : { type: Date, required: false },
+  dateColorDollar: { type: String, required: true },
+  dateColorPesos: { type: String, required: true },
 });
 
 const emit = defineEmits(["refresh"]);
@@ -14,20 +18,23 @@ const emit = defineEmits(["refresh"]);
 const pesos = ref()
 
 const sudmitPesos = async () => {
-
+    //let time;
     let data = {
+      "id": props.idPesos,
       "currency_code": "COP",
       "rate" : parseFloat(pesos.value)
     }
-    //console.log(data)
-    // Aquí podrías enviar datos como props.pesos
     
     try {
       const response = await axios.post('/finances/exchange-rates/store', data)
       
-      console.log('¡Pesos enviados!', response.data)
-
-      emit("refresh")
+      Swal.fire("Se ha actualizado el peso");
+      console.log(response);
+      setTimeout(() => {
+        emit("refresh")
+        
+      }, 150);
+      pesos.value = ""
     } catch (error) {
       console.error('Error al enviar:', error)
     }
@@ -36,17 +43,20 @@ const sudmitPesos = async () => {
 const updateBCVDollar = async () => {
 
     let data = {
-      "currency_code": "USD",
+      "exchange_id": props.idDollar,
+      "currency_code": "BS",
     }
-    //console.log(data)
-    // Aquí podrías enviar datos como props.pesos
     
     try {
       const response = await axios.post('/finances/exchange-rates/updateBCVDollar', data)
       
-      console.log('¡Pesos enviados!', response.data)
+      Swal.fire("Se ha actualizado el dolar BCV");
+      console.log(response);
+      setTimeout(() => {
+        emit("refresh")
+        
+      }, 150);
 
-      emit("refresh")
     } catch (error) {
       console.error('Error al enviar:', error)
     }
@@ -63,86 +73,59 @@ const updateBCVDollar = async () => {
           <span class="mr-2">Tasa de Cambio</span>
         </VCardTitle>
         <VCardText>
-          
-            <label class="text-sm">Dolar banco centrar <VChip :color="dateColor">{{ dateUpdate }}</VChip></label>
-            <VTextField
-              id="firstName"
-              v-model="props.dollar"
-              placeholder="$"
-              persistent-placeholder
-              class="mb-2 mt-2"
-            />
 
             <VRow no-gutters>
 
-              <VCol cols="12">
-                <VBtn @click="updateBCVDollar">
+              <VCol cols="6" class="mb-1">
+                <label class="text-sm ml-2">Dolar BCV <VChip :color="dateColorDollar">{{ dateUpdateDollar }}</VChip></label>
+              </VCol>
+
+              <VCol cols="6" class="mb-1">
+                <label class="text-sm ml-2">COP <VChip :color="dateColorPesos">{{ dateUpdatePesos }}</VChip></label>
+              </VCol>
+
+              <VCol cols="4">
+                
+                
+                <VTextField
+                  id="dollar"
+                  v-model="props.dollar"
+                  placeholder="$"
+                  persistent-placeholder
+                  class="mb-2 mt-2"
+                />
+
+              </VCol>
+
+              <VCol cols="2">
+                <VBtn @click="updateBCVDollar" class="mb-2 mt-2 ml-2">
                   Actualizar
                 </VBtn>
               </VCol>
-            </VRow>
-          
-        <!--/VCardText>
-      </VCard>
-    </VCol>
-
-    
-    <VCol cols="12">
-      <VCard class="px-4 py-4">
-        <VCardTitle>
-          <span class="mr-2">Precio del Dolar a BCV</span>
-          <VChip color="success" >12:00</VChip>
-        </VCardTitle > 
-        <VCardText-->
-          
-            <label class="mb-1 text-sm">Bolivares</label>
-            <VTextField
-              id="firstName"
-              v-model="props.bolivares"
-              :placeholder="props.dollar"
-              persistent-placeholder
-              class="mb-2"
-            />
-
-            
-            <label class="mb-1 text-sm">COP</label>
-            <VTextField
-              id="firstName"
-              v-model="pesos"
-              :placeholder="props.pesos"
-              persistent-placeholder
-              class="mb-2"
-            />
-
-            <VRow no-gutters>
-
-              <VCol cols="6">
-              
-                <VBtn
-                  color="secondary"
-                  variant="tonal"
-                  type="reset"
-                  class="me-4 w-100 mr-2"
-                >
-                  cancelar
-                </VBtn>
-
-              </VCol>
-
                 
               <VCol cols="6">
 
+
+                
+                <VTextField
+                  id="pesos"
+                  v-model="pesos"
+                  :placeholder="props.pesos"
+                  persistent-placeholder
+                  class="mb-2 mt-2"
+                />
+                
+              </VCol>
+
+              <VCol cols="12">
                 <VBtn
                   type="button"
                   @click="sudmitPesos"
-                  class="me-4 w-100 ml-2"
+                  class="me-4 w-100"
                 >
                   Establecer
                 </VBtn>
-
               </VCol>
-
-
             </VRow>
           
         </VCardText>

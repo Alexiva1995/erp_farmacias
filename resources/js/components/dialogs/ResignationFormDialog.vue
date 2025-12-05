@@ -1,25 +1,50 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
 import axios from "axios";
+import { ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   selectedEmployee: { type: Object, default: null },
+  isEdit: { type: Boolean, default: false },
+  existingResignation: { type: Object, default: null },
 });
 
-const emit = defineEmits(["update:modelValue", "resignation-generated"]);
+const emit = defineEmits([
+  "update:modelValue",
+  "resignation-generated",
+  "edit-confirmed",
+]);
 
 const errors = ref({});
 const loading = ref(false);
 const resignationType = ref("");
 const effectiveDate = ref("");
 const requestDate = ref(new Date().toISOString().split("T")[0]);
-const employeePosition = ref(""); // Nuevo campo opcional
+const employeePosition = ref("");
+const showDuplicateConfirm = ref(false);
+const duplicateResignationData = ref(null);
 
 const resignationTypes = [
   { title: "Renuncia Justificada", value: "voluntary" },
   { title: "Renuncia Injustificada", value: "unjustified_dismissal" },
 ];
+
+// Watcher para pre-llenar campos cuando se está editando
+watch(
+  [() => props.isEdit, () => props.existingResignation],
+  ([isEdit, existingResignation]) => {
+    if (isEdit && existingResignation) {
+      resignationType.value = existingResignation.resignation_type || "";
+      effectiveDate.value = existingResignation.effective_date || "";
+      requestDate.value =
+        existingResignation.request_date ||
+        new Date().toISOString().split("T")[0];
+      employeePosition.value = existingResignation.employee_position || "";
+    }
+  },
+  { immediate: true }
+);
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -60,7 +85,9 @@ const validateForm = () => {
 };
 
 const generateResignation = async () => {
+
   if (!validateForm()) {
+
     return;
   }
 
@@ -76,11 +103,22 @@ const generateResignation = async () => {
       employee_position: employeePosition.value || "empleado", // Campo opcional con valor por defecto
       start_date: new Date().toISOString().split("T")[0], // Fecha actual como fecha de inicio
       resignation_type: resignationType.value,
-      request_date: requestDate.value,
       effective_date: effectiveDate.value,
     };
 
+    // Solo agregar request_date si no es edición
+    if (!props.isEdit) {
+      resignationData.request_date = requestDate.value;
+
+    } else {
+
+    }
+
+    // Agregar flag de edición
+    resignationData.is_edit = props.isEdit;
+
     // Llamada a la API para generar PDF
+
     const response = await axios.post(
       "/api/rrhh/resignations/generate",
       resignationData,
@@ -110,14 +148,27 @@ const generateResignation = async () => {
     emit("resignation-generated", resignationData);
     closeDialog();
   } catch (error) {
-    console.error("Error al generar renuncia:", error);
+
+    // Mostrar el contenido completo del error si es un Blob
+    if (error.response?.data instanceof Blob) {
+      error.response.data.text().then((text) => {
+
+        try {
+          const errorData = JSON.parse(text);
+
+        } catch (e) {
+
+        }
+      });
+    }
 
     if (error.response?.status === 409) {
-      // Error de duplicado
-      toast.error(
-        error.response.data.message ||
-          "Ya existe una renuncia para este empleado"
-      );
+
+      // Error de duplicado - mostrar modal de confirmación
+      duplicateResignationData.value = error.response.data.existing_resignation;
+      showDuplicateConfirm.value = true;
+      loading.value = false;
+      return;
     } else if (error.response?.status === 422) {
       // Error de validación
       errors.value = error.response.data.errors;
@@ -131,6 +182,33 @@ const generateResignation = async () => {
   }
 };
 
+const confirmEditResignation = () => {
+  showDuplicateConfirm.value = false;
+  // Cargar datos existentes en el formulario
+  if (duplicateResignationData.value) {
+    resignationType.value = duplicateResignationData.value.resignation_type;
+    effectiveDate.value = duplicateResignationData.value.effective_date;
+    requestDate.value = duplicateResignationData.value.request_date;
+  }
+  emit("edit-confirmed", duplicateResignationData.value);
+};
+
+const cancelEditResignation = () => {
+  showDuplicateConfirm.value = false;
+  duplicateResignationData.value = null;
+  closeDialog();
+};
+
+// Función para formatear fechas
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 // Calcular fecha mínima (hoy)
 const minDate = computed(() => {
   return new Date().toISOString().split("T")[0];
@@ -142,17 +220,6 @@ const maxDate = computed(() => {
   max.setFullYear(max.getFullYear() + 1);
   return max.toISOString().split("T")[0];
 });
-
-// Formatear fecha para mostrar
-const formatDate = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("es-ES", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
 </script>
 
 <template>
@@ -371,6 +438,63 @@ const formatDate = (dateString) => {
         >
           <VIcon icon="tabler-file-download" class="me-2" />
           Generar Carta PDF
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
+
+  <!-- Modal de confirmación para editar renuncia existente -->
+  <VDialog v-model="showDuplicateConfirm" max-width="500">
+    <VCard>
+      <VCardTitle class="text-h6 pa-4 pb-2">
+        <VIcon icon="tabler-alert-triangle" class="me-2" color="warning" />
+        Renuncia Existente
+      </VCardTitle>
+      <VCardText class="pa-4 pt-0">
+        <div class="text-body-1 mb-3">
+          Este empleado ya tiene una carta de renuncia generada:
+        </div>
+        <VCard variant="outlined" class="pa-3 mb-3">
+          <div class="text-body-2 text-medium-emphasis">Empleado:</div>
+          <div class="text-body-1 font-weight-medium">
+            {{ duplicateResignationData?.employee_name }}
+          </div>
+          <div class="text-body-2 text-medium-emphasis mt-2">Tipo:</div>
+          <div class="text-body-1 font-weight-medium">
+            {{
+              duplicateResignationData?.resignation_type === "voluntary"
+                ? "Renuncia Voluntaria"
+                : "Despido Injustificado"
+            }}
+          </div>
+          <div class="text-body-2 text-medium-emphasis mt-2">
+            Fecha Efectiva:
+          </div>
+          <div class="text-body-1 font-weight-medium">
+            {{ formatDate(duplicateResignationData?.effective_date) }}
+          </div>
+        </VCard>
+        <div class="text-body-1">
+          ¿Desea editar la carta de renuncia existente?
+        </div>
+      </VCardText>
+      <VCardActions class="pa-4 pt-0">
+        <VBtn
+          color="grey"
+          variant="outlined"
+          @click="cancelEditResignation"
+          class="flex-grow-1 w-0 mr-4"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="confirmEditResignation"
+          class="flex-grow-1 w-0"
+        >
+          <VIcon icon="tabler-edit" class="me-2" />
+          Editar Renuncia
         </VBtn>
       </VCardActions>
     </VCard>

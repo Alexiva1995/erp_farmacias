@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Data\CreateTransactionData;
 use App\Models\Transaction;
 use App\TransactionType;
 
@@ -28,7 +29,9 @@ class TransactionRepository
       ->when(
         $detailed && $option,
         fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
-      );
+      )
+      ->orderByDesc('transaction_date')
+      ->orderByDesc('id');
 
     $previousTotal = 0.00;
 
@@ -56,8 +59,8 @@ class TransactionRepository
         'users.username as user_name',
         'categories.name as category_name',
       ])
-      ->orderBy('transactions.transaction_date', 'desc')
-      ->orderBy('transactions.id', 'asc')
+      ->orderByDesc('transactions.transaction_date')
+      ->orderByDesc('transactions.id')
       ->paginate($perPage);
 
     $openingBalances = ['USD' => 0, 'COP' => 0, 'BS' => 0];
@@ -230,5 +233,21 @@ class TransactionRepository
       'COP' => $results->get('COP', 0.0),
       'BS' => $results->get('BS', 0.0),
     ];
+  }
+
+  public function create(CreateTransactionData $data): ?Transaction
+  {
+    $record = new Transaction();
+
+    $record->user_id = $data->user_id;
+    $record->category_id = $data->category_id;
+    $record->description = $data->description;
+    $record->currency = $data->currency;
+    $record->amount = $data->amount;
+    $record->movement_type = $data->movement_type;
+    $record->transaction_date = $data->transaction_date;
+
+    $record->save();
+    return $record;
   }
 }

@@ -5,12 +5,14 @@ const props = defineProps({
   totalPurchaseOrders: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isAdmin: { type: Boolean, required: true },
 });
 
 const emit = defineEmits([
   "update:options",
   "delete-purchaseOrder",
   "show-purchaseOrder",
+  "show-requested-products",
 ]);
 
 const headers = [
@@ -51,12 +53,9 @@ const headers = [
       </template>
 
       <template #item.total_quantity="{ item }">
-        <span class="font-weight-medium">{{
-          Intl.NumberFormat("es", {
-            maximumFractionDigits: 2,
-            minimumFractionDigits: 2,
-          }).format(item.total_quantity)
-        }}</span>
+        <span class="font-weight-medium">
+          {{ item.total_quantity }}
+        </span>
       </template>
 
       <template #item.total_amount="{ item }">
@@ -69,35 +68,54 @@ const headers = [
       </template>
 
       <template #item.debt="{ item }">
-        <span class="font-weight-medium">{{
-          item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 })
-        }}</span>
+        <span class="font-weight-medium">
+          {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
+        </span>
       </template>
 
       <template #item.status="{ item }">
         <span
           class="font-weight-medium"
-          :class="item.status === 0 ? 'text-error' : 'text-success'"
-          >{{ item.status === 0 ? "Pendiente" : "Compleado" }}</span
+          :class="item.status ? 'text-success' : 'text-error'"
         >
+          {{ item.status ? "Compleado" : "Pendiente" }}
+        </span>
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip text="Editar Órden de Compra" location="top">
+        <VTooltip text="Gestión de Productos" location="top">
+          <template #activator="{ props }">
+            <IconBtn
+              v-bind="props"
+              @click="emit('show-requested-products', item)"
+            >
+              <VIcon icon="tabler-circle-dashed-check" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip
+          v-if="props.isAdmin"
+          text="Editar Orden de Compra"
+          location="top"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('edit-purchaseOrder', item)">
               <VIcon icon="tabler-edit" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Ver Órden de Compra" location="top">
+        <VTooltip text="Ver Orden de Compra" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)">
               <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar Órden de Compra" location="top">
+        <VTooltip
+          v-if="props.isAdmin"
+          text="Eliminar Orden de Compra"
+          location="top"
+        >
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"

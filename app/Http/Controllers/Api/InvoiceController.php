@@ -215,7 +215,7 @@ class InvoiceController extends Controller
             'details.*.unit_cost' => 'required|numeric|min:0',
             'details.*.lot_number' => 'required|string|max:100',
             'details.*.expiration_date' => 'required|date',
-            'details.*.location' => ['required_if:details.*.is_return,false', 'nullable', 'string', 'max:100'],
+            'details.*.location' => 'nullable|string|max:100',
             'details.*.tax_enabled' => 'boolean',
             'details.*.is_return' => 'boolean',
         ];

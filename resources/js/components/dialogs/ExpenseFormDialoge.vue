@@ -1,9 +1,7 @@
 <script setup lang="js">
 
-
-
-
 const props= defineProps({
+  type_of_expense:{type:String, required: true, default: () => 'normal'},
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
   formData: {type: Object, default: () => {}},
@@ -32,6 +30,10 @@ const cop=[
     ]
 
 const currencies=["BS","USD", "COP"];
+
+const recurrencia=[
+  "Mensual","Semestral","Anual"
+];
 
 
 function close(){
@@ -92,6 +94,7 @@ function submitForm(){
               v-model="props.formData.category_id"
               label="Categoria"
               :items="props.categorias"
+              :error-messages="props.formError.category_id"
               item-title="name"
               item-value="id"
             />
@@ -119,6 +122,7 @@ function submitForm(){
               v-model="props.formData.currency"
               label="Moneda"
               :items="currencies"
+              :error-messages="props.formError.currency"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
@@ -127,21 +131,32 @@ function submitForm(){
               v-model="props.formData.count"
               label="Cuenta"
               :items="bs"
+              :error-messages="props.formError.count"
             />
             <VSelect
               v-if="props.formData.currency == 'USD'"
               v-model="props.formData.count"
               label="Cuenta"
               :items="usd"
+              :error-messages="props.formError.count"
             />
             <VSelect
               v-if="props.formData.currency == 'COP'"
               v-model="props.formData.count"
               label="Cuenta"
               :items="cop"
+              :error-messages="props.formError.count"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6" md="6" v-if="type_of_expense == 'recurrente'">
+            <VSelect
+              v-model="props.formData.recurrence"
+              label="Recurrencia"
+              :items="recurrencia"
+              :error-messages="props.formError.recurrencia"
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="6" v-if="type_of_expense == 'normal'">
             <AppDateTimePicker
               v-model="props.formData.expense_date"
               :error-messages="props.formError.expense_date"
@@ -154,16 +169,44 @@ function submitForm(){
               }"
             />
           </VCol>
+          <VCol cols="12" sm="6" md="6">
+            <div class="d-flex ga-4 align-center fill-height">
+              <VCheckbox
+                v-model="props.formData.is_deductible"
+                class="mt-0 pt-0"
+              >
+                <template v-slot:label> Es Deducible </template>
+              </VCheckbox>
+
+              <VCheckbox v-model="props.formData.iva" class="mt-0 pt-0">
+                <template v-slot:label>IVA</template>
+              </VCheckbox>
+            </div>
+          </VCol>
+
+            <VCol
+            cols="12" sm="6" md="6"
+            v-if="props.formData.iva == true || props.formData.is_deductible === true"
+          ><VTextField
+              v-model="props.formData.amount_bs"
+              :error-messages="props.formError.amount_bs"
+              label="Monto Bs"
+              type="number"
+              variant="outlined"
+            />
+          </VCol>
+
         </VRow>
         <VRow>
-          <VCol cols="12" sm="12" md="12" lg="12">
+          <VCol
+            cols="12"
+            sm="12"
+            md="12"
+            lg="12"
+            v-if="type_of_expense == 'normal'"
+          >
             <VCheckbox v-model="props.formData.has_invoice">
               <template v-slot:label> Tiene Factura </template>
-            </VCheckbox>
-          </VCol>
-          <VCol cols="12" sm="12" md="12" lg="12">
-            <VCheckbox v-model="props.formData.is_deductible">
-              <template v-slot:label> Es Deducible </template>
             </VCheckbox>
           </VCol>
           <VCol
@@ -174,6 +217,7 @@ function submitForm(){
             v-if="props.formData.has_invoice == true"
           >
             <v-file-input
+              v-if="type_of_expense == 'normal'"
               v-model="props.formData.file_factura"
               :error-messages="props.formError.file_factura"
               accept="image/png, image/jpeg, image/jpg"

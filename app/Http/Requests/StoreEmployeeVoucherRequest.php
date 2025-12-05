@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use DB;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreEmployeeVoucherRequest extends FormRequest
 {
@@ -33,7 +32,7 @@ class StoreEmployeeVoucherRequest extends FormRequest
             ],
             'type' => 'required|in:deduction,salary',
             'frequency' => 'required|in:annual,monthly,fortnight',
-            'amount' => 'required|integer|min:1',
+            'amount' => 'required|decimal:0,2|min:1',
         ];
     }
 
@@ -47,7 +46,7 @@ class StoreEmployeeVoucherRequest extends FormRequest
             'frequency.required' => 'La frecuencia es obligatoria.',
             'frequency.in' => 'La frecuencia debe ser anual, mensual o quincenal.',
             'amount.required' => 'El monto es obligatorio.',
-            'amount.integer' => 'El monto debe ser un número entero.',
+            'amount.decimal' => 'El monto debe ser un número.',
             'amount.min' => 'El monto debe ser al menos 1.',
         ];
     }

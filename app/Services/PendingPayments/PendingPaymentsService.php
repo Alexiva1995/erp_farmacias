@@ -4,200 +4,263 @@ namespace App\Services\PendingPayments;
 
 use App\Models\Invoice;
 use App\Models\ExchangeRate;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use App\Models\InvoicePayment;
+use App\Models\Supplier;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class PendingPaymentsService
 {
     /**
-     * Obtener facturas pendientes agrupadas por proveedor y fecha
+     * Obtener facturas pendientes con filtros aplicados
      */
-    public function getGroupedPendingPayments(array $filters = []): Collection
+    public function getPendingInvoices(array $filters = []): Collection
     {
+        // 🔍 LOG DEBUG: Inicio del servicio
+        \Log::info('🔍 [DEBUG] PendingPaymentsService::getPendingInvoices - INICIO', [
+            'filters_recibidos' => $filters,
+            'filters_count' => count($filters),
+            'timestamp' => now()->toDateTimeString()
+        ]);
+
         $query = Invoice::with(['supplier'])
-            ->whereIn('status', ['pending', 'to_order'])
-            ->whereNotNull('payment_date');
+            ->whereIn('status', ['pending', 'loaded', 'to_order'])
+            ->where(function ($q) {
+                $q->whereNull('status_payment')
+                    ->orWhere('status_payment', '!=', 1);
+            });
+
+        // 🔍 LOG DEBUG: Query base creada
+        \Log::info('🔍 [DEBUG] Query base creada', [
+            'query_sql' => $query->toSql(),
+            'query_bindings' => $query->getBindings()
+        ]);
 
         // Aplicar filtros
         if (isset($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
+            \Log::info('🔍 [DEBUG] Filtro supplier_id aplicado', ['supplier_id' => $filters['supplier_id']]);
         }
 
         if (isset($filters['start_date'])) {
             $query->whereDate('payment_date', '>=', $filters['start_date']);
+            \Log::info('🔍 [DEBUG] Filtro start_date aplicado', ['start_date' => $filters['start_date']]);
         }
 
         if (isset($filters['end_date'])) {
             $query->whereDate('payment_date', '<=', $filters['end_date']);
+            \Log::info('🔍 [DEBUG] Filtro end_date aplicado', ['end_date' => $filters['end_date']]);
         }
 
-        $invoices = $query->orderBy('payment_date', 'asc')->get();
+        if (isset($filters['show_overdue_only']) && $filters['show_overdue_only']) {
+            $query->where(function ($q) {
+                $dueDate = Carbon::now()->subDay();
+                $q->whereDate('payment_date', '<=', $dueDate)
+                    ->orWhereDate('exp_date', '<', Carbon::now());
+            });
+            \Log::info('🔍 [DEBUG] Filtro show_overdue_only aplicado', [
+                'show_overdue_only' => $filters['show_overdue_only'],
+                'due_date' => Carbon::now()->subDay()->toDateString()
+            ]);
+        }
 
-        return $this->groupInvoicesBySupplierAndDate($invoices);
+        // Ordenamiento fijo
+        $query->orderByRaw('CASE 
+            WHEN status = "to_order" THEN 0 
+            WHEN status = "pending" THEN 1 
+            ELSE 2 
+        END')
+            ->orderBy('payment_date', 'asc');
+
+        // 🔍 LOG DEBUG: Query final antes de ejecutar
+        \Log::info('🔍 [DEBUG] Query final antes de ejecutar', [
+            'query_sql_final' => $query->toSql(),
+            'query_bindings_final' => $query->getBindings()
+        ]);
+
+        $result = $query->get();
+
+        // 🔍 LOG DEBUG: Resultado obtenido
+        \Log::info('🔍 [DEBUG] Resultado obtenido del servicio', [
+            'total_facturas' => $result->count(),
+            'facturas_ids' => $result->pluck('id')->toArray(),
+            'facturas_detalle' => $result->map(function ($invoice) {
+                return [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'status' => $invoice->status,
+                    'status_payment' => $invoice->status_payment,
+                    'supplier_name' => $invoice->supplier->name ?? 'N/A'
+                ];
+            })
+        ]);
+
+        return $result;
     }
 
     /**
-     * Agrupar facturas por proveedor y fecha de pago
+     * Agrupar facturas por proveedor y fecha
      */
-    private function groupInvoicesBySupplierAndDate(Collection $invoices): Collection
+    public function groupInvoicesBySupplierAndDate(Collection $invoices): Collection
     {
         return $invoices->groupBy(function ($invoice) {
             return $invoice->supplier_id . '_' . $invoice->payment_date;
-        })->map(function ($group) {
-            $firstInvoice = $group->first();
-            $totalAmount = $group->sum('total_amount');
-
-            return [
-                'supplier_id' => $firstInvoice->supplier_id,
-                'supplier_name' => $firstInvoice->supplier->name,
-                'payment_date' => $firstInvoice->payment_date,
-                'currency' => $firstInvoice->currency,
-                'total_amount' => $totalAmount,
-                'invoice_count' => $group->count(),
-                'is_overdue' => $this->isOverdue($firstInvoice->payment_date),
-                'days_until_due' => $this->getDaysUntilDue($firstInvoice->payment_date),
-                'invoices' => $group->map(function ($invoice) {
-                    return [
-                        'id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'control_number' => $invoice->control_number,
-                        'total_amount' => $invoice->total_amount,
-                        'currency' => $invoice->currency,
-                        'exp_date' => $invoice->exp_date,
-                        'status' => $invoice->status,
-                    ];
-                })
-            ];
-        })->values();
+        });
     }
 
     /**
-     * Verificar si una fecha de pago está vencida
+     * Calcular totales por moneda
      */
-    private function isOverdue(string $paymentDate): bool
+    public function calculateTotalsByCurrency(Collection $invoices): array
     {
-        return Carbon::parse($paymentDate)->isPast();
+        $invoicesBs = $invoices->where('currency', 'Bs');
+        $invoicesUsd = $invoices->where('currency', 'USD');
+        $invoicesCop = $invoices->where('currency', 'COP');
+
+        return [
+            'bs' => [
+                'amount' => $invoicesBs->sum('total_amount'),
+                'count' => $invoicesBs->count(),
+                'total_usd' => $invoicesBs->sum('total_usd')
+            ],
+            'usd' => [
+                'amount' => $invoicesUsd->sum('total_amount'),
+                'count' => $invoicesUsd->count(),
+                'total_usd' => $invoicesUsd->sum('total_usd')
+            ],
+            'cop' => [
+                'amount' => $invoicesCop->sum('total_amount'),
+                'count' => $invoicesCop->count(),
+                'total_usd' => $invoicesCop->sum('total_usd')
+            ],
+            'usd_converted' => $invoices->sum('total_usd')
+        ];
     }
 
     /**
-     * Obtener días hasta el vencimiento (negativo si está vencido)
+     * Determinar la moneda preferida del proveedor
      */
-    private function getDaysUntilDue(string $paymentDate): int
+    public function getSupplierPreferredCurrency(Supplier $supplier): string
     {
-        return Carbon::parse($paymentDate)->diffInDays(Carbon::now(), false);
-    }
+        $supplierName = strtolower($supplier->name);
 
-    /**
-     * Procesar pago de facturas con conversión de moneda
-     */
-    public function processPayment(array $paymentData): array
-    {
-        $invoices = Invoice::whereIn('id', $paymentData['invoice_ids'])
-            ->whereIn('status', ['pending', 'to_order'])
+        // Cristalmedicals siempre es USD
+        if (strpos($supplierName, 'cristalmedicals') !== false) {
+            return 'USD';
+        }
+
+        // Para otros proveedores, determinar por las facturas pendientes
+        $invoices = Invoice::where('supplier_id', $supplier->id)
+            ->whereIn('status', ['pending', 'loaded', 'to_order'])
+            ->where(function ($q) {
+                $q->whereNull('status_payment')
+                    ->orWhere('status_payment', '!=', 1);
+            })
             ->get();
 
         if ($invoices->isEmpty()) {
-            throw new \Exception('No se encontraron facturas válidas para procesar');
+            return 'USD'; // Default
         }
 
-        // Obtener tasa de cambio
-        $exchangeRate = ExchangeRate::where('currency_code', $paymentData['payment_currency'])->first();
+        // Contar facturas por moneda
+        $currencyCounts = $invoices->groupBy('currency')->map->count();
+
+        // Retornar la moneda más común
+        return $currencyCounts->sortDesc()->keys()->first() ?? 'USD';
+    }
+
+    /**
+     * Calcular total en moneda del proveedor considerando facturas indexadas
+     */
+    public function calculateTotalInSupplierCurrency(Collection $invoices, string $supplierCurrency): float
+    {
+        $totalUSD = 0;
+
+        foreach ($invoices as $invoice) {
+            // Para facturas indexadas en Bs, usar el monto indexado
+            if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
+                if ($bcvRate) {
+                    $totalUSD += $invoice->total_usd; // USD fijo para facturas indexadas
+                } else {
+                    $totalUSD += $invoice->total_usd;
+                }
+            } else {
+                // Para facturas no indexadas, usar el total_usd normal
+                $totalUSD += $invoice->total_usd;
+            }
+        }
+
+        // Si la moneda del proveedor es USD, retornar directamente
+        if ($supplierCurrency === 'USD') {
+            return round($totalUSD, 2);
+        }
+
+        // Convertir desde USD a la moneda del proveedor
+        $currencyCode = $supplierCurrency === 'Bs' ? 'BS' : $supplierCurrency;
+        $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+
         if (!$exchangeRate) {
-            throw new \Exception('No se encontró tasa de cambio para la moneda seleccionada');
+            return round($totalUSD, 2); // Fallback a USD
         }
 
-        // Calcular monto en USD
-        $amountUSD = $paymentData['payment_amount'] / $exchangeRate->rate;
+        return round($totalUSD * $exchangeRate->rate, 2);
+    }
 
-        // Crear registro de pago
-        $paymentId = DB::table('invoice_payments')->insertGetId([
-            'amount' => $paymentData['payment_amount'],
-            'currency' => $paymentData['payment_currency'],
-            'amount_usd' => $amountUSD,
-            'exchange_rate' => $exchangeRate->rate,
-            'payment_date' => $paymentData['payment_date'],
-            'notes' => $paymentData['notes'] ?? null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    /**
+     * Calcular montos restantes considerando pagos parciales
+     */
+    public function calculateRemainingAmounts(Collection $invoices): array
+    {
+        $invoiceIds = $invoices->pluck('id');
+        $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
+            $query->whereIn('id', $invoiceIds);
+        })->get();
 
-        // Actualizar estado de las facturas
-        Invoice::whereIn('id', $paymentData['invoice_ids'])->update([
-            'status' => 'ordered',
-            'payment_date' => $paymentData['payment_date'],
-            'updated_at' => now(),
-        ]);
+        $totalAmountUSD = $invoices->sum('total_usd');
+        $totalAmountOriginal = $invoices->sum('total_amount');
+        $remainingAmountUSD = $totalAmountUSD;
+        $remainingAmountOriginal = $totalAmountOriginal;
+
+        if ($payments->count() > 0) {
+            // Calcular total pagado en USD
+            $totalPaidUSD = 0;
+            foreach ($payments as $payment) {
+                if ($payment->payment_method === 'USD') {
+                    $totalPaidUSD += $payment->amount;
+                } else {
+                    $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                    if ($exchangeRate) {
+                        $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                    }
+                }
+            }
+
+            // Calcular monto restante
+            $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
+
+            // Convertir monto restante a moneda original
+            $firstInvoice = $invoices->first();
+            if ($firstInvoice->currency === 'Bs') {
+                $exchangeRate = ExchangeRate::where('currency_code', 'VES')->first();
+                if ($exchangeRate) {
+                    $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
+                }
+            } elseif ($firstInvoice->currency === 'COP') {
+                $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
+                if ($exchangeRate) {
+                    $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
+                }
+            } else {
+                $remainingAmountOriginal = $remainingAmountUSD;
+            }
+        }
 
         return [
-            'payment_id' => $paymentId,
-            'processed_invoices' => $paymentData['invoice_ids'],
-            'amount_paid' => $paymentData['payment_amount'],
-            'currency' => $paymentData['payment_currency'],
-            'amount_usd' => $amountUSD,
-            'exchange_rate' => $exchangeRate->rate
+            'total_amount_usd' => $totalAmountUSD,
+            'total_amount_original' => $totalAmountOriginal,
+            'remaining_amount_usd' => $remainingAmountUSD,
+            'remaining_amount_original' => $remainingAmountOriginal
         ];
-    }
-
-    /**
-     * Obtener estadísticas de pagos pendientes
-     */
-    public function getStatistics(): array
-    {
-        $totalPending = Invoice::whereIn('status', ['pending', 'to_order'])->count();
-        $totalAmount = Invoice::whereIn('status', ['pending', 'to_order'])->sum('total_amount');
-
-        $byCurrency = Invoice::whereIn('status', ['pending', 'to_order'])
-            ->select('currency', DB::raw('SUM(total_amount) as total'), DB::raw('COUNT(*) as count'))
-            ->groupBy('currency')
-            ->get();
-
-        $bySupplier = Invoice::with('supplier')
-            ->whereIn('status', ['pending', 'to_order'])
-            ->select('supplier_id', DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
-            ->groupBy('supplier_id')
-            ->get();
-
-        $overdueCount = Invoice::whereIn('status', ['pending', 'to_order'])
-            ->whereNotNull('payment_date')
-            ->whereDate('payment_date', '<', Carbon::now())
-            ->count();
-
-        return [
-            'total_pending_invoices' => $totalPending,
-            'total_amount_pending' => $totalAmount,
-            'overdue_invoices' => $overdueCount,
-            'by_currency' => $byCurrency,
-            'by_supplier' => $bySupplier
-        ];
-    }
-
-    /**
-     * Obtener facturas próximas a vencer
-     */
-    public function getUpcomingDueInvoices(int $days = 7): Collection
-    {
-        $futureDate = Carbon::now()->addDays($days);
-
-        return Invoice::with(['supplier'])
-            ->whereIn('status', ['pending', 'to_order'])
-            ->whereNotNull('payment_date')
-            ->whereDate('payment_date', '<=', $futureDate)
-            ->whereDate('payment_date', '>=', Carbon::now())
-            ->orderBy('payment_date', 'asc')
-            ->get();
-    }
-
-    /**
-     * Obtener facturas vencidas
-     */
-    public function getOverdueInvoices(): Collection
-    {
-        return Invoice::with(['supplier'])
-            ->whereIn('status', ['pending', 'to_order'])
-            ->whereNotNull('payment_date')
-            ->whereDate('payment_date', '<', Carbon::now())
-            ->orderBy('payment_date', 'asc')
-            ->get();
     }
 }

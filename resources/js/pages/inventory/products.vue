@@ -3,10 +3,12 @@ import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
+const authStore = useAuthStore();
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -23,6 +25,7 @@ const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
+const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -44,7 +47,8 @@ const fetchSelectOptions = async () => {
       axios.get("/origins"),
       axios.get("/categories"),
     ]);
-    laboratories.value = labResponse.data.data;
+    console.log("laboratories response:", labResponse);
+    laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
   } catch (error) {
@@ -70,6 +74,7 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -100,6 +105,7 @@ watch(
     stockStatusFilter,
     startDate,
     endDate,
+    isStrictSearch,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -122,7 +128,7 @@ watch(
   }
 );
 
-onMounted(() => {
+onMounted(async () => {
   fetchSelectOptions();
   fetchProducts();
 });
@@ -219,6 +225,7 @@ const handleClearFilters = () => {
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
+  isStrictSearch.value = false;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
@@ -300,9 +307,11 @@ const handleSort = (sortOptions) => {
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
+      :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"
       @export="handleExport"
       @add-product="handleAddProduct"

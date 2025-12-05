@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Contracts\Resignation;
+use App\Contracts\Resignation as ResignationContract;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,14 +11,12 @@ use Illuminate\Support\Facades\Log;
 class ResignationController extends Controller
 {
     public function __construct(
-        private Resignation $resignationServices
+        private ResignationContract $resignationServices
     ) {}
 
     public function generateResignation(Request $request)
     {
         try {
-            Log::info('Resignation request received', $request->all());
-
             $request->validate([
                 'employee_id' => 'required|integer',
                 'employee_name' => 'required|string',
@@ -26,46 +24,80 @@ class ResignationController extends Controller
                 'employee_position' => 'nullable|string',
                 'start_date' => 'required|date',
                 'resignation_type' => 'required|in:voluntary,unjustified_dismissal',
-                'request_date' => 'required|date',
-                'effective_date' => 'required|date|after_or_equal:request_date',
+                'request_date' => 'required_if:is_edit,false|nullable|date',
+                'effective_date' => 'required|date',
+                'is_edit' => 'nullable|boolean',
             ]);
-
             $resignationData = $request->all();
-            Log::info('Validation passed, generating PDF', $resignationData);
+
+            // Validación adicional para fecha efectiva
+            if (isset($resignationData['request_date']) && $resignationData['request_date'] && $resignationData['effective_date'] < $resignationData['request_date']) {
+                return response()->json([
+                    'message' => 'La fecha efectiva no puede ser anterior a la fecha de solicitud',
+                    'errors' => ['effective_date' => ['La fecha efectiva no puede ser anterior a la fecha de solicitud']]
+                ], 422);
+            }
 
             // Obtener email del usuario si no viene en request
             if (empty($resignationData['employee_email'])) {
+
                 $employee = Employee::with('user')->find($resignationData['employee_id']);
                 if ($employee && $employee->user) {
                     $resignationData['employee_email'] = $employee->user->email;
+                } else {
                 }
             }
 
-            // Guardar renuncia en base de datos
-            Log::info('Attempting to store resignation data in database', $resignationData);
-            $resignation = $this->resignationServices->store($resignationData);
-            Log::info('Resignation stored successfully', ['resignation_id' => $resignation->id]);
+            // Verificar si ya existe una renuncia para este empleado
+
+            $existingResignation = $this->resignationServices->getByEmployeeId($resignationData['employee_id']);
+
+            if ($existingResignation && !$request->get('is_edit', false)) {
+
+                // Si existe y no es edición, retornar error para mostrar modal de confirmación
+                return response()->json([
+                    'error' => 'Ya existe una carta de renuncia para este empleado',
+                    'message' => 'Este empleado ya tiene una carta de renuncia generada. ¿Desea editarla?',
+                    'existing_resignation' => [
+                        'id' => $existingResignation->id,
+                        'employee_name' => $existingResignation->employee_name,
+                        'resignation_type' => $existingResignation->resignation_type,
+                        'effective_date' => $existingResignation->effective_date->format('Y-m-d'),
+                        'request_date' => $existingResignation->request_date->format('Y-m-d'),
+                    ]
+                ], 409);
+            }
+
+            // Guardar o actualizar renuncia en base de datos
+            if ($existingResignation && $request->get('is_edit', false)) {
+
+                $resignation = $this->resignationServices->update($existingResignation->id, $resignationData);
+            } else {
+
+                $resignation = $this->resignationServices->store($resignationData);
+            }
 
             // Generar PDF dinámicamente usando datos de la BD
+
             $pdf = $this->resignationServices->generatePdf($resignationData);
-            Log::info('PDF generated successfully');
 
             // Notificar a Jesús Freita
+
             $this->resignationServices->notifyLiquidation($resignationData);
 
             // Retornar PDF para descarga (sin almacenar archivo)
             $filename = 'carta-renuncia-' . $resignationData['employee_identification'] . '.pdf';
-            Log::info('Returning PDF download', ['filename' => $filename]);
 
             return $pdf->download($filename);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Validation error', ['errors' => $e->errors()]);
+
             return response()->json([
                 'error' => 'Error de validación',
                 'message' => 'Datos inválidos',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+
             // Manejo de errores mejorado
             if (strpos($e->getMessage(), 'Ya existe una renuncia') !== false) {
                 return response()->json([
@@ -73,13 +105,6 @@ class ResignationController extends Controller
                     'message' => 'No se puede generar una nueva renuncia para un empleado que ya tiene una renuncia registrada'
                 ], 409);
             }
-
-            Log::error('PDF generation error', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
 
             return response()->json([
                 'error' => 'Error al generar la carta de renuncia',
@@ -117,7 +142,7 @@ class ResignationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error listing resignations: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al obtener la lista de renuncias',
                 'message' => $e->getMessage()
@@ -138,7 +163,7 @@ class ResignationController extends Controller
                 'data' => $stats
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting resignation stats: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al obtener estadísticas',
                 'message' => $e->getMessage()
@@ -174,7 +199,7 @@ class ResignationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error toggling employee status: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al cambiar el estado del empleado',
                 'message' => $e->getMessage()
@@ -216,9 +241,129 @@ class ResignationController extends Controller
             $filename = 'carta-renuncia-' . $resignation->employee_identification . '.pdf';
             return $pdf->download($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating PDF for download: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al generar PDF',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener datos de una renuncia para edición por ID de empleado
+     */
+    public function getResignationForEditByEmployee(int $employeeId)
+    {
+
+        try {
+
+            $resignation = $this->resignationServices->getByEmployeeId($employeeId);
+
+            if (!$resignation) {
+
+                return response()->json([
+                    'error' => 'Renuncia no encontrada'
+                ], 404);
+            }
+
+            $responseData = [
+                'id' => $resignation->id,
+                'employee_id' => $resignation->employee_id,
+                'employee_name' => $resignation->employee_name,
+                'employee_identification' => $resignation->employee_identification,
+                'employee_email' => $resignation->employee_email,
+                'employee_position' => $resignation->employee_position,
+                'start_date' => $resignation->start_date->format('Y-m-d'),
+                'resignation_type' => $resignation->resignation_type,
+                'request_date' => $resignation->request_date->format('Y-m-d'),
+                'effective_date' => $resignation->effective_date->format('Y-m-d'),
+                'employee_status' => $resignation->employee_status,
+                'created_at' => $resignation->created_at,
+                'updated_at' => $resignation->updated_at
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $responseData
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => 'Error al obtener datos de la renuncia',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener datos de renuncia existente para edición
+     */
+    public function getResignationForEdit(int $resignationId)
+    {
+        try {
+            $resignation = $this->resignationServices->getById($resignationId);
+
+            if (!$resignation) {
+                return response()->json([
+                    'error' => 'Renuncia no encontrada'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $resignation->id,
+                    'employee_id' => $resignation->employee_id,
+                    'employee_name' => $resignation->employee_name,
+                    'employee_identification' => $resignation->employee_identification,
+                    'employee_email' => $resignation->employee_email,
+                    'employee_position' => $resignation->employee_position,
+                    'start_date' => $resignation->start_date->format('Y-m-d'),
+                    'resignation_type' => $resignation->resignation_type,
+                    'request_date' => $resignation->request_date->format('Y-m-d'),
+                    'effective_date' => $resignation->effective_date->format('Y-m-d'),
+                    'employee_status' => $resignation->employee_status
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => 'Error al obtener datos de la renuncia',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar renuncia (soft delete)
+     */
+    public function deleteResignation(int $resignationId)
+    {
+        try {
+            $resignation = $this->resignationServices->getById($resignationId);
+
+            if (!$resignation) {
+                return response()->json([
+                    'error' => 'Renuncia no encontrada'
+                ], 404);
+            }
+
+            $deleted = $this->resignationServices->delete($resignationId);
+
+            if ($deleted) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Renuncia eliminada exitosamente'
+                ]);
+            } else {
+                return response()->json([
+                    'error' => 'Error al eliminar la renuncia'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => 'Error al eliminar la renuncia',
                 'message' => $e->getMessage()
             ], 500);
         }

@@ -33,8 +33,8 @@ const formatUsd = (amount) => {
 };
 
 const allHeaders = [
-  { title: "Nombre", key: "name", sortable: false },
-  { title: "Proveedor", key: "supplier_name", sortable: false },
+  { title: "Proveedor", key: "supplier_name", sortable: false, width: "170px" },
+  { title: "Nombre", key: "name", sortable: false, width: "300px" },
   { title: "Usd", key: "unit_cost_usd", sortable: false },
   { title: "Usd %", key: "final_cost_usd", sortable: false },
   { title: "Bs", key: "unit_cost_bs", sortable: false },
@@ -72,10 +72,24 @@ const headers = computed(() =>
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #top>
+        <div class="d-flex gap-4 pa-4 align-center">
+          <AppTextField
+            v-model="localSearch"
+            placeholder="Buscar producto..."
+            density="compact"
+            style="max-width: 300px"
+            @update:model-value="$emit('update:searchQuery', $event)"
+          />
+          <!-- Aquí puedes poner el check de búsqueda estricta si quieres -->
+        </div>
+      </template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis text-wrap"
+            >
               {{ item.name }}
             </span>
             <span class="text-sm text-disabled">
@@ -111,7 +125,7 @@ const headers = computed(() =>
             variant="outlined"
             density="compact"
             hide-details="auto"
-            style="width: 200px"
+            style="width: 80px"
             :error="!!quantityErrors[item.id]"
             :error-messages="quantityErrors[item.id]"
           />

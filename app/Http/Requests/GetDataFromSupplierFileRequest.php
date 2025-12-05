@@ -23,11 +23,12 @@ class GetDataFromSupplierFileRequest extends FormRequest
     {
         return [
             "start_row" => ["required", "integer", "min:1"],
-            "cod_supplier" => ["required", "string"],
+            "cod_supplier" => ["nullable", "string"],
             "name" => ["required", "string"],
-            "barcode_match" => ["required", "string"],
+            "barcode_match" => ["nullable", "required", "string"],
             "quantity" => ["nullable", "required", "string"],
-            "unit_cost" => ["required", "string"],
+            "currency" => ["nullable", "decimal:0,2"],
+            "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "required", "string"],
             "active_ingredient" => ["nullable", "string"],
@@ -35,14 +36,23 @@ class GetDataFromSupplierFileRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator)
+    {
+        $validator->sometimes('unit_cost', 'required', function ($input) {
+            $currencyNotEmpty = !empty($input->currency);
+            $usdNotEmpty = !empty($input->unit_cost_usd);
+            return !($currencyNotEmpty && $usdNotEmpty);
+        });
+    }
+
     public function messages(): array
     {
         return [
             "start_row.required" => "La fila de inicio es obligatoria.",
             "start_row.min" => "La fila de inicio debe ser al menos 1.",
-            "cod_supplier.required" => "La columna de código es obligatoria.",
             "name.required" => "La columna de nombre es obligatoria.",
             "barcode_match.required" => "La columna de código de barras es obligatoria.",
+            "currency.decimal" => "La columna de tasa de cambio debe ser un número.",
             "quantity.integer" => "La columna de cantidad debe ser un número entero.",
             "quantity.min" => "La cantidad debe ser mayor o igual a 0.",
             "unit_cost.required" => "La columna de coste unitario es obligatoria.",

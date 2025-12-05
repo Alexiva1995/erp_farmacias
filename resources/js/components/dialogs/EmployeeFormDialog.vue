@@ -1,15 +1,19 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import { watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   roles: { type: Array, default: () => [] },
   selectedEmployee: { type: Object, default: null },
+  clearDataOnClose: { type: Boolean, default: true },
 });
 
-const emit = defineEmits(["refresh-table"]);
+const emit = defineEmits(["update:modelValue", "refresh-table", "close"]);
+
+const { isAdmin } = useAuthStore();
 
 const errors = ref({});
 const name = ref("");
@@ -20,7 +24,11 @@ const password = ref("");
 const role = ref(null);
 
 const closeDialog = () => {
-  emit("update:modelValue", false);
+  emit("close");
+
+  if (props.clearDataOnClose) {
+    handleClearFilters();
+  }
 };
 
 const handleClearFilters = () => {
@@ -39,7 +47,7 @@ const submitForm = async () => {
   try {
     const form = new FormData();
 
-    if (props.selectedEmployee != null) {
+    if (props.selectedEmployee != null || isAdmin) {
       form.append("_method", "PUT");
     }
 
@@ -176,7 +184,7 @@ watch(
               :error-messages="errors.email"
             />
           </VCol>
-          <VCol cols="12" sm="6" v-if="selectedEmployee == null">
+          <VCol cols="12" sm="6" v-if="selectedEmployee == null || isAdmin">
             <VTextField
               v-model="password"
               label="Contraseña"
@@ -194,7 +202,12 @@ watch(
               hide-details="auto"
               :items="
                 roles.map((role) => ({
-                  title: role.name,
+                  title:
+                    role.name === 'Admin'
+                      ? 'Administrador'
+                      : role.name === 'Employee'
+                      ? 'Empleado'
+                      : 'Supervisor',
                   value: role.id,
                 }))
               "

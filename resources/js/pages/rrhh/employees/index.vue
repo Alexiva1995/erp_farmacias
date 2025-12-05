@@ -1,22 +1,27 @@
 <script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
+import FireEmployeeDialog from "@/components/dialogs/FireEmployeeDialog.vue";
 import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
 import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 
+const showFireEmployeeDialog = ref(false);
 const showDialog = ref(false);
 const showResignationDialog = ref(false);
 const loading = ref(false);
 const search = ref("");
+const currency = ref(null);
 
 const roles = ref([]);
 const employees = ref([]);
 const totalEmployees = ref(0);
 const selectedEmployee = ref(null);
 const selectedEmployeeForResignation = ref(null);
+const isEditingResignation = ref(false);
+const existingResignationData = ref(null);
 
 const showActiveEmployees = ref(true);
 const page = ref(1);
@@ -67,20 +72,9 @@ const handleRefreshTable = async () => {
   fetchEmployees();
 };
 
-const handleFireEmployee = async (id) => {
-  try {
-    const { data } = await axios.put(`/rrhh/employees/${id}/fire`);
-
-    if (data.data.status) {
-      toast.success("El empleado ha sido despedido exitosamente");
-
-      handleRefreshTable();
-    } else {
-      toast.success("No se pudo despedir al empleado");
-    }
-  } catch (error) {
-    toast.error("Hubo un error al despedir al empleado");
-  }
+const handleShowFireEmployeeDialog = (employee) => {
+  selectedEmployee.value = employee;
+  showFireEmployeeDialog.value = true;
 };
 
 const handleDeleteEmployee = async (employee) => {
@@ -95,18 +89,85 @@ const handleDeleteEmployee = async (employee) => {
   }
 };
 
-const handleGenerateResignation = (employee) => {
-  selectedEmployeeForResignation.value = employee;
-  showResignationDialog.value = true;
+const fetchCurrency = async () => {
+  try {
+    const { data } = await axios.get("finances/exchange-rates/consultOneBCV");
+    currency.value = data.rate;
+  } catch (error) {
+    toast.error("No se pudo obtener la tasa bcv del dia");
+  }
+};
+
+onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
+
+const handleGenerateResignation = async (employee) => {
+
+  try {
+    // Verificar si ya existe una renuncia para este empleado
+    const url = `/api/rrhh/resignations/employee/${employee.id}/edit`;
+
+    const response = await axios.get(url);
+
+    if (response.data.success && response.data.data) {
+      // Ya existe una renuncia, abrir en modo edición
+
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = response.data.data;
+      isEditingResignation.value = true;
+      showResignationDialog.value = true;
+
+      toast.info(
+        "Se encontró una renuncia existente. Se abrirá en modo de edición."
+      );
+    } else {
+      // No existe renuncia, crear nueva
+
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = null;
+      isEditingResignation.value = false;
+      showResignationDialog.value = true;
+    }
+  } catch (error) {
+
+    // Si hay error (probablemente 404), significa que no existe renuncia
+    if (error.response?.status === 404) {
+
+      selectedEmployeeForResignation.value = employee;
+      existingResignationData.value = null;
+      isEditingResignation.value = false;
+      showResignationDialog.value = true;
+    } else {
+
+      toast.error("Error al verificar renuncias existentes");
+    }
+  }
 };
 
 const handleResignationGenerated = (resignationData) => {
-  console.log("Renuncia generada:", resignationData);
   toast.success("Carta de renuncia generada exitosamente");
+
+  // Limpiar el estado del modal
+  showResignationDialog.value = false;
+  isEditingResignation.value = false;
+  existingResignationData.value = null;
+  selectedEmployeeForResignation.value = null;
+
   // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
 };
 
-onMounted(() => Promise.all([fetchEmployees(), fetchRoles()]));
+const handleCloseEmployeeDialog = () => {
+  showDialog.value = false;
+  selectedEmployee.value = null;
+};
+
+const handleReset2FA = async (id) => {
+  try {
+    await axios.put(`/rrhh/employees/${id}/reset-2fa`);
+    toast.success("Autenticación de dos factores reiniciada exitosamente");
+  } catch (error) {
+    toast.error("No se pudo reiniciar la autenticación de dos factores");
+  }
+};
 
 let debounceTimer;
 watch(
@@ -127,16 +188,26 @@ watch(
       @add-employee="handleShowDialog"
     />
 
+    <FireEmployeeDialog
+      v-model="showFireEmployeeDialog"
+      :selected-employee="selectedEmployee"
+      :currency="currency"
+      @refresh-table="handleRefreshTable"
+    />
+
     <EmployeeFormDialog
       v-model="showDialog"
       :roles="roles"
       :selectedEmployee="selectedEmployee"
       @refresh-table="handleRefreshTable"
+      @close="handleCloseEmployeeDialog"
     />
 
     <ResignationFormDialog
       v-model="showResignationDialog"
       :selectedEmployee="selectedEmployeeForResignation"
+      :isEdit="isEditingResignation"
+      :existingResignation="existingResignationData"
       @resignation-generated="handleResignationGenerated"
     />
 
@@ -145,10 +216,12 @@ watch(
       :items-per-page="itemsPerPage"
       :total="totalEmployees"
       :employees="employees"
-      @fire-employee="handleFireEmployee"
+      :loading="loading"
+      @fire-employee="handleShowFireEmployeeDialog"
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
       @generate-resignation="handleGenerateResignation"
+      @reset-2fa="handleReset2FA"
     />
   </div>
 </template>

@@ -39,20 +39,21 @@ class PayslipServices implements Payslip
     return $this->payslipRepository->updateDetails($payslip, $details);
   }
 
-  public function finalize(MPayslip $payslip): bool
+  public function finalize(MPayslip $payslip, array $data): bool
   {
-    return $this->payslipRepository->finalize($payslip);
+    return $this->payslipRepository->finalize($payslip, $data);
   }
 
   public function exportExcel(MPayslip $payslip): PayslipsExport
   {
-    $query = $this->payslipRepository->exportableData($payslip);
+    $query = $this->payslipRepository->exportableData($payslip, 'legal');
     return new PayslipsExport($query);
   }
 
-  public function getData(MPayslip $payslip): array
+  public function getData(MPayslip $payslip, string $type): array
   {
-    $query = $this->payslipRepository->getData($payslip);
+    $type = in_array($type, ['full', 'legal']) ? $type : 'legal';
+    $query = $this->payslipRepository->getData($payslip, $type);
     return $query;
   }
 

@@ -30,6 +30,7 @@ const formulario= reactive({
   address:"",
   birthdate:"",
   company_id:"",
+  is_spe: false,
 })
 const formularioError= reactive({
   id:"",
@@ -42,6 +43,7 @@ const formularioError= reactive({
   address:"",
   birthdate:"",
   company_id:"",
+  is_spe: "",
 })
 
 const loading = ref(false)
@@ -82,43 +84,46 @@ function cerrarModal(payload){
   limpiarErroresFormulario()
 }
 
-function insertarDatosAlFormulario(datos){
-  formulario.id=datos.id
-  formulario.identification=datos.identification
-  formulario.identification_type=datos.identification_type
-  formulario.name=datos.name
-  formulario.last_name=datos.last_name
-  formulario.email=(datos.email==null)?"":datos.email
-  formulario.phone=datos.phone
-  formulario.address=datos.address
-  formulario.birthdate=datos.birthdate
-  formulario.company_id=datos.company_id
+function insertarDatosAlFormulario(datos) {
+  formulario.id = datos.id
+  formulario.identification = datos.identification
+  formulario.identification_type = datos.identification_type
+  formulario.name = datos.name
+  formulario.last_name = datos.last_name
+  formulario.email = (datos.email == null) ? "" : datos.email
+  formulario.phone = datos.phone
+  formulario.address = datos.address
+  formulario.birthdate = datos.birthdate
+  formulario.company_id = datos.company_id
+  formulario.is_spe = Boolean(datos.is_spe) || datos.is_spe === 1 || datos.is_spe === '1'
 }
 
-function limpiarDatosFormulario(){
-  formulario.id=null
-  formulario.identification=""
-  formulario.identification_type=""
-  formulario.name=""
-  formulario.last_name=""
-  formulario.email=""
-  formulario.phone=""
-  formulario.address=""
-  formulario.birthdate=null
-  formulario.company_id=""
+function limpiarDatosFormulario() {
+  formulario.id = null
+  formulario.identification = ""
+  formulario.identification_type = ""
+  formulario.name = ""
+  formulario.last_name = ""
+  formulario.email = ""
+  formulario.phone = ""
+  formulario.address = ""
+  formulario.birthdate = null
+  formulario.company_id = ""
+  formulario.is_spe = false
 }
 
-function limpiarErroresFormulario(){
-  formularioError.id=""
-  formularioError.identification=""
-  formularioError.identification_type=""
-  formularioError.name=""
-  formularioError.last_name=""
-  formularioError.email=""
-  formularioError.phone=""
-  formularioError.address=""
-  formularioError.birthdate=""
-  formularioError.company_id=""
+function limpiarErroresFormulario() {
+  formularioError.id = ""
+  formularioError.identification = ""
+  formularioError.identification_type = ""
+  formularioError.name = ""
+  formularioError.last_name = ""
+  formularioError.email = ""
+  formularioError.phone = ""
+  formularioError.address = ""
+  formularioError.birthdate = ""
+  formularioError.company_id = ""
+  formularioError.is_spe = ""
 }
 
 async function consultAll(){
@@ -189,17 +194,18 @@ async function actualizar(data){
   }
 }
 
-function cargarErrores(errores){
-  formularioError.id=(errores.id)?errores.id.join(", "):""
-  formularioError.identification=(errores.identification)?errores.identification.join(", "):""
-  formularioError.identification_type=(errores.identification_type)?errores.identification_type.join(", "):""
-  formularioError.name=(errores.name)?errores.name.join(", "):""
-  formularioError.last_name=(errores.last_name)?errores.last_name.join(", "):""
-  formularioError.email=(errores.email)?errores.email.join(", "):""
-  formularioError.phone=(errores.phone)?errores.phone.join(", "):""
-  formularioError.address=(errores.address)?errores.address.join(", "):""
-  formularioError.birthdate=(errores.birthdate)?errores.birthdate.join(", "):""
-  formularioError.company_id=(errores.company_id)?errores.company_id.join(", "):""
+function cargarErrores(errores) {
+  formularioError.id = (errores.id) ? errores.id.join(", ") : ""
+  formularioError.identification = (errores.identification) ? errores.identification.join(", ") : ""
+  formularioError.identification_type = (errores.identification_type) ? errores.identification_type.join(", ") : ""
+  formularioError.name = (errores.name) ? errores.name.join(", ") : ""
+  formularioError.last_name = (errores.last_name) ? errores.last_name.join(", ") : ""
+  formularioError.email = (errores.email) ? errores.email.join(", ") : ""
+  formularioError.phone = (errores.phone) ? errores.phone.join(", ") : ""
+  formularioError.address = (errores.address) ? errores.address.join(", ") : ""
+  formularioError.birthdate = (errores.birthdate) ? errores.birthdate.join(", ") : ""
+  formularioError.company_id = (errores.company_id) ? errores.company_id.join(", ") : ""
+  formularioError.is_spe = (errores.is_spe) ? errores.is_spe.join(", ") : ""
 }
 
 async function actualizarTabla(){

@@ -8,6 +8,7 @@ use App\Repository\ResignationRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ResignationServices implements Resignation
@@ -77,15 +78,30 @@ class ResignationServices implements Resignation
      */
     public function getByEmployeeId(int $employeeId): ?MResignation
     {
-        return $this->resignationRepository->getResignationByEmployeeId($employeeId);
+        Log::info('🔍 [SERVICE] getByEmployeeId llamado', ['employee_id' => $employeeId]);
+        $result = $this->resignationRepository->getResignationByEmployeeId($employeeId);
+        Log::info('🔍 [SERVICE] Resultado de getByEmployeeId:', [
+            'found' => $result ? 'yes' : 'no',
+            'resignation_id' => $result ? $result->id : null
+        ]);
+
+        return $result;
     }
 
     /**
      * Actualizar una renuncia existente
      */
-    public function update(int $id, array $data): bool
+    public function update(int $id, array $data): MResignation
     {
-        return $this->resignationRepository->updateResignation($id, $data);
+        Log::info('🔄 [SERVICE] Actualizando renuncia', ['resignation_id' => $id, 'data' => $data]);
+        $result = $this->resignationRepository->updateResignation($id, $data);
+        if ($result) {
+            Log::info('✅ [SERVICE] Renuncia actualizada exitosamente', ['resignation_id' => $id]);
+            return $this->resignationRepository->getResignationById($id);
+        }
+
+        Log::error('❌ [SERVICE] No se pudo actualizar la renuncia', ['resignation_id' => $id]);
+        throw new \Exception('No se pudo actualizar la renuncia');
     }
 
     /**

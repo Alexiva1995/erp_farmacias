@@ -98,8 +98,12 @@ class InvoiceQueryService
         if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
             $autoOrderDetails = collect();
 
-            foreach ($invoice->supplier->autoOrders as $autoOrder) {
-                foreach ($autoOrder->details as $autoOrderDetail) {
+            $selectableAutoOrders = $invoice->supplier->autoOrders()->where('status', 0)->get();
+
+            foreach ($selectableAutoOrders as $autoOrder) {
+                $selectableDetails = $autoOrder->details()->where('status', 0)->get();
+
+                foreach ($selectableDetails as $autoOrderDetail) {
                     if ($autoOrderDetail->productSupplier && $autoOrderDetail->productSupplier->product) {
                         $product = $autoOrderDetail->productSupplier->product;
 
@@ -134,7 +138,6 @@ class InvoiceQueryService
         if ($invoice->details()->exists()) {
 
             return $invoice->details()->with(['product.laboratory'])->get();
-
         } else {
 
             $configuredProducts = SuppliersConfigProduct::query()
@@ -175,7 +178,7 @@ class InvoiceQueryService
     public function calculateSupplierDebts(): float
     {
         $totalDebts = Invoice::where(function ($query) {
-            $query->where('status_payment', 'pending')
+            $query->where('status_payment', 0)
                 ->orWhereNull('status_payment');
         })
             ->where('total_usd', '>', 0)

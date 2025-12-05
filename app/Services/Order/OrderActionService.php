@@ -32,7 +32,9 @@ class OrderActionService
             } else {
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
                 $data['total_amount'] = $data['total_amount'] ?? 0;
+                $data['total_amount_usd'] = $data['total_amount_usd'] ?? 0;
                 $data['money_returns'] = $data['money_returns'] ?? 0;
+                $data['total_cost'] = $data['total_cost'] ?? 0;
                 $data['payment_methods'] = null;
             }
 
@@ -172,6 +174,8 @@ class OrderActionService
         try {
             $targetCurrency = $validatedData['currency'];
             $order->total_amount = $validatedData['total_amount'];
+            $order->total_amount_usd = $validatedData['total_amount_usd'];
+            $order->total_cost = $validatedData['total_cost'];
             $order->currency = $targetCurrency;
             $order->save();
             $order->load('details.product');
@@ -251,6 +255,7 @@ class OrderActionService
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
         $totalIva = 0;
         $exemptAmount = 0;
+        $taxableAmount = 0;
         $client = $order->client;
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
@@ -258,17 +263,22 @@ class OrderActionService
                 $priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
 
+                $itemSubtotal = $priceBs * $quantity;
+
                 if ($product->iva == 1) {
                     $ivaRate = 0.16;
                     $itemTotal = $priceBs * $quantity;
                     $itemIva = $itemTotal * $ivaRate;
                     $totalIva += $itemIva;
+                    $taxableAmount += $itemSubtotal;
+                }else{
+                    $exemptAmount += $itemSubtotal; 
                 }
-
-                $exemptAmount += $priceBs * $quantity;
             }
 
-            $totalAmountBs = $exemptAmount + $totalIva;
+            //$totalAmountBs = $spe ? $exemptAmount + ($totalIva * 0.25) : $exemptAmount + $totalIva;
+            $totalAmountBs = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
                 'order_id' => $order->id,
@@ -277,6 +287,7 @@ class OrderActionService
                 'identification' => $client->identification_type . $client->identification,
                 'address' => $client->address,
                 'exempt_amount' => $exemptAmount,
+                'taxable_amount' => $taxableAmount,
                 'iva_amount' => $totalIva,
                 'total_amount' => $totalAmountBs,
                 'invoice_date' => Carbon::now(),
@@ -458,13 +469,17 @@ class OrderActionService
             $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
             $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
             $current_cash->bs_delivered = $current_cash->bs_cash;
+            
+            $cop_in_usd = $current_cash->total_cop_in_usd;
+            $bs_in_usd = $current_cash->total_bs_in_usd;
+            $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit + $cop_in_usd + $bs_in_usd;
+            $current_cash->closing_date =  Carbon::now();
             $current_cash->update();
 
 
             $reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', Order::RESERVED)
                 ->first();
-
 
 
             $newPendingOrder = null;
@@ -666,9 +681,13 @@ class OrderActionService
                 $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
                 $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
                 $cashClosing->bs_delivered = $cashClosing->bs_cash;
+
+                $cop_in_usd = $cashClosing->total_cop_in_usd;
+                $bs_in_usd = $cashClosing->total_bs_in_usd;
+                $cashClosing->total_sales = $cashClosing->total_usd + $cashClosing->usd_credit + $cop_in_usd + $bs_in_usd;
+
                 $cashClosing->update();
              }
-
 
             DB::commit();
             Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);

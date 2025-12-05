@@ -24,5 +24,7 @@ class EditClientData extends Data
         public null|string $company_id,
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y/m/d')]
         public DateTime|null $birthdate,
-    ) {}
+        public ?bool $is_spe
+    ) {
+    }
 }

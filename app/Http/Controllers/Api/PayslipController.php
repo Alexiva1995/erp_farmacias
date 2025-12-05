@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\PayslipsExport;
 use App\Helpers\ApiResponse;
+use App\Http\Requests\FinalizePayslipRequest;
 use App\Http\Requests\UpdateEmployeeVouchersRequest;
 use App\Models\Employee;
 use App\Models\Payslip;
@@ -25,9 +25,10 @@ class PayslipController extends Controller
         return ApiResponse::success(['data' => $results->items(), 'total' => $results->total()]);
     }
 
-    public function finalize(Payslip $payslip)
+    public function finalize(Payslip $payslip, FinalizePayslipRequest $request)
     {
-        $result = $this->payslipServices->finalize($payslip);
+        $data = $request->validated();
+        $result = $this->payslipServices->finalize($payslip, $data);
 
         return ApiResponse::success(['status' => $result]);
     }
@@ -40,9 +41,9 @@ class PayslipController extends Controller
         return Excel::download($data, $fileName);
     }
 
-    public function getData(Payslip $payslip)
+    public function getData(Payslip $payslip, string $type)
     {
-        $data = $this->payslipServices->getData($payslip);
+        $data = $this->payslipServices->getData($payslip, $type);
 
         return ApiResponse::success([
             'results' => $data['items'],

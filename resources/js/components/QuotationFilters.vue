@@ -9,6 +9,7 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
   stockStatusFilter: [Boolean, null],
+  isStrictSearch: [Boolean, false],
 });
 
 const emit = defineEmits([
@@ -16,6 +17,7 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:stockStatusFilter",
+  "update:isStrictSearch",
   "clear",
   "sort",
   "clear-sort",
@@ -61,7 +63,7 @@ const sortOptions = [
     key: "sales_average",
     order: "desc",
   },
-    {
+  {
     title: "Menos Vendidos",
     icon: "tabler-minus",
     key: "sales_average",
@@ -98,7 +100,7 @@ const loadSavedSort = () => {
 };
 
 const handleSortClick = (option) => {
-   const sortFilter = { key: option.key, order: option.order };
+  const sortFilter = { key: option.key, order: option.order };
   selectedSort.value = sortFilter;
   saveSortFilter(sortFilter);
   emit("sort", sortFilter);
@@ -165,20 +167,24 @@ watch(
 );
 </script>
 
-
 <template>
   <VCard title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
+          <VCheckbox
+            label="Búsqueda Estricta"
+            :model-value="props.isStrictSearch"
+            @update:model-value="emit('update:isStrictSearch', $event)"
+          />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="3">
           <VSelect
             :model-value="props.selectedLaboratory"
             label="Laboratorio"
@@ -189,7 +195,7 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="3">
           <VSelect
             :model-value="props.selectedOrigin"
             label="Origen"
@@ -200,7 +206,7 @@ watch(
             @update:model-value="emit('update:selectedOrigin', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="3">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -219,25 +225,25 @@ watch(
         Limpiar Filtros
       </VBtn>
 
-    <div class="d-flex align-center gap-2">
-      <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn v-bind="menuProps" variant="tonal">
-            Ordenar Por
-            <VIcon end icon="tabler-chevron-down" />
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem
-            v-for="(option, index) in sortOptions"
-            :key="index"
-            :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-            @click="handleSortClick(option)"
-          >
-            <template #prepend>
-              <VIcon :icon="option.icon" size="20" class="me-2" />
-            </template>
-            <VListItemTitle>{{ option.title }}</VListItemTitle>
+      <div class="d-flex align-center gap-2">
+        <VMenu>
+          <template #activator="{ props: menuProps }">
+            <VBtn v-bind="menuProps" variant="tonal">
+              Ordenar Por
+              <VIcon end icon="tabler-chevron-down" />
+            </VBtn>
+          </template>
+          <VList>
+            <VListItem
+              v-for="(option, index) in sortOptions"
+              :key="index"
+              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
+              @click="handleSortClick(option)"
+            >
+              <template #prepend>
+                <VIcon :icon="option.icon" size="20" class="me-2" />
+              </template>
+              <VListItemTitle>{{ option.title }}</VListItemTitle>
               <template #append>
                 <VIcon
                   v-if="isOptionSelected(option)"
@@ -246,11 +252,11 @@ watch(
                   color="primary"
                 />
               </template>
-          </VListItem>
-        </VList>
-      </VMenu>
+            </VListItem>
+          </VList>
+        </VMenu>
 
-       <VChip
+        <VChip
           v-if="selectedSort"
           color="primary"
           variant="tonal"
