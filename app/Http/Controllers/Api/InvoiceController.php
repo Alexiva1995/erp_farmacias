@@ -67,7 +67,7 @@ class InvoiceController extends Controller
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         } else {
             $rules['exchange_rate'] = 'nullable|numeric';
-            $rules['total_usd'] = 'nullable|numeric';
+            $rules['total_usd'] = 'nullable|numeric|gt:0';
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -279,6 +279,20 @@ class InvoiceController extends Controller
                 'description' => 'Facturas pendientes de pago a proveedores'
             ],
             'message' => 'Deudas con proveedores calculadas con éxito.'
+        ], 200);
+    }
+
+    public function returnInvoiceToPendingStatus(Invoice $invoice)
+    {
+        $response = $this->invoiceActionService->updateToPendingStatus($invoice);
+
+        return response()->json([
+            'status' => $response['status'],
+            'message' => $response['message'] != null
+                ? $response['message']
+                : ($response['status']
+                    ? 'Se devolvió la factura a pendientes'
+                    : 'No se pudo devolver la factura a pendientes')
         ], 200);
     }
 }
