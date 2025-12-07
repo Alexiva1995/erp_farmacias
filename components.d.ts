@@ -52,6 +52,7 @@ declare module 'vue' {
     CategoryOfferModal: typeof import('./resources/js/components/dialogs/CategoryOfferModal.vue')['default']
     CategoryOfferTable: typeof import('./resources/js/components/CategoryOfferTable.vue')['default']
     ClientFormDialoge: typeof import('./resources/js/components/dialogs/ClientFormDialoge.vue')['default']
+    ClientOfCompanyTable: typeof import('./resources/js/components/ClientOfCompanyTable.vue')['default']
     ClientsFilters: typeof import('./resources/js/components/ClientsFilters.vue')['default']
     ClientTable: typeof import('./resources/js/components/ClientTable.vue')['default']
     ClosedCashClosure: typeof import('./resources/js/components/dialogs/ClosedCashClosure.vue')['default']
@@ -67,6 +68,7 @@ declare module 'vue' {
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     CompanyViewOffer: typeof import('./resources/js/components/dialogs/CompanyViewOffer.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
+    copy: typeof import('./resources/js/components/ClientTable copy.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
     CreditoFiscalTable: typeof import('./resources/js/components/CreditoFiscalTable.vue')['default']
     CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
@@ -295,6 +297,5 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

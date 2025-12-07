@@ -194,7 +194,7 @@ async function actualizarTabla(){
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    company_id:company_id_filtro.value,
+    // company_id:company_id_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
   statuModule.itemsClientes=respuestaApiNaturles.data
@@ -216,7 +216,7 @@ async function actualizarTablaTablaClientes(){
     // filtros
     buscardor_filtro:buscardor_filtro.value,
     tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    company_id:company_id_filtro.value,
+    // company_id:company_id_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
@@ -308,7 +308,7 @@ watch(
 function limpiarFiltros(){
   buscardor_filtro.value=""
   tipo_identificacion_filtro.value=""
-  company_id_filtro.value=""
+  // company_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
 }
@@ -412,9 +412,27 @@ async function consultarCompanyById(id){
   return {...respuestaApi.data.data}
 }
 
+
+async function assignCompany(data) {
+  console.log("data assign => ",data)
+  let body={
+    client_id:  parseInt(data.client_id),
+    company_id: parseInt(data.company_id),
+    status:     data.status,
+  }
+
+  let respuestaApi = await axios.post(`/crm/clients/${data.client_id}/update-company/${data.company_id}`,body)
+  if(respuestaApi.status!=200){
+    toast.error("Error al asignar la empresa al cliente")
+  }
+  await actualizarTabla()
+}
+
+
 onMounted(async () => {
   let responseComponies = await consultAllcomapanies()
   let companyData=await consultarCompanyById(router.params.id)
+  limpiarFiltros()
   await actualizarTabla()
 
   statuModule.company=companyData
@@ -448,7 +466,8 @@ onMounted(async () => {
     />
     <VCard title="Clientes">
       <VDivider />
-      <ClientTable
+      <ClientOfCompanyTable
+        :companyId="router.params.id"
         :clients="statuModule.itemsClientes"
         :total-clients="statuModule.totalClientes"
         :loading="loading"
@@ -457,6 +476,7 @@ onMounted(async () => {
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
         @update:options="updateTableOptions"
+        @assign-company="assignCompany"
       />
     </VCard>
   </div>
