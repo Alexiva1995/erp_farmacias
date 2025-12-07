@@ -68,7 +68,6 @@ declare module 'vue' {
     CompanyTable: typeof import('./resources/js/components/CompanyTable.vue')['default']
     CompanyViewOffer: typeof import('./resources/js/components/dialogs/CompanyViewOffer.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
-    copy: typeof import('./resources/js/components/ClientTable copy.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
     CreditoFiscalTable: typeof import('./resources/js/components/CreditoFiscalTable.vue')['default']
     CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
