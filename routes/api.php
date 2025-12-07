@@ -299,7 +299,7 @@ Route::prefix("crm")->group(function () {
         Route::post("/", [ClientController::class, "create"]);
         Route::get("/", [ClientController::class, "consultAll"]);
         Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
         Route::post("/filtrar", [ClientController::class, "filtrar"]);
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
