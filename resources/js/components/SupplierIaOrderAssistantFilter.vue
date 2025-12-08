@@ -21,6 +21,7 @@ const emit = defineEmits([
   "update:selectedGroup",
   "clear",
   "generarPedido",
+  "downloadPdf",
 ]);
 
 const precio = [
@@ -154,6 +155,15 @@ const stockOpciones = [
       </VBtn>
 
       <VSpacer />
+
+      <VBtn
+        color="error"
+        variant="tonal"
+        prepend-icon="tabler-file-type-pdf"
+        @click="emit('downloadPdf')"
+      >
+        Descargar PDF
+      </VBtn>
 
       <VBtn
         color="primary"
