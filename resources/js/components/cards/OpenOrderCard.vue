@@ -151,7 +151,7 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let priceWithIva = (basePrice * product.selectedQuantity) * (1 + taxRate);
+  let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
@@ -169,7 +169,7 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let Iva = (basePrice * product.selectedQuantity) * taxRate;
+  let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
@@ -365,9 +365,10 @@ watch(
 
     <VCardText class="py-2 bg-grey-lighten-4">
       <VTable density="compact" lines="none">
-      <tbody>
-        <tr v-for="(product, index) in props.orderProducts" :key="product.id">
-          <td>  <div class="d-flex flex-column">
+        <tbody>
+          <tr v-for="(product, index) in props.orderProducts" :key="product.id">
+            <td>
+              <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ product.title }}
                 </span>
@@ -376,16 +377,19 @@ watch(
                   {{ product.laboratory ? `- ${product.laboratory}` : "" }}
                 </span>
               </div>
-          </td>
-          <td> <div class="d-flex align-center">
+            </td>
+            <td>
+              <div class="d-flex align-center">
                 <VBtn
                   icon
                   size="x-small"
                   variant="text"
-                  @click="handleClickProductItem(
-                    product.product_id,
-                    product.selectedQuantity
-                  )"
+                  @click="
+                    handleClickProductItem(
+                      product.product_id,
+                      product.selectedQuantity
+                    )
+                  "
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -402,68 +406,77 @@ watch(
                   icon
                   size="x-small"
                   variant="text"
-                  @click="$emit('update-quantity', { productId: product.product_id, quantity: product.selectedQuantity + 1 })"
-                  :disabled="product.selectedQuantity >= product.availableQuantity"
+                  @click="
+                    $emit('update-quantity', {
+                      productId: product.product_id,
+                      quantity: product.selectedQuantity + 1,
+                    })
+                  "
+                  :disabled="
+                    product.selectedQuantity >= product.availableQuantity
+                  "
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
-              </div></td>
-          <td class="text-right">
-           <div class="d-flex flex-column align-end me-4"><span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Precio</span
-                  >
-                  <span class="text-body-1 font-weight-regular">
-                    {{
-                      formatCurrency(
-                        getProductPriceSinIva(
-                          product,
-                          props.selectedDisplayCurrency
-                        ),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-          </td>
-           <td class="text-right">
-           <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >IVA</span
-                  >
-                  <span class="text-body-1 font-weight-regular">
-                    {{
-                      formatCurrency(
-                        getIva(product, props.selectedDisplayCurrency),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-          </td>
-          <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Total</span
-                  >
-                  <span class="text-body-1 font-weight-bold text-black">
-                    {{
-                      formatCurrency(
-                        getProductPrice(product, props.selectedDisplayCurrency),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
+              </div>
             </td>
-        </tr>
-      </tbody>
-    </VTable>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >Precio</span
+                >
+                <span class="text-body-1 font-weight-regular">
+                  {{
+                    formatCurrency(
+                      getProductPriceSinIva(
+                        product,
+                        props.selectedDisplayCurrency
+                      ),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >IVA</span
+                >
+                <span class="text-body-1 font-weight-regular">
+                  {{
+                    formatCurrency(
+                      getIva(product, props.selectedDisplayCurrency),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >Total</span
+                >
+                <span class="text-body-1 font-weight-bold text-black">
+                  {{
+                    formatCurrency(
+                      getProductPrice(product, props.selectedDisplayCurrency),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </VTable>
     </VCardText>
     <VDivider class="mt-auto" />
 
@@ -486,7 +499,7 @@ watch(
         >
           RESERVAR
         </VBtn>
-         <VBtn
+        <VBtn
           v-if="props.orderReserved"
           color="success"
           variant="flat"
