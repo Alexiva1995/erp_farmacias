@@ -123,7 +123,21 @@ class SupplierActionService
      */
     public function attachLaboratory(Supplier $supplier, array $validatedData): SupplierLaboratory
     {
-        return $supplier->laboratoryLinks()->create($validatedData);
+
+        $values = [
+        'phone' => $validatedData['phone'],
+        'laboratory_id' => $validatedData['laboratory_id'],
+        'supplier_id' => $supplier->id, 
+    ];
+    $isUpdate = isset($validatedData['id']) && $validatedData['id'] > 0;
+    if ($isUpdate) {
+        $link = $supplier->laboratoryLinks()->findOrFail($validatedData['id']);
+        $link->update($values);
+        return $link;
+    } else {
+        return $supplier->laboratoryLinks()->create($values);
+    }
+        //return $supplier->laboratoryLinks()->create($validatedData);
     }
 
     public function createDiscount(Supplier $supplier, array $data): SupplierDiscount

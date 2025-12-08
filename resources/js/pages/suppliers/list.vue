@@ -257,12 +257,10 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
   try {
-
    const payload = {
       rules: paymentRuleFormData,
     };
     await axios.post(url, payload);
-
     toast.success(`Reglas de pago creadas con éxito`);
     isPaymentRuleDialogVisible.value = false;
     await fetchPaymentRules();
@@ -289,12 +287,11 @@ const handleSupplierLaboratory = async (supplier) => {
 const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
   const url = `/suppliers/${currentSupplier.value.id}/laboratories`;
   try {
-    const payload = { ...supplierLaboratoryFormData };
-
+    const payload = {
+      rulesLaboratory: supplierLaboratoryFormData,
+    };
     await axios.post(url, payload);
-
     toast.success("Laboratorio vinculado con éxito");
-
     isSupplierLaboratoryDialogVisible.value = false;
     await fetchLaboratoryLinks();
     await fetchSuppliers();

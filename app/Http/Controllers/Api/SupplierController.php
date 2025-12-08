@@ -193,11 +193,46 @@ class SupplierController extends Controller
      */
     public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
     {
+       /* dd($request->validated());
         $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
 
         return response()->json([
             "message" => "Laboratorio vinculado con éxito.",
             "laboratory_link" => $link->load("laboratory"),
+        ]);*/
+
+        $validated = $request->validated();
+        $createdRules = [];
+        $sentIds = Arr::pluck($validated['rulesLaboratory'], 'id');
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+
+        if (!empty($sentIds)) {
+            $supplier->laboratoryLinks()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->laboratoryLinks()->delete();
+        }
+
+       
+        foreach ($validated['rulesLaboratory'] as $rulesLaboratory) {
+            $ruleData = [
+                'phone' => $rulesLaboratory['phone'],
+                'laboratory_id' => $rulesLaboratory['laboratory']['id'],
+            ];
+
+            if (isset($rulesLaboratory['id']) && $rulesLaboratory['id'] > 0) {
+                $ruleData['id'] = $rulesLaboratory['id'];
+            }
+
+            $createdRules[] = $this->supplierActionService->attachLaboratory($supplier, $ruleData);
+        }
+
+        return response()->json([
+            'message' => 'Laboratorios vinculado con éxito.',
+            'rules' => $createdRules,
         ]);
     }
 
