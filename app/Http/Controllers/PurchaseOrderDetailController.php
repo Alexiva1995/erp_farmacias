@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 
 class PurchaseOrderDetailController extends Controller
 {
-    public function __construct(protected AutoOrderDetailsRepository $autoOrderDetailsRepository) {}
+    public function __construct(protected AutoOrderDetailsRepository $autoOrderDetailsRepository)
+    {
+    }
 
     public function getPurchaseOrderDetails(AutoOrder $autoOrder, Request $request)
     {
@@ -37,6 +39,17 @@ class PurchaseOrderDetailController extends Controller
         return response()->json([
             "data" => $paginated->items(),
             "total" => $paginated->total(),
+        ]);
+    }
+
+    public function updateDetailStatus(AutoOrderDetail $autoOrderDetail, Request $request)
+    {
+        $data = ['status' => $request->boolean('status', FILTER_VALIDATE_BOOL)];
+        $response = $this->autoOrderDetailsRepository->updateDetailStatus($autoOrderDetail, $data);
+
+        return response()->json([
+            "status" => $response,
+            "message" => $response ? 'Estado actualizado' : 'No se pudo actualizar el estado',
         ]);
     }
 }

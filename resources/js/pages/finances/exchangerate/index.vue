@@ -3,8 +3,10 @@ import FormExchangeRate from '@/components/FormExchangeRate.vue';
 import axios from '@/plugins/axios';
 
 const dollar = ref(0)
-const bolivares = ref(0)
 const pesos = ref(0)
+
+const idDollar = ref(null)
+const idPesos = ref(null)
 
 const dateUpdateDollar = ref("")
 const dateUpdatePesos = ref("")
@@ -15,10 +17,10 @@ const dateColorPesos = ref('success');
 const getDollarBCV = async () => {
   try {
     const response = await axios.get(
-      'http://127.0.0.1:8000/api/finances/exchange-rates/consultOneBCV'
+      '/finances/exchange-rates/consultOneBCV'
     );
 
-    const fechaRecibida = new Date(response.data.created_at);
+    const fechaRecibida = new Date(response.data.updated_at);
     const hoy = new Date();
 
     // Normaliza ambas fechas a solo año, mes y día
@@ -38,6 +40,7 @@ const getDollarBCV = async () => {
 
     dateColorDollar.value = esHoy ? 'success' : 'warning';
     dollar.value = promedio
+    idDollar.value = response.data.id
     dateUpdateDollar.value = fecha
 
   } catch (error) {
@@ -48,10 +51,10 @@ const getDollarBCV = async () => {
 const getCOP = async () => {
   try {
     const response = await axios.get(
-      'http://127.0.0.1:8000/api/finances/exchange-rates/consultOneCOP'
+      '/finances/exchange-rates/consultOneCOP'
     );
     //profitability.value = response.data.default_profitability_percentage;
-    const fechaRecibida = new Date(response.data.created_at);
+    const fechaRecibida = new Date(response.data.updated_at);
     const hoy = new Date();
 
     // Normaliza ambas fechas a solo año, mes y día
@@ -70,6 +73,7 @@ const getCOP = async () => {
 
     
     pesos.value = parseFloat(promedio)
+    idPesos.value = response.data.id
     dateColorPesos.value = esHoy ? 'success' : 'warning';
     dateUpdatePesos.value = fecha
   } catch (error) {
@@ -95,6 +99,8 @@ onMounted(() => {
     :pesos="pesos"
     :bolivares="bolivares"
     :dollar="dollar"
+    :idDollar="idDollar"
+    :idPesos="idPesos"
     :dateUpdateDollar="dateUpdateDollar"
     :dateUpdatePesos="dateUpdatePesos"
     :dateColorDollar="dateColorDollar"

@@ -82,7 +82,9 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
+  const { data } = await axios.get(
+    `/suppliers/${currentSupplier.value.id}/laboratories`
+  );
   laboratoryLinks.value = data.laboratory_links;
 };
 
@@ -128,7 +130,9 @@ const fetchPaymentRules = async () => {
 
 const fetchSupplierDiscount = async () => {
   try {
-    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
+    const { data } = await axios.get(
+      `/suppliers/${currentSupplier.value.id}/discounts`
+    );
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
@@ -161,7 +165,9 @@ const handleAddSupplier = () => {
 
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
-  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
+  const url = isNewSupplier
+    ? "/suppliers"
+    : `/suppliers/${currentSupplier.value.id}`;
 
   const payloadKeys = Object.keys(supplierFormData);
   if (!isNewSupplier && payloadKeys.length === 0) {
@@ -178,7 +184,9 @@ const handleSaveSupplier = async (supplierFormData) => {
 
     await axios.post(url, payload);
 
-    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
+    toast.success(
+      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
+    );
     isEditDialogVisible.value = false;
     await fetchSuppliers();
   } catch (error) {
@@ -225,8 +233,10 @@ const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
-    toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
-    await axios.get(`/suppliers/${supplier.id}/connection`);    
+    toast.info(
+      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
+    );
+    await axios.get(`/suppliers/${supplier.id}/connection`);
   } catch (error) {
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
   } finally {

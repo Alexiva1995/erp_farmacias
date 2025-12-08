@@ -18,8 +18,7 @@ class ProductController extends Controller
     public function __construct(
         private ProductQueryService $productQueryService,
         private ProductActionService $productActionService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -108,7 +107,7 @@ class ProductController extends Controller
             'message' => 'Producto no encontrado'
         ]);
     }
-/*******************************************************************************/
+    /*******************************************************************************/
 
     public function getProducts(): JsonResponse
     {
@@ -160,19 +159,19 @@ class ProductController extends Controller
             'name' => $product->name,
             'active_ingredient' => $product->active_ingredient,
             'formatted_details' => $product->formatted_details,
-            
+
             // Stock y precios
             'stock' => $product->stock,
             'available_stock' => $availableStock,
             'sale_price' => (float) $product->sale_price,
             'unit_cost' => (float) $product->unit_cost,
             'barcode' => $product->barcode,
-            
+
             // Información de expiración
             'next_expiration' => $nextExpiringLot ? $nextExpiringLot->expiration_date->format('Y-m-d') : null,
             'expiration_status' => $this->getExpirationStatus($nextExpiringLot),
             'has_expiring_lots' => $availableLots->where('is_expiring_soon', true)->isNotEmpty(),
-            
+
             // Lotes disponibles
             'lots' => $availableLots->map(function ($lot) {
                 return [
@@ -186,27 +185,27 @@ class ProductController extends Controller
                     'expiration_status' => $this->getLotExpirationStatus($lot),
                 ];
             })->values(),
-            
+
             // Relaciones
             'laboratory' => $product->laboratory ? [
                 'id' => $product->laboratory->id,
                 'name' => $product->laboratory->name,
             ] : null,
-            
+
             'category' => $product->category ? [
                 'id' => $product->category->id,
                 'name' => $product->category->name,
             ] : null,
-            
+
             // URLs e imágenes
             'photo_url' => $product->photo_url,
-            
+
             // Flags y estados
             'psychotropic' => (bool) $product->psychotropic,
             'is_active' => (bool) $product->is_active,
             'has_stock' => $availableStock > 0,
             'is_available' => $product->is_active && $availableStock > 0,
-            
+
             // Timestamps
             'created_at' => $product->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $product->updated_at?->format('Y-m-d H:i:s'),
@@ -243,12 +242,12 @@ class ProductController extends Controller
         }
 
         $expirationDate = $lot->expiration_date;
-        
+
         // Si ya expiró
         if ($expirationDate->isPast()) {
             return 'expired';
         }
-        
+
         $monthsToExpire = $expirationDate->diffInMonths(now());
 
         if ($monthsToExpire <= 1) {
@@ -341,8 +340,8 @@ class ProductController extends Controller
             $products = Product::with(['lots', 'laboratory'])
                 ->whereHas('lots', function ($query) {
                     $query->where('quantity', '>', 0)
-                          ->where('expiration_date', '<=', now()->addMonths(3))
-                          ->where('expiration_date', '>', now());
+                        ->where('expiration_date', '<=', now()->addMonths(3))
+                        ->where('expiration_date', '>', now());
                 })
                 ->orderBy('name', 'asc')
                 ->get();
@@ -365,6 +364,8 @@ class ProductController extends Controller
                 'data' => []
             ], 500);
         }
+    }
+
     public function getInventoryValue(Request $request)
     {
         $inventoryValue = $this->productQueryService->calculateInventoryValue();

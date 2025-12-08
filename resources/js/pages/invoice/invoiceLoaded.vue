@@ -4,6 +4,8 @@ import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
@@ -23,6 +25,8 @@ const sortBy = ref();
 const orderBy = ref();
 const availablePaymentRules = ref([]);
 const isApproving = ref(false);
+
+const { isAdmin } = useAuthStore();
 
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
@@ -164,6 +168,50 @@ const handleRejectApiCall = async () => {
     isApproving.value = false;
   }
 };
+
+const handleReturnInvoice = async (invoiceId) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `La factura #${invoiceId} junto a todos los productos aceptados serán regresados al estado pendiente.`,
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Aprobar",
+    confirmButtonColor: "#28a745",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const { data } = await axios.put(`/invoices/${invoiceId}/return-pending`);
+
+      if (data.status) {
+        toast.success(data.message);
+        fetchInvoices();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error("No se pudo devolver la factura a estado pendiente");
+    }
+  }
+};
 </script>
 
 <template>
@@ -185,9 +233,11 @@ const handleRejectApiCall = async () => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        :is-admin="isAdmin"
         actions-mode="approval"
         @update:options="updateTableOptions"
         @edit-invoice="handleReviewInvoice"
+        @return-invoice="handleReturnInvoice"
       />
     </div>
 

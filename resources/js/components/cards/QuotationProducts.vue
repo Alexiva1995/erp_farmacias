@@ -1,9 +1,8 @@
 <script setup>
-import { ref, computed, watch } from "vue";
+import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { toast } from '@/plugins/sweetalert';
-import Swal from 'sweetalert2';
-import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed } from "vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -40,7 +39,7 @@ const props = defineProps({
     type: String,
     default: "",
   },
-    quotationProducts: {
+  quotationProducts: {
     type: Array,
     default: () => [],
   },
@@ -48,56 +47,58 @@ const props = defineProps({
     type: String,
     default: "USD",
   },
-    totalAmountBs: {
+  totalAmountBs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   totalAmountUsd: {
     type: Number,
-    default: 0
+    default: 0,
   },
   totalAmountCop: {
     type: Number,
-    default: 0
+    default: 0,
   },
 });
 
-const emit = defineEmits(["update:searchQuery", 
-"remove-quotation-product","remove","print-quotation",
-"add-product-by-barcode"]);
+const emit = defineEmits([
+  "update:searchQuery",
+  "remove-quotation-product",
+  "remove",
+  "print-quotation",
+  "add-product-by-barcode",
+]);
 
 const removeQuotationProduct = (productId) => {
-  emit('remove-quotation-product', productId);
+  emit("remove-quotation-product", productId);
 };
 
 const remove = () => {
-  emit('remove');
+  emit("remove");
 };
 
-
 const getProductPrice = (product, currency) => {
-const taxRate = product.taxRate || 0;
-let basePrice = 0;
-  if (currency === 'BS') {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
     basePrice = product.price_bs || 0;
-  } else if (currency === 'COP') {
+  } else if (currency === "COP") {
     basePrice = product.price_cop || 0;
-  } else { // Default to USD price
+  } else {
+    // Default to USD price
     basePrice = product.price || 0;
   }
 
   let priceWithIva = basePrice * (1 + taxRate);
-  if (currency === 'COP') {
+  if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
   return priceWithIva;
-
 };
-
 
 const totalSelectedQuantity = computed(() => {
   let total = 0;
-  props.quotationProducts.forEach(product => {
+  props.quotationProducts.forEach((product) => {
     const quantity = parseInt(product.selectedQuantity);
     if (!isNaN(quantity) && quantity > 0) {
       total += quantity;
@@ -107,77 +108,99 @@ const totalSelectedQuantity = computed(() => {
 });
 
 const handlePrintButtonClick = () => {
-  emit('print-quotation');
+  emit("print-quotation");
 };
-
-
 
 const generateWhatsappMessage = () => {
   if (props.quotationProducts.length === 0) {
-    return ''; // Retorna vacío si no hay productos
+    return ""; // Retorna vacío si no hay productos
   }
 
   const fecha = new Date();
   const productos_array = [];
-  props.quotationProducts.forEach(product => {
+  props.quotationProducts.forEach((product) => {
     let priceWithIvaUsd = (product.price || 0) * (1 + (product.taxRate || 0));
     let priceWithIvaBs = (product.price_bs || 0) * (1 + (product.taxRate || 0));
-    let  priceWithIvaCop = (product.price_cop || 0) * (1 + (product.taxRate || 0));
+    let priceWithIvaCop =
+      (product.price_cop || 0) * (1 + (product.taxRate || 0));
 
     priceWithIvaCop = roundUpToNearestHundred(priceWithIvaCop);
 
-    let rows = '💊 ' + product.title + '\n' +
-      'Cantidad: ' + product.selectedQuantity + ' UND(S) \n' +
-      'Precio por unidad: \n' +
-      'Bs.: ' + formatCurrency(priceWithIvaBs, 'BS') + '\n' +
-      '💵 USD: ' + formatCurrency(priceWithIvaUsd, 'USD') + '\n' +
-      '💰 COP: ' + formatCurrency(priceWithIvaCop, 'COP');
+    let rows =
+      "💊 " +
+      product.title +
+      "\n" +
+      "Cantidad: " +
+      product.selectedQuantity +
+      " UND(S) \n" +
+      "Precio por unidad: \n" +
+      "Bs.: " +
+      formatCurrency(priceWithIvaBs, "BS") +
+      "\n" +
+      "💵 USD: " +
+      formatCurrency(priceWithIvaUsd, "USD") +
+      "\n" +
+      "💰 COP: " +
+      formatCurrency(priceWithIvaCop, "COP");
     productos_array.push(rows);
   });
 
-  const whatsappMessage = 'Mensaje de presupuesto\n\n' +
-    'Fecha: ' + fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '\n' +
-    '\nBuenas tardes, Estimado Cliente!\n' +
-    '... le da la Bienvenida!\n' +
-    'Para nosotros es un gusto servirle.\n\n' +
-    'A continuación el detalle de su presupuesto: \n' +
-    productos_array.join('\n\n') + '\n\n' +
-    '\n\nTOTAL PRESUPUESTO:\n' +
-    'Bs.: ' + formatCurrency(props.totalAmountBs, 'BS') + '\n' +
-    '💵 USD: ' + formatCurrency(props.totalAmountUsd, 'USD') + '\n' +
-    '💰 COP: ' + formatCurrency(roundUpToNearestHundred(props.totalAmountCop), 'COP') + '\n' +
-    '\n👉 Condiciones\n' +
-    '\nPrecios sujetos a cambio sin previo aviso.\n' +
-    '\nEl Presupuesto es Válido hasta agotarse las existencias.\n' +
-    '\nPara compras en taquilla debe presentar este presupuesto.\n';
+  const whatsappMessage =
+    "Mensaje de presupuesto\n\n" +
+    "Fecha: " +
+    fecha.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }) +
+    "\n" +
+    "\nBuenas tardes, Estimado Cliente!\n" +
+    "... le da la Bienvenida!\n" +
+    "Para nosotros es un gusto servirle.\n\n" +
+    "A continuación el detalle de su presupuesto: \n" +
+    productos_array.join("\n\n") +
+    "\n\n" +
+    "\n\nTOTAL PRESUPUESTO:\n" +
+    "Bs.: " +
+    formatCurrency(props.totalAmountBs, "BS") +
+    "\n" +
+    "💵 USD: " +
+    formatCurrency(props.totalAmountUsd, "USD") +
+    "\n" +
+    "💰 COP: " +
+    formatCurrency(roundUpToNearestHundred(props.totalAmountCop), "COP") +
+    "\n" +
+    "\n👉 Condiciones\n" +
+    "\nPrecios sujetos a cambio sin previo aviso.\n" +
+    "\nEl Presupuesto es Válido hasta agotarse las existencias.\n" +
+    "\nPara compras en taquilla debe presentar este presupuesto.\n";
 
   return whatsappMessage;
 };
 
-
 const handleShareButtonClick = () => {
   const whatsappMessage = generateWhatsappMessage();
   if (!whatsappMessage) {
-    toast.error('No hay productos en la cotización para compartir.');
+    toast.error("No hay productos en la cotización para compartir.");
     return;
   }
   const encodedMessage = encodeURIComponent(whatsappMessage);
-  const whatsappUrl = 'https://api.whatsapp.com/send?text=' + encodedMessage;
-  window.open(whatsappUrl, '_blank');
+  const whatsappUrl = "https://api.whatsapp.com/send?text=" + encodedMessage;
+  window.open(whatsappUrl, "_blank");
 };
 
 const handleCopyWhatsappMessage = async () => {
   const whatsappMessage = generateWhatsappMessage();
   if (!whatsappMessage) {
-    toast.error('No hay productos en la cotización para copiar.');
+    toast.error("No hay productos en la cotización para copiar.");
     return;
   }
   try {
     await navigator.clipboard.writeText(whatsappMessage);
-    toast.success('Mensaje copiado al portapapeles correctamente.');
+    toast.success("Mensaje copiado al portapapeles correctamente.");
   } catch (err) {
-    console.error('Error al copiar el mensaje:', err);
-    toast.error('Error al copiar el mensaje al portapapeles.');
+    console.error("Error al copiar el mensaje:", err);
+    toast.error("Error al copiar el mensaje al portapapeles.");
   }
 };
 const chipColor = "primary";
@@ -206,7 +229,9 @@ const chipColor = "primary";
               draggable="false"
               class="ms-auto"
             >
-              <span class="font-weight-medium">{{totalSelectedQuantity}}</span>
+              <span class="font-weight-medium">{{
+                totalSelectedQuantity
+              }}</span>
             </VChip>
           </div>
         </VCol>
@@ -216,9 +241,13 @@ const chipColor = "primary";
     <VCardText class="d-flex flex-column pb-0 flex-grow-1">
       <div
         class="scrollable-list-container"
-        :class="{ 'show-scroll': props.quotationProducts.length > 2 }" >
+        :class="{ 'show-scroll': props.quotationProducts.length > 2 }"
+      >
         <VList class="card-list" density="compact" nav>
-          <VListItem v-if="props.quotationProducts.length === 0"> <VListItemTitle class="text-center text-medium-emphasis">No hay productos en la cotización.</VListItemTitle>
+          <VListItem v-if="props.quotationProducts.length === 0">
+            <VListItemTitle class="text-center text-medium-emphasis"
+              >No hay productos en la cotización.</VListItemTitle
+            >
           </VListItem>
 
           <VListItem
@@ -227,29 +256,35 @@ const chipColor = "primary";
             class="rounded-0"
           >
             <template #prepend>
-               <div class="d-flex align-center" style="width: 60px;">
+              <div class="d-flex align-center" style="width: 60px">
                 <VTextField
-                  v-model.number="product.selectedQuantity" type="number"
+                  v-model.number="product.selectedQuantity"
+                  type="number"
                   variant="outlined"
                   density="compact"
                   hide-details
                   single-line
                   class="cost-input-field text-center"
                   min="1"
-                  :max="product.availableQuantity" >
+                  :max="product.availableQuantity"
+                >
                 </VTextField>
               </div>
             </template>
 
-            <VListItemTitle class="font-weight-medium me-4 mx-2">{{ product.title }}</VListItemTitle>
-            <VListItemSubtitle class='mx-2'>{{product.active_ingredient}}</VListItemSubtitle>
-            <VListItemSubtitle class='mx-2'>{{product.laboratory}}</VListItemSubtitle>
+            <VListItemTitle class="font-weight-medium me-4 mx-2">
+              {{ product.title }} - {{ product.laboratory }}
+            </VListItemTitle>
+            <VListItemSubtitle class="mx-2">
+              {{ product.active_ingredient }}
+            </VListItemSubtitle>
 
             <template #append>
               <div class="d-flex align-center">
                 <span class="text-body-1 me-2">{{
-                    formatCurrency(
-                    getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity,
+                  formatCurrency(
+                    getProductPrice(product, props.selectedDisplayCurrency) *
+                      product.selectedQuantity,
                     props.selectedDisplayCurrency
                   )
                 }}</span>
@@ -257,7 +292,8 @@ const chipColor = "primary";
                   icon="tabler-trash"
                   variant="text"
                   color="error"
-                  @click="removeQuotationProduct(product.id)" />
+                  @click="removeQuotationProduct(product.id)"
+                />
               </div>
             </template>
           </VListItem>
@@ -266,22 +302,46 @@ const chipColor = "primary";
     </VCardText>
 
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-    <VBtn color="secondary" variant="outlined" @click="remove()" class="flex-grow-1"> Cancelar </VBtn>
-    <VBtn color="primary" variant="flat" @click="handlePrintButtonClick" class="flex-grow-1"> Imprimir </VBtn>
-    <VBtn color="success" variant="flat" @click="handleShareButtonClick" class="flex-grow-1"> Compartir </VBtn>
-    <VBtn color="info" variant="flat" @click="handleCopyWhatsappMessage" class="flex-grow-1"> Copiar </VBtn>
+      <VTooltip text="Cancelar" location="top">
+        <template #activator="{ props }">
+          <IconBtn v-bind="props" class="text-secondary" @click="remove()">
+            <VIcon icon="tabler-trash" />
+          </IconBtn>
+        </template>
+      </VTooltip>
+      <VTooltip text="Imprimir" location="top">
+        <template #activator="{ props }">
+          <IconBtn
+            v-bind="props"
+            class="text-primary"
+            @click="handlePrintButtonClick"
+          >
+            <VIcon icon="tabler-printer" />
+          </IconBtn>
+        </template>
+      </VTooltip>
+      <VTooltip text="Compartir" location="top">
+        <template #activator="{ props }">
+          <IconBtn
+            v-bind="props"
+            class="text-success"
+            @click="handleShareButtonClick"
+          >
+            <VIcon icon="tabler-share" />
+          </IconBtn>
+        </template>
+      </VTooltip>
+      <VTooltip text="Copiar" location="top">
+        <template #activator="{ props }">
+          <IconBtn
+            v-bind="props"
+            class="text-info"
+            @click="handleCopyWhatsappMessage"
+          >
+            <VIcon icon="tabler-copy" />
+          </IconBtn>
+        </template>
+      </VTooltip>
     </VCardActions>
-
   </VCard>
 </template>
-
-<style scoped>
-.scrollable-list-container {
-  max-height: 130px;
-  overflow-y: hidden;
-  transition: overflow-y 0.3s ease-in-out;
-}
-.scrollable-list-container.show-scroll {
-  overflow-y: auto; 
-}
-</style>

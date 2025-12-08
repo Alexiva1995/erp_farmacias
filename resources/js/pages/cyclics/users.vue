@@ -15,6 +15,7 @@ const filters = reactive({
   hasStock: null,
   startDate: null,
   endDate: null,
+  isStrictSearch: false,
 });
 
 const {
@@ -53,7 +54,7 @@ const fetchSelectOptions = async () => {
       axios.get("/inventory/cycle/active"),
     ]);
 
-    laboratories.value = labResponse.data.data;
+    laboratories.value = labResponse.data;
     origins.value = originResponse.data;
 
     if (cycleResponse.data.success) {
@@ -139,7 +140,21 @@ const handleClearFilters = () => {
   filters.hasStock = null;
   filters.startDate = null;
   filters.endDate = null;
+  filters.isStrictSearch = false;
+  productOptions.sortBy = undefined;
+  productOptions.orderBy = undefined;
+  invoiceProductsOptions.sortBy = undefined;
+  invoiceProductsOptions.orderBy = undefined;
 };
+
+
+const handleSort = (sortData) => {
+  productOptions.sortBy = sortData.key;
+ productOptions.orderBy = sortData.order; 
+  invoiceProductsOptions.sortBy = sortData.key;
+  invoiceProductsOptions.orderBy = sortData.order;
+};
+
 </script>
 
 <template>
@@ -151,11 +166,13 @@ const handleClearFilters = () => {
       v-model:stockStatusFilter="filters.hasStock"
       v-model:startDate="filters.startDate"
       v-model:endDate="filters.endDate"
+      v-model:isStrictSearch="filters.isStrictSearch"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
       mode="inventory"
       @clear="handleClearFilters"
+      @sort="handleSort"
     />
 
     <VRow class="mt-4">

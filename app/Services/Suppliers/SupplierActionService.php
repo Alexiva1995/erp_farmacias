@@ -2,6 +2,7 @@
 
 namespace App\Services\Suppliers;
 
+use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\PaymentRule;
 use App\Models\SupplierDiscount;
@@ -20,22 +21,22 @@ class SupplierActionService
     public function createSupplier(array $validatedData): Supplier
     {
         return DB::transaction(function () use ($validatedData) {
-            $paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
-            $paymentDays = $validatedData['supplier_payment_days'] ?? null;
-            unset($validatedData['supplier_payment_method']);
-            unset($validatedData['supplier_payment_days']);
+            //$paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
+            //$paymentDays = $validatedData['supplier_payment_days'] ?? null;
+            //unset($validatedData['supplier_payment_method']);
+            //unset($validatedData['supplier_payment_days']);
 
             $supplier = Supplier::create($validatedData);
 
-            if ($paymentMethodType) {
-                SupplierPaymentMethod::create([
-                    'supplier_id' => $supplier->id,
-                    'type' => $paymentMethodType,
-                    'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                ]);
-            }
+            // if ($paymentMethodType) {
+            //     SupplierPaymentMethod::create([
+            //         'supplier_id' => $supplier->id,
+            //         'type' => $paymentMethodType,
+            //         'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //     ]);
+            // }
 
-            $supplier->load('paymentMethods');
+            //$supplier->load('paymentMethods');
 
             return $supplier;
         });
@@ -51,31 +52,31 @@ class SupplierActionService
     public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
     {
         return DB::transaction(function () use ($supplier, $validatedData) {
-            $paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
-            $paymentDays = $validatedData['supplier_payment_days'] ?? null;
-            unset($validatedData['supplier_payment_method']);
-            unset($validatedData['supplier_payment_days']);
+            //$paymentMethodType = $validatedData['supplier_payment_method'] ?? null;
+            //$paymentDays = $validatedData['supplier_payment_days'] ?? null;
+            //unset($validatedData['supplier_payment_method']);
+            //unset($validatedData['supplier_payment_days']);
 
             $supplier->update($validatedData);
 
-            if ($paymentMethodType) {
-                $existingPaymentMethod = $supplier->paymentDate;
+            // if ($paymentMethodType) {
+            //     $existingPaymentMethod = $supplier->paymentDate;
 
-                if ($existingPaymentMethod) {
-                    $existingPaymentMethod->update([
-                        'type' => $paymentMethodType,
-                        'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                    ]);
-                } else {
-                    SupplierPaymentMethod::create([
-                        'supplier_id' => $supplier->id,
-                        'type' => $paymentMethodType,
-                        'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
-                    ]);
-                }
-            }
+            //     if ($existingPaymentMethod) {
+            //         $existingPaymentMethod->update([
+            //             'type' => $paymentMethodType,
+            //             'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //         ]);
+            //     } else {
+            //         SupplierPaymentMethod::create([
+            //             'supplier_id' => $supplier->id,
+            //             'type' => $paymentMethodType,
+            //             'days' => $paymentMethodType === 'credit_days' ? $paymentDays : null,
+            //         ]);
+            //     }
+            // }
 
-            $supplier->load('paymentDate');
+            // $supplier->load('paymentDate');
 
             return $supplier;
         });
@@ -118,5 +119,30 @@ class SupplierActionService
     public function createDiscount(Supplier $supplier, array $data): SupplierDiscount
     {
         return $supplier->discounts()->create($data);
+    }
+    public function applyGlobalDiscount(Supplier $supplier, float $percentage)
+    {
+        $factor = 1 - ($percentage / 100);
+        return \Illuminate\Support\Facades\DB::table('product_suppliers')
+            ->where('supplier_id', $supplier->id)
+            ->update([
+                'unit_cost_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                    ROUND(
+                        COALESCE(NULLIF(unit_cost_with_discount, 0), unit_cost) * {$factor}, 
+                        2
+                    )
+                "),
+                'unit_cost_usd_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                    ROUND(
+                        COALESCE(NULLIF(unit_cost_usd_with_discount, 0), unit_cost_usd) * {$factor}, 
+                        2
+                    )
+                "),
+                'updated_at' => now(),
+            ]);
+    }
+    public function deleteProductsOlderThan(string $date)
+    {
+        return ProductSupplier::whereDate('updated_at', '<', $date)->delete();
     }
 }

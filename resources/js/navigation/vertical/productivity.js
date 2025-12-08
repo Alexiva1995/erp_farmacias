@@ -4,23 +4,35 @@ export default [
     icon: {
       is: 'font-awesome-icon', 
       props: {
-        icon: ['fas', 'boxes-stacked'],
+        icon: ['fas', 'cog'],
         size: 'sm',
       },
     },
+     action: 'manage',
+    subject: 'productividad',
     children: [
       {
-        title: 'Tareas de Limpieza',
-        to: 'productivity-cleaning',
+        title: 'Mi Limpieza',
+        to: 'productivity-my-cleaning-activities',
       },
       {
-        title: 'Laboratorios Por Empleados',
+        title: 'Laboratorios',
         to: 'productivity-laboratory',
       },
       {
-        title: 'Productos Por Empleados',
+        title: 'Productos',
         to: 'productivity-product',
-      }
+      },
+      {
+        title: 'Tareas',
+        to: 'productivity-employee-task',
+      },
+      {
+        title: 'Revision de Actividades de Limpieza',
+        to: 'productivity-supervisor-cleaning-activities',
+        action: 'manage',
+        subject: 'supervisor',
+      },
     ],
   }, 
 ]

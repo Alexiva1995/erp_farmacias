@@ -45,7 +45,6 @@ class Product extends Model
         'barcode',
         'photo_url',
         'sales_average',
-        'group_id',
         'cycle_id',
         'is_deleted',
         'stock',
@@ -288,10 +287,6 @@ class Product extends Model
     public function setNameAttribute($value): void
     {
         $this->attributes['name'] = Str::upper($value);
-    }
-    public function invoiceCounts()
-    {
-        return $this->hasMany(InvoiceCount::class);
     }
 
     /**

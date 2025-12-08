@@ -98,8 +98,12 @@ class InvoiceQueryService
         if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
             $autoOrderDetails = collect();
 
-            foreach ($invoice->supplier->autoOrders as $autoOrder) {
-                foreach ($autoOrder->details as $autoOrderDetail) {
+            $selectableAutoOrders = $invoice->supplier->autoOrders()->where('status', 0)->get();
+
+            foreach ($selectableAutoOrders as $autoOrder) {
+                $selectableDetails = $autoOrder->details()->where('status', 0)->get();
+
+                foreach ($selectableDetails as $autoOrderDetail) {
                     if ($autoOrderDetail->productSupplier && $autoOrderDetail->productSupplier->product) {
                         $product = $autoOrderDetail->productSupplier->product;
 
