@@ -90,6 +90,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Company::class)
             ->give(CompanyServices::class);
 
+        $this->app->when(CompanyController::class)
+            ->needs(Client::class)
+            ->give(ClientServices::class);
+
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);

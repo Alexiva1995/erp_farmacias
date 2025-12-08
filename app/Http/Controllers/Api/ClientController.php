@@ -7,6 +7,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateClientRequest;
 use App\Http\Requests\EditClientRequest;
+use App\Http\Requests\UpdateCompanyClientFormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,8 +18,7 @@ class ClientController extends Controller
 
     public function __construct(
         protected Client $client
-    ) {
-    }
+    ) {}
 
 
     public function create(CreateClientRequest $request): JsonResponse
@@ -71,6 +71,17 @@ class ClientController extends Controller
         }
 
         $respuestaDB = $this->client->edit($request->client->all());
+
+        return ApiResponse::success($respuestaDB, "Cliente editado exitosamente", 200);
+    }
+
+    public function updateCompany(UpdateCompanyClientFormRequest $request): JsonResponse
+    {
+        $client_id = $request->data->client_id;
+        $company_id = $request->data->company_id;
+        $status = $request->data->status;
+        $respuestaDB = $this->client->updateCompany($client_id, $company_id, $status);
+
 
         return ApiResponse::success($respuestaDB, "Cliente editado exitosamente", 200);
     }

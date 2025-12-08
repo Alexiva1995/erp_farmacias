@@ -19,10 +19,10 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="9">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, apellido o identificación..."
@@ -30,7 +30,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.tipo_identificacion_filtro"
             label="Tipo de identificación"
@@ -41,10 +41,10 @@ const emit = defineEmits([
             "
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
-            label="Desde"
+            placeholder="Deste"
             clearable
             :config="{
               altInput: true,
@@ -54,10 +54,10 @@ const emit = defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
-            label="Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -103,13 +103,13 @@ const emit = defineEmits([
           </VListItem>
         </VList>
       </VMenu>
-      <VBtn
+      <!-- <VBtn
         color="primary"
         prepend-icon="tabler-plus"
         @click="emit('add-client')"
       >
         Agregar Cliente
-      </VBtn>
+      </VBtn> -->
     </VCardActions>
   </VCard>
 </template>
