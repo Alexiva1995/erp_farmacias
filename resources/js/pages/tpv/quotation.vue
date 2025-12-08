@@ -366,13 +366,11 @@ const saveAndPrintQuotation = async () => {
     if (printContents) {
       const printWindow = window.open("", "", "height=600,width=800");
 
-      // HTML and CSS for 54mm thermal printer
       printWindow.document.write(`
         <html>
           <head>
             <title>Farmacia Barrio Sucre - Cotización</title>
             <style>
-              /* Set paper size to 54mm */
               @media print {
                 @page {
                   size: 54mm auto;
@@ -390,19 +388,16 @@ const saveAndPrintQuotation = async () => {
                   line-height: 1.2 !important;
                 }
                 
-                /* Force all content to fit within 54mm */
                 * {
                   max-width: 50mm !important;
                   box-sizing: border-box !important;
                   word-wrap: break-word !important;
                 }
                 
-                /* Hide unnecessary elements */
                 .no-print, button, .actions {
                   display: none !important;
                 }
                 
-                /* Optimize for thermal printer */
                 table {
                   width: 100% !important;
                   border-collapse: collapse !important;
@@ -413,14 +408,12 @@ const saveAndPrintQuotation = async () => {
                   font-size: 9px !important;
                 }
                 
-                /* Ensure text doesn't overflow */
                 .break-word {
                   word-break: break-word !important;
                   overflow-wrap: break-word !important;
                 }
               }
               
-              /* Screen preview styles */
               @media screen {
                 body {
                   width: 54mm;
@@ -435,7 +428,6 @@ const saveAndPrintQuotation = async () => {
             </style>
       `);
 
-      // Add existing stylesheets
       const styleSheets = document.styleSheets;
       for (let i = 0; i < styleSheets.length; i++) {
         const sheet = styleSheets[i];
@@ -473,7 +465,6 @@ const saveAndPrintQuotation = async () => {
       printWindow.document.close();
       printWindow.focus();
 
-      // Wait for content to load before printing
       printWindow.onload = function () {
         setTimeout(() => {
           printWindow.print();

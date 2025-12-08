@@ -87,7 +87,6 @@ const formattedDateAndFullTime = computed(() => {
 <template>
   <div id="orderInvoicePrintArea">
     <div class="thermal-print">
-      <!-- Header with logo -->
       <div class="thermal-header">
         <img
           :src="logoSrc"
@@ -98,7 +97,6 @@ const formattedDateAndFullTime = computed(() => {
         />
       </div>
 
-      <!-- Company info -->
       <div class="text-center">
         <div class="thermal-rif">J-50540695-7</div>
         <div class="thermal-company-name">FARMACIA BARRIO SUCRE 2024, C.A.</div>
@@ -107,7 +105,6 @@ const formattedDateAndFullTime = computed(() => {
         <div class="thermal-address">ZONA POSTAL 5020</div>
       </div>
 
-      <!-- Quotation header -->
       <div class="thermal-quotation-header">
         <div class="thermal-quotation-number">
           Cotización N°{{ quotationDetails ? quotationDetails.id : "N/A" }}
@@ -117,14 +114,12 @@ const formattedDateAndFullTime = computed(() => {
         </div>
       </div>
 
-      <!-- Cashier info -->
       <div class="thermal-cashier">
         <span>Cajero:</span>
         <span v-if="currentUser">{{ currentUser.username }}</span>
         <span v-else>No logueado</span>
       </div>
 
-      <!-- Items -->
       <div class="thermal-items">
         <div
           v-for="(item, index) in quotationItems"
@@ -152,20 +147,17 @@ const formattedDateAndFullTime = computed(() => {
         </div>
       </div>
 
-      <!-- Total -->
       <div class="thermal-total">
         <span class="thermal-total-label">TOTAL:</span>
         <span class="thermal-total-amount">{{ formattedTotalQuotation }}</span>
       </div>
 
-      <!-- Footer -->
       <div class="thermal-footer">Cotización válida solo por hoy</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Thermal printer styles for 54mm width */
 :root {
   --thermal-width: 54mm;
   --thermal-padding: 2mm;
@@ -185,7 +177,6 @@ const formattedDateAndFullTime = computed(() => {
   box-sizing: border-box !important;
 }
 
-/* Force all elements to fit within 54mm */
 .thermal-print * {
   max-width: calc(var(--thermal-width) - 2 * var(--thermal-padding)) !important;
   box-sizing: border-box !important;
@@ -195,7 +186,6 @@ const formattedDateAndFullTime = computed(() => {
   padding: 0 !important;
 }
 
-/* Header styles */
 .thermal-header {
   text-align: center !important;
   margin-bottom: 2mm !important;
@@ -245,7 +235,6 @@ const formattedDateAndFullTime = computed(() => {
   text-align: right !important;
 }
 
-/* Cashier info */
 .thermal-cashier {
   display: flex !important;
   justify-content: space-between !important;
@@ -253,7 +242,6 @@ const formattedDateAndFullTime = computed(() => {
   margin-bottom: 1mm !important;
 }
 
-/* Items table */
 .thermal-items {
   margin-top: 2mm !important;
 }
@@ -296,7 +284,6 @@ const formattedDateAndFullTime = computed(() => {
   color: #666 !important;
 }
 
-/* Totals */
 .thermal-total {
   display: flex !important;
   justify-content: space-between !important;
@@ -317,7 +304,6 @@ const formattedDateAndFullTime = computed(() => {
   text-align: right !important;
 }
 
-/* Footer */
 .thermal-footer {
   text-align: center !important;
   font-size: 7px !important;
@@ -325,7 +311,6 @@ const formattedDateAndFullTime = computed(() => {
   padding-top: 2mm !important;
 }
 
-/* Utility classes */
 .text-center {
   text-align: center !important;
 }
@@ -346,7 +331,6 @@ const formattedDateAndFullTime = computed(() => {
   margin-bottom: 1mm !important;
 }
 
-/* Hide non-print elements */
 .no-print {
   display: none !important;
 }
