@@ -1,16 +1,18 @@
 <script setup>
+import CreditFilters from "@/components/CreditFilters.vue";
+import CreditsTicket from "@/components/CreditsTicket.vue";
 import CreditTable from "@/components/CreditTable.vue";
-import axios from "@/plugins/axios";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
+import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import CreditsTicket from "@/components/CreditsTicket.vue";
-import { nextTick, ref, watch, onMounted } from "vue";
+import { nextTick, onMounted, ref, watch } from "vue";
 
 const credits = ref([]);
 const totalCredits = ref(0);
 const loading = ref(false);
 
+const searchQuery = ref("");
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -37,6 +39,7 @@ const fetchCredits = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    search: searchQuery.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -55,7 +58,7 @@ const fetchCredits = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCredits(), 300);
@@ -72,6 +75,10 @@ const updateTableOptions = (options) => {
   itemsPerPage.value = options.itemsPerPage;
   sortBy.value = options.sortBy[0]?.key;
   orderBy.value = options.sortBy[0]?.order;
+};
+
+const clearFilters = () => {
+  searchQuery.value = "";
 };
 
 const openCreditsModal = (credit) => {
@@ -279,13 +286,19 @@ const printCreditOrders = async (credit) => {
   } catch (error) {
     console.error("Error al obtener los detalles de los créditos:", error);
     toast.error("No se pudo cargar el historial de la orden.");
-          isPrinting.value = false;
-      creditsData.value = null;
+    isPrinting.value = false;
+    creditsData.value = null;
   }
 };
 </script>
 
 <template>
+  <CreditFilters
+    :search-query="searchQuery"
+    @update:search-query="searchQuery = $event"
+    @clear="clearFilters"
+  />
+
   <CreditTable
     :credits="credits"
     :loading="loading"
