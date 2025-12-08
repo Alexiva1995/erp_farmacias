@@ -7,7 +7,6 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
 import Swal from 'sweetalert2';
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -15,29 +14,26 @@ import { useRoute, useRouter } from "vue-router";
 const route= useRoute()
 const router= useRouter()
 
-// console.log(route.query)
 const pageOportunidad = ref(1);
-
 const indexNavegacion=ref(1)
 
 const module = reactive({
   dataProductos: {},
   productoFallas: [],
-  productosOportunidadUnica: { data: [], current_page: 1, last_page: 1, total: 0 },
+  productosOportunidadUnica: [],
   detalleOrder: [],
-  productosSinReponer: [],
   loadingApp: true,
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
 let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laboratoryId):[]
 
-
-const con_descuento= ref(route.query.con_descuento);// descuento o precio full
+const con_descuento= ref(route.query.con_descuento);
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);
 const groups= ref(gruposList);
 const laboratoryId= ref(laboratoriosList);
+const stock = ref(route.query.stock || 'all');
 
 async function generarPedido(page = 1) {
   let data = {
@@ -46,6 +42,7 @@ async function generarPedido(page = 1) {
     "lapso_de_tiempo": lapso_de_tiempo.value,
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
+    "stock": stock.value,
     "page": page
   }
 
@@ -98,14 +95,18 @@ function procesarRespuesta(data) {
       })
       module.productoFallas = [...data.data.productos_a_reponer];
   }
-  if (data.data.productos_oportunidad_unica && data.data.productos_oportunidad_unica.data) {
-    data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(a => {
+
+  if (data.data.productos_oportunidad_unica && Array.isArray(data.data.productos_oportunidad_unica)) {
+
+    const oportunidades = data.data.productos_oportunidad_unica.map(a => {
       a.uuid = generateUUID()
       return a
     })
-    module.productosOportunidadUnica = data.data.productos_oportunidad_unica;
+
+    module.productosOportunidadUnica = oportunidades;
+
   } else {
-    module.productosOportunidadUnica = { data: [], total: 0 };
+    module.productosOportunidadUnica = [];
   }
 
   module.dataProductos = { ...data.data };
@@ -122,7 +123,6 @@ onMounted(async () => {
     module.loadingApp = false;
   }
 });
-
 
 
 function actualizarIndexNavegacion(payload){
@@ -157,17 +157,21 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
         productConOportunidadUnica.reponer=productEnFalla.reponer
       }
       productosConOportunidadUnica[index2]=productConOportunidadUnica
-
     }
-
   }
   return productosConOportunidadUnica
-
 }
 
 function seleccionarProductosParaElDetalle(){
   module.detalleOrder = []
-  const listaOportunidad = module.productosOportunidadUnica?.data || [];
+
+  // Verificación segura para obtener la lista
+  let listaOportunidad = [];
+  if (Array.isArray(module.productosOportunidadUnica)) {
+      listaOportunidad = module.productosOportunidadUnica;
+  } else if (module.productosOportunidadUnica?.data) {
+      listaOportunidad = module.productosOportunidadUnica.data;
+  }
 
   let productosEnFalla = verificarSiHayProductosEnFallaEnLaLista(
       [...module.productoFallas],
@@ -180,24 +184,25 @@ function seleccionarProductosParaElDetalle(){
   )
 
   let detalles = [...productosEnFalla, ...productosSinFallas]
-  detalles = detalles.filter(producto => producto.reponer > 0)
 
-  module.detalleOrder = detalles
+  const productosAComprar = detalles.filter(producto =>
+      producto.reponer > 0 &&
+      producto.supplier &&
+      producto.supplier.id
+  )
+
+  module.detalleOrder = productosAComprar
 }
 
-// esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
 function removerProductosConProveedores(productosEnFalla,productosOportunidadUnica){
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
     productosOportunidadUnica=productosOportunidadUnica.filter(productUnique => !(producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id))
-
   }
   return productosOportunidadUnica
 }
 
-
 function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProductosOportunidaUnica){
-
   for (let index = 0; index < productosEnFalla.length; index++) {
     const producto = productosEnFalla[index];
     let buscarSiTieneOportunidadUnica=listaDeProductosOportunidaUnica.find(productUnique => producto.product.id==productUnique.product.id && producto.supplier.id==productUnique.supplier.id)
@@ -208,7 +213,6 @@ function verificarSiHayProductosEnFallaEnLaLista(productosEnFalla,listaDeProduct
     }
   }
   return productosEnFalla;
-
 }
 
 function generateUUID() {
@@ -324,7 +328,6 @@ async function realizarCompra(){
   const DATA={
     orders
   }
-  console.log("datos enviar => ",orders)
 
   let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
   if(response.status!=200){
@@ -332,52 +335,14 @@ async function realizarCompra(){
     toast.error("Error al generar al compra")
     return
   }
+
   module.loadingApp=false
   toast.success("Compra realizada con exito")
-  module.loadingApp=true
-
-  let productosSinPorveedor= await consultarProductosSinProveedor()
-  pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
-
-  module.loadingApp=false
   router.push("/suppliers/purchase-orders/list")
-}
-
-async function consultarProductosSinProveedor(){
-  let productos=module.productosSinReponer.filter(p => p.solicitar<0)
-  let ids=productos.map(p => p.id)
-  let idsConFantante=productos.map(p => {
-    return {
-      "id": p.id,
-      "solicitar": p.solicitar,
-    }
-  })
-  console.log("ids => ",ids)
-  console.log("ids con solicitar => ",idsConFantante)
-
-  let data={
-    "tipo_filtracion":tipo_de_filtracion.value,
-    "lapso_de_tiempo":lapso_de_tiempo.value,
-    ids,
-    idsConFantante
-    // "groups":groups.value,
-    // "laboratoryId":laboratoryId.value,
-  }
-
-  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier",data)
-  if(response.status!=200){
-    toast.error("Error al generar el reporte de de productos sin proveedor")
-    return
-  }
-  toast.success("Reporte Generado")
-  console.log("data => ",response.data.data)
-  return [...response.data.data]
 }
 
 
 function eliminarItemOrden(payload){
-  console.log("payload => ",payload)
-
   module.detalleOrder=module.detalleOrder.filter(itemOrder => itemOrder.uuid!=payload.uuid)
 }
 </script>
@@ -426,9 +391,8 @@ function eliminarItemOrden(payload){
       v-if="indexNavegacion == 3"
     >
       <UniqueMarketOpportunityTable
-        :pagination-data="module.productosOportunidadUnica"
+        :list="module.productosOportunidadUnica"
         :loading="module.loadingApp"
-        @change-page="handleChangePageOportunidad"
       />
     </VCard>
 
@@ -450,13 +414,7 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
-        <!-- order="1"
-          order-sm="1"
-          order-md="2"
-          order-lg="2"
-          sm="12"
-          md="12"
-          lg="3" -->
+
         <VCol
           order="1"
           order-sm="1"
