@@ -1,14 +1,13 @@
 <script setup>
-import QuotationTable from "@/components/QuotationTable.vue";
-import QuotationFilters from "@/components/QuotationFilters.vue";
-import QuotationProducts from "@/components/cards/QuotationProducts.vue";
 import QuotationCard from "@/components/cards/QuotationCard.vue";
+import QuotationProducts from "@/components/cards/QuotationProducts.vue";
+import QuotationFilters from "@/components/QuotationFilters.vue";
+import QuotationTable from "@/components/QuotationTable.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
 import axios from "@/plugins/axios";
-import { onMounted, ref, watch, computed, nextTick } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -366,33 +365,125 @@ const saveAndPrintQuotation = async () => {
     const printContents = document.getElementById("orderInvoicePrintArea");
     if (printContents) {
       const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+
+      // HTML and CSS for 54mm thermal printer
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Farmacia Barrio Sucre - Cotización</title>
+            <style>
+              /* Set paper size to 54mm */
+              @media print {
+                @page {
+                  size: 54mm auto;
+                  margin: 0;
+                  padding: 0;
+                }
+                
+                body {
+                  width: 54mm !important;
+                  max-width: 54mm !important;
+                  margin: 0 !important;
+                  padding: 2mm !important;
+                  font-family: 'Courier New', monospace !important;
+                  font-size: 10px !important;
+                  line-height: 1.2 !important;
+                }
+                
+                /* Force all content to fit within 54mm */
+                * {
+                  max-width: 50mm !important;
+                  box-sizing: border-box !important;
+                  word-wrap: break-word !important;
+                }
+                
+                /* Hide unnecessary elements */
+                .no-print, button, .actions {
+                  display: none !important;
+                }
+                
+                /* Optimize for thermal printer */
+                table {
+                  width: 100% !important;
+                  border-collapse: collapse !important;
+                }
+                
+                td, th {
+                  padding: 1px 0 !important;
+                  font-size: 9px !important;
+                }
+                
+                /* Ensure text doesn't overflow */
+                .break-word {
+                  word-break: break-word !important;
+                  overflow-wrap: break-word !important;
+                }
+              }
+              
+              /* Screen preview styles */
+              @media screen {
+                body {
+                  width: 54mm;
+                  border: 1px dashed #ccc;
+                  margin: 0;
+                  padding: 2mm;
+                  font-family: 'Courier New', monospace;
+                  font-size: 10px;
+                  line-height: 1.2;
+                }
+              }
+            </style>
+      `);
+
+      // Add existing stylesheets
       const styleSheets = document.styleSheets;
       for (let i = 0; i < styleSheets.length; i++) {
         const sheet = styleSheets[i];
         try {
           if (sheet.cssRules) {
-            let cssText = '';
+            let cssText = "";
             for (let j = 0; j < sheet.cssRules.length; j++) {
               cssText += sheet.cssRules[j].cssText;
             }
             printWindow.document.write(`<style>${cssText}</style>`);
           } else if (sheet.href) {
-            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+            printWindow.document.write(
+              `<link rel="stylesheet" href="${sheet.href}">`
+            );
           }
         } catch (e) {
-          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
+          console.warn(
+            "No se pudo acceder a la hoja de estilo:",
+            sheet.href || sheet,
+            e
+          );
         }
       }
-      printWindow.document.write("</head><body>");
+
+      printWindow.document.write(`
+          </head>
+          <body>
+      `);
       printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
+      printWindow.document.write(`
+          </body>
+        </html>
+      `);
+
       printWindow.document.close();
       printWindow.focus();
-      printWindow.print();
-      printWindow.close();
+
+      // Wait for content to load before printing
+      printWindow.onload = function () {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 100);
+      };
     } else {
-      console.warn("Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página.");
+      console.warn(
+        "Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+      );
       window.print();
     }
 
@@ -471,7 +562,10 @@ const handleSort = (sortOptions) => {
       @add-product="addProductToQuotation"
     />
 
-    <div id="orderInvoicePrintArea" :class="{ 'd-none': !isPrinting, 'print-container': true }">
+    <div
+      id="orderInvoicePrintArea"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
       <QuotationTicket
         :quotation-details="quotationDetails"
         :quotation-items="quotationItems"

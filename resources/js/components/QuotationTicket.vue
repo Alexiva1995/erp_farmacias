@@ -1,10 +1,9 @@
 <script setup>
-import { computed } from 'vue';
-import { formatCurrency } from "@/utils/currencyFormatter";
-import ExpiredDetailView from '@/components/ExpiredDetailView.vue';
-import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js"
-import { BASE64_LOGO_DATA } from '@/constants/logo.js';
+import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { useAuthStore } from "@/stores/auth";
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed } from "vue";
 
 const props = defineProps({
   quotationDetails: {
@@ -29,120 +28,326 @@ const props = defineProps({
   },
   selectedDisplayCurrency: {
     type: String,
-    default: 'USD',
+    default: "USD",
   },
-    baseUrl: {
+  baseUrl: {
     type: String,
-    default: '/',
+    default: "/",
   },
 });
-
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
 const getItemPriceByCurrency = (item, currency) => {
-  const taxRate = item.taxRate || 0; 
+  const taxRate = item.taxRate || 0;
   let basePrice = 0;
-  if (currency === 'BS') {
+  if (currency === "BS") {
     basePrice = item.price_bs || 0;
-  } else if (currency === 'COP') {
+  } else if (currency === "COP") {
     basePrice = item.price_cop || 0;
   } else {
     basePrice = item.price || 0;
   }
   let priceWithIva = basePrice * (1 + taxRate);
-   if (currency === 'COP') {
-     priceWithIva = roundUpToNearestHundred(priceWithIva);
-   }
+  if (currency === "COP") {
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+  }
   return priceWithIva;
 };
 
-
 const formattedTotalQuotation = computed(() => {
   let amountToFormat = props.totalQuotationAmount;
-  if (props.selectedDisplayCurrency === 'COP') {
+  if (props.selectedDisplayCurrency === "COP") {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
   }
   return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
 
-
 const logoSrc = computed(() => {
   return BASE64_LOGO_DATA;
 });
 
-
 const formattedDateAndFullTime = computed(() => {
   const now = new Date();
-  const datePart = now.toLocaleDateString('es-VE', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric'
+  const datePart = now.toLocaleDateString("es-VE", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
   });
-  const timePart = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
+  const timePart = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
   return `${datePart}, ${timePart}`;
 });
-
 </script>
-<template>
- <div class="col-12 col-md-8 mx-auto">
- <VCard   
-  variant="outlined"    
-  class="pa-2 text-start">
-    <div class="text-center pa-2 mb-2">
-        <a href="#">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca">
-        </a>
-    </div>
-     <div class="text-center">
-        <span class='headerPrint'>J-50540695-7</span>
-    </div>
-    <div class="text-center">
-        <span class='headerPrint'>FARMACIA BARRIO SUCRE 2024, C.A.</span>
-    </div>
-    <div class="text-center">
-         <span class='headerPrint'>CALLE PRINCIPAL LOCAL 05 (L5)</span>
-    </div>
-     <div class="text-center">
-         <span class='headerPrint'>SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
-    </div>
-    <div class="text-center">
-       <span class='headerPrint'>ZONA POSTAL 5020</span>
-    </div>
-    <div class="ticket-header d-flex justify-space-between align-start mt-2">
-      <span class="font-weight-bold tituloAzulPrint">Cotización N°{{ quotationDetails ? quotationDetails.id : 'N/A' }}</span>
-      <div class="text-right d-flex flex-column align-end">
-      <p class="text-black font-weight-regular mb-0 textoPrint">Fecha: {{ formattedDateAndFullTime }}</p>
-      </div>
-    </div>
-    <div class="d-flex justify-space-between align-start textoPrint mb-1">
-      <span class="textoPrint">Cajero:</span>
-      <span v-if="currentUser">{{ currentUser.username }}</span>
-      <span v-else>No logueado</span>
-    </div>
 
-    <div class="ticket-body mt-2">
-      <div v-for="item in quotationItems" :key="item.id" class="ticket-item">
-          <span class="ticket-item-qty">{{ item.selectedQuantity }}x</span>
-          <span class="ticket-item-name">{{ item.title }}</span>
-           <span class="ticket-item-total">
-            {{ formatCurrency(getItemPriceByCurrency(item, selectedDisplayCurrency) * item.selectedQuantity, selectedDisplayCurrency) }}
-          </span>
+<template>
+  <div id="orderInvoicePrintArea">
+    <div class="thermal-print">
+      <!-- Header with logo -->
+      <div class="thermal-header">
+        <img
+          :src="logoSrc"
+          alt="Logo"
+          class="thermal-logo"
+          width="130"
+          height="auto"
+        />
       </div>
-     <hr />
-      <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold tituloAzulPrint">TOTAL:</span> 
-          <span class="text-end font-weight-black tituloAzulPrint">{{formattedTotalQuotation}}
-          </span>
+
+      <!-- Company info -->
+      <div class="text-center">
+        <div class="thermal-rif">J-50540695-7</div>
+        <div class="thermal-company-name">FARMACIA BARRIO SUCRE 2024, C.A.</div>
+        <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>
+        <div class="thermal-address">SECTOR BARRIO SUCRE LA FRIA TACHIRA</div>
+        <div class="thermal-address">ZONA POSTAL 5020</div>
       </div>
+
+      <!-- Quotation header -->
+      <div class="thermal-quotation-header">
+        <div class="thermal-quotation-number">
+          Cotización N°{{ quotationDetails ? quotationDetails.id : "N/A" }}
+        </div>
+        <div class="thermal-date">
+          {{ formattedDateAndFullTime }}
+        </div>
+      </div>
+
+      <!-- Cashier info -->
+      <div class="thermal-cashier">
+        <span>Cajero:</span>
+        <span v-if="currentUser">{{ currentUser.username }}</span>
+        <span v-else>No logueado</span>
+      </div>
+
+      <!-- Items -->
+      <div class="thermal-items">
+        <div
+          v-for="(item, index) in quotationItems"
+          :key="item.id"
+          class="thermal-item"
+        >
+          <div class="thermal-item-qty">{{ item.selectedQuantity }}x</div>
+          <div class="thermal-item-details">
+            <span class="thermal-item-name">
+              {{ item.title }}
+            </span>
+            <span class="thermal-item-laboratory" v-if="item.laboratory">
+              {{ item.laboratory }}
+            </span>
+          </div>
+          <div class="thermal-item-price">
+            {{
+              formatCurrency(
+                getItemPriceByCurrency(item, selectedDisplayCurrency) *
+                  item.selectedQuantity,
+                selectedDisplayCurrency
+              )
+            }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="thermal-total">
+        <span class="thermal-total-label">TOTAL:</span>
+        <span class="thermal-total-amount">{{ formattedTotalQuotation }}</span>
+      </div>
+
+      <!-- Footer -->
+      <div class="thermal-footer">Cotización válida solo por hoy</div>
     </div>
-      <p class="ticket-footer mt-auto">Cotización válida solo por hoy</p>
-  </VCard>
   </div>
 </template>
 
+<style scoped>
+/* Thermal printer styles for 54mm width */
+:root {
+  --thermal-width: 54mm;
+  --thermal-padding: 2mm;
+  --thermal-font-size: 9px;
+  --thermal-line-height: 1.2;
+}
+
+.thermal-print {
+  width: var(--thermal-width) !important;
+  max-width: var(--thermal-width) !important;
+  min-width: var(--thermal-width) !important;
+  margin: 0 !important;
+  padding: var(--thermal-padding) !important;
+  font-family: "Courier New", monospace !important;
+  font-size: var(--thermal-font-size) !important;
+  line-height: var(--thermal-line-height) !important;
+  box-sizing: border-box !important;
+}
+
+/* Force all elements to fit within 54mm */
+.thermal-print * {
+  max-width: calc(var(--thermal-width) - 2 * var(--thermal-padding)) !important;
+  box-sizing: border-box !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Header styles */
+.thermal-header {
+  text-align: center !important;
+  margin-bottom: 2mm !important;
+}
+
+.thermal-logo {
+  max-width: 40mm !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+.thermal-rif {
+  font-size: 8px !important;
+  font-weight: bold !important;
+  margin: 1mm 0 !important;
+}
+
+.thermal-company-name {
+  font-size: 8px !important;
+  font-weight: bold !important;
+  margin: 1mm 0 !important;
+  line-height: 1.1 !important;
+}
+
+.thermal-address {
+  font-size: 7px !important;
+  margin: 0.5mm 0 !important;
+  line-height: 1.1 !important;
+}
+
+.thermal-quotation-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  margin-top: 2mm !important;
+  margin-bottom: 2mm !important;
+}
+
+.thermal-quotation-number {
+  font-size: 9px !important;
+  font-weight: bold !important;
+}
+
+.thermal-date {
+  font-size: 8px !important;
+  text-align: right !important;
+}
+
+/* Cashier info */
+.thermal-cashier {
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 8px !important;
+  margin-bottom: 1mm !important;
+}
+
+/* Items table */
+.thermal-items {
+  margin-top: 2mm !important;
+}
+
+.thermal-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  margin-bottom: 1mm !important;
+  padding-bottom: 1mm !important;
+}
+
+.thermal-item-qty {
+  flex: 0 0 8mm !important;
+  font-size: 8px !important;
+}
+
+.thermal-item-details {
+  flex: 1 !important;
+  padding: 0 1mm !important;
+  font-size: 7px !important;
+  line-height: 1.1 !important;
+}
+
+.thermal-item-price {
+  flex: 0 0 15mm !important;
+  text-align: right !important;
+  font-size: 8px !important;
+  font-weight: bold !important;
+}
+
+.thermal-item-name {
+  display: block !important;
+  font-weight: bold !important;
+  margin-bottom: 0.5mm !important;
+}
+
+.thermal-item-laboratory {
+  display: block !important;
+  font-size: 6px !important;
+  color: #666 !important;
+}
+
+/* Totals */
+.thermal-total {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-top: 2mm !important;
+  margin-bottom: 2mm !important;
+  padding-top: 2mm !important;
+}
+
+.thermal-total-label {
+  font-size: 9px !important;
+  font-weight: bold !important;
+}
+
+.thermal-total-amount {
+  font-size: 10px !important;
+  font-weight: bold !important;
+  text-align: right !important;
+}
+
+/* Footer */
+.thermal-footer {
+  text-align: center !important;
+  font-size: 7px !important;
+  margin-top: 3mm !important;
+  padding-top: 2mm !important;
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.font-bold {
+  font-weight: bold !important;
+}
+
+.mt-1 {
+  margin-top: 1mm !important;
+}
+
+.mb-1 {
+  margin-bottom: 1mm !important;
+}
+
+/* Hide non-print elements */
+.no-print {
+  display: none !important;
+}
+</style>
