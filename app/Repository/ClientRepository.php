@@ -122,4 +122,27 @@ class ClientRepository
 
         return $consulta->paginate($perPage);
     }
+
+    public function assignCompany(int $client_id, int $company_id): ?Model
+    {
+        $client = $this->consultById($client_id);
+        if (!$client) {
+            return null;
+        }
+        $client->company_id = $company_id;
+        $client->save();
+
+        return $client;
+    }
+    public function removerAssignCompany(int $client_id): ?Model
+    {
+        $client = $this->consultById($client_id);
+        if (!$client) {
+            return null;
+        }
+        $client->company_id = null;
+        $client->save();
+
+        return $client;
+    }
 }

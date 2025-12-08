@@ -33,7 +33,7 @@ const productosTable = computed(() => {
       </thead>
 
       <tbody>
-        <tr v-for="item in productosTable" :key="item.uuid">
+        <tr v-for="item in productosTable" :key="item.uuid || item.product.id">
           <td>
             {{ item.supplier.name }}
           </td>
@@ -118,5 +118,9 @@ const productosTable = computed(() => {
         </tr>
       </tbody>
     </VTable>
+
+    <div v-else class="pa-5 text-center text-medium-emphasis">
+      No hay productos sin incremento de precio.
+    </div>
   </VCard>
 </template>

@@ -18,10 +18,10 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="12" md="12">
+        <VCol cols="12" sm="12" md="2">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, identificación o dirección..."
@@ -29,10 +29,10 @@ const emit = defineEmits([
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
-            label="Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -42,10 +42,10 @@ const emit = defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
-            label="Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,

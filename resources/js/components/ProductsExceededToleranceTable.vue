@@ -28,7 +28,7 @@ const productosTable = computed(() => {
           <th>Costo P.</th>
           <th>Stock A.</th>
           <th>Análisis</th>
-          <th>Sugerencia</th>
+          <th style="width: 120px">Sugerencia</th>
         </tr>
       </thead>
 
@@ -98,11 +98,14 @@ const productosTable = computed(() => {
               :style="
                 item.product.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'
               "
-              >{{ item.product.solicitar > 0 ? "+" : ""
-              }}{{ item.product.solicitar }}</span
+              class="font-weight-bold"
             >
+              {{ item.product.solicitar > 0 ? "+" : ""
+              }}{{ item.product.solicitar }}
+            </span>
           </td>
-          <td class="row">
+
+          <td>
             <VTextField
               type="number"
               v-model="item.reponer"
@@ -116,5 +119,9 @@ const productosTable = computed(() => {
         </tr>
       </tbody>
     </VTable>
+
+    <div v-else class="pa-5 text-center text-medium-emphasis">
+      No hay productos con incremento de precio.
+    </div>
   </VCard>
 </template>
