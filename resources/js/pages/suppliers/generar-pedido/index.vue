@@ -450,13 +450,6 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
-        <!-- order="1"
-          order-sm="1"
-          order-md="2"
-          order-lg="2"
-          sm="12"
-          md="12"
-          lg="3" -->
         <VCol
           order="1"
           order-sm="1"
