@@ -297,7 +297,7 @@ class SuppliersIaOrderAssistantController extends Controller
         });
 
         $page = $request->input('page', 1);
-        $perPage = 7;
+        $perPage = 20;
 
         $totalItems = count($sortedIds);
         $idsPaginaActual = collect($sortedIds)->forPage($page, $perPage)->values();

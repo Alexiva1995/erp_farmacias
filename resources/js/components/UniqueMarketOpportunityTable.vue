@@ -26,12 +26,7 @@ const currentPage = computed({
   <VCard>
     <VProgressLinear v-if="loading" indeterminate color="primary" />
 
-    <VTable
-      v-if="productosTable.length > 0"
-      height="450"
-      fixed-header
-      class="text-no-wrap"
-    >
+    <VTable v-if="productosTable.length > 0" class="text-no-wrap">
       <thead>
         <tr>
           <th>Proveedor</th>
@@ -118,7 +113,6 @@ const currentPage = computed({
       </tbody>
     </VTable>
 
-    <!-- Resto del componente igual... -->
     <div v-else class="pa-5 text-center text-medium-emphasis">
       No hay oportunidades de mercado en esta página.
     </div>
