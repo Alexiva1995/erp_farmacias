@@ -10,7 +10,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
-
+/*
 const formData = ref({
   discounts: [], // array de rangos
 });
@@ -50,7 +50,146 @@ watch(
     formData.value.discounts = [];
   },
   { deep: true }
+);*/
+
+
+const editableRules = ref([]);
+const tempIdCounter = ref(-1);
+const internalErrors = ref({});
+
+watch(
+  () => props.errors,
+  (newErrors) => {
+    internalErrors.value = { ...internalErrors.value, ...newErrors };
+  },
+  { deep: true }
 );
+
+
+watch(
+  () => props.supplierDiscount,
+  (newRules) => {
+    if (!newRules || newRules.length === 0) {
+      editableRules.value = [];
+      return;
+    }
+    editableRules.value = newRules.map((rule) => {
+      return {
+        ...rule,
+        _markedForDeletion: false,
+        _markedNew: false,
+      };
+    });
+  },
+  { deep: true, immediate: true }
+);
+
+const closeDialog = () => {
+  internalErrors.value = {};
+  emit("update:modelValue", false);
+};
+
+const addNewRuleRow = () => {
+  editableRules.value.push({
+    id: tempIdCounter.value,
+    name: null,
+    discount_percentage:1,
+    _markedForDeletion: true,
+     _markedNew: true,
+  });
+  tempIdCounter.value--;
+};
+
+const removeRule = (rule) => {
+  const index = editableRules.value.findIndex(r => r === rule);
+  if (index === -1) return;
+  editableRules.value.splice(index, 1);
+  Object.keys(internalErrors.value).forEach((key) => {
+    if (key.endsWith(`_${index}`)) {
+      delete internalErrors.value[key];
+    }
+  });
+};
+
+const getFieldError = (field, index) => {
+  return internalErrors.value[`${field}_${index}`];
+};
+
+
+const validateRuleDiscountPercentage = (rule, index) => {
+  const discount_percentage = parseInt(rule.discount_percentage);
+  if (rule._markedForDeletion) {
+    delete internalErrors.value[`discount_percentage_${index}`];
+    return true;
+  }
+  if (isNaN(discount_percentage) || discount_percentage <= 0) {
+    internalErrors.value[`discount_percentage_${index}`] =
+      "La cantidad debe ser mayor 0";
+    return false;
+  }
+  delete internalErrors.value[`discount_percentage_${index}`];
+  return true;
+};
+
+const validateRule = (rule, index) => {
+  if (rule._markedForDeletion || parseInt(rule.discount_percentage) === 0) {
+    delete internalErrors.value[`days_${index}`];
+    return true;
+  }
+  let isValid = true;
+
+  if (!rule.name) {
+    internalErrors.value[`name_${index}`] = "El nombre es requerido";
+    isValid = false;
+  } else {
+    delete internalErrors.value[`name_${index}`];
+  }
+
+  if (!validateRuleDiscountPercentage(rule, index)) {
+    isValid = false;
+  }
+  return isValid;
+};
+
+const canSave = computed(() => {
+  if (editableRules.value.length === 0) {
+    return true;
+  }
+  let allRulesAreValid = true;
+  editableRules.value.forEach((rule, index) => {
+    if (!rule._markedForDeletion) {
+        if (!validateRule(rule, index)) {
+            allRulesAreValid = false;
+        }
+    }
+  });
+  if (Object.keys(internalErrors.value).length > 0) {
+      return false;
+  }
+  const hasActiveRules = editableRules.value.some(rule => !rule._markedForDeletion);
+  return allRulesAreValid && (hasActiveRules || editableRules.value.every(rule => rule._markedForDeletion));
+});
+
+const onSave = () => {
+  let allFormFieldsValid = true;
+  internalErrors.value = {};
+  editableRules.value.forEach((rule, index) => {
+    if (!rule._markedForDeletion) {
+      if (!validateRule(rule, index)) {
+        allFormFieldsValid = false;
+      }
+    }
+  });
+  if (allFormFieldsValid) {
+    const rulesToSave = editableRules.value.map((rule) => ({
+      id: rule.id && rule.id > 0 ? rule.id : undefined,
+      name: rule.name,
+      discount_percentage: parseFloat(rule.discount_percentage),
+    }));
+    emit("save", rulesToSave);
+  }
+};
+
 </script>
 <template>
   <VDialog
@@ -74,68 +213,76 @@ watch(
 
       <VDivider />
 
-      <VCardText class="px-6 py-4" style="overflow-y: auto">
-        <template v-if="props.loading">
-          <div class="text-center text-medium-emphasis py-8">
-            <VProgressCircular indeterminate color="primary" size="32" />
-            <div class="mt-2">Cargando descuentos...</div>
-          </div>
-        </template>
-        <template v-else>
-          <VForm @submit.prevent="submitForm">
-            <VRow
-              v-for="(discount, index) in formData.discounts"
-              :key="index"
-              class="mb-4"
-            >
-              <VCol cols="12" md="5">
+      <VCardText class="flex-grow-1" style="overflow-y: auto">
+        <div class="d-flex align-center mb-4">
+          <VSpacer />
+          <VBtn
+            prepend-icon="tabler-plus"
+            color="primary"
+            variant="flat"
+            @click="addNewRuleRow"
+          >
+            Agregar Regla
+          </VBtn>
+        </div>
+        <VDataTable
+          :headers="[
+            { title: 'Nombre', key: 'name', sortable: false },
+            {
+              title: '% de Descuento',
+              key: 'discount_percentage',
+              sortable: false,
+            },
+            { title: 'Acciones', key: 'actions', sortable: false },
+          ]"
+          :items="editableRules"
+          density="compact"
+          class="rounded-lg"
+          no-data-text="No hay reglas registradas para este proveedor."
+        >
+          <template #item="{ item, index }">
+            <tr :class="{ 'bg-grey-100 opacity-80': !item._markedNew }">
+              <td>
                 <VTextField
-                  v-model="discount.name"
-                  label="Nombre"
+                  v-model="item.name"
                   type="text"
-                  variant="outlined"
-                  :error-messages="formErrors[`discounts.${index}.name`]"
+                  variant="plane"
+                  :error-messages="getFieldError('name', index)"
+                  hide-details="auto"
+                  density="compact"
+                  min="0"
+                  :disabled="!item._markedNew"
                 />
-              </VCol>
-              <VCol cols="12" md="5">
+              </td>
+              <td>
                 <VTextField
-                  v-model="discount.discount_percentage"
-                  label="% de Descuento"
+                  v-model="item.discount_percentage"
                   type="number"
-                  variant="outlined"
-                  :error-messages="formErrors[`discounts.${index}.discount_percentage`]"
+                  variant="plane"
+                  :error-messages="getFieldError('discount_percentage', index)"
+                  hide-details="auto"
+                  density="compact"
+                  @input="onDiscountPercentageChange(item, index)"
+                  :disabled="!item._markedNew"
                 />
-              </VCol>
-              <VCol cols="12" md="2" class="d-flex align-center">
-                <VBtn icon variant="text" color="error" @click="removeDiscount(index)">
-                  <VIcon>tabler-trash</VIcon>
-                </VBtn>
-              </VCol>
-            </VRow>
-            <VBtn variant="tonal" color="primary" class="mt-2" @click="addDiscount">
-              Agregar Descuento
-            </VBtn>
-
-            <VDivider class="my-6" />
-
-            <div class="d-flex align-center mb-4">
-              <p class="text-h6 font-weight-medium">Descuentos existentes</p>
-              <VSpacer />
-            </div>
-
-            <VDataTable
-              :headers="[
-                { title: 'Nombre', key: 'name' },
-                { title: '% de Descuento', key: 'discount_percentage' },
-              ]"
-              :items="props.supplierDiscount"
-              density="compact"
-              no-data-text="No hay descuentos registrados para este proveedor."
-            />
-          </VForm>
-        </template>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <VBtn
+                  if
+                    icon="tabler-trash"
+                    variant="text"
+                    color="error"
+                    size="small"
+                    @click="removeRule(item)"
+                    :disabled="!item._markedNew"
+                  />
+                </div>
+              </td>
+            </tr>
+          </template>
+        </VDataTable>
       </VCardText>
-
       <VDivider />
 
       <VCardActions class="pa-4">
@@ -147,7 +294,13 @@ watch(
         >
           Cancelar
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="submitForm" class="flex-grow-1 w-0">
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="onSave"
+          :disabled="!canSave"
+          class="flex-grow-1 w-0"
+        >
           Guardar
         </VBtn>
       </VCardActions>

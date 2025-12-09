@@ -367,13 +367,12 @@ const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/discounts`;
   try {
-    const payload = { ...supplierDiscountFormData };
-
+  const payload = {
+      discounts: supplierDiscountFormData,
+    };
     await axios.post(url, payload);
-
     toast.success(`Descuentos creados con éxito`);
     isPaymentRuleDialogVisible.value = false;
-
     await fetchSupplierDiscount();
     await fetchSuppliers();
   } catch (error) {

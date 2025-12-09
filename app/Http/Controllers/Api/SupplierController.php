@@ -279,8 +279,11 @@ class SupplierController extends Controller
                 "name" => $rule["name"],
                 "discount_percentage" => $rule["discount_percentage"],
             ];
+            $isCreated = !isset($rule["id"]);
 
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            if ($isCreated){
+                $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            }
         }
 
         return response()->json([

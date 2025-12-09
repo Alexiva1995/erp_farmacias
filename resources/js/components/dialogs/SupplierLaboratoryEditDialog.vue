@@ -372,7 +372,7 @@ if (ruleLaboratory._markedForDeletion) {
           :disabled="!canSave"
           class="flex-grow-1 w-0"
         >
-          Guardar Cambios
+          Guardar
         </VBtn>
       </VCardActions>
     </VCard>
