@@ -11,6 +11,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
+import { useRouter } from 'vue-router';
 
 const suppliers = ref([]);
 const totalSupplier = ref(0);
@@ -41,6 +42,8 @@ const isSupplierDiscountRuleDialogVisible = ref(false);
 const isSupplierDiscountDialogVisible = ref(false);
 
 const checkingApiSupplierId = ref(null);
+
+const router = useRouter();
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -307,10 +310,16 @@ const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
 };
 
 const handleSupplierPendingInvoices = async (supplier) => {
-  currentSupplier.value = { ...supplier };
-  isPendingInvoicesDialogVisible.value = true;
-
-  await fetchPendingInvoices();
+ // currentSupplier.value = { ...supplier };
+ // isPendingInvoicesDialogVisible.value = true;
+ // await fetchPendingInvoices();
+ const supplierId = supplier.id;
+ await router.push({ 
+        name: 'finances-pending-payments', 
+        query: { 
+          supplierId: supplierId 
+        }
+      });
 };
 
 const handleSupplierDiscountRule = async (supplier) => {
