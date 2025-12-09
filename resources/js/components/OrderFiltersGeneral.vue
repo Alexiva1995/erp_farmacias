@@ -1,8 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
-
 const props = defineProps({
   searchQuery: String,
+  offer: String,
   idSearchQuery: String,
   currencyFilter: [Number, String, null],
   startDate: {
@@ -17,11 +16,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-    showStateFilters: {
+  showStateFilters: {
     type: Boolean,
     default: false,
   },
-   stateFilter: [Number, String, null],
+  stateFilter: [Number, String, null],
 });
 
 const emit = defineEmits([
@@ -32,6 +31,7 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "update:stateFilter",
+  "update:offer",
 ]);
 
 const currencyOptions = [
@@ -44,6 +44,12 @@ const stateOptions = [
   { title: "Completada", value: "Completed" },
   { title: "Abandonada", value: "Abandoned" },
   { title: "Cancelada", value: "Cancelled" },
+];
+
+const offerOptions = [
+  { title: "Empresa", value: "company_offer" },
+  { title: "Médico", value: "doctor_offer" },
+  { title: "Recipe", value: "preescription_offer" },
 ];
 
 const sortOptions = [
@@ -120,23 +126,32 @@ const handleSortClick = (option) => {
         <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.currencyFilter"
-            label="Currency"
+            label="Moneda"
             :items="currencyOptions"
             clearable
             @update:model-value="emit('update:currencyFilter', $event)"
           />
         </VCol>
-<template v-if="props.showStateFilters">
         <VCol cols="12" sm="6" md="3">
           <VSelect
-            :model-value="props.stateFilter"
-            label="Estados"
-            :items="stateOptions"
+            :model-value="props.offer"
+            label="Descuentos"
+            :items="offerOptions"
             clearable
-            @update:model-value="emit('update:stateFilter', $event)"
+            @update:model-value="emit('update:offer', $event)"
           />
         </VCol>
- </template>
+        <template v-if="props.showStateFilters">
+          <VCol cols="12" sm="6" md="3">
+            <VSelect
+              :model-value="props.stateFilter"
+              label="Estados"
+              :items="stateOptions"
+              clearable
+              @update:model-value="emit('update:stateFilter', $event)"
+            />
+          </VCol>
+        </template>
         <template v-if="props.showDateFilters">
           <VCol cols="12" sm="6" md="4">
             <AppDateTimePicker

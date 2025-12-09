@@ -1,5 +1,7 @@
 <script setup>
+import AddProductsToGroupDialog from "@/components/dialogs/AddProductsToGroupDialog.vue";
 import GroupEditDialog from "@/components/dialogs/GroupEditDialog.vue";
+import ShowGroupProductsDialog from "@/components/dialogs/ShowGroupProductsDialog.vue";
 import GroupFilters from "@/components/GroupFilters.vue";
 import GroupTable from "@/components/GroupTable.vue";
 import axios from "@/plugins/axios";
@@ -15,9 +17,12 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
-
+const isLoadingFilters = ref(false);
+const isStrictSearch = ref(false);
 const searchQuery = ref("");
 
+const isGroupDialogVisible = ref(false);
+const isAddProductsDialogVisible = ref(false);
 const isEditDialogVisible = ref(false);
 const currentGroup = ref({});
 const groupFormErrors = ref({});
@@ -30,6 +35,7 @@ const fetchGroups = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -49,7 +55,7 @@ const fetchGroups = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, isStrictSearch],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchGroups(), 300);
@@ -57,7 +63,7 @@ watch(
   { deep: true }
 );
 
-watch(searchQuery, () => {
+watch([searchQuery], () => {
   page.value = 1;
 });
 
@@ -76,6 +82,16 @@ const handleEditGroup = (group) => {
   currentGroup.value = { ...group };
   groupFormErrors.value = {};
   isEditDialogVisible.value = true;
+};
+
+const handleAddProducts = (group) => {
+  isAddProductsDialogVisible.value = true;
+  currentGroup.value = group;
+};
+
+const handleShowGroup = (group) => {
+  isGroupDialogVisible.value = true;
+  currentGroup.value = group;
 };
 
 const handleDeleteGroup = async (id) => {
@@ -159,8 +175,20 @@ const clearFormErrors = () => {
   <div>
     <GroupFilters
       v-model:searchQuery="searchQuery"
+      v-model:isStrictSearch="isStrictSearch"
+      :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @add-group="handleAddGroup"
+    />
+
+    <AddProductsToGroupDialog
+      v-model="isAddProductsDialogVisible"
+      :selected-group="currentGroup"
+    />
+
+    <ShowGroupProductsDialog
+      v-model="isGroupDialogVisible"
+      :selected-group="currentGroup"
     />
 
     <GroupTable
@@ -170,7 +198,9 @@ const clearFormErrors = () => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
+      @add-products="handleAddProducts"
       @edit-group="handleEditGroup"
+      @show-group="handleShowGroup"
       @delete-group="handleDeleteGroup"
     />
 

@@ -21,9 +21,9 @@ const hideTitleAndBadge = configStore.isVerticalNavMini()
 
 <template>
   <li
-    v-if="can(item.action, item.subject)"
-    class="nav-link"
-    :class="{ disabled: item.disable }"
+  v-if="!(item.action && item.subject) || can(item.action, item.subject)"
+ class="nav-link"
+ :class="{ disabled: item.disable }"
   >
     <Component
       :is="item.to ? 'RouterLink' : 'a'"

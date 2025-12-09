@@ -23,18 +23,6 @@ const closeDialog = () => {
   emit("update:modelValue", false);
 };
 
-watch(
-  () => props.purchaseOrder,
-  (purchaseOrder) => {
-    if (purchaseOrder.id) {
-      const poID = purchaseOrder.id;
-      id.value = poID;
-      fetchPurchaseOrder();
-    }
-  },
-  { deep: true, immediate: true }
-);
-
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   try {
@@ -102,6 +90,18 @@ const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
 };
+
+watch(
+  [() => props.purchaseOrder, () => props.modelValue],
+  ([purchaseOrder, modelValue]) => {
+    if (purchaseOrder.id && modelValue) {
+      const poID = purchaseOrder.id;
+      id.value = poID;
+      fetchPurchaseOrder();
+    }
+  },
+  { deep: true }
+);
 
 let debounceTimer;
 watch(

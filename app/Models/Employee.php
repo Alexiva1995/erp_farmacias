@@ -77,4 +77,26 @@ class Employee extends Model
     {
         return $this->hasOne(Resignation::class);
     }
+    public function cleaningActivityExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class);
+    }
+
+    /**
+     * Ejecuciones pendientes
+     */
+    public function pendingExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class)
+            ->where('status', 'Pendiente');
+    }
+
+    /**
+     * Ejecuciones procesadas (esperando aprobación)
+     */
+    public function processedExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class)
+            ->where('status', 'Procesada');
+    }
 }

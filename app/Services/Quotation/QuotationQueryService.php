@@ -15,14 +15,14 @@ class QuotationQueryService
         return Product::query()->select(
             'products.*'
         )
-        ->with([
-            'laboratory',
-            'origin',
-        ])
-        // --- ¡ESTE ES EL CAMBIO CLAVE! ---
-        // Usamos addSelect con DB::raw para crear la columna 'valid_stock_sum'
-        // y aplicar COALESCE directamente en la subconsulta de la suma.
-        ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
+            ->with([
+                'laboratory',
+                'origin',
+            ])
+            // --- ¡ESTE ES EL CAMBIO CLAVE! ---
+            // Usamos addSelect con DB::raw para crear la columna 'valid_stock_sum'
+            // y aplicar COALESCE directamente en la subconsulta de la suma.
+            ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
         // --- FIN CAMBIO CLAVE ---
     }
 
@@ -31,12 +31,30 @@ class QuotationQueryService
     {
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('name', 'like', $searchTerm)
-                    ->orWhere('active_ingredient', 'like', $searchTerm)
-                    ->orWhere('barcode', 'like', $searchTerm);
+            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $subQuery->where(function ($subQuery) use ($searchTerm) {
+                        $subQuery->where('name', 'like', $searchTerm)
+                            ->orWhere('active_ingredient', 'like', $searchTerm)
+                            ->orWhere('barcode', 'like', $searchTerm);
+                    });
+                } else {
+                    $words = explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $searchWord = "%{$word}%";
+                        $subQuery->where(function ($wordQuery) use ($searchWord) {
+                            $wordQuery->where('name', 'like', $searchWord)
+                                ->orWhere('active_ingredient', 'like', $searchWord)
+                                ->orWhere('barcode', 'like', $searchWord);
+                            ;
+                        });
+                    }
+                }
             });
         }
+
 
         if (!empty($filters['laboratoryId'])) {
             $query->where('laboratory_id', $filters['laboratoryId']);
@@ -56,10 +74,10 @@ class QuotationQueryService
         // es una columna real en el SELECT de la consulta.
         if ($hasStock === true) {
             $query->groupBy('products.id')
-                  ->havingRaw('valid_stock_sum > 0');
+                ->havingRaw('valid_stock_sum > 0');
         } elseif ($hasStock === false) {
             $query->groupBy('products.id')
-                  ->havingRaw('valid_stock_sum <= 0');
+                ->havingRaw('valid_stock_sum <= 0');
         }
 
         return $query;
@@ -86,7 +104,7 @@ class QuotationQueryService
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'sales_average':
-            return $query->orderBy('products.sales_average', $orderBy);
+                return $query->orderBy('products.sales_average', $orderBy);
 
             case 'id':
             case 'name':
@@ -107,6 +125,7 @@ class QuotationQueryService
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'isStrictSearch' => filter_var($request->isStrictSearch, FILTER_VALIDATE_BOOLEAN),
         ];
 
         $this->applyFilters($query, $filters);

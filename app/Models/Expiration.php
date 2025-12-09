@@ -37,4 +37,10 @@ class Expiration extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+    
+    /* Relacion con ExpirationOffer */
+    public function expirationOffer(): BelongsTo
+    {
+        return $this->belongsTo(ExpirationOffer::class);
+    }
 }

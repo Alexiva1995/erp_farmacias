@@ -17,7 +17,8 @@ class ProductSupplierServices implements ProductSupplier
     public function __construct(
         protected ProductSupplierRepository $productSupplierRepository,
         protected ProductLotsRepository $productLotsRepository
-    ) {}
+    ) {
+    }
 
 
     public function consultSupplierByProductWithBetterPrice(Product $product, string $conDescuento): Collection
@@ -29,6 +30,10 @@ class ProductSupplierServices implements ProductSupplier
 
     public function calculatePercentageDifferenceIncrease(float $price, float $supplierPrice): float
     {
+        if ($price == 0) {
+            return 0;
+        }
+
         $resta = $supplierPrice - $price;
         $resultado = $resta / $price;
         return $resultado;
@@ -37,7 +42,7 @@ class ProductSupplierServices implements ProductSupplier
     /** 
      * esta funcion retorna true si hay si hay un incremento, false si no y null
      * */
-    public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): bool | null
+    public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): bool|null
     {
         $incremento = null;
         // return $percentageIncrease > $maximumPercentageMaximo ? true : false;
@@ -63,31 +68,30 @@ class ProductSupplierServices implements ProductSupplier
 
             $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
             $products[$index]->ofertas = $ofertas;
-            // $products[$index]->repuesto = 0;
-            $products[$index]->solicitar = ceil((int)$products[$index]->solicitar);
 
-            if ((int)$products[$index]->solicitar < 0) {
+            // Usar una variable temporal en lugar de modificar el original
+            $solicitarTemporal = ceil((int) $products[$index]->solicitar);
+
+            if ((int) $solicitarTemporal < 0) {
                 for ($index2 = 0; $index2 < count($ofertas); $index2++) {
-
                     $oferta = $ofertas[$index2];
 
-                    // el el proveedor tienene stock disponible repone el producto
                     if ($oferta->quantity != null && $oferta->quantity > 0) {
                         $suma = null;
-                        // formula dependiendo si el solicitar es positivo o negativo
-                        if ((int)$products[$index]->solicitar >= 0) {
-                            $suma = $ofertas[$index2]->quantity - (int)$products[$index]->solicitar;
+
+                        if ((int) $solicitarTemporal >= 0) {
+                            $suma = $ofertas[$index2]->quantity - (int) $solicitarTemporal;
                         } else {
-                            $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
+                            $suma = (int) $solicitarTemporal + $ofertas[$index2]->quantity;
                         }
 
                         if ($suma < 0) {
-                            $products[$index]->solicitar = $suma;
+                            $solicitarTemporal = $suma; // Modifica solo la variable temporal
                             $reponer = $ofertas[$index2]->quantity;
                             $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
                         } else if ($suma >= 0) {
-                            $reponer = abs((int)$products[$index]->solicitar);
-                            $products[$index]->solicitar = 0;
+                            $reponer = abs((int) $solicitarTemporal);
+                            $solicitarTemporal = 0; // Modifica solo la variable temporal
                             $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
                             break;
                         }
@@ -105,7 +109,7 @@ class ProductSupplierServices implements ProductSupplier
 
             $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
             $products[$index]->ofertas = $ofertas;
-            $products[$index]->solicitar = ceil((int)$products[$index]->solicitar);
+            $products[$index]->solicitar = ceil((int) $products[$index]->solicitar);
 
             for ($index2 = 0; $index2 < count($ofertas); $index2++) {
 
@@ -115,18 +119,20 @@ class ProductSupplierServices implements ProductSupplier
                 if ($oferta->quantity != null && $oferta->quantity > 0) {
                     $suma = null;
                     // formula dependiendo si el solicitar es positivo o negativo
-                    if ((int)$products[$index]->solicitar >= 0) {
-                        $suma = $ofertas[$index2]->quantity - (int)$products[$index]->solicitar;
+                    if ((int) $products[$index]->solicitar >= 0) {
+                        $suma = $ofertas[$index2]->quantity - (int) $products[$index]->solicitar;
                     } else {
-                        $suma = (int)$products[$index]->solicitar + $ofertas[$index2]->quantity;
+                        $suma = (int) $products[$index]->solicitar + $ofertas[$index2]->quantity;
                     }
 
                     if ($suma < 0) {
                         $products[$index]->solicitar = $suma;
-                        $reponer = $ofertas[$index2]->quantity;
+                        // CAMBIO: Para oportunidades de mercado, siempre usar 0 como sugerencia
+                        $reponer = 0; // En lugar de $ofertas[$index2]->quantity;
                         $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
                     } else if ($suma >= 0) {
-                        $reponer = abs((int)$products[$index]->solicitar);
+                        // CAMBIO: Para oportunidades de mercado, siempre usar 0 como sugerencia
+                        $reponer = 0; // En lugar de abs((int) $products[$index]->solicitar);
                         $products[$index]->solicitar = 0;
                         $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
                         break;
@@ -168,12 +174,12 @@ class ProductSupplierServices implements ProductSupplier
             if ($conDescuento == "true") {
                 if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
                     $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd);
-                    $unitCostProductSupplier = (float)$replenishTheProduct["productSupplier"]->unit_cost_usd;
+                    $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
                 }
             } else {
                 if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
                     $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
-                    $unitCostProductSupplier = (float)$replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
+                    $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
                 }
             }
 
@@ -200,17 +206,24 @@ class ProductSupplierServices implements ProductSupplier
     public function obtainProductsWithUniqueMarketOpportunities(array $productos): array
     {
         $productosConOportunidad = [];
-        for ($index = 0; $index < count($productos); $index++) {
-            # code...
-            $producto = $productos[$index];
 
-            $lote = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($producto["product"]);
-            if ($lote) {
-                if ((float)$producto["precio_final_supplier"] < (float)$lote->unit_cost) {
-                    $dateLot = new DateTime($lote->created_at);
+        for ($index = 0; $index < count($productos); $index++) {
+            $producto = $productos[$index];
+            $costoBaseProducto = (float) ($producto["product"]->unit_cost ?? 0);
+
+            if ($costoBaseProducto > 0) {
+                if ((float) $producto["precio_final_supplier"] < $costoBaseProducto) {
+                    $fechaReferencia = $producto["product"]->updated_at ?? new \DateTime();
+
+                    if (!($fechaReferencia instanceof \DateTimeInterface)) {
+                        $fechaReferencia = new \DateTime((string) $fechaReferencia);
+                    }
+
                     $producto["checkUniquePurchaseOpportunity"] = true;
-                    $producto["cost_lot"] = $lote->unit_cost;
-                    $producto["cost_lot_data"] = $dateLot->format("d-m-Y");
+
+                    $producto["cost_lot"] = $costoBaseProducto;
+                    $producto["cost_lot_data"] = $fechaReferencia->format("d-m-Y");
+
                     $productos[$index] = $producto;
                     $productosConOportunidad[] = $productos[$index];
                 }
@@ -234,4 +247,5 @@ class ProductSupplierServices implements ProductSupplier
 
         return $productosConOportunidad;
     }
+
 }

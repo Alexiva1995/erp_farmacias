@@ -1,13 +1,15 @@
 <script setup>
+import ApplyDiscountDialog from "@/components/dialogs/ApplyDiscountDialog.vue";
+import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
-import ProductsComparisionSuppliersFilter from "@/components/ProductsComparisionSuppliersFilter.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import Swal from "sweetalert2";
+import { onMounted, reactive, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
@@ -32,6 +34,9 @@ const enableDiscounts = ref(false);
 const isShowSupplierProductsDialogActive = ref(false);
 const isShowImportFileDialogActive = ref(false);
 
+const isApplyDiscountDialogActive = ref(false);
+const supplierForDiscount = ref(null);
+
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
@@ -41,12 +46,146 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const totalSupplierConnections = ref(0);
 
+// Variables de Productos
 const productsPage = ref(1);
 const productsItemPerPage = ref(10);
 const productsTotal = ref(0);
+const sortOptions = ref([]);
 
 const enableUsdAmountCol = ref(true);
 const enableDiscountCol = ref(true);
+
+const isDeleteDialogVisible = ref(false);
+
+const handleShowDiscountDialog = (supplier) => {
+  supplierForDiscount.value = supplier;
+  isApplyDiscountDialogActive.value = true;
+};
+
+const handleDeleteOldProducts = async (date) => {
+  try {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: `Se eliminarán todos los productos cuya última actualización sea anterior al ${date}. Esta acción no se puede deshacer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      didOpen: () => {
+        const actions = Swal.getActions();
+        const confirmButton = Swal.getConfirmButton();
+        const cancelButton = Swal.getCancelButton();
+
+        actions.style.display = "flex";
+        actions.style.gap = "10px";
+        actions.style.width = "100%";
+        actions.style.padding = "0 20px";
+        confirmButton.style.flex = "1";
+        confirmButton.style.width = "50%";
+        cancelButton.style.flex = "1";
+        cancelButton.style.width = "50%";
+      },
+    });
+
+    if (result.isConfirmed) {
+      // Petición al backend
+      const response = await axios.post("/suppliers/products/delete-old", {
+        date: date,
+      });
+
+      if (response.data.status === "ok") {
+        Swal.fire(
+          "¡Eliminados!",
+          `Se han eliminado ${response.data.count} productos antiguos.`,
+          "success"
+        );
+        fetchProducts();
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error("Error al intentar eliminar productos antiguos.");
+  }
+};
+const handleUpdateAllApi = () => {
+  Swal.fire({
+    title: "¿Actualizar todos los proveedores?",
+    text: "Este proceso se ejecutará en segundo plano y actualizará el inventario de todos los proveedores conectados vía API. Puede tardar varios minutos.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonColor: "#00bad1", // Color Info
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, actualizar todo",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        // Llamada al endpoint que crea el Job
+        const response = await axios.post("/suppliers/update-all-job");
+
+        if (response.status === 200) {
+          toast.success(
+            "El proceso de actualización ha iniciado en segundo plano."
+          );
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("No se pudo iniciar el proceso de actualización.");
+      }
+    }
+  });
+};
+// Lógica para procesar el descuento
+const handleApplyDiscount = async ({ supplier, percentage }) => {
+  if (!supplier || !percentage) return;
+
+  try {
+    toast.info(
+      `Procesando descuento del ${percentage}% para ${supplier.name}...`
+    );
+
+    const response = await axios.post(
+      `/suppliers/${supplier.id}/apply-discount`,
+      {
+        percentage: parseFloat(percentage),
+      }
+    );
+
+    if (response.status === 200) {
+      toast.success(
+        response.data.message || "Descuento aplicado correctamente."
+      );
+
+      await fetchProducts();
+    }
+  } catch (error) {
+    console.error("Error al aplicar descuento:", error);
+
+    if (error.response?.data?.message) {
+      toast.error(error.response.data.message);
+    } else {
+      toast.error("No se pudo aplicar el descuento. Intente nuevamente.");
+    }
+  }
+};
 
 const fetchProducts = async () => {
   const params = {
@@ -62,11 +201,19 @@ const fetchProducts = async () => {
     }),
   };
 
+  // Lógica de Ordenamiento
+  if (sortOptions.value && sortOptions.value.length > 0) {
+    params.sortBy = sortOptions.value[0].key;
+    params.order = sortOptions.value[0].order;
+  }
+
+  // Limpieza de parámetros nulos/vacíos
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
 
   try {
+    loadingProducts.value = true;
     const { data } = await axios.get("/suppliers/available-products", {
       params,
     });
@@ -85,7 +232,7 @@ const fetchSupplierConnections = async () => {
   const params = {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    selectedSupplier: selectedSupplier.value,
+    search: selectedSupplier.value,
   };
 
   Object.keys(params).forEach(
@@ -97,8 +244,8 @@ const fetchSupplierConnections = async () => {
     supplierConnections.value = response.data.data;
     totalSupplierConnections.value = response.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener las órdenes de compra:", error);
-    toast.error("Error al obtener las órdenes de compra.");
+    console.error("Hubo un error al obtener las conexiones:", error);
+    toast.error("Error al obtener las conexiones.");
   } finally {
     loadingSuppliers.value = false;
   }
@@ -181,9 +328,11 @@ watch(
   { deep: true }
 );
 
+// WATCHER DE PRODUCTOS ACTUALIZADO
+// Se agrega sortOptions para que reaccione al cambio de orden
 let productDebounceTimer;
 watch(
-  [productsPage, productsItemPerPage],
+  [productsPage, productsItemPerPage, sortOptions],
   () => {
     clearTimeout(productDebounceTimer);
     productDebounceTimer = setTimeout(() => fetchProducts(), 300);
@@ -223,9 +372,14 @@ const updateTableOptions = (options) => {
   itemsPerPage.value = options.itemsPerPage;
 };
 
+// FUNCIÓN ACTUALIZADA PARA CAPTURAR ORDENAMIENTO DE LA TABLA
 const updateProductsTableOptions = (options) => {
   productsPage.value = options.page;
   productsItemPerPage.value = options.itemsPerPage;
+  // VDataTableServer envía 'sortBy' en las opciones
+  if (options.sortBy) {
+    sortOptions.value = options.sortBy;
+  }
 };
 
 const handleShowProducts = (supplier) => {
@@ -250,10 +404,6 @@ const handleCheckSupplierApi = async (supplier) => {
   } finally {
     checkingApiSupplierId.value = null;
   }
-};
-
-const handleClearSuppliersFilters = () => {
-  selectedSupplier.value = null;
 };
 
 const handleClearProductsFilters = () => {
@@ -334,23 +484,25 @@ const handleDeleteSupplierProducts = async (supplier) => {
       @close-dialog="handleHideImportProductsDialog"
       @refresh-products="fetchProducts"
     />
-
-    <VCard title="Listados" class="mb-6">
+    <ApplyDiscountDialog
+      v-model:isDialogVisible="isApplyDiscountDialogActive"
+      :selected-supplier="supplierForDiscount"
+      @submit="handleApplyDiscount"
+    />
+    <DeleteOldProductsDialog
+      v-model:isDialogVisible="isDeleteDialogVisible"
+      @submit="handleDeleteOldProducts"
+    />
+    <VCard class="mb-6">
       <VCardText>
         <VTabs v-model="tab">
           <VTab value="suppliers"> Proveedores </VTab>
           <VTab value="products"> Productos </VTab>
         </VTabs>
-
-        <ProductsComparisionSuppliersFilter
-          v-if="tab === 'suppliers'"
-          v-model:selectedSupplier="selectedSupplier"
-          :suppliers="suppliers"
-          @clear="handleClearSuppliersFilters"
-        />
-
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
+          @open-delete-dialog="isDeleteDialogVisible = true"
+          @update-all-api="handleUpdateAllApi"
           v-model:enable-discounts="enableDiscounts"
           v-model:enable-usd-amount-col="enableUsdAmountCol"
           v-model:enable-discount-col="enableDiscountCol"
@@ -379,11 +531,14 @@ const handleDeleteSupplierProducts = async (supplier) => {
           :items-per-page="itemsPerPage"
           :page="page"
           :checking-api-id="checkingApiSupplierId"
+          :search-query="selectedSupplier"
+          @update:search-query="selectedSupplier = $event"
           @update:options="updateTableOptions"
           @show-products="handleShowProducts"
           @update-products="handleCheckSupplierApi"
           @load-products="handleShowImportProductsDialog"
           @delete-products="handleDeleteSupplierProducts"
+          @open-discount-dialog="handleShowDiscountDialog"
         />
       </VTabsWindowItem>
 
@@ -392,11 +547,15 @@ const handleDeleteSupplierProducts = async (supplier) => {
           :products="products"
           :loading="loadingProducts"
           :total-products="productsTotal"
-          :items-per-page="itemsPerPage"
+          :items-per-page="productsItemPerPage"
           :page="productsPage"
           :quantity-errors="quantityErrors"
           :enable-usd-amount-col="enableUsdAmountCol"
           :enable-discount-col="enableDiscountCol"
+          :search-query="filterSearchQuery"
+          @update:search-query="filterSearchQuery = $event"
+          :is-strict-search="isStrictSearch"
+          @update:is-strict-search="isStrictSearch = $event"
           @update:options="updateProductsTableOptions"
           @send-product="handleAddItemToAutoOrder"
         />

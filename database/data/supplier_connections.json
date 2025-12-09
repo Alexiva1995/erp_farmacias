@@ -13,7 +13,8 @@
         "structure": {
             "0": {
                 "file_field": "codigo_producto",
-                "type": "string"
+                "type": "string",
+                "target": "cod_supplier"
             },
             "1": {
                 "file_field": "codigo_barras",
@@ -67,7 +68,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
@@ -104,6 +105,10 @@
                 "5": {
                     "field": "descripcion_producto",
                     "type": "string"
+                },
+                "8": {
+                    "field": "total_amount",
+                    "type": "decimal"
                 },
                 "6": {
                     "field": "quantity",
@@ -199,7 +204,7 @@
                     "type": "string"
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "date",
                     "format": "d/m/Y"
                 },
@@ -261,6 +266,10 @@
                 "13": {
                     "field": "porcentaje_iva",
                     "type": "decimal"
+                },
+                "14": {
+                    "field": "tax_enabled",
+                    "type": "boolean"
                 }
             }
         },
@@ -271,10 +280,10 @@
         "type": "ftp",
         "host": "strixposback.gotdns.com",
         "port": null,
-        "username": "CL103740@strixposback.gotdns.com",
-        "password": "eyJpdiI6InN6UHZ2VGwxVzJ6b0o3TGYzT1pBUXc9PSIsInZhbHVlIjoiMTRobC9YV2kwNHZXV3ZXZXhjR3Njdz09IiwibWFjIjoiNmQ5YmRjNjg3N2NiNWJlMmYyN2VjMzllNjhhZWUwYjdkMjM5Y2JjY2RkOWNmYzA3MWMzMzczZTE2NDYyMTNlMiIsInRhZyI6IiJ9",
-        "path": "inventario05-08-2025_21:54:42.txt",
-        "pasv": false,
+        "username": "CL103740",
+        "password": "eyJpdiI6IkRoZnhwRXJuTWpuc0xjYTVWdVJJTXc9PSIsInZhbHVlIjoiTXJqeGFuWnNuZGhML2hOS3ducWUwQT09IiwibWFjIjoiZWY4ZGFjZWFmNDIzNDBkZmRlMTRlMzUzOTY1ZTY0NTZhYTQxMjhmYzM0NjVlNjViMjViMGUzYWRjOGI2YzY3NSIsInRhZyI6IiJ9",
+        "path": "/",
+        "pasv": true,
         "has_header": false,
         "invoice_path": "/",
         "structure": {
@@ -522,7 +531,7 @@
                     "field": "exempt_amount",
                     "type": "decimal"
                 },
-                "4": {
+                "5": {
                     "field": "tax_amount",
                     "type": "decimal"
                 },
@@ -612,6 +621,11 @@
                 "file_field": "existencia",
                 "type": "integer",
                 "target": "quantity"
+            },
+            "12": {
+                "file_field": "cod_articulo",
+                "type": "string",
+                "target": "cod_supplier"
             }
         },
         "invoice_structure": {
@@ -640,6 +654,10 @@
                 "16": {
                     "field": "tax_amount",
                     "type": "decimal"
+                },
+                "15": {
+                    "field": "exchange_rate",
+                    "type": "decimal"
                 }
             },
             "lines": {
@@ -667,7 +685,7 @@
                     "field": "quantity",
                     "type": "integer"
                 },
-                "45": {
+                "40": {
                     "field": "unit_cost",
                     "type": "decimal"
                 },
@@ -752,7 +770,7 @@
         "port": null,
         "username": "D719-foraneo",
         "password": "eyJpdiI6Ilc5T1hqTlpzd2N4WUdYWEkzVFBVVkE9PSIsInZhbHVlIjoiQ0ZUbXNwdDllcXRNUENrSDdna3I0UT09IiwibWFjIjoiNTY0OTE4NDhjOWUxMjkwZmM4ZWQ5NGRiNGFmNmZjMmIzNmYxYWM5NWRmOWQ1NzM0MzhkNTgzNDhiNzNkMDI0OCIsInRhZyI6IiJ9",
-        "path": "Clientes/d719/inventario.txt",
+        "path": "Clientes/d719/Inventario.txt",
         "pasv": true,
         "has_header": true,
         "invoice_path": "Clientes/d719/Factura",
@@ -778,14 +796,18 @@
                     "decimals": 2
                 },
                 "3": {
-                    "field": "exp_date",
+                    "field": "created_invoice_date",
                     "type": "datetime",
                     "format": "d/m/Y g:i:s A"
                 },
                 "4": {
-                    "field": "total_usd",
+                    "field": "exchange_rate",
                     "type": "decimal",
                     "decimals": 2
+                },
+                "5": {
+                    "field": "total_usd",
+                    "type": "decimal"
                 }
             },
             "lines": {
@@ -801,27 +823,32 @@
                     "field": "cod_supplier",
                     "type": "string"
                 },
-                "4": {
+                "3": {
                     "field": "name",
                     "type": "string"
                 },
-                "5": {
+                "4": {
                     "field": "quantity",
                     "type": "integer"
                 },
-                "9": {
-                    "field": "barcode",
-                    "type": "string"
-                },
-                "10": {
-                    "field": "expiration_date",
-                    "type": "date",
-                    "format": "d/m/Y"
-                },
-                "6": {
+                "5": {
                     "field": "unit_cost",
                     "type": "decimal",
                     "decimals": 2
+                },
+                "6": {
+                    "field": "total_cost",
+                    "type": "decimal",
+                    "decimals": 2
+                },
+                "7": {
+                    "field": "barcode",
+                    "type": "string"
+                },
+                "8": {
+                    "field": "expiration_date",
+                    "type": "date",
+                    "format": "d/m/Y"
                 }
             }
         },

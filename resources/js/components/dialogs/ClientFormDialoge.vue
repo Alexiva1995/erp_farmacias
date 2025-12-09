@@ -190,60 +190,18 @@ function formatearFechaCompleta(fechaInput) {
               variant="outlined"
             />
           </VCol>
-          <!-- Nuevo campo SPE -->
-          <VCol cols="12">
-            <div class="d-flex align-center mt-3 mb-2">
-              <VCheckbox v-model="formData.is_spe" color="warning" class="me-2">
-                <template #label>
-                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-shield-check" class="me-2" size="20" />
-                    <span class="text-subtitle-1 font-weight-medium">
-                      ¿Es sujeto a pasivos especiales?
-                    </span>
-                  </div>
-                </template>
-              </VCheckbox>
-              <VChip
-                v-if="formData.is_spe"
-                color="warning"
-                size="small"
-                class="ms-2"
-              >
-                <VIcon icon="tabler-shield-check" size="14" class="me-1" />
-                SPE: -75% IVA
-              </VChip>
-            </div>
-            <div
-              v-if="formData.is_spe"
-              class="bg-warning-lighten-4 pa-3 rounded mb-3"
-            >
-              <div class="text-caption text-warning-darken-2">
-                <VIcon icon="tabler-info-circle" class="me-1" size="14" />
-                Este cliente será marcado como sujeto a pasivos especiales. En
-                sus compras se restara automáticamente el 75% del IVA.
-              </div>
-            </div>
-          </VCol>
         </VRow>
       </VContainer>
       <VDivider />
       <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="close"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Cancelar</VBtn
-        >
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Guardar Cambios</VBtn
-        >
+        <VCol cols="12" class="d-flex gap-3">
+          <VBtn color="secondary" variant="outlined" @click="close" class="grow"
+            >Cancelar</VBtn
+          >
+          <VBtn color="primary" variant="flat" class="grow" @click="submitForm"
+            >Guardar Cambios</VBtn
+          >
+        </VCol>
       </VCardActions>
     </VCard>
   </VDialog>
