@@ -26,6 +26,9 @@ const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const isStrictSearch = ref(false);
+const discount = ref(0);
+const discountMinProducts = ref(0);
+const discountMaxProducts = ref(0);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -234,13 +237,12 @@ onMounted(async () => {
   }
 });
 
-
 const totalOrderCost = computed(() => {
   let totalCost = 0;
   orderItems.value.forEach((item) => {
-  const cost = item.unitCost || 0; 
-  const quantity = item.selectedQuantity || 0;
-  totalCost += cost * quantity;
+    const cost = item.unitCost || 0;
+    const quantity = item.selectedQuantity || 0;
+    totalCost += cost * quantity;
   });
   return parseFloat(totalCost.toFixed(2));
 });
@@ -323,6 +325,12 @@ const verifyClient = async (identification) => {
       showRegisterClientModal.value = true;
     } else {
       const clientData = response.data.data.client;
+
+      const { discount_percentage, max_volume, min_volume } =
+        response.data.data.client.available_discount;
+      discount.value = Number(discount_percentage);
+      discountMinProducts.value = min_volume;
+      discountMaxProducts.value = max_volume;
       selectedClient.value = clientData;
       toast.success(
         `Cliente ${clientData.name} ${clientData.last_name} encontrado.`
@@ -1138,6 +1146,10 @@ const addReserverOrder = async () => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      :discount-min-products="discountMinProducts"
+      :discount-max-products="discountMaxProducts"
+      :current-discount="discount"
+      :order-items="orderItems"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
       @view-group-products="fetchGroupProducts"
