@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { ref, watch, nextTick } from "vue"; 
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -8,73 +8,152 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  discountMinProducts: { type: Number, default: 0 },
+  discountMaxProducts: { type: Number, default: 0 },
+  currentDiscount: { type: Number, default: 0 },
+  orderItems: { type: Array, default: () => [] },
 });
 
-const inputQuantities = ref(new Map()); 
-const emit = defineEmits(['update:options', 'add-product',"view-group-products"]);
+const inputQuantities = ref(new Map());
+const emit = defineEmits([
+  "update:options",
+  "add-product",
+  "view-group-products",
+]);
 
 const headers = [
-  { title: "id", key: "id", sortable: true},
-  { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: '55px'},
+  { title: "id", key: "id", sortable: true },
+  { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: 'USD', key: 'sale_price', sortable: true },
-  { title: 'Bs', key: 'price_bs', sortable: true},
-  { title: 'COP', key: 'price_cop', sortable: true },
-  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, maxWidth: '130px'  },
-  { title: 'Acción', key: 'actions', sortable: false, maxWidth: '95px'},
+  { title: "USD", key: "sale_price", sortable: true },
+  { title: "Bs", key: "price_bs", sortable: true },
+  { title: "COP", key: "price_cop", sortable: true },
+  {
+    title: "Añadir",
+    key: "add_action_with_quantity",
+    sortable: false,
+    maxWidth: "130px",
+  },
+  { title: "Acción", key: "actions", sortable: false, maxWidth: "95px" },
 ];
 
-const calculatePriceWithIVA = (basePrice, product) => {
-  const price = parseFloat(basePrice) || 0;
-  let taxRate = product.iva == 1 ? 0.16 : 0;
-  if (taxRate > 0) {
-    return price * (1 + taxRate);
+// Calcular total de productos en el carrito (sumando los productos en la tabla)
+const totalProductsInCart = computed(() => {
+  let total = 0;
+
+  // Sumar productos que ya están en el carrito
+  total += props.orderItems.reduce((sum, item) => {
+    return sum + (item.selectedQuantity || 0);
+  }, 0);
+
+  // Sumar productos que están en los inputs de la tabla
+  props.products.forEach((product) => {
+    const quantityInInput = inputQuantities.value.get(product.id) || 0;
+    total += quantityInInput;
+  });
+
+  return total;
+});
+
+// Determinar si aplicar descuento basado en el total de productos
+const shouldApplyDiscount = computed(() => {
+  if (props.currentDiscount <= 0) return false;
+
+  // Si no hay límites configurados, aplicar siempre
+  if (props.discountMinProducts === 0 && props.discountMaxProducts === 0) {
+    return true;
   }
+
+  // Verificar si el total de productos está dentro del rango
+  return (
+    totalProductsInCart.value >= props.discountMinProducts &&
+    totalProductsInCart.value <= props.discountMaxProducts
+  );
+});
+
+// Calcular precio con descuento si aplica
+const calculatePriceWithDiscount = (basePrice) => {
+  const price = parseFloat(basePrice) || 0;
+
+  if (shouldApplyDiscount.value && props.currentDiscount > 0) {
+    const discountAmount = price * (props.currentDiscount / 100);
+    return price - discountAmount;
+  }
+
   return price;
 };
 
-const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
-  const priceWithIVA = calculatePriceWithIVA(basePrice, product);
+// Calcular precio con IVA y descuento (si aplica)
+const calculatePriceWithIVAAndDiscount = (basePrice, product) => {
+  let effectivePrice = calculatePriceWithDiscount(basePrice);
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+
+  if (taxRate > 0) {
+    return effectivePrice * (1 + taxRate);
+  }
+
+  return effectivePrice;
+};
+
+// Formatear precio COP con redondeo y descuento (si aplica)
+const calculateAndFormatCopPriceWithIVAAndDiscount = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVAAndDiscount(basePrice, product);
   return formatCurrency(roundUpToNearestHundred(priceWithIVA));
 };
 
-
 const handleAddProduct = (productId) => {
   const quantityToAdd = inputQuantities.value.get(productId);
-  if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) {
-    console.error(`La cantidad para el producto ${productId} no es válida (${quantityToAdd}). Debe ser un número positivo para añadir.`);
+  if (
+    quantityToAdd === null ||
+    quantityToAdd === undefined ||
+    quantityToAdd <= 0
+  ) {
+    console.error(
+      `La cantidad para el producto ${productId} no es válida (${quantityToAdd}). Debe ser un número positivo para añadir.`
+    );
     return;
   }
-  emit('add-product', { productId, quantity: quantityToAdd });
+  emit("add-product", { productId, quantity: quantityToAdd });
+
+  // Resetear la cantidad del input después de agregar
+  inputQuantities.value.set(productId, 1);
 };
 
-watch(() => props.products, (newProducts) => {
-  const newOrderMap = new Map();
-  newProducts.forEach(product => {
-    let currentQty;
-    if (product.valid_stock_sum === 0) {
-      currentQty = 0;
-    } else {
-      let previousQty = inputQuantities.value.get(product.id);
-      if (previousQty === undefined || previousQty === null || previousQty < 1) {
-        currentQty = 1;
+watch(
+  () => props.products,
+  (newProducts) => {
+    const newOrderMap = new Map();
+    newProducts.forEach((product) => {
+      let currentQty;
+      if (product.valid_stock_sum === 0) {
+        currentQty = 0;
       } else {
-        currentQty = previousQty;
+        let previousQty = inputQuantities.value.get(product.id);
+        if (
+          previousQty === undefined ||
+          previousQty === null ||
+          previousQty < 1
+        ) {
+          currentQty = 1;
+        } else {
+          currentQty = previousQty;
+        }
+        if (currentQty > product.valid_stock_sum) {
+          currentQty = product.valid_stock_sum;
+        }
       }
-      if (currentQty > product.valid_stock_sum) {
-        currentQty = product.valid_stock_sum;
-      }
-    }
-    newOrderMap.set(product.id, currentQty);
-  });
-  inputQuantities.value = newOrderMap;
-}, { immediate: true });
-
+      newOrderMap.set(product.id, currentQty);
+    });
+    inputQuantities.value = newOrderMap;
+  },
+  { immediate: true }
+);
 
 const handleInputOrderChange = (productId, val) => {
   let cleanVal = parseInt(val);
-  const maxQty = props.products.find(p => p.id === productId)?.valid_stock_sum ?? 0;
+  const maxQty =
+    props.products.find((p) => p.id === productId)?.valid_stock_sum ?? 0;
   if (isNaN(cleanVal) || cleanVal < 0) {
     cleanVal = 0;
   }
@@ -87,8 +166,55 @@ const handleInputOrderChange = (productId, val) => {
 };
 
 const handleViewGroupProducts = (product) => {
-    emit('view-group-products', product.group_id);
+  emit("view-group-products", product.group_id);
 };
+
+// Función para calcular precio con IVA (sin descuento)
+const calculatePriceWithIVA = (basePrice, product) => {
+  const price = parseFloat(basePrice) || 0;
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+  if (taxRate > 0) {
+    return price * (1 + taxRate);
+  }
+  return price;
+};
+
+// Función para formatear precio COP (sin descuento)
+const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVA(basePrice, product);
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA));
+};
+
+// Función de redondeo para COP
+const roundUpToNearestHundred = (value) => {
+  return Math.ceil(value / 100) * 100;
+};
+
+// Calcular el total del descuento que se aplicaría
+const totalDiscountPreview = computed(() => {
+  if (!shouldApplyDiscount.value || props.currentDiscount <= 0) return 0;
+
+  let subtotalWithoutDiscount = 0;
+
+  // Sumar productos en el carrito
+  props.orderItems.forEach((item) => {
+    // Necesitarías obtener el precio aquí - puedes ajustar según tus datos
+    const price = item.price || item.sale_price || 0;
+    const quantity = item.selectedQuantity || 0;
+    subtotalWithoutDiscount += price * quantity;
+  });
+
+  // Sumar productos en los inputs de la tabla
+  props.products.forEach((product) => {
+    const quantityInInput = inputQuantities.value.get(product.id) || 0;
+    if (quantityInInput > 0) {
+      const price = product.sale_price || 0;
+      subtotalWithoutDiscount += price * quantityInInput;
+    }
+  });
+
+  return subtotalWithoutDiscount * (props.currentDiscount / 100);
+});
 </script>
 
 <template>
@@ -107,25 +233,74 @@ const handleViewGroupProducts = (product) => {
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
       <template #item.valid_stock_sum="{ item }">
-    <span class="font-weight-medium text-no-wrap">{{ item.valid_stock_sum }}</span>
-</template>
+        <span class="font-weight-medium text-no-wrap">{{
+          item.valid_stock_sum
+        }}</span>
+      </template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.name }}</span>
-            <span class="text-sm text-disabled">{{ item.active_ingredient }}</span>
-          <span class="text-sm text-disabled">{{ item.origin?.name}}</span>
+            <span class="text-body-1 font-weight-medium text-high-emphasis">{{
+              item.name
+            }}</span>
+            <span class="text-sm text-disabled">{{
+              item.active_ingredient
+            }}</span>
+            <span class="text-sm text-disabled">{{ item.origin?.name }}</span>
           </div>
         </div>
       </template>
-       <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item))}}</span></template>
-      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}</span></template>
-      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}</span></template>
+      <template #item.sale_price="{ item }">
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium">{{
+            formatCurrency(
+              calculatePriceWithIVAAndDiscount(item.sale_price, item)
+            )
+          }}</span>
+          <!-- Mostrar precio original tachado si hay descuento -->
+          <span
+            v-if="shouldApplyDiscount && currentDiscount > 0"
+            class="text-xs text-disabled text-decoration-line-through"
+          >
+            {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+          </span>
+        </div>
+      </template>
+      <template #item.price_bs="{ item }">
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium">{{
+            formatCurrency(
+              calculatePriceWithIVAAndDiscount(item.price_bs, item)
+            )
+          }}</span>
+          <!-- Mostrar precio original tachado si hay descuento -->
+          <span
+            v-if="shouldApplyDiscount && currentDiscount > 0"
+            class="text-xs text-disabled text-decoration-line-through"
+          >
+            {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
+          </span>
+        </div>
+      </template>
+      <template #item.price_cop="{ item }">
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium">{{
+            calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item)
+          }}</span>
+          <!-- Mostrar precio original tachado si hay descuento -->
+          <span
+            v-if="shouldApplyDiscount && currentDiscount > 0"
+            class="text-xs text-disabled text-decoration-line-through"
+          >
+            {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
+          </span>
+        </div>
+      </template>
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">
           <VTextField
             :model-value="inputQuantities.get(item.id) ?? 0"
-            @update:model-value="val => handleInputOrderChange(item.id, val)"
+            @update:model-value="(val) => handleInputOrderChange(item.id, val)"
             type="number"
             min="0"
             :max="item.valid_stock_sum"
@@ -133,28 +308,73 @@ const handleViewGroupProducts = (product) => {
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 90px;min-width: 90px;"
+            style="max-width: 90px; min-width: 90px"
             class="my-2 quantity-input-field"
             :disabled="item.valid_stock_sum === 0"
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
             :disabled="
-                (inputQuantities.get(item.id) ?? 0) <= 0 || 
-                (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum || 
-                item.valid_stock_sum === 0
+              (inputQuantities.get(item.id) ?? 0) <= 0 ||
+              (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum ||
+              item.valid_stock_sum === 0
             "
           >
             <VIcon icon="tabler-plus" />
           </IconBtn>
         </div>
       </template>
-       <template #item.actions="{ item }">
-         <IconBtn 
-        @click="handleViewGroupProducts(item)">
-        <VIcon icon="tabler-eye" />
-      </IconBtn>
+      <template #item.actions="{ item }">
+        <IconBtn @click="handleViewGroupProducts(item)">
+          <VIcon icon="tabler-eye" />
+        </IconBtn>
       </template>
     </VDataTableServer>
+
+    <!-- Información del descuento -->
+    <VCardText v-if="currentDiscount > 0" class="pa-4">
+      <div class="d-flex flex-column gap-2">
+        <!-- Total de productos -->
+        <div class="d-flex justify-space-between align-center">
+          <span class="text-sm">Total de productos seleccionados:</span>
+          <span class="font-weight-bold">{{ totalProductsInCart }}</span>
+        </div>
+
+        <!-- Rango de descuento -->
+        <div class="d-flex justify-space-between align-center">
+          <span class="text-sm">Rango para descuento:</span>
+          <span class="font-weight-bold">
+            {{ discountMinProducts }} - {{ discountMaxProducts }} unidades
+          </span>
+        </div>
+
+        <!-- Estado del descuento -->
+        <div class="d-flex justify-space-between align-center">
+          <span class="text-sm">Descuento aplicable:</span>
+          <span
+            :class="{
+              'text-success font-weight-bold': shouldApplyDiscount,
+              'text-disabled': !shouldApplyDiscount,
+            }"
+          >
+            {{ shouldApplyDiscount ? "SÍ" : "NO" }}
+            <span v-if="shouldApplyDiscount"> ({{ currentDiscount }}%)</span>
+          </span>
+        </div>
+
+        <!-- Vista previa del descuento -->
+        <div
+          v-if="shouldApplyDiscount"
+          class="d-flex justify-space-between align-center bg-success-lighten-5 pa-2 rounded"
+        >
+          <span class="text-sm text-success font-weight-bold"
+            >Descuento estimado:</span
+          >
+          <span class="text-success font-weight-bold">
+            {{ formatCurrency(totalDiscountPreview) }}
+          </span>
+        </div>
+      </div>
+    </VCardText>
   </VCard>
 </template>

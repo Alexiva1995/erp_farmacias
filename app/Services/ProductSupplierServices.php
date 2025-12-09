@@ -30,6 +30,10 @@ class ProductSupplierServices implements ProductSupplier
 
     public function calculatePercentageDifferenceIncrease(float $price, float $supplierPrice): float
     {
+        if ($price == 0) {
+            return 0;
+        }
+
         $resta = $supplierPrice - $price;
         $resultado = $resta / $price;
         return $resultado;
