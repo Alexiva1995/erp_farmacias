@@ -18,37 +18,39 @@ use App\Observers\ProductObserver;
 
 class ReturnsActionService
 {
-    public function __construct(private ResourceService $resourceService) {}
+    public function __construct(private ResourceService $resourceService)
+    {
+    }
 
 
     public function searchOrdersReturns(string $searchTerm, array $options): Builder
     {
         try {
 
-          $query = Order::where('created_at', '>=', Carbon::now()->subHours(48))
-            ->where('status', Order::COMPLETED)
-            ->with('client', 'details.product')
-            ->where(function ($query) use ($searchTerm) {
-                $query->where('id', $searchTerm);
-                $query->orWhereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('identification', $searchTerm);
+            $query = Order::where('created_at', '>=', Carbon::now()->subHours(48))
+                ->where('status', Order::COMPLETED)
+                ->with('client', 'details.product')
+                ->where(function ($query) use ($searchTerm) {
+                    $query->where('id', $searchTerm);
+                    $query->orWhereHas('client', function ($q) use ($searchTerm) {
+                        $q->where('identification', $searchTerm);
+                    });
                 });
-            });
 
             $hasReturn = (clone $query);
-        if ($hasReturn->count()==1) {
-            if($hasReturn->whereHas('returns')->exists()){
-                throw new Exception('Esta orden ya tiene una devolución registrada y no puede ser modificada.');
+            if ($hasReturn->count() == 1) {
+                if ($hasReturn->whereHas('returns')->exists()) {
+                    throw new Exception('Esta orden ya tiene una devolución registrada y no puede ser modificada.');
+                }
             }
-        }
 
-         $query->whereDoesntHave('returns');
+            $query->whereDoesntHave('returns');
             if (isset($options['sortBy']) && !empty($options['sortBy'])) {
                 $sortBy = $options['sortBy'];
                 $orderBy = $options['orderBy'] ?? 'asc';
                 $query->orderBy($sortBy, $orderBy);
             }
-            
+
             return $query;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -75,7 +77,7 @@ class ReturnsActionService
             }
             $orderDetail = (object) $orderDetail;
 
-            $returnAmount = $returnsQuantity * (float)$orderDetail->unit_price_usd;
+            $returnAmount = $returnsQuantity * (float) $orderDetail->unit_price_usd;
             $clientData = $orderData['client'];
 
             if (!$clientData) {
@@ -91,7 +93,7 @@ class ReturnsActionService
             if ($lot) {
                 $lot->quantity += $returnsQuantity;
                 ProductLot::withoutEvents(function () use ($lot) {
-                    $lot->save(); 
+                    $lot->save();
                 });
             } else {
                 throw new Exception('No se encontró lote vigente para ese producto.');
@@ -105,10 +107,9 @@ class ReturnsActionService
                 'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
                 'return_date' => Carbon::now(),
-                'status' => ReturnEntry::CREATED,
             ]);
 
-            ProductObserver::handleReturnMovement($return); 
+            ProductObserver::handleReturnMovement($return);
             DB::commit();
             return [
                 'success' => true,
@@ -120,18 +121,38 @@ class ReturnsActionService
         }
     }
 
-    public function approvedReturn(ReturnEntry $ReturnEntry): ReturnEntry
+    public function updateStatus(ReturnEntry $ReturnEntry, string $status): ReturnEntry
     {
         DB::beginTransaction();
         try {
-            $ReturnEntry->status = ReturnEntry::APPROVED;
+            $ReturnEntry->status = $status === ReturnEntry::APPROVED ? ReturnEntry::APPROVED : ReturnEntry::REJECTED;
             $ReturnEntry->save();
+
+            if ($status === ReturnEntry::APPROVED) {
+                $ReturnEntry->order->client->increment('balance', $ReturnEntry->amount_refunded);
+
+                $order = $ReturnEntry->order;
+                $paymentMethods = $order->payment_methods ?? [];
+
+                $paymentMethods[] = [
+                    'amount' => (float) $ReturnEntry->amount_refunded,
+                    'method' => 'cash_usd',
+                    'currency' => 'USD',
+                    'reference' => null,
+                    'inputAmount' => null,
+                    'debounceTimeout' => 0,
+                    "isDebt" => true
+                ];
+
+                $order->payment_methods = $paymentMethods;
+                $order->save();
+            }
             DB::commit();
-            Log::info("Devolución aprobada exitosamente.", ['returnEntry_id' => $ReturnEntry->id]);
+            Log::info("Devolución $status exitosamente.", ['returnEntry_id' => $ReturnEntry->id]);
             return $ReturnEntry;
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al aprobar la devolución: ' . $e->getMessage(), [
+            Log::error("Error al $status la devolución: " . $e->getMessage(), [
                 'returnEntry_id' => $ReturnEntry->id,
                 'trace' => $e->getTraceAsString(),
             ]);
