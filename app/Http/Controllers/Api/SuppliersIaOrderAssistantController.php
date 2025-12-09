@@ -181,6 +181,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["productosFallas"] = $productosFallas;
 
         $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
+
         return ApiResponse::success($respuesta, "ok", 200);
     }
 
@@ -202,6 +203,7 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function consultarProductosSinProveedor(Request $request): JsonResponse
     {
+
         $timeZone = new DateTimeZone(config("app.timezone"));
         $dateToday = new DateTime("now", $timeZone);
 
@@ -215,19 +217,16 @@ class SuppliersIaOrderAssistantController extends Controller
             "orderBy" => "asc",
             "sortBy" => "name",
             "ids" => $request->ids ?? null,
-        ];
 
-        if (empty($request->ids)) {
-            return ApiResponse::success([], "ok", 200);
-        }
+        ];
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
-
+            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $this->generarPreviousDate($filtros["tiempo"], $filtros["tipo_de_tiempo"]);
         }
+
 
         if ($filtros["tipo_filtracion"] == "average") {
             $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
@@ -236,23 +235,20 @@ class SuppliersIaOrderAssistantController extends Controller
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
 
-        // Asignar el stock faltante
-        if ($request->filled('idsConFantante') && $productos) {
-            foreach ($request->idsConFantante as $key => $value) {
-                foreach ($productos as $producto) {
-                    if ($producto->id == $value["id"]) {
-                        $producto->stockFaltante = $value["solicitar"];
-                        break;
-                    }
+
+        foreach ($request->idsConFantante as $key => $value) {
+
+            for ($index = 0; $index < count($productos); $index++) {
+
+                if ($productos[$index]->id == $value["id"]) {
+                    $productos[$index]->stockFaltante = $value["solicitar"];
                 }
             }
         }
-
         return ApiResponse::success($productos, "ok", 200);
     }
     private function getOptimizedUniqueOpportunities(Request $request)
     {
-        // 1. GENERAR LLAVE DE CACHÉ
         $cacheKey = 'sorted_ids_' . md5(json_encode([
             'lab' => $request->laboratoryId,
             'groups' => $request->groups,
@@ -260,8 +256,8 @@ class SuppliersIaOrderAssistantController extends Controller
             'desc' => $request->con_descuento,
         ]));
 
-        // Cacheamos la lógica pesada para obtener los IDs ordenados
         $sortedIds = Cache::remember($cacheKey, 600, function () use ($request) {
+
             $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
 
@@ -279,46 +275,48 @@ class SuppliersIaOrderAssistantController extends Controller
             if ($request->filled("groups"))
                 $filtros["groups"] = $request->groups;
 
-            // Obtener productos base
             if ($filtros["tipo_filtracion"] == "average") {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             } else {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             }
 
-            // Cálculos previos
             $productos = $this->product->calcularAOProducts($productos);
             $productos = $this->product->removerProductosConPedidosAutomaticos($productos);
             $productos = $this->product->actualizarElSolicitadoConElAO($productos);
 
-            // Filtrado de oportunidades
             $tempOportunidad = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productos, $request->con_descuento);
             $tempOportunidad = $this->productSupplier->checkTolerance($tempOportunidad, $request->con_descuento);
             $tempOportunidad = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($tempOportunidad);
 
             $listaOrdenada = $this->orderByDiscount($tempOportunidad);
 
-            // Retornamos solo los IDs ordenados
             return collect($listaOrdenada)->map(function ($item) {
                 return $item['product']->id;
             })->values()->all();
         });
 
-        // Si no hay IDs, retornamos array vacío
-        if (empty($sortedIds)) {
-            return [];
+        $page = $request->input('page', 1);
+        $perPage = 20;
+
+        $totalItems = count($sortedIds);
+        $idsPaginaActual = collect($sortedIds)->forPage($page, $perPage)->values();
+
+        if ($idsPaginaActual->isEmpty()) {
+            return new \Illuminate\Pagination\LengthAwarePaginator([], $totalItems, $perPage, $page, [
+                'path' => $request->url(),
+                'query' => $request->query()
+            ]);
         }
 
-        // 2. PREPARAR FECHAS PARA SUBQUERIES
         $timeZone = new DateTimeZone(config("app.timezone"));
         $dtNow = new DateTime("now", $timeZone);
         $dateTodayStr = $dtNow->format("Y-m-d H:i:s");
         $previousDateStr = $this->generarPreviousDate("1", "year");
 
-        // 3. HIDRATAR TODOS LOS DATOS (SIN PAGINACIÓN)
         $productosDB = ModelsProduct::select(
             'products.*',
-            // Costo Mínimo
+
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
                 FROM product_lots 
@@ -327,7 +325,6 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
             ) AS cost_min'),
 
-            // Costo Máximo
             DB::raw('(
                 SELECT COALESCE(MAX(unit_cost), 0)
                 FROM product_lots 
@@ -336,7 +333,6 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
             ) AS cost_max'),
 
-            // Ventas Grupales
             DB::raw("(
                 SELECT COALESCE(SUM(od.quantity), 0)
                 FROM order_details od
@@ -346,28 +342,29 @@ class SuppliersIaOrderAssistantController extends Controller
                 AND o.status = 'Completed'
                 AND o.created_at BETWEEN '$previousDateStr' AND '$dateTodayStr'
             ) AS total_group_sales"),
-
-            // Promedio Anual
             DB::raw('sales_average * 12 AS promedio_calculado')
+
         )
-            ->whereIn('id', $sortedIds)
+            ->whereIn('id', $idsPaginaActual)
             ->get();
 
-        // 4. PROCESAR OBJETOS
         $productosDB = $this->product->calcularAOProducts($productosDB);
         $productosDB = $this->product->removerProductosConPedidosAutomaticos($productosDB);
         $productosDB = $this->product->actualizarElSolicitadoConElAO($productosDB);
 
-        // 5. RE-ASOCIAR CON PROVEEDORES
         $itemsFinales = $this->productSupplier->getSupplierToReplenishTheProductsWithoutValidateSolicitar($productosDB, $request->con_descuento);
         $itemsFinales = $this->productSupplier->checkTolerance($itemsFinales, $request->con_descuento);
         $itemsFinales = $this->productSupplier->obtainProductsWithUniqueMarketOpportunities($itemsFinales);
 
-        // 6. RE-ORDENAR FINAL (Para mantener el orden de descuento)
         $itemsFinalesOrdenados = $this->orderByDiscount($itemsFinales);
 
-        // Retornamos el array puro
-        return array_values($itemsFinalesOrdenados);
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $itemsFinalesOrdenados,
+            $totalItems,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
     }
     public function getUniqueOpportunityPagination(Request $request): JsonResponse
     {

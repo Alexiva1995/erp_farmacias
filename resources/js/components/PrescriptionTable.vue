@@ -7,44 +7,65 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-prescription", "delete-prescription", "view-prescription"]);
+const emit = defineEmits([
+  "update:options",
+  "edit-prescription",
+  "delete-prescription",
+  "view-prescription",
+]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Descuento %", key: "discount_percentage", sortable: true, width: "120px" },
-  { title: "Productos", key: "products_count", sortable: true, width: "100px" },
-  { title: "Costo Total", key: "total_cost", sortable: true, width: "120px" },
+  { title: "Nombre", key: "name", sortable: true, width: "120px" },
+  {
+    title: "Descuento %",
+    key: "discount_percentage",
+    sortable: true,
+    width: "120px",
+  },
+  // { title: "Productos", key: "products_count", sortable: true, width: "100px" },
+  // { title: "Costo Total", key: "total_cost", sortable: true, width: "120px" },
   { title: "Fecha Inicio", key: "start_date", sortable: true, width: "120px" },
   { title: "Fecha Fin", key: "end_date", sortable: true, width: "120px" },
   { title: "Estado", key: "is_active", sortable: true, width: "100px" },
-  { title: "Vigente", key: "is_currently_active", sortable: true, width: "140px" },
-  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "120px" },
+  {
+    title: "Vigente",
+    key: "is_currently_active",
+    sortable: true,
+    width: "140px",
+  },
+  {
+    title: "Acciones",
+    key: "actions",
+    sortable: false,
+    align: "center",
+    width: "120px",
+  },
 ];
 
 const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('es-ES');
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("es-ES");
 };
 
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'USD'
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "USD",
   }).format(amount || 0);
 };
 
 const handleEdit = (prescription) => {
-  emit('edit-prescription', prescription);
+  emit("edit-prescription", prescription);
 };
 
 const handleDelete = (prescription) => {
-  emit('delete-prescription', prescription);
+  emit("delete-prescription", prescription);
 };
 
 const handleView = (prescription) => {
-  emit('view-prescription', prescription);
+  emit("view-prescription", prescription);
 };
-
 </script>
 
 <template>
@@ -59,13 +80,16 @@ const handleView = (prescription) => {
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.name="{ item }">
+        {{ item.name }}
+      </template>
       <template #item.discount_percentage="{ item }">
         <VChip variant="outlined" color="primary" size="small">
           {{ item.discount_percentage }}%
         </VChip>
       </template>
 
-      <template #item.products_count="{ item }">
+      <!-- <template #item.products_count="{ item }">
         <VChip variant="outlined" color="info" size="small">
           {{ item.products_count || 0 }}
         </VChip>
@@ -75,7 +99,7 @@ const handleView = (prescription) => {
         <span class="font-weight-bold">
           {{ formatCurrency(item.total_cost) }}
         </span>
-      </template>
+      </template> -->
 
       <template #item.start_date="{ item }">
         <span class="text-caption">
@@ -95,7 +119,7 @@ const handleView = (prescription) => {
           variant="flat"
           size="small"
         >
-          {{ item.is_active ? 'Activo' : 'Inactivo' }}
+          {{ item.is_active ? "Activo" : "Inactivo" }}
         </VChip>
       </template>
 
@@ -105,7 +129,7 @@ const handleView = (prescription) => {
           variant="flat"
           size="small"
         >
-          {{ item.is_currently_active ? 'Sí' : 'No' }}
+          {{ item.is_currently_active ? "Sí" : "No" }}
         </VChip>
       </template>
 
@@ -129,7 +153,7 @@ const handleView = (prescription) => {
         >
           <VIcon>tabler-edit</VIcon>
         </VBtn>
-        
+
         <VBtn
           icon
           variant="text"

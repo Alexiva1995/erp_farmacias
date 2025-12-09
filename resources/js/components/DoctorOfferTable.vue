@@ -14,12 +14,12 @@ const headers = [
   { title: "Médico", key: "doctor_name", sortable: true, width: "25%" },
   {
     title: "% Descuento",
-    key: "discount_percentage",
+    key: "discount",
     sortable: true,
     width: "120px",
   },
-  { title: "Vol Min", key: "min_volume", sortable: true, width: "100px" },
-  { title: "Vol Max", key: "max_volume", sortable: true, width: "100px" },
+  // { title: "Vol Min", key: "min_volume", sortable: true, width: "100px" },
+  // { title: "Vol Max", key: "max_volume", sortable: true, width: "100px" },
   { title: "Fecha Inicio", key: "start_date", sortable: true, width: "120px" },
   { title: "Fecha Final", key: "end_date", sortable: true, width: "120px" },
   { title: "Estatus", key: "is_active", sortable: true, width: "100px" },
@@ -65,7 +65,7 @@ const getVolumeRange = (scales) => {
 };
 
 const handleView = (doctorOffer) => {
-  emit('view', doctorOffer);
+  emit("view", doctorOffer);
 };
 
 const handleEdit = (doctorOffer) => {
@@ -91,26 +91,28 @@ const handleDelete = (doctorOffer) => {
     >
       <template #item.doctor_name="{ item }">
         <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{ item.doctor?.name || 'N/A' }}</span>
+          <span class="font-weight-medium">{{
+            item.doctor?.name || "N/A"
+          }}</span>
           <span class="text-caption text-disabled"
             >ID: {{ item.doctor_id }}</span
           >
         </div>
       </template>
 
-      <template #item.discount_percentage="{ item }">
+      <template #item.discount="{ item }">
         <VChip size="small" color="primary" variant="flat">
-          {{ getDiscountPercentage(item.scales) }}
+          {{ item.discount }}%
         </VChip>
       </template>
 
-      <template #item.min_volume="{ item }">
+      <!-- <template #item.min_volume="{ item }">
         {{ getVolumeRange(item.scales).min }}
       </template>
 
       <template #item.max_volume="{ item }">
         {{ getVolumeRange(item.scales).max }}
-      </template>
+      </template> -->
 
       <template #item.start_date="{ item }">
         {{ formatDate(item.start_date) }}
