@@ -19,23 +19,30 @@ const dialogVisible = computed({
   set: (val) => emit("update:isDialogVisible", val),
 });
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(amount || 0);
+const formatDate = (dateString) => {
+  if (!dateString) return "N/A";
+  // Ajusta esto según tu formato preferido.
+  // toLocaleDateString() usa la zona horaria local del navegador.
+  return new Date(dateString).toLocaleDateString("es-ES");
 };
 
-const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('es-ES');
+const getStatusText = (isActive) => {
+  return isActive ? "Activa" : "Inactiva";
 };
 
-const calculateProductSubtotal = (productData) => {
-  const unitPrice = productData.sale_price;
-  const quantity = productData.quantity;
-  return unitPrice * quantity;
+const getStatusColor = (isActive) => {
+  return isActive ? "success" : "error";
 };
+
+// Lógica simple para saber si está vigente por fechas
+const isOfferCurrentlyActive = computed(() => {
+  if (!props.prescriptionData) return false;
+  const now = new Date();
+  const startDate = new Date(props.prescriptionData.start_date);
+  const endDate = new Date(props.prescriptionData.end_date);
+
+  return props.prescriptionData.is_active && now >= startDate && now <= endDate;
+});
 
 const closeModal = () => {
   dialogVisible.value = false;
@@ -43,256 +50,144 @@ const closeModal = () => {
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="900" persistent>
-    <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center p-4 bg-primary">
-        <span class="text-h5 font-weight-bold text-white">
-          Detalles de la Oferta
-        </span>
+  <VDialog v-model="dialogVisible" max-width="900px" persistent>
+    <VCard>
+      <VCardTitle class="d-flex align-center pa-4">
+        <span class="text-h5 font-weight-bold"
+          >Detalles de Oferta de Receta</span
+        >
         <VSpacer />
-        <VBtn icon variant="text" @click="closeModal" color="white">
-          <VIcon>tabler-x</VIcon>
+        <VBtn icon variant="text" @click="closeModal">
+          <VIcon icon="tabler-x" />
         </VBtn>
       </VCardTitle>
-      
+
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6">
-        <VRow>
-          <!-- Información General de la Oferta -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100">
-              <VCardTitle class="text-h6 bg-light-primary">
-                <VIcon color="primary" class="me-2" size="20">tabler-info-circle</VIcon>
-                Información General del Recipe
-              </VCardTitle>
-              <VCardText>
-                <VList class="py-0">
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">ID:</VListItemTitle>
-                    <VListItemSubtitle class="text-body-1">{{ prescriptionData.id }}</VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Porcentaje de Descuento:</VListItemTitle>
-                    <VListItemSubtitle class="text-h6 text-success">
-                      {{ prescriptionData.discount_percentage }}%
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Costo Total:</VListItemTitle>
-                    <VListItemSubtitle class="text-h6 text-primary">
-                      {{ formatCurrency(prescriptionData.total_cost) }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Cantidad de Productos:</VListItemTitle>
-                    <VListItemSubtitle>
-                      <VChip variant="outlined" color="primary" size="small">
-                        {{ prescriptionData.products_count }} productos
-                      </VChip>
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Fecha de Inicio:</VListItemTitle>
-                    <VListItemSubtitle>
-                      {{ formatDate(prescriptionData.start_date) || 'Sin fecha definida' }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Fecha de Fin:</VListItemTitle>
-                    <VListItemSubtitle>
-                      {{ formatDate(prescriptionData.end_date) || 'Sin fecha definida' }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Estado:</VListItemTitle>
-                    <VListItemSubtitle>
-                      <VChip 
-                        :color="prescriptionData.is_active ? 'success' : 'error'" 
-                        variant="flat" 
-                        size="small"
-                      >
-                        {{ prescriptionData.is_active ? 'Activo' : 'Inactivo' }}
-                      </VChip>
-                    </VListItemSubtitle>
-                  </VListItem>
+      <VCardText class="pa-6">
+        <div v-if="props.prescriptionData">
+          <h3 class="text-h6 mb-4">Información General</h3>
 
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Activa Actualmente:</VListItemTitle>
-                    <VListItemSubtitle>
-                      <VChip 
-                        :color="prescriptionData.is_currently_active ? 'success' : 'warning'" 
-                        variant="flat" 
-                        size="small"
-                      >
-                        {{ prescriptionData.is_currently_active ? 'Sí' : 'No' }}
-                      </VChip>
-                    </VListItemSubtitle>
-                  </VListItem>
-                </VList>
-              </VCardText>
-            </VCard>
-          </VCol>
-
-          <!-- Productos Incluidos -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100">
-              <VCardTitle class="text-h6 bg-light-info">
-                <VIcon color="info" class="me-2" size="20">tabler-shopping-cart</VIcon>
-                Productos Incluidos
-              </VCardTitle>
-              <VCardText>
-                <VList class="py-0">
-                  <template v-if="prescriptionData.products_with_details && prescriptionData.products_with_details.length > 0">
-                    <VListItem
-                      v-for="(productData, index) in prescriptionData.products_with_details"
-                      :key="index"
-                      class="px-0 mb-3"
-                    >
-                      <VCard variant="tonal" class="w-100">
-                        <VCardText>
-                          <!-- Encabezado del producto -->
-                          <div class="d-flex justify-space-between align-start mb-2">
-                            <div>
-                              <div class="font-weight-bold text-body-1">
-                                {{ productData.product_name }}
-                              </div>
-                              <div class="text-caption text-medium-emphasis">
-                                {{ productData.active_ingredient }}
-                              </div>
-                              <div class="text-caption text-medium-emphasis">
-                                Laboratorio: {{ productData.laboratory || 'N/A' }}
-                              </div>
-                            </div>
-                            <VChip variant="outlined" color="primary" size="small">
-                              {{ productData.quantity }} und.
-                            </VChip>
-                          </div>
-
-                          <!-- Detalles del producto -->
-                          <VRow class="mt-2">
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Precio Unitario:</div>
-                              <div class="text-body-2">
-                                {{ formatCurrency(productData.sale_price) }}
-                              </div>
-                            </VCol>
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Descuento:</div>
-                              <div class="text-body-2 text-success">
-                                {{ prescriptionData.discount_percentage }}%
-                              </div>
-                            </VCol>
-                          </VRow>
-
-                          <VRow class="mt-2">
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Precio Final:</div>
-                              <div class="text-body-2 text-primary">
-                                {{ formatCurrency(productData.final_price / productData.quantity) }} c/u
-                              </div>
-                            </VCol>
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Ahorro:</div>
-                              <div class="text-body-2 text-success">
-                                {{ formatCurrency(productData.discount_amount) }}
-                              </div>
-                            </VCol>
-                          </VRow>
-
-                          <!-- Subtotal -->
-                          <VDivider class="my-2" />
-                          <div class="d-flex justify-space-between align-center">
-                            <span class="font-weight-bold">Subtotal:</span>
-                            <span class="text-h6 text-success">
-                              {{ formatCurrency(productData.final_price) }}
-                            </span>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VListItem>
-                  </template>
-                  
-                  <VListItem v-else class="px-0">
-                    <VListItemTitle class="text-medium-emphasis text-center">
-                      <VIcon size="48" color="grey" class="mb-2">tabler-package-off</VIcon>
-                      <div>No hay productos en esta oferta</div>
-                    </VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
-
-        <!-- Resumen Final -->
-        <VRow class="mt-4">
-          <VCol cols="12">
-            <VCard color="primary" variant="flat">
-              <VCardText class="text-center py-4">
-                <div class="d-flex justify-center align-center">
-                  <VIcon color="white" size="32" class="me-3">tabler-cash</VIcon>
-                  <div>
-                    <div class="text-h5 font-weight-bold text-white">
-                      Costo Total: {{ formatCurrency(prescriptionData.total_cost) }}
-                    </div>
-                    <div class="text-caption text-white">
-                      Descuento aplicado: {{ prescriptionData.discount_percentage }}%
-                    </div>
-                  </div>
+          <VRow>
+            <VCol cols="12" md="4">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-2">
+                  <VIcon
+                    icon="tabler-file-description"
+                    class="me-2 text-medium-emphasis"
+                  />
+                  <span
+                    class="text-caption text-medium-emphasis font-weight-bold"
+                    >NOMBRE DE LA OFERTA</span
+                  >
                 </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
+                <div class="text-body-1 font-weight-bold text-high-emphasis">
+                  {{ prescriptionData.name || "Sin nombre" }}
+                </div>
+                <div class="text-caption text-disabled mt-1">
+                  ID: {{ prescriptionData.id }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol cols="12" md="4">
+              <VCard
+                variant="tonal"
+                color="primary"
+                class="pa-4 h-100 d-flex flex-column justify-center align-center text-center"
+              >
+                <div class="text-overline mb-1">Descuento Aplicado</div>
+                <div class="text-h3 font-weight-bold text-primary">
+                  {{ prescriptionData.discount_percentage }}%
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol cols="12" md="4">
+              <VCard
+                variant="outlined"
+                class="pa-4 h-100 d-flex flex-column justify-center"
+              >
+                <div class="d-flex align-center mb-2">
+                  <VIcon
+                    icon="tabler-activity"
+                    class="me-2 text-medium-emphasis"
+                  />
+                  <span
+                    class="text-caption text-medium-emphasis font-weight-bold"
+                    >ESTATUS ACTUAL</span
+                  >
+                </div>
+                <div class="d-flex align-center gap-2">
+                  <VChip
+                    :color="getStatusColor(prescriptionData.is_active)"
+                    variant="elevated"
+                  >
+                    {{ getStatusText(prescriptionData.is_active) }}
+                  </VChip>
+
+                  <VChip
+                    v-if="isOfferCurrentlyActive"
+                    color="success"
+                    variant="tonal"
+                    prepend-icon="tabler-check"
+                  >
+                    Vigente
+                  </VChip>
+                  <VChip
+                    v-else
+                    color="error"
+                    variant="tonal"
+                    prepend-icon="tabler-alert-circle"
+                  >
+                    No Vigente
+                  </VChip>
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol cols="12" md="6">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-1">
+                  <VIcon
+                    icon="tabler-calendar-plus"
+                    class="me-2 text-success"
+                  />
+                  <span class="text-caption text-medium-emphasis"
+                    >Fecha de Inicio</span
+                  >
+                </div>
+                <div class="text-h6 font-weight-medium">
+                  {{ formatDate(prescriptionData.start_date) }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol cols="12" md="6">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-1">
+                  <VIcon icon="tabler-calendar-minus" class="me-2 text-error" />
+                  <span class="text-caption text-medium-emphasis"
+                    >Fecha de Finalización</span
+                  >
+                </div>
+                <div class="text-h6 font-weight-medium">
+                  {{ formatDate(prescriptionData.end_date) }}
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+        </div>
       </VCardText>
 
-      <!-- Botón de Cerrar -->
+      <VDivider />
+
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn
-          color="primary"
-          variant="flat"
-          prepend-icon="tabler-x"
-          @click="closeModal"
-        >
+        <VBtn color="secondary" variant="tonal" @click="closeModal">
           Cerrar
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
-
-<style scoped>
-.bg-light-primary {
-  background-color: rgba(var(--v-theme-primary), 0.08);
-}
-
-.bg-light-info {
-  background-color: rgba(var(--v-theme-info), 0.08);
-}
-
-.v-list-item {
-  min-height: 48px;
-}
-</style>
