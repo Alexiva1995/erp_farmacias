@@ -83,7 +83,8 @@ const paymentMethodsByCurrency = {
     { label: "Efectivo", value: "cash_bs" },
     { label: "Pago Móvil", value: "mobile_payment" },
     { label: "Transferencia", value: "bank_transfer_bs" },
-    { label: "Tarjeta", value: "card" },
+    { label: "T. Debito", value: "debit_card" },
+    { label: "T. Crédito", value: "credit_card" },
   ],
   USD: [
     { label: "Efectivo", value: "cash_usd" },
@@ -1164,62 +1165,6 @@ const handleMethodChange = (payment, newMethod) => {
                 formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
               }}
             </p>
-          </div>
-          <div class="d-flex align-center mt-3 mb-2">
-            <VCheckbox v-model="speSwitch" color="warning" class="me-2">
-              <template #label>
-                <div class="d-flex align-center">
-                  <VIcon icon="tabler-shield-check" class="me-2" size="20" />
-                  <span class="text-subtitle-1 font-weight-medium">
-                    ¿Sujeto a pasivos especiales?
-                  </span>
-                </div>
-              </template>
-            </VCheckbox>
-            <VChip v-if="speSwitch" color="warning" size="small" class="ms-2">
-              <VIcon icon="tabler-shield-check" size="14" class="me-1" />
-              SPE: +75% IVA
-            </VChip>
-          </div>
-
-          <!-- Mostrar cálculo del SPE cuando está activo -->
-          <div v-if="speSwitch" class="bg-warning-lighten-4 pa-3 rounded mb-3">
-            <div
-              class="text-subtitle-2 font-weight-bold text-warning-darken-2 mb-2"
-            >
-              <VIcon icon="tabler-info-circle" class="me-1" size="16" />
-              Cálculo Sujeto a Pasivos Especiales (75% del IVA):
-            </div>
-            <div class="d-flex justify-space-between">
-              <span class="text-body-2">IVA Total:</span>
-              <span class="text-body-2 font-weight-medium">
-                {{
-                  formatCurrency(
-                    props.orderProducts.reduce(
-                      (sum, product) =>
-                        sum + getIva(product, props.selectedCurrency),
-                      0
-                    ),
-                    props.selectedCurrency
-                  )
-                }}
-              </span>
-            </div>
-            <div class="d-flex justify-space-between">
-              <span class="text-body-2">SPE (75% del IVA):</span>
-              <span class="text-body-2 font-weight-bold text-warning-darken-2">
-                {{
-                  formatCurrency(
-                    props.orderProducts.reduce(
-                      (sum, product) =>
-                        sum + getIva(product, props.selectedCurrency),
-                      0
-                    ) * 0.75,
-                    props.selectedCurrency
-                  )
-                }}
-              </span>
-            </div>
           </div>
 
           <div
