@@ -2,23 +2,13 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  paginationData: { type: Object, required: true },
+  list: { type: Array, required: true }, // Recibimos el array directo
   loading: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['change-page']);
-
+// Simplemente retornamos la lista completa
 const productosTable = computed(() => {
-  return props.paginationData.data || [];
-});
-
-const totalPages = computed(() => {
-  return props.paginationData.last_page || 1;
-});
-
-const currentPage = computed({
-  get: () => props.paginationData.current_page || 1,
-  set: (val) => emit('change-page', val)
+  return props.list || [];
 });
 </script>
 
@@ -26,39 +16,34 @@ const currentPage = computed({
   <VCard>
     <VProgressLinear v-if="loading" indeterminate color="primary" />
 
-    <VTable
-      v-if="productosTable.length > 0"
-      height="450"
-      fixed-header
-      class="text-no-wrap"
-    >
+    <VTable v-if="productosTable.length > 0" class="text-no-wrap">
       <thead>
         <tr>
           <th>Proveedor</th>
           <th>ID</th>
-
-          <th style="width: 400px">Producto</th>
+          <th style="width: 300px; max-width: 300px">Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo</th>
           <th>Stock A.</th>
           <th>Costo P.</th>
-          <th style="width: 100px">Sugerencia</th>
+          <th style="width: 120px">Sugerencia</th>
         </tr>
       </thead>
 
       <tbody>
-        <tr v-for="item in productosTable" :key="item.uuid">
+        <tr v-for="item in productosTable" :key="item.uuid || item.product.id">
           <td>{{ item.supplier.name }}</td>
           <td>{{ item.product.id }}</td>
 
-          <td style="width: 220px; max-width: 220px">
-            <div class="d-flex align-center gap-x-4">
+          <td style="max-width: 300px">
+            <div class="d-flex align-center">
               <VAvatar
                 v-if="item.product.photo_url"
-                size="38"
+                size="34"
                 variant="tonal"
                 rounded
+                class="me-3"
                 :image="item.product.photo_url"
               />
               <div class="d-flex flex-column" style="min-width: 0">
@@ -69,14 +54,16 @@ const currentPage = computed({
                 </span>
                 <span class="text-caption text-disabled text-truncate">
                   {{
-                    item.product.laboratory ? item.product.laboratory.name : ""
+                    item.product.laboratory
+                      ? item.product.laboratory.name
+                      : "Sin Laboratorio"
                   }}
                 </span>
               </div>
             </div>
 
             <VTooltip activator="parent" location="top">
-              {{ item.product.name }}
+              {{ item.product.name }} -
               {{ item.product.laboratory ? item.product.laboratory.name : "" }}
             </VTooltip>
           </td>
@@ -90,15 +77,17 @@ const currentPage = computed({
           </td>
           <td>{{ item.product.stock }}</td>
           <td>
-            <VIcon icon="tabler-currency-dollar" />
+            <VIcon icon="tabler-currency-dollar" size="16" class="me-1" />
             {{ parseFloat(item.precio_final_supplier).toFixed(2) }}
           </td>
-          <td class="row">
+
+          <td>
             <VTextField
               type="number"
               v-model="item.reponer"
               density="compact"
               hide-details
+              variant="outlined"
               style="min-width: 100px"
               :max="item.productSupplier.quantity"
               :suffix="'/' + item.productSupplier.quantity"
@@ -108,26 +97,15 @@ const currentPage = computed({
       </tbody>
     </VTable>
 
-    <!-- Resto del componente igual... -->
     <div v-else class="pa-5 text-center text-medium-emphasis">
-      No hay oportunidades de mercado en esta página.
+      No hay oportunidades de mercado disponibles.
     </div>
 
     <VDivider />
-
     <div class="d-flex align-center justify-end pa-4">
-      <span class="text-sm text-medium-emphasis me-4">
-        Total: {{ props.paginationData.total || 0 }} productos
+      <span class="text-sm text-medium-emphasis">
+        Total: {{ productosTable.length }} productos
       </span>
-      <VPagination
-        v-model="currentPage"
-        :length="totalPages"
-        total-visible="5"
-        size="small"
-        rounded="circle"
-        active-color="primary"
-        :disabled="loading"
-      />
     </div>
   </VCard>
 </template>

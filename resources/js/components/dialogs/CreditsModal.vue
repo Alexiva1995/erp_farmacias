@@ -1,11 +1,11 @@
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch } from "vue";
-import { formatCurrency } from "@/utils/currencyFormatter";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import { formatDateTime } from "@/utils/formatDateTime";
 import { toast } from "@/plugins/sweetalert";
-import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { useAuthStore } from "@/stores/auth";
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDateTime } from "@/utils/formatDateTime";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed, defineEmits, defineProps, ref } from "vue";
 
 const currentProgress = ref(0);
 const progressStages = [0, 100];
@@ -95,7 +95,7 @@ const closeModal = () => {
 
 const fetchExchangeRates = async () => {
   try {
-    const response = await fetch("/api/exchange-rates");
+    const response = await fetch("/api/public/exchange-rates");
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }

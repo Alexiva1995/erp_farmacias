@@ -69,6 +69,7 @@ declare module 'vue' {
     CompanyViewOffer: typeof import('./resources/js/components/dialogs/CompanyViewOffer.vue')['default']
     ConfirmDialog: typeof import('./resources/js/components/dialogs/ConfirmDialog.vue')['default']
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
+    CreditFilters: typeof import('./resources/js/components/CreditFilters.vue')['default']
     CreditoFiscalTable: typeof import('./resources/js/components/CreditoFiscalTable.vue')['default']
     CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
     CreditsOrderTicket: typeof import('./resources/js/components/CreditsOrderTicket.vue')['default']
@@ -296,5 +297,6 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }
