@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Repository;
 
 use App\Models\Order;
@@ -10,9 +9,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderRepository
 {
-
-
-
     public function filtrarOrdenesWithPsychotropicsforPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = Order::query()->with(["client", "seller"]);
@@ -23,18 +19,12 @@ class OrderRepository
             ->where('products.psychotropic', "=", 1)
             ->distinct();
 
-
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         }
 
         return $consulta->paginate($perPage);
     }
-
-
-
-
-
 
     public function builerFiltrarOrdenesforLottery($filtros): Builder
     {
@@ -54,30 +44,35 @@ class OrderRepository
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
             if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
-                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
+                $consulta->whereBetween("orders.created_at", [
+                    $filtros["fechaDesde_filtro"],
+                    $filtros["fechaHasta_filtro"]
+                ]);
             }
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
-            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+            $sortBy = $filtros["sortBy"];
+            if (in_array($sortBy, ['id', 'created_at', 'total_amount_usd'])) {
+                $sortBy = "orders.{$sortBy}";
+            }
+            $consulta->orderBy($sortBy, $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("id", "ASC");
+            $consulta->orderBy("orders.id", "ASC");
         }
 
-        return  $consulta;
+        return $consulta;
     }
 
     public function filtrarOrdenesforLotteryWithoutPaginate($filtros): Collection
     {
         $consulta = $this->builerFiltrarOrdenesforLottery($filtros);
-        return  $consulta->get();
+        return $consulta->get();
     }
-
 
     public function filtrarOrdenesforLotteryWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = $this->builerFiltrarOrdenesforLottery($filtros);
-
         return $consulta->paginate($perPage);
     }
 }

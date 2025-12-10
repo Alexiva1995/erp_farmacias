@@ -149,7 +149,10 @@ async function sortiar(payload){
       console.log("datos => ",ganadores)
         modal.statu=true
         modal.lista=ganadores.map( gan  => {
-          return `${gan.client.identification_type}${gan.client.identification} ${gan.client.name} ${gan.client.last_name}`
+          return {
+            client: `${gan.client.identification_type}${gan.client.identification} ${gan.client.name} ${gan.client.last_name}`,
+            order_id: gan.id
+          }
         })
       }
       else{
