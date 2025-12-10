@@ -153,12 +153,6 @@ const currencies = [
   { value: "COP", label: "COP - Peso Colombiano" },
 ];
 
-// Opciones de tipo de pago
-const paymentTypes = [
-  { value: "full", label: "Pago Completo" },
-  { value: "partial", label: "Pago Parcial" },
-];
-
 // Computed properties para cálculos
 const totalInOriginalCurrency = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
@@ -423,7 +417,7 @@ const processPayment = async () => {
 
   try {
     const paymentData = {
-      payment_type: form.value.payment_type,
+      payment_type: "full",
       payment_currency: form.value.payment_currency,
       payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
@@ -489,6 +483,16 @@ const formatCurrency = (amount, currency) => {
   const formatter = new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: validCurrency,
+  });
+
+  return formatter.format(amount);
+};
+
+const formatWithoutCurrency = (amount) => {
+  if (!amount) return "0.00";
+
+  const formatter = new Intl.NumberFormat("es-VE", {
+    style: "decimal",
   });
 
   return formatter.format(amount);
@@ -711,64 +715,60 @@ onMounted(() => {
       <VDivider />
 
       <VCardText>
+        <!-- Información de facturas seleccionadas -->
+        <VRow>
+          <VCol cols="12">
+            <VCard>
+              <VAlert type="info" variant="tonal" class="mb-4">
+                <div class="d-flex align-center">
+                  <VIcon icon="tabler-receipt" class="me-2" />
+                  Facturas a Pagar
+                </div>
+                <div class="text-caption text-medium-emphasis mb-2">
+                  {{ invoices.length }} factura(s) seleccionada(s) para pago
+                </div>
+                <VRow>
+                  <VCol
+                    v-for="invoice in invoices"
+                    :key="invoice.id"
+                    cols="4"
+                    class="my-0 py-0 pb-2 pt-1"
+                  >
+                    <strong>#{{ invoice.invoice_number }}</strong> -
+                    {{ formatWithoutCurrency(invoice.total_amount) }}
+                    {{ invoice.currency }}
+                  </VCol>
+                </VRow>
+              </VAlert>
+            </VCard>
+          </VCol>
+        </VRow>
+
         <!-- Información del proveedor -->
         <div v-if="supplierInfo" class="mb-6">
-          <VCard variant="tonal" color="primary">
+          <VCard variant="tonal" color="primary" title="Detalles de pago">
             <VCardText>
               <VRow>
                 <VCol cols="12" md="6">
                   <div class="text-h6 font-weight-bold">
                     {{ supplierInfo.name }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Fecha de Pago: {{ formatDate(supplierInfo.paymentDate) }}
-                  </div>
-                </VCol>
-                <VCol cols="12" md="6">
-                  <div class="text-caption text-medium-emphasis">
-                    Total a Pagar ({{ supplierInfo.currency }})
-                  </div>
-                  <div class="text-h6 font-weight-bold text-success">
                     {{
                       formatCurrency(
                         totalInSupplierCurrency,
                         supplierInfo.currency
                       )
                     }}
+                    O
+                    {{ formatCurrency(totalInUSD, "USD") }}
                   </div>
-                  <div
-                    v-if="supplierInfo.currency !== 'USD'"
-                    class="text-caption text-medium-emphasis"
-                  >
-                    ≈ {{ formatCurrency(totalInUSD, "USD") }} USD
+                  <div class="text-caption text-medium-emphasis">
+                    Fecha de Pago: {{ formatDate(supplierInfo.paymentDate) }}
                   </div>
                 </VCol>
               </VRow>
             </VCardText>
           </VCard>
         </div>
-
-        <!-- Información de facturas seleccionadas -->
-        <VRow>
-          <VCol cols="12">
-            <VAlert type="info" variant="tonal" class="mb-4">
-              <template #title>
-                <div class="d-flex align-center">
-                  <VIcon icon="tabler-receipt" class="me-2" />
-                  Facturas a Pagar
-                </div>
-              </template>
-              <div class="text-caption text-medium-emphasis mb-2">
-                {{ invoices.length }} factura(s) seleccionada(s) para pago
-              </div>
-              <div v-for="invoice in invoices" :key="invoice.id" class="mb-1">
-                <strong>{{ invoice.invoice_number }}</strong> -
-                {{ formatCurrency(invoice.total_amount, invoice.currency) }}
-                ({{ invoice.currency }})
-              </div>
-            </VAlert>
-          </VCol>
-        </VRow>
 
         <VDivider class="my-6" />
 
@@ -798,7 +798,7 @@ onMounted(() => {
           </VRow>
 
           <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VSelect
                 v-model="form.payment_currency"
                 :items="currencies"
@@ -811,22 +811,7 @@ onMounted(() => {
                 :return-object="false"
               />
             </VCol>
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="form.payment_type"
-                :items="paymentTypes"
-                item-title="label"
-                item-value="value"
-                label="Tipo de Pago"
-                :error-messages="errors.payment_type"
-                required
-                :return-object="false"
-              />
-            </VCol>
-          </VRow>
-
-          <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model.number="form.payment_amount"
                 label="Monto a Pagar"
@@ -845,21 +830,13 @@ onMounted(() => {
                     : 'primary'
                 "
                 :prepend-inner-icon="amountFieldState === 'error' ? '❌' : '💲'"
-                :hint="
-                  amountFieldState === 'success'
-                    ? '✅ Monto válido - Listo para procesar'
-                    : `Monto de referencia: ${formatCurrency(
-                        totalInUSD,
-                        'USD'
-                      )} - Puede pagar más o menos según su conveniencia`
-                "
                 persistent-hint
                 @input="validateAmountRealtime"
                 @blur="validateAmountRealtime"
                 required
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="form.reference"
                 label="Referencia de Pago"
@@ -948,58 +925,6 @@ onMounted(() => {
                     </div>
                   </VCol>
                 </VRow>
-
-                <!-- Información adicional para pagos parciales -->
-                <div
-                  v-if="form.payment_type === 'partial'"
-                  class="mt-3 pa-3 bg-warning-lighten-4 rounded"
-                >
-                  <div class="text-subtitle-2 mb-2">
-                    📊 Información del Pago Parcial
-                  </div>
-
-                  <!-- Información de pagos anteriores -->
-                  <div
-                    v-if="paymentInfo.has_previous_payments"
-                    class="mb-3 pa-2 bg-info-lighten-5 rounded"
-                  >
-                    <div class="text-caption text-info">
-                      <strong>Pagos anteriores:</strong>
-                      {{
-                        formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
-                      }}
-                    </div>
-                    <div class="text-caption text-info">
-                      <strong>Pago actual:</strong>
-                      {{ formatCurrency(amountInUSD, "USD") }}
-                    </div>
-                  </div>
-
-                  <div>
-                    <strong>Progreso total del pago:</strong>
-                    {{ paymentPercentage }}%
-                  </div>
-                  <div>
-                    <strong>Monto restante ANTES de este pago:</strong>
-                    {{ formatCurrency(remainingAmount, "USD") }}
-                    <span v-if="getOriginalCurrency() !== 'USD'">
-                      ({{
-                        formatCurrency(
-                          getRemainingAmountInOriginalCurrency(),
-                          getOriginalCurrency()
-                        )
-                      }})
-                    </span>
-                  </div>
-                  <div class="mt-2">
-                    <VProgressLinear
-                      :model-value="paymentPercentage"
-                      color="warning"
-                      height="8"
-                      rounded
-                    />
-                  </div>
-                </div>
               </VAlert>
             </VCol>
           </VRow>
