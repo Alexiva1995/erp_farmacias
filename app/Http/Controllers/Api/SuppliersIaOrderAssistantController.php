@@ -180,7 +180,8 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["productos_a_reponer"] = $this->orderByDiscount($tempReponer);
         $respuesta["productosFallas"] = $productosFallas;
 
-        $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
+        // $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
+        $respuesta["productos_oportunidad_unica"] = [];
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -368,7 +369,8 @@ class SuppliersIaOrderAssistantController extends Controller
     }
     public function getUniqueOpportunityPagination(Request $request): JsonResponse
     {
-        $paginacion = $this->getOptimizedUniqueOpportunities($request);
+        // $paginacion = $this->getOptimizedUniqueOpportunities($request);
+        $paginacion = ["data" => [], "total" => 0];
         return ApiResponse::success($paginacion, "ok", 200);
     }
     private function orderByDiscount(array $listaProductos): array

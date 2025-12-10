@@ -4,7 +4,6 @@ import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
-import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
@@ -139,13 +138,14 @@ function actualizarIndexNavegacion(payload){
   }
 
   if(payload == 3){
-    if (module.productosOportunidadUnica && module.productosOportunidadUnica.data) {
-      let listaActualizada = actualizarCantidadAReponerProductosEnFalla(
-          [...module.productoFallas],
-          [...module.productosOportunidadUnica.data]
-      );
-      module.productosOportunidadUnica.data = listaActualizada;
-    }
+    // if (module.productosOportunidadUnica && module.productosOportunidadUnica.data) {
+    //   let listaActualizada = actualizarCantidadAReponerProductosEnFalla(
+    //       [...module.productoFallas],
+    //       [...module.productosOportunidadUnica.data]
+    //   );
+    //   module.productosOportunidadUnica.data = listaActualizada;
+    // }
+    seleccionarProductosParaElDetalle()
   }
 
   if(payload == 4){
@@ -437,14 +437,19 @@ function eliminarItemOrden(payload){
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
     <VCard
-      title="Oportunidades de Mercado"
+      title="Productos del Pedido"
       class="mb-6"
       v-if="indexNavegacion == 3"
     >
-      <UniqueMarketOpportunityTable
+      <!-- <UniqueMarketOpportunityTable
         :pagination-data="module.productosOportunidadUnica"
         :loading="module.loadingApp"
         @change-page="handleChangePageOportunidad"
+      /> -->
+
+      <OrderProductListTable
+        :list="module.detalleOrder"
+        @eliminar-item-orden="eliminarItemOrden"
       />
     </VCard>
 
