@@ -209,7 +209,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
-        Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+        Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
         // Rutas de Promociones
         Route::prefix("promotions")->group(function () {
             Route::prefix("individual")->group(function () {
@@ -291,6 +291,7 @@ Route::prefix("crm")->group(function () {
         Route::delete("/{id}", [CompanyController::class, "deleteById"]);
         Route::post("/edit/{id}", [CompanyController::class, "edit"]);
         Route::post("/filtrar", [CompanyController::class, "filtrar"]);
+        // Route::post("/filtrar-cliientes", [CompanyController::class, "filtrarClientes"]);
         Route::post("/filtrar-sin-paginar", [CompanyController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [CompanyController::class, "exportarExcel"]);
     });
@@ -299,8 +300,9 @@ Route::prefix("crm")->group(function () {
         Route::post("/", [ClientController::class, "create"]);
         Route::get("/", [ClientController::class, "consultAll"]);
         Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
+        Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
         Route::post("/filtrar", [ClientController::class, "filtrar"]);
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);

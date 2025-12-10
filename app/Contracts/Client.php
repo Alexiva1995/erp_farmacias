@@ -27,4 +27,6 @@ interface Client
     public function filterWithoutPaginate(array $filtros): Collection;
 
     public function exportExcel(array $filtros): ClientsExport;
+
+    public function updateCompany(int $client_id, int $company_id, bool $status): ?Model;
 }

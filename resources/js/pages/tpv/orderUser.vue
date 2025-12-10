@@ -326,11 +326,6 @@ const verifyClient = async (identification) => {
     } else {
       const clientData = response.data.data.client;
 
-      const { discount_percentage, max_volume, min_volume } =
-        response.data.data.client.available_discount;
-      discount.value = Number(discount_percentage);
-      discountMinProducts.value = min_volume;
-      discountMaxProducts.value = max_volume;
       selectedClient.value = clientData;
       toast.success(
         `Cliente ${clientData.name} ${clientData.last_name} encontrado.`

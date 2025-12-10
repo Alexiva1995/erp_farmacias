@@ -1,7 +1,7 @@
 <script setup>
 import ReturnsSupervisorTable from "@/components/ReturnsSupervisorTable.vue";
-import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const returns = ref([]);
 const totalReturns = ref(0);
@@ -23,15 +23,9 @@ onMounted(() => {
   fetchReturn();
 });
 
-
 let debounceTimer;
 watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-  ],
+  [page, itemsPerPage, sortBy, orderBy],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchReturn(), 300);
@@ -60,15 +54,15 @@ const fetchReturn = async () => {
   } finally {
     loading.value = false;
   }
-}
+};
 
-const updateStatus = async (item) => {
- try {
+const updateStatus = async (item, status) => {
+  try {
     let returnId = item.id;
-    await axios.patch(`/tpv/returns/${returnId}/approved`);
+    await axios.patch(`/tpv/returns/${returnId}/${status}`);
     toast.success("Devolución aprobada exitosamente.");
     await fetchReturn();
- } catch (error) {
+  } catch (error) {
     console.error(
       "Error al aprobar la devolución:",
       error.response ? error.response.data : error.message
@@ -78,18 +72,17 @@ const updateStatus = async (item) => {
       "Error al aprobar la devolución. Inténtalo de nuevo.";
     toast.error(errorMessage);
   }
-}
+};
 </script>
 
 <template>
-      <ReturnsSupervisorTable
-      :returns="returns"
-      :loading="loading"
-      :total-returns="totalReturns"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @status="updateStatus"
-    />
-
+  <ReturnsSupervisorTable
+    :returns="returns"
+    :loading="loading"
+    :total-returns="totalReturns"
+    :items-per-page="itemsPerPage"
+    :page="page"
+    @update:options="updateTableOptions"
+    @status="updateStatus"
+  />
 </template>
