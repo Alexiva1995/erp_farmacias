@@ -42,7 +42,7 @@ class UpdateSupplierRequest extends FormRequest
             'payment_due_type' => 'sometimes|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|integer|min:1',
             'payment_due_reference' => 'sometimes|in:receipt_date,issue_date',
-            'invoice_date_reference' => 'required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date',
+            'invoice_date_reference' => 'required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date,issue_date',
         ];
     }
 

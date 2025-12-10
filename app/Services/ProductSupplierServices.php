@@ -45,7 +45,6 @@ class ProductSupplierServices implements ProductSupplier
     public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): bool|null
     {
         $incremento = null;
-        // return $percentageIncrease > $maximumPercentageMaximo ? true : false;
         if ($percentageIncrease > $maximumPercentageMaximo) {
             $incremento = true;
         }

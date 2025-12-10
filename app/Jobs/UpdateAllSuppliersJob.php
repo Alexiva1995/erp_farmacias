@@ -19,7 +19,6 @@ class UpdateAllSuppliersJob implements ShouldQueue
 
     /**
      * Create a new job instance.
-     * Recibe el usuario que disparó el proceso (o un ID de sistema/admin).
      */
     public function __construct(
         public int $userId
@@ -29,14 +28,17 @@ class UpdateAllSuppliersJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    /**
-     * Execute the job.
-     */
     public function handle(SupplierConnectionService $connectionService, SupplierQueryService $queryService): void
     {
+        // 1. Log de inicio general del Job
+        Log::info("Iniciando Job de Actualización Masiva de Proveedores", ['triggered_by_user_id' => $this->userId]);
+
         $suppliers = Supplier::whereHas('connections')->cursor();
 
         foreach ($suppliers as $supplier) {
+
+            // 2. Log de inicio por proveedor (útil si el job se pega, sabes en cuál fue)
+            Log::info("Procesando proveedor: {$supplier->name}", ['supplier_id' => $supplier->id]);
 
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $supplier->id,
@@ -49,6 +51,8 @@ class UpdateAllSuppliersJob implements ShouldQueue
                 $supplierConnection = $supplier->connections->first();
 
                 if (!$supplierConnection) {
+                    Log::warning("Proveedor sin configuración de conexión válida", ['supplier_id' => $supplier->id]);
+
                     $status->update([
                         "status" => "failed",
                         "message" => "No se encontró configuración de conexión válida.",
@@ -58,6 +62,7 @@ class UpdateAllSuppliersJob implements ShouldQueue
 
                 $results = $connectionService->fetchData($supplierConnection);
 
+                // Lógica de facturas
                 if (isset($results['invoices']) && is_array($results['invoices'])) {
                     foreach ($results['invoices'] as &$invoice) {
                         $invoice['status'] = 'pending';
@@ -70,29 +75,48 @@ class UpdateAllSuppliersJob implements ShouldQueue
                 if (!$success) {
                     throw new \Exception("Error al guardar los datos en la base de datos.");
                 }
+
                 if (!in_array($supplier->id, [2])) {
                     $queryService->addDiscountsToProducts($supplier);
                 }
 
                 $supplierConnection->update(["last_connection" => now()->today()]);
 
+                // Pre-calculamos conteos para usarlos en DB y en Logs
+                $prodCount = count($results["products"] ?? []);
+                $invCount = count($results["invoices"] ?? []);
+
                 $status->update([
                     "status" => "completed",
                     "message" => "Actualización masiva completada correctamente",
-                    "count_product" => count($results["products"] ?? []),
-                    "count_invoice" => count($results["invoices"] ?? []),
+                    "count_product" => $prodCount,
+                    "count_invoice" => $invCount,
+                ]);
+
+                // 3. Log de éxito con métricas básicas
+                Log::info("Proveedor actualizado exitosamente", [
+                    'supplier_id' => $supplier->id,
+                    'products_count' => $prodCount,
+                    'invoices_count' => $invCount
                 ]);
 
             } catch (\Throwable $e) {
-
-                Log::error("Fallo actualización masiva para proveedor {$supplier->id}: " . $e->getMessage());
+                // 4. Log de error con contexto completo (Excepción y ID)
+                Log::error("Fallo actualización masiva para proveedor", [
+                    'supplier_id' => $supplier->id,
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
 
                 $status->update([
                     "status" => "failed",
                     "message" => "Error en actualización masiva: " . $e->getMessage(),
                 ]);
-
             }
         }
+
+        // 5. Log de finalización del Job completo
+        Log::info("Job de Actualización Masiva finalizado.", ['triggered_by_user_id' => $this->userId]);
     }
 }
