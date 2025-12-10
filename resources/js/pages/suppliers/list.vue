@@ -333,9 +333,13 @@ const handleSupplierDiscountRule = async (supplier) => {
 
 const handleSaveDiscountRules = async (formData) => {
   try {
+
+    const payload = {
+      rules: formData,
+    };
     await axios.post(
-      `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
-      formData
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
+      payload
     );
 
     toast.success("Reglas de descuento guardadas con éxito");
@@ -476,6 +480,7 @@ const updateTableOptions = (options) => {
     <SupplierDiscountRulesDialog
       v-model="isSupplierDiscountRuleDialogVisible"
       :supplier="currentSupplier"
+      :laboratories="laboratories"
       :laboratory-links="laboratoryLinks"
       :discount-rules="discountRules"
       :loading="loading"

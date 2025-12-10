@@ -8,6 +8,7 @@ use App\Services\Suppliers\SupplierLaboratoryQueryService;
 use App\Services\Suppliers\SupplierLaboratoryActionService;
 use App\Http\Requests\StoreDiscountRuleRequest;
 use App\Models\DiscountRule;
+use App\Models\Laboratory;
 use App\Models\Supplier;
 
 class SupplierLaboratoryController extends Controller
@@ -25,22 +26,22 @@ class SupplierLaboratoryController extends Controller
         return response()->json(['discount_rules' => $rules]);
     }
 
-    public function storeDiscountRule(StoreDiscountRuleRequest $request)
+    public function storeDiscountRule(StoreDiscountRuleRequest $request, Supplier $supplier)
     {
         $validated = $request->validated();
 
         $createdRules = [];
 
         foreach ($validated['rules'] as $rule) {
-            $lab = SupplierLaboratory::findOrFail($rule['supplier_laboratory_id']);
+            $lab = Laboratory::findOrFail($rule['laboratory']['id']);
 
             $ruleData = [
-                'scale_type' => $validated['scale_type'],
-                'min_quantity' => $validated['scale_type'] === 'units' ? $rule['min'] : null,
-                'max_quantity' => $validated['scale_type'] === 'units' ? $rule['max'] : null,
-                'min_amount' => $validated['scale_type'] === 'amount' ? $rule['min'] : null,
-                'max_amount' => $validated['scale_type'] === 'amount' ? $rule['max'] : null,
-                'discount_percentage' => $rule['discount_percentage'],
+                'scale_type' => $rule['scale_type']['id'],
+                'min_quantity' =>  $rule['scale_type']['id'] === 'units' ? $rule['min'] : null,
+                'max_quantity' =>  $rule['scale_type']['id'] === 'units' ? $rule['max'] : null,
+                'min_amount' =>  $rule['scale_type']['id'] === 'amount' ? $rule['min'] : null,
+                'max_amount' => $rule['scale_type']['id'] === 'amount' ? $rule['max'] : null,
+                'max_amount' => $rule['scale_type']['id'] === 'amount' ? $rule['max'] : null,
             ];
 
             $createdRules[] = $this->supplierLaboratoryActionService->createDiscountRule($lab, $ruleData);

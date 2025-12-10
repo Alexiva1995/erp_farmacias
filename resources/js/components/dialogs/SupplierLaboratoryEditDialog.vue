@@ -17,18 +17,6 @@ const internalErrors = ref({});
 const isEditing = ref(false);
 const rulesOriginalValues = ref({});
 
-/*if (props.laboratoryLinks && props.laboratoryLinks.length > 0) {
-console.log(props.laboratoryLinks);
-    editableRulesLaboratory.value = props.laboratoryLinks.map((rule) => {
-        return {
-            ...rule,
-            laboratory: rule.laboratory ? { ...rule.laboratory } : { id: null, name: null }, 
-            _markedForDeletion: false,
-            _markedForEdit: false,
-        };
-    });
-}*/
-
 watch(
   () => props.errors,
   (newErrors) => {
@@ -57,8 +45,6 @@ watch(
   },
   { deep: true, immediate: true }
 );
-
-console.log(editableRulesLaboratory);
 
 const closeDialog = () => {
   internalErrors.value = {};
@@ -173,7 +159,7 @@ const onSave = () => {
 };
 
 const validateRuleLaboratory = (ruleLaboratory, index) => {
-if (ruleLaboratory._markedForDeletion) {
+    if (ruleLaboratory._markedForDeletion) {
         delete internalErrors.value[`phone_${index}`];
         if (parseInt(ruleLaboratory.laboratory) === 0) { 
             return true;

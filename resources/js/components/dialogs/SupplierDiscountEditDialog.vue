@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -188,6 +188,10 @@ const onSave = () => {
     }));
     emit("save", rulesToSave);
   }
+};
+
+const onDiscountPercentageChange = (rule, index) => {
+  validateRuleDiscountPercentage(rule, index);
 };
 
 </script>
