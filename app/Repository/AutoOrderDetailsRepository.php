@@ -51,7 +51,7 @@ class AutoOrderDetailsRepository
 
     public function consultDetailByProductSupplierId($product_supplier_id): int|null
     {
-        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->sum("quantity");
+        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", 0)->sum("quantity");
     }
 
     public function updateDetailStatus($autoOrderDetail, $data): bool

@@ -19,7 +19,8 @@ class ProductServices implements Product
         protected ProductRepository $productRepository,
         protected ProductSupplierRepository $productSupplierRepository,
         protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
-    ) {}
+    ) {
+    }
 
     public function consultProduct(): Collection
     {
