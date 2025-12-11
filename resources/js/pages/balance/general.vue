@@ -155,44 +155,6 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Header con acciones -->
-    <VRow class="mb-4">
-      <VCol cols="12" md="8">
-        <h2 class="text-h4 font-weight-bold">Balance General</h2>
-        <p class="text-body-2 text-medium-emphasis mt-1">
-          Resumen financiero en tiempo real
-        </p>
-      </VCol>
-      <VCol cols="12" md="4" class="d-flex justify-end align-center">
-        <VBtn
-          color="primary"
-          variant="outlined"
-          prepend-icon="mdi-refresh"
-          class="mr-2"
-          :loading="loading"
-          @click="handleRefresh"
-        >
-          Actualizar
-        </VBtn>
-        <VMenu>
-          <template #activator="{ props }">
-            <VBtn color="success" v-bind="props" prepend-icon="mdi-download">
-              Exportar
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem @click="handleExport('PDF')">
-              <VListItemTitle>PDF</VListItemTitle>
-            </VListItem>
-            <VListItem @click="handleExport('Excel')">
-              <VListItemTitle>Excel</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
-      </VCol>
-    </VRow>
-
-    <!-- Cards de Activo y Pasivo -->
     <VRow>
       <!-- Card de Activos -->
       <VCol cols="12" md="6">
