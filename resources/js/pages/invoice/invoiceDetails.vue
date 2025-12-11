@@ -1148,6 +1148,7 @@ const detailsHeaders = [
               :items="processedInvoiceDetails"
               :loading="loadingDetails"
               :hide-default-footer="true"
+              :items-per-page="-1"
               class="invoice-products-table"
             >
               <template #item.product_name_with_tax="{ item }">
