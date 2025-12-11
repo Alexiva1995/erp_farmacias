@@ -435,7 +435,7 @@ class PendingPaymentsController extends Controller
             // 2. Normalizar código de moneda y obtener tasa de cambio
             $normalizedCurrency = $this->normalizeCurrencyCode($request->payment_currency);
             $exchangeRate = ExchangeRate::where('currency_code', $normalizedCurrency)->first();
-            if (!$exchangeRate) {
+            if (!$exchangeRate && $normalizedCurrency !== 'USD') {
                 return ApiResponse::error('No se encontró tasa de cambio para la moneda seleccionada', 400);
             }
 
@@ -524,7 +524,7 @@ class PendingPaymentsController extends Controller
                 'amount_paid' => $request->payment_amount,
                 'currency' => $request->payment_currency,
                 'amount_usd' => $amountUSD,
-                'exchange_rate' => $exchangeRate->rate,
+                'exchange_rate' => $exchangeRate->rate ?? 1,
                 'payment_status' => $paymentStatus,
                 'total_invoice_amount' => $totalInvoiceAmount,
                 'remaining_amount' => $totalInvoiceAmount - $amountUSD // Monto restante
