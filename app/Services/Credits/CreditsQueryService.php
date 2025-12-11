@@ -55,6 +55,7 @@ class CreditsQueryService
       ->selectRaw('GROUP_CONCAT(id) as credit_ids')
       ->selectRaw('COUNT(CASE WHEN status != "Paid" THEN 1 END) = 0 as is_paid')
       ->selectRaw('MAX(credit_date) as credit_date')
+
       ->groupBy('client_id');
 
     $query = $this->applySearch($query, $request->input('search'));

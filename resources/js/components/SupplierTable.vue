@@ -89,7 +89,9 @@ const headers = [
                 v-bind="props"
               >
                 <VIcon
-                  :icon="item.sales_phone ? 'tabler-phone-call' : 'tabler-phone-off'"
+                  :icon="
+                    item.sales_phone ? 'tabler-phone-call' : 'tabler-phone-off'
+                  "
                 />
               </VBtn>
             </template>
@@ -103,7 +105,10 @@ const headers = [
                 :disabled="!item.collections_phone"
                 :href="
                   item.collections_phone
-                    ? `https://wa.me/${item.collections_phone.replace(/\D/g, '')}`
+                    ? `https://wa.me/${item.collections_phone.replace(
+                        /\D/g,
+                        ''
+                      )}`
                     : undefined
                 "
                 target="_blank"
@@ -112,7 +117,9 @@ const headers = [
               >
                 <VIcon
                   :icon="
-                    item.collections_phone ? 'tabler-phone-ringing' : 'tabler-phone-off'
+                    item.collections_phone
+                      ? 'tabler-phone-ringing'
+                      : 'tabler-phone-off'
                   "
                 />
               </VBtn>
@@ -145,13 +152,6 @@ const headers = [
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar Proveedor" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-supplier', item.id)">
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
         <VTooltip text="Conexión API" location="top">
           <template #activator="{ props }">
             <IconBtn
@@ -160,7 +160,9 @@ const headers = [
               @click="emit('check-supplier-api', item)"
             >
               <VIcon
-                :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'"
+                :icon="
+                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'
+                "
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
             </IconBtn>
@@ -182,14 +184,20 @@ const headers = [
         </VTooltip>
         <VTooltip text="Facturas Pendientes" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('supplier-pending-invoices', item)">
+            <IconBtn
+              v-bind="props"
+              @click="emit('supplier-pending-invoices', item)"
+            >
               <VIcon icon="tabler-credit-card-pay" />
             </IconBtn>
           </template>
         </VTooltip>
         <VTooltip text="Reglas de Descuento" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('supplier-discount-rule', item)">
+            <IconBtn
+              v-bind="props"
+              @click="emit('supplier-discount-rule', item)"
+            >
               <VIcon icon="tabler-cash" />
             </IconBtn>
           </template>
@@ -198,6 +206,13 @@ const headers = [
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('supplier-discount', item)">
               <VIcon icon="tabler-discount" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+        <VTooltip text="Eliminar Proveedor" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" @click="emit('delete-supplier', item.id)">
+              <VIcon icon="tabler-trash" />
             </IconBtn>
           </template>
         </VTooltip>

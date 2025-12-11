@@ -86,6 +86,12 @@ const submitForm = () => {
         ? JSON.stringify(value) !== JSON.stringify(originalValue)
         : value !== originalValue;
 
+
+    if (hasChanged && (key === 'payment_due_type' || key === 'payment_due_reference' || key === 'custom_due_days')) {
+        filteredPayload[key] = value === undefined ? null : value;
+        return;
+    }
+
     const isFilled = Array.isArray(value)
       ? value.length > 0
       : typeof value === "object" && value !== null
@@ -114,6 +120,20 @@ const submitForm = () => {
   //   }
   // }
 
+
+const currentRef = formData.value.invoice_date_reference;
+const originalRef = original.invoice_date_reference;
+
+if (formData.value.payment_due_type === 'invoice_date') {
+    if (currentRef !== originalRef) {
+        filteredPayload.invoice_date_reference = currentRef;
+    } 
+    else if (currentRef !== undefined && currentRef !== null) {
+        filteredPayload.invoice_date_reference = currentRef;
+    }
+
+}
+
   if (
     typeof formData.value.order_days === "object" &&
     Object.keys(formData.value.order_days).length > 0 &&
@@ -124,6 +144,7 @@ const submitForm = () => {
     filteredPayload.order_days = formData.value.order_days;
   }
 
+  console.log(filteredPayload);
   emit("save", filteredPayload);
 };
 
@@ -418,19 +439,19 @@ watch(
 
           <VDivider class="my-4" />
 
+
           <VRow>
-            <VCol cols="12" md="12">
-              <h6 class="text-subtitle-1 font-weight-medium mt-3 mb-6">
+            <VCol cols="12" md="12" class="pl-4">
+              <h6 class="text-subtitle-1 font-weight-medium mb-4">
                 Días de Despacho
               </h6>
-
-              <VRow>
+              <VRow no-gutters>
                 <VCol
                   v-for="dia in dias"
                   :key="dia.value"
-                  cols="6"
-                  sm="4"
-                  class="pa-0"
+                  cols="6" 
+                  sm="auto"
+                  class="d-flex align-center pr-4"
                 >
                   <VCheckbox
                     v-model="formData.dispatch_days"
@@ -443,7 +464,7 @@ watch(
                 </VCol>
                 <div
                   v-if="formErrors.dispatch_days"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.dispatch_days[0] }}
                 </div>
@@ -451,11 +472,10 @@ watch(
             </VCol>
           </VRow>
 
-          <VRow>
-            <VCol cols="12" md="12">
+          <VRow v-if="formData.dispatch_days.length">
+            <VCol cols="12" md="12" class="pl-4">
               <h6
-                class="text-subtitle-1 font-weight-medium mt-3 mb-6"
-                v-if="formData.dispatch_days.length"
+                class="text-subtitle-1 font-weight-medium mb-4"
               >
                 Días de Pedido por Despacho
               </h6>
@@ -464,19 +484,19 @@ watch(
                 :key="diaDespacho"
                 class="mb-4"
               >
-                <h6 class="text-caption font-weight-medium text-primary mb-2">
+                <h6 class="text-caption font-weight-medium text-primary mb-4">
                   Pedidos requeridos para
                   <strong>{{ diaDespachoLabel(diaDespacho) }}</strong
                   >:
                 </h6>
 
-                <VRow>
+                <VRow no-gutters>
                   <VCol
                     v-for="diaPedido in dias"
                     :key="diaPedido.value"
-                    cols="6"
-                    sm="4"
-                    class="pa-0"
+                    cols="6" 
+                    sm="auto"
+                    class="d-flex align-center pr-4"
                   >
                     <VCheckbox
                       v-model="formData.order_days[diaDespacho]"
@@ -491,7 +511,7 @@ watch(
 
                 <div
                   v-if="formErrors.order_days?.[diaDespacho]"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.order_days[diaDespacho][0] }}
                 </div>
@@ -520,6 +540,7 @@ watch(
                 :items="[
                   { title: 'Fecha de Recibo', value: 'receipt_date' },
                   { title: 'Fecha de Vencimiento', value: 'expiration_date' },
+                  { title: 'Fecha de emisión', value: 'issue_date' },
                 ]"
                 label="Referencia de Fecha de Factura"
                 variant="outlined"

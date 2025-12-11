@@ -74,6 +74,10 @@ class PendingPaymentsController extends Controller
                 $query->whereDate('payment_date', '<=', $request->end_date);
             }
 
+            if ($request->filled('q')) {
+                $search = $request->input('q');
+                $query->where('invoice_number', $search);
+            }
 
             // Filtro de facturas vencidas
             // CORRECCIÓN ISSUE #1: Fecha de vencimiento es payment_date - 1 día
@@ -115,9 +119,9 @@ class PendingPaymentsController extends Controller
                     $query->whereIn('id', $invoiceIds);
                 })->get();
 
+                $totalPaidUSD = 0;
                 if ($payments->count() > 0) {
                     // Calcular total pagado en USD
-                    $totalPaidUSD = 0;
                     foreach ($payments as $payment) {
                         if ($payment->payment_method === 'USD') {
                             $totalPaidUSD += $payment->amount;
@@ -171,7 +175,7 @@ class PendingPaymentsController extends Controller
                         if ($invoice->is_indexed && $invoice->currency === 'Bs') {
                             // Para facturas indexadas: USD siempre fijo, Bs se calcula dinámicamente
                             $invoiceRemainingUSD = $invoice->total_usd; // USD fijo
-
+    
                             // Calcular Bs usando la tasa BCV actual
                             $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
                             if ($bcvRate) {
@@ -277,6 +281,7 @@ class PendingPaymentsController extends Controller
                 ]
             ], 'Facturas pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
+            \Log::info('Pending payments', [$e->getMessage()]);
             return ApiResponse::error('Error al obtener las facturas pendientes: ' . $e->getMessage(), 500);
         }
     }

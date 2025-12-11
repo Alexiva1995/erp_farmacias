@@ -47,7 +47,7 @@ const submitForm = async () => {
   try {
     const form = new FormData();
 
-    if (props.selectedEmployee != null || isAdmin) {
+    if (props.selectedEmployee != null && isAdmin) {
       form.append("_method", "PUT");
     }
 

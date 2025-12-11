@@ -6,7 +6,7 @@ const props = defineProps({
 })
 
 const productosTable = computed(() => {
-  return props.list?.filter(pro => pro.increase == false) || [];
+  return props.list?.filter(pro => pro.increase === null) || [];
 });
 </script>
 
@@ -120,7 +120,7 @@ const productosTable = computed(() => {
     </VTable>
 
     <div v-else class="pa-5 text-center text-medium-emphasis">
-      No hay productos sin incremento de precio.
+      No hay productos con precio estable.
     </div>
   </VCard>
 </template>

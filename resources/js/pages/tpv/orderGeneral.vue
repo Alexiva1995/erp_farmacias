@@ -54,6 +54,7 @@ const endDateFilterCancelled = ref(null);
 const currencyFilterCompleted = ref(null);
 const filterSearchQueryCompleted = ref("");
 const filterSearchQueryIdCompleted = ref("");
+const offerCompleted = ref("");
 
 const currencyFilterAll = ref(null);
 const filterSearchQueryAll = ref("");
@@ -235,6 +236,10 @@ const fetchOrderCancelled = async () => {
   }
 };
 
+const storeSelectedOffer = (offer) => {
+  localStorage.setItem("selected_offer", offer);
+};
+
 onMounted(() => {
   fetchOrderCompleted();
   fetchOrderAll();
@@ -383,6 +388,13 @@ watch([filterSearchQueryAbandoned, currencyFilterAbandoned], () => {
 watch([filterSearchQueryCancelled, currencyFilterCancelled], () => {
   pageOrdersCancelled.value = 1;
 });
+
+watch(
+  () => offerCompleted.value,
+  (offer) => {
+    storeSelectedOffer(offer);
+  }
+);
 
 const updateTableOptionsOrdersCompleted = (options) => {
   pageOrdersCompleted.value = options.page;
@@ -590,6 +602,7 @@ const handleViewOrder = async (orderId) => {
       v-model:idSearchQuery="filterSearchQueryIdCompleted"
       v-model:searchQuery="filterSearchQueryCompleted"
       v-model:currencyFilter="currencyFilterCompleted"
+      v-model:offer="offerCompleted"
       @clear="handleClearFiltersCompleted"
     ></OrderFiltersGeneral>
 

@@ -147,6 +147,7 @@ declare module 'vue' {
     HistoryFilters: typeof import('./resources/js/components/HistoryFilters.vue')['default']
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
+    IgnoredProductsTable: typeof import('./resources/js/components/IgnoredProductsTable.vue')['default']
     IndividualOfferFilters: typeof import('./resources/js/components/IndividualOfferFilters.vue')['default']
     IndividualOfferModal: typeof import('./resources/js/components/dialogs/IndividualOfferModal.vue')['default']
     IndividualOfferTable: typeof import('./resources/js/components/IndividualOfferTable.vue')['default']
@@ -221,6 +222,7 @@ declare module 'vue' {
     ProductsExceededToleranceTable: typeof import('./resources/js/components/ProductsExceededToleranceTable.vue')['default']
     ProductsLotsFilters: typeof import('./resources/js/components/ProductsLotsFilters.vue')['default']
     ProductsLotsTable: typeof import('./resources/js/components/ProductsLotsTable.vue')['default']
+    ProductsStablePriceTable: typeof import('./resources/js/components/ProductsStablePriceTable.vue')['default']
     ProductTable: typeof import('./resources/js/components/ProductTable.vue')['default']
     ProductWithoutLotEditDialog: typeof import('./resources/js/components/dialogs/ProductWithoutLotEditDialog.vue')['default']
     ProductWithoutLotsFilters: typeof import('./resources/js/components/ProductWithoutLotsFilters.vue')['default']
@@ -297,5 +299,6 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

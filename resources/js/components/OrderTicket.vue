@@ -1,11 +1,10 @@
 <script setup>
-import { computed } from "vue";
-import { formatCurrency } from "@/utils/currencyFormatter";
-import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
-import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { useAuthStore } from "@/stores/auth";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed } from "vue";
 
 const props = defineProps({
   orderData: {
@@ -142,7 +141,8 @@ const showChangeAmount = computed(() => {
         >
         <div class="text-right d-flex flex-column align-end">
           <p class="text-black font-weight-regular mb-0 textoPrint">
-            {{ formatDateTime(props.orderData.created_at, "date") }} {{ formatDateTime(props.orderData.created_at, "time") }}
+            {{ formatDateTime(props.orderData.created_at, "date") }}
+            {{ formatDateTime(props.orderData.created_at, "time") }}
           </p>
         </div>
       </div>
@@ -187,7 +187,7 @@ const showChangeAmount = computed(() => {
         <div v-for="item in orderProducts" :key="item.id" class="ticket-item">
           <span class="ticket-item-qty">{{ item.selectedQuantity }}x</span>
           <span class="ticket-item-name">{{ item.title }}</span>
-          <span class="ticket-item-total">
+          <span class="ticket-item-price">
             {{
               formatCurrency(
                 getItemPriceByCurrency(item, selectedCurrency) *
