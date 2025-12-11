@@ -918,13 +918,13 @@ const detailsHeaders = [
     sortable: false,
     width: "10%",
   },
-  // {
-  //   title: "Localización",
-  //   key: "location",
-  //   align: "center",
-  //   sortable: false,
-  //   width: "10%",
-  // },
+  {
+    title: "Localización",
+    key: "location",
+    align: "center",
+    sortable: false,
+    width: "10%",
+  },
   {
     title: "Unidades",
     key: "quantity",
@@ -1225,8 +1225,8 @@ const detailsHeaders = [
                   </span>
                 </div>
               </template>
-              <!-- <template #item.location="{ item, index }">
-                <VTextField
+              <template #item.location="{ item, index }">
+                <VSelect
                   v-if="isLocationMode && !isItemReturned(item)"
                   v-model="invoiceDetails[index].location"
                   :items="locations"
@@ -1235,13 +1235,14 @@ const detailsHeaders = [
                   variant="outlined"
                   class="editable-cell"
                   placeholder="Ej: A-01-B"
+                  :return-object="false"
                 />
                 <span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
                   >{{ item.location || "-" }}</span
                 >
-              </template> -->
+              </template>
               <template #item.quantity="{ item }"
                 ><VTextField
                   v-if="isEditableMode && item.id === editingDetailId"
