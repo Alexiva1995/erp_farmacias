@@ -290,6 +290,7 @@ const addProductToOrderByBarcode = async (barcode) => {
   try {
     const response = await axios.get(`/barcode/${barcode}`);
     const productDetails = response.data;
+
     await addProductToOrder({ productId: productDetails.id, quantity: 1 });
   } catch (error) {
     console.error(
@@ -309,13 +310,16 @@ const handleSort = (sortOptions) => {
 
 const verifyClient = async (identification) => {
   clientIdentification.value = identification;
+
   if (!identification) {
     toast.warning("Por favor, ingrese un número de identificación.");
     return;
   }
+
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
+
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -324,13 +328,20 @@ const verifyClient = async (identification) => {
       };
       showRegisterClientModal.value = true;
     } else {
-      const clientData = response.data.data.client;
+      const clientData = responseData.client;
 
-      const { discount_percentage, max_volume, min_volume } =
-        response.data.data.client.available_discount;
-      discount.value = Number(discount_percentage);
-      discountMinProducts.value = min_volume;
-      discountMaxProducts.value = max_volume;
+      if (clientData.available_discount) {
+        const { discount_percentage, max_volume, min_volume } =
+          clientData.available_discount;
+        discount.value = Number(discount_percentage);
+        discountMinProducts.value = min_volume;
+        discountMaxProducts.value = max_volume;
+      } else {
+        discount.value = 0;
+        discountMinProducts.value = 0;
+        discountMaxProducts.value = 0;
+      }
+
       selectedClient.value = clientData;
       toast.success(
         `Cliente ${clientData.name} ${clientData.last_name} encontrado.`
@@ -352,6 +363,7 @@ const verifyClient = async (identification) => {
     }
   } catch (error) {
     console.error("Error al verificar cliente:", error);
+    console.log(error.message);
     toast.error("Error al verificar el cliente.");
   }
 };
@@ -674,6 +686,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
   try {
     const response = await axios.get(`/product/${productId}`);
     const productDetails = response.data;
+
     const availableQuantity = productDetails.lots_sum_quantity;
 
     const currentItemInOrder = orderItems.value.find(

@@ -48,19 +48,30 @@ const selectedTableInvoices = ref([]);
 
 // Headers de la tabla
 const headers = [
-  { title: "Seleccionar", key: "select", sortable: false, width: "50px" },
-  { title: "N° Factura", key: "invoice_number", sortable: false },
+  { title: "", key: "select", sortable: false, width: "50px" },
+  { title: "FAC", key: "invoice_number", sortable: false },
   { title: "Proveedor", key: "supplier_name", sortable: false },
   { title: "Fecha de Pago", key: "payment_date", sortable: false },
-  { title: "Fecha Vencimiento", key: "exp_date", sortable: false },
   { title: "Moneda", key: "currency", sortable: false },
-  { title: "Monto", key: "original_amount", sortable: false },
-  { title: "Monto Restante", key: "remaining_amount", sortable: false },
+  { title: "Monto USD", key: "original_amount", sortable: false },
+  { title: "Monto BS", key: "remaining_amount", sortable: false },
   { title: "Indexada", key: "is_indexed", sortable: false, width: "80px" },
   { title: "Total Proveedor", key: "total_supplier_currency", sortable: false }, // ISSUE #4: Nueva columna
   { title: "Estado", key: "status", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
+
+const selectedAll = computed(() => {
+  if (pendingPayments.value.length === 0) return false;
+  return selectedTableInvoices.value.length === pendingPayments.value.length;
+});
+
+const indeterminate = computed(() => {
+  return (
+    selectedTableInvoices.value.length > 0 &&
+    selectedTableInvoices.value.length < pendingPayments.value.length
+  );
+});
 
 // Cargar proveedores para filtros
 const fetchSuppliers = async () => {
@@ -487,6 +498,14 @@ const handlePaymentProcessed = () => {
   toast.success("Pago procesado exitosamente");
 };
 
+const handleHeaderCheckboxChange = (value) => {
+  if (value) {
+    selectAllInvoices();
+  } else {
+    deselectAllInvoices();
+  }
+};
+
 // Limpiar filtros
 const clearFilters = () => {
   searchQuery.value = "";
@@ -502,7 +521,7 @@ const formatDate = (date) => {
 };
 
 // Formatear moneda
-const formatCurrency = (amount, currency) => {
+const formatCurrency = (amount, currency, omitCurrency) => {
   if (!amount || amount === 0) return "N/A";
 
   // Redondear a 2 decimales
@@ -516,10 +535,14 @@ const formatCurrency = (amount, currency) => {
 
   const formattedNumber = formatter.format(roundedAmount);
 
+  if (omitCurrency) {
+    return formattedNumber;
+  }
+
   // Agregar símbolo de moneda según la moneda
   switch (currency) {
     case "Bs":
-      return `Bs.S ${formattedNumber}`;
+      return `Bs ${formattedNumber}`;
     case "COP":
       return `COP ${formattedNumber}`;
     case "USD":
@@ -679,60 +702,23 @@ onMounted(async () => {
         Pagos Pendientes
       </VCardTitle>
       <VCardText>
-        <!-- Tarjetas de Cantidades -->
-        <VRow class="mb-4">
-          <VCol cols="12">
-            <h6 class="text-h6 mb-3 text-primary">Resumen General</h6>
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="primary" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">{{ totalSuppliers }}</div>
-                <div class="text-caption">Proveedores Pendientes</div>
-              </VCardText>
-            </VCard>
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="warning" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">
-                  {{ statistics.overdue_invoices || 0 }}
-                </div>
-                <div class="text-caption">Vencidos</div>
-              </VCardText>
-            </VCard>
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="success" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">
-                  {{ statistics.total_pending_invoices || 0 }}
-                </div>
-                <div class="text-caption">Total Facturas</div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
-
         <!-- Tarjetas de Monedas -->
         <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 mb-3 text-primary">Deudas por Moneda</h6>
-          </VCol>
           <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="error" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">
+            <VCard flat class="h-100 pa-4">
+              <VCardText class="text-center pa-0">
+                <div class="text-h5 font-weight-medium text-error">
                   {{ formatCurrency(totalsByCurrency.bs.amount, "Bs") }}
                 </div>
-                <div class="text-caption">Deuda en Bs</div>
-                <div class="text-caption text-medium-emphasis mt-1">
+                <div class="text-caption text-medium-emphasis mt-2">
+                  Deuda Bs
+                </div>
+                <VDivider class="my-2" />
+                <div class="text-caption text-medium-emphasis">
                   {{ totalsByCurrency.bs.count }} factura{{
                     totalsByCurrency.bs.count !== 1 ? "s" : ""
                   }}
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  ≈
+                  • ≈
                   {{
                     formatCurrency(totalsByCurrency.bs.total_usd || 0, "USD")
                   }}
@@ -740,39 +726,43 @@ onMounted(async () => {
               </VCardText>
             </VCard>
           </VCol>
+
           <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="info" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">
+            <VCard flat class="h-100 pa-4">
+              <VCardText class="text-center pa-0">
+                <div class="text-h5 font-weight-medium text-info">
                   {{ formatCurrency(totalsByCurrency.usd.amount, "USD") }}
                 </div>
-                <div class="text-caption">Deuda en USD</div>
-                <div class="text-caption text-medium-emphasis mt-1">
+                <div class="text-caption text-medium-emphasis mt-2">
+                  Deuda USD
+                </div>
+                <VDivider class="my-2" />
+                <div class="text-caption text-medium-emphasis">
                   {{ totalsByCurrency.usd.count }} factura{{
                     totalsByCurrency.usd.count !== 1 ? "s" : ""
                   }}
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  Total:
+                  • Total:
                   {{ formatCurrency(totalsByCurrency.usd_converted, "USD") }}
                 </div>
               </VCardText>
             </VCard>
           </VCol>
+
           <VCol cols="12" sm="6" md="4">
-            <VCard variant="tonal" color="secondary" class="h-100">
-              <VCardText class="text-center">
-                <div class="text-h4 font-weight-bold">
+            <VCard flat class="h-100 pa-4">
+              <VCardText class="text-center pa-0">
+                <div class="text-h5 font-weight-medium text-secondary">
                   {{ formatCurrency(totalsByCurrency.cop.amount, "COP") }}
                 </div>
-                <div class="text-caption">Deuda en COP</div>
-                <div class="text-caption text-medium-emphasis mt-1">
+                <div class="text-caption text-medium-emphasis mt-2">
+                  Deuda COP
+                </div>
+                <VDivider class="my-2" />
+                <div class="text-caption text-medium-emphasis">
                   {{ totalsByCurrency.cop.count }} factura{{
                     totalsByCurrency.cop.count !== 1 ? "s" : ""
                   }}
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  ≈
+                  • ≈
                   {{
                     formatCurrency(totalsByCurrency.cop.total_usd || 0, "USD")
                   }}
@@ -782,44 +772,17 @@ onMounted(async () => {
           </VCol>
         </VRow>
 
-        <!-- ISSUE #4: Total en moneda del proveedor -->
-        <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 mb-3 text-primary">Total por Proveedor</h6>
-          </VCol>
-          <VCol cols="12">
-            <VCard variant="tonal" color="success" class="mb-4">
-              <VCardText>
-                <div class="d-flex align-center justify-space-between">
-                  <div>
-                    <h6 class="text-h6 mb-1">
-                      Total a Pagar en Moneda del Proveedor
-                    </h6>
-                    <div class="text-body-2 text-medium-emphasis">
-                      Mostrando totales por proveedor en su moneda preferida
-                    </div>
-                  </div>
-                  <VIcon icon="mdi-currency-usd" size="32" />
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
-
         <!-- Filtros integrados -->
-        <VDivider class="my-4" />
+        <VDivider class="my-4 mb-8" />
         <VRow>
-          <VCol cols="12">
-            <h6 class="text-h6 mb-3 text-primary">Filtros</h6>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
+          <VCol cols="12" sm="6" md="2">
             <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar por Proveedor..."
+              placeholder="Buscar por factura..."
               clearable
             />
           </VCol>
-          <VCol cols="12" sm="6" md="3">
+          <VCol cols="12" sm="6" md="2">
             <VAutocomplete
               v-model="selectedSupplier"
               :items="suppliers"
@@ -847,9 +810,7 @@ onMounted(async () => {
           <VCol cols="12" sm="6" md="2">
             <VCheckbox v-model="showOverdueOnly" label="Pagos vencidos" />
           </VCol>
-        </VRow>
-        <VRow>
-          <VCol cols="12" class="text-end">
+          <VCol cols="12" sm="6" md="2" class="text-end">
             <VBtn color="secondary" variant="outlined" @click="clearFilters">
               Limpiar Filtros
             </VBtn>
@@ -865,21 +826,12 @@ onMounted(async () => {
         <div class="d-flex align-center gap-2">
           <VBtn
             variant="outlined"
-            color="primary"
-            @click="selectAllInvoices"
-            :disabled="pendingPayments.length === 0"
-          >
-            <VIcon icon="tabler-check-all" />
-            Seleccionar Todas
-          </VBtn>
-          <VBtn
-            variant="outlined"
             color="secondary"
             @click="deselectAllInvoices"
             :disabled="selectedTableInvoices.length === 0"
           >
-            <VIcon icon="tabler-x" />
-            Deseleccionar
+            <VIcon icon="tabler-x" class="mr-2" />
+            {{ selectedTableInvoices.length }}
           </VBtn>
           <VBtn
             :variant="selectedTableInvoices.length > 0 ? 'flat' : 'outlined'"
@@ -887,8 +839,8 @@ onMounted(async () => {
             @click="processMultiplePayments"
             :disabled="selectedTableInvoices.length === 0"
           >
-            <VIcon icon="tabler-credit-card" />
-            Pagar Seleccionadas ({{ selectedTableInvoices.length }})
+            <VIcon icon="tabler-credit-card" class="mr-2" />
+            {{ selectedTableInvoices.length }}
           </VBtn>
         </div>
       </VCardTitle>
@@ -908,6 +860,16 @@ onMounted(async () => {
             }
           "
         >
+          <template #header.select>
+            <VCheckbox
+              :model-value="selectedAll"
+              :indeterminate="indeterminate"
+              @update:model-value="handleHeaderCheckboxChange"
+              :disabled="pendingPayments.length === 0"
+              density="compact"
+            />
+          </template>
+
           <!-- Columna de selección -->
           <template #item.select="{ item }">
             <VCheckbox
@@ -922,21 +884,10 @@ onMounted(async () => {
             <div>{{ formatDate(item.payment_date) }}</div>
           </template>
 
-          <!-- Columna de fecha de vencimiento -->
-          <!-- CORRECCIÓN ISSUE #1: Mostrar fecha de vencimiento = payment_date - 1 día -->
-          <template #item.exp_date="{ item }">
-            <div>{{ formatDueDate(item.payment_date) }}</div>
-          </template>
-
           <!-- Columna de monto original -->
           <template #item.original_amount="{ item }">
             <div class="font-weight-bold">
-              {{
-                formatCurrency(
-                  item.original_amount || item.total_amount,
-                  item.currency
-                )
-              }}
+              {{ formatCurrency(item.original_amount_usd, "USD", true) }}
             </div>
           </template>
 
@@ -946,10 +897,7 @@ onMounted(async () => {
               class="font-weight-bold"
               :class="getRemainingAmountClass(item)"
             >
-              {{ formatCurrency(getDisplayAmount(item), item.currency) }}
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              {{ formatCurrency(getDisplayAmountUSD(item), "USD") }}
+              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
             </div>
           </template>
 
@@ -961,9 +909,6 @@ onMounted(async () => {
               @change="toggleIndexedStatus(item)"
               :disabled="loading"
             />
-            <div class="text-caption text-center mt-1">
-              {{ item.is_indexed ? "Sí" : "No" }}
-            </div>
           </template>
 
           <!-- ISSUE #4: Columna de total en moneda del proveedor -->
@@ -977,7 +922,7 @@ onMounted(async () => {
               }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ item.supplier_preferred_currency || "USD" }}
+              {{ formatCurrency(item.remaining_amount_usd || 0, "USD") }}
             </div>
           </template>
 
@@ -991,18 +936,12 @@ onMounted(async () => {
           <!-- Columna de acciones -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
-              <VBtn
-                variant="outlined"
-                color="primary"
-                @click="viewInvoice(item)"
-              >
+              <IconBtn @click="viewInvoice(item)">
                 <VIcon icon="tabler-eye" />
-                Ver
-              </VBtn>
-              <VBtn color="success" @click="processPayment(item)">
+              </IconBtn>
+              <IconBtn @click="processPayment(item)">
                 <VIcon icon="tabler-credit-card" />
-                Pagar
-              </VBtn>
+              </IconBtn>
             </div>
           </template>
 
