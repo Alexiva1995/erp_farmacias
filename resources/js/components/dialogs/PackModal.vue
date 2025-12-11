@@ -1,6 +1,6 @@
 <script setup>
-import { computed, defineEmits, defineProps, ref, watch, onMounted } from "vue";
 import axios from "@/plugins/axios";
+import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -13,7 +13,11 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible", "modal-closed", "pack-saved"]);
+const emit = defineEmits([
+  "update:isDialogVisible",
+  "modal-closed",
+  "pack-saved",
+]);
 
 // Datos del formulario
 const formData = ref({
@@ -47,14 +51,14 @@ const loadAvailableProducts = async () => {
   loadingProducts.value = true;
   try {
     // Llamada simple sin parámetros
-    const response = await axios.get('/products/autocomplete');
+    const response = await axios.get("/products/autocomplete");
     if (response.data.success) {
       availableProducts.value = response.data.data;
     } else {
-      console.error('Error loading products:', response.data.message);
+      console.error("Error loading products:", response.data.message);
     }
   } catch (error) {
-    console.error('Error loading products:', error);
+    console.error("Error loading products:", error);
   } finally {
     loadingProducts.value = false;
   }
@@ -63,10 +67,13 @@ const loadAvailableProducts = async () => {
 // Obtener pack por ID
 const getPack = async (packId) => {
   try {
-    const response = await axios.get(`/tpv/promotions/product-packs/${packId}`, packId);
+    const response = await axios.get(
+      `/tpv/promotions/product-packs/${packId}`,
+      packId
+    );
     return response.data;
   } catch (error) {
-    console.error('Error fetching pack:', error);
+    console.error("Error fetching pack:", error);
     throw error;
   }
 };
@@ -87,7 +94,7 @@ const initializePackProducts = () => {
 // Calcular precio con descuento para un producto
 const calculateProductPrice = (product) => {
   if (!product.product) return 0;
-  
+
   const discount = product.discount_percentage || 0;
   const originalPrice = product.product.sale_price;
   const discountedPrice = originalPrice * (1 - discount / 100);
@@ -98,7 +105,7 @@ const calculateProductPrice = (product) => {
 // Calcular precio total del pack
 const calculateTotalPrice = () => {
   let total = 0;
-  formData.value.pack_products.forEach(product => {
+  formData.value.pack_products.forEach((product) => {
     total += calculateProductPrice(product);
   });
   formData.value.total_price = parseFloat(total.toFixed(2));
@@ -107,11 +114,13 @@ const calculateTotalPrice = () => {
 // Preparar datos para enviar a la API
 const preparePackData = () => {
   const packConfig = {};
-  
-  formData.value.pack_products.forEach(packProduct => {
+
+  formData.value.pack_products.forEach((packProduct) => {
     if (packProduct.product) {
-      const unitPrice = packProduct.product.sale_price * (1 - (packProduct.discount_percentage || 0) / 100);
-      
+      const unitPrice =
+        packProduct.product.sale_price *
+        (1 - (packProduct.discount_percentage || 0) / 100);
+
       packConfig[packProduct.product.id] = {
         quantity: packProduct.quantity,
         discount_percentage: parseFloat(packProduct.discount_percentage),
@@ -143,22 +152,22 @@ const formatDateForInput = (dateString) => {
 // Validar Stage 1
 const validateStage1 = () => {
   formErrors.value = {};
-  
+
   if (!formData.value.name) {
     formErrors.value.name = "El nombre del pack es requerido";
     return false;
   }
-  
+
   if (!formData.value.products_count || formData.value.products_count < 1) {
     formErrors.value.products_count = "Debe tener al menos 1 producto";
     return false;
   }
-  
+
   if (formData.value.products_count > 10) {
     formErrors.value.products_count = "Máximo 10 productos por pack";
     return false;
   }
-  
+
   return true;
 };
 
@@ -166,24 +175,26 @@ const validateStage1 = () => {
 const validateStage2 = () => {
   formErrors.value = {};
   let isValid = true;
-  
+
   formData.value.pack_products.forEach((product, index) => {
     if (!product.product) {
       formErrors.value[`product_${index}`] = "Selecciona un producto";
       isValid = false;
     }
-    
+
     if (!product.quantity || product.quantity < 1) {
       formErrors.value[`quantity_${index}`] = "La cantidad debe ser al menos 1";
       isValid = false;
     }
-    
+
     if (product.product && product.quantity > product.product.stock) {
-      formErrors.value[`stock_${index}`] = `Stock insuficiente. Disponible: ${product.product.stock}`;
+      formErrors.value[
+        `stock_${index}`
+      ] = `Stock insuficiente. Disponible: ${product.product.stock}`;
       isValid = false;
     }
   });
-  
+
   return isValid;
 };
 
@@ -233,16 +244,30 @@ const canProceedToNext = computed(() => {
     return validateStage2(); // Usar la validación real
   }
   return true;
-})
+});
 
 const handleCompletePurchase = async () => {
-  
   if (currentStageIndex.value === 0) {
     if (validateStage1()) {
-      // Solo inicializar productos si no están ya inicializados
-      if (formData.value.pack_products.length === 0) {
-        initializePackProducts();
+      const targetCount = parseInt(formData.value.products_count);
+      const currentCount = formData.value.pack_products.length;
+
+      // Add missing slots
+      if (currentCount < targetCount) {
+        for (let i = currentCount; i < targetCount; i++) {
+          formData.value.pack_products.push({
+            product: null,
+            quantity: 1,
+            discount_percentage: 0,
+            calculated_price: 0,
+          });
+        }
       }
+      // Remove excess slots
+      else if (currentCount > targetCount) {
+        formData.value.pack_products.splice(targetCount);
+      }
+
       currentStageIndex.value++;
     }
   } else if (currentStageIndex.value === 1) {
@@ -267,7 +292,7 @@ const loadPackData = async (packId) => {
     const response = await getPack(packId);
     if (response.success) {
       const pack = response.data;
-      
+
       formData.value = {
         id: pack.id,
         name: pack.name,
@@ -281,20 +306,26 @@ const loadPackData = async (packId) => {
 
       // Reconstruir pack_products desde pack_config
       if (pack.pack_config) {
-        Object.entries(pack.pack_config).forEach(([productId, config], index) => {
-          const product = availableProducts.value.find(p => p.id == productId);
-          if (product) {
-            formData.value.pack_products[index] = {
-              product: product,
-              quantity: config.quantity,
-              discount_percentage: config.discount_percentage,
-              calculated_price: config.sale_price * config.quantity,
-            };
+        Object.entries(pack.pack_config).forEach(
+          ([productId, config], index) => {
+            const product = availableProducts.value.find(
+              (p) => p.id == productId
+            );
+            if (product) {
+              formData.value.pack_products[index] = {
+                product: product,
+                quantity: config.quantity,
+                discount_percentage: config.discount_percentage,
+                calculated_price: config.sale_price * config.quantity,
+              };
+            }
           }
-        });
-        
+        );
+
         // Completar con productos vacíos si es necesario
-        while (formData.value.pack_products.length < formData.value.products_count) {
+        while (
+          formData.value.pack_products.length < formData.value.products_count
+        ) {
           formData.value.pack_products.push({
             product: null,
             quantity: 1,
@@ -305,7 +336,7 @@ const loadPackData = async (packId) => {
       }
     }
   } catch (error) {
-    console.error('Error loading pack data:', error);
+    console.error("Error loading pack data:", error);
   }
 };
 
@@ -336,16 +367,16 @@ onMounted(() => {
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center p-4">
         <span class="text-h5 font-weight-bold">
-          {{ isEditing ? 'Editar Pack' : 'Crear Pack' }}
+          {{ isEditing ? "Editar Pack" : "Crear Pack" }}
         </span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeModal" :disabled="loading">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-      
+
       <VDivider />
-      
+
       <!-- Progreso de los Stage -->
       <VCardText class="pa-4">
         <VStepper :model-value="currentStageIndex + 1" alt-labels>
@@ -375,8 +406,10 @@ onMounted(() => {
 
       <!-- Stage 1: Información básica del pack -->
       <VCardText v-if="currentStageIndex === 0" class="flex-grow-1 pa-6">
-        <p class="text-h6 font-weight-medium mb-4">Información Básica del Pack</p>
-        
+        <p class="text-h6 font-weight-medium mb-4">
+          Información Básica del Pack
+        </p>
+
         <VRow>
           <VCol cols="12" md="6">
             <VTextField
@@ -388,7 +421,7 @@ onMounted(() => {
               :disabled="loading"
             />
           </VCol>
-          
+
           <VCol cols="12" md="6">
             <VTextField
               v-model="formData.products_count"
@@ -401,7 +434,7 @@ onMounted(() => {
               :disabled="loading"
             />
           </VCol>
-          
+
           <VCol cols="12" md="6">
             <VTextField
               v-model="formData.max_quantity"
@@ -413,7 +446,7 @@ onMounted(() => {
               :disabled="loading"
             />
           </VCol>
-          
+
           <VCol cols="12" md="6">
             <VTextField
               v-model="formData.max_sale_date"
@@ -423,7 +456,7 @@ onMounted(() => {
               :disabled="loading"
             />
           </VCol>
-          
+
           <VCol cols="12">
             <VSelect
               v-model="formData.is_active"
@@ -444,7 +477,9 @@ onMounted(() => {
       <!-- Stage 2: Agregar productos -->
       <VCardText v-if="currentStageIndex === 1" class="flex-grow-1 pa-6">
         <div class="d-flex justify-space-between align-center mb-4">
-          <p class="text-h6 font-weight-medium mb-0">Agregar Productos al Pack</p>
+          <p class="text-h6 font-weight-medium mb-0">
+            Agregar Productos al Pack
+          </p>
           <VChip variant="outlined" color="primary">
             {{ formData.products_count }} producto(s) a configurar
           </VChip>
@@ -460,10 +495,12 @@ onMounted(() => {
           variant="outlined"
           class="mb-4"
         >
-          <VCardTitle class="text-h6 pa-4 d-flex justify-space-between align-center">
+          <VCardTitle
+            class="text-h6 pa-4 d-flex justify-space-between align-center"
+          >
             <span>Producto {{ index + 1 }}</span>
           </VCardTitle>
-          
+
           <VCardText>
             <VRow>
               <!-- Selección de producto -->
@@ -483,7 +520,7 @@ onMounted(() => {
                   @update:model-value="calculateTotalPrice()"
                 />
               </VCol>
-              
+
               <!-- Cantidad -->
               <VCol cols="12" md="3">
                 <VTextField
@@ -493,12 +530,15 @@ onMounted(() => {
                   type="number"
                   min="1"
                   :max="packProduct.product?.stock || 9999"
-                  :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
+                  :error-messages="
+                    formErrors[`quantity_${index}`] ||
+                    formErrors[`stock_${index}`]
+                  "
                   :disabled="loading"
                   @update:model-value="calculateTotalPrice()"
                 />
               </VCol>
-              
+
               <!-- Descuento -->
               <VCol cols="12" md="3">
                 <VTextField
@@ -522,30 +562,46 @@ onMounted(() => {
                 <VRow>
                   <VCol cols="6" sm="3">
                     <div class="text-caption font-weight-bold">Unidades</div>
-                    <div class="text-body-1">{{ packProduct.product.stock }} disp.</div>
+                    <div class="text-body-1">
+                      {{ packProduct.product.stock }} disp.
+                    </div>
                   </VCol>
                   <VCol cols="6" sm="3">
                     <div class="text-caption font-weight-bold">Expira</div>
-                    <div class="text-body-1">{{ packProduct.product.next_expiration }}</div>
+                    <div class="text-body-1">
+                      {{ packProduct.product.next_expiration }}
+                    </div>
                   </VCol>
                   <VCol cols="6" sm="3">
                     <div class="text-caption font-weight-bold">Precio</div>
-                    <div class="text-body-1">${{ packProduct.product.sale_price }}</div>
+                    <div class="text-body-1">
+                      ${{ packProduct.product.sale_price }}
+                    </div>
                   </VCol>
                   <VCol cols="6" sm="3">
                     <div class="text-caption font-weight-bold">Costo</div>
-                    <div class="text-body-1">${{ packProduct.product.unit_cost }}</div>
+                    <div class="text-body-1">
+                      ${{ packProduct.product.unit_cost }}
+                    </div>
                   </VCol>
                 </VRow>
-                
+
                 <!-- Precio con descuento -->
                 <VDivider class="my-2" />
                 <VRow class="mt-2">
                   <VCol cols="12">
                     <div class="d-flex justify-space-between align-center">
-                      <span class="font-weight-bold">Precio con descuento:</span>
+                      <span class="font-weight-bold"
+                        >Precio con descuento:</span
+                      >
                       <span class="text-h6 text-primary">
-                        ${{ (calculateProductPrice(packProduct) / packProduct.quantity).toFixed(2) }} c/u
+                        ${{
+                          (
+                            calculateProductPrice(packProduct) /
+                            packProduct.quantity
+                          ).toFixed(2)
+                        }}
+                        c/u
                       </span>
                     </div>
                     <div class="d-flex justify-space-between align-center mt-1">
@@ -559,19 +615,19 @@ onMounted(() => {
               </VCardText>
             </VCard>
 
-            <VAlert
-              v-else
-              type="info"
-              variant="tonal"
-              class="mt-4"
-            >
+            <VAlert v-else type="info" variant="tonal" class="mt-4">
               Selecciona un producto para ver sus detalles
             </VAlert>
           </VCardText>
         </VCard>
 
         <!-- Precio total -->
-        <VCard v-if="formData.pack_products.some(p => p.product)" color="primary" variant="flat" class="mt-4">
+        <VCard
+          v-if="formData.pack_products.some((p) => p.product)"
+          color="primary"
+          variant="flat"
+          class="mt-4"
+        >
           <VCardText class="text-center">
             <span class="text-h5 font-weight-bold text-white">
               Precio Total del Pack: ${{ formData.total_price }}
@@ -591,30 +647,56 @@ onMounted(() => {
               <VCardText>
                 <VList>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Nombre:</VListItemTitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Nombre:</VListItemTitle
+                    >
                     <VListItemSubtitle>{{ formData.name }}</VListItemSubtitle>
                   </VListItem>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Precio Total:</VListItemTitle>
-                    <VListItemSubtitle class="text-h6 text-success">${{ formData.total_price }}</VListItemSubtitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Precio Total:</VListItemTitle
+                    >
+                    <VListItemSubtitle class="text-h6 text-success"
+                      >${{ formData.total_price }}</VListItemSubtitle
+                    >
                   </VListItem>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Cantidad de Productos:</VListItemTitle>
-                    <VListItemSubtitle>{{ formData.products_count }} productos</VListItemSubtitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Cantidad de Productos:</VListItemTitle
+                    >
+                    <VListItemSubtitle
+                      >{{
+                        formData.products_count
+                      }}
+                      productos</VListItemSubtitle
+                    >
                   </VListItem>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Cant. Máxima de Ventas:</VListItemTitle>
-                    <VListItemSubtitle>{{ formData.max_quantity || 'Ilimitado' }}</VListItemSubtitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Cant. Máxima de Ventas:</VListItemTitle
+                    >
+                    <VListItemSubtitle>{{
+                      formData.max_quantity || "Ilimitado"
+                    }}</VListItemSubtitle>
                   </VListItem>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Fecha Máxima de Venta:</VListItemTitle>
-                    <VListItemSubtitle>{{ formData.max_sale_date || 'Sin fecha límite' }}</VListItemSubtitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Fecha Máxima de Venta:</VListItemTitle
+                    >
+                    <VListItemSubtitle>{{
+                      formData.max_sale_date || "Sin fecha límite"
+                    }}</VListItemSubtitle>
                   </VListItem>
                   <VListItem>
-                    <VListItemTitle class="font-weight-bold">Estado:</VListItemTitle>
+                    <VListItemTitle class="font-weight-bold"
+                      >Estado:</VListItemTitle
+                    >
                     <VListItemSubtitle>
-                      <VChip :color="formData.is_active ? 'success' : 'error'" size="small">
-                        {{ formData.is_active ? 'Activo' : 'Inactivo' }}
+                      <VChip
+                        :color="formData.is_active ? 'success' : 'error'"
+                        size="small"
+                      >
+                        {{ formData.is_active ? "Activo" : "Inactivo" }}
                       </VChip>
                     </VListItemSubtitle>
                   </VListItem>
@@ -628,24 +710,36 @@ onMounted(() => {
               <VCardTitle class="text-h6">Productos Incluidos</VCardTitle>
               <VCardText>
                 <VList>
-                  <template v-for="(packProduct, index) in formData.pack_products" :key="index">
+                  <template
+                    v-for="(packProduct, index) in formData.pack_products"
+                    :key="index"
+                  >
                     <VListItem v-if="packProduct && packProduct.product">
                       <VListItemTitle class="font-weight-bold">
                         {{ packProduct.product.name }}
                       </VListItemTitle>
                       <VListItemSubtitle>
-                        {{ packProduct.quantity }} unidades - 
-                        {{ packProduct.discount_percentage }}% descuento - 
-                        ${{ (calculateProductPrice(packProduct) / packProduct.quantity).toFixed(2) }} c/u
+                        {{ packProduct.quantity }} unidades -
+                        {{ packProduct.discount_percentage }}% descuento - ${{
+                          (
+                            calculateProductPrice(packProduct) /
+                            packProduct.quantity
+                          ).toFixed(2)
+                        }}
+                        c/u
                       </VListItemSubtitle>
                       <VListItemSubtitle class="text-success font-weight-bold">
-                        Subtotal: ${{ calculateProductPrice(packProduct).toFixed(2) }}
+                        Subtotal: ${{
+                          calculateProductPrice(packProduct).toFixed(2)
+                        }}
                       </VListItemSubtitle>
                     </VListItem>
                   </template>
-                  
+
                   <!-- Mostrar mensaje si no hay productos válidos -->
-                  <VListItem v-if="!formData.pack_products.some(p => p && p.product)">
+                  <VListItem
+                    v-if="!formData.pack_products.some((p) => p && p.product)"
+                  >
                     <VListItemTitle class="text-medium-emphasis">
                       No hay productos seleccionados
                     </VListItemTitle>
