@@ -7,11 +7,7 @@ import LoaderComponent from '@/components/LoaderComponent.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfGastos from '@/utils/pdfGastos';
-// import Swal from 'sweetalert2';
-import { onMounted, reactive, watch } from 'vue';
-// import { useRouter } from "vue-router";
-
-// const route= useRouter()
+import { onMounted, reactive, ref, watch } from 'vue';
 
 const isDeductible = ref(false);
 const hasInvoice = ref(false);
@@ -154,24 +150,43 @@ function cerrarModal(payload){
   limpiarErroresFormulario()
 }
 
+// Debounce para búsqueda
+let debounceTimer;
+
 watch(
-    [
-      buscardor_filtro,
-      category_id_filtro,
-      currency,
-      fechaDesde_filtro,
-      fechaHasta_filtro,
-      page,
-      itemsPerPage,
-      sortBy,
-      orderBy,
-      isDeductible,
-      hasInvoice
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
   ],
-  async () =>{
-    actualizarTabla()
+  () => {
+    actualizarTabla();
   }
-)
+);
+
+watch(
+  [
+    buscardor_filtro,
+    category_id_filtro,
+    currency,
+    fechaDesde_filtro,
+    fechaHasta_filtro,
+    isDeductible,
+    hasInvoice
+  ],
+  () => {
+    // Resetear a página 1 cuando cambian los filtros
+    if (page.value !== 1) {
+      page.value = 1;
+    }
+    // Debounce para búsqueda
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      actualizarTabla();
+    }, 300);
+  }
+);
 
 
 async function consultarCategorias(){
@@ -183,27 +198,43 @@ async function consultarCategorias(){
 }
 
 async function consultarGastos(){
-  const DATA ={
+  const DATA = {
     status,
-    buscardor_filtro:buscardor_filtro.value,
-    currency:currency.value,
-    category_id_filtro:category_id_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    sortBy:sortBy.value,
-    orderBy:orderBy.value,
-    type_of_expense:type_of_expense,
+    buscardor_filtro: buscardor_filtro.value,
+    currency: currency.value,
+    category_id_filtro: category_id_filtro.value,
+    fechaDesde_filtro: fechaDesde_filtro.value,
+    fechaHasta_filtro: fechaHasta_filtro.value,
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+    type_of_expense: type_of_expense,
     isDeductible: isDeductible.value,
     hasInvoice: hasInvoice.value,
+  };
+
+  // Limpiar parámetros vacíos
+  Object.keys(DATA).forEach((key) => {
+    if (DATA[key] === null || DATA[key] === "" || DATA[key] === false) {
+      if (key !== 'isDeductible' && key !== 'hasInvoice' && key !== 'status' && key !== 'type_of_expense') {
+        delete DATA[key];
+      }
+    }
+  });
+
+  try {
+    let respuestaApi = await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`, DATA);
+    if (respuestaApi.status !== 200) {
+      toast.error("Error al cargar los gastos");
+      return { data: [], total: 0 };
+    }
+    return {...respuestaApi.data.data};
+  } catch (error) {
+    toast.error("Error al cargar los gastos");
+    console.error("Error al consultar gastos:", error);
+    return { data: [], total: 0 };
   }
-  let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
-  if(respuestaApi.status!=200){
-    toast.error("Error al cargar los gastos")
-  }
-  console.log("respuesta => ",respuestaApi)
-  return {...respuestaApi.data.data}
 }
 
 async function actualizarTabla(){
@@ -234,38 +265,66 @@ function limpliarFiltros(){
 
 
 async function generaPdf(){
-  statuModule.loadingApp=true
-  const DATA ={
-      status,
-      buscardor_filtro:buscardor_filtro.value,
-      currency:currency.value,
-      category_id_filtro:category_id_filtro.value,
-      fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value
+  statuModule.loadingApp = true;
+  const DATA = {
+    status,
+    buscardor_filtro: buscardor_filtro.value,
+    currency: currency.value,
+    category_id_filtro: category_id_filtro.value,
+    fechaDesde_filtro: fechaDesde_filtro.value,
+    fechaHasta_filtro: fechaHasta_filtro.value,
+    isDeductible: isDeductible.value,
+    hasInvoice: hasInvoice.value,
+  };
+
+  // Limpiar parámetros vacíos
+  Object.keys(DATA).forEach((key) => {
+    if (DATA[key] === null || DATA[key] === "" || DATA[key] === false) {
+      if (key !== 'isDeductible' && key !== 'hasInvoice' && key !== 'status') {
+        delete DATA[key];
+      }
+    }
+  });
+
+  try {
+    let respuestaApi = await axios.post(`/finances/expenses`, DATA);
+    if (respuestaApi.status !== 200) {
+      statuModule.loadingApp = false;
+      toast.error("Error al cargar los gastos");
+      return;
+    }
+    pdfGastos([...respuestaApi.data.data], "Gastos");
+  } catch (error) {
+    toast.error("Error al generar el PDF");
+    console.error("Error al generar PDF:", error);
+  } finally {
+    statuModule.loadingApp = false;
   }
-  let respuestaApi=await axios.post(`/finances/expenses`,DATA)
-  if(respuestaApi.status!=200){
-     statuModule.loadingApp=false
-    toast.error("Error al cargar los gastos")
-    return
-  }
-  console.log("respuesta => ",respuestaApi)
-  statuModule.loadingApp=false
-  pdfGastos([...respuestaApi.data.data],"Gastos")
 }
 
 async function exportarExcel(formato){
   try{
-    statuModule.loadingApp=true
-    let params={
-        formato,
-        status,
-        buscardor_filtro:buscardor_filtro.value,
-        currency:currency.value,
-        category_id_filtro:category_id_filtro.value,
-        fechaDesde_filtro:fechaDesde_filtro.value,
-        fechaHasta_filtro:fechaHasta_filtro.value
-    }
+    statuModule.loadingApp = true;
+    let params = {
+      formato,
+      status,
+      buscardor_filtro: buscardor_filtro.value,
+      currency: currency.value,
+      category_id_filtro: category_id_filtro.value,
+      fechaDesde_filtro: fechaDesde_filtro.value,
+      fechaHasta_filtro: fechaHasta_filtro.value,
+      isDeductible: isDeductible.value,
+      hasInvoice: hasInvoice.value,
+    };
+
+    // Limpiar parámetros vacíos
+    Object.keys(params).forEach((key) => {
+      if (params[key] === null || params[key] === "" || params[key] === false) {
+        if (key !== 'isDeductible' && key !== 'hasInvoice' && key !== 'status' && key !== 'formato') {
+          delete params[key];
+        }
+      }
+    });
 
     let respuestaApi = await axios.post(
       '/finances/expenses/exportar/excel',

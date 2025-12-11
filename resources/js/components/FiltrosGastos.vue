@@ -29,35 +29,29 @@ const emit=defineEmits([
 ])
 </script>
 <template>
-  <!-- <h1>desuwa</h1> -->
-  <VCard title="Filtros" class="mb-6">
+  <VCard title="Filtros de Gastos" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="8">
+        <VCol cols="12" md="6">
           <AppTextField
             :model-value="props.buscardor_filtro"
             placeholder="Buscar por nombre o id"
             clearable
             @update:model-value="emit('update:buscardor_filtro', $event)"
           />
-          <div class="d-flex align-center gap-4">
-            <VCheckbox
-              label="Deducibles"
-              :model-value="props.isDeductible"
-              @update:model-value="emit('update:isDeductible', $event)"
-              hide-details
-            />
-            
-            <VCheckbox
-              label="Facturas"
-              :model-value="props.hasInvoice"
-              @update:model-value="emit('update:hasInvoice', $event)"
-              hide-details
-            />
-          </div>
-        
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" md="6">
+          <VAutocomplete
+            :model-value="props.category_id_filtro"
+            label="Categoría"
+            :items="props.categorias"
+            item-title="name"
+            item-value="id"
+            clearable
+            @update:model-value="emit('update:category_id_filtro', $event)"
+          />
+        </VCol>
+        <VCol cols="12" md="6">
           <VSelect
             :model-value="props.currency"
             label="Moneda"
@@ -66,21 +60,10 @@ const emit=defineEmits([
             @update:model-value="emit('update:currency', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <VSelect
-            :model-value="props.category_id_filtro"
-            label="Categoria"
-            :items="props.categorias"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:category_id_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" md="6">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
-            label="Desde"
+            placeholder="Fecha Desde"
             clearable
             :config="{
               altInput: true,
@@ -90,10 +73,10 @@ const emit=defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" md="6">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
-            label="Hasta"
+            placeholder="Fecha Hasta"
             clearable
             :config="{
               altInput: true,
@@ -103,12 +86,27 @@ const emit=defineEmits([
             @update:model-value="emit('update:fechaHasta_filtro', $event)"
           />
         </VCol>
+        <VCol cols="12" md="6">
+          <div class="d-flex align-center gap-4">
+            <VCheckbox
+              label="Deducibles"
+              :model-value="props.isDeductible"
+              @update:model-value="emit('update:isDeductible', $event)"
+              hide-details
+            />
+            <VCheckbox
+              label="Con Factura"
+              :model-value="props.hasInvoice"
+              @update:model-value="emit('update:hasInvoice', $event)"
+              hide-details
+            />
+          </div>
+        </VCol>
       </VRow>
     </VCardText>
 
     <VDivider />
-
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
@@ -139,7 +137,12 @@ const emit=defineEmits([
           </VListItem>
         </VList>
       </VMenu>
-      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')" v-if="props.showAddButton" >
+      <VBtn 
+        color="primary" 
+        prepend-icon="tabler-plus" 
+        @click="emit('add')" 
+        v-if="props.showAddButton"
+      >
         Agregar Gasto
       </VBtn>
     </VCardActions>
