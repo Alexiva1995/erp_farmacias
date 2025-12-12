@@ -169,6 +169,13 @@ const totalInUSD = computed(() => {
   }, 0);
 });
 
+const totalInBS = computed(() => {
+  if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
+  return selectedInvoices.value.reduce((sum, invoice) => {
+    return sum + parseFloat(invoice.remaining_amount || 0);
+  }, 0);
+});
+
 const suggestedAmountInLocalCurrency = computed(() => {
   const paymentCurrency = form.value.payment_currency;
   const supplierCurrency = supplierInfo.value?.currency || "USD";
@@ -744,34 +751,6 @@ onMounted(() => {
           </VCol>
         </VRow>
 
-        <!-- Información del proveedor -->
-        <div v-if="supplierInfo" class="mb-6">
-          <VCard variant="tonal" color="primary" title="Detalles de pago">
-            <VCardText>
-              <VRow>
-                <VCol cols="12" md="6">
-                  <div class="text-h6 font-weight-bold">
-                    {{ supplierInfo.name }}
-                    {{
-                      formatCurrency(
-                        totalInSupplierCurrency,
-                        supplierInfo.currency
-                      )
-                    }}
-                    O
-                    {{ formatCurrency(totalInUSD, "USD") }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Fecha de Pago: {{ formatDate(supplierInfo.paymentDate) }}
-                  </div>
-                </VCol>
-              </VRow>
-            </VCardText>
-          </VCard>
-        </div>
-
-        <VDivider class="my-6" />
-
         <!-- Formulario de pago -->
         <VForm @submit.prevent="processPayment">
           <!-- CORRECCIÓN ISSUE #2: Mostrar monto de referencia en USD -->
@@ -786,7 +765,8 @@ onMounted(() => {
                 </template>
                 <div class="text-center">
                   <div class="text-h4 font-weight-bold text-primary mb-2">
-                    {{ formatCurrency(totalInUSD, "USD") }}
+                    {{ formatCurrency(totalInUSD, "USD") }} |
+                    {{ formatWithoutCurrency(totalInBS) }} Bs
                   </div>
                   <div class="text-body-2 text-medium-emphasis">
                     Este es el monto de la factura en USD. Puede pagar más o
@@ -936,12 +916,12 @@ onMounted(() => {
       <VDivider />
 
       <VCardActions class="pa-4">
-        <VSpacer />
         <VBtn
           variant="outlined"
           color="secondary"
           @click="closeModal"
           :disabled="loading"
+          class="flex-grow-1 w-0 mr-4"
         >
           Cancelar
         </VBtn>
@@ -950,6 +930,7 @@ onMounted(() => {
           @click="processPayment"
           :loading="loading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
+          class="flex-grow-1 w-0"
         >
           Procesar Pago
         </VBtn>

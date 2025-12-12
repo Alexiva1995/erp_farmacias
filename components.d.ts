@@ -147,7 +147,6 @@ declare module 'vue' {
     HistoryFilters: typeof import('./resources/js/components/HistoryFilters.vue')['default']
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
-    IgnoredProductsTable: typeof import('./resources/js/components/IgnoredProductsTable.vue')['default']
     IndividualOfferFilters: typeof import('./resources/js/components/IndividualOfferFilters.vue')['default']
     IndividualOfferModal: typeof import('./resources/js/components/dialogs/IndividualOfferModal.vue')['default']
     IndividualOfferTable: typeof import('./resources/js/components/IndividualOfferTable.vue')['default']
