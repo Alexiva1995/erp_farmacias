@@ -26,22 +26,29 @@ class SupplierLaboratoryController extends Controller
         return response()->json(['discount_rules' => $rules]);
     }
 
-    public function storeDiscountRule(StoreDiscountRuleRequest $request, Supplier $supplier)
+        public function storeDiscountRule(StoreDiscountRuleRequest $request, $supplierLaboratoryId)
     {
         $validated = $request->validated();
 
         $createdRules = [];
 
         foreach ($validated['rules'] as $rule) {
-            $lab = Laboratory::findOrFail($rule['laboratory']['id']);
+            $laboratoryId = $rule['laboratory']['id'];
+
+            $lab = SupplierLaboratory::firstOrCreate(
+                [
+                'supplier_id' => $supplierLaboratoryId,
+                'laboratory_id' => $laboratoryId,
+                ],
+            );
 
             $ruleData = [
                 'scale_type' => $rule['scale_type']['id'],
-                'min_quantity' =>  $rule['scale_type']['id'] === 'units' ? $rule['min'] : null,
-                'max_quantity' =>  $rule['scale_type']['id'] === 'units' ? $rule['max'] : null,
-                'min_amount' =>  $rule['scale_type']['id'] === 'amount' ? $rule['min'] : null,
+                'min_quantity' => $rule['scale_type']['id'] === 'units' ? $rule['min'] : null,
+                'max_quantity' => $rule['scale_type']['id'] === 'units' ? $rule['max'] : null,
+                'min_amount' => $rule['scale_type']['id'] === 'amount' ? $rule['min'] : null,
                 'max_amount' => $rule['scale_type']['id'] === 'amount' ? $rule['max'] : null,
-                'max_amount' => $rule['scale_type']['id'] === 'amount' ? $rule['max'] : null,
+                'discount_percentage' => $rule['discount_percentage'],
             ];
 
             $createdRules[] = $this->supplierLaboratoryActionService->createDiscountRule($lab, $ruleData);

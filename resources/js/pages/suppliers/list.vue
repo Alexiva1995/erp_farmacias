@@ -332,16 +332,12 @@ const handleSupplierDiscountRule = async (supplier) => {
 };
 
 const handleSaveDiscountRules = async (formData) => {
+  const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
   try {
-
     const payload = {
       rules: formData,
     };
-    await axios.post(
-      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
-      payload
-    );
-
+    await axios.post(url, payload);
     toast.success("Reglas de descuento guardadas con éxito");
     isSupplierDiscountRuleDialogVisible.value = false;
 
