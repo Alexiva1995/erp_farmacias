@@ -24,7 +24,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
      */
     public function __construct(
         public Supplier $supplier,
-        public int $userId,
+        public ?int $userId,
         public ?string $filePath = null,
         public array $columnMap = [],
     ) {
@@ -131,7 +131,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 "message" => $e->getMessage(),
             ]);
 
-            throw $e;
+            //throw $e;
         }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\SupplierConnection;
+use App\Jobs\ProcessSupplierConnectionJob;
 
 class InventoryUpdateDaily extends Command
 {
@@ -44,12 +45,13 @@ class InventoryUpdateDaily extends Command
                 $this->error("Proveedor no encontrado para la conexión ID: {$connection->id}");
                 return;
             }
+
             $this->comment("Procesando proveedor: {$supplier->name} ({$connection->type})");
-            try {
-                $this->info("Inventario de {$supplier->name} ({$connection->type}) actualizado con éxito.");
-            } catch (\Exception $e) {
-                $this->error("Error al actualizar inventario de {$supplier->name}: " . $e->getMessage());
-            }
+            ProcessSupplierConnectionJob::dispatch(
+                supplier: $supplier,
+                userId: null,
+            );
+            $this->info("Job de conexión para {$supplier->name} puesto en cola con éxito.");
         });
 
         $this->info('Actualización diaria de inventario finalizada.');
