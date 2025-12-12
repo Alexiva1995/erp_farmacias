@@ -1,20 +1,20 @@
 <script setup lang="js">
-
-const props=defineProps({
-  buscardor_filtro: {type: String, requiered: true, default: () => "" },
-  currency:{type: String,requiered: true},
-  category_id_filtro:{type: String,requiered: true},
-  categorias:{type: Array,requiered: true, default:() => []},
-  fechaHasta_filtro: {type: String, requiered: true, default: () => "" },
-  fechaDesde_filtro: {type: String, requiered: true, default: () => "" },
+const props = defineProps({
+  buscardor_filtro: { type: String, required: true, default: () => "" },
+  currency: { type: String, required: true },
+  category_id_filtro: { type: String, required: true },
+  categorias: { type: Array, required: true, default: () => [] },
+  fechaHasta_filtro: { type: String, required: true, default: () => "" },
+  fechaDesde_filtro: { type: String, required: true, default: () => "" },
   isDeductible: Boolean,
   hasInvoice: Boolean,
-  showAddButton: { type: Boolean, required: false, default: true }, 
-})
+  showAddButton: { type: Boolean, required: false, default: true },
+  loading: { type: Boolean, default: false },
+});
 
-const currencies=["BS","USD", "COP"];
+const currencies = ["BS", "USD", "COP"];
 
-const emit=defineEmits([
+const emit = defineEmits([
   "update:currency",
   "update:buscardor_filtro",
   "update:category_id_filtro",
@@ -26,13 +26,13 @@ const emit=defineEmits([
   "add",
   "update:isDeductible",
   "update:hasInvoice",
-])
+]);
 </script>
 <template>
-  <VCard title="Filtros de Gastos" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" md="6">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.buscardor_filtro"
             placeholder="Buscar por nombre o id"
@@ -40,30 +40,33 @@ const emit=defineEmits([
             @update:model-value="emit('update:buscardor_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" sm="3" md="2">
           <VAutocomplete
             :model-value="props.category_id_filtro"
-            label="Categoría"
             :items="props.categorias"
+            :loading="props.loading"
+            label="Categoría"
+            placeholder="Buscar una categoría"
             item-title="name"
             item-value="id"
             clearable
             @update:model-value="emit('update:category_id_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.currency"
             label="Moneda"
             :items="currencies"
+            placeholder="Moneda"
             clearable
             @update:model-value="emit('update:currency', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
-            placeholder="Fecha Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -73,10 +76,10 @@ const emit=defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
-            placeholder="Fecha Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
@@ -86,8 +89,8 @@ const emit=defineEmits([
             @update:model-value="emit('update:fechaHasta_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
-          <div class="d-flex align-center gap-4">
+        <VCol cols="12" sm="3" md="2">
+          <div class="d-flex align-center gap-2">
             <VCheckbox
               label="Deducibles"
               :model-value="props.isDeductible"
@@ -106,11 +109,14 @@ const emit=defineEmits([
     </VCardText>
 
     <VDivider />
+
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
+
       <VSpacer />
+
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn
@@ -125,7 +131,11 @@ const emit=defineEmits([
         <VList>
           <VListItem @click="emit('export-excel', 'xlsx')">
             <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+              <VIcon
+                icon="tabler-file-type-csv"
+                class="me-2"
+                color="success"
+              />
             </template>
             <VListItemTitle class="text-success">Excel</VListItemTitle>
           </VListItem>
@@ -137,11 +147,11 @@ const emit=defineEmits([
           </VListItem>
         </VList>
       </VMenu>
-      <VBtn 
-        color="primary" 
-        prepend-icon="tabler-plus" 
-        @click="emit('add')" 
+      <VBtn
         v-if="props.showAddButton"
+        color="primary"
+        prepend-icon="tabler-plus"
+        @click="emit('add')"
       >
         Agregar Gasto
       </VBtn>
