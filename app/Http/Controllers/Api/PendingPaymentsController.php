@@ -572,7 +572,7 @@ class PendingPaymentsController extends Controller
                         ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
                             $supplierQuery->where('name', 'like', "%{$search}%");
                         });
-                })->orWhere('reference', 'like', "%$search%");
+                });
             }
 
             $payments = $query->paginate(15);
