@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
 class SupplierQueryService
 {
@@ -28,6 +29,7 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
+
         return Supplier::query()
             ->withoutTrashed()
             ->select('suppliers.*')
@@ -73,13 +75,19 @@ class SupplierQueryService
                     ->select("suppliers.*");
 
             case "debt":
-                $subDebt = DB::raw('(
+                /*$subDebt = DB::raw('(
                     SELECT COALESCE(SUM(i.total_amount), 0) - COALESCE(SUM(ip.amount), 0)
                     FROM invoices i
                     LEFT JOIN invoice_payment_invoice pivot ON pivot.invoice_id = i.id
                     LEFT JOIN invoice_payments ip ON ip.id = pivot.payment_id
                     WHERE i.supplier_id = suppliers.id
                     AND i.status IN ("loaded", "ordered")
+                )');*/
+                $subDebt = DB::raw('(
+                    SELECT SUM(COALESCE(i.Total_usd, 0)) 
+                    FROM invoices i
+                    WHERE i.supplier_id = suppliers.id
+                    AND i.status_payment = 0  
                 )');
                 return $query->orderBy($subDebt, $orderBy);
 
