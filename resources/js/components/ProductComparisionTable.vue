@@ -6,7 +6,6 @@ const props = defineProps({
   totalSupplierConnections: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  // Recibimos el valor de búsqueda como prop para v-model
   searchQuery: { type: String, default: "" },
 });
 
@@ -17,7 +16,7 @@ const emit = defineEmits([
   "load-products",
   "delete-products",
   "open-discount-dialog",
-  "update:searchQuery", // Emit para actualizar la búsqueda en el padre
+  "update:searchQuery",
 ]);
 
 const headers = [
@@ -31,19 +30,14 @@ const headers = [
 
 <template>
   <VCard>
-    <!-- Buscador Integrado en la cabecera de la tabla -->
-    <VCardText class="d-flex align-center py-4 gap-4">
-      <div style="max-width: 400px; width: 100%">
-        <AppTextField
-          :model-value="props.searchQuery"
-          placeholder="Nombre del proveedor..."
-          density="compact"
-          prepend-inner-icon="tabler-search"
-          clearable
-          hide-details
-          @update:model-value="emit('update:searchQuery', $event)"
-        />
-      </div>
+    <VCardText class="py-4 gap-4">
+      <AppTextField
+        :model-value="props.searchQuery"
+        placeholder="Nombre del proveedor..."
+        clearable
+        @update:model-value="emit('update:searchQuery', $event)"
+        class="w-25"
+      />
     </VCardText>
 
     <VDataTableServer

@@ -1,7 +1,7 @@
 <script setup>
-import { defineProps, defineEmits, computed } from "vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { computed, defineEmits, defineProps } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -119,6 +119,15 @@ const getItemPriceByCurrency = (item, currency) => {
   }
   return priceWithIva;
 };
+
+const debtPayments = computed(() => {
+  return props.payments.filter((payment) => payment.isDebt === true);
+});
+const normalPayments = computed(() => {
+  return props.payments.filter(
+    (payment) => payment.isDebt === false || payment.isDebt == null
+  );
+});
 </script>
 
 <template>
@@ -140,13 +149,17 @@ const getItemPriceByCurrency = (item, currency) => {
           <span class="font-weight-regular">J-50540695-7</span>
         </div>
         <div class="text-center">
-          <span class="font-weight-regular">FARMACIA BARRIO SUCRE 2024, C.A.</span>
+          <span class="font-weight-regular"
+            >FARMACIA BARRIO SUCRE 2024, C.A.</span
+          >
         </div>
         <div class="text-center">
           <span class="font-weight-regular">CALLE PRINCIPAL LOCAL 05 (L5)</span>
         </div>
         <div class="text-center">
-          <span class="font-weight-regular">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
+          <span class="font-weight-regular"
+            >SECTOR BARRIO SUCRE LA FRIA TACHIRA</span
+          >
         </div>
         <div class="text-center">
           <span class="font-weight-regular">ZONA POSTAL 5020</span>
@@ -159,8 +172,8 @@ const getItemPriceByCurrency = (item, currency) => {
           >
           <div class="text-right d-flex flex-column align-end">
             <p class="text-black font-weight-regular text-h6 mb-0">
-              Fecha: {{ formatDateTime(props.orderData.created_at, "date")
-              }} {{ formatDateTime(props.orderData.created_at, "time") }}
+              Fecha: {{ formatDateTime(props.orderData.created_at, "date") }}
+              {{ formatDateTime(props.orderData.created_at, "time") }}
             </p>
           </div>
         </div>
@@ -190,7 +203,7 @@ const getItemPriceByCurrency = (item, currency) => {
           <p class="font-weight-bold text-h6">Métodos de Pago</p>
           <div class="text-end">
             <p
-              v-for="(payment, pIndex) in payments"
+              v-for="(payment, pIndex) in normalPayments"
               :key="`ticket-payment-${pIndex}`"
               class="font-weight-bold text-h6 my-1"
             >
@@ -238,17 +251,18 @@ const getItemPriceByCurrency = (item, currency) => {
             </VListItem>
           </VList>
         </div>
-         <hr />
-          <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold text-h6">TOTAL VENTA:</span> 
-          <span class="text-end font-weight-bold text-h6"> {{ formatCurrency(totalAmount, selectedCurrency) }}
+        <hr />
+        <div class="ticket-total d-flex justify-space-between align-center">
+          <span class="font-weight-bold text-h6">TOTAL VENTA:</span>
+          <span class="text-end font-weight-bold text-h6">
+            {{ formatCurrency(totalAmount, selectedCurrency) }}
           </span>
-      </div>
-      <div class="ticket-total d-flex flex-wrap justify-space-between">
+        </div>
+        <div class="ticket-total d-flex flex-wrap justify-space-between">
           <p class="font-weight-bold text-h6 mt-2">PAGO:</p>
           <div class="text-end">
             <p
-              v-for="(payment, pIndex) in payments"
+              v-for="(payment, pIndex) in normalPayments"
               :key="`ticket-payment-${pIndex}`"
               class="font-weight-bold text-h6 my-1"
             >
@@ -258,18 +272,41 @@ const getItemPriceByCurrency = (item, currency) => {
             </p>
           </div>
         </div>
-        <div v-if="credit" class="ticket-total d-flex justify-space-between align-center">
-             <span class="font-weight-bold text-h6">{{'CRÉDITO'}}:</span>
-             <span class="text-end font-weight-bold text-h6">
-                {{ formatCurrency(creditAmount, selectedCurrency) }}
-            </span>
+        <div
+          v-if="debtPayments.length > 0"
+          class="ticket-total d-flex flex-wrap justify-space-between"
+        >
+          <p class="font-weight-bold text-h6 mt-2">SALDO:</p>
+          <div class="text-end">
+            <p
+              v-for="(payment, pIndex) in debtPayments"
+              :key="`ticket-payment-${pIndex}`"
+              class="font-weight-bold text-h6 my-1"
+            >
+              <span>
+                {{ formatCurrency(payment.amount || 0, payment.currency) }}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          v-if="credit"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold text-h6">{{ "CRÉDITO" }}:</span>
+          <span class="text-end font-weight-bold text-h6">
+            {{ formatCurrency(creditAmount, selectedCurrency) }}
+          </span>
         </div>
 
-         <div v-if="changeAmount" class="ticket-total d-flex justify-space-between align-center">
-            <span class="font-weight-bold text-h6">DEVOLUCION:</span>
-            <span class="text-end font-weight-bold text-h6">
-                {{ formatCurrency(changeAmount, 'COP') }}
-            </span>
+        <div
+          v-if="changeAmount"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold text-h6">DEVOLUCION:</span>
+          <span class="text-end font-weight-bold text-h6">
+            {{ formatCurrency(changeAmount, "COP") }}
+          </span>
         </div>
       </VCardText>
     </VCard>

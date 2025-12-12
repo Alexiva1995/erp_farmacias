@@ -70,42 +70,26 @@ class DoctorOfferController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'is_active' => 'required|boolean',
-            'scales' => 'required|array|min:1',
-            'scales.*.min_volume' => 'required|integer|min:0',
-            'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
-            'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
+            'discount' => 'required|numeric|min:0|max:100',
         ]);
 
         try {
-            DB::beginTransaction();
 
-            // Crear la oferta principal
             $doctorOffer = DoctorOffer::create([
                 'doctor_id' => $validated['doctor_id'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
                 'is_active' => $validated['is_active'],
+                'discount' => $validated['discount'],
             ]);
-
-            // Crear las escalas de la oferta
-            foreach ($validated['scales'] as $scale) {
-                DoctorOfferScale::create([
-                    'doctor_offer_id' => $doctorOffer->id,
-                    'min_volume' => $scale['min_volume'],
-                    'max_volume' => $scale['max_volume'],
-                    'discount_percentage' => $scale['discount_percentage'],
-                ]);
-            }
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Oferta creada exitosamente',
-                'data' => $doctorOffer->load(['doctor', 'scales'])
+                'data' => $doctorOffer->load('doctor')
             ], 201);
+
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear la oferta: ' . $e->getMessage()
@@ -119,78 +103,51 @@ class DoctorOfferController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        DB::beginTransaction();
+        $doctorOffer = DoctorOffer::find($id);
+
+        if (!$doctorOffer) {
+            return response()->json([
+                'message' => 'Oferta no encontrada.',
+                'error' => 'La Oferta Medica con ID ' . $id . ' no fue encontrada'
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'doctor_id' => 'required|exists:doctors,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'is_active' => 'required|boolean',
+            'discount' => 'required|numeric|min:0|max:100',
+        ]);
+
         try {
-            // Buscar el modelo manualmente
-            $doctorOffer = DoctorOffer::find($id);
+            DB::beginTransaction();
 
-            if (!$doctorOffer) {
-                return response()->json([
-                    'message' => 'Oferta no encontrada.',
-                    'error' => 'La Oferta Medica con ID ' . $id . ' no fue encontrada'
-                ], 404);
-            }
-
-            $validated = $request->validate([
-                'doctor_id' => 'required|exists:companies,id',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'is_active' => 'required|boolean',
-                'scales' => 'required|array|min:1',
-                'scales.*.min_volume' => 'required|integer|min:0',
-                'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
-                'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
-            ]);
-
-            // Update the main offer
-            $updated = $doctorOffer->update([
+            // Actualizamos la oferta principal
+            $doctorOffer->update([
                 'doctor_id' => $validated['doctor_id'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
                 'is_active' => $validated['is_active'],
+                'discount' => $validated['discount'],
             ]);
 
-            // Eliminar escalas existentes
-            $deleted = DoctorOfferScale::where('doctor_offer_id', $doctorOffer->id)->delete();
-
-            // Crear nuevas escalas
-            $scalesToCreate = [];
-            foreach ($validated['scales'] as $index => $scaleData) {
-                $scalesToCreate[] = [
-                    'doctor_offer_id' => $doctorOffer->id,
-                    'min_volume' => $scaleData['min_volume'],
-                    'max_volume' => $scaleData['max_volume'],
-                    'discount_percentage' => $scaleData['discount_percentage'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            // Insertar todas las escalas
-            if (!empty($scalesToCreate)) {
-                $inserted = DoctorOfferScale::insert($scalesToCreate);
-            }
 
             DB::commit();
 
-            // Recargar con datos frescos
-            $doctorOffer->load(['doctor', 'scales']);
+            $doctorOffer->load('doctor');
 
             return response()->json([
+                'success' => true,
                 'message' => 'Oferta actualizada exitosamente.',
                 'data' => $doctorOffer
             ]);
-        } catch (ValidationException $e) {
-            DB::rollBack();
 
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return response()->json([
+                'success' => false,
                 'message' => 'Error al actualizar la oferta.',
                 'error' => $e->getMessage()
             ], 500);

@@ -30,6 +30,10 @@ class ProductSupplierServices implements ProductSupplier
 
     public function calculatePercentageDifferenceIncrease(float $price, float $supplierPrice): float
     {
+        if ($price == 0) {
+            return 0;
+        }
+
         $resta = $supplierPrice - $price;
         $resultado = $resta / $price;
         return $resultado;
@@ -41,7 +45,6 @@ class ProductSupplierServices implements ProductSupplier
     public function checkIfTheProductHasIncreasedInPrice(float $percentageIncrease, float $maximumPercentageMaximo): bool|null
     {
         $incremento = null;
-        // return $percentageIncrease > $maximumPercentageMaximo ? true : false;
         if ($percentageIncrease > $maximumPercentageMaximo) {
             $incremento = true;
         }
@@ -66,7 +69,8 @@ class ProductSupplierServices implements ProductSupplier
             $products[$index]->ofertas = $ofertas;
 
             // Usar una variable temporal en lugar de modificar el original
-            $solicitarTemporal = ceil((int) $products[$index]->solicitar);
+            // Se usa floor porque solicitar es negativo (-0.1 -> -1.0)
+            $solicitarTemporal = floor((float) $products[$index]->solicitar);
 
             if ((int) $solicitarTemporal < 0) {
                 for ($index2 = 0; $index2 < count($ofertas); $index2++) {
@@ -105,7 +109,7 @@ class ProductSupplierServices implements ProductSupplier
 
             $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
             $products[$index]->ofertas = $ofertas;
-            $products[$index]->solicitar = ceil((int) $products[$index]->solicitar);
+            $products[$index]->solicitar = floor((float) $products[$index]->solicitar);
 
             for ($index2 = 0; $index2 < count($ofertas); $index2++) {
 

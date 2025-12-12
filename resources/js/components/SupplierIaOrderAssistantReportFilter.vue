@@ -39,7 +39,7 @@ const lapsoDeTiempoOpciones = [
   <VCard title="" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="12" md="2">
+        <VCol cols="12" sm="12" md="3">
           <VAutocomplete
             :items="props.products"
             label="Productos"
@@ -52,7 +52,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:selectProducts', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :items="props.laboratories"
             label="Laboratorio"
@@ -66,7 +66,7 @@ const lapsoDeTiempoOpciones = [
           >
           </VAutocomplete>
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.tipo_de_filtracion"
             label="Calcular Por"
@@ -74,7 +74,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:tipo_de_filtracion', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.lapso_de_tiempo"
             label="Lapso de tiempo"
@@ -82,7 +82,7 @@ const lapsoDeTiempoOpciones = [
             @update:model-value="emit('update:lapso_de_tiempo', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <v-checkbox
             :model-value="props.checkColombia"
             label="Colombia"

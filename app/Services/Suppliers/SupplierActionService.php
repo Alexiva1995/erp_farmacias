@@ -2,6 +2,7 @@
 
 namespace App\Services\Suppliers;
 
+use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\PaymentRule;
 use App\Models\SupplierDiscount;
@@ -164,5 +165,9 @@ class SupplierActionService
                 "),
                 'updated_at' => now(),
             ]);
+    }
+    public function deleteProductsOlderThan(string $date)
+    {
+        return ProductSupplier::whereDate('updated_at', '<', $date)->delete();
     }
 }

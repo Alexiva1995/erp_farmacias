@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Jobs\UpdateAllSuppliersJob;
 use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
@@ -118,6 +119,16 @@ class SupplierController extends Controller
         ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
         return response()->json(["status" => "queued"]);
+    }
+    public function dispatchUpdateAllJob()
+    {
+        $userId = auth()->id() ?? 1;
+
+        UpdateAllSuppliersJob::dispatch($userId);
+
+        return response()->json([
+            'message' => 'Se ha iniciado la actualización de todos los proveedores en segundo plano.'
+        ]);
     }
 
     /**
@@ -392,5 +403,23 @@ class SupplierController extends Controller
             'message' => "Descuento aplicado correctamente a {$affectedRows} productos.",
             'affected_rows' => $affectedRows
         ]);
+    }
+    public function deleteOldProducts(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date|before_or_equal:today',
+        ]);
+
+        try {
+            $deletedCount = $this->supplierActionService->deleteProductsOlderThan($validated['date']);
+
+            return response()->json([
+                "status" => "ok",
+                "message" => "Se eliminaron {$deletedCount} productos correctamente.",
+                "count" => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error("Error al eliminar productos antiguos: " . $e->getMessage(), 500);
+        }
     }
 }

@@ -327,11 +327,30 @@ class SupplierQueryService
         $laboratoryId = $request->query("laboratoryId");
         $supplierId = $request->query("supplierId");
         $perPage = $request->query("perPage", 10) ?? 10;
-        $search = $request->query('q');
+
+        $search = trim($request->query('q'));
+
         $originId = $request->query("originId");
+
         $hasStock = $request->has('hasStock')
-            ? filter_var($request->query("hasStock"), FILTER_VALIDATE_BOOLEAN) : null;
+            ? filter_var($request->query("hasStock"), FILTER_VALIDATE_BOOLEAN)
+            : null;
+
         $isStrictSearch = filter_var($request->query("isStrictSearch"), FILTER_VALIDATE_BOOLEAN);
+
+        $sortBy = $request->query("sortBy", "name");
+        $sortOrder = $request->query("order", "asc");
+
+        $sortableColumns = [
+            'name' => 'product_suppliers.name',
+            'unit_cost_bs' => 'product_suppliers.unit_cost',
+            'unit_cost_usd' => 'product_suppliers.unit_cost_usd',
+            'final_cost_bs' => 'final_cost_bs',
+            'final_cost_usd' => 'final_cost_usd',
+            'expiration' => 'product_suppliers.expiration'
+        ];
+
+        $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
 
         $laboratory = Laboratory::where("id", $laboratoryId)->first();
 
@@ -349,16 +368,17 @@ class SupplierQueryService
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
+
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
-                $searchTerm = "%{$search}%";
 
                 if ($isStrictSearch) {
-                    $query->where('product_suppliers.name', 'like', "%{$searchTerm}%")
-                        ->orWhere('product_suppliers.active_ingredient', 'like', "%{$searchTerm}%")
-                        ->orWhere('product_suppliers.barcode_match', 'like', $searchTerm)
-                        ->orWhere('product_suppliers.id', 'like', $searchTerm);
+                    $query->where(function ($q) use ($search) {
+                        $q->where('product_suppliers.name', '=', $search)
+                            ->orWhere('product_suppliers.id', '=', $search)
+                            ->orWhere('product_suppliers.barcode_match', '=', $search);
+                    });
                 } else {
-                    $words = explode(' ', $searchTerm);
+                    $words = explode(' ', $search);
                     foreach ($words as $word) {
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('product_suppliers.name', 'like', "%{$word}%")
@@ -368,6 +388,8 @@ class SupplierQueryService
                     }
                 }
             })
+            // -------------------------------------
+
             ->when(!empty($originId), function ($query) use ($originId) {
                 $query->where('products.origin_id', $originId);
             })
@@ -377,13 +399,15 @@ class SupplierQueryService
             ->when($laboratoryId, function ($query) use ($laboratory) {
                 $query->where("laboratory", $laboratory->name);
             })
-            ->orderBy("name", "asc")
+
+            ->orderBy($sortColumn, $sortOrder)
+
             ->when($hasStock !== null, function ($query) use ($hasStock) {
                 $stockSql = 'COALESCE((SELECT SUM(pl.quantity)
-                                        FROM product_lots pl
-                                        WHERE pl.product_id = products.id
-                                          AND pl.expiration_date >= CURDATE()
-                                          AND pl.quantity > 0), 0)';
+                                    FROM product_lots pl
+                                    WHERE pl.product_id = products.id
+                                      AND pl.expiration_date >= CURDATE()
+                                      AND pl.quantity > 0), 0)';
 
                 $query->havingRaw($hasStock ? "{$stockSql} > 0"
                     : "{$stockSql} = 0");

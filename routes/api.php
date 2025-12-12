@@ -206,10 +206,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
+        Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
-        Route::patch('/returns/{returnEntryId}/approved', [ReturnsController::class, 'approvedReturn']);
+        Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
         // Rutas de Promociones
         Route::prefix("promotions")->group(function () {
             Route::prefix("individual")->group(function () {
@@ -291,6 +292,7 @@ Route::prefix("crm")->group(function () {
         Route::delete("/{id}", [CompanyController::class, "deleteById"]);
         Route::post("/edit/{id}", [CompanyController::class, "edit"]);
         Route::post("/filtrar", [CompanyController::class, "filtrar"]);
+        // Route::post("/filtrar-cliientes", [CompanyController::class, "filtrarClientes"]);
         Route::post("/filtrar-sin-paginar", [CompanyController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [CompanyController::class, "exportarExcel"]);
     });
@@ -299,8 +301,9 @@ Route::prefix("crm")->group(function () {
         Route::post("/", [ClientController::class, "create"]);
         Route::get("/", [ClientController::class, "consultAll"]);
         Route::get("/{id}", [ClientController::class, "consultById"]);
-        Route::delete("/{id}", [CompanyController::class, "deleteById"]);
+        Route::delete("/{id}", [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
+        Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
         Route::post("/filtrar", [ClientController::class, "filtrar"]);
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
@@ -379,6 +382,7 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
     Route::put('/{invoice}/data', 'updateData')->name('updateData');
     Route::post('/{invoice}/approve', 'approve')->name('approve');
     Route::post('/{invoice}/reject', 'reject')->name('reject');
+    Route::put('/{invoice}/return-pending', 'returnInvoiceToPendingStatus')->name('return.pending');
     Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
     Route::get('/{invoice}', 'show')->name('show');
     Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
@@ -409,6 +413,8 @@ Route::prefix("suppliers")->group(function () {
     Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);
     Route::get('/{supplier}/first-connection', [SupplierController::class, 'getSupplierFirstConnection']);
     Route::post('/{supplier}/apply-discount', [SupplierController::class, 'applyGlobalDiscount']);
+    Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
+    Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {

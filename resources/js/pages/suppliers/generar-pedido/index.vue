@@ -4,7 +4,7 @@ import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
-import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
+import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
@@ -91,6 +91,7 @@ async function handleChangePageOportunidad(newPage) {
 }
 
 function procesarRespuesta(data) {
+  // Asignar productos a reponer (Fallas visibles en tabla)
   if(data.data.productos_a_reponer) {
       data.data.productos_a_reponer = data.data.productos_a_reponer.map(a => {
         a.uuid = generateUUID()
@@ -98,6 +99,11 @@ function procesarRespuesta(data) {
       })
       module.productoFallas = [...data.data.productos_a_reponer];
   }
+
+  if(data.data.productosFallas) {
+      module.productosSinReponer = [...data.data.productosFallas];
+  }
+
   if (data.data.productos_oportunidad_unica && data.data.productos_oportunidad_unica.data) {
     data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(a => {
       a.uuid = generateUUID()
@@ -133,13 +139,8 @@ function actualizarIndexNavegacion(payload){
   }
 
   if(payload == 3){
-    if (module.productosOportunidadUnica && module.productosOportunidadUnica.data) {
-      let listaActualizada = actualizarCantidadAReponerProductosEnFalla(
-          [...module.productoFallas],
-          [...module.productosOportunidadUnica.data]
-      );
-      module.productosOportunidadUnica.data = listaActualizada;
-    }
+    // Al entrar al paso 3, mostramos la tabla de precios estables (se filtra en el componente)
+    seleccionarProductosParaElDetalle()
   }
 
   if(payload == 4){
@@ -344,33 +345,43 @@ async function realizarCompra(){
 }
 
 async function consultarProductosSinProveedor(){
-  let productos=module.productosSinReponer.filter(p => p.solicitar<0)
-  let ids=productos.map(p => p.id)
-  let idsConFantante=productos.map(p => {
+
+  const idsQueSeEstanComprando = module.detalleOrder.map(item => item.product.id);
+  let productos = module.productosSinReponer.filter(p =>
+      p.solicitar < 0 && !idsQueSeEstanComprando.includes(p.id)
+  );
+
+  let ids = productos.map(p => p.id)
+
+  let idsConFantante = productos.map(p => {
     return {
       "id": p.id,
       "solicitar": p.solicitar,
     }
   })
-  console.log("ids => ",ids)
-  console.log("ids con solicitar => ",idsConFantante)
 
-  let data={
-    "tipo_filtracion":tipo_de_filtracion.value,
-    "lapso_de_tiempo":lapso_de_tiempo.value,
+  // console.log("ids filtrados para pdf => ", ids)
+
+  let data = {
+    "tipo_filtracion": tipo_de_filtracion.value,
+    "lapso_de_tiempo": lapso_de_tiempo.value,
     ids,
     idsConFantante
-    // "groups":groups.value,
-    // "laboratoryId":laboratoryId.value,
   }
 
-  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier",data)
-  if(response.status!=200){
-    toast.error("Error al generar el reporte de de productos sin proveedor")
-    return
+  if (ids.length === 0) {
+      toast.info("No hay productos pendientes sin proveedor para generar reporte.");
+      return [];
   }
+
+  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier", data)
+
+  if(response.status != 200){
+    toast.error("Error al generar el reporte de productos sin proveedor")
+    return []
+  }
+
   toast.success("Reporte Generado")
-  console.log("data => ",response.data.data)
   return [...response.data.data]
 }
 
@@ -420,16 +431,21 @@ function eliminarItemOrden(payload){
       </template>
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard
-      title="Oportunidades de Mercado"
-      class="mb-6"
-      v-if="indexNavegacion == 3"
-    >
-      <UniqueMarketOpportunityTable
-        :pagination-data="module.productosOportunidadUnica"
-        :loading="module.loadingApp"
-        @change-page="handleChangePageOportunidad"
-      />
+    <VCard class="mb-6" v-if="indexNavegacion == 3">
+      <template #title>
+        Productos con Precio Estable
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase === null).length
+          }}
+        </VChip>
+      </template>
+      <ProductsStablePriceTable :list="module.productoFallas" />
     </VCard>
 
     <div v-if="indexNavegacion == 4">
@@ -450,13 +466,6 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
-        <!-- order="1"
-          order-sm="1"
-          order-md="2"
-          order-lg="2"
-          sm="12"
-          md="12"
-          lg="3" -->
         <VCol
           order="1"
           order-sm="1"

@@ -136,7 +136,7 @@ class ProductQueryService
         }*/
 
         $sortBy = $sortBy ?? 'name';
-        
+
         switch ($sortBy) {
             case 'laboratory.name':
                 return $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -158,13 +158,13 @@ class ProductQueryService
             case 'product.name':
                 return $query->orderBy('products.name', $orderBy);
                 break;
-           case 'created_at':
+            case 'created_at':
                 return $query->orderBy('created_at', $orderBy);
                 break;
             case 'sale_price':
                 return $query->orderBy("products.{$sortBy}", $orderBy);
             default:
-                 return $query->orderBy('products.name', $orderBy);
+                return $query->orderBy('products.name', $orderBy);
         }
 
         return $query;
@@ -219,5 +219,14 @@ class ProductQueryService
             //     ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
             //     ->orderBy('product_lots.expiration_date', 'ASC'),
         ]);
+    }
+    public function calculateInventoryValue(): float
+    {
+        $totalValue = Product::selectRaw('SUM(stock * unit_cost) as total_value')
+            ->where('stock', '>', 0)
+            ->where('unit_cost', '>', 0)
+            ->value('total_value');
+
+        return (float) ($totalValue ?? 0);
     }
 }

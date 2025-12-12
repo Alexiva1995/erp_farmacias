@@ -2,6 +2,8 @@
 
 namespace App\Services\Invoices;
 
+use App\Models\AutoOrder;
+use App\Models\AutoOrderDetail;
 use App\Models\DiscountRule;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
@@ -20,8 +22,13 @@ class InvoiceActionService
     {
         return DB::transaction(function () use ($data) {
             $totalUSD = $this->calculateTotalUSD($data);
+            $autoOrder = AutoOrder::where('supplier_id', $data['supplier_id'])
+                ->where('status', 0)
+                ->select(['id'])
+                ->first();
 
             $invoiceData = [
+                'auto_order_id' => $autoOrder->id,
                 'supplier_id' => $data['supplier_id'],
                 'invoice_number' => $data['invoice_number'],
                 'control_number' => $data['control_number'],
@@ -42,7 +49,6 @@ class InvoiceActionService
                 'uploaded_by' => 1,
                 'status_payment' => 0,
             ];
-
             return Invoice::create($invoiceData);
         });
     }
@@ -98,8 +104,41 @@ class InvoiceActionService
         return DB::transaction(function () use ($invoice, $data) {
             $invoice->update($data['invoice']);
 
+            $productIds = collect($data['details'])
+                ->pluck('product.id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            $autoOrderDetailMapping = [];
+
+            if (!empty($productIds)) {
+                if (empty($invoice->autoOrder)) {
+                    throw new Exception("La factura no está asociada a ningún pedido.");
+                }
+
+                $autoOrderDetails = DB::table('auto_order_details')
+                    ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+                    ->where('auto_order_details.order_id', $invoice->autoOrder->id)
+                    ->whereIn('product_suppliers.product_id', $productIds)
+                    ->select(
+                        'auto_order_details.id',
+                        'product_suppliers.product_id',
+                        'auto_order_details.received'
+                    )
+                    ->get()
+                    ->keyBy('product_id')
+                    ->toArray();
+
+                foreach ($autoOrderDetails as $detail) {
+                    $autoOrderDetailMapping[$detail->product_id] = $detail;
+                }
+            }
+
             $invoice->details()->delete();
             $invoice->returns()->delete();
+            $autoOrderDetailsToUpdate = [];
 
             $currency = $invoice->currency;
             $rate = (float) ($invoice->exchange_rate ?? 0);
@@ -118,6 +157,9 @@ class InvoiceActionService
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
 
+                $autoOrderDetail = $autoOrderDetailMapping[$productId] ?? null;
+                $autoOrderDetailId = $autoOrderDetail ? $autoOrderDetail->id : null;
+
                 $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
                 if ($taxEnabled) {
                     $totalCostInInvoiceCurrency = $totalCostInInvoiceCurrency * 1.16;
@@ -135,6 +177,7 @@ class InvoiceActionService
                         'return_date' => Carbon::today(),
                         'lot_number' => $detail['lot_number'] ?? null,
                         'expiration_date' => $detail['expiration_date'] ?? null,
+                        'auto_order_details_id' => $autoOrderDetailId,
                     ]);
                 } else {
                     $invoice->details()->create([
@@ -146,7 +189,36 @@ class InvoiceActionService
                         'expiration_date' => $detail['expiration_date'],
                         'location' => $detail['location'],
                         'tax_enabled' => $taxEnabled,
+                        'auto_order_details_id' => $autoOrderDetailId,
                     ]);
+
+                    if ($autoOrderDetailId) {
+                        $autoOrderDetailsToUpdate[$autoOrderDetailId] = $autoOrderDetailId;
+                    }
+                }
+            }
+
+            if (!empty($autoOrderDetailsToUpdate)) {
+                DB::table('auto_order_details')
+                    ->whereIn('id', array_values($autoOrderDetailsToUpdate))
+                    ->update([
+                        'received' => 1,
+                        'status' => 1
+                    ]);
+
+                $allDetailsCount = DB::table('auto_order_details')
+                    ->where('order_id', $invoice->autoOrder->id)
+                    ->count();
+
+                $completedDetailsCount = DB::table('auto_order_details')
+                    ->where('order_id', $invoice->autoOrder->id)
+                    ->where('status', 1)
+                    ->count();
+
+                if ($allDetailsCount > 0 && $allDetailsCount === $completedDetailsCount) {
+                    DB::table('auto_orders')
+                        ->where('id', $invoice->autoOrder->id)
+                        ->update(['status' => 1]);
                 }
             }
 
@@ -324,5 +396,48 @@ class InvoiceActionService
             $invoice->update(['status' => 'ordered']);
             return $invoice->fresh(['details.product', 'supplier']);
         });
+    }
+
+    public function updateToPendingStatus(Invoice $invoice): array
+    {
+        if ($invoice->status === 'pending') {
+            \Log::warning('Attempt to set already pending invoice to pending', ['invoice_id' => $invoice->id]);
+            return ['status' => false, 'message' => null];
+        }
+
+        try {
+            DB::transaction(function () use ($invoice) {
+                $detailIds = $invoice->details()->pluck('auto_order_details_id')->filter();
+
+                if ($detailIds->isNotEmpty()) {
+                    AutoOrderDetail::whereIn('id', $detailIds)
+                        ->update(['status' => 0, 'received' => null]);
+                }
+
+                if ($invoice->autoOrder) {
+                    $orderId = $invoice->autoOrder->id;
+                    $counts = DB::table('auto_order_details')
+                        ->where('order_id', $orderId)
+                        ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as completed')
+                        ->first();
+
+                    if ($counts->total > 0 && $counts->total === $counts->completed) {
+                        DB::table('auto_orders')
+                            ->where('id', $orderId)
+                            ->update(['status' => 1]);
+                    }
+                }
+
+                $invoice->update(['status' => 'pending']);
+            });
+
+            return ['status' => true, 'message' => null];
+        } catch (Exception $e) {
+            \Log::error('Return invoice to pending failed', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage()
+            ]);
+            return ['status' => false, 'message' => null];
+        }
     }
 }

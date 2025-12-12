@@ -26,6 +26,9 @@ const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const isStrictSearch = ref(false);
+const discount = ref(0);
+const discountMinProducts = ref(0);
+const discountMaxProducts = ref(0);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -234,13 +237,12 @@ onMounted(async () => {
   }
 });
 
-
 const totalOrderCost = computed(() => {
   let totalCost = 0;
   orderItems.value.forEach((item) => {
-  const cost = item.unitCost || 0; 
-  const quantity = item.selectedQuantity || 0;
-  totalCost += cost * quantity;
+    const cost = item.unitCost || 0;
+    const quantity = item.selectedQuantity || 0;
+    totalCost += cost * quantity;
   });
   return parseFloat(totalCost.toFixed(2));
 });
@@ -288,6 +290,7 @@ const addProductToOrderByBarcode = async (barcode) => {
   try {
     const response = await axios.get(`/barcode/${barcode}`);
     const productDetails = response.data;
+
     await addProductToOrder({ productId: productDetails.id, quantity: 1 });
   } catch (error) {
     console.error(
@@ -307,13 +310,16 @@ const handleSort = (sortOptions) => {
 
 const verifyClient = async (identification) => {
   clientIdentification.value = identification;
+
   if (!identification) {
     toast.warning("Por favor, ingrese un número de identificación.");
     return;
   }
+
   try {
     const response = await axios.get(`/tpv/order/client/${identification}`);
     const responseData = response.data.data;
+
     if (responseData.found === false) {
       toast.info("Cliente no encontrado. Por favor, regístrelo.");
       newClientFormData.value = {
@@ -322,7 +328,20 @@ const verifyClient = async (identification) => {
       };
       showRegisterClientModal.value = true;
     } else {
-      const clientData = response.data.data.client;
+      const clientData = responseData.client;
+
+      if (clientData.available_discount) {
+        const { discount_percentage, max_volume, min_volume } =
+          clientData.available_discount;
+        discount.value = Number(discount_percentage);
+        discountMinProducts.value = min_volume;
+        discountMaxProducts.value = max_volume;
+      } else {
+        discount.value = 0;
+        discountMinProducts.value = 0;
+        discountMaxProducts.value = 0;
+      }
+
       selectedClient.value = clientData;
       toast.success(
         `Cliente ${clientData.name} ${clientData.last_name} encontrado.`
@@ -344,6 +363,7 @@ const verifyClient = async (identification) => {
     }
   } catch (error) {
     console.error("Error al verificar cliente:", error);
+    console.log(error.message);
     toast.error("Error al verificar el cliente.");
   }
 };
@@ -666,6 +686,7 @@ const addProductToOrder = async ({ productId, quantity }) => {
   try {
     const response = await axios.get(`/product/${productId}`);
     const productDetails = response.data;
+
     const availableQuantity = productDetails.lots_sum_quantity;
 
     const currentItemInOrder = orderItems.value.find(
@@ -1138,6 +1159,10 @@ const addReserverOrder = async () => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      :discount-min-products="discountMinProducts"
+      :discount-max-products="discountMaxProducts"
+      :current-discount="discount"
+      :order-items="orderItems"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
       @view-group-products="fetchGroupProducts"

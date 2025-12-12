@@ -1,12 +1,12 @@
 <script setup>
-import PrescriptionTable from "@/components/PrescriptionTable.vue";
 import PrescriptionFilters from "@/components/PrescriptionFilters.vue";
-import PrescriptionModal from "@/components/dialogs/PrescriptionModal.vue";
+import PrescriptionTable from "@/components/PrescriptionTable.vue";
 import PrescriptionDetailsModal from "@/components/dialogs/PrescriptionDetailsModal.vue";
-import { onMounted, ref, computed, watch } from "vue";
+import PrescriptionModal from "@/components/dialogs/PrescriptionModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 // Estados reactivos
 const prescriptions = ref([]);
@@ -14,11 +14,11 @@ const totalPrescriptions = ref(0);
 const loadingPrescription = ref(false);
 const pagePrescription = ref(1);
 const itemsPerPagePrescription = ref(10);
-const sortByPrescription = ref('id');
-const orderByPrescription = ref('desc');
-const filterSearchQueryPrescriptions = ref('');
-const filterSearchQueryIdPrescriptions = ref('');
-const filterMode = ref('all'); // 'all', 'activo', 'inactivo'
+const sortByPrescription = ref("id");
+const orderByPrescription = ref("desc");
+const filterSearchQueryPrescriptions = ref("");
+const filterSearchQueryIdPrescriptions = ref("");
+const filterMode = ref("all");
 
 const addPrescriptionModal = ref(false);
 const viewPrescriptionModal = ref(false);
@@ -33,7 +33,7 @@ const debouncedFetchPrescriptions = () => {
   if (searchTimeout) {
     clearTimeout(searchTimeout);
   }
-  
+
   searchTimeout = setTimeout(() => {
     fetchPrescriptions();
   }, 500); // 500ms de delay
@@ -58,9 +58,9 @@ const fetchPrescriptions = async () => {
 
     if (filterSearchQueryPrescriptions.value) {
       const searchLower = filterSearchQueryPrescriptions.value.toLowerCase();
-      if (searchLower.includes('activo')) {
+      if (searchLower.includes("activo")) {
         params.is_active = true;
-      } else if (searchLower.includes('inactivo')) {
+      } else if (searchLower.includes("inactivo")) {
         params.is_active = false;
       } else {
         // Buscar por porcentaje de descuento
@@ -72,31 +72,41 @@ const fetchPrescriptions = async () => {
     }
 
     // Filtro por modo
-    if (filterMode.value === 'active') {
+    if (filterMode.value === "active") {
       params.is_active = true;
-    } else if (filterMode.value === 'inactive') {
+    } else if (filterMode.value === "inactive") {
       params.is_active = false;
     }
 
     // Eliminar parámetros vacíos
-    Object.keys(params).forEach(key => {
-      if (params[key] === '' || params[key] === null || params[key] === undefined) {
+    Object.keys(params).forEach((key) => {
+      if (
+        params[key] === "" ||
+        params[key] === null ||
+        params[key] === undefined
+      ) {
         delete params[key];
       }
     });
 
-    const response = await axios.get('/tpv/promotions/prescription-offer', { params });
-    
+    const response = await axios.get("/tpv/promotions/prescription-offer", {
+      params,
+    });
+
     if (response.data.success) {
       prescriptions.value = response.data.data;
-      totalPrescriptions.value = response.data.total || response.data.data.length;
+      totalPrescriptions.value =
+        response.data.total || response.data.data.length;
     } else {
-      console.error('Error obteniendo las ofertas de recetas:', response.data.message);
-      toast.error('Error al cargar las ofertas de recetas', 'error');
+      console.error(
+        "Error obteniendo las ofertas de recetas:",
+        response.data.message
+      );
+      toast.error("Error al cargar las ofertas de recetas", "error");
     }
   } catch (error) {
-    console.error('Error obteniendo las ofertas de recetas:', error);
-    toast.error('Error al cargar las ofertas de recetas', 'error');
+    console.error("Error obteniendo las ofertas de recetas:", error);
+    toast.error("Error al cargar las ofertas de recetas", "error");
   } finally {
     loadingPrescription.value = false;
   }
@@ -104,40 +114,50 @@ const fetchPrescriptions = async () => {
 
 const createPrescription = async (prescriptionData) => {
   try {
-    const response = await axios.post('/tpv/promotions/prescription-offer', prescriptionData);
+    const response = await axios.post(
+      "/tpv/promotions/prescription-offer",
+      prescriptionData
+    );
     return response.data;
   } catch (error) {
-    console.error('Error creating prescription offer:', error);
+    console.error("Error creating prescription offer:", error);
     throw error;
   }
 };
 
 const updatePrescription = async (id, prescriptionData) => {
   try {
-    const response = await axios.put(`/tpv/promotions/prescription-offer/${id}`, prescriptionData);
+    const response = await axios.put(
+      `/tpv/promotions/prescription-offer/${id}`,
+      prescriptionData
+    );
     return response.data;
   } catch (error) {
-    console.error('Error actualizando la oferta de receta:', error);
+    console.error("Error actualizando la oferta de receta:", error);
     throw error;
   }
 };
 
 const deletePrescription = async (id) => {
   try {
-    const response = await axios.delete(`/tpv/promotions/prescription-offer/${id}`);
+    const response = await axios.delete(
+      `/tpv/promotions/prescription-offer/${id}`
+    );
     return response.data;
   } catch (error) {
-    console.error('Error eliminando oferta de receta:', error);
+    console.error("Error eliminando oferta de receta:", error);
     throw error;
   }
 };
 
 const getPrescription = async (id) => {
   try {
-    const response = await axios.get(`/tpv/promotions/prescription-offer/${id}`);
+    const response = await axios.get(
+      `/tpv/promotions/prescription-offer/${id}`
+    );
     return response.data;
   } catch (error) {
-    console.error('Error obteniendo la oferta de receta:', error);
+    console.error("Error obteniendo la oferta de receta:", error);
     throw error;
   }
 };
@@ -159,8 +179,8 @@ const handleClearFiltersPrescriptions = () => {
   filterSearchQueryIdPrescriptions.value = "";
   filterSearchQueryPrescriptions.value = "";
   filterMode.value = "all";
-  sortByPrescription.value = 'id';
-  orderByPrescription.value = 'desc';
+  sortByPrescription.value = "id";
+  orderByPrescription.value = "desc";
   pagePrescription.value = 1;
   fetchPrescriptions();
 };
@@ -197,13 +217,13 @@ const handleDeletePrescription = async (prescription) => {
     try {
       const response = await deletePrescription(prescription.id);
       if (response.success) {
-        toast.success('Oferta de receta eliminada exitosamente');
+        toast.success("Oferta de receta eliminada exitosamente");
         fetchPrescriptions();
       } else {
-        toast.error(response.message, 'error');
+        toast.error(response.message, "error");
       }
     } catch (error) {
-      toast.error('Error al eliminar la oferta de receta', 'error');
+      toast.error("Error al eliminar la oferta de receta", "error");
     }
   }
 };
@@ -212,26 +232,33 @@ const handlePrescriptionSaved = async (prescriptionData) => {
   try {
     let response;
     if (prescriptionData.id) {
-      response = await updatePrescription(prescriptionData.id, prescriptionData);
+      response = await updatePrescription(
+        prescriptionData.id,
+        prescriptionData
+      );
     } else {
       response = await createPrescription(prescriptionData);
     }
 
     if (response.success) {
-      toast.success(`Oferta de receta ${prescriptionData.id ? 'actualizada' : 'creada'} exitosamente`);
+      toast.success(
+        `Oferta de receta ${
+          prescriptionData.id ? "actualizada" : "creada"
+        } exitosamente`
+      );
       fetchPrescriptions();
       closePrescriptionModal();
     } else {
       if (response.errors) {
-        const errorMessages = Object.values(response.errors).flat().join(', ');
-        toast.error(`Error: ${errorMessages}`, 'error');
+        const errorMessages = Object.values(response.errors).flat().join(", ");
+        toast.error(`Error: ${errorMessages}`, "error");
       } else {
-        toast.error(response.message, 'error');
+        toast.error(response.message, "error");
       }
       throw new Error(response.message);
     }
   } catch (error) {
-    console.error('Error saving prescription offer:', error);
+    console.error("Error saving prescription offer:", error);
     throw error;
   }
 };
@@ -248,17 +275,32 @@ const closeViewPrescriptionModal = () => {
 };
 
 // Watchers con debounce
-watch([filterSearchQueryIdPrescriptions, filterSearchQueryPrescriptions, filterMode], () => {
-  pagePrescription.value = 1;
-  debouncedFetchPrescriptions();
-});
-
-watch([pagePrescription, itemsPerPagePrescription, sortByPrescription, orderByPrescription], () => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
+watch(
+  [
+    filterSearchQueryIdPrescriptions,
+    filterSearchQueryPrescriptions,
+    filterMode,
+  ],
+  () => {
+    pagePrescription.value = 1;
+    debouncedFetchPrescriptions();
   }
-  fetchPrescriptions();
-});
+);
+
+watch(
+  [
+    pagePrescription,
+    itemsPerPagePrescription,
+    sortByPrescription,
+    orderByPrescription,
+  ],
+  () => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    fetchPrescriptions();
+  }
+);
 
 // Cargar ofertas de recetas al montar el componente
 onMounted(() => {

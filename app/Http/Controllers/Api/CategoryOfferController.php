@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\CategoryOffer;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
@@ -16,10 +17,11 @@ class CategoryOfferController extends Controller
 
     public function index(Request $request)
     {
-        $query = CategoryOffer::with(['category' => function ($query) {
-            $query->select('id', 'name'); // Solo cargar campos necesarios
-        }]);
-
+        $query = CategoryOffer::with([
+            'category' => function ($query) {
+                $query->select('id', 'name');
+            }
+        ]);
         // Filtro por ID de oferta
         if ($request->has('search_id') && !empty($request->search_id)) {
             $query->where('id', $request->search_id);
@@ -34,7 +36,7 @@ class CategoryOfferController extends Controller
         }
 
         // Filtro por estado activo
-        if ($request->has('is_active') && $request->is_active !== '') {
+        if ($request->has('is_active') && $request->is_active != '' && $request->is_active != null) {
             $query->where('is_active', $request->is_active);
         }
 
@@ -89,7 +91,7 @@ class CategoryOfferController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'required',
             'discount_percentage' => 'required|numeric|min:0|max:100',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
@@ -102,9 +104,15 @@ class CategoryOfferController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-
+        $category = Category::find($request->category_id['id']);
+        if (!$category) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Categoría no encontrada'
+            ], 404);
+        }
         // Verificar que no exista una oferta activa para la misma categoría en las mismas fechas
-        $existingOffer = CategoryOffer::where('category_id', $request->category_id)
+        $existingOffer = CategoryOffer::where('category_id', $category->id)
             ->where(function ($query) use ($request) {
                 $query->whereBetween('start_date', [$request->start_date, $request->end_date])
                     ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
@@ -121,9 +129,8 @@ class CategoryOfferController extends Controller
                 'message' => 'Ya existe una oferta activa para esta categoría en las fechas seleccionadas'
             ], 409);
         }
-
         $categoryOffer = CategoryOffer::create([
-            'category_id' => $request->category_id,
+            'category_id' => $category->id,
             'discount_percentage' => $request->discount_percentage,
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
