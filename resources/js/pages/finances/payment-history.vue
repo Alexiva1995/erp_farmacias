@@ -1,15 +1,5 @@
 <template>
   <div>
-    <!-- Header -->
-    <div class="d-flex justify-space-between align-center mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold mb-2">Historial de Pagos</h1>
-        <p class="text-body-1 text-medium-emphasis">
-          Visualiza todos los pagos realizados a proveedores
-        </p>
-      </div>
-    </div>
-
     <!-- Filtros -->
     <VCard class="mb-6">
       <VCardTitle class="pb-2">
@@ -18,16 +8,16 @@
       </VCardTitle>
       <VCardText>
         <VRow>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar por factura o proveedor..."
+              placeholder="Buscar por factura, proveedor o referencia..."
               prepend-inner-icon="tabler-search"
               clearable
               @input="applyFilters"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VAutocomplete
               v-model="selectedSupplier"
               :items="suppliers"
@@ -63,9 +53,7 @@
               @update:model-value="applyFilters"
             />
           </VCol>
-        </VRow>
-        <VRow>
-          <VCol>
+          <VCol cols="12" md="2">
             <VBtn variant="outlined" color="secondary" @click="clearFilters">
               <VIcon icon="tabler-x" class="me-2" />
               Limpiar Filtros
@@ -112,44 +100,16 @@
             </div>
           </template>
 
-          <!-- Facturas -->
-          <template #item.invoices="{ item }">
-            <VChip
-              v-for="invoice in item.invoices"
-              :key="invoice.id"
-              size="small"
-              class="me-1 mb-1"
-              color="primary"
-              variant="tonal"
-            >
-              {{ invoice.invoice_number }}
-            </VChip>
-          </template>
-
-          <!-- Tipo de Pago -->
-          <template #item.payment_type="{ item }">
-            <div class="d-flex flex-column">
-              <VChip
-                :color="item.payment_type === 'full' ? 'success' : 'warning'"
-                size="small"
-                variant="tonal"
-                class="mb-1"
-              >
-                {{ item.payment_type === "full" ? "Completo" : "Parcial" }}
-              </VChip>
-              <span
-                v-if="item.payment_type === 'partial'"
-                class="text-caption text-medium-emphasis"
-              >
-                Pagado: {{ formatCurrency(item.amount, item.currency) }}
-              </span>
-            </div>
-          </template>
-
           <!-- Monto -->
           <template #item.amount="{ item }">
             <div class="text-body-2 font-weight-medium">
-              {{ formatCurrency(item.amount, item.currency) }}
+              {{ formatCurrency(item.amount, item.currency, true) }}
+            </div>
+            <div
+              v-if="item.currency === 'BS'"
+              class="text-caption text-medium-emphasis"
+            >
+              USD {{ formatNumber(item.total_paid_usd || 0) }}
             </div>
           </template>
 
@@ -221,43 +181,46 @@
 
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <VBtn
-              size="small"
-              variant="outlined"
-              color="primary"
-              @click="viewPaymentDetails(item)"
-            >
-              <VIcon icon="tabler-eye" size="16" class="me-1" />
-              Ver Detalles
-            </VBtn>
+            <IconBtn @click="viewPaymentDetails(item)">
+              <VIcon icon="tabler-eye" />
+            </IconBtn>
           </template>
         </VDataTable>
       </VCardText>
     </VCard>
 
     <!-- Modal de Detalles del Pago -->
-    <VDialog v-model="showPaymentModal" max-width="800">
-      <VCard>
-        <VCardTitle class="d-flex justify-space-between align-center">
-          <span>Detalles del Pago</span>
-          <VBtn icon variant="text" @click="showPaymentModal = false">
-            <VIcon icon="tabler-x" />
-          </VBtn>
-        </VCardTitle>
-        <VCardText v-if="selectedPayment">
-          <VRow>
+    <VDialog v-model="showPaymentModal" max-width="600" persistent>
+      <VCard class="pa-0" :elevation="0">
+        <!-- Header -->
+        <VCardItem class="px-6 pt-6 pb-0">
+          <VCardTitle class="text-h6 font-weight-medium"
+            >Detalles del Pago</VCardTitle
+          >
+          <template #append>
+            <VBtn
+              icon
+              size="small"
+              variant="text"
+              @click="showPaymentModal = false"
+            >
+              <VIcon icon="tabler-x" size="20" />
+            </VBtn>
+          </template>
+        </VCardItem>
+
+        <VCardText v-if="selectedPayment" class="pt-4 px-6 pb-0">
+          <!-- Key Payment Info - Grid Layout -->
+          <VRow dense class="mb-4">
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Fecha de Pago
-              </div>
-              <div class="text-body-1 font-weight-medium">
+              <div class="text-caption text-medium-emphasis mb-1">Fecha</div>
+              <div class="text-body-1">
                 {{ formatDate(selectedPayment.payment_date) }}
               </div>
             </VCol>
+
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Monto Pagado
-              </div>
+              <div class="text-caption text-medium-emphasis mb-1">Monto</div>
               <div class="text-body-1 font-weight-medium">
                 {{
                   formatCurrency(
@@ -267,174 +230,184 @@
                 }}
               </div>
             </VCol>
+
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Equivalente en USD
+              <div class="text-caption text-medium-emphasis mb-1">
+                Equivalente USD
               </div>
-              <div class="text-body-1 font-weight-medium text-success">
+              <div class="text-body-1 text-success">
                 USD {{ formatNumber(selectedPayment.amount_usd) }}
               </div>
             </VCol>
+
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Tipo de Pago
-              </div>
-              <div class="text-body-1 font-weight-medium">
-                <VChip
-                  :color="
-                    selectedPayment.payment_type === 'full'
-                      ? 'success'
-                      : 'warning'
-                  "
-                  size="small"
-                  variant="tonal"
-                >
-                  {{
-                    selectedPayment.payment_type === "full"
-                      ? "Completo"
-                      : "Parcial"
-                  }}
-                </VChip>
-              </div>
+              <div class="text-caption text-medium-emphasis mb-1">Tipo</div>
+              <VChip
+                :color="
+                  selectedPayment.payment_type === 'full'
+                    ? 'success'
+                    : 'warning'
+                "
+                size="small"
+                variant="flat"
+                density="comfortable"
+                class="font-weight-medium"
+              >
+                {{
+                  selectedPayment.payment_type === "full"
+                    ? "Completo"
+                    : "Parcial"
+                }}
+              </VChip>
             </VCol>
+
+            <VCol cols="12">
+              <VDivider class="my-4" />
+            </VCol>
+
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
+              <div class="text-caption text-medium-emphasis mb-1">
                 Registrado por
               </div>
-              <div class="text-body-1 font-weight-medium">
+              <div class="text-body-1">
                 {{ selectedPayment.user?.name || "Sistema" }}
               </div>
             </VCol>
+
             <VCol cols="6">
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Referencia de Pago
+              <div class="text-caption text-medium-emphasis mb-1">
+                Referencia
               </div>
-              <div class="text-body-1 font-weight-medium">
-                <span v-if="selectedPayment.reference" class="text-primary">
-                  {{ selectedPayment.reference }}
-                </span>
-                <span v-else class="text-disabled"> Sin referencia </span>
+              <div
+                class="text-body-1"
+                :class="{ 'text-disabled': !selectedPayment.reference }"
+              >
+                {{ selectedPayment.reference || "Sin referencia" }}
               </div>
             </VCol>
           </VRow>
 
-          <!-- Información adicional para pagos parciales -->
-          <div v-if="selectedPayment.payment_type === 'partial'" class="mt-4">
-            <VCard variant="tonal" color="warning">
-              <VCardText>
-                <div class="text-body-2 text-medium-emphasis mb-2">
-                  <VIcon icon="tabler-info-circle" class="me-2" />
-                  Información del Pago Parcial
-                </div>
-                <VRow>
-                  <VCol cols="4">
-                    <div class="text-body-2 text-medium-emphasis mb-1">
-                      Total de la Factura (USD)
-                    </div>
-                    <div class="text-body-1 font-weight-medium">
-                      USD {{ formatNumber(selectedPayment.invoice_total_usd) }}
-                    </div>
-                  </VCol>
-                  <VCol cols="4">
-                    <div class="text-body-2 text-medium-emphasis mb-1">
-                      Total Pagado (USD)
-                    </div>
-                    <div class="text-body-1 font-weight-medium text-success">
-                      USD
-                      {{ formatNumber(selectedPayment.total_paid_usd || 0) }}
-                    </div>
-                  </VCol>
-                  <VCol cols="4">
-                    <div class="text-body-2 text-medium-emphasis mb-1">
-                      Monto Restante (USD)
-                    </div>
-                    <div
-                      class="text-body-1 font-weight-medium"
-                      :class="
-                        selectedPayment.remaining_amount_usd > 0
-                          ? 'text-error'
-                          : 'text-success'
-                      "
-                    >
-                      USD
-                      {{
-                        formatNumber(selectedPayment.remaining_amount_usd || 0)
-                      }}
-                    </div>
-                  </VCol>
-                </VRow>
-                <div class="mt-2">
-                  <div class="text-body-2 text-medium-emphasis mb-1">
-                    Porcentaje Pagado
+          <!-- Partial Payment Info - Only when needed -->
+          <VExpandTransition>
+            <div v-if="selectedPayment.payment_type === 'partial'" class="mb-6">
+              <div class="text-caption text-medium-emphasis mb-3">
+                Detalles del pago parcial
+              </div>
+              <VRow dense>
+                <VCol cols="4">
+                  <div class="text-caption text-medium-emphasis mb-1">
+                    Total factura
                   </div>
-                  <div class="text-body-1 font-weight-medium">
-                    {{ formatNumber(selectedPayment.payment_percentage || 0) }}%
+                  <div class="text-body-2">
+                    USD {{ formatNumber(selectedPayment.invoice_total_usd) }}
                   </div>
-                </div>
-              </VCardText>
-            </VCard>
-          </div>
-
-          <VDivider class="my-4" />
-
-          <!-- Notas del Pago -->
-          <div v-if="selectedPayment.notes" class="mb-4">
-            <div class="text-body-2 text-medium-emphasis mb-2">
-              Notas del Pago
-            </div>
-            <VCard variant="tonal" color="info">
-              <VCardText>
-                <div class="text-body-2" style="white-space: pre-line">
-                  {{ selectedPayment.notes }}
-                </div>
-              </VCardText>
-            </VCard>
-          </div>
-
-          <div class="text-body-2 text-medium-emphasis mb-2">
-            Facturas Pagadas
-          </div>
-          <VTable>
-            <thead>
-              <tr>
-                <th>N° Factura</th>
-                <th>Proveedor</th>
-                <th>Monto Original</th>
-                <th>Moneda</th>
-                <th>Monto USD</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="invoice in selectedPayment.invoices" :key="invoice.id">
-                <td>{{ invoice.invoice_number }}</td>
-                <td>{{ invoice.supplier?.name }}</td>
-                <td>
-                  {{ formatCurrency(invoice.total_amount, invoice.currency) }}
-                </td>
-                <td>
-                  <VChip
-                    size="small"
-                    :color="getCurrencyColor(invoice.currency)"
-                    variant="tonal"
+                </VCol>
+                <VCol cols="4">
+                  <div class="text-caption text-medium-emphasis mb-1">
+                    Pagado
+                  </div>
+                  <div class="text-body-2 text-success">
+                    USD {{ formatNumber(selectedPayment.total_paid_usd || 0) }}
+                  </div>
+                </VCol>
+                <VCol cols="4">
+                  <div class="text-caption text-medium-emphasis mb-1">
+                    Restante
+                  </div>
+                  <div
+                    class="text-body-2"
+                    :class="
+                      selectedPayment.remaining_amount_usd > 0
+                        ? 'text-error'
+                        : 'text-success'
+                    "
                   >
-                    {{ invoice.currency }}
-                  </VChip>
-                </td>
-                <td>
-                  <span class="text-success font-weight-medium">
-                    USD {{ formatNumber(invoice.total_amount_usd) }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
+                    USD
+                    {{
+                      formatNumber(selectedPayment.remaining_amount_usd || 0)
+                    }}
+                  </div>
+                </VCol>
+                <VCol cols="12" class="mt-3">
+                  <VProgressLinear
+                    :model-value="selectedPayment.payment_percentage || 0"
+                    height="6"
+                    :color="
+                      selectedPayment.payment_percentage === 100
+                        ? 'success'
+                        : 'warning'
+                    "
+                    rounded
+                  />
+                  <div
+                    class="text-caption text-medium-emphasis text-center mt-1"
+                  >
+                    {{ formatNumber(selectedPayment.payment_percentage || 0) }}%
+                    completado
+                  </div>
+                </VCol>
+              </VRow>
+            </div>
+          </VExpandTransition>
 
-          <div v-if="selectedPayment.notes" class="mt-4">
-            <div class="text-body-2 text-medium-emphasis mb-2">Notas</div>
-            <div class="text-body-1">
-              {{ selectedPayment.notes }}
+          <!-- Payment Notes - Only when exists -->
+          <VExpandTransition>
+            <div v-if="selectedPayment.notes" class="mb-6">
+              <div class="text-caption text-medium-emphasis mb-2">Notas</div>
+              <div class="text-body-2 pa-3 bg-grey-lighten-4 rounded-lg">
+                {{ selectedPayment.notes }}
+              </div>
+            </div>
+          </VExpandTransition>
+
+          <!-- Invoices Table -->
+          <div>
+            <div class="text-caption text-medium-emphasis mb-3">
+              Facturas pagadas
+            </div>
+            <div class="rounded-lg overflow-hidden">
+              <VTable density="compact" class="mb-0">
+                <thead class="bg-grey-lighten-4">
+                  <tr>
+                    <th class="text-caption font-weight-medium">N° Factura</th>
+                    <th class="text-caption font-weight-medium">Proveedor</th>
+                    <th class="text-caption font-weight-medium">Monto USD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="invoice in selectedPayment.invoices"
+                    :key="invoice.id"
+                    class="border-b"
+                  >
+                    <td class="text-body-2 py-3">
+                      {{ invoice.invoice_number }}
+                    </td>
+                    <td class="text-body-2">{{ invoice.supplier?.name }}</td>
+                    <td class="text-body-2">
+                      <div class="d-flex align-center">
+                        <span class="text-success font-weight-medium mr-2"
+                          >USD {{ formatNumber(invoice.total_usd) }}</span
+                        >
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
             </div>
           </div>
+
+          <!-- Footer Actions -->
+          <VCardActions class="px-0 pb-6 pt-4">
+            <VSpacer />
+            <VBtn
+              variant="tonal"
+              @click="showPaymentModal = false"
+              size="small"
+            >
+              Cerrar
+            </VBtn>
+          </VCardActions>
         </VCardText>
       </VCard>
     </VDialog>
@@ -487,10 +460,8 @@ const receiptUrl = ref("");
 const headers = [
   { title: "Fecha de Pago", key: "payment_date", sortable: true },
   { title: "Proveedor", key: "supplier", sortable: false },
-  { title: "Facturas", key: "invoices", sortable: false },
-  { title: "Monto Factura USD", key: "invoice_total_usd", sortable: true },
-  { title: "Tipo de Pago", key: "payment_type", sortable: true },
-  { title: "Monto", key: "amount", sortable: true },
+  { title: "Monto USD", key: "invoice_total_usd", sortable: true },
+  { title: "Monto Pagado", key: "amount", sortable: true },
   { title: "Moneda", key: "currency", sortable: true },
   { title: "Equivalente USD", key: "amount_usd", sortable: true },
   { title: "Referencia", key: "reference", sortable: false },
@@ -585,7 +556,7 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString("es-ES");
 };
 
-const formatCurrency = (amount, currency) => {
+const formatCurrency = (amount, currency, hiddenCurrency) => {
   if (!amount) return "N/A";
 
   // Redondear a 2 decimales
@@ -595,14 +566,19 @@ const formatCurrency = (amount, currency) => {
   const normalizedCurrency = normalizeCurrencyCode(currency);
 
   try {
-    const formatter = new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: normalizedCurrency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    return formatter.format(roundedAmount);
+    if (hiddenCurrency) {
+      return new Intl.NumberFormat("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(roundedAmount);
+    } else {
+      return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: normalizedCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(roundedAmount);
+    }
   } catch (error) {
     // Si falla el formateo, devolver formato simple con moneda normalizada
     return `${roundedAmount} ${normalizedCurrency}`;
