@@ -20,10 +20,10 @@ const options = [
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="4">
+        <VCol cols="12" sm="6">
           <AppTextField
             :model-value="props.search"
             placeholder="Buscar por nombre, apellido, cédula o correo"
@@ -31,7 +31,7 @@ const options = [
             @update:model-value="emit('update:search', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4">
+        <VCol cols="12" sm="6">
           <VSelect
             label="Filtrar"
             variant="outlined"

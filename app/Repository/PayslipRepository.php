@@ -18,9 +18,18 @@ class PayslipRepository
 {
   public function index(array $data)
   {
-    return Payslip::with('details.salary.concept')
-      ->orderByDesc('id')
-      ->paginate($data['perPage']);
+    $query = Payslip::with('details.salary.concept')
+      ->orderByDesc('id');
+
+    if (isset($data['startDate']) && $data['startDate']) {
+      $query->whereDate('payslip_date', '>=', $data['startDate']);
+    }
+
+    if (isset($data['endDate']) && $data['endDate']) {
+      $query->whereDate('payslip_date', '<=', $data['endDate']);
+    }
+
+    return $query->paginate($data['perPage']);
   }
 
   public function generate(Carbon $date, string $name, Collection $details): bool
@@ -64,14 +73,19 @@ class PayslipRepository
     return true;
   }
 
-  public function getEligibleSalaryDetails()
+  public function getEligibleSalaryDetails(bool $payFoodVoucher = false)
   {
-    return UsersSalaryDetails::query()
+    $query = UsersSalaryDetails::query()
       ->join('salary_concepts as c', 'c.id', '=', 'users_salary_details.salary_concept_id')
       ->join('employees as e', 'e.user_id', '=', 'users_salary_details.user_id')
       ->where('e.is_active', true)
-      ->select('users_salary_details.id', 'users_salary_details.amount')
-      ->get();
+      ->select('users_salary_details.id', 'users_salary_details.amount');
+
+    if (!$payFoodVoucher) {
+      $query->where('c.name', '!=', 'Bono de alimentación');
+    }
+
+    return $query->get();
   }
 
   public function updateDetails(Payslip $payslip, array $details): bool
