@@ -6,6 +6,7 @@ import axios from "@/plugins/axios";
 import SectionDivider from "@/components/SectionDivider.vue";
 import { formatDateTime } from "@/utils/formatDateTime";
 import PaymentTable from "@/components/PaymentTable.vue";
+import PaymentTableTotales from "@/components/PaymentTableTotales.vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -15,6 +16,10 @@ const props = defineProps({
   cashData: {
     type: Object,
     default: () => ({}),
+  },
+  reference: {
+    type: Array,
+    default: () => [],
   },
 });
 
@@ -164,6 +169,14 @@ const usdPayments = computed(() => {
   return paymentsList.filter((p) => p.amount > 0);
 });
 
+const usdPaymentsTotales = computed(() => {
+  const totals = globalTotals.value;
+  const paymentsList = [
+    { label: "Total USD", amount: totals.total_usd, currency: "USD" },
+  ];
+  return paymentsList.filter((p) => p.amount != 0);
+});
+
 const bsPayments = computed(() => {
   const totals = globalTotals.value;
   const paymentsList = [
@@ -177,6 +190,14 @@ const bsPayments = computed(() => {
     { label: "Pago Móvil", amount: totals.total_bs_mobile, currency: "BS" },
   ];
   return paymentsList.filter((p) => p.amount > 0);
+});
+
+const bsPaymentsTotales = computed(() => {
+  const totals = globalTotals.value;
+  const paymentsList = [
+    { label: "Total BS", amount: totals.total_bs, currency: "BS" },
+  ];
+  return paymentsList.filter((p) => p.amount != 0);
 });
 
 const copPayments = computed(() => {
@@ -193,6 +214,19 @@ const copPayments = computed(() => {
     {
       label: "Diferencia por cambio",
       amount: conversionNegative,
+      currency: "COP",
+    },
+  ];
+  return paymentsList.filter((p) => p.amount != 0);
+});
+
+const copPaymentsTotales = computed(() => {
+  const totals = globalTotals.value;
+  console.log(totals);
+  const paymentsList = [
+    {
+      label: "Total COP",
+      amount: totals.total_cop,
       currency: "COP",
     },
   ];
@@ -316,8 +350,22 @@ const downloadReport = async () => {
       return;
     }
     const htmlContent = element.outerHTML;
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>${ticketStyles}</style>
+      </head>
+      <body>
+        ${htmlContent}
+      </body>
+      </html>
+    `;
+
     const params = {
-      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
+      html_content: fullHtml,
       filename: "Resumen_Cajas_Diario",
     };
 
@@ -382,9 +430,18 @@ const printReport = async () => {
 };
 
 const ticketStyles = `
+.tituloAzulPrint {
+   font-family: 'Poppins'!important;
+        font-weight: 600!important;
+        font-size: 18px !important;
+        line-height: 18px !important;
+        color: #044C94!important;
+        letter-spacing: 0.9px;
+}
 .pa-2 { padding: 8px; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
+.text-start{ text-align: start; }
 .text-left { text-align: left; }
 .mb-2 { margin-bottom: 8px; }
 .tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
@@ -393,7 +450,11 @@ const ticketStyles = `
 .w-75 {width: 75% !important;}
 .w-100 {width: 100% !important;}
 .mx-auto { margin-left: auto !important; margin-right: auto !important; }
-
+.font-weight-bold{font-weight: 700 !important;}
+.right-align-cell {
+  text-align: right; 
+  font-weight: bold;
+}
 .pdf-row-multi {
 width: 100%;
 display: block; 
@@ -412,6 +473,42 @@ margin-right: 2%;
 min-height: 1px;
 }
 `;
+
+const groupedReferences = computed(() => {
+  if (!Array.isArray(props.reference) || props.reference.length === 0) {
+    return {};
+  }
+
+  return props.reference.reduce((acc, currentRef) => {
+    const currency = currentRef.order_currency;
+    const method = currentRef.method;
+
+    if (!acc[currency]) {
+      acc[currency] = {};
+    }
+
+    if (!acc[currency][method]) {
+      acc[currency][method] = [];
+    }
+
+    acc[currency][method].push(currentRef);
+    return acc;
+  }, {});
+});
+
+
+const translateMethod = (methodKey) => {
+  const translations = {
+    CARD: "Tarjeta",
+    BANK_TRANSFER: "Transferencia",
+    BANK_TRANSFER_BS: "Transferencia",
+    BINANCE: "Binance",
+    PAYPAL: "PayPal",
+    MOBILE_PAYMENT: "Pago Móvil",
+  };
+  const upperKey = methodKey.toUpperCase();
+  return translations[upperKey] || upperKey.replace(/_/g, " ");
+};
 </script>
 <template>
   <VDialog v-model="dialogVisible" max-width="700px">
@@ -426,31 +523,35 @@ min-height: 1px;
       <VCardText>
         <div id="closing-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-          <div
-            class="ticket-header d-flex justify-space-between align-start mt-2"
-          >
-            <span class="font-weight-bold tituloAzulPrint"
-              >Cierre Diario N° {{ props.cashData.id }}</span
-            >
-            <div class="text-right d-flex flex-column align-end">
-              <p class="text-black font-weight-regular mb-0 textoPrint">
-                {{ formatDateTime(props.cashData.created_at, "date") }}
-                {{ formatDateTime(props.cashData.created_at, "time") }}
-              </p>
-            </div>
-          </div>
+
+           <table style="width: 100%;" class='mt-2'>
+                <tbody>
+                  <tr>
+                    <td class="text-left font-weight-bold tituloAzulPrint">
+                      <span>Cierre Diario N. {{ props.cashData.id }}</span>
+                    </td>
+                    <td class="text-right font-weight-bold">
+                      <span>Fecha: {{ formatDateTime(props.cashData.created_at, "date") }}
+                {{ formatDateTime(props.cashData.created_at, "time") }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
           <div v-if="globalTotals.total_usd > 0">
             <SectionDivider :isPdf="true" text="USD" width="45%" />
             <PaymentTable :payments="usdPayments" />
+            <PaymentTableTotales :payments="usdPaymentsTotales" />
           </div>
           <div v-if="globalTotals.total_bs > 0">
             <SectionDivider :isPdf="true" text="BS" width="45%" />
             <PaymentTable :payments="bsPayments" />
+            <PaymentTableTotales :payments="bsPaymentsTotales" />
           </div>
           <div v-if="globalTotals.total_cop > 0">
             <SectionDivider :isPdf="true" text="COP" width="45%" />
             <PaymentTable :payments="copPayments" />
+            <PaymentTableTotales :payments="copPaymentsTotales" />
           </div>
           <div v-if="creditAmount.length > 0">
             <SectionDivider :isPdf="true" text="CREDITOS" width="40%" />
@@ -466,6 +567,93 @@ min-height: 1px;
             <SectionDivider :isPdf="true" text="ENTREGA" width="40%" />
             <PaymentTable :payments="delivery" />
           </div>
+
+        <div v-if="props.cashData.total_sales > 0">  
+          <SectionDivider :isPdf="true" text="TOTAL DE VENTA" width="38%" />
+           <div >
+              <table
+                class="table table-borderless table-sm w-100 mx-auto center-block"
+              >
+                <tbody>
+                  <tr>
+                    <td class="text-left"><span>USD:</span></td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_usd }}</span>
+                    </td>
+                    <td class="text-right" style="width:150px;">
+                      <span>{{ props.cashData.total_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-left"><span>BS:</span></td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_bs }}</span>
+                    </td>
+                    <td class="text-right" style="width:150px;">
+                      <span>{{ props.cashData.total_bs_in_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-left"><span>COP:</span></td>
+                    <td class="text-right" style="width:150px;">
+                      <span>{{ props.cashData.total_cop }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span>{{ props.cashData.total_cop_in_usd }}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start"><span></span></td>
+                    <td class="text-right fw-bold"><span>TOTAL</span></td>
+                    <td class="text-right fw-bold" style="width:150px;">
+                      <span>{{ props.cashData.total_sales }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          
+          <div class="mt-3" v-if="Object.keys(groupedReferences || {}).length > 0">
+          <SectionDivider
+            :isPdf="true"
+            text="REFERENCIAS"
+            width="40%"
+            class="mx-auto center-block"
+          />
+
+          <div
+            v-for="(methods, currency) in groupedReferences"
+            :key="currency"
+            class="mb-4"
+          >
+            <div v-for="(references, method) in methods" :key="method">
+              <h4
+                class="text-center font-weight-bold my-2"
+                style="font-size: 1rem"
+              >
+                {{ translateMethod(method) }} ({{ references[0].currency }})
+              </h4>
+
+              <table
+                class="table table-borderless table-sm w-75 mx-auto center-block"
+              >
+                <tbody>
+                  <tr v-for="(ref, refIndex) in references" :key="refIndex">
+                    <td class="text-left">
+                      <span>Ref: {{ ref.reference }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span>{{ ref.amount }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         </div>
       </VCardText>
       <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
@@ -489,3 +677,13 @@ min-height: 1px;
     </VCard>
   </VDialog>
 </template>
+<style scoped>
+.tituloAzulPrint{
+   font-family: 'Poppins'!important;
+        font-weight: 600!important;
+        font-size: 18px !important;
+        line-height: 18px !important;
+        color: #044C94!important;
+        letter-spacing: 0.9px;
+}
+</style>
