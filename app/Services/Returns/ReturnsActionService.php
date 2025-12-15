@@ -107,6 +107,7 @@ class ReturnsActionService
                 'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
                 'return_date' => Carbon::now(),
+                'status' => null
             ]);
 
             ProductObserver::handleReturnMovement($return);
