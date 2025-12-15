@@ -208,7 +208,7 @@ const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   return new Date(dateString).toLocaleDateString("es-ES", {
     year: "numeric",
-    month: "long",
+    month: "numeric",
     day: "numeric",
   });
 };
@@ -221,7 +221,8 @@ const formatDate = (dateString) => {
         <VCard class="position-relative">
           <VCardTitle>Resumen del Cierre de Inventario</VCardTitle>
           <VDivider />
-          <VCardText class="pb-12">
+
+       <!--   <VCardText class="pb-12">
             <VRow>
               <VCol cols="12" md="4">
                 <div class="d-flex align-center">
@@ -268,7 +269,7 @@ const formatDate = (dateString) => {
                 </div>
               </VCol>
             </VRow>
-          </VCardText>
+          </VCardText>-->
 
           <div
             class="position-absolute"
@@ -277,14 +278,29 @@ const formatDate = (dateString) => {
             <VChip
               v-if="hasActiveCycle && activeCycle"
               color="info"
-              variant="elevated"
+              variant="tonal"
               size="default"
               label
               class="me-2"
               style="padding: 19px 19px 19px 19px"
             >
               <VIcon icon="tabler-refresh-dot" start />
-              Ciclo Activo: {{ formatDate(activeCycle.start_date) }}
+              Ciclo Activo: {{ formatDate(activeCycle.start_date) }} → &nbsp+  
+              
+              <p class="text-h6 font-weight-medium text-success mb-0">
+                &nbsp{{ formatCurrency(totals.surplus) }} 
+              </p>
+              <p class="text-h6 font-weight-medium text-error mb-0">
+                  &nbsp-&nbsp{{ formatCurrency(totals.shortage) }}
+              </p>&nbsp=&nbsp
+              <p
+                      class="text-h6 font-weight-bold mb-0"
+                      :class="
+                        totals.netTotal >= 0 ? 'text-primary' : 'text-warning'
+                      "
+                    >
+                      {{ formatCurrency(totals.netTotal) }}
+                    </p>
             </VChip>
 
             <VBtn
