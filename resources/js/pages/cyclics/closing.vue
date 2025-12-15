@@ -303,7 +303,7 @@ const formatDate = (dateString) => {
               @click="handleCashClose"
             >
               <VIcon icon="tabler-lock" start />
-              Hacer Cierre de Inventario
+              Generar cierre
             </VBtn>
           </div>
 
