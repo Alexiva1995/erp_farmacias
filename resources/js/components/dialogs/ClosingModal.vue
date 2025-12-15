@@ -222,7 +222,6 @@ const copPayments = computed(() => {
 
 const copPaymentsTotales = computed(() => {
   const totals = globalTotals.value;
-  console.log(totals);
   const paymentsList = [
     {
       label: "Total COP",
@@ -239,6 +238,18 @@ const creditAmount = computed(() => {
     { label: "Créditos", amount: totals.total_usd_credit, currency: "USD" },
   ];
   return paymentsList.filter((p) => p.amount > 0);
+});
+
+const creditsTotales = computed(() => {
+  const totals = parseFloat(props.cashData.total_credits);
+  const paymentsList = [
+    {
+      label: "Total Créditos",
+      amount: totals,
+      currency: "USD",
+    },
+  ];
+  return paymentsList;
 });
 
 const creditPayments = computed(() => {
@@ -293,6 +304,19 @@ const creditPayments = computed(() => {
   return paymentsList.filter((p) => p.amount > 0);
 });
 
+
+const creditPaymentsTotales = computed(() => {
+  const totals = parseFloat(props.cashData.total_payment_credit);
+  const paymentsList = [
+    {
+      label: "Total Pagos",
+      amount: totals,
+      currency: "USD",
+    },
+  ];
+  return paymentsList;
+});
+
 const delivery = computed(() => {
   const totals = globalTotals.value;
   const paymentsList = [
@@ -339,6 +363,18 @@ const delivery = computed(() => {
     },
   ];
   return paymentsList.filter((p) => p.amount > 0);
+});
+
+const deliveryTotales = computed(() => {
+   const totals = parseFloat(props.cashData.total_delivery);
+  const paymentsList = [
+    {
+      label: "Total Entregas",
+      amount: totals,
+      currency: "USD",
+    },
+  ];
+  return paymentsList;
 });
 
 const downloadReport = async () => {
@@ -528,7 +564,7 @@ const translateMethod = (methodKey) => {
                 <tbody>
                   <tr>
                     <td class="text-left font-weight-bold tituloAzulPrint">
-                      <span>Cierre Diario N. {{ props.cashData.id }}</span>
+                      <span>Cierre Diario N° {{ props.cashData.id }}</span>
                     </td>
                     <td class="text-right font-weight-bold">
                       <span>Fecha: {{ formatDateTime(props.cashData.created_at, "date") }}
@@ -556,16 +592,19 @@ const translateMethod = (methodKey) => {
           <div v-if="creditAmount.length > 0">
             <SectionDivider :isPdf="true" text="CREDITOS" width="40%" />
             <PaymentTable :payments="creditAmount" />
+            <PaymentTableTotales :payments="creditsTotales" />
           </div>
 
           <div v-if="creditPayments.length > 0">
             <SectionDivider :isPdf="true" text="PAGOS" width="42%" />
             <PaymentTable :payments="creditPayments" />
+            <PaymentTableTotales :payments="creditPaymentsTotales" />
           </div>
 
           <div v-if="delivery.length > 0">
             <SectionDivider :isPdf="true" text="ENTREGA" width="40%" />
             <PaymentTable :payments="delivery" />
+            <PaymentTableTotales :payments="deliveryTotales" />
           </div>
 
         <div v-if="props.cashData.total_sales > 0">  
@@ -578,35 +617,35 @@ const translateMethod = (methodKey) => {
                   <tr>
                     <td class="text-left"><span>USD:</span></td>
                     <td class="text-right">
-                      <span>{{ props.cashData.total_usd }}</span>
+                      <span>{{ props.cashData.total_usd }} USD</span>
                     </td>
                     <td class="text-right" style="width:150px;">
-                      <span>{{ props.cashData.total_usd }}</span>
+                      <span>{{ props.cashData.total_usd }} USD</span>
                     </td>
                   </tr>
                   <tr>
                     <td class="text-left"><span>BS:</span></td>
                     <td class="text-right">
-                      <span>{{ props.cashData.total_bs }}</span>
+                      <span>{{ props.cashData.total_bs }} BS</span>
                     </td>
                     <td class="text-right" style="width:150px;">
-                      <span>{{ props.cashData.total_bs_in_usd }}</span>
+                      <span>{{ props.cashData.total_bs_in_usd }} USD</span>
                     </td>
                   </tr>
                   <tr>
                     <td class="text-left"><span>COP:</span></td>
                     <td class="text-right" style="width:150px;">
-                      <span>{{ props.cashData.total_cop }}</span>
+                      <span>{{ props.cashData.total_cop }} COP</span>
                     </td>
                     <td class="text-right">
-                      <span>{{ props.cashData.total_cop_in_usd }}</span>
+                      <span>{{ props.cashData.total_cop_in_usd }} USD</span>
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start"><span></span></td>
-                    <td class="text-right fw-bold"><span>TOTAL</span></td>
-                    <td class="text-right fw-bold" style="width:150px;">
-                      <span>{{ props.cashData.total_sales }}</span>
+                    <td class="text-right font-weight-bold"><span>TOTAL</span></td>
+                    <td class="text-right font-weight-bold" style="width:150px;">
+                      <span>{{ props.cashData.total_sales }} USD</span>
                     </td>
                   </tr>
                 </tbody>
