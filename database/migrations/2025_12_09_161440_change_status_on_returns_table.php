@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
@@ -21,6 +22,10 @@ return new class extends Migration {
         DB::table('returns')
             ->where('status', 'Paid')
             ->update(['status' => 'Rejected']);
+
+        DB::table('returns')
+            ->whereNotIn('status', ['Approved', 'Rejected'])
+            ->update(['status' => null]);
 
         Schema::table('returns', function (Blueprint $table) {
             $table->enum('status', ['Approved', 'Rejected'])

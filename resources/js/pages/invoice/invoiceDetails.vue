@@ -728,6 +728,13 @@ const cancelEditingDetail = () => {
   editedDetailData.value = {};
 };
 
+const updateLocation = (id, newLocation) => {
+  const index = invoiceDetails.value.findIndex((d) => d.id === id);
+  if (index !== -1) {
+    invoiceDetails.value[index].location = newLocation;
+  }
+};
+
 const handleSaveLocations = async () => {
   const hasEmptyLocation = invoiceDetails.value.some(
     (d) =>
@@ -1156,7 +1163,7 @@ const detailsHeaders = [
                   <span :class="{ 'returned-item': isItemReturned(item) }">
                     {{ item.product_name_with_tax }}
                     <span class="text-sm text-disabled">{{
-                      item.product.laboratory.name
+                      item.product.laboratory?.name
                     }}</span>
                   </span>
                   <span class="text-sm text-disabled"></span>
@@ -1226,9 +1233,10 @@ const detailsHeaders = [
                 </div>
               </template>
               <template #item.location="{ item, index }">
-                <VSelect
+                <VAutocomplete
                   v-if="isLocationMode && !isItemReturned(item)"
-                  v-model="invoiceDetails[index].location"
+                  :model-value="item.location"
+                  @update:model-value="updateLocation(item.id, $event)"
                   :items="locations"
                   density="compact"
                   hide-details
@@ -1236,6 +1244,7 @@ const detailsHeaders = [
                   class="editable-cell"
                   placeholder="Ej: A-01-B"
                   :return-object="false"
+                  auto-select-first
                 />
                 <span
                   v-else
