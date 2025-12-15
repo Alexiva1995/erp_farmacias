@@ -4,6 +4,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const counts = ref([]);
 const loading = ref(false);
@@ -80,13 +81,13 @@ const totals = computed(() => {
   return result;
 });
 
-const formatCurrency = (value) => {
+/*const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
     minimumFractionDigits: 0,
   }).format(value || 0);
-};
+};*/
 
 const handleCashClose = async () => {
   const result = await Swal.fire({
