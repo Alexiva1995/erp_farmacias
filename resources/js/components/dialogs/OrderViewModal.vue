@@ -121,9 +121,11 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const debtPayments = computed(() => {
+  if (!props.payments) return [];
   return props.payments.filter((payment) => payment.isDebt === true);
 });
 const normalPayments = computed(() => {
+  if (!props.payments) return [];
   return props.payments.filter(
     (payment) => payment.isDebt === false || payment.isDebt == null
   );
@@ -232,7 +234,7 @@ const normalPayments = computed(() => {
               </template>
 
               <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                product.title
+                `${product.title} (${product.laboratory})`
               }}</VListItemTitle>
 
               <template #append>

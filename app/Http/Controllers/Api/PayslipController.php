@@ -10,6 +10,7 @@ use App\Models\Payslip;
 use App\Services\PayslipServices;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PayslipController extends Controller
@@ -19,7 +20,11 @@ class PayslipController extends Controller
     }
     public function index(Request $request)
     {
-        $data = ['perPage' => $request->itemsPerPage ?? 10];
+        $data = [
+            'perPage' => $request->itemsPerPage ?? 10,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+        ];
         $results = $this->payslipServices->index($data);
 
         return ApiResponse::success(['data' => $results->items(), 'total' => $results->total()]);
@@ -66,5 +71,16 @@ class PayslipController extends Controller
         $results = $this->payslipServices->updateVouchers($payslip, $data);
 
         return ApiResponse::success(['status' => $results]);
+    }
+
+    public function store(Request $request)
+    {
+        $payFoodVoucher = $request->boolean('pay_food_voucher');
+
+        Artisan::call('app:generate-payslip', [
+            '--pay-food-voucher' => $payFoodVoucher
+        ]);
+
+        return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
     }
 }

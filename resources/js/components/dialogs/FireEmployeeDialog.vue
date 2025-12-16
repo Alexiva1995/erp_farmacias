@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { VNumberInput } from "vuetify/components";
 
 const props = defineProps({
@@ -150,263 +150,310 @@ const formatDate = (dateString) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="1000px"
     persistent
     @update:model-value="closeDialog"
     :scrollable="true"
-    content-class="d-flex"
   >
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline">
-          Finalizar relación con {{ props.selectedEmployee.name }}
-          {{ props.selectedEmployee.last_name }}
+      <VCardTitle class="d-flex align-center py-3 bg-light-primary">
+        <span class="text-h6">
+          Liquidación: {{ props.selectedEmployee?.name }}
+          {{ props.selectedEmployee?.last_name }}
         </span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" density="compact" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
+
       <VDivider />
-      <VContainer>
-        <VTabs v-model="step">
-          <VTab value="employee"> Empleado </VTab>
-          <VTab value="payment"> Pago </VTab>
+
+      <VCardText class="pa-4">
+        <VTabs v-model="step" density="compact" class="mb-4">
+          <VTab value="employee">Cálculo</VTab>
+          <VTab value="payment">Pago</VTab>
         </VTabs>
 
         <VTabsWindow v-model="step">
           <VTabsWindowItem value="employee">
-            <VTable density="comfortable">
-              <thead>
-                <tr>
-                  <td style="width: 70%" class="font-weight-bold">
-                    Fecha de inicio
-                  </td>
-                  <td></td>
-                  <td class="font-weight-bold">
-                    {{ settlement?.starting_date }}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 70%" class="font-weight-bold">
-                    Últimos {{ settlement?.average_salary_count || 0 }} salarios
-                  </td>
-                  <td></td>
-                  <td class="font-weight-bold">
+            <!-- Información General en Cards -->
+            <VRow dense class="mb-4">
+              <VCol cols="12" md="4">
+                <VCard variant="outlined" class="h-100">
+                  <VCardText
+                    class="d-flex flex-column align-center justify-center py-2 text-center"
+                  >
+                    <span class="text-caption text-medium-emphasis"
+                      >Fecha de Inicio</span
+                    >
+                    <span class="text-subtitle-1 font-weight-bold">{{
+                      settlement?.starting_date
+                    }}</span>
+                  </VCardText>
+                </VCard>
+              </VCol>
+              <VCol cols="12" md="4">
+                <VCard variant="outlined" class="h-100">
+                  <VCardText
+                    class="d-flex flex-column align-center justify-center py-2 text-center"
+                  >
+                    <span class="text-caption text-medium-emphasis"
+                      >Salario Promedio</span
+                    >
+                    <span class="text-subtitle-1 font-weight-bold"
+                      >{{
+                        formatCurrency(settlement?.average_salary || 0)
+                      }}
+                      Bs.</span
+                    >
+                    <div class="d-flex gap-2 justify-center mt-1">
+                      <VChip size="x-small"
+                        >D:
+                        {{ formatCurrency(settlement?.daily_wage || 0) }}</VChip
+                      >
+                      <VChip size="x-small"
+                        >I:
+                        {{
+                          formatCurrency(settlement?.integral_salary || 0)
+                        }}</VChip
+                      >
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
+              <VCol cols="12" md="4">
+                <VCard variant="outlined" class="h-100">
+                  <VCardText
+                    class="d-flex flex-column align-center justify-center py-2 text-center"
+                  >
+                    <span class="text-caption text-medium-emphasis"
+                      >Historial Salarial</span
+                    >
                     <VBtn
-                      v-if="settlement?.last_salaries?.length > 0"
-                      variant="outlined"
+                      variant="text"
                       size="small"
                       color="primary"
                       @click="showSalaryDetails = !showSalaryDetails"
-                      class="mb-2"
                     >
-                      <VIcon start>tabler-calendar</VIcon>
-                      {{ showSalaryDetails ? "Ocultar" : "Ver" }} detalles
+                      <VIcon start size="16">tabler-calendar</VIcon>
+                      {{ showSalaryDetails ? "Ocultar" : "Ver" }} Últimos
+                      {{ settlement?.average_salary_count || 0 }}
                     </VBtn>
-                    <div
-                      v-if="
-                        showSalaryDetails &&
-                        settlement?.last_salaries?.length > 0
-                      "
-                      class="mt-2"
+                  </VCardText>
+                </VCard>
+              </VCol>
+
+              <!-- Detalles de salarios expandibles -->
+              <VCol cols="12" v-if="showSalaryDetails">
+                <VCard variant="flat" color="grey-100" class="pa-2">
+                  <div
+                    v-if="settlement?.last_salaries?.length > 0"
+                    class="d-flex flex-wrap gap-2"
+                  >
+                    <VChip
+                      v-for="(salary, index) in settlement.last_salaries"
+                      :key="index"
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
                     >
-                      <div
-                        v-for="(salary, index) in settlement.last_salaries"
-                        :key="index"
-                        class="mb-1 pa-2 bg-grey-lighten-5 rounded text-caption"
+                      {{ formatDate(salary.payslip_date) }}:
+                      <strong
+                        >{{ formatCurrency(salary.amount_bs) }} Bs.</strong
                       >
-                        {{ formatCurrency(salary.amount_bs) }} Bs. ({{
-                          formatDate(salary.payslip_date)
-                        }})
-                      </div>
-                    </div>
-                    <div
-                      v-if="!settlement?.last_salaries?.length"
-                      class="text-caption text-grey"
+                    </VChip>
+                  </div>
+                  <div v-else class="text-caption text-center">
+                    No hay salarios registrados
+                  </div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <!-- Tablas de Cálculo lado a lado -->
+            <VRow>
+              <!-- Liquidación -->
+              <VCol cols="12" md="6">
+                <VCard variant="outlined">
+                  <VCardItem class="py-2 bg-grey-50">
+                    <template #prepend
+                      ><VIcon size="18" icon="tabler-calculator" class="me-2"
+                    /></template>
+                    <VCardTitle class="text-subtitle-2 font-weight-bold"
+                      >Devengaciones</VCardTitle
                     >
-                      No hay salarios registrados
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 70%" class="font-weight-bold">
-                    Salario Promedio
-                  </td>
-                  <td></td>
-                  <td class="font-weight-bold">
-                    {{ formatCurrency(settlement?.average_salary || 0) }} Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 70%" class="font-weight-bold">
-                    Salario Diario
-                  </td>
-                  <td></td>
-                  <td class="font-weight-bold">
-                    {{ formatCurrency(settlement?.daily_wage || 0) }} Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 70%" class="font-weight-bold">
-                    Salario Integral
-                  </td>
-                  <td></td>
-                  <td class="font-weight-bold">
-                    {{ formatCurrency(settlement?.integral_salary || 0) }} Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <th style="width: 70%" class="text-start font-weight-bold">
-                    Liquidación
-                  </th>
-                  <th class="font-weight-bold">Días</th>
-                  <th class="font-weight-bold">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Prestaciones Sociales</td>
-                  <td>{{ settlement?.social_benefits_days ?? 0 }}</td>
-                  <td>
-                    {{ displayAmount(settlement?.social_benefits_amount ?? 0) }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Vacaciones Fraccionadas</td>
-                  <td>{{ settlement?.vacation_voucher_days ?? 0 }}</td>
-                  <td>
-                    {{
-                      displayAmount(settlement?.vacation_voucher_amount ?? 0)
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Bono Vacacional</td>
-                  <td>{{ settlement?.vacation_bonus_voucher_days ?? 0 }}</td>
-                  <td>
-                    {{
-                      displayAmount(
-                        settlement?.vacation_bonus_voucher_amount ?? 0
-                      )
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Utilidades</td>
-                  <td>{{ settlement?.earnings_voucher_days ?? 0 }}</td>
-                  <td>
-                    {{
-                      displayAmount(settlement?.earnings_voucher_amount ?? 0)
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Total</td>
-                  <td>{{ settlement?.total_settlement_days ?? 0 }}</td>
-                  <td>
-                    {{
-                      displayAmount(settlement?.total_settlement_amount ?? 0)
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2">
-                    Tasa BCV {{ new Date().toLocaleDateString("es-VE") }}
-                  </td>
-                  <td>{{ displayAmount(settlement?.currency ?? 0) }} Bs.</td>
-                </tr>
-                <tr>
-                  <td colspan="2" class="font-weight-bold">Total USD</td>
-                  <td class="font-weight-bold">
-                    {{ displayAmount(settlement?.total_settlement_usd ?? 0) }} $
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
+                  </VCardItem>
+                  <VDivider />
+                  <VTable density="compact" class="text-caption">
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        <th class="text-center">Días</th>
+                        <th class="text-end">Monto (Bs)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Prestaciones Sociales</td>
+                        <td class="text-center">
+                          {{ settlement?.social_benefits_days ?? 0 }}
+                        </td>
+                        <td class="text-end">
+                          {{
+                            displayAmount(
+                              settlement?.social_benefits_amount ?? 0
+                            )
+                          }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Vacaciones Fracc.</td>
+                        <td class="text-center">
+                          {{ settlement?.vacation_voucher_days ?? 0 }}
+                        </td>
+                        <td class="text-end">
+                          {{
+                            displayAmount(
+                              settlement?.vacation_voucher_amount ?? 0
+                            )
+                          }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Bono Vacacional</td>
+                        <td class="text-center">
+                          {{ settlement?.vacation_bonus_voucher_days ?? 0 }}
+                        </td>
+                        <td class="text-end">
+                          {{
+                            displayAmount(
+                              settlement?.vacation_bonus_voucher_amount ?? 0
+                            )
+                          }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Utilidades</td>
+                        <td class="text-center">
+                          {{ settlement?.earnings_voucher_days ?? 0 }}
+                        </td>
+                        <td class="text-end">
+                          {{
+                            displayAmount(
+                              settlement?.earnings_voucher_amount ?? 0
+                            )
+                          }}
+                        </td>
+                      </tr>
+                      <tr class="font-weight-bold bg-grey-50">
+                        <td>Total Devengado</td>
+                        <td class="text-center">
+                          {{ settlement?.total_settlement_days ?? 0 }}
+                        </td>
+                        <td class="text-end">
+                          {{
+                            displayAmount(
+                              settlement?.total_settlement_amount ?? 0
+                            )
+                          }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </VTable>
+                </VCard>
+              </VCol>
 
-            <VSpacer class="py-2" />
+              <!-- Deducciones y Totals -->
+              <VCol cols="12" md="6">
+                <VCard variant="outlined" class="h-100">
+                  <VCardItem class="py-2 bg-grey-50">
+                    <template #prepend
+                      ><VIcon size="18" icon="tabler-minus" class="me-2"
+                    /></template>
+                    <VCardTitle class="text-subtitle-2 font-weight-bold"
+                      >Deducciones y Totales</VCardTitle
+                    >
+                  </VCardItem>
+                  <VDivider />
+                  <VTable density="compact" class="text-caption">
+                    <tbody>
+                      <tr>
+                        <td>Vacaciones Fracc.</td>
+                        <td class="text-end text-error">
+                          {{
+                            displayAmount(
+                              settlement?.vacation_voucher_deduction ?? 0
+                            )
+                          }}
+                          Bs
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Bono Vacacional</td>
+                        <td class="text-end text-error">
+                          {{
+                            displayAmount(
+                              settlement?.vacation_bonus_voucher_deduction ?? 0
+                            )
+                          }}
+                          Bs
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Utilidades</td>
+                        <td class="text-end text-error">
+                          {{
+                            displayAmount(
+                              settlement?.earnings_voucher_deduction ?? 0
+                            )
+                          }}
+                          Bs
+                        </td>
+                      </tr>
+                      <tr class="font-weight-bold bg-grey-50">
+                        <td>Total Deducciones</td>
+                        <td class="text-end text-error">
+                          {{
+                            displayAmount(settlement?.total_deductions ?? 0)
+                          }}
+                          Bs
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2"><VDivider class="my-1" /></td>
+                      </tr>
+                      <tr>
+                        <td>Tasa BCV</td>
+                        <td class="text-end">
+                          {{ displayAmount(settlement?.currency ?? 0) }} Bs
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="font-weight-bold">Total a Pagar (USD)</td>
+                        <td class="text-end font-weight-bold text-primary">
+                          {{
+                            displayAmount(settlement?.total_deductions_usd ?? 0)
+                          }}
+                          $
+                        </td>
+                      </tr>
+                    </tbody>
+                  </VTable>
+                </VCard>
+              </VCol>
+            </VRow>
 
-            <VTable density="comfortable">
-              <thead>
-                <tr>
-                  <th style="width: 80%" class="text-start font-weight-bold">
-                    Deducciones
-                  </th>
-                  <th class="font-weight-bold">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Vacaciones Fraccionadas</td>
-                  <td>
-                    {{
-                      displayAmount(settlement?.vacation_voucher_deduction ?? 0)
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Bono Vacacional</td>
-                  <td>
-                    {{
-                      displayAmount(
-                        settlement?.vacation_bonus_voucher_deduction ?? 0
-                      )
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Utilidades</td>
-                  <td>
-                    {{
-                      displayAmount(settlement?.earnings_voucher_deduction ?? 0)
-                    }}
-                    Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Total</td>
-                  <td>
-                    {{ displayAmount(settlement?.total_deductions ?? 0) }} Bs.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Tasa BCV {{ new Date().toLocaleDateString("es-VE") }}</td>
-                  <td>{{ displayAmount(settlement?.currency ?? 0) }} Bs.</td>
-                </tr>
-                <tr>
-                  <td class="font-weight-bold">Total a pagar</td>
-                  <td class="font-weight-bold">
-                    {{ displayAmount(settlement?.total_deductions_usd ?? 0) }} $
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
+            <VDivider class="my-4" />
 
-            <VSpacer class="py-4" />
-
-            <VTable density="comfortable">
-              <tbody>
-                <tr>
-                  <td style="width: 80%" class="font-weight-bold">
-                    Total Final
-                  </td>
-                  <td class="font-weight-bold">
-                    {{ displayAmount(settlement?.final_usd ?? 0) }} $
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 80%" class="font-weight-bold">
-                    Fecha de renuncia
-                  </td>
-                  <td class="font-weight-bold">
+            <!-- Footer Controls -->
+            <VRow align="center">
+              <VCol cols="12" md="4">
+                <div class="d-flex align-center">
+                  <span class="text-caption text-medium-emphasis me-2"
+                    >Fecha Renuncia:</span
+                  >
+                  <span class="font-weight-medium">
                     {{
                       (() => {
                         const dateValue = settlement?.resignation_date
@@ -421,121 +468,103 @@ const formatDate = (dateString) => {
                             }).format(dateValue);
                       })()
                     }}
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-
-            <VSpacer class="py-4" />
-
-            <VRow class="d-flex align-center">
-              <VCol cols="6">
+                  </span>
+                </div>
+                <div class="d-flex align-center mt-1">
+                  <span class="text-caption text-medium-emphasis me-2"
+                    >Total Calculado:</span
+                  >
+                  <span class="font-weight-bold text-success"
+                    >{{ displayAmount(settlement?.final_usd ?? 0) }} $</span
+                  >
+                </div>
+              </VCol>
+              <VCol cols="12" md="4">
                 <VNumberInput
                   v-model="percentage"
-                  label="% a pagar"
-                  placeholder="50"
-                  :clearable="true"
-                  control-variant="hidden"
-                  :error-messages="errors.percentage"
+                  label="% Liquidación"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  control-variant="stacked"
+                  :min="0"
+                  :max="100"
                 />
               </VCol>
-              <VCol cols="3">
-                <h5>
-                  <span class="text-h5 font-weight-bold">Monto a pagar:</span>
-                </h5>
-              </VCol>
-              <VCol cols="3">
-                <h5 class="text-h5 ms-6">{{ displayAmount(amountToPay) }} $</h5>
+              <VCol cols="12" md="4" class="text-end">
+                <div class="text-caption text-medium-emphasis">
+                  Monto Real a Pagar
+                </div>
+                <div class="text-h5 font-weight-bold text-primary">
+                  {{ displayAmount(amountToPay) }} $
+                </div>
               </VCol>
             </VRow>
           </VTabsWindowItem>
-          <VTabsWindowItem value="payment">
-            <VRow>
-              <VCol cols="4">
-                <div class="d-flex align-center gap-4 mb-4">
-                  <span class="font-weight-medium">Total</span>
-                  <VChip color="primary" label> {{ amountToPay }} $ </VChip>
-                  <VSpacer />
-                </div>
-              </VCol>
-              <VCol cols="4">
-                <div class="d-flex align-center gap-4 mb-4">
-                  <span class="font-weight-medium">Total</span>
-                  <VChip color="primary" label>
-                    {{
-                      Intl.NumberFormat("es-Ve", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(amountToPay * exchangeRate)
-                    }}
-                    Bs.</VChip
-                  >
-                  <VSpacer />
-                </div>
-              </VCol>
-              <VCol cols="4">
-                <div class="d-flex align-center gap-4 mb-4">
-                  <span class="font-weight-medium">Fecha</span>
-                  <VChip color="primary" label>
-                    {{
-                      Intl.DateTimeFormat("es-Ve", {
-                        dateStyle: "short",
-                      }).format(new Date())
-                    }}
-                  </VChip>
-                  <VSpacer />
-                </div>
-              </VCol>
-            </VRow>
 
-            <VRow>
-              <VCol cols="6">
+          <!-- TAB PAGO -->
+          <VTabsWindowItem value="payment">
+            <VAlert color="info" variant="tonal" class="mb-4" density="compact">
+              <div class="d-flex justify-space-between align-center">
+                <span><strong>Total:</strong> {{ amountToPay }} $</span>
+                <span
+                  ><strong>En Bs:</strong>
+                  {{
+                    Intl.NumberFormat("es-Ve", {
+                      minimumFractionDigits: 2,
+                    }).format(amountToPay * exchangeRate)
+                  }}</span
+                >
+                <span><strong>Tasa:</strong> {{ exchangeRate }}</span>
+              </div>
+            </VAlert>
+
+            <VRow dense>
+              <VCol cols="12" md="6">
                 <VSelect
                   v-model="currency"
-                  label="Moneda"
+                  label="Método / Moneda"
                   variant="outlined"
-                  hide-details="auto"
+                  density="compact"
                   item-title="title"
                   item-value="value"
+                  placeholder="Seleccione moneda"
                   :items="
-                    Object.keys(countsFilterByCurrency).map((currency) => ({
-                      title: currency,
-                      value: currency,
+                    Object.keys(countsFilterByCurrency).map((c) => ({
+                      title: c,
+                      value: c,
                     }))
                   "
                   :error-messages="errors.currency"
                 />
               </VCol>
-              <VCol cols="6">
+              <VCol cols="12" md="6">
                 <VSelect
                   v-model="count"
-                  label="Cuenta"
+                  label="Tipo de Pago"
                   variant="outlined"
-                  hide-details="auto"
+                  density="compact"
                   item-title="title"
                   item-value="value"
+                  placeholder="Seleccione tipo"
                   :items="
-                    (
-                      countsFilterByCurrency[currency] ?? [
-                        ...new Set(
-                          Object.values(countsFilterByCurrency).flat()
-                        ),
-                      ]
-                    ).map((account) => ({
+                    (countsFilterByCurrency[currency] ?? []).map((account) => ({
                       title: account,
                       value: account,
                     }))
                   "
                   :error-messages="errors.count"
+                  :disabled="!currency"
                 />
               </VCol>
-              <VCol cols="6">
+              <VCol cols="12">
                 <VTextField
                   v-model="payed"
-                  label="Monto a pagar"
+                  label="Monto Confirmado"
                   type="number"
                   variant="outlined"
-                  hide-details="auto"
+                  density="compact"
+                  prefix="$"
                   :step="0.01"
                   :error-messages="errors.payed"
                 />
@@ -543,28 +572,22 @@ const formatDate = (dateString) => {
             </VRow>
           </VTabsWindowItem>
         </VTabsWindow>
-      </VContainer>
+      </VCardText>
 
       <VDivider />
+
       <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeDialog"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-        >
+        <VSpacer />
+        <VBtn color="secondary" variant="text" @click="closeDialog">
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
-          variant="flat"
+          variant="elevated"
           @click="submitForm"
-          width="100%"
-          class="flex-grow-1 w-0"
           :disabled="settlement?.amount === 0"
         >
-          Confirmar
+          {{ step === "employee" ? "Siguiente" : "Confirmar Liquidación" }}
         </VBtn>
       </VCardActions>
     </VCard>

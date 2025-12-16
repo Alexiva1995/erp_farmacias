@@ -504,6 +504,7 @@ Route::prefix("finances")->group(function () {
 
     Route::prefix('payslips')->group(function () {
         Route::get('', [PayslipController::class, 'index']);
+        Route::post('', [PayslipController::class, 'store']);
         Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
         Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
         Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
