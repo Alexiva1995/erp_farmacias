@@ -27,4 +27,9 @@ class Credit extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    public function payments()
+    {
+        return $this->hasMany(CreditPayment::class, 'client_id', 'client_id');
+    }
 }

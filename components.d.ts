@@ -221,6 +221,7 @@ declare module 'vue' {
     ProductsExceededToleranceTable: typeof import('./resources/js/components/ProductsExceededToleranceTable.vue')['default']
     ProductsLotsFilters: typeof import('./resources/js/components/ProductsLotsFilters.vue')['default']
     ProductsLotsTable: typeof import('./resources/js/components/ProductsLotsTable.vue')['default']
+    ProductsStablePriceTable: typeof import('./resources/js/components/ProductsStablePriceTable.vue')['default']
     ProductTable: typeof import('./resources/js/components/ProductTable.vue')['default']
     ProductWithoutLotEditDialog: typeof import('./resources/js/components/dialogs/ProductWithoutLotEditDialog.vue')['default']
     ProductWithoutLotsFilters: typeof import('./resources/js/components/ProductWithoutLotsFilters.vue')['default']

@@ -34,6 +34,10 @@ const headers = [
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.invoice_date="{ item }">
+        <span>{{ item.invoice_date }}</span>
+      </template>
+
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>

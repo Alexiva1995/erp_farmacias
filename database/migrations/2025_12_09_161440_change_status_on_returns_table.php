@@ -15,12 +15,8 @@ return new class extends Migration {
         });
 
         DB::table('returns')
-            ->where('status', 'Active')
+            ->whereIn('status', ['Created', 'Active'])
             ->update(['status' => 'Approved']);
-
-        DB::table('returns')
-            ->where('status', 'Paid')
-            ->update(['status' => 'Rejected']);
 
         Schema::table('returns', function (Blueprint $table) {
             $table->enum('status', ['Approved', 'Rejected'])
@@ -41,10 +37,6 @@ return new class extends Migration {
         DB::table('returns')
             ->where('status', 'Approved')
             ->update(['status' => 'Active']);
-
-        DB::table('returns')
-            ->where('status', 'Rejected')
-            ->update(['status' => 'Paid']);
 
         Schema::table('returns', function (Blueprint $table) {
             $table->enum('status', ['Active', 'Paid'])

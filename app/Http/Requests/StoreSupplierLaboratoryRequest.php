@@ -23,8 +23,12 @@ class StoreSupplierLaboratoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'laboratory_id' => ['required', 'exists:laboratories,id'],
-            'phone' => ['string', 'max:100', 'regex:/^\+?\d{7,15}$/']
+            //'laboratory_id' => ['required', 'exists:laboratories,id'],
+            //'phone' => ['string', 'max:100', 'regex:/^\+?\d{7,15}$/'],
+            'rulesLaboratory' => 'required|array',
+            'rulesLaboratory.*.phone' =>  ['string','max:100','regex:/^\+?\d{7,15}$/'],
+            'rulesLaboratory.*.id' => 'nullable|integer',
+            'rulesLaboratory.*.laboratory.id' => 'required|exists:laboratories,id'
         ];
     }
 
@@ -36,12 +40,19 @@ class StoreSupplierLaboratoryRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'laboratory_id.required' => 'Debe seleccionar un laboratorio.',
-            'laboratory_id.exists' => 'El laboratorio seleccionado no es válido.',
+            'rulesLaboratory.required' => 'Las reglas son obligatorias.',
+            'rulesLaboratory.array' => 'Las reglas deben ser un arreglo.',
+
+            'rulesLaboratory.*.phone.string' => 'El teléfono debe ser texto.',
+            'rulesLaboratory.*.phone.max' => 'El teléfono no puede exceder los 100 caracteres.',
+            'rulesLaboratory.*.phone.regex' => 'El teléfono debe contener solo números.',
+
+            'rulesLaboratory.*.laboratory.id.required' => 'Debe seleccionar un laboratorio.',
+            'rulesLaboratory.*.laboratory.id.exists' => 'El laboratorio seleccionado no es válido.',
             
-            'phone.string' => 'El teléfono debe ser texto.',
-            'phone.max' => 'El teléfono no puede exceder los 100 caracteres.',
-            'phone.regex' => 'El teléfono debe contener solo números.'
+          //  'phone.string' => 'El teléfono debe ser texto.',
+          //  'phone.max' => 'El teléfono no puede exceder los 100 caracteres.',
+          //  'phone.regex' => 'El teléfono debe contener solo números.'
         ];
     }
 }

@@ -19,6 +19,7 @@ use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Arr;
 
 class SupplierController extends Controller
 {
@@ -86,7 +87,7 @@ class SupplierController extends Controller
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
         $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
-
+        
         return response()->json(
             [
                 "message" => "Proveedor actualizado con éxito.",
@@ -155,11 +156,28 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
+        $sentIds = Arr::pluck($validated['rules'], 'id');
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+
+        if (!empty($sentIds)) {
+            $supplier->paymentRules()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->paymentRules()->delete();
+        }
+
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
                 'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
+
+            if (isset($rule['id']) && $rule['id'] > 0) {
+                $ruleData['id'] = $rule['id'];
+            }
 
             $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
@@ -186,11 +204,46 @@ class SupplierController extends Controller
      */
     public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
     {
+       /* dd($request->validated());
         $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
 
         return response()->json([
             "message" => "Laboratorio vinculado con éxito.",
             "laboratory_link" => $link->load("laboratory"),
+        ]);*/
+
+        $validated = $request->validated();
+        $createdRules = [];
+        $sentIds = Arr::pluck($validated['rulesLaboratory'], 'id');
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+
+        if (!empty($sentIds)) {
+            $supplier->laboratoryLinks()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->laboratoryLinks()->delete();
+        }
+
+       
+        foreach ($validated['rulesLaboratory'] as $rulesLaboratory) {
+            $ruleData = [
+                'phone' => $rulesLaboratory['phone'],
+                'laboratory_id' => $rulesLaboratory['laboratory']['id'],
+            ];
+
+            if (isset($rulesLaboratory['id']) && $rulesLaboratory['id'] > 0) {
+                $ruleData['id'] = $rulesLaboratory['id'];
+            }
+
+            $createdRules[] = $this->supplierActionService->attachLaboratory($supplier, $ruleData);
+        }
+
+        return response()->json([
+            'message' => 'Laboratorios vinculado con éxito.',
+            'rules' => $createdRules,
         ]);
     }
 

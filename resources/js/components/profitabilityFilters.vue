@@ -10,9 +10,8 @@ const props = defineProps({
   startDate: [String, null],
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
-  origins: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  lockedValue: { type: Number, default: null }
+  lockedValue: { type: Number, default: null },
 });
 
 const emit = defineEmits([
@@ -180,10 +179,10 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -191,7 +190,7 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -204,21 +203,8 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VAutocomplete
-            :model-value="props.selectedOrigin"
-            :items="props.origins"
-            :loading="props.loading"
-            label="Origen"
-            placeholder="Escribe para buscar un origen"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedOrigin', $event)"
-          />
-        </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -227,8 +213,20 @@ watch(
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="4">
+        <!-- Filtro bloqueado -->
+        <VCol cols="12" sm="6" md="2">
+          <VAutocomplete
+            :model-value="props.lockedValue"
+            :items="lockedOptions"
+            label="Estado"
+            placeholder="Bloqueado"
+            item-title="name"
+            item-value="value"
+            clearable
+            @update:model-value="emit('update:lockedValue', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Vencimiento Desde"
@@ -242,7 +240,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Vencimiento Hasta"
@@ -253,20 +251,6 @@ watch(
               dateFormat: 'Y-m-d',
             }"
             @update:model-value="emit('update:endDate', $event)"
-          />
-        </VCol>
-
-        <!-- Filtro bloqueado -->
-        <VCol cols="12" sm="6" md="4">
-          <VAutocomplete
-            :model-value="props.lockedValue"
-            :items="lockedOptions"
-            label="Estado"
-            placeholder="Bloqueado"
-            item-title="name"
-            item-value="value"
-            clearable
-            @update:model-value="emit('update:lockedValue', $event)"
           />
         </VCol>
       </VRow>

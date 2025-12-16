@@ -24,16 +24,16 @@ const onCancel = () => {
 };
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('es-ES');
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString("es-ES");
 };
 
 const getStatusText = (isActive) => {
-  return isActive ? 'Activa' : 'Inactiva';
+  return isActive ? "Activa" : "Inactiva";
 };
 
 const getStatusColor = (isActive) => {
-  return isActive ? 'success' : 'error';
+  return isActive ? "success" : "error";
 };
 
 const isOfferActive = computed(() => {
@@ -46,63 +46,93 @@ const isOfferActive = computed(() => {
 </script>
 
 <template>
-  <VDialog
-    :model-value="props.modelValue"
-    max-width="700px"
-    persistent
-  >
-    <VCard :loading="props.loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center p-4">
+  <VDialog :model-value="props.modelValue" max-width="900px" persistent>
+    <VCard :loading="props.loading">
+      <VCardTitle class="d-flex align-center pa-4">
         <span class="text-h5 font-weight-bold">Detalles de Oferta</span>
         <VSpacer />
+        <VBtn icon variant="text" @click="onCancel">
+          <VIcon icon="tabler-x" />
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
 
       <VCardText class="pa-6">
-        <div v-if="props.offerData" class="details-container">
-          <!-- Información General -->
-          <VRow class="mb-6">
-            <VCol cols="12">
-              <h3 class="text-h6 mb-4">Información General</h3>
-            </VCol>
-            
-            <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3">
-                <div class="text-caption text-medium-emphasis">Medico</div>
-                <div class="text-body-1 font-weight-medium">
+        <div v-if="props.offerData">
+          <h3 class="text-h6 mb-4">Información General</h3>
+
+          <VRow>
+            <VCol cols="12" md="4">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-2">
+                  <VIcon
+                    icon="tabler-stethoscope"
+                    class="me-2 text-medium-emphasis"
+                  />
+                  <span
+                    class="text-caption text-medium-emphasis font-weight-bold"
+                    >MÉDICO</span
+                  >
+                </div>
+                <div class="text-body-1 font-weight-bold text-high-emphasis">
                   {{ props.offerData.doctor_name }}
                 </div>
-                <div class="text-caption text-disabled">
+                <div class="text-caption text-disabled mt-1">
                   ID: {{ props.offerData.doctor_id }}
                 </div>
               </VCard>
             </VCol>
 
-            <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3">
-                <div class="text-caption text-medium-emphasis">Estatus</div>
+            <VCol cols="12" md="4">
+              <VCard
+                variant="tonal"
+                color="primary"
+                class="pa-4 h-100 d-flex flex-column justify-center align-center text-center"
+              >
+                <div class="text-overline mb-1">Descuento Aplicado</div>
+                <div class="text-h3 font-weight-bold text-primary">
+                  {{ props.offerData.discount }}%
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol cols="12" md="4">
+              <VCard
+                variant="outlined"
+                class="pa-4 h-100 d-flex flex-column justify-center"
+              >
+                <div class="d-flex align-center mb-2">
+                  <VIcon
+                    icon="tabler-activity"
+                    class="me-2 text-medium-emphasis"
+                  />
+                  <span
+                    class="text-caption text-medium-emphasis font-weight-bold"
+                    >ESTATUS ACTUAL</span
+                  >
+                </div>
                 <div class="d-flex align-center gap-2">
                   <VChip
                     :color="getStatusColor(props.offerData.is_active)"
-                    size="small"
-                    variant="flat"
+                    variant="elevated"
                   >
                     {{ getStatusText(props.offerData.is_active) }}
                   </VChip>
+
                   <VChip
                     v-if="isOfferActive"
                     color="success"
-                    size="small"
-                    variant="outlined"
+                    variant="tonal"
+                    prepend-icon="tabler-check"
                   >
                     Vigente
                   </VChip>
                   <VChip
                     v-else
                     color="error"
-                    size="small"
-                    variant="outlined"
+                    variant="tonal"
+                    prepend-icon="tabler-alert-circle"
                   >
                     No Vigente
                   </VChip>
@@ -110,71 +140,45 @@ const isOfferActive = computed(() => {
               </VCard>
             </VCol>
 
-            <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3">
-                <div class="text-caption text-medium-emphasis">Fecha de Inicio</div>
-                <div class="text-body-1 font-weight-medium">
+            <VCol cols="12" md="6">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-1">
+                  <VIcon
+                    icon="tabler-calendar-plus"
+                    class="me-2 text-success"
+                  />
+                  <span class="text-caption text-medium-emphasis"
+                    >Fecha de Inicio</span
+                  >
+                </div>
+                <div class="text-h6 font-weight-medium">
                   {{ formatDate(props.offerData.start_date) }}
                 </div>
               </VCard>
             </VCol>
 
-            <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3">
-                <div class="text-caption text-medium-emphasis">Fecha de Finalización</div>
-                <div class="text-body-1 font-weight-medium">
+            <VCol cols="12" md="6">
+              <VCard variant="outlined" class="pa-4 h-100">
+                <div class="d-flex align-center mb-1">
+                  <VIcon icon="tabler-calendar-minus" class="me-2 text-error" />
+                  <span class="text-caption text-medium-emphasis"
+                    >Fecha de Finalización</span
+                  >
+                </div>
+                <div class="text-h6 font-weight-medium">
                   {{ formatDate(props.offerData.end_date) }}
                 </div>
               </VCard>
             </VCol>
           </VRow>
-
-          <!-- Escalas de Descuento -->
-          <VRow>
-            <VCol cols="12">
-              <h3 class="text-h6 mb-4">Escalas de Descuento</h3>
-              
-              <VTable v-if="props.offerData.scales && props.offerData.scales.length > 0">
-                <thead>
-                  <tr>
-                    <th class="text-left">Volumen Mínimo de Productos</th>
-                    <th class="text-left">Volumen Máximo de Productos</th>
-                    <th class="text-left">% Descuento</th>
-                    <th class="text-left">Rango</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(scale, index) in props.offerData.scales" :key="scale.id || index">
-                    <td>{{ scale.min_volume }}</td>
-                    <td>{{ scale.max_volume }}</td>
-                    <td>
-                      <VChip size="small" color="primary" variant="flat">
-                        {{ scale.discount_percentage }}%
-                      </VChip>
-                    </td>
-                    <td class="text-caption text-disabled">
-                      {{ scale.min_volume }} - {{ scale.max_volume }} unidades
-                    </td>
-                  </tr>
-                </tbody>
-              </VTable>
-              
-              <VAlert
-                v-else
-                type="info"
-                variant="tonal"
-                class="mt-2"
-              >
-                No hay escalas de descuento definidas para esta oferta.
-              </VAlert>
-            </VCol>
-          </VRow>
         </div>
       </VCardText>
 
+      <VDivider />
+
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn color="primary" variant="flat" @click="onCancel">
+        <VBtn color="secondary" variant="tonal" @click="onCancel">
           Cerrar
         </VBtn>
       </VCardActions>
@@ -183,8 +187,5 @@ const isOfferActive = computed(() => {
 </template>
 
 <style scoped>
-.details-container {
-  max-height: 60vh;
-  overflow-y: auto;
-}
+/* No se requiere CSS adicional para scroll */
 </style>

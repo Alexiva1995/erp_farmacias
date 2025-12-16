@@ -405,11 +405,6 @@ class InvoiceActionService
             return ['status' => false, 'message' => null];
         }
 
-        if (!$invoice->autoOrder) {
-            \Log::error('Invoice missing autoOrder relation', ['invoice_id' => $invoice->id]);
-            return ['status' => false, 'message' => 'La factura no está asociada a ningún pedido.'];
-        }
-
         try {
             DB::transaction(function () use ($invoice) {
                 $detailIds = $invoice->details()->pluck('auto_order_details_id')->filter();
@@ -419,16 +414,18 @@ class InvoiceActionService
                         ->update(['status' => 0, 'received' => null]);
                 }
 
-                $orderId = $invoice->autoOrder->id;
-                $counts = DB::table('auto_order_details')
-                    ->where('order_id', $orderId)
-                    ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as completed')
-                    ->first();
+                if ($invoice->autoOrder) {
+                    $orderId = $invoice->autoOrder->id;
+                    $counts = DB::table('auto_order_details')
+                        ->where('order_id', $orderId)
+                        ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as completed')
+                        ->first();
 
-                if ($counts->total > 0 && $counts->total === $counts->completed) {
-                    DB::table('auto_orders')
-                        ->where('id', $orderId)
-                        ->update(['status' => 1]);
+                    if ($counts->total > 0 && $counts->total === $counts->completed) {
+                        DB::table('auto_orders')
+                            ->where('id', $orderId)
+                            ->update(['status' => 1]);
+                    }
                 }
 
                 $invoice->update(['status' => 'pending']);

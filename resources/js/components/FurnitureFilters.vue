@@ -184,10 +184,10 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros de Mobiliario" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por nombre del mobiliario..."
@@ -196,7 +196,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.selectedYear"
             :items="props.acquisitionYears"
@@ -210,7 +210,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <VSelect
             :model-value="props.depreciationFilter"
             :items="depreciationOptions"
@@ -223,11 +223,10 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Fecha Desde"
-            label="Fecha Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -238,11 +237,10 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Fecha Hasta"
-            label="Fecha Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,
