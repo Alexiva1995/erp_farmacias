@@ -2,7 +2,6 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
-import { VNumberInput } from "vuetify/components";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -414,9 +413,7 @@ const formatDate = (dateString) => {
                       <tr class="font-weight-bold bg-grey-50">
                         <td>Total Deducciones</td>
                         <td class="text-end text-error">
-                          {{
-                            displayAmount(settlement?.total_deductions ?? 0)
-                          }}
+                          {{ displayAmount(settlement?.total_deductions ?? 0) }}
                           Bs
                         </td>
                       </tr>
@@ -480,15 +477,13 @@ const formatDate = (dateString) => {
                 </div>
               </VCol>
               <VCol cols="12" md="4">
-                <VNumberInput
+                <AppTextField
                   v-model="percentage"
                   label="% Liquidación"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                  control-variant="stacked"
-                  :min="0"
-                  :max="100"
+                  placeholder="Ej: 25"
+                  type="number"
+                  suffix="%"
+                  autofocus
                 />
               </VCol>
               <VCol cols="12" md="4" class="text-end">
