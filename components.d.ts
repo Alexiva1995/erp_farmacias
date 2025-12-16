@@ -195,6 +195,7 @@ declare module 'vue' {
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']
     PaymentTable: typeof import('./resources/js/components/PaymentTable.vue')['default']
+    PaymentTableTotales: typeof import('./resources/js/components/PaymentTableTotales.vue')['default']
     PayslipFilters: typeof import('./resources/js/components/PayslipFilters.vue')['default']
     PayslipTable: typeof import('./resources/js/components/PayslipTable.vue')['default']
     PendingExpenseTable: typeof import('./resources/js/components/PendingExpenseTable.vue')['default']
@@ -299,6 +300,5 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

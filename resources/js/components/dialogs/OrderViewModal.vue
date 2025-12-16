@@ -236,6 +236,9 @@ const normalPayments = computed(() => {
               <VListItemTitle class="font-weight-medium me-4 mx-2">{{
                 `${product.title} (${product.laboratory})`
               }}</VListItemTitle>
+              <VListItemSubtitle class="me-4 mx-2">
+                {{ product.laboratory }}
+              </VListItemSubtitle>
 
               <template #append>
                 <div class="d-flex align-center">

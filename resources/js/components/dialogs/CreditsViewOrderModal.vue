@@ -41,17 +41,21 @@ const logoSrc = computed(() => {
 });
 
 const totalCredits = computed(() => {
-  return props.creditsData.reduce((sum, credit) => {
-    const creditAmount = parseFloat(credit.credit_amount) || 0;
-    return sum + creditAmount;
-  }, 0);
+  return props.creditsData
+    .reduce((sum, credit) => {
+      const creditAmount = parseFloat(credit.credit_amount) || 0;
+      return sum + creditAmount;
+    }, 0)
+    .toFixed(2);
 });
 
 const totalPendingAmount = computed(() => {
-  return props.creditsData.reduce((sum, credit) => {
-    const pendingAmount = parseFloat(credit.pending_amount) || 0;
-    return sum + pendingAmount;
-  }, 0);
+  return props.creditsData
+    .reduce((sum, credit) => {
+      const pendingAmount = parseFloat(credit.pending_amount) || 0;
+      return sum + pendingAmount;
+    }, 0)
+    .toFixed(2);
 });
 
 const filteredPayments = computed(() => {
