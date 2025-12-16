@@ -26,6 +26,7 @@ class UpdatePaymentRuleSupplierRequest extends FormRequest
         return [
             'rules' => 'required|array',
             'rules.*.days' => 'required|integer|min:0',
+            'rules.*.id' => 'nullable|integer',
             'rules.*.discount_percentage' => 'required|numeric|min:0|max:100'
         ];
     }

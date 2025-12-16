@@ -12,12 +12,16 @@ const productosTable = computed(() => {
 
 <template>
   <VCard>
-    <VTable v-if="productosTable.length > 0" class="text-no-wrap">
+    <VTable
+      v-if="productosTable.length > 0"
+      density="compact"
+      class="text-no-wrap"
+    >
       <thead>
         <tr>
           <th>Proveedor</th>
           <th>ID</th>
-          <th style="width: 300px; max-width: 300px">Producto</th>
+          <th style="min-width: 300px">Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo A.</th>
@@ -29,7 +33,7 @@ const productosTable = computed(() => {
       </thead>
 
       <tbody>
-        <tr v-for="item in productosTable" :key="item.uuid || item.product.id">
+        <tr v-for="item in productosTable" :key="item.uuid">
           <td>
             {{ item.supplier.name }}
           </td>
@@ -38,7 +42,7 @@ const productosTable = computed(() => {
           </td>
 
           <td style="max-width: 300px">
-            <div class="d-flex align-center">
+            <div class="d-flex align-center py-2">
               <VAvatar
                 v-if="item.product.photo_url"
                 size="34"
@@ -65,8 +69,12 @@ const productosTable = computed(() => {
             </div>
 
             <VTooltip activator="parent" location="top">
-              {{ item.product.name }} -
-              {{ item.product.laboratory ? item.product.laboratory.name : "" }}
+              {{ item.product.name }}
+              {{
+                item.product.laboratory
+                  ? " - " + item.product.laboratory.name
+                  : ""
+              }}
             </VTooltip>
           </td>
 
@@ -77,11 +85,11 @@ const productosTable = computed(() => {
             {{ item.product.promedio_calculado }}
           </td>
           <td>
-            <VIcon icon="tabler-currency-dollar" size="16" class="me-1" />
+            <VIcon icon="tabler-currency-dollar" size="small" />
             {{ parseFloat(item.product.unit_cost).toFixed(2) }}
           </td>
           <td>
-            <VIcon icon="tabler-currency-dollar" size="16" class="me-1" />
+            <VIcon icon="tabler-currency-dollar" size="small" />
             {{ parseFloat(item.precio_final_supplier).toFixed(2) }}
           </td>
           <td>{{ item.product.stock }}</td>
@@ -103,7 +111,6 @@ const productosTable = computed(() => {
               v-model="item.reponer"
               density="compact"
               hide-details
-              variant="outlined"
               style="min-width: 100px"
               :max="item.productSupplier.quantity"
               :suffix="'/' + item.productSupplier.quantity"

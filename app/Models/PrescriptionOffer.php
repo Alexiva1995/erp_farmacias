@@ -14,6 +14,7 @@ class PrescriptionOffer extends Model
         'is_active',
         'products',
         'total_cost',
+        'name'
     ];
 
     public $timestamps = true;
@@ -101,8 +102,8 @@ class PrescriptionOffer extends Model
     {
         $now = now();
         return $this->is_active &&
-               (!$this->start_date || $this->start_date <= $now) &&
-               (!$this->end_date || $this->end_date >= $now);
+            (!$this->start_date || $this->start_date <= $now) &&
+            (!$this->end_date || $this->end_date >= $now);
     }
 
     /**
@@ -136,7 +137,7 @@ class PrescriptionOffer extends Model
     public function addProduct(int $productId, float $salePrice, int $quantity = 1): void
     {
         $products = $this->products ?? [];
-        
+
         // Verificar si el producto ya existe
         $existingIndex = collect($products)->search(function ($item) use ($productId) {
             return $item['product_id'] === $productId;
@@ -168,7 +169,7 @@ class PrescriptionOffer extends Model
     public function updateProductQuantity(int $productId, int $quantity): bool
     {
         $products = $this->products ?? [];
-        
+
         $existingIndex = collect($products)->search(function ($item) use ($productId) {
             return $item['product_id'] === $productId;
         });
@@ -189,7 +190,7 @@ class PrescriptionOffer extends Model
     public function removeProduct(int $productId): bool
     {
         $products = $this->products ?? [];
-        
+
         $filteredProducts = array_filter($products, function ($item) use ($productId) {
             return $item['product_id'] !== $productId;
         });
@@ -229,7 +230,7 @@ class PrescriptionOffer extends Model
             $productData = collect($this->products)->firstWhere('product_id', $product->id);
             $subtotal = $productData['sale_price'] * $productData['quantity'];
             $discountAmount = $subtotal * ($this->discount_percentage / 100);
-            
+
             return [
                 'product' => $product,
                 'sale_price' => $productData['sale_price'],
