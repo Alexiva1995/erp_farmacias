@@ -13,7 +13,7 @@ class GeneratePayslip extends Command
      *
      * @var string
      */
-    protected $signature = 'app:generate-payslip';
+    protected $signature = 'app:generate-payslip {--pay-food-voucher : Pagar bono de alimentacion}';
 
     /**
      * The console command description.
@@ -28,7 +28,8 @@ class GeneratePayslip extends Command
     public function handle(PayslipServices $payslipServices)
     {
         $targetDate = Carbon::today();
-        $payslipServices->generate($targetDate);
+        $payFoodVoucher = $this->option('pay-food-voucher');
+        $payslipServices->generate($targetDate, $payFoodVoucher);
 
         $date = $targetDate->toDateString();
         $this->info("Payslip ($date) generated successfully.");

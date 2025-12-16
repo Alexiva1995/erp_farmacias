@@ -196,6 +196,7 @@ declare module 'vue' {
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']
     PaymentTable: typeof import('./resources/js/components/PaymentTable.vue')['default']
     PaymentTableTotales: typeof import('./resources/js/components/PaymentTableTotales.vue')['default']
+    PayslipFilters: typeof import('./resources/js/components/PayslipFilters.vue')['default']
     PayslipTable: typeof import('./resources/js/components/PayslipTable.vue')['default']
     PendingExpenseTable: typeof import('./resources/js/components/PendingExpenseTable.vue')['default']
     PendingPaymentModal: typeof import('./resources/js/components/dialogs/PendingPaymentModal.vue')['default']

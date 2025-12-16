@@ -41,6 +41,11 @@ class CreateExpenseRequest extends FormRequest
             "is_deductible"          =>    "nullable|boolean:strict",
             "iva"                    =>    "nullable|boolean:strict",
             "expense_date"           =>    "required|date",
+            "exempt_amount"          =>    "nullable|numeric|min:0",
+            "taxable_base"           =>    "nullable|numeric|min:0",
+            "tax_amount"             =>    "nullable|numeric|min:0",
+            "exchange_rate"          =>    "nullable|numeric|min:0",
+            "total_usd"              =>    "nullable|numeric|min:0",
             "user_id"                =>    "required|numeric|exists:users,id",
             "count"                  =>    [
                 "required",
@@ -54,7 +59,9 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_PAYPAL,
                 ])
             ],
+            "account"                =>    "nullable|string|max:255",
             'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
+            'conversion_rate_to_bs' => ['nullable','numeric','min:0'],
         ];
     }
 
@@ -114,6 +121,21 @@ class CreateExpenseRequest extends FormRequest
     }
 
 
+    protected function withValidator(Validator $validator): void
+    {
+        $validator->after(function ($validator) {
+            // Si es deducible y la moneda no es BS, se requiere la tasa de conversión
+            if ($this->is_deductible === true && $this->currency !== 'BS') {
+                if (empty($this->conversion_rate_to_bs) || $this->conversion_rate_to_bs <= 0) {
+                    $validator->errors()->add(
+                        'conversion_rate_to_bs',
+                        'La tasa de conversión a BS es obligatoria cuando el gasto es deducible y la moneda no es BS.'
+                    );
+                }
+            }
+        });
+    }
+
     protected function failedValidation(Validator $validator): JsonResponse
     {
         $errors = $validator->errors();
@@ -135,8 +157,15 @@ class CreateExpenseRequest extends FormRequest
             "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
+            "account"                 =>    $this->account ?? null,
             "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
             "amount_bs"              =>    $this->amount_bs,
+            "conversion_rate_to_bs"   =>    $this->conversion_rate_to_bs ?? null,
+            "exempt_amount"           =>    $this->exempt_amount ?? null,
+            "taxable_base"            =>    $this->taxable_base ?? null,
+            "tax_amount"              =>    $this->tax_amount ?? null,
+            "exchange_rate"           =>    $this->exchange_rate ?? null,
+            "total_usd"               =>    $this->total_usd ?? null,
         ]);
     }
 }

@@ -19,7 +19,14 @@ class ExpensesRepository
 
     public function createGasto(CreateExpenseData $data): Expense
     {
-        return Expense::create($data->toArray());
+        $expenseData = $data->toArray();
+        
+        // Asegurar que expense_date sea solo la fecha sin hora
+        if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
+            $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
+        }
+        
+        return Expense::create($expenseData);
     }
 
     public function createGastoRecurente(CreateExpenseRecurrenceData $data): Expense
@@ -119,7 +126,7 @@ class ExpensesRepository
         }
 
         if (array_key_exists("type_of_expense", $filtros)) {
-            if (count($filtros) > 0) {
+            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
                 $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
             }
         }
@@ -133,7 +140,7 @@ class ExpensesRepository
         }
 
         if (array_key_exists("status", $filtros)) {
-            if (count($filtros) > 0) {
+            if (is_array($filtros["status"]) && count($filtros["status"]) > 0) {
                 $consulta->whereIn("status", $filtros["status"]);
             }
         }
@@ -155,12 +162,20 @@ class ExpensesRepository
         }
 
 
-        if (array_key_exists("hasInvoice", $filtros) && $filtros["hasInvoice"] === 1) {
-            $consulta->where("has_invoice", 1);
+        if (array_key_exists("hasInvoice", $filtros)) {
+            if ($filtros["hasInvoice"] === 1 || $filtros["hasInvoice"] === true) {
+                $consulta->where("has_invoice", 1);
+            } elseif ($filtros["hasInvoice"] === 0 || $filtros["hasInvoice"] === false) {
+                $consulta->where("has_invoice", 0);
+            }
         }
 
-        if (array_key_exists("isDeductible", $filtros) && $filtros["isDeductible"] === 1) {
-            $consulta->where("is_deductible", 1);
+        if (array_key_exists("isDeductible", $filtros)) {
+            if ($filtros["isDeductible"] === 1 || $filtros["isDeductible"] === true) {
+                $consulta->where("is_deductible", 1);
+            } elseif ($filtros["isDeductible"] === 0 || $filtros["isDeductible"] === false) {
+                $consulta->where("is_deductible", 0);
+            }
         }
 
         return $consulta;
