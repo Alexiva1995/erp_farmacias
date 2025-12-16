@@ -171,9 +171,8 @@ const usdPayments = computed(() => {
 
 const usdPaymentsTotales = computed(() => {
   const totals = globalTotals.value;
-  const suma = totals.total_usd + totals.total_usd_cash_conversion;
   const paymentsList = [
-    { label: "Total USD", amount: suma, currency: "USD" },
+    { label: "Total USD", amount: totals.total_usd, currency: "USD" },
   ];
   return paymentsList.filter((p) => p.amount != 0);
 });
