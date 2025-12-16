@@ -288,7 +288,7 @@ const sortedRules = computed(() => {
           :disabled="!canSave"
           class="flex-grow-1 w-0"
         >
-          Guardar Cambios
+          Guardar
         </VBtn>
       </VCardActions>
     </VCard>

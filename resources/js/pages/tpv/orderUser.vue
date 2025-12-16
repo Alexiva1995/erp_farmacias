@@ -93,6 +93,23 @@ const changeAmountForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 const creditForPrint = ref(false);
 
+const selectedDiscountType = ref(null);
+const activeDoctorOffers = ref([]);
+const selectedDoctorOffer = ref(null);
+const loadingDoctorOffers = ref(false);
+
+const activePrescriptionOffers = ref([]);
+const prescriptionFile = ref(null);
+const activeCompanyOffers = ref([]);
+const selectedCompanyId = ref(null);
+
+const currentPrescriptionDiscountPercentage = computed(() => {
+  if (activePrescriptionOffers.value.length > 0) {
+    return activePrescriptionOffers.value[0].discount_percentage;
+  }
+  return 0;
+});
+
 const currentGroupId = ref(null);
 
 const fetchProducts = async () => {
@@ -146,6 +163,277 @@ const fetchSelectOptions = async () => {
   }
 };
 
+const fetchDoctorOffers = async () => {
+  loadingDoctorOffers.value = true;
+  try {
+    const response = await axios.get("/tpv/promotions/doctor-offer", {
+      params: {
+        per_page: 100,
+        sort_by: "id",
+        sort_order: "desc",
+      },
+    });
+
+    if (response.data.success) {
+      activeDoctorOffers.value = response.data.data.map((offer) => ({
+        id: offer.id,
+        title: `${offer.doctor.name} - ${offer.discount}%`,
+        value: offer.id,
+        percentage: parseFloat(offer.discount),
+        doctor_id: offer.doctor_id,
+      }));
+    }
+  } catch (error) {
+    console.error("Error fetching doctor offers:", error);
+    toast.error("Error al cargar las ofertas de médicos.");
+  } finally {
+    loadingDoctorOffers.value = false;
+  }
+};
+
+const fetchPrescriptionOffers = async () => {
+  try {
+    const response = await axios.get("/tpv/promotions/prescription-offer", {
+      params: {
+        is_active: true,
+        per_page: 1,
+        sort_by: "discount_percentage",
+        sort_order: "desc",
+      },
+    });
+    if (response.data.success) {
+      activePrescriptionOffers.value = response.data.data;
+    }
+  } catch (error) {
+    console.error("Error fetching prescription offers:", error);
+  }
+};
+
+const fetchCompanyOffers = async () => {
+  try {
+    const response = await axios.get("/tpv/promotions/company-offer", {
+      params: {
+        is_active: true,
+        per_page: 100,
+        sort_by: "id",
+        sort_order: "desc",
+      },
+    });
+
+    if (response.data && response.data.data) {
+      activeCompanyOffers.value = response.data.data.map((offer) => {
+        const scales = offer.scales || [];
+        // Calculate min and max percentage for display
+        let discountText = "";
+        if (scales.length > 0) {
+          const percentages = scales.map((s) =>
+            parseFloat(s.discount_percentage)
+          );
+          const minP = Math.min(...percentages);
+          const maxP = Math.max(...percentages);
+          discountText = minP === maxP ? `${minP}%` : `${minP}-${maxP}%`;
+        }
+
+        return {
+          title: `${offer.company?.name || "N/A"} ${
+            discountText ? "- " + discountText : ""
+          }`,
+          value: offer.company_id,
+          scales: scales,
+          id: offer.id,
+        };
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching company offers:", error);
+  }
+};
+
+const handlePrescriptionFileSelected = (file) => {
+  prescriptionFile.value = file;
+  if (file && activePrescriptionOffers.value.length > 0) {
+    // Apply discount from the first active offer (highest discount due to sort)
+    const offer = activePrescriptionOffers.value[0];
+
+    orderItems.value = orderItems.value.map((item) => {
+      if (!item.originalPrice) {
+        item.originalPrice = item.price;
+        item.originalPriceBs = item.price_bs;
+        item.originalPriceCop = item.price_cop;
+      }
+
+      const discountFactor = 1 - offer.discount_percentage / 100;
+
+      return {
+        ...item,
+        price: item.originalPrice * discountFactor,
+        price_bs: item.originalPriceBs * discountFactor,
+        price_cop: item.originalPriceCop * discountFactor,
+
+        discountApplied: true, // Standardize flag
+        discountSource: "prescription",
+        discountSourceId: offer.id,
+        appliedDiscountPercentage: offer.discount_percentage,
+      };
+    });
+    toast.success(
+      `Descuento de receta del ${offer.discount_percentage}% aplicado.`
+    );
+  } else {
+    // Revert changes if file removed or no offer
+    handleDoctorDiscountSelected(null); // Reuse revert logic or make a shared revert function
+    // Since handleDoctorDiscountSelected(null) reverts to originalPrice, it works for this too
+    // BUT we should be careful if we want to support stacking (likely not based on UI)
+    // For now, assuming mutually exclusive discounts based on selectedDiscountType
+  }
+};
+
+const handleDoctorDiscountSelected = (offerId) => {
+  const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
+  selectedDoctorOffer.value = offer;
+
+  if (offer) {
+    applyDiscount(offer.percentage, {
+      type: "doctor",
+      name: offer.title,
+      id: offer.id,
+    });
+  } else {
+    removeDiscount();
+    selectedDoctorOffer.value = null;
+    toast.info("Descuento de médico removido.");
+  }
+};
+
+const handleCompanyDiscountSelected = (companyId) => {
+  selectedCompanyId.value = companyId;
+  validateAndApplyCompanyDiscount();
+};
+
+const validateAndApplyCompanyDiscount = () => {
+  if (!selectedCompanyId.value) {
+    if (selectedDiscountType.value === "Empresa") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activeCompanyOffers.value.find(
+    (o) => o.value === selectedCompanyId.value
+  );
+  if (!offer) return;
+
+  // Calculate total quantity of items (excluding filtered items if any logic existed for that, but usually total quantity)
+  // Assuming company discount applies to ALL items or requires total volume of order
+  let totalQuantity = 0;
+  orderItems.value.forEach((item) => {
+    totalQuantity += item.selectedQuantity || 0;
+  });
+
+  // Find matching scale
+  // scale: { min_volume, max_volume, discount_percentage }
+  const validScale = offer.scales.find(
+    (scale) =>
+      totalQuantity >= scale.min_volume && totalQuantity <= scale.max_volume
+  );
+
+  if (validScale) {
+    applyDiscount(parseFloat(validScale.discount_percentage), {
+      type: "company",
+      name: offer.title,
+      id: offer.id,
+    });
+    // toast.success(`Descuento de empresa ${validScale.discount_percentage}% aplicado.`); // Optional: prevent spamming toasts on quantity change
+  } else {
+    removeDiscount();
+    toast.warning(
+      `La cantidad total (${totalQuantity}) no cumple con los rangos de volumen para el descuento de esta empresa.`
+    );
+  }
+};
+
+const applyDiscount = (percentage, source) => {
+  orderItems.value = orderItems.value.map((item) => {
+    if (!item.originalPrice) {
+      item.originalPrice = item.price;
+      item.originalPriceBs = item.price_bs;
+      item.originalPriceCop = item.price_cop;
+    }
+
+    const discountFactor = 1 - percentage / 100;
+
+    return {
+      ...item,
+      price: item.originalPrice * discountFactor,
+      price_bs: item.originalPriceBs * discountFactor,
+      price_cop: item.originalPriceCop * discountFactor,
+      discountApplied: true,
+      discountSource: source.type,
+      discountSourceId: source.id,
+      appliedDiscountPercentage: percentage,
+    };
+  });
+};
+
+const removeDiscount = () => {
+  orderItems.value = orderItems.value.map((item) => {
+    if (item.originalPrice) {
+      return {
+        ...item,
+        price: item.originalPrice,
+        price_bs: item.originalPriceBs,
+        price_cop: item.originalPriceCop,
+        discountApplied: false,
+        discountSource: null,
+        discountSourceId: null,
+        appliedDiscountPercentage: 0,
+      };
+    }
+    return item;
+  });
+};
+
+// Refactor handlePrescriptionFileSelected to use common apply/remove
+// Leaving it separate for now as it was already implemented, but could reuse applyDiscount
+
+watch(selectedDiscountType, (newValue) => {
+  if (newValue !== "Medico") {
+    selectedDoctorOffer.value = null;
+    // Ensure we don't accidentally remove subscription/company discount if we just added one?
+    // But here we switch types, so yes, clear others.
+    // Since applyDiscount overwrites based on orderItems map logic using originalPrice, it should be fine to "remove" first
+    // effectively resetting.
+    if (selectedDiscountType.value === "Medico") removeDiscount();
+  }
+  if (newValue !== "Recipe") {
+    prescriptionFile.value = null;
+    if (selectedDiscountType.value === "Recipe") removeDiscount();
+  }
+  if (newValue !== "Empresa") {
+    selectedCompanyId.value = null;
+    if (selectedDiscountType.value === "Empresa") removeDiscount();
+  }
+
+  // Explicit removal when clearing type (newValue is null)
+  if (!newValue) {
+    removeDiscount();
+  }
+});
+
+// Watch orderItems for quantity changes (mapped to string key) to re-validate company discount
+// This avoids infinite loop since applying discount (changing prices) won't change the key
+watch(
+  () =>
+    orderItems.value
+      .map((i) => `${i.product_id}:${i.selectedQuantity}`)
+      .join("|"),
+  (newVal) => {
+    if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+      validateAndApplyCompanyDiscount();
+    }
+  }
+);
+
 let debounceTimer;
 watch(
   [
@@ -176,6 +464,9 @@ onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
   consultAllcomapanies();
+  fetchDoctorOffers();
+  fetchPrescriptionOffers();
+  fetchCompanyOffers();
 });
 
 const formatOrderItemForFrontend = (backendItem) => {
@@ -929,6 +1220,15 @@ const handleBuysCompletion = async (
       changeAmount: changeAmount,
       changeAmountUSD: changeAmountUSD,
       spe: switchStates.spe,
+      items: orderItems.value.map((item) => ({
+        order_detail_id: item.order_detail_id,
+        price: item.price,
+        discount_percentage: item.discountApplied
+          ? item.appliedDiscountPercentage
+          : null,
+        discount_type: item.discountApplied ? item.discountSource : null,
+        discount_source_id: item.discountApplied ? item.discountSourceId : null,
+      })),
     };
 
     const response = await axios.post(
@@ -1129,6 +1429,15 @@ const addReserverOrder = async () => {
         @open-buys-modal="openBuysModal"
         @add-quotation-products="handleAddQuotationProducts"
         @add-reserved-order="addReserverOrder"
+        v-model:selected-discount-type="selectedDiscountType"
+        :active-doctor-offers="activeDoctorOffers"
+        :prescription-discount-percentage="
+          currentPrescriptionDiscountPercentage
+        "
+        :active-company-offers="activeCompanyOffers"
+        @doctor-discount-selected="handleDoctorDiscountSelected"
+        @prescription-file-selected="handlePrescriptionFileSelected"
+        @company-discount-selected="handleCompanyDiscountSelected"
       />
     </div>
     <div v-else>

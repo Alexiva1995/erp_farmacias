@@ -123,16 +123,6 @@ const handleReturnToList = () => {
 
 <template>
   <div>
-    <VRow>
-      <VCol cols="12">
-        <h4 class="text-h4">Facturas Finalizadas</h4>
-        <p>
-          Consulta el historial de facturas que ya han sido aprobadas y
-          procesadas.
-        </p>
-      </VCol>
-    </VRow>
-
     <div v-if="currentView === 'list'">
       <InvoiceFilters
         v-model:searchQuery="searchQuery"

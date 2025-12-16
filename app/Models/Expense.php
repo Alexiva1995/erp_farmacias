@@ -40,14 +40,22 @@ class Expense extends Model
         'iva',
         'status',
         'count',
+        'account',
         'amount_bs',
-        'type_of_expense'
+        'conversion_rate_to_bs',
+        'type_of_expense',
+        'exempt_amount',
+        'taxable_base',
+        'tax_amount',
+        'exchange_rate',
+        'total_usd',
     ];
 
      protected $casts = [
         'is_deductible' => 'boolean',
         'has_invoice' => 'boolean', 
         'iva' => 'boolean',
+        'expense_date' => 'date',
     ];
 
     public function category(): BelongsTo

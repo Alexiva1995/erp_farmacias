@@ -30,10 +30,10 @@ const fetchPayslip = async () => {
 onMounted(fetchPayslip);
 
 const fullHeaders = [
-  { title: "ID", key: "id", sortable: false },
+  // { title: "ID", key: "id", sortable: false },
   { title: "Nombre del Trabajador", key: "name", sortable: false },
   { title: "Cédula", key: "identification", sortable: false },
-  { title: "Cargo", key: "role", sortable: false },
+  // { title: "Cargo", key: "role", sortable: false },
   { title: "Salario Mensual", key: "base_salary_voucher", sortable: false },
   { title: "Sueldo a Pagar", key: "salary_to_pay_voucher", sortable: false },
   { title: "Bono de alimentación", key: "food_voucher", sortable: false },

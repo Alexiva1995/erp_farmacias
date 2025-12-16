@@ -4,13 +4,15 @@ import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfPayslipsGenerator from "@/utils/pdfPayslipGenerator";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 
 const loading = ref(false);
 const page = ref(1);
 const totalPayslips = ref(0);
 const itemsPerPage = ref(10);
 const payslips = ref([]);
+const startDate = ref(null);
+const endDate = ref(null);
 
 const selectedPayslip = ref(null);
 const showFinalizeDialog = ref(false);
@@ -18,7 +20,14 @@ const showFinalizeDialog = ref(false);
 const fetchPayslips = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get("/finances/payslips");
+    const { data } = await axios.get("/finances/payslips", {
+      params: {
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+      },
+    });
     payslips.value = data.data.data;
     totalPayslips.value = data.data.total;
   } catch (error) {
@@ -26,6 +35,16 @@ const fetchPayslips = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+watch([page, itemsPerPage, startDate, endDate], () => {
+  fetchPayslips();
+});
+
+const handleClearFilters = () => {
+  startDate.value = null;
+  endDate.value = null;
+  page.value = 1;
 };
 
 onMounted(() => fetchPayslips());
@@ -93,6 +112,13 @@ const handleDownloadPdf = async (id, type) => {
       :selected-payslip="selectedPayslip"
       @refresh-table="fetchPayslips"
       @close="handleClosePayslip"
+    />
+
+    <PayslipFilters
+      v-model:startDate="startDate"
+      v-model:endDate="endDate"
+      @clear="handleClearFilters"
+      @generated="fetchPayslips"
     />
 
     <PayslipTable

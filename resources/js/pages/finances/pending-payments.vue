@@ -4,6 +4,7 @@ import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 // Estado reactivo
 const loading = ref(false);
@@ -13,6 +14,9 @@ const totalSuppliers = ref(0);
 const totalAmount = ref(0);
 const statistics = ref({});
 const exchangeRates = ref({});
+
+//Accediendo a la ruta
+const route = useRoute();
 
 // Totales por moneda
 const totalsByCurrency = ref({
@@ -688,6 +692,11 @@ watch(
 onMounted(async () => {
   await fetchExchangeRates();
   await fetchSuppliers();
+
+  const supplierIdFromRoute = route.query.supplierId;
+  if (supplierIdFromRoute) {
+    selectedSupplier.value = Number(supplierIdFromRoute);
+  }
   await fetchPendingPayments();
   await fetchStatistics();
 });
