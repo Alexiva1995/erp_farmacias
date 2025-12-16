@@ -97,6 +97,8 @@ const paymentMethodsByCurrency = {
 
 const exchangeRates = ref({});
 
+const isCredit = (value) => value === "credit" || value === "credit_card";
+
 const continueButtonText = computed(() => {
   return currentProgress.value === 100 ? "Finalizar" : "Continuar";
 });
@@ -310,13 +312,13 @@ const addPaymentBlock = () => {
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
   if (remainingAmount.value <= 0) return false;
-  if (payments.value[0].method === "credit") return false;
+  if (isCredit(payments.value[0].method)) return false;
   if (!lastPayment.method) return false;
   if (isTransferMethod(lastPayment.method) && !lastPayment.reference)
     return false;
 
   if (
-    lastPayment.method !== "credit" &&
+    !isCredit(lastPayment.method) &&
     (Number(lastPayment.amount) <= 0 || lastPayment.amount === null)
   ) {
     return false;
@@ -362,7 +364,7 @@ const handleCompletePurchase = () => {
     }
   });
 
-  if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
+  if (currentProgress.value === 0 && !isCredit(payments.value[0].method)) {
     let totalToPayCalculated = props.totalAmount;
 
     /*if (speSwitch.value) {
@@ -439,10 +441,7 @@ const handleCompletePurchase = () => {
 
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;
-      if (
-        p.method !== "credit" &&
-        (Number(p.amount) <= 0 || p.amount === null)
-      ) {
+      if (!isCredit(p.method) && (Number(p.amount) <= 0 || p.amount === null)) {
         return true;
       }
       return false;
@@ -613,7 +612,7 @@ const totalSPESavings = computed(() => {
 });
 
 const hasCreditPayment = computed(() => {
-  return payments.value.some((payment) => payment.method === "credit");
+  return payments.value.some((payment) => isCredit(payment.method));
 });
 
 const totalSelectedQuantity = computed(() => {
@@ -983,7 +982,7 @@ const handleMethodChange = (payment, newMethod) => {
                 <VRow
                   class="payment-block"
                   v-if="
-                    payment.method !== 'balance' && payment.method !== 'credit'
+                    payment.method !== 'balance' && !isCredit(payment.method)
                   "
                   :key="payment.method"
                 >
@@ -1039,7 +1038,7 @@ const handleMethodChange = (payment, newMethod) => {
                   </VCol>
                 </VRow>
 
-                <VRow v-if="payment.method === 'credit'">
+                <VRow v-if="isCredit(payment.method)">
                   <VCol cols="12" sm="6">
                     <VTextField
                       :model-value="
