@@ -85,9 +85,7 @@ const validateForm = () => {
 };
 
 const generateResignation = async () => {
-
   if (!validateForm()) {
-
     return;
   }
 
@@ -109,9 +107,7 @@ const generateResignation = async () => {
     // Solo agregar request_date si no es edición
     if (!props.isEdit) {
       resignationData.request_date = requestDate.value;
-
     } else {
-
     }
 
     // Agregar flag de edición
@@ -148,22 +144,16 @@ const generateResignation = async () => {
     emit("resignation-generated", resignationData);
     closeDialog();
   } catch (error) {
-
     // Mostrar el contenido completo del error si es un Blob
     if (error.response?.data instanceof Blob) {
       error.response.data.text().then((text) => {
-
         try {
           const errorData = JSON.parse(text);
-
-        } catch (e) {
-
-        }
+        } catch (e) {}
       });
     }
 
     if (error.response?.status === 409) {
-
       // Error de duplicado - mostrar modal de confirmación
       duplicateResignationData.value = error.response.data.existing_resignation;
       showDuplicateConfirm.value = true;
@@ -494,7 +484,7 @@ const maxDate = computed(() => {
           class="flex-grow-1 w-0"
         >
           <VIcon icon="tabler-edit" class="me-2" />
-          Editar Renuncia
+          Editar Renuncia!
         </VBtn>
       </VCardActions>
     </VCard>

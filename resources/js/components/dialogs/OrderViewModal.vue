@@ -104,6 +104,9 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
 const getItemPriceByCurrency = (item, currency) => {
+  if (item.fixed_price !== undefined && item.fixed_price !== null) {
+    return item.fixed_price;
+  }
   const taxRate = item.taxRate || 0;
   let basePrice = 0;
   if (currency === "BS") {
@@ -174,48 +177,63 @@ const normalPayments = computed(() => {
           >
           <div class="text-right d-flex flex-column align-end">
             <p class="text-black font-weight-regular text-h6 mb-0">
-              Fecha: {{ formatDateTime(props.orderData.created_at, "date") }}
-              {{ formatDateTime(props.orderData.created_at, "time") }}
+              Fecha:
+              {{
+                orderData.created_at
+                  ? formatDateTime(props.orderData.created_at, "date")
+                  : "N/A"
+              }}
+              {{
+                orderData.created_at
+                  ? formatDateTime(props.orderData.created_at, "time")
+                  : ""
+              }}
             </p>
           </div>
         </div>
         <div class="d-flex justify-space-between align-start mb-1">
           <span class="font-weight-bold text-h6">Cajero:</span>
           <span class="font-weight-bold text-h6">{{
-            orderData.seller.username
+            orderData.seller?.username || "N/A"
           }}</span>
         </div>
 
         <div class="d-flex justify-space-between align-start mb-1">
           <span class="font-weight-bold text-h6">Cliente:</span>
           <span class="font-weight-bold text-h6"
-            >{{ orderData.client.name }} {{ orderData.client.last_name }}</span
+            >{{ orderData.client?.name || "" }}
+            {{ orderData.client?.last_name || "" }}</span
           >
         </div>
 
         <div class="d-flex justify-space-between align-start mb-1">
           <span class="font-weight-bold text-h6">Documento:</span>
           <span class="font-weight-bold text-h6"
-            >{{ orderData.client.identification_type }}
-            {{ orderData.client.identification }}</span
+            >{{ orderData.client?.identification_type || "" }}
+            {{ orderData.client?.identification || "" }}</span
           >
         </div>
 
         <div class="d-flex flex-wrap justify-space-between textoPrint">
           <p class="font-weight-bold text-h6">Métodos de Pago</p>
           <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in normalPayments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold text-h6 my-1"
-            >
-              <span
-                >{{
-                  getPaymentMethodLabel(payment.method, payment.currency)
-                }}
-                ({{ payment.currency }})</span
+            <template v-if="normalPayments.length">
+              <p
+                v-for="(payment, pIndex) in normalPayments"
+                :key="`ticket-payment-${pIndex}`"
+                class="font-weight-bold text-h6 my-1"
               >
-            </p>
+                <span
+                  >{{
+                    getPaymentMethodLabel(payment.method, payment.currency)
+                  }}
+                  ({{ payment.currency }})</span
+                >
+              </p>
+            </template>
+            <template v-else>
+              <p class="font-weight-bold text-h6 my-1">N/A</p>
+            </template>
           </div>
         </div>
 
@@ -233,12 +251,12 @@ const normalPayments = computed(() => {
                 <span>{{ product.selectedQuantity }} x</span>
               </template>
 
-              <VListItemTitle class="font-weight-medium me-4 mx-2">{{
-                `${product.title} (${product.laboratory})`
+              <VListItemTitle class="font-weight-medium me-4 mx-2 text-wrap">{{
+                `${product.title} ${
+                  product.laboratory ? "(" + product.laboratory + ")" : ""
+                }`
               }}</VListItemTitle>
-              <VListItemSubtitle class="me-4 mx-2">
-                {{ product.laboratory }}
-              </VListItemSubtitle>
+              <!-- Subtitle removed/merged as history might not have explicit lab separate -->
 
               <template #append>
                 <div class="d-flex align-center">
@@ -263,7 +281,10 @@ const normalPayments = computed(() => {
             {{ formatCurrency(totalAmount, selectedCurrency) }}
           </span>
         </div>
-        <div class="ticket-total d-flex flex-wrap justify-space-between">
+        <div
+          class="ticket-total d-flex flex-wrap justify-space-between"
+          v-if="normalPayments.length"
+        >
           <p class="font-weight-bold text-h6 mt-2">PAGO:</p>
           <div class="text-end">
             <p

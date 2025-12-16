@@ -43,7 +43,7 @@ const handleSortClick = (option) => {
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <!-- La sección de filtros se mantiene exactamente igual -->
     <VCardText>
       <VRow>
