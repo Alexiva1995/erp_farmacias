@@ -120,7 +120,7 @@ class CashClosureActionService
 
         $dailyClosure = DailyCashClosure::create([
             'total_sales' => $cashClosings->sum('total_sales'),
-            'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
+            'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit') + $cashClosings->sum('usd_credit'),
             'total_cop' => $cashClosings->sum('total_cop'),
             'total_bs' => $cashClosings->sum('total_bs'),
             'bs_card' => $cashClosings->sum('bs_card'),

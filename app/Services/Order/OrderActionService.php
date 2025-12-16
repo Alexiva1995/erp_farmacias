@@ -496,7 +496,9 @@ class OrderActionService
 
             $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
             $total_cop = ($current_cash->cop_cash + $current_cash->cop_transfer) - $current_cash->cop_conversion;
-            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance + $current_cash->usd_conversion;
+            //la diferencia por cambio no se aregar al total de usd $current_cash->usd_conversion
+            //$total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance + $current_cash->usd_conversion;
+            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance;
 
             $current_cash->total_bs = $total_bs;
             $current_cash->total_cop = $total_cop;
@@ -655,9 +657,9 @@ class OrderActionService
                 Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
             } else {
 
-                foreach ($order->paymentMethods as $payment) {
-                    $amount = $payment->amount;
-                    $method = $payment->method;
+                foreach ($order->payment_methods as $payment) {
+                    $amount = $payment['amount'];
+                    $method = $payment['method'];
                     switch ($method) {
                         case 'cash_usd':
                             if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
@@ -708,7 +710,9 @@ class OrderActionService
 
                 $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
                 $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
-                $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
+                //la diferencia por cambio no se aregar al total de usd para cierre de caja del usuario $current_cash->usd_conversion
+                //$total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
+                $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance;
 
                 $cashClosing->total_bs = $total_bs;
                 $cashClosing->total_cop = $total_cop;
