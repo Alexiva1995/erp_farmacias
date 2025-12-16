@@ -310,7 +310,7 @@ const addPaymentBlock = () => {
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
   if (remainingAmount.value <= 0) return false;
-  if (payments.value[0].method === "credit") return false;
+  if (payments.value[0].method === "credit_card" || "credit") return false;
   if (!lastPayment.method) return false;
   if (isTransferMethod(lastPayment.method) && !lastPayment.reference)
     return false;
