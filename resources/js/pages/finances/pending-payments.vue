@@ -915,13 +915,13 @@ onMounted(async () => {
           <template #item.total_supplier_currency="{ item }">
             <div class="font-weight-bold text-primary">
               {{
-                formatCurrency(
-                  item.total_in_supplier_currency || 0,
-                  item.supplier_preferred_currency || "USD"
-                )
+                formatCurrency(item.total_amount || 0, item.currency || "USD")
               }}
             </div>
-            <div class="text-caption text-medium-emphasis">
+            <div
+              v-if="item.currency === 'Bs'"
+              class="text-caption text-medium-emphasis"
+            >
               {{ formatCurrency(item.remaining_amount_usd || 0, "USD") }}
             </div>
           </template>

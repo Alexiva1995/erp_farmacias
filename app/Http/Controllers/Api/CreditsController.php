@@ -9,21 +9,20 @@ use App\Services\Credits\CreditsActionService;
 use App\Models\Credit;
 use App\Helpers\ApiResponse;
 use App\Http\Requests\Credits\UpdateCreditStatusRequest;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class CreditsController extends Controller
 {
     public function __construct(
         private CreditsQueryService $creditsQueryService,
         private CreditsActionService $creditsActionService,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
-       $query = $this->creditsQueryService->getFilteredQuery($request);
-    
-       $perPage = $request->input('itemsPerPage', 10);
+        $query = $this->creditsQueryService->getFilteredQuery($request);
+
+        $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage)->withQueryString();
 
         $credits = $paginatedResult->getCollection()->map(function ($credit) {
@@ -43,7 +42,7 @@ class CreditsController extends Controller
 
     public function updateCreditStatus(UpdateCreditStatusRequest $request, Credit $credit)
     {
-         $validated = $request->validated();
+        $validated = $request->validated();
 
         $success = $this->creditsActionService->updateStatus(
             $validated['ids'],
@@ -55,11 +54,10 @@ class CreditsController extends Controller
                 'message' => 'El estado de los créditos ha sido actualizado con éxito.',
             ]);
         }
-        
+
         return response()->json([
             'message' => 'Error al actualizar el estado de los créditos.',
         ], 500);
-
     }
 
 
@@ -73,7 +71,7 @@ class CreditsController extends Controller
         }
     }
 
-     public function showDetails(Request $request)
+    public function showDetails(Request $request)
     {
         $request->validate([
             'credit_ids' => 'required|array',
@@ -85,5 +83,19 @@ class CreditsController extends Controller
             ->get();
 
         return response()->json($credits);
+    }
+
+    public function getPaymentHistory(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|integer|exists:clients,id',
+        ]);
+
+        $payments = \App\Models\CreditPayment::with('seller')
+            ->where('client_id', $request->input('client_id'))
+            ->orderBy('payment_date', 'desc')
+            ->get();
+
+        return response()->json($payments);
     }
 }
