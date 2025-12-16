@@ -28,7 +28,7 @@ class InvoiceActionService
                 ->first();
 
             $invoiceData = [
-                'auto_order_id' => $autoOrder->id,
+                'auto_order_id' => $autoOrder->id ?? null,
                 'supplier_id' => $data['supplier_id'],
                 'invoice_number' => $data['invoice_number'],
                 'control_number' => $data['control_number'],
