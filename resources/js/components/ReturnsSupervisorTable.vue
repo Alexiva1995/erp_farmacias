@@ -127,12 +127,29 @@ const handleRejectReturn = async (item) => {
 
       <template #item.actions="{ item }">
         <div v-if="item.status == null" class="d-flex align-center gap-2">
-          <IconBtn @click="handleApproveReturn(item)" color="primary">
-            <VIcon icon="tabler-circle-check" />
-          </IconBtn>
-          <IconBtn @click="handleRejectReturn(item)" color="warning">
-            <VIcon icon="tabler-circle-x" />
-          </IconBtn>
+          <VTooltip text="Aprobar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleApproveReturn(item)"
+                color="success"
+              >
+                <VIcon icon="tabler-circle-check" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Rechazar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleRejectReturn(item)"
+                color="error"
+              >
+                <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
     </VDataTableServer>
