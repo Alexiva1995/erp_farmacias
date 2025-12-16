@@ -4,6 +4,7 @@ import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
+import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
@@ -138,13 +139,7 @@ function actualizarIndexNavegacion(payload){
   }
 
   if(payload == 3){
-    // if (module.productosOportunidadUnica && module.productosOportunidadUnica.data) {
-    //   let listaActualizada = actualizarCantidadAReponerProductosEnFalla(
-    //       [...module.productoFallas],
-    //       [...module.productosOportunidadUnica.data]
-    //   );
-    //   module.productosOportunidadUnica.data = listaActualizada;
-    // }
+    // Al entrar al paso 3, mostramos la tabla de precios estables (se filtra en el componente)
     seleccionarProductosParaElDetalle()
   }
 
@@ -436,21 +431,21 @@ function eliminarItemOrden(payload){
       </template>
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard
-      title="Productos del Pedido"
-      class="mb-6"
-      v-if="indexNavegacion == 3"
-    >
-      <!-- <UniqueMarketOpportunityTable
-        :pagination-data="module.productosOportunidadUnica"
-        :loading="module.loadingApp"
-        @change-page="handleChangePageOportunidad"
-      /> -->
-
-      <OrderProductListTable
-        :list="module.detalleOrder"
-        @eliminar-item-orden="eliminarItemOrden"
-      />
+    <VCard class="mb-6" v-if="indexNavegacion == 3">
+      <template #title>
+        Productos con Precio Estable
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase === null).length
+          }}
+        </VChip>
+      </template>
+      <ProductsStablePriceTable :list="module.productoFallas" />
     </VCard>
 
     <div v-if="indexNavegacion == 4">
