@@ -8,7 +8,7 @@ import { onMounted, ref } from "vue";
 // Estado reactivo
 const loading = ref(false);
 const resignations = ref([]);
-const stats = ref({});
+const search = ref("");
 const showConfirmDialog = ref(false);
 const employeeToToggle = ref(null);
 const newStatus = ref(null);
@@ -19,6 +19,15 @@ const selectedEmployeeForResignation = ref(null);
 const isEditingResignation = ref(false);
 const existingResignationData = ref(null);
 
+const headers = [
+  { title: "Empleado", key: "employee_name" },
+  { title: "Identificación", key: "employee_identification" },
+  { title: "Tipo", key: "resignation_type" },
+  { title: "Fecha Efectiva", key: "effective_date" },
+  { title: "Estado", key: "employee_status" },
+  { title: "Acciones", key: "actions", sortable: false },
+];
+
 // Métodos
 const fetchResignations = async () => {
   loading.value = true;
@@ -28,11 +37,9 @@ const fetchResignations = async () => {
     if (data.success) {
       resignations.value = data.data;
     } else {
-
       toast.error("Error en la respuesta del servidor");
     }
   } catch (error) {
-
     toast.error(
       `Error al cargar las renuncias: ${
         error.response?.data?.message || error.message
@@ -40,17 +47,6 @@ const fetchResignations = async () => {
     );
   } finally {
     loading.value = false;
-  }
-};
-
-const fetchStats = async () => {
-  try {
-    const { data } = await axios.get("/api/rrhh/resignations/stats");
-    if (data.success) {
-      stats.value = data.data;
-    }
-  } catch (error) {
-
   }
 };
 
@@ -75,16 +71,14 @@ const confirmToggleStatus = async () => {
       `Empleado ${newStatus.value ? "activado" : "desactivado"} exitosamente`
     );
 
-    // Actualizar la lista y estadísticas
+    // Actualizar la lista
     fetchResignations();
-    fetchStats();
 
     // Cerrar modal
     showConfirmDialog.value = false;
     employeeToToggle.value = null;
     newStatus.value = null;
   } catch (error) {
-
     toast.error("Error al cambiar el estado del empleado");
   }
 };
@@ -122,7 +116,6 @@ const downloadResignationPDF = async (resignation) => {
 
     toast.success("Carta de renuncia descargada exitosamente");
   } catch (error) {
-
     toast.error("No se pudo descargar la carta de renuncia");
   }
 };
@@ -182,7 +175,6 @@ const editResignation = async (resignation) => {
       }
     }
   } catch (error) {
-
     toast.error("No se pudieron cargar los datos para edición");
   }
 };
@@ -225,10 +217,8 @@ const deleteResignation = async (resignation) => {
 
       toast.success("Renuncia eliminada exitosamente");
       fetchResignations(); // Recargar la lista
-      fetchStats(); // Actualizar estadísticas
     }
   } catch (error) {
-
     toast.error("No se pudo eliminar la renuncia");
   }
 };
@@ -252,220 +242,143 @@ const handleResignationGenerated = () => {
   existingResignationData.value = null;
   selectedEmployeeForResignation.value = null;
   fetchResignations();
-  fetchStats();
 };
 
 // Lifecycle
 onMounted(() => {
   fetchResignations();
-  fetchStats();
 });
 </script>
 
 <template>
   <div>
-    <!-- Header con estadísticas -->
-    <VRow class="mb-6">
-      <VCol cols="12" md="3">
-        <VCard color="primary" variant="tonal">
-          <VCardText class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.total || 0 }}</div>
-            <div class="text-body-2">Total Renuncias</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" md="3">
-        <VCard color="success" variant="tonal">
-          <VCardText class="text-center">
-            <div class="text-h4 font-weight-bold">
-              {{ stats.voluntary || 0 }}
-            </div>
-            <div class="text-body-2">Justificadas</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" md="3">
-        <VCard color="warning" variant="tonal">
-          <VCardText class="text-center">
-            <div class="text-h4 font-weight-bold">
-              {{ stats.unjustified_dismissal || 0 }}
-            </div>
-            <div class="text-body-2">Injustificadas</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" md="3">
-        <VCard color="info" variant="tonal">
-          <VCardText class="text-center">
-            <div class="text-h4 font-weight-bold">
-              {{ stats.this_month || 0 }}
-            </div>
-            <div class="text-body-2">Este Mes</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <!-- Tabla de Renuncias -->
-    <VCard>
-      <VCardTitle>
-        <VIcon icon="tabler-file-text" class="me-2" />
-        Listado de Renuncias Generadas
-      </VCardTitle>
+    <VCard class="mb-6">
       <VCardText>
-        <div v-if="loading" class="text-center py-4">
-          <VProgressCircular indeterminate color="primary" />
-          <div class="mt-2">Cargando renuncias...</div>
-        </div>
-        <div v-else-if="resignations.length === 0" class="text-center py-8">
-          <VIcon icon="tabler-file-x" size="64" color="grey" />
-          <div class="text-h6 mt-4">No hay renuncias generadas</div>
-          <div class="text-body-2 text-medium-emphasis">
-            Las renuncias aparecerán aquí una vez que se generen cartas de
-            renuncia
-          </div>
-        </div>
-        <div v-else>
-          <!-- Tabla responsiva con scroll horizontal -->
-          <div class="table-responsive">
-            <VTable class="resignations-table">
-              <thead>
-                <tr>
-                  <th class="text-left">Empleado</th>
-                  <th class="text-left">Identificación</th>
-                  <th class="text-center">Tipo</th>
-                  <th class="text-center">Fecha Efectiva</th>
-                  <th class="text-center">Estado</th>
-                  <th class="text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="resignation in resignations" :key="resignation.id">
-                  <td>
-                    <div class="text-body-1 font-weight-medium">
-                      {{ resignation.employee_name }}
-                    </div>
-                  </td>
-                  <td>
-                    <div class="text-body-1">
-                      {{ resignation.employee_identification }}
-                    </div>
-                  </td>
-                  <td class="text-center">
-                    <VChip
-                      :color="
-                        resignation.resignation_type === 'voluntary'
-                          ? 'success'
-                          : 'warning'
-                      "
-                      size="small"
-                    >
-                      {{
-                        resignation.resignation_type === "voluntary"
-                          ? "Justificada"
-                          : "Injustificada"
-                      }}
-                    </VChip>
-                  </td>
-                  <td class="text-center">
-                    <div class="text-body-1">
-                      {{ formatDate(resignation.effective_date) }}
-                    </div>
-                  </td>
-                  <td class="text-center">
-                    <VChip
-                      :color="
-                        resignation.employee_status === 'Activo'
-                          ? 'success'
-                          : 'error'
-                      "
-                      size="small"
-                    >
-                      {{ resignation.employee_status }}
-                    </VChip>
-                  </td>
-                  <td class="text-center">
-                    <div class="d-flex align-center justify-center gap-2">
-                      <VTooltip
-                        text="Descargar Carta de Renuncia"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <VBtn
-                            v-bind="props"
-                            color="primary"
-                            size="small"
-                            @click="downloadResignationPDF(resignation)"
-                          >
-                            <VIcon icon="tabler-download" />
-                          </VBtn>
-                        </template>
-                      </VTooltip>
+        <VRow>
+          <VCol cols="12" md="6">
+            <AppTextField
+              v-model="search"
+              placeholder="Buscar renuncia..."
+              prepend-inner-icon="tabler-search"
+            />
+          </VCol>
+        </VRow>
+      </VCardText>
+    </VCard>
 
-                      <VTooltip text="Editar Renuncia" location="top">
-                        <template #activator="{ props }">
-                          <VBtn
-                            v-bind="props"
-                            color="warning"
-                            size="small"
-                            @click="editResignation(resignation)"
-                          >
-                            <VIcon icon="tabler-edit" />
-                          </VBtn>
-                        </template>
-                      </VTooltip>
+    <VCard>
+      <VCardText>
+        <VDataTable
+          :headers="headers"
+          :items="resignations"
+          :search="search"
+          :loading="loading"
+          items-per-page="10"
+          class="text-no-wrap"
+        >
+          <!-- Empleado -->
+          <template #item.employee_name="{ item }">
+            <span class="font-weight-medium">{{ item.employee_name }}</span>
+          </template>
 
-                      <VTooltip text="Eliminar Renuncia" location="top">
-                        <template #activator="{ props }">
-                          <VBtn
-                            v-bind="props"
-                            color="error"
-                            size="small"
-                            @click="deleteResignation(resignation)"
-                          >
-                            <VIcon icon="tabler-trash" />
-                          </VBtn>
-                        </template>
-                      </VTooltip>
+          <!-- Tipo -->
+          <template #item.resignation_type="{ item }">
+            <VChip
+              :color="
+                item.resignation_type === 'voluntary' ? 'success' : 'warning'
+              "
+              size="small"
+              label
+            >
+              {{
+                item.resignation_type === "voluntary"
+                  ? "Justificada"
+                  : "Injustificada"
+              }}
+            </VChip>
+          </template>
 
-                      <VTooltip
-                        text="Cambiar Estado del Empleado"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <VBtn
-                            v-bind="props"
-                            :color="
-                              resignation.employee_status === 'Activo'
-                                ? 'error'
-                                : 'success'
-                            "
-                            size="small"
-                            @click="
-                              openToggleConfirmDialog(
-                                resignation.employee_id,
-                                resignation.employee_status === 'Activo',
-                                resignation.employee_name
-                              )
-                            "
-                          >
-                            <VIcon
-                              :icon="
-                                resignation.employee_status === 'Activo'
-                                  ? 'tabler-user-minus'
-                                  : 'tabler-user-plus'
-                              "
-                            />
-                          </VBtn>
-                        </template>
-                      </VTooltip>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-          </div>
-        </div>
+          <!-- Fecha -->
+          <template #item.effective_date="{ item }">
+            {{ formatDate(item.effective_date) }}
+          </template>
+
+          <!-- Estado -->
+          <template #item.employee_status="{ item }">
+            <VChip
+              :color="item.employee_status === 'Activo' ? 'success' : 'error'"
+              size="small"
+              label
+            >
+              {{ item.employee_status }}
+            </VChip>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <VTooltip text="Descargar Carta" location="top">
+              <template #activator="{ props }">
+                <IconBtn
+                  v-bind="props"
+                  @click="downloadResignationPDF(item)"
+                  color="primary"
+                >
+                  <VIcon icon="tabler-download" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip text="Editar Renuncia" location="top">
+              <template #activator="{ props }">
+                <IconBtn
+                  v-bind="props"
+                  @click="editResignation(item)"
+                  color="warning"
+                >
+                  <VIcon icon="tabler-edit" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip text="Cambiar Estado" location="top">
+              <template #activator="{ props }">
+                <IconBtn
+                  v-bind="props"
+                  :color="
+                    item.employee_status === 'Activo' ? 'error' : 'success'
+                  "
+                  @click="
+                    openToggleConfirmDialog(
+                      item.employee_id,
+                      item.employee_status === 'Activo',
+                      item.employee_name
+                    )
+                  "
+                >
+                  <VIcon
+                    :icon="
+                      item.employee_status === 'Activo'
+                        ? 'tabler-user-minus'
+                        : 'tabler-user-plus'
+                    "
+                  />
+                </IconBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip text="Eliminar Renuncia" location="top">
+              <template #activator="{ props }">
+                <IconBtn
+                  v-bind="props"
+                  @click="deleteResignation(item)"
+                  color="error"
+                >
+                  <VIcon icon="tabler-trash" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+          </template>
+        </VDataTable>
       </VCardText>
     </VCard>
 
@@ -569,82 +482,3 @@ onMounted(() => {
     />
   </div>
 </template>
-
-<style scoped>
-.v-card {
-  border-radius: 12px;
-}
-
-/* Estilos para tabla responsiva */
-.table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: -16px; /* Compensar el padding del VCardText */
-  padding: 16px; /* Restaurar el padding interno */
-}
-
-.resignations-table {
-  min-width: 800px; /* Ancho mínimo para mantener legibilidad */
-  width: 100%;
-}
-
-.resignations-table th {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-  font-weight: 600;
-  padding: 16px 12px;
-  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.2);
-  white-space: nowrap;
-}
-
-.resignations-table td {
-  padding: 16px 12px;
-  border-bottom: 1px solid rgba(var(--v-theme-border), 0.2);
-  vertical-align: middle;
-}
-
-.resignations-table tbody tr:hover {
-  background-color: rgba(var(--v-theme-primary), 0.05);
-  transition: background-color 0.2s ease;
-}
-
-.resignations-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* Evitar scroll en el contenedor padre */
-.v-card-text {
-  overflow-x: hidden !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .resignations-table {
-    min-width: 600px;
-  }
-
-  .resignations-table th,
-  .resignations-table td {
-    padding: 12px 8px;
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .resignations-table {
-    min-width: 500px;
-  }
-
-  .resignations-table th,
-  .resignations-table td {
-    padding: 8px 6px;
-    font-size: 0.8rem;
-  }
-
-  .resignations-table .d-flex {
-    flex-direction: column;
-    gap: 4px;
-  }
-}
-</style>
