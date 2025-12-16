@@ -430,7 +430,7 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
 });
 Route::prefix("supplier-laboratories")->group(function () {
     Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
-    Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    Route::post("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
 });
 
 // Asistente IA
