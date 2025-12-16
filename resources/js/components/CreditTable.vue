@@ -18,7 +18,6 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-
   { title: "Fecha", key: "credit_date", sortable: true },
   { title: "Documento", key: "client_identification", sortable: false },
   { title: "Nombre", key: "client_full_name", sortable: true },
@@ -59,10 +58,22 @@ const authStore = useAuthStore();
 
       <template v-slot:item.status="{ item }">
         <span
-          :class="item.is_paid ? 'text-success' : 'text-error'"
+          :class="
+            item.status === 0
+              ? 'text-error'
+              : item.status === 1
+              ? 'text-info'
+              : 'text-success'
+          "
           class="font-weight-medium text-uppercase"
         >
-          {{ item.is_paid ? "PAGADO" : "DEBE" }}
+          {{
+            item.status === 0
+              ? "DEBE"
+              : item.status === 1
+              ? "PARCIALMENTE PAGADO"
+              : "PAGADO"
+          }}
         </span>
       </template>
 
@@ -70,7 +81,7 @@ const authStore = useAuthStore();
         <div class="d-flex align-center gap-2">
           <IconBtn
             @click="emit('open-payment-modal', item)"
-            :disabled="item.is_paid"
+            :disabled="item.status === 2"
           >
             <VIcon icon="tabler-wallet"
           /></IconBtn>

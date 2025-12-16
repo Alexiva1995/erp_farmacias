@@ -1396,10 +1396,9 @@ const addReserverOrder = async () => {
     toast.success("Orden agregada exitosamente.");
     return response.data.data.order;
   } catch (error) {
-    console.error(
-      "Error al agregar la orden:",
-      error.response ? error.response.data : error.message
-    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al reservar la orden. Inténtalo de nuevo.";
     toast.error(errorMessage);
   }
 };
