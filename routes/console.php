@@ -41,3 +41,4 @@ Schedule::call(function () {
     ->withoutOverlapping();
 Schedule::command('app:schedule-automatic-social-benefits')->dailyAt('06:00');
 Schedule::command('app:inventory-update-daily')->dailyAt('00:01')->onOneServer()->withoutOverlapping();
+Schedule::command('app:calculate-monthly-company-discount')->monthlyOn(1, '00:00');
