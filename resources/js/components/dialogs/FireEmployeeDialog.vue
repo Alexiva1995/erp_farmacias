@@ -413,8 +413,9 @@ const formatDate = (dateString) => {
                       <tr class="font-weight-bold bg-grey-50">
                         <td>Total Deducciones</td>
                         <td class="text-end text-error">
-                          {{ displayAmount(settlement?.total_deductions ?? 0) }}
-                          Bs
+                          {{
+                            displayAmount(settlement?.total_deductions ?? 0)
+                          }}https://animefenix2.tv/ Bs
                         </td>
                       </tr>
                       <tr>
