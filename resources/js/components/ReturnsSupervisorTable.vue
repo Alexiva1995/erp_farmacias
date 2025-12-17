@@ -12,8 +12,7 @@ const emit = defineEmits(["update:options", "status"]);
 const expanded = ref([]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "100px" },
-  { title: "N° Orden", key: "order_id", sortable: true, width: "100px" },
+  { title: "ID", key: "order_id", sortable: true, width: "100px" },
   { title: "Usuario", key: "client", sortable: true },
   { title: "Identificación", key: "identificacion", sortable: true },
   { title: "Monto", key: "amount_refunded", sortable: true },
