@@ -20,10 +20,10 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard  class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Usuario..."
@@ -32,10 +32,10 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="2" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Fecha Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -46,10 +46,10 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="2" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Fecha Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,

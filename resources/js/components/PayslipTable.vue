@@ -9,7 +9,6 @@ const props = defineProps({
 
 const headers = [
   { title: "ID", key: "id", sortable: false },
-  { title: "Nombre", key: "name", sortable: false },
   { title: "Fecha", key: "payslip_date", sortable: false },
   { title: "Estado", key: "status", sortable: false },
   { title: "Total", key: "total", sortable: false },
@@ -112,7 +111,7 @@ const emit = defineEmits([
           location="top"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('finalize-payslip', item.id)">
+            <IconBtn v-bind="props" @click="emit('finalize-payslip', item)">
               <VIcon icon="tabler-file-check" />
             </IconBtn>
           </template>

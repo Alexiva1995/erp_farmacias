@@ -210,10 +210,6 @@ watch(
 )
 
 
-function verProducto(paylod){
-  console.log(paylod)
-}
-
 function verRecipe(paylod){
   console.log(paylod)
   if(paylod.order.url_recipe!=null){
@@ -260,7 +256,6 @@ onMounted(() => {
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
-      @action-ver="verProducto"
     />
     <div class="mb-5"></div>
     <OrderWithPsychotropicsTable

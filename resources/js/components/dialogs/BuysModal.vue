@@ -83,7 +83,8 @@ const paymentMethodsByCurrency = {
     { label: "Efectivo", value: "cash_bs" },
     { label: "Pago Móvil", value: "mobile_payment" },
     { label: "Transferencia", value: "bank_transfer_bs" },
-    { label: "Tarjeta", value: "card" },
+    { label: "T. Debito", value: "debit_card" },
+    { label: "T. Crédito", value: "credit_card" },
   ],
   USD: [
     { label: "Efectivo", value: "cash_usd" },
@@ -95,6 +96,8 @@ const paymentMethodsByCurrency = {
 };
 
 const exchangeRates = ref({});
+
+const isCredit = (value) => value === "credit" || value === "credit_card";
 
 const continueButtonText = computed(() => {
   return currentProgress.value === 100 ? "Finalizar" : "Continuar";
@@ -309,13 +312,13 @@ const addPaymentBlock = () => {
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
   if (remainingAmount.value <= 0) return false;
-  if (payments.value[0].method === "credit") return false;
+  if (isCredit(payments.value[0].method)) return false;
   if (!lastPayment.method) return false;
   if (isTransferMethod(lastPayment.method) && !lastPayment.reference)
     return false;
 
   if (
-    lastPayment.method !== "credit" &&
+    !isCredit(lastPayment.method) &&
     (Number(lastPayment.amount) <= 0 || lastPayment.amount === null)
   ) {
     return false;
@@ -361,7 +364,7 @@ const handleCompletePurchase = () => {
     }
   });
 
-  if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
+  if (currentProgress.value === 0 && !isCredit(payments.value[0].method)) {
     let totalToPayCalculated = props.totalAmount;
 
     /*if (speSwitch.value) {
@@ -438,10 +441,7 @@ const handleCompletePurchase = () => {
 
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;
-      if (
-        p.method !== "credit" &&
-        (Number(p.amount) <= 0 || p.amount === null)
-      ) {
+      if (!isCredit(p.method) && (Number(p.amount) <= 0 || p.amount === null)) {
         return true;
       }
       return false;
@@ -612,7 +612,7 @@ const totalSPESavings = computed(() => {
 });
 
 const hasCreditPayment = computed(() => {
-  return payments.value.some((payment) => payment.method === "credit");
+  return payments.value.some((payment) => isCredit(payment.method));
 });
 
 const totalSelectedQuantity = computed(() => {
@@ -982,7 +982,7 @@ const handleMethodChange = (payment, newMethod) => {
                 <VRow
                   class="payment-block"
                   v-if="
-                    payment.method !== 'balance' && payment.method !== 'credit'
+                    payment.method !== 'balance' && !isCredit(payment.method)
                   "
                   :key="payment.method"
                 >
@@ -1038,7 +1038,7 @@ const handleMethodChange = (payment, newMethod) => {
                   </VCol>
                 </VRow>
 
-                <VRow v-if="payment.method === 'credit'">
+                <VRow v-if="isCredit(payment.method)">
                   <VCol cols="12" sm="6">
                     <VTextField
                       :model-value="
@@ -1164,62 +1164,6 @@ const handleMethodChange = (payment, newMethod) => {
                 formatCurrency(roundedTotalAmountToPay, props.selectedCurrency)
               }}
             </p>
-          </div>
-          <div class="d-flex align-center mt-3 mb-2">
-            <VCheckbox v-model="speSwitch" color="warning" class="me-2">
-              <template #label>
-                <div class="d-flex align-center">
-                  <VIcon icon="tabler-shield-check" class="me-2" size="20" />
-                  <span class="text-subtitle-1 font-weight-medium">
-                    ¿Sujeto a pasivos especiales?
-                  </span>
-                </div>
-              </template>
-            </VCheckbox>
-            <VChip v-if="speSwitch" color="warning" size="small" class="ms-2">
-              <VIcon icon="tabler-shield-check" size="14" class="me-1" />
-              SPE: +75% IVA
-            </VChip>
-          </div>
-
-          <!-- Mostrar cálculo del SPE cuando está activo -->
-          <div v-if="speSwitch" class="bg-warning-lighten-4 pa-3 rounded mb-3">
-            <div
-              class="text-subtitle-2 font-weight-bold text-warning-darken-2 mb-2"
-            >
-              <VIcon icon="tabler-info-circle" class="me-1" size="16" />
-              Cálculo Sujeto a Pasivos Especiales (75% del IVA):
-            </div>
-            <div class="d-flex justify-space-between">
-              <span class="text-body-2">IVA Total:</span>
-              <span class="text-body-2 font-weight-medium">
-                {{
-                  formatCurrency(
-                    props.orderProducts.reduce(
-                      (sum, product) =>
-                        sum + getIva(product, props.selectedCurrency),
-                      0
-                    ),
-                    props.selectedCurrency
-                  )
-                }}
-              </span>
-            </div>
-            <div class="d-flex justify-space-between">
-              <span class="text-body-2">SPE (75% del IVA):</span>
-              <span class="text-body-2 font-weight-bold text-warning-darken-2">
-                {{
-                  formatCurrency(
-                    props.orderProducts.reduce(
-                      (sum, product) =>
-                        sum + getIva(product, props.selectedCurrency),
-                      0
-                    ) * 0.75,
-                    props.selectedCurrency
-                  )
-                }}
-              </span>
-            </div>
           </div>
 
           <div

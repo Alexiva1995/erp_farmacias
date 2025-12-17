@@ -78,7 +78,12 @@ class ResignationServices implements Resignation
      */
     public function getByEmployeeId(int $employeeId): ?MResignation
     {
+        Log::info('🔍 [SERVICE] getByEmployeeId llamado', ['employee_id' => $employeeId]);
         $result = $this->resignationRepository->getResignationByEmployeeId($employeeId);
+        Log::info('🔍 [SERVICE] Resultado de getByEmployeeId:', [
+            'found' => $result ? 'yes' : 'no',
+            'resignation_id' => $result ? $result->id : null
+        ]);
 
         return $result;
     }
@@ -88,11 +93,14 @@ class ResignationServices implements Resignation
      */
     public function update(int $id, array $data): MResignation
     {
+        Log::info('🔄 [SERVICE] Actualizando renuncia', ['resignation_id' => $id, 'data' => $data]);
         $result = $this->resignationRepository->updateResignation($id, $data);
         if ($result) {
+            Log::info('✅ [SERVICE] Renuncia actualizada exitosamente', ['resignation_id' => $id]);
             return $this->resignationRepository->getResignationById($id);
         }
 
+        Log::error('❌ [SERVICE] No se pudo actualizar la renuncia', ['resignation_id' => $id]);
         throw new \Exception('No se pudo actualizar la renuncia');
     }
 

@@ -17,7 +17,6 @@ class ResignationController extends Controller
     public function generateResignation(Request $request)
     {
         try {
-
             $request->validate([
                 'employee_id' => 'required|integer',
                 'employee_name' => 'required|string',
@@ -29,8 +28,6 @@ class ResignationController extends Controller
                 'effective_date' => 'required|date',
                 'is_edit' => 'nullable|boolean',
             ]);
-
-
             $resignationData = $request->all();
 
             // Validación adicional para fecha efectiva
@@ -43,16 +40,20 @@ class ResignationController extends Controller
 
             // Obtener email del usuario si no viene en request
             if (empty($resignationData['employee_email'])) {
+
                 $employee = Employee::with('user')->find($resignationData['employee_id']);
                 if ($employee && $employee->user) {
                     $resignationData['employee_email'] = $employee->user->email;
+                } else {
                 }
             }
 
             // Verificar si ya existe una renuncia para este empleado
+
             $existingResignation = $this->resignationServices->getByEmployeeId($resignationData['employee_id']);
 
             if ($existingResignation && !$request->get('is_edit', false)) {
+
                 // Si existe y no es edición, retornar error para mostrar modal de confirmación
                 return response()->json([
                     'error' => 'Ya existe una carta de renuncia para este empleado',
@@ -69,16 +70,19 @@ class ResignationController extends Controller
 
             // Guardar o actualizar renuncia en base de datos
             if ($existingResignation && $request->get('is_edit', false)) {
+
                 $resignation = $this->resignationServices->update($existingResignation->id, $resignationData);
             } else {
+
                 $resignation = $this->resignationServices->store($resignationData);
             }
 
-
             // Generar PDF dinámicamente usando datos de la BD
+
             $pdf = $this->resignationServices->generatePdf($resignationData);
 
             // Notificar a Jesús Freita
+
             $this->resignationServices->notifyLiquidation($resignationData);
 
             // Retornar PDF para descarga (sin almacenar archivo)
@@ -86,12 +90,14 @@ class ResignationController extends Controller
 
             return $pdf->download($filename);
         } catch (\Illuminate\Validation\ValidationException $e) {
+
             return response()->json([
                 'error' => 'Error de validación',
                 'message' => 'Datos inválidos',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+
             // Manejo de errores mejorado
             if (strpos($e->getMessage(), 'Ya existe una renuncia') !== false) {
                 return response()->json([
@@ -136,7 +142,7 @@ class ResignationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error listing resignations: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al obtener la lista de renuncias',
                 'message' => $e->getMessage()
@@ -157,7 +163,7 @@ class ResignationController extends Controller
                 'data' => $stats
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting resignation stats: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al obtener estadísticas',
                 'message' => $e->getMessage()
@@ -193,7 +199,7 @@ class ResignationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error toggling employee status: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al cambiar el estado del empleado',
                 'message' => $e->getMessage()
@@ -235,7 +241,7 @@ class ResignationController extends Controller
             $filename = 'carta-renuncia-' . $resignation->employee_identification . '.pdf';
             return $pdf->download($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating PDF for download: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al generar PDF',
                 'message' => $e->getMessage()
@@ -248,10 +254,13 @@ class ResignationController extends Controller
      */
     public function getResignationForEditByEmployee(int $employeeId)
     {
+
         try {
+
             $resignation = $this->resignationServices->getByEmployeeId($employeeId);
 
             if (!$resignation) {
+
                 return response()->json([
                     'error' => 'Renuncia no encontrada'
                 ], 404);
@@ -273,12 +282,12 @@ class ResignationController extends Controller
                 'updated_at' => $resignation->updated_at
             ];
 
-
             return response()->json([
                 'success' => true,
                 'data' => $responseData
             ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'error' => 'Error al obtener datos de la renuncia',
                 'message' => $e->getMessage()
@@ -317,7 +326,7 @@ class ResignationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting resignation for edit: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al obtener datos de la renuncia',
                 'message' => $e->getMessage()
@@ -352,7 +361,7 @@ class ResignationController extends Controller
                 ], 500);
             }
         } catch (\Exception $e) {
-            Log::error('Error deleting resignation: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'Error al eliminar la renuncia',
                 'message' => $e->getMessage()

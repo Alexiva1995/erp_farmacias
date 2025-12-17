@@ -1,5 +1,6 @@
 <script setup>
 const props = defineProps({
+  searchQuery: { type: String, default: "" },
   selectedSupplier: [Number, String, null],
   selectedLaboratory: [Number, String, null],
   selectedOrigin: [Number, String, null],
@@ -10,120 +11,141 @@ const props = defineProps({
   enableDiscounts: { type: Boolean, default: false },
   enableUsdAmountCol: { type: Boolean, default: false },
   enableDiscountCol: { type: Boolean, default: false },
-  searchQuery: { type: String, default: "" },
-  stockStatusFilter: { type: [Boolean, null], default: null },
-  isStrictSearch: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
+  "update:searchQuery",
   "update:selectedSupplier",
   "update:selectedLaboratory",
   "update:selectedOrigin",
-  "update:searchQuery",
-  "update:stockStatusFilter",
-  "update:isStrictSearch",
+  "update:enableDiscounts",
+  "update:enableUsdAmountCol",
+  "update:enableDiscountCol",
   "clear",
+  "open-delete-dialog",
+  "update-all-api", // <--- NUEVO EVENTO
 ]);
-
-const stockOptions = [
-  { title: "Con Stock", value: true },
-  { title: "Sin Stock", value: false },
-  { title: "Todos", value: null },
-];
 </script>
 
 <template>
   <VCardText>
     <VRow>
-      <VCol cols="12" sm="6" md="3">
-        <AppTextField
+      <!-- Buscador -->
+      <VCol cols="12" sm="3">
+        <VTextField
           :model-value="props.searchQuery"
-          placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
+          label="Buscar"
+          placeholder="Nombre, ID, C. Activo..."
           clearable
           @update:model-value="emit('update:searchQuery', $event)"
         />
-        <VCheckbox
-          label="Búsqueda Estricta"
-          :model-value="props.isStrictSearch"
-          @update:model-value="emit('update:isStrictSearch', $event)"
-        />
       </VCol>
+
+      <!-- Laboratorio -->
       <VCol cols="12" sm="3">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          label="Laboratorios"
-          placeholder="Escribe para buscar un laboratorio"
+          label="Laboratorio"
+          placeholder="Buscar laboratorio"
           item-title="name"
           item-value="id"
           clearable
           @update:model-value="emit('update:selectedLaboratory', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="6" md="3">
+
+      <!-- Origen -->
+      <VCol cols="12" sm="3">
         <VSelect
           :model-value="props.selectedOrigin"
-          label="Origen"
           :items="props.origins"
+          label="Origen"
+          placeholder="Seleccionar origen"
           item-title="name"
           item-value="id"
           clearable
           @update:model-value="emit('update:selectedOrigin', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="6" md="3">
-        <VSelect
-          :model-value="props.stockStatusFilter"
-          label="Estado de Stock"
-          :items="stockOptions"
-          clearable
-          @update:model-value="emit('update:stockStatusFilter', $event)"
-        />
-      </VCol>
-      <VCol cols="12" sm="6" md="3">
+
+      <!-- Proveedor -->
+      <VCol cols="12" sm="3">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"
           :loading="props.loading"
           label="Proveedor"
-          placeholder="Escribe para buscar un proveedor"
+          placeholder="Buscar proveedor"
           item-title="name"
           item-value="id"
           clearable
           @update:model-value="emit('update:selectedSupplier', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="4" md="3">
-        <VSwitch
-          :model-value="props.enableDiscounts"
-          label="Activar Descuento"
-          :inset="true"
-          @update:model-value="emit('update:enableDiscounts', $event)"
-        />
-      </VCol>
-      <VCol cols="12" sm="4" md="3">
-        <VSwitch
-          :model-value="props.enableUsdAmountCol"
-          label="Monto en Divisas"
-          :inset="true"
-          @update:model-value="emit('update:enableUsdAmountCol', $event)"
-        />
-      </VCol>
-      <VCol cols="12" sm="4" md="3">
-        <VSwitch
-          :model-value="props.enableDiscountCol"
-          label="Monto en descuento"
-          :inset="true"
-          @update:model-value="emit('update:enableDiscountCol', $event)"
-        />
-      </VCol>
     </VRow>
   </VCardText>
+
+  <VDivider />
 
   <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
     <VBtn color="secondary" variant="outlined" @click="emit('clear')">
       Limpiar Filtros
     </VBtn>
+
+    <!-- NUEVO BOTÓN: ACTUALIZAR VÍA API -->
+    <VBtn
+      color="info"
+      variant="tonal"
+      prepend-icon="tabler-cloud-download"
+      @click="emit('update-all-api')"
+    >
+      Actualizar Vía API
+    </VBtn>
+
+    <!-- BOTÓN: ELIMINAR PRODUCTOS -->
+    <VBtn
+      color="error"
+      variant="tonal"
+      prepend-icon="tabler-trash"
+      @click="emit('open-delete-dialog')"
+    >
+      Eliminar Productos
+    </VBtn>
+
+    <VSpacer />
+
+    <!-- Switches -->
+    <div class="d-flex flex-wrap align-center gap-4">
+      <VSwitch
+        :model-value="props.enableDiscounts"
+        label="Aplicar Descuento"
+        density="compact"
+        color="primary"
+        hide-details
+        class="me-2"
+        @update:model-value="emit('update:enableDiscounts', $event)"
+      />
+
+      <VSwitch
+        :model-value="props.enableUsdAmountCol"
+        label="Divisas ($)"
+        density="compact"
+        color="success"
+        hide-details
+        class="me-2"
+        @update:model-value="emit('update:enableUsdAmountCol', $event)"
+      />
+
+      <VSwitch
+        :model-value="props.enableDiscountCol"
+        label="Ver % Desc."
+        density="compact"
+        color="info"
+        hide-details
+        @update:model-value="emit('update:enableDiscountCol', $event)"
+      />
+    </div>
   </VCardActions>
 </template>

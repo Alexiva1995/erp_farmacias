@@ -3,17 +3,53 @@
 
 namespace App\Repository;
 
+use App\Data\CreateExpenseData;
+use App\Data\CreateExpenseRecurrenceData;
+use App\Data\EditExpenseRecurrenceData;
 use App\Models\Expense;
+use DateTime;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use PhpOffice\PhpSpreadsheet\Shared\TimeZone;
 
 class ExpensesRepository
 {
 
-    public function createGasto(array $data): Expense
+    public function createGasto(CreateExpenseData $data): Expense
     {
-        return Expense::create($data);
+        $expenseData = $data->toArray();
+        
+        // Asegurar que expense_date sea solo la fecha sin hora
+        if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
+            $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
+        }
+        
+        return Expense::create($expenseData);
+    }
+
+    public function createGastoRecurente(CreateExpenseRecurrenceData $data): Expense
+    {
+        $gasto = new Expense();
+        $gasto->name = $data->name;
+        $gasto->category_id = $data->category_id;
+        $gasto->amount = $data->amount;
+        $gasto->amount_usd = $data->amount_usd;
+        $gasto->currency = $data->currency;
+        $gasto->has_invoice = $data->has_invoice;
+        $gasto->is_deductible = $data->is_deductible;
+        $gasto->iva = $data->iva;
+        // $gasto->expense_date = $data->expense_date;
+        $gasto->user_id = $data->user_id;
+        $gasto->count = $data->count;
+        $gasto->type_of_expense = $data->type_of_expense;
+        $gasto->recurrence = $data->recurrence;
+        $gasto->next_expense_date = $data->next_expense_date;
+        $gasto->amount_bs = $data->amount_bs;
+        $gasto->status = "Pending";
+        $gasto->save();
+        return $gasto;
     }
 
     public function cargarFactura(array $data): Expense
@@ -30,10 +66,35 @@ class ExpensesRepository
         return $gasto;
     }
 
-    public function edit(array $data): Expense | null
+    public function edit(array $data): Expense|null
     {
         Expense::where("id", "=", $data["id"])->update($data);
         return Expense::find($data["id"]);
+    }
+
+    public function editExpenseRecurring(EditExpenseRecurrenceData $data): Expense|null
+    {
+        $expense = $this->consultById($data->id);
+        if (!$expense) {
+            return null;
+        }
+        $expense->name = $data->name;
+        $expense->category_id = $data->category_id;
+        $expense->amount = $data->amount;
+        $expense->amount_usd = $data->amount_usd;
+        $expense->currency = $data->currency;
+        $expense->has_invoice = $data->has_invoice;
+        $expense->is_deductible = $data->is_deductible;
+        $expense->iva = $data->iva;
+        $expense->user_id = $data->user_id;
+        $expense->count = $data->count;
+        $expense->type_of_expense = $data->type_of_expense;
+        $expense->recurrence = $data->recurrence;
+        $expense->next_expense_date = $data->next_expense_date;
+        $expense->status = $data->status;
+        $expense->amount_bs = $data->amount_bs;
+        $expense->save();
+        return $expense;
     }
 
     public function consultAll(): Collection
@@ -64,6 +125,12 @@ class ExpensesRepository
             }
         }
 
+        if (array_key_exists("type_of_expense", $filtros)) {
+            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
+                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
+            }
+        }
+
         if (array_key_exists("count", $filtros)) {
             $consulta->where("count", "=", $filtros["count"]);
         }
@@ -73,7 +140,7 @@ class ExpensesRepository
         }
 
         if (array_key_exists("status", $filtros)) {
-            if (count($filtros) > 0) {
+            if (is_array($filtros["status"]) && count($filtros["status"]) > 0) {
                 $consulta->whereIn("status", $filtros["status"]);
             }
         }
@@ -92,6 +159,23 @@ class ExpensesRepository
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
             $consulta->orderBy("name", "ASC");
+        }
+
+
+        if (array_key_exists("hasInvoice", $filtros)) {
+            if ($filtros["hasInvoice"] === 1 || $filtros["hasInvoice"] === true) {
+                $consulta->where("has_invoice", 1);
+            } elseif ($filtros["hasInvoice"] === 0 || $filtros["hasInvoice"] === false) {
+                $consulta->where("has_invoice", 0);
+            }
+        }
+
+        if (array_key_exists("isDeductible", $filtros)) {
+            if ($filtros["isDeductible"] === 1 || $filtros["isDeductible"] === true) {
+                $consulta->where("is_deductible", 1);
+            } elseif ($filtros["isDeductible"] === 0 || $filtros["isDeductible"] === false) {
+                $consulta->where("is_deductible", 0);
+            }
         }
 
         return $consulta;
@@ -118,5 +202,18 @@ class ExpensesRepository
             "status" => $status
         ]);
         return Expense::find($id);
+    }
+
+    public function consultAllExpensesRecurringOfToday(): Collection
+    {
+        $timeZone = new DateTimeZone(config("app.timezone"));
+        $hoy = new DateTime('now', $timezone);
+
+        $consulta = Expense::query()
+            ->where("type_of_expense", "=", "Recurrente")
+            ->whereDate("next_expense_date", "=", $hoy->format("Y-m-d"))
+            ->get();
+
+        return $consulta;
     }
 }

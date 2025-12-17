@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Jobs\UpdateAllSuppliersJob;
 use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
@@ -17,6 +18,8 @@ use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Arr;
 
 class SupplierController extends Controller
 {
@@ -84,7 +87,7 @@ class SupplierController extends Controller
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
         $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
-
+        
         return response()->json(
             [
                 "message" => "Proveedor actualizado con éxito.",
@@ -117,6 +120,16 @@ class SupplierController extends Controller
 
         return response()->json(["status" => "queued"]);
     }
+    public function dispatchUpdateAllJob()
+    {
+        $userId = auth()->id() ?? 1;
+
+        UpdateAllSuppliersJob::dispatch($userId);
+
+        return response()->json([
+            'message' => 'Se ha iniciado la actualización de todos los proveedores en segundo plano.'
+        ]);
+    }
 
     /**
      * Get the connection statuses for the authenticated user.
@@ -143,11 +156,30 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
+      
+        $sentIds = Arr::pluck($validated['rules'], 'id');
+        
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+        
+        if (!empty($sentIds)) {
+            $supplier->paymentRules()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->paymentRules()->delete();
+        }
+           
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
                 'days' => $rule['days'],
                 'discount_percentage' => $rule['discount_percentage'],
             ];
+
+            if (isset($rule['id']) && $rule['id'] > 0) {
+                $ruleData['id'] = $rule['id'];
+            }
 
             $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
@@ -174,11 +206,46 @@ class SupplierController extends Controller
      */
     public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
     {
+       /* dd($request->validated());
         $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
 
         return response()->json([
             "message" => "Laboratorio vinculado con éxito.",
             "laboratory_link" => $link->load("laboratory"),
+        ]);*/
+
+        $validated = $request->validated();
+        $createdRules = [];
+        $sentIds = Arr::pluck($validated['rulesLaboratory'], 'id');
+        $sentIds = array_filter($sentIds, function($id) {
+            return is_numeric($id) && $id > 0;
+        });
+
+        if (!empty($sentIds)) {
+            $supplier->laboratoryLinks()
+            ->whereNotIn('id', $sentIds)
+            ->delete();
+        } else {
+            $supplier->laboratoryLinks()->delete();
+        }
+
+       
+        foreach ($validated['rulesLaboratory'] as $rulesLaboratory) {
+            $ruleData = [
+                'phone' => $rulesLaboratory['phone'],
+                'laboratory_id' => $rulesLaboratory['laboratory']['id'],
+            ];
+
+            if (isset($rulesLaboratory['id']) && $rulesLaboratory['id'] > 0) {
+                $ruleData['id'] = $rulesLaboratory['id'];
+            }
+
+            $createdRules[] = $this->supplierActionService->attachLaboratory($supplier, $ruleData);
+        }
+
+        return response()->json([
+            'message' => 'Laboratorios vinculado con éxito.',
+            'rules' => $createdRules,
         ]);
     }
 
@@ -225,8 +292,11 @@ class SupplierController extends Controller
                 "name" => $rule["name"],
                 "discount_percentage" => $rule["discount_percentage"],
             ];
+            $isCreated = !isset($rule["id"]);
 
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            if ($isCreated){
+                $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            }
         }
 
         return response()->json([
@@ -292,11 +362,15 @@ class SupplierController extends Controller
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
         $userId = auth()->id() ?? 1;
-
         $validated = $request->validated();
+
         unset($validated["file"]);
 
-        $path = $request->file("file")->store("temp", ["disk" => "local"]);
+        try {
+            $path = $request->file("file")->store("temp", ["disk" => "local"]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to store file'], 500);
+        }
 
         ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
 
@@ -315,5 +389,39 @@ class SupplierController extends Controller
         return response()->json([
             'data' => $result
         ]);
+    }
+    public function applyGlobalDiscount(Request $request, Supplier $supplier)
+    {
+        $request->validate([
+            'percentage' => 'required|numeric|min:0.01|max:100',
+        ]);
+
+        $affectedRows = $this->supplierActionService->applyGlobalDiscount(
+            $supplier,
+            $request->percentage
+        );
+
+        return response()->json([
+            'message' => "Descuento aplicado correctamente a {$affectedRows} productos.",
+            'affected_rows' => $affectedRows
+        ]);
+    }
+    public function deleteOldProducts(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date|before_or_equal:today',
+        ]);
+
+        try {
+            $deletedCount = $this->supplierActionService->deleteProductsOlderThan($validated['date']);
+
+            return response()->json([
+                "status" => "ok",
+                "message" => "Se eliminaron {$deletedCount} productos correctamente.",
+                "count" => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error("Error al eliminar productos antiguos: " . $e->getMessage(), 500);
+        }
     }
 }

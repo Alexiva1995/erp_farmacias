@@ -663,6 +663,7 @@ const closingDaily = async (daily) => {
 
   <ClosingModal
     v-model:isDialogVisible="viewModalClosing"
+    :reference="reference"
     :cashData="dailyCashData"
     @close="handleCloseViewModalClosing"
   />

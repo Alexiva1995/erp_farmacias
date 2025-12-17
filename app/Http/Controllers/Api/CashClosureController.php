@@ -42,7 +42,17 @@ class CashClosureController extends Controller
 
     public function pdf($html)
     {
+
+        $html = str_replace(
+        ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ñ','°'],
+        ['&aacute;', '&eacute;', '&iacute;', '&oacute;', '&uacute;', '&ntilde;', 
+         '&Aacute;', '&Eacute;', '&Iacute;', '&Oacute;', '&Uacute;', '&Ntilde;','&deg;'],
+        $html
+    );
         $pdf = Pdf::loadHtml($html);
+        $pdf->setOptions([
+        'encoding'    => 'UTF-8'
+        ]);
         return $pdf;
     }
 

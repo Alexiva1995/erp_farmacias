@@ -34,12 +34,6 @@ const closeDialog = () => {
   emit("clearErrors");
 };
 
-watch(
-  () => props.purchaseOrder,
-  (purchaseOrder) => purchaseOrder?.id && fetchPurchaseOrder(purchaseOrder.id),
-  { deep: true, immediate: true }
-);
-
 const reset = () => {
   affectedRows.value = new Map();
   dirty.value = false;
@@ -114,6 +108,16 @@ const submitForm = async () => {
 
   emit("save", { details: affected });
 };
+
+watch(
+  [() => props.purchaseOrder, () => props.modelValue],
+  ([purchaseOrder, modelValue]) => {
+    if (purchaseOrder?.id && modelValue) {
+      fetchPurchaseOrder(purchaseOrder.id);
+    }
+  },
+  { deep: true }
+);
 
 watch(
   () => props.errors,

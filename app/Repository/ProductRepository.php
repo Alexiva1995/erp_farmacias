@@ -16,6 +16,11 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_id = products.id)';
 
+    public function consultProductById(int $id): ?Product
+    {
+        return Product::find($id);
+    }
+
     public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
     {
         return Product::query()->orderBy($sortBy, $orderBy)->get();
@@ -107,7 +112,7 @@ class ProductRepository
         $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
 
         // calcular demanda_ajustada con promedio_calculado
-        $columnas[] =  DB::raw('COALESCE(
+        $columnas[] = DB::raw('COALESCE(
                 (' . $this->subConsultaParaCalcularStockPorLotes . '), 0) - 
                 ((' . $promedio_calculado . ') * 
                 COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
@@ -242,6 +247,13 @@ class ProductRepository
                 THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -439,6 +451,13 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
             DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
         ];
 
@@ -558,6 +577,14 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
+    public function filtrarProductforIaOrderAssistantTypeSalesToArray($filtros): array
+    {
+
+        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
+
+        return $consulta->get()->toArray();
+    }
+
 
 
     // public function consultarProductosSinProveedor()
@@ -571,7 +598,6 @@ class ProductRepository
     // }
     public function builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros): Builder
     {
-
         $columnas = [
             'id',
             'name',
@@ -674,7 +700,26 @@ class ProductRepository
         $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
 
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with([
+            "laboratory",
+            "lots",
+            "group",
+            "productSuppliers" => function ($query) {
+                $query->select(
+                    'id',
+                    'product_id',
+                    'supplier_id',
+                    'laboratory',
+                    'unit_cost_usd_with_discount'
+                )
+                    ->with([
+                        'supplier' => function ($q) {
+                            $q->select('id', 'name');
+                        }
+                    ])
+                    ->orderBy('unit_cost_usd_with_discount', 'asc');
+            }
+        ]);
 
 
         if (array_key_exists("is_colombia", $filtros)) {
@@ -726,7 +771,6 @@ class ProductRepository
     public function builerFiltrarIndividualProductForAssistantReportTypeSales($filtros): Builder
     {
         // solicitar = stock - ventas individuales
-
         $ventasIndividualDelProducto = '
             (
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -816,9 +860,30 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with([
+            "laboratory",
+            "lots",
+            "group",
+            "productSuppliers" => function ($query) {
+                $query->select(
+                    'id',
+                    'product_id',
+                    'supplier_id',
+                    'laboratory',
+                    'unit_cost_usd_with_discount'
+                )
+                    ->with([
+                        'supplier' => function ($q) {
+                            $q->select('id', 'name');
+                        }
+                    ])
+                    ->orderBy('unit_cost_usd_with_discount', 'asc');
+            }
+        ]);
 
-
+        if (array_key_exists("id", $filtros) && !empty($filtros["id"])) {
+            $consulta->where("id", $filtros["id"]);
+        }
 
         if (array_key_exists("is_colombia", $filtros)) {
             if ($filtros["is_colombia"] == true) {
@@ -892,5 +957,13 @@ class ProductRepository
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
 
         return $consulta->paginate($perPage);
+    }
+
+    public function filtrarIndividualProductForAssistantReportTypeSalesToArray($filtros): array
+    {
+
+        $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
+
+        return $consulta->get()->toArray();
     }
 }

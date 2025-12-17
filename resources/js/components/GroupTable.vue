@@ -7,7 +7,13 @@ defineProps({
   page: { type: Number, default: 1 },
 });
 
-const emit = defineEmits(["update:options", "edit-group", "delete-group"]);
+const emit = defineEmits([
+  "update:options",
+  "edit-group",
+  "delete-group",
+  "show-group",
+  "add-products",
+]);
 
 const headers = [
   { title: "ID", key: "id", width: "10%" },
@@ -36,8 +42,14 @@ const updateOptions = (options) => {
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex gap-1 justify-end">
+          <IconBtn @click="$emit('add-products', item)">
+            <VIcon icon="tabler-plus" />
+          </IconBtn>
+          <IconBtn @click="$emit('show-group', item)">
+            <VIcon icon="tabler-eye" />
+          </IconBtn>
           <IconBtn @click="$emit('edit-group', item)">
-            <VIcon icon="tabler-edit" />
+            <VIcon icon="tabler-pencil" />
           </IconBtn>
           <IconBtn @click="$emit('delete-group', item.id)">
             <VIcon icon="tabler-trash" />

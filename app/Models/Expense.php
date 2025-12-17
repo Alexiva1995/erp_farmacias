@@ -19,6 +19,13 @@ class Expense extends Model
     const COUNT_BINANCE = "Binance"; // USD
     const COUNT_PAYPAL = "PayPal"; // USD
 
+    const TYPE_OF_EXPENSE_NORMAL = "Normal";
+    const TYPE_OF_EXPENSE_RECURRENTE = "Recurrente";
+
+    const RECURRENCE_MENSUAL = "Mensual";
+    const RECURRENCE_SEMESTRAL = "Semestral";
+    const RECURRENCE_ANUAL = "Anual";
+
 
     protected $fillable = [
         'name',
@@ -33,7 +40,22 @@ class Expense extends Model
         'iva',
         'status',
         'count',
-        'amount_bs'
+        'account',
+        'amount_bs',
+        'conversion_rate_to_bs',
+        'type_of_expense',
+        'exempt_amount',
+        'taxable_base',
+        'tax_amount',
+        'exchange_rate',
+        'total_usd',
+    ];
+
+     protected $casts = [
+        'is_deductible' => 'boolean',
+        'has_invoice' => 'boolean', 
+        'iva' => 'boolean',
+        'expense_date' => 'date',
     ];
 
     public function category(): BelongsTo

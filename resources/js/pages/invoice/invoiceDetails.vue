@@ -57,6 +57,60 @@ const searchingBarcode = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
+const locations = [
+  "E-001",
+  "E-002",
+  "E-003",
+  "E-004",
+  "E-005",
+  "E-006",
+  "E-007",
+  "E-008",
+  "E-009",
+  "E-010",
+  "G-001",
+  "G-002",
+  "G-003",
+  "G-004",
+  "G-005",
+  "G-006",
+  "G-007",
+  "G-008",
+  "G-009",
+  "G-010",
+  "I-001",
+  "I-002",
+  "I-003",
+  "I-004",
+  "I-005",
+  "I-006",
+  "I-007",
+  "I-008",
+  "I-009",
+  "I-010",
+  "N-001",
+  "N-002",
+  "P-001",
+  "P-002",
+  "P-003",
+  "P-004",
+  "P-005",
+  "P-006",
+  "P-007",
+  "P-008",
+  "P-009",
+  "P-010",
+  "D-001",
+  "D-002",
+  "D-003",
+  "D-004",
+  "D-005",
+  "D-006",
+  "D-007",
+  "D-008",
+  "D-009",
+  "D-010",
+].sort();
 
 const formattedPaymentRules = computed(() => {
   const rules = props.paymentRules.payment_rules;
@@ -374,10 +428,12 @@ const handleSaveProgress = async () => {
     await fetchInvoiceDetails(props.invoiceId);
 
     isEditMode.value = false;
+    return true;
   } catch (error) {
     toast.error(
       error.response?.data?.message || "No se pudo guardar el progreso."
     );
+    return false;
   } finally {
     loading.value = false;
   }
@@ -555,6 +611,15 @@ const handleSearchBarcode = async (barcode) => {
   }
 };
 
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleDateString("es-VE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
+
 const handleShowProductSearch = () => {
   isProductSearchVisible.value = true;
   if (laboratories.value.length === 0) fetchProductSelectOptions();
@@ -661,6 +726,13 @@ const saveEditingDetail = () => {
 const cancelEditingDetail = () => {
   editingDetailId.value = null;
   editedDetailData.value = {};
+};
+
+const updateLocation = (id, newLocation) => {
+  const index = invoiceDetails.value.findIndex((d) => d.id === id);
+  if (index !== -1) {
+    invoiceDetails.value[index].location = newLocation;
+  }
 };
 
 const handleSaveLocations = async () => {
@@ -804,9 +876,12 @@ const handleFinalizeInvoice = async () => {
     );
     return;
   }
-
-  await handleSaveProgress();
+  const saveSuccessful = await handleSaveProgress();
+  if (!saveSuccessful) {
+    return;
+  }
   loading.value = true;
+
   try {
     const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
     toast.success(response.data.message || "Factura finalizada con éxito.");
@@ -1017,7 +1092,7 @@ const detailsHeaders = [
                   }}
                 </p>
                 <p class="text-body-1 font-weight-medium mt-1">
-                  {{ invoice[dateField] || "N/A" }}
+                  {{ formatDate(invoice[dateField]) || "N/A" }}
                 </p>
               </VCol>
             </VRow>
@@ -1080,13 +1155,18 @@ const detailsHeaders = [
               :items="processedInvoiceDetails"
               :loading="loadingDetails"
               :hide-default-footer="true"
+              :items-per-page="-1"
               class="invoice-products-table"
             >
               <template #item.product_name_with_tax="{ item }">
                 <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
                   <span :class="{ 'returned-item': isItemReturned(item) }">
                     {{ item.product_name_with_tax }}
+                    <span class="text-sm text-disabled">{{
+                      item.product.laboratory?.name
+                    }}</span>
                   </span>
+                  <span class="text-sm text-disabled"></span>
                   <VTooltip v-if="isNearExpiration(item)" location="top">
                     <template #activator="{ props }">
                       <VIcon
@@ -1153,14 +1233,19 @@ const detailsHeaders = [
                 </div>
               </template>
               <template #item.location="{ item, index }">
-                <VTextField
+                <VAutocomplete
                   v-if="isLocationMode && !isItemReturned(item)"
-                  v-model="invoiceDetails[index].location"
+                  :model-value="item.location"
+                  @update:model-value="updateLocation(item.id, $event)"
+                  @focus="updateLocation(item.id, null)"
+                  :items="locations"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
                   placeholder="Ej: A-01-B"
+                  :return-object="false"
+                  auto-select-first
                 />
                 <span
                   v-else

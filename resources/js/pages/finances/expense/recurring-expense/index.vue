@@ -13,7 +13,7 @@ import { onMounted, reactive, watch } from 'vue';
 
 // const route= useRouter()
 
-const modal= reactive({
+/*const modal= reactive({
   statu:false,
   titulo:"Nuevo",
 })
@@ -31,13 +31,16 @@ const formulario= reactive({
   category_id:"",
   amount:"",
   amount_usd:"",
-  currency:"BS",
+  amount_bs:"",
+  currency:"USD",
   has_invoice:false,
   is_deductible:false,
-  expense_date:"",
+  iva:false,
+  // expense_date:"",
   user_id:"",
   count:"",
-  file_factura:null,
+  // file_factura:null,
+  recurrence:"Mensual",
 })
 
 const formularioError= reactive({
@@ -46,12 +49,15 @@ const formularioError= reactive({
   category_id:"",
   amount:"",
   amount_usd:"",
+  amount_bs:"",
   currency:"",
   has_invoice:"",
   is_deductible:"",
-  expense_date:null,
+  iva:"",
+  // expense_date:null,
   count:"",
-  file_factura:null,
+  // file_factura:null,
+  recurrence:"",
 })
 
 const buscardor_filtro= ref("");// nombre, id
@@ -59,7 +65,8 @@ const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
-const status= ["Pending"];
+const status= ["Approved","Cancelled"];
+const type_of_expense = ["Recurrente"];
 
 const loading = ref(false)
 
@@ -67,6 +74,8 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
+const isDeductible = ref(false);
+const hasInvoice = ref(false);
 
 function insertarDatosAlFormulario(datos){
   formulario.id=datos.id
@@ -74,11 +83,15 @@ function insertarDatosAlFormulario(datos){
   formulario.category_id=datos.category_id
   formulario.amount=datos.amount
   formulario.amount_usd=datos.amount_usd
+  formulario.amount_bs=datos.amount_bs
   formulario.currency=datos.currency
   formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
-  formulario.expense_date=datos.expense_date
+  formulario.iva=datos.iva
+  // formulario.expense_date=datos.expense_date
   formulario.count=datos.count
+  formulario.recurrence=datos.recurrence
+
 }
 
 function limpiarDatosFormulario(){
@@ -87,12 +100,16 @@ function limpiarDatosFormulario(){
   formulario.category_id=""
   formulario.amount=""
   formulario.amount_usd=""
+  formulario.amount_bs=""
   formulario.currency="BS"
   formulario.has_invoice=false
   formulario.is_deductible=false
-  formulario.expense_date=""
+  formulario.iva=false
+  // formulario.expense_date=""
   formulario.count=""
-  formulario.file_factura=null
+  // formulario.file_factura=null
+  formulario.recurrence="Mensual"
+
 }
 
 function limpiarErroresFormulario(){
@@ -101,31 +118,37 @@ function limpiarErroresFormulario(){
   formularioError.category_id=""
   formularioError.amount=""
   formularioError.amount_usd=""
+  formularioError.amount_bs=""
   formularioError.currency=""
   formularioError.has_invoice=false
   formularioError.is_deductible=false
-  formularioError.expense_date=""
+  formularioError.iva=false
+  // formularioError.expense_date=""
   formularioError.count=""
-  formularioError.file_factura=""
+  formularioError.recurrence=""
+  // formularioError.file_factura=""
 }
 
 function cargarErrores(errores){
   formularioError.id=(errores.id)?errores.id.join(", "):""
   formularioError.name=(errores.name)?errores.name.join(", "):""
-  formularioError.category_id=(errores.identification)?errores.identification.join(", "):""
-  formularioError.amount=(errores.identification)?errores.identification.join(", "):""
-  formularioError.amount_usd=(errores.identification)?errores.identification.join(", "):""
-  formularioError.currency=(errores.identification)?errores.identification.join(", "):""
-  formularioError.has_invoice=(errores.identification)?errores.identification.join(", "):""
-  formularioError.is_deductible=(errores.identification)?errores.identification.join(", "):""
-  formularioError.expense_date=(errores.identification)?errores.identification.join(", "):""
+  formularioError.category_id=(errores.category_id)?errores.category_id.join(", "):""
+  formularioError.amount=(errores.amount)?errores.amount.join(", "):""
+  formularioError.amount_usd=(errores.amount_usd)?errores.amount_usd.join(", "):""
+  formularioError.amount_bs=(errores.amount_bs)?errores.amount_bs.join(", "):""
+  formularioError.currency=(errores.currency)?errores.currency.join(", "):""
+  formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
+  formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
+  formularioError.iva=(errores.iva)?errores.iva.join(", "):""
+  // formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
   formularioError.count=(errores.count)?errores.count.join(", "):""
-  formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
+  formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
+  // formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
 }
 
 function mostarModal(){
   modal.statu=true
-  modal.titulo="Nuevo Gasto Recurrente"
+  modal.titulo="Añadir Nuevo Gasto Recurrente"
 }
 
 function cerrarModal(payload){
@@ -144,7 +167,9 @@ watch(
       page,
       itemsPerPage,
       sortBy,
-      orderBy
+      orderBy,
+      isDeductible,
+      hasInvoice
   ],
   async () =>{
     actualizarTabla()
@@ -154,7 +179,7 @@ watch(
 async function enviar(payload){
   try {
     statuModule.loadingApp=true
-    let respuesApi=await axios.post("/finances/expenses/create",payload)
+    let respuesApi=await axios.post("/finances/expenses/create-recurrence",payload)
     if(respuesApi.status==200 && payload.has_invoice==false){
       toast.success("El gasto se a guardado correctamente")
       cerrarModal(false)
@@ -164,25 +189,25 @@ async function enviar(payload){
     console.log("respuesta api gasto => ",respuesApi.data.data)
     let gasto=respuesApi.data.data
 
-    if(payload.has_invoice==true){
-      let data=new FormData()
-      data.append("id",gasto.id)
-      data.append("file_invoice",payload.file_factura)
+    // if(payload.has_invoice==true){
+    //   let data=new FormData()
+    //   data.append("id",gasto.id)
+    //   // data.append("file_invoice",payload.file_factura)
 
-      let config= {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+    //   let config= {
+    //     headers: {
+    //       'Content-Type': 'multipart/form-data',
+    //     },
+    //   }
 
-      let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
-      if(respuesApiFileUploaa.status==200){
-        toast.success("El archivo de la factura a sido guardado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
-        statuModule.loadingApp=false
-      }
-    }
+    //   let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
+    //   if(respuesApiFileUploaa.status==200){
+    //     toast.success("El archivo de la factura a sido guardado correctamente")
+    //     cerrarModal(false)
+    //     await actualizarTabla()
+    //     statuModule.loadingApp=false
+    //   }
+    // }
 
   } catch (error) {
     statuModule.loadingApp=false
@@ -213,6 +238,9 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    type_of_expense:type_of_expense,
+    isDeductible: isDeductible.value,
+    hasInvoice: hasInvoice.value,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -244,6 +272,8 @@ function limpliarFiltros(){
   category_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
+  isDeductible.value=false
+  hasInvoice.value=false
 }
 
 
@@ -323,8 +353,6 @@ async function exportarExcel(formato){
 
 }
 
-
-
 onMounted(async () => {
   statuModule.loadingApp=true
   formulario.user_id=1
@@ -332,10 +360,12 @@ onMounted(async () => {
   await actualizarTabla()
   statuModule.categorias=categorias
   statuModule.loadingApp=false
-})
+})*/
 </script>
+
 <template>
-  <LoaderComponent :loadingApp="statuModule.loadingApp" />
+<!-- 
+<LoaderComponent :loadingApp="statuModule?.loadingApp" />
   <div>
     <FiltrosGastoRecurrente
       v-model:currency="currency"
@@ -343,13 +373,16 @@ onMounted(async () => {
       v-model:category_id_filtro="category_id_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
-      :categorias="statuModule.categorias"
+      v-model:isDeductible="isDeductible"
+      v-model:hasInvoice="hasInvoice"
+      :categorias="statuModule?.categorias"
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
       @add="mostarModal"
     />
     <ExpenseFormDialoge
+      type_of_expense="recurrente"
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
       :form-data="formulario"
@@ -359,7 +392,7 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Gastos">
+    <VCard>
       <VDivider />
       <RecurringExpenseTable
         :items="statuModule.items"
@@ -370,5 +403,5 @@ onMounted(async () => {
         @update:options="updateTableOptions"
       />
     </VCard>
-  </div>
+  </div>-->
 </template>

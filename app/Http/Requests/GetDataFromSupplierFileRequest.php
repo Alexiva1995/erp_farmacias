@@ -23,11 +23,11 @@ class GetDataFromSupplierFileRequest extends FormRequest
     {
         return [
             "start_row" => ["required", "integer", "min:1"],
-            "cod_supplier" => ["required", "string"],
+            "cod_supplier" => ["nullable", "string"],
             "name" => ["required", "string"],
             "barcode_match" => ["nullable", "required", "string"],
             "quantity" => ["nullable", "required", "string"],
-            "currency" => ["nullable", "required", "decimal:0,2"],
+            "currency" => ["nullable", "decimal:0,2"],
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "required", "string"],
@@ -50,7 +50,6 @@ class GetDataFromSupplierFileRequest extends FormRequest
         return [
             "start_row.required" => "La fila de inicio es obligatoria.",
             "start_row.min" => "La fila de inicio debe ser al menos 1.",
-            "cod_supplier.required" => "La columna de código es obligatoria.",
             "name.required" => "La columna de nombre es obligatoria.",
             "barcode_match.required" => "La columna de código de barras es obligatoria.",
             "currency.decimal" => "La columna de tasa de cambio debe ser un número.",

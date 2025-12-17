@@ -1,4 +1,6 @@
 <script setup>
+import Swal from "sweetalert2";
+
 const props = defineProps({
   returns: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -6,24 +8,57 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
 });
-const emit = defineEmits(["update:options","status"]);
+const emit = defineEmits(["update:options", "status"]);
 const expanded = ref([]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "100px" },
-  { title: "N° Orden", key: "order_id", sortable: true, width: "100px" },
+  { title: "ID", key: "order_id", sortable: true, width: "100px" },
   { title: "Usuario", key: "client", sortable: true },
   { title: "Identificación", key: "identificacion", sortable: true },
   { title: "Monto", key: "amount_refunded", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
   { title: "Producto", key: "product", sortable: false },
-  { title: "Estatus", key: "status", sortable: false },
+  { title: "Estado", key: "status", sortable: false },
   { title: "Acción", key: "actions", sortable: false },
 ];
 
 const date = (order) => {
   const time = new Date(order);
   return time.toISOString().split("T")[0];
+};
+
+const handleApproveReturn = async (item) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `¿Desea aceptar devolver el producto? Se le sumará saldo por ${item.amount_refunded}$ al cliente ${item.order.client.name} ${item.order.client.last_name}`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (result.isConfirmed) {
+    emit("status", item, "Approved");
+  }
+};
+
+const handleRejectReturn = async (item) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¿Desea rechazar devolver el producto?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (result.isConfirmed) {
+    emit("status", item, "Rejected");
+  }
 };
 </script>
 
@@ -56,38 +91,66 @@ const date = (order) => {
         </span>
       </template>
 
-
-   <template #item.date="{ item }">
+      <template #item.date="{ item }">
         <span>{{ date(item.return_date) }}</span>
       </template>
 
-<template #item.product="{ item }">
+      <template #item.product="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.product.name }}</span>
-            <span class="text-sm text-disabled">{{ item.product.active_ingredient }}</span>
+            <span class="text-body-1 font-weight-medium text-high-emphasis">{{
+              item.product.name
+            }}</span>
+            <span class="text-sm text-disabled">{{
+              item.product.active_ingredient
+            }}</span>
           </div>
         </div>
       </template>
 
-       <template v-slot:item.status="{ item }">
+      <template v-slot:item.status="{ item }">
         <VChip
-          :color="item.status === 'Approved' ? 'success' : 'warning'"
+          :color="
+            item.status == null
+              ? 'warning'
+              : item.status === 'Approved'
+              ? 'success'
+              : 'error'
+          "
         >
-          <span v-if="item.status === 'Created'">Created</span>
-          <span v-else-if="item.status === 'Approved'">Approved</span>
-          <span v-else>{{ item.status }}</span> </VChip>
+          <span v-if="item.status == null">Pendiente</span>
+          <span v-if="item.status === 'Rejected'">Rechazado</span>
+          <span v-else-if="item.status === 'Approved'">Aprobado</span>
+        </VChip>
       </template>
 
+      <template #item.actions="{ item }">
+        <div v-if="item.status == null" class="d-flex align-center gap-2">
+          <VTooltip text="Aprobar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleApproveReturn(item)"
+                color="success"
+              >
+                <VIcon icon="tabler-circle-check" />
+              </IconBtn>
+            </template>
+          </VTooltip>
 
-         <template #item.actions="{ item }">
-        <div class="d-flex align-center gap-2">
-           <VBtn color="primary" variant="outlined" @click="emit('status', item)" :disabled="item.status === 'Approved'">
-            Aprobar
-          </VBtn>
+          <VTooltip text="Rechazar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleRejectReturn(item)"
+                color="error"
+              >
+                <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
-
     </VDataTableServer>
   </VCard>
 </template>

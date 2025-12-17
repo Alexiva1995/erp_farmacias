@@ -1,35 +1,37 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: {
     type: String,
-    default: '',
+    default: "",
   },
 });
 
-const emit = defineEmits(['update:modelValue', 'search-order','clear-search']);
+const emit = defineEmits(["update:modelValue", "search-order", "clear-search"]);
 const identificationInput = ref(props.modelValue);
 
-watch(() => props.modelValue, (newValue) => {
-  identificationInput.value = newValue;
-});
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    identificationInput.value = newValue;
+  }
+);
 
 const updateIdentification = (value) => {
-identificationInput.value = value;
-  emit('update:modelValue', value);
+  identificationInput.value = value;
+  emit("update:modelValue", value);
   if (!value) {
-    emit('clear-search'); // Emite un evento específico cuando el input se vacía
+    emit("clear-search"); // Emite un evento específico cuando el input se vacía
   }
 };
 
 const handleSearchOrder = () => {
-  emit('search-order', identificationInput.value);
+  emit("search-order", identificationInput.value);
 };
-
 </script>
 <template>
- <VCard class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12">
@@ -39,6 +41,7 @@ const handleSearchOrder = () => {
             class="flex-grow-1"
             :model-value="identificationInput"
             @update:model-value="updateIdentification"
+            @keyup.enter="handleSearchOrder"
           />
         </VCol>
       </VRow>
@@ -46,9 +49,7 @@ const handleSearchOrder = () => {
     <VDivider />
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VSpacer />
-      <VBtn color="primary" @click="handleSearchOrder">
-        Buscar pedido
-      </VBtn>
+      <VBtn color="primary" @click="handleSearchOrder"> Buscar pedido </VBtn>
     </VCardActions>
   </VCard>
 </template>

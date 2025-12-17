@@ -17,6 +17,17 @@ const expenses = ref([]);
 // Filtros
 const startDate = ref(null);
 const endDate = ref(null);
+const selectedQuickFilter = ref(null);
+
+const quickFilterOptions = [
+  { title: "Todo el tiempo", value: "all" },
+  { title: "Últimos 15 días", value: 15 },
+  { title: "Últimos 30 días", value: 30 },
+  { title: "Últimos 60 días", value: 60 },
+  { title: "Últimos 90 días", value: 90 },
+  { title: "Mes actual", value: "current_month" },
+  { title: "Mes anterior", value: "last_month" },
+];
 
 // Headers de la tabla
 const headers = [
@@ -38,7 +49,7 @@ const loadSummary = async () => {
     if (endDate.value) params.append("end_date", endDate.value);
 
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/finances/income-statement/summary?${params}`
+      `/finances/income-statement/summary?${params}`
     );
 
     if (response.data && response.data.success) {
@@ -75,7 +86,7 @@ const loadDetails = async () => {
     if (endDate.value) params.append("end_date", endDate.value);
 
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/finances/income-statement/details?${params}`
+      `/finances/income-statement/details?${params}`
     );
 
     if (response.data && response.data.success) {
@@ -145,6 +156,7 @@ const setQuickFilter = (days) => {
 const clearFilters = () => {
   startDate.value = null;
   endDate.value = null;
+  selectedQuickFilter.value = null;
   applyFilters();
 };
 
@@ -189,7 +201,7 @@ const checkAuth = async () => {
     await getCsrfCookie();
 
     // Verificar usuario autenticado
-    const response = await axios.get("/api/user");
+    const response = await axios.get("/user");
     console.log("Usuario autenticado:", response.data);
     return true;
   } catch (error) {
@@ -214,98 +226,68 @@ const checkAuth = async () => {
 onMounted(() => {
   loadData();
 });
+
+// Watch para filtros automáticos
+import { watch } from "vue";
+watch([startDate, endDate], () => {
+  // Debounce opcional si fuera necesario, pero por ahora directo
+  applyFilters();
+});
 </script>
 
 <template>
   <div>
-    <!-- Header -->
-    <div class="d-flex justify-space-between align-center mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold">Estado de Resultados</h1>
-        <p class="text-body-1 text-medium-emphasis">
-          Visualización completa de ingresos, costos, gastos y utilidad neta
-        </p>
-      </div>
-    </div>
-
-    <!-- Filtros -->
     <VCard class="mb-6">
       <VCardText>
-        <h6 class="text-h6 mb-3 text-primary">Filtros</h6>
-
-        <!-- Filtros rápidos en una línea horizontal -->
-        <VRow class="mb-4">
-          <VCol cols="12">
-            <div class="d-flex gap-2 flex-wrap">
-              <VBtn
-                v-for="filter in [
-                  { label: 'Todo el tiempo', value: 'all' },
-                  { label: 'Últimos 15 días', value: 15 },
-                  { label: 'Últimos 30 días', value: 30 },
-                  { label: 'Últimos 60 días', value: 60 },
-                  { label: 'Últimos 90 días', value: 90 },
-                  { label: 'Mes actual', value: 'current_month' },
-                  { label: 'Mes anterior', value: 'last_month' },
-                ]"
-                :key="filter.value"
-                size="small"
-                variant="outlined"
-                @click="setQuickFilter(filter.value)"
-              >
-                {{ filter.label }}
-              </VBtn>
-            </div>
-          </VCol>
-        </VRow>
-
-        <!-- Campos de fecha con botón aplicar -->
+        <!-- Filtros en una fila -->
         <VRow>
-          <VCol cols="12" sm="6" md="3">
+          <VCol cols="12" sm="3" md="4">
+            <VSelect
+              v-model="selectedQuickFilter"
+              :items="quickFilterOptions"
+              label="Filtro Rápido"
+              placeholder="Seleccionar periodo"
+              item-title="title"
+              item-value="value"
+              variant="outlined"
+              hide-details
+              @update:model-value="setQuickFilter"
+            />
+          </VCol>
+          <VCol cols="12" sm="3" md="4">
             <AppDateTimePicker
               v-model="startDate"
-              placeholder="Fecha Inicio"
+              placeholder="Desde"
               clearable
             />
           </VCol>
-          <VCol cols="12" sm="6" md="3">
+          <VCol cols="12" sm="3" md="4">
             <AppDateTimePicker
               v-model="endDate"
-              placeholder="Fecha Fin"
+              placeholder="Hasta"
               clearable
             />
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <VBtn
-              color="primary"
-              @click="applyFilters"
-              :loading="loadingSummary || loadingDetails"
-              block
-            >
-              Aplicar Filtros
-            </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              @click="clearFilters"
-              block
-            >
-              Limpiar Filtros
-            </VBtn>
           </VCol>
         </VRow>
       </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+        <VBtn color="secondary" variant="outlined" @click="clearFilters">
+          Limpiar Filtros
+        </VBtn>
+      </VCardActions>
     </VCard>
 
     <!-- Resumen (4 cuadritos) -->
     <VRow class="mb-6">
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="">
         <VCard>
           <VCardText>
             <div class="d-flex align-center">
               <VIcon
-                icon="mdi-currency-usd"
+                icon="tabler-currency-dollar"
                 color="success"
                 size="40"
                 class="me-4"
@@ -321,12 +303,12 @@ onMounted(() => {
         </VCard>
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="">
         <VCard>
           <VCardText>
             <div class="d-flex align-center">
               <VIcon
-                icon="mdi-package-variant"
+                icon="tabler-package"
                 color="warning"
                 size="40"
                 class="me-4"
@@ -342,12 +324,12 @@ onMounted(() => {
         </VCard>
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="">
         <VCard>
           <VCardText>
             <div class="d-flex align-center">
               <VIcon
-                icon="mdi-chart-line"
+                icon="tabler-chart-line"
                 color="error"
                 size="40"
                 class="me-4"
@@ -370,8 +352,8 @@ onMounted(() => {
               <VIcon
                 :icon="
                   summary.net_profit?.amount >= 0
-                    ? 'mdi-trending-up'
-                    : 'mdi-trending-down'
+                    ? 'tabler-trending-up'
+                    : 'tabler-trending-down'
                 "
                 :color="summary.net_profit?.amount >= 0 ? 'success' : 'error'"
                 size="40"
@@ -444,18 +426,23 @@ onMounted(() => {
 
           <template #item.amount="{ item }">
             <span :class="item.type === 'sale' ? 'text-success' : 'text-error'">
-              {{ item.type === "sale" ? "+" : "-"
-              }}{{ formatCurrency(item.amount) }}
+              {{
+                item.monto_display ||
+                (item.type === "sale" ? "+" : "-") + formatCurrency(item.amount)
+              }}
             </span>
           </template>
 
           <template #item.costs="{ item }">
-            {{ formatCurrency(item.costs) }}
+            {{ item.costos_display || formatCurrency(item.costs) }}
           </template>
 
           <template #item.profit="{ item }">
             <span :class="item.profit >= 0 ? 'text-success' : 'text-error'">
-              {{ item.profit >= 0 ? "+" : "" }}{{ formatCurrency(item.profit) }}
+              {{
+                item.utilidad_display ||
+                (item.profit >= 0 ? "+" : "") + formatCurrency(item.profit)
+              }}
             </span>
           </template>
         </VDataTable>

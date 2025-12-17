@@ -59,7 +59,7 @@ const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
     const labResponse = await axios.get("/laboratories");
-    laboratories.value = labResponse.data.data;
+    laboratories.value = labResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");

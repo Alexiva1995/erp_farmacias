@@ -12,8 +12,8 @@ const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 const formData = ref({
   dispatch_days: [],
   order_days: {},
-  supplier_payment_method: null,
-  supplier_payment_days: null,
+  //supplier_payment_method: null,
+  //supplier_payment_days: null,
 });
 const formErrors = ref({});
 
@@ -31,18 +31,18 @@ const dias = [
   { label: "Sábado", value: "saturday" },
 ];
 
-const paymentMethodOptions = [
+/*const paymentMethodOptions = [
   { label: "Fecha de vencimiento", value: "due_date" },
   { label: "Pronto Pago", value: "early_payment" },
   { label: "Fecha de creación", value: "creation_date" },
   { label: "Días de crédito", value: "credit_days" },
-];
+];*/
 
 const isNewSupplier = computed(() => !formData.value.id);
 
-const shouldShowDaysInput = computed(() => {
-  return formData.value.supplier_payment_method === "credit_days";
-});
+// const shouldShowDaysInput = computed(() => {
+//   return formData.value.supplier_payment_method === "credit_days";
+// });
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -54,24 +54,24 @@ const submitForm = () => {
   formErrors.value = {};
   emit("clearErrors");
 
-  if (!formData.value.supplier_payment_method) {
-    formErrors.value.supplier_payment_method = [
-      "El método de pago es requerido",
-    ];
-    return;
-  }
+  // if (!formData.value.supplier_payment_method) {
+  //   formErrors.value.supplier_payment_method = [
+  //     "El método de pago es requerido",
+  //   ];
+  //   return;
+  // }
 
-  if (formData.value.supplier_payment_method === "credit_days") {
-    if (
-      !formData.value.supplier_payment_days ||
-      formData.value.supplier_payment_days <= 0
-    ) {
-      formErrors.value.supplier_payment_days = [
-        "Los días de crédito son requeridos y deben ser mayor a 0",
-      ];
-      return;
-    }
-  }
+  // if (formData.value.supplier_payment_method === "credit_days") {
+  //   if (
+  //     !formData.value.supplier_payment_days ||
+  //     formData.value.supplier_payment_days <= 0
+  //   ) {
+  //     formErrors.value.supplier_payment_days = [
+  //       "Los días de crédito son requeridos y deben ser mayor a 0",
+  //     ];
+  //     return;
+  //   }
+  // }
 
   const original = props.supplier || {};
   const current = formData.value;
@@ -85,6 +85,12 @@ const submitForm = () => {
       typeof value === "object"
         ? JSON.stringify(value) !== JSON.stringify(originalValue)
         : value !== originalValue;
+
+
+    if (hasChanged && (key === 'payment_due_type' || key === 'payment_due_reference' || key === 'custom_due_days')) {
+        filteredPayload[key] = value === undefined ? null : value;
+        return;
+    }
 
     const isFilled = Array.isArray(value)
       ? value.length > 0
@@ -101,18 +107,32 @@ const submitForm = () => {
     }
   });
 
-  if (formData.value.supplier_payment_method) {
-    filteredPayload.supplier_payment_method =
-      formData.value.supplier_payment_method;
+  // if (formData.value.supplier_payment_method) {
+  //   filteredPayload.supplier_payment_method =
+  //     formData.value.supplier_payment_method;
 
-    if (
-      formData.value.supplier_payment_method === "credit_days" &&
-      formData.value.supplier_payment_days
-    ) {
-      filteredPayload.supplier_payment_days =
-        formData.value.supplier_payment_days;
+  //   if (
+  //     formData.value.supplier_payment_method === "credit_days" &&
+  //     formData.value.supplier_payment_days
+  //   ) {
+  //     filteredPayload.supplier_payment_days =
+  //       formData.value.supplier_payment_days;
+  //   }
+  // }
+
+
+const currentRef = formData.value.invoice_date_reference;
+const originalRef = original.invoice_date_reference;
+
+if (formData.value.payment_due_type === 'invoice_date') {
+    if (currentRef !== originalRef) {
+        filteredPayload.invoice_date_reference = currentRef;
+    } 
+    else if (currentRef !== undefined && currentRef !== null) {
+        filteredPayload.invoice_date_reference = currentRef;
     }
-  }
+
+}
 
   if (
     typeof formData.value.order_days === "object" &&
@@ -124,6 +144,7 @@ const submitForm = () => {
     filteredPayload.order_days = formData.value.order_days;
   }
 
+  console.log(filteredPayload);
   emit("save", filteredPayload);
 };
 
@@ -146,33 +167,33 @@ watch(
     if (newSupplier && Object.keys(newSupplier).length > 0) {
       formData.value = JSON.parse(JSON.stringify(newSupplier));
 
-      if (newSupplier.payment_date && newSupplier.payment_date.type) {
-        formData.value.supplier_payment_method = newSupplier.payment_date.type;
+      //if (newSupplier.payment_date && newSupplier.payment_date.type) {
+        //formData.value.supplier_payment_method = newSupplier.payment_date.type;
 
-        if (
-          newSupplier.payment_date.type === "credit_days" &&
-          newSupplier.payment_date.days
-        ) {
-          formData.value.supplier_payment_days = newSupplier.payment_date.days;
-        }
-      } else if (
-        newSupplier.payment_methods &&
-        newSupplier.payment_methods.length > 0
-      ) {
-        formData.value.supplier_payment_method =
-          newSupplier.payment_methods[0].type;
+        // if (
+        //   newSupplier.payment_date.type === "credit_days" &&
+        //   newSupplier.payment_date.days
+        // ) {
+        //   formData.value.supplier_payment_days = newSupplier.payment_date.days;
+        // }
+      // } else if (
+      //   newSupplier.payment_methods &&
+      //   newSupplier.payment_methods.length > 0
+      // ) {
+        // formData.value.supplier_payment_method =
+        //   newSupplier.payment_methods[0].type;
 
-        if (
-          newSupplier.payment_methods[0].type === "credit_days" &&
-          newSupplier.payment_methods[0].days
-        ) {
-          formData.value.supplier_payment_days =
-            newSupplier.payment_methods[0].days;
-        }
-      } else {
-        formData.value.supplier_payment_method = null;
-        formData.value.supplier_payment_days = null;
-      }
+        // if (
+        //   newSupplier.payment_methods[0].type === "credit_days" &&
+        //   newSupplier.payment_methods[0].days
+        // ) {
+          // formData.value.supplier_payment_days =
+          //   newSupplier.payment_methods[0].days;
+      //   }
+      // } else {
+        //formData.value.supplier_payment_method = null;
+        //formData.value.supplier_payment_days = null;
+      //}
 
       const normalized = {};
       (formData.value.dispatch_days || []).forEach((day) => {
@@ -194,8 +215,8 @@ watch(
         name: "",
         dispatch_days: [],
         order_days: {},
-        supplier_payment_method: null,
-        supplier_payment_days: null,
+        //supplier_payment_method: null,
+        //supplier_payment_days: null,
       };
     }
     formErrors.value = {};
@@ -215,7 +236,7 @@ watch(
   { immediate: true }
 );
 
-watch(
+/*watch(
   () => formData.value.supplier_payment_method,
   (newMethod) => {
     if (newMethod !== "credit_days") {
@@ -225,7 +246,7 @@ watch(
       }
     }
   }
-);
+);*/
 </script>
 
 <template>
@@ -309,6 +330,26 @@ watch(
               md="6"
               class="d-flex align-center flex-wrap gap-x-4"
             >
+              <VRadioGroup
+                v-model="formData.payment_method"
+                label="Forma de Pago"
+              >
+                <VRow>
+                  <VCol
+                    cols="auto"
+                    v-for="opcion in opciones"
+                    :key="opcion.value"
+                  >
+                    <VRadio :label="opcion.label" :value="opcion.value" />
+                  </VCol>
+                </VRow>
+              </VRadioGroup>
+            </VCol>
+            <!--<VCol
+              cols="12"
+              md="6"
+              class="d-flex align-center flex-wrap gap-x-4"
+            >
               <VCheckbox
                 v-model="formData.cash_payment"
                 label="Pago de Contado"
@@ -321,9 +362,9 @@ watch(
                 :true-value="1"
                 :false-value="0"
               />
-            </VCol>
+            </VCol>-->
           </VRow>
-          <VRow>
+          <!--<VRow>
             <VCol
               cols="12"
               md="6"
@@ -344,12 +385,12 @@ watch(
                 </VRow>
               </VRadioGroup>
             </VCol>
-          </VRow>
+          </VRow>-->
 
-          <!-- Sección de Métodos de Pago REQUERIDA -->
-          <VDivider class="my-4" />
+          <!-- Sección de Métodos de Pago REQUERIDA
+          <VDivider class="my-4" /> -->
 
-          <VRow>
+          <!-- <VRow>
             <VCol cols="12">
               <h6 class="text-subtitle-1 font-weight-medium mb-4">
                 Método de Pago del Proveedor
@@ -380,7 +421,6 @@ watch(
                 </VRow>
               </VRadioGroup>
 
-              <!-- Input de días para credit_days -->
               <div v-if="shouldShowDaysInput" class="mt-4">
                 <VTextField
                   v-model.number="formData.supplier_payment_days"
@@ -395,23 +435,23 @@ watch(
                 />
               </div>
             </VCol>
-          </VRow>
+          </VRow> -->
 
           <VDivider class="my-4" />
 
+
           <VRow>
-            <VCol cols="12" md="12">
-              <h6 class="text-subtitle-1 font-weight-medium mt-3 mb-6">
+            <VCol cols="12" md="12" class="pl-4">
+              <h6 class="text-subtitle-1 font-weight-medium mb-4">
                 Días de Despacho
               </h6>
-
-              <VRow>
+              <VRow no-gutters>
                 <VCol
                   v-for="dia in dias"
                   :key="dia.value"
-                  cols="6"
-                  sm="4"
-                  class="pa-0"
+                  cols="6" 
+                  sm="auto"
+                  class="d-flex align-center pr-4"
                 >
                   <VCheckbox
                     v-model="formData.dispatch_days"
@@ -424,7 +464,7 @@ watch(
                 </VCol>
                 <div
                   v-if="formErrors.dispatch_days"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.dispatch_days[0] }}
                 </div>
@@ -432,11 +472,10 @@ watch(
             </VCol>
           </VRow>
 
-          <VRow>
-            <VCol cols="12" md="12">
+          <VRow v-if="formData.dispatch_days.length">
+            <VCol cols="12" md="12" class="pl-4">
               <h6
-                class="text-subtitle-1 font-weight-medium mt-3 mb-6"
-                v-if="formData.dispatch_days.length"
+                class="text-subtitle-1 font-weight-medium mb-4"
               >
                 Días de Pedido por Despacho
               </h6>
@@ -445,19 +484,19 @@ watch(
                 :key="diaDespacho"
                 class="mb-4"
               >
-                <h6 class="text-caption font-weight-medium text-primary mb-2">
+                <h6 class="text-caption font-weight-medium text-primary mb-4">
                   Pedidos requeridos para
                   <strong>{{ diaDespachoLabel(diaDespacho) }}</strong
                   >:
                 </h6>
 
-                <VRow>
+                <VRow no-gutters>
                   <VCol
                     v-for="diaPedido in dias"
                     :key="diaPedido.value"
-                    cols="6"
-                    sm="4"
-                    class="pa-0"
+                    cols="6" 
+                    sm="auto"
+                    class="d-flex align-center pr-4"
                   >
                     <VCheckbox
                       v-model="formData.order_days[diaDespacho]"
@@ -472,7 +511,7 @@ watch(
 
                 <div
                   v-if="formErrors.order_days?.[diaDespacho]"
-                  class="text-error text-sm mt-1"
+                  class="text-error text-sm mt-1 pl-4"
                 >
                   {{ formErrors.order_days[diaDespacho][0] }}
                 </div>
@@ -495,6 +534,20 @@ watch(
               />
             </VCol>
 
+            <VCol cols="12" md="6" v-if="formData.payment_due_type === 'invoice_date'">
+              <VSelect
+                v-model="formData.invoice_date_reference"
+                :items="[
+                  { title: 'Fecha de Recibo', value: 'receipt_date' },
+                  { title: 'Fecha de Vencimiento', value: 'expiration_date' },
+                  { title: 'Fecha de emisión', value: 'issue_date' },
+                ]"
+                label="Referencia de Fecha de Factura"
+                variant="outlined"
+                :error-messages="formErrors.invoice_date_reference"
+              />
+            </VCol>
+
             <VCol cols="12" md="6" v-if="formData.payment_due_type === 'custom'">
               <VTextField
                 v-model="formData.custom_due_days"
@@ -505,7 +558,7 @@ watch(
               />
             </VCol>
 
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="6" v-if="formData.payment_due_type !== 'invoice_date'">
               <VSelect
                 v-model="formData.payment_due_reference"
                 :items="[

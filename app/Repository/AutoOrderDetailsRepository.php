@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Models\AutoOrderDetail;
+use DB;
 use Illuminate\Database\Eloquent\Collection;
 
 class AutoOrderDetailsRepository
@@ -50,6 +51,16 @@ class AutoOrderDetailsRepository
 
     public function consultDetailByProductSupplierId($product_supplier_id): int|null
     {
-        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", "=", "0")->sum("quantity");
+        return AutoOrderDetail::where("product_suppliers_id", $product_supplier_id)->where("status", 0)->sum("quantity");
+    }
+
+    public function updateDetailStatus($autoOrderDetail, $data): bool
+    {
+        try {
+            $autoOrderDetail->update(['received' => $data['status']]);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

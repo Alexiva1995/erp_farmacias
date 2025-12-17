@@ -12,8 +12,6 @@ class ExchangeRateRepository
     public function consultAll(): Collection
     {
         $exhange = ExchangeRate::all();
-
-
         return $exhange;
     }
 
@@ -21,23 +19,19 @@ class ExchangeRateRepository
     {
         $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
 
-
         return $exhange;
     }
 
     public function consultOneBCV(): Model | null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'USD')->first();
-
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS')->first();
         return $exhange;
     }
 
-    public function updateBCVDollar(): Model
+    public function updateBCVDollar(array $data): Model
     {
-
-        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-
-        return ExchangeRate::create($data);
+        ExchangeRate::where("id", "=", $data["id"])->update($data);
+        return ExchangeRate::find($data["id"]);
     }
 
     public function store(array $data): Model

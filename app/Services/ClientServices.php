@@ -65,4 +65,13 @@ class ClientServices implements Client
         $query = $this->clientRepository->builerPaginate($filtros);
         return new ClientsExport($query);
     }
+
+    public function updateCompany(int $client_id, int $company_id, bool $status): Model
+    {
+        if ($status) {
+            return $this->clientRepository->assignCompany($client_id, $company_id);
+        } else {
+            return $this->clientRepository->removerAssignCompany($client_id);
+        }
+    }
 }

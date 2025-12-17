@@ -1,20 +1,33 @@
 <script setup>
+import FinalizePayslipFormDialog from "@/components/dialogs/FinalizePayslipFormDialog.vue";
 import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfPayslipsGenerator from "@/utils/pdfPayslipGenerator";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 
 const loading = ref(false);
 const page = ref(1);
 const totalPayslips = ref(0);
 const itemsPerPage = ref(10);
 const payslips = ref([]);
+const startDate = ref(null);
+const endDate = ref(null);
+
+const selectedPayslip = ref(null);
+const showFinalizeDialog = ref(false);
 
 const fetchPayslips = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get("/finances/payslips");
+    const { data } = await axios.get("/finances/payslips", {
+      params: {
+        page: page.value,
+        itemsPerPage: itemsPerPage.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+      },
+    });
     payslips.value = data.data.data;
     totalPayslips.value = data.data.total;
   } catch (error) {
@@ -24,29 +37,26 @@ const fetchPayslips = async () => {
   }
 };
 
+watch([page, itemsPerPage, startDate, endDate], () => {
+  fetchPayslips();
+});
+
+const handleClearFilters = () => {
+  startDate.value = null;
+  endDate.value = null;
+  page.value = 1;
+};
+
 onMounted(() => fetchPayslips());
 
-const handleFinalizePayslip = async (id) => {
-  try {
-    const form = new FormData();
-    form.append("_method", "PUT");
-    const { data } = await axios.post(
-      `/finances/payslips/${id}/finalize`,
-      form
-    );
+const handleFinalizePayslip = (payslip) => {
+  showFinalizeDialog.value = true;
+  selectedPayslip.value = payslip;
+};
 
-    if (data.status) {
-      toast.success("El estado de la nómina ha sido actualizado exitosamente");
-
-      fetchPayslips();
-    } else {
-      toast.error(
-        "No se pudo actualizar el estado de la nómina, intente de nuevo"
-      );
-    }
-  } catch (error) {
-    toast.error("Hubo un error al actualizar el estado de la nómina");
-  }
+const handleClosePayslip = () => {
+  showFinalizeDialog.value = false;
+  selectedPayslip.value = {};
 };
 
 const handleDownloadExcel = async (id) => {
@@ -97,6 +107,20 @@ const handleDownloadPdf = async (id, type) => {
 
 <template>
   <div>
+    <FinalizePayslipFormDialog
+      v-model="showFinalizeDialog"
+      :selected-payslip="selectedPayslip"
+      @refresh-table="fetchPayslips"
+      @close="handleClosePayslip"
+    />
+
+    <PayslipFilters
+      v-model:startDate="startDate"
+      v-model:endDate="endDate"
+      @clear="handleClearFilters"
+      @generated="fetchPayslips"
+    />
+
     <PayslipTable
       :page="page"
       :items-per-page="itemsPerPage"

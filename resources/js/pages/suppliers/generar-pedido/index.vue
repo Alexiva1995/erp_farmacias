@@ -4,7 +4,7 @@ import NavegationIaAutoOrder from "@/components/NavegationIaAutoOrder.vue";
 import OrderProductListTable from "@/components/OrderProductListTable.vue";
 import ProductsExceededDidNotToleranceTable from "@/components/ProductsExceededDidNotToleranceTable.vue";
 import ProductsExceededToleranceTable from "@/components/ProductsExceededToleranceTable.vue";
-import UniqueMarketOpportunityTable from "@/components/UniqueMarketOpportunityTable.vue";
+import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
@@ -16,16 +16,17 @@ const route= useRoute()
 const router= useRouter()
 
 // console.log(route.query)
+const pageOportunidad = ref(1);
 
 const indexNavegacion=ref(1)
 
-const module=reactive({
-  dataProductos:{},
-  productoFallas:[],
-  productosOportunidadUnica:[],
-  detalleOrder:[],
-  productosSinReponer:[],
-  loadingApp:true,
+const module = reactive({
+  dataProductos: {},
+  productoFallas: [],
+  productosOportunidadUnica: { data: [], current_page: 1, last_page: 1, total: 0 },
+  detalleOrder: [],
+  productosSinReponer: [],
+  loadingApp: true,
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
@@ -33,62 +34,116 @@ let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laborator
 
 
 const con_descuento= ref(route.query.con_descuento);// descuento o precio full
-const tipo_de_filtracion= ref(route.query.tipo_filtracion);// promedio o ventas
-const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);// tiempo
-const groups= ref(gruposList);// grupos
-const laboratoryId= ref(laboratoriosList);// laboratorio
-// const stock= ref(route.query.stock);// Fallas , Execeso o All
+const tipo_de_filtracion= ref(route.query.tipo_filtracion);
+const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);
+const groups= ref(gruposList);
+const laboratoryId= ref(laboratoriosList);
 
-async function generarPedido(){
-  let data ={
-    "con_descuento":con_descuento.value,
-    "tipo_filtracion":tipo_de_filtracion.value,
-    "lapso_de_tiempo":lapso_de_tiempo.value,
-    "groups":groups.value,
-    "laboratoryId":laboratoryId.value,
-    // "stock":stock.value,
+async function generarPedido(page = 1) {
+  let data = {
+    "con_descuento": con_descuento.value,
+    "tipo_filtracion": tipo_de_filtracion.value,
+    "lapso_de_tiempo": lapso_de_tiempo.value,
+    "groups": groups.value,
+    "laboratoryId": laboratoryId.value,
+    "page": page
   }
-  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`,data)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
-  }
-    console.log("respues api => ",respuestaApi)
 
-    return {...respuestaApi.data}
+  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`, data)
+
+  return { ...respuestaApi.data }
 }
 
+async function fetchSoloOportunidad(page = 1) {
+  let data = {
+    "con_descuento": con_descuento.value,
+    "tipo_filtracion": tipo_de_filtracion.value,
+    "lapso_de_tiempo": lapso_de_tiempo.value,
+    "groups": groups.value,
+    "laboratoryId": laboratoryId.value,
+    "page": page
+  }
+  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/unique-opportunity-page`, data);
+  return respuestaApi.data.data;
+}
+
+async function handleChangePageOportunidad(newPage) {
+  module.loadingApp = true;
+  pageOportunidad.value = newPage;
+
+  try {
+    let paginacionData = await fetchSoloOportunidad(newPage);
+
+    if (paginacionData && paginacionData.data) {
+      paginacionData.data = paginacionData.data.map(a => {
+        a.uuid = generateUUID();
+        return a;
+      });
+
+      module.productosOportunidadUnica = paginacionData;
+    }
+  } catch (error) {
+    console.error("Error cambiando pagina", error);
+    toast.error("Error al cargar la página");
+  } finally {
+    module.loadingApp = false;
+  }
+}
+
+function procesarRespuesta(data) {
+  // Asignar productos a reponer (Fallas visibles en tabla)
+  if(data.data.productos_a_reponer) {
+      data.data.productos_a_reponer = data.data.productos_a_reponer.map(a => {
+        a.uuid = generateUUID()
+        return a
+      })
+      module.productoFallas = [...data.data.productos_a_reponer];
+  }
+
+  if(data.data.productosFallas) {
+      module.productosSinReponer = [...data.data.productosFallas];
+  }
+
+  if (data.data.productos_oportunidad_unica && data.data.productos_oportunidad_unica.data) {
+    data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(a => {
+      a.uuid = generateUUID()
+      return a
+    })
+    module.productosOportunidadUnica = data.data.productos_oportunidad_unica;
+  } else {
+    module.productosOportunidadUnica = { data: [], total: 0 };
+  }
+
+  module.dataProductos = { ...data.data };
+}
 
 onMounted(async () => {
-  module.loadingApp=true
-  let data = await generarPedido()
-  data.data.productos_a_reponer=data.data.productos_a_reponer.map(a => {
-    a.uuid=generateUUID()
-    return a
-  })
-  data.data.productos_oportunidad_unica=data.data.productos_oportunidad_unica.map(a => {
-    a.uuid=generateUUID()
-    return a
-  })
-  module.productosSinReponer=[...data.data.productosFallas]
-  module.dataProductos={...data.data}
-  module.productoFallas=[...data.data.productos_a_reponer]
-  module.productosOportunidadUnica=[...data.data.productos_oportunidad_unica]
-  module.loadingApp=false
-
-})
+  module.loadingApp = true;
+  try {
+    let data = await generarPedido(1);
+    procesarRespuesta(data);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    module.loadingApp = false;
+  }
+});
 
 
 
 function actualizarIndexNavegacion(payload){
-  indexNavegacion.value=payload
-  if(payload<=0){
+  indexNavegacion.value = payload;
+
+  if(payload <= 0){
     router.push("/suppliers/supplieriaorderassistant")
   }
-  if(payload==3){
-    // seleccionarProductosParaElDetalle()
-    module.productosOportunidadUnica=actualizarCantidadAReponerProductosEnFalla([...module.productoFallas],[...module.productosOportunidadUnica])
+
+  if(payload == 3){
+    // Al entrar al paso 3, mostramos la tabla de precios estables (se filtra en el componente)
+    seleccionarProductosParaElDetalle()
   }
-  if(payload==4){
+
+  if(payload == 4){
     seleccionarProductosParaElDetalle()
   }
 }
@@ -112,17 +167,23 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
 }
 
 function seleccionarProductosParaElDetalle(){
-  // TODO: falta obtener los productos que no estan en falla
-  // lo que se puede hacer es hacer comparar la lista productosEnFalla y los que coincidan eliminarlos de la otra lista (trabajar con una copia) y solo dejar los que no coincidan
-  // luego uniar las dos listas y eso si guardarlo en un estado
-  module.detalleOrder=[]
-  let productosEnFalla=verificarSiHayProductosEnFallaEnLaLista([...module.productoFallas],[...module.productosOportunidadUnica])
-  // console.log("productos en falla que puedan ser que tenga una oportunidad unica =>",productosEnFalla)
-  let productosSinFallas=removerProductosConProveedores([...productosEnFalla],[...module.productosOportunidadUnica])
-  // console.log("productos con oportunidad unica de mercado sin falla =>",productosSinFallas)
-  let detalles = [...productosEnFalla,...productosSinFallas]
-  module.detalleOrder=detalles
+  module.detalleOrder = []
+  const listaOportunidad = module.productosOportunidadUnica?.data || [];
 
+  let productosEnFalla = verificarSiHayProductosEnFallaEnLaLista(
+      [...module.productoFallas],
+      [...listaOportunidad]
+  )
+
+  let productosSinFallas = removerProductosConProveedores(
+      [...productosEnFalla],
+      [...listaOportunidad]
+  )
+
+  let detalles = [...productosEnFalla, ...productosSinFallas]
+  detalles = detalles.filter(producto => producto.reponer > 0)
+
+  module.detalleOrder = detalles
 }
 
 // esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
@@ -284,33 +345,43 @@ async function realizarCompra(){
 }
 
 async function consultarProductosSinProveedor(){
-  let productos=module.productosSinReponer.filter(p => p.solicitar<0)
-  let ids=productos.map(p => p.id)
-  let idsConFantante=productos.map(p => {
+
+  const idsQueSeEstanComprando = module.detalleOrder.map(item => item.product.id);
+  let productos = module.productosSinReponer.filter(p =>
+      p.solicitar < 0 && !idsQueSeEstanComprando.includes(p.id)
+  );
+
+  let ids = productos.map(p => p.id)
+
+  let idsConFantante = productos.map(p => {
     return {
       "id": p.id,
       "solicitar": p.solicitar,
     }
   })
-  console.log("ids => ",ids)
-  console.log("ids con solicitar => ",idsConFantante)
 
-  let data={
-    "tipo_filtracion":tipo_de_filtracion.value,
-    "lapso_de_tiempo":lapso_de_tiempo.value,
+  // console.log("ids filtrados para pdf => ", ids)
+
+  let data = {
+    "tipo_filtracion": tipo_de_filtracion.value,
+    "lapso_de_tiempo": lapso_de_tiempo.value,
     ids,
     idsConFantante
-    // "groups":groups.value,
-    // "laboratoryId":laboratoryId.value,
   }
 
-  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier",data)
-  if(response.status!=200){
-    toast.error("Error al generar el reporte de de productos sin proveedor")
-    return
+  if (ids.length === 0) {
+      toast.info("No hay productos pendientes sin proveedor para generar reporte.");
+      return [];
   }
+
+  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/products-without-supplier", data)
+
+  if(response.status != 200){
+    toast.error("Error al generar el reporte de productos sin proveedor")
+    return []
+  }
+
   toast.success("Reporte Generado")
-  console.log("data => ",response.data.data)
   return [...response.data.data]
 }
 
@@ -360,12 +431,21 @@ function eliminarItemOrden(payload){
       </template>
       <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
     </VCard>
-    <VCard
-      title="Oportunidades de Mercado"
-      class="mb-6"
-      v-if="indexNavegacion == 3"
-    >
-      <UniqueMarketOpportunityTable :list="module.productosOportunidadUnica" />
+    <VCard class="mb-6" v-if="indexNavegacion == 3">
+      <template #title>
+        Productos con Precio Estable
+        <VChip
+          color="primary"
+          variant="tonal"
+          size="small"
+          @click:close="clearSortFilter"
+        >
+          {{
+            module.productoFallas.filter((pro) => pro.increase === null).length
+          }}
+        </VChip>
+      </template>
+      <ProductsStablePriceTable :list="module.productoFallas" />
     </VCard>
 
     <div v-if="indexNavegacion == 4">
@@ -386,13 +466,6 @@ function eliminarItemOrden(payload){
             />
           </VCard>
         </VCol>
-        <!-- order="1"
-          order-sm="1"
-          order-md="2"
-          order-lg="2"
-          sm="12"
-          md="12"
-          lg="3" -->
         <VCol
           order="1"
           order-sm="1"

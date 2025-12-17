@@ -13,7 +13,9 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory', 'supplier']);
+            ->with(['product.laboratory', 'supplier','product.origin']);
+
+        $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
 
         if ($request->has('productId') && !empty($request->productId)) {
             $query->where('product_id', $request->productId);
@@ -23,18 +25,52 @@ class LotQueryService
 
         if ($request->has('search') && !empty($request->search)) {
             $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('lot_number', 'like', "%{$searchTerm}%")
+            $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $q->where('lot_number', 'like', "%{$searchTerm}%")
+                        ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
+                            $productQuery->where('name', 'like', "%{$searchTerm}%")
+                                ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                                ->orWhere('barcode', 'like', $searchTerm)
+                                ->orWhere('id', $searchTerm);
+                        });
+                }else{
+                    $words = explode(' ', $searchTerm);
+                    $q->where(function ($wordClauses) use ($words) {
+                        foreach ($words as $word) {
+                            $word = trim($word);
+                            if (empty($word)) continue;
+                            $wordClauses->where(function ($fieldClauses) use ($word) {
+                                $fieldClauses->orWhere('lot_number', 'like', "%{$word}%")
+                                    ->orWhereHas('product', function ($productQuery) use ($word) {
+                                        $productQuery->where('name', 'like', "%{$word}%")
+                                            ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                            ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                                $labQuery->where('name', 'like', "%{$word}%");
+                                            });
+                                    });
+                            });
+                        }
+                    });
+                }
+
+                /*$q->where('lot_number', 'like', "%{$searchTerm}%")
                     ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
                         $productQuery->where('name', 'like', "%{$searchTerm}%")
                             ->orWhere('active_ingredient', 'like', "%{$searchTerm}%");
-                    });
+                    });*/
             });
         }
 
         if ($request->has('laboratoryId') && !empty($request->laboratoryId)) {
             $query->whereHas('product', function ($productQuery) use ($request) {
                 $productQuery->where('laboratory_id', $request->laboratoryId);
+            });
+        }
+
+        if ($request->has('originId') && !empty($request->originId)) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
+                $productQuery->where('origin_id', $request->originId);
             });
         }
 
@@ -57,8 +93,12 @@ class LotQueryService
         if ($request->has('sortBy') && $request->has('orderBy') && $request->sortBy !== 'id') {
             $this->applySorting($query, $request->sortBy, $request->orderBy);
         } else {
-            $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                ->orderBy('products.name', 'asc');
+            //$query->join('products', 'product_lots.product_id', '=', 'products.id')
+                //->orderBy('products.name', 'asc');
+            if (!in_array($request->sortBy, ['product.name', 'laboratory.name', 'origin.name'])) {
+                $query->join('products', 'product_lots.product_id', '=', 'products.id');
+            }
+            $query->orderBy('products.name', 'asc');
         }
         return $query;
     }
@@ -67,7 +107,7 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory'])
+            ->with(['product.laboratory', 'product.origin'])
             ->whereHas('product', function ($productQuery) {
                 $productQuery->whereRaw('
                     stock != (
@@ -78,7 +118,9 @@ class LotQueryService
                 ');
             });
 
-        if ($request->has('search') && !empty($request->search)) {
+        $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
+
+        /*if ($request->has('search') && !empty($request->search)) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('lot_number', 'like', "%{$searchTerm}%")
@@ -86,11 +128,52 @@ class LotQueryService
                         $productQuery->where('name', 'like', "%{$searchTerm}%");
                     });
             });
-        }
+        }*/
+
+    if ($request->has('search') && !empty($request->search)) {
+        $searchTerm = $request->search;
+        
+        $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
+            if ($isStrictSearch) {
+                $q->where('lot_number', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
+                        $productQuery->where('name', 'like', "%{$searchTerm}%")
+                            ->orWhere('active_ingredient', 'like', "%{$searchTerm}%") 
+                            ->orWhere('barcode', 'like', $searchTerm)
+                            ->orWhere('id', $searchTerm);
+                    });
+            } else {
+
+                $words = explode(' ', $searchTerm);
+                $q->where(function ($wordClauses) use ($words) {
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $wordClauses->where(function ($fieldClauses) use ($word) {
+                            $fieldClauses->orWhere('lot_number', 'like', "%{$word}%")
+                                ->orWhereHas('product', function ($productQuery) use ($word) {
+                                    $productQuery->where('name', 'like', "%{$word}%")
+                                        ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                        ->orWhereHas('laboratory', function ($labQuery) use ($word) {
+                                            $labQuery->where('name', 'like', "%{$word}%");
+                                        });
+                                });
+                        });
+                    }
+                });
+            }
+        });
+    }
 
         if ($request->has('laboratoryId') && !empty($request->laboratoryId)) {
             $query->whereHas('product', function ($productQuery) use ($request) {
                 $productQuery->where('laboratory_id', $request->laboratoryId);
+            });
+        }
+
+         if ($request->has('originId') && !empty($request->originId)) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
+                $productQuery->where('origin_id', $request->originId);
             });
         }
 
@@ -112,7 +195,7 @@ class LotQueryService
 
     public function getProductsWithoutLot()
     {
-        return Product::with('laboratory')
+        return Product::with('laboratory','origin')
             ->orderBy('name', 'asc')
             ->get();
     }
@@ -144,6 +227,12 @@ class LotQueryService
                 $query->join('products', 'product_lots.product_id', '=', 'products.id')
                     ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
                     ->orderBy('laboratories.name', $orderBy);
+                break;
+            
+            case 'origin.name':
+                $query->join('products', 'product_lots.product_id', '=', 'products.id')
+                    ->join('origins', 'products.origin_id', '=', 'origins.id')
+                    ->orderBy('origins.name', $orderBy);
                 break;
 
             case 'quantity':

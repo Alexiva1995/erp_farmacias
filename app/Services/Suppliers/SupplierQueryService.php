@@ -4,6 +4,7 @@ namespace App\Services\Suppliers;
 
 use App\Models\AutoOrder;
 use App\Models\Laboratory;
+use App\Models\Product;
 use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\Invoice;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
 class SupplierQueryService
 {
@@ -27,6 +29,7 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
+
         return Supplier::query()
             ->withoutTrashed()
             ->select('suppliers.*')
@@ -72,13 +75,19 @@ class SupplierQueryService
                     ->select("suppliers.*");
 
             case "debt":
-                $subDebt = DB::raw('(
+                /*$subDebt = DB::raw('(
                     SELECT COALESCE(SUM(i.total_amount), 0) - COALESCE(SUM(ip.amount), 0)
                     FROM invoices i
                     LEFT JOIN invoice_payment_invoice pivot ON pivot.invoice_id = i.id
                     LEFT JOIN invoice_payments ip ON ip.id = pivot.payment_id
                     WHERE i.supplier_id = suppliers.id
                     AND i.status IN ("loaded", "ordered")
+                )');*/
+                $subDebt = DB::raw('(
+                    SELECT SUM(COALESCE(i.Total_usd, 0)) 
+                    FROM invoices i
+                    WHERE i.supplier_id = suppliers.id
+                    AND i.status_payment = 0  
                 )');
                 return $query->orderBy($subDebt, $orderBy);
 
@@ -164,27 +173,55 @@ class SupplierQueryService
                 ->values()
                 ->toArray();
 
-            DB::transaction(function () use ($supplier, $uniqueProducts, $invoices) {
+            $existingInvoiceNumbers = Invoice::whereIn(
+                'invoice_number',
+                collect($invoices)->pluck('header.invoice_number')->filter()->unique()
+            )->pluck('invoice_number')->toArray();
+
+            $filteredInvoices = collect($invoices)
+                ->filter(function ($invoice) use ($existingInvoiceNumbers) {
+                    $number = $invoice['header']['invoice_number'] ?? null;
+                    return $number && !in_array($number, $existingInvoiceNumbers);
+                })->values()->toArray();
+
+            DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices) {
                 $supplier->productSuppliers()->delete();
                 foreach (array_chunk($uniqueProducts, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
                 }
 
-                InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
-                $supplier->invoices()->delete();
-                foreach ($invoices as $invoice) {
+                //InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
+                //$supplier->invoices()->delete();
+                foreach ($filteredInvoices as $invoice) {
                     $header = $invoice['header'];
                     $lines = $invoice['lines'];
 
                     $invoiceModel = $supplier->invoices()->create([
                         ...Arr::only($header, Invoice::FILLABLEHEADER),
+                        'status' => $invoice['status'] ?? 'pending',
                         'uploaded_by' => auth()->id() ?? 1,
                         'registered_by' => auth()->id() ?? 1,
                     ]);
 
-                    $details = collect($lines)->map(function ($line) use ($invoiceModel) {
+                    // ✅ Obtener exchange_rate del header
+                    $exchangeRate = floatval($header['exchange_rate'] ?? 1);
+                    $isVitaclinics = $supplier->id === 15;
+
+                    $details = collect($lines)->map(function ($line) use ($invoiceModel, $exchangeRate, $isVitaclinics) {
+                        $lineData = Arr::only($line, InvoiceDetail::FILLABLEDETAILS);
+
+                        // ✅ Si es Vitaclinics y tiene exchange_rate, multiplicar unit_cost
+                        if ($isVitaclinics && $exchangeRate > 1) {
+                            $unitCost = floatval($lineData['unit_cost'] ?? 0);
+                            $lineData['unit_cost'] = number_format($unitCost * $exchangeRate, 2, '.', '');
+
+                            // Recalcular total_cost también
+                            $quantity = floatval($lineData['quantity'] ?? 0);
+                            $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
+                        }
+
                         return [
-                            ...Arr::only($line, InvoiceDetail::FILLABLEDETAILS),
+                            ...$lineData,
                             'invoice_id' => $invoiceModel->id,
                         ];
                     })->toArray();
@@ -203,7 +240,10 @@ class SupplierQueryService
     {
         $filters = $request->query();
         $perPage = $filters["perPage"] ?? 10;
-        $selectedSupplier = $filters["selectedSupplier"] ?? null;
+
+        // Buscamos el parámetro 'search' (enviado desde el frontend)
+        // O mantenemos compatibilidad si enviasen 'selectedSupplier' como texto
+        $searchTerm = $filters["search"] ?? $filters["selectedSupplier"] ?? null;
 
         $paginated = DB::table("suppliers")
             ->select(
@@ -215,8 +255,9 @@ class SupplierQueryService
                 DB::raw("UPPER(COALESCE(CASE WHEN supplier_connections.type = 'file' THEN 'Archivo Excel' ELSE supplier_connections.type END, 'No registrado')) as type"),
             )
             ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
-            ->when($selectedSupplier, function ($query) use ($selectedSupplier) {
-                $query->where("suppliers.id", $selectedSupplier);
+            ->when($searchTerm, function ($query) use ($searchTerm) {
+                // Buscamos coincidencia parcial en el nombre
+                $query->where("suppliers.name", "LIKE", "%{$searchTerm}%");
             })
             ->paginate($perPage);
 
@@ -269,7 +310,6 @@ class SupplierQueryService
                 if ($factor === null) {
                     return;
                 }
-
                 DB::update(
                     'UPDATE product_suppliers
                        SET unit_cost_with_discount    = ROUND(unit_cost     * ?, 2),
@@ -288,11 +328,30 @@ class SupplierQueryService
         $laboratoryId = $request->query("laboratoryId");
         $supplierId = $request->query("supplierId");
         $perPage = $request->query("perPage", 10) ?? 10;
-        $search = $request->query('q');
+
+        $search = trim($request->query('q'));
+
         $originId = $request->query("originId");
+
         $hasStock = $request->has('hasStock')
-            ? filter_var($request->query("hasStock"), FILTER_VALIDATE_BOOLEAN) : null;
+            ? filter_var($request->query("hasStock"), FILTER_VALIDATE_BOOLEAN)
+            : null;
+
         $isStrictSearch = filter_var($request->query("isStrictSearch"), FILTER_VALIDATE_BOOLEAN);
+
+        $sortBy = $request->query("sortBy", "name");
+        $sortOrder = $request->query("order", "asc");
+
+        $sortableColumns = [
+            'name' => 'product_suppliers.name',
+            'unit_cost_bs' => 'product_suppliers.unit_cost',
+            'unit_cost_usd' => 'product_suppliers.unit_cost_usd',
+            'final_cost_bs' => 'final_cost_bs',
+            'final_cost_usd' => 'final_cost_usd',
+            'expiration' => 'product_suppliers.expiration'
+        ];
+
+        $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
 
         $laboratory = Laboratory::where("id", $laboratoryId)->first();
 
@@ -310,16 +369,17 @@ class SupplierQueryService
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
+
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
-                $searchTerm = "%{$search}%";
 
                 if ($isStrictSearch) {
-                    $query->where('product_suppliers.name', 'like', "%{$searchTerm}%")
-                        ->orWhere('product_suppliers.active_ingredient', 'like', "%{$searchTerm}%")
-                        ->orWhere('product_suppliers.barcode_match', 'like', $searchTerm)
-                        ->orWhere('product_suppliers.id', 'like', $searchTerm);
+                    $query->where(function ($q) use ($search) {
+                        $q->where('product_suppliers.name', '=', $search)
+                            ->orWhere('product_suppliers.id', '=', $search)
+                            ->orWhere('product_suppliers.barcode_match', '=', $search);
+                    });
                 } else {
-                    $words = explode(' ', $searchTerm);
+                    $words = explode(' ', $search);
                     foreach ($words as $word) {
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('product_suppliers.name', 'like', "%{$word}%")
@@ -329,6 +389,8 @@ class SupplierQueryService
                     }
                 }
             })
+            // -------------------------------------
+
             ->when(!empty($originId), function ($query) use ($originId) {
                 $query->where('products.origin_id', $originId);
             })
@@ -338,13 +400,15 @@ class SupplierQueryService
             ->when($laboratoryId, function ($query) use ($laboratory) {
                 $query->where("laboratory", $laboratory->name);
             })
-            ->orderBy("name", "asc")
+
+            ->orderBy($sortColumn, $sortOrder)
+
             ->when($hasStock !== null, function ($query) use ($hasStock) {
                 $stockSql = 'COALESCE((SELECT SUM(pl.quantity)
-                                        FROM product_lots pl
-                                        WHERE pl.product_id = products.id
-                                          AND pl.expiration_date >= CURDATE()
-                                          AND pl.quantity > 0), 0)';
+                                    FROM product_lots pl
+                                    WHERE pl.product_id = products.id
+                                      AND pl.expiration_date >= CURDATE()
+                                      AND pl.quantity > 0), 0)';
 
                 $query->havingRaw($hasStock ? "{$stockSql} > 0"
                     : "{$stockSql} = 0");

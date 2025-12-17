@@ -39,7 +39,13 @@ class CreateExpenseRequest extends FormRequest
             "currency"               =>    "required|string|max:10",
             "has_invoice"            =>    "nullable|boolean:strict",
             "is_deductible"          =>    "nullable|boolean:strict",
+            "iva"                    =>    "nullable|boolean:strict",
             "expense_date"           =>    "required|date",
+            "exempt_amount"          =>    "nullable|numeric|min:0",
+            "taxable_base"           =>    "nullable|numeric|min:0",
+            "tax_amount"             =>    "nullable|numeric|min:0",
+            "exchange_rate"          =>    "nullable|numeric|min:0",
+            "total_usd"              =>    "nullable|numeric|min:0",
             "user_id"                =>    "required|numeric|exists:users,id",
             "count"                  =>    [
                 "required",
@@ -53,6 +59,9 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_PAYPAL,
                 ])
             ],
+            "account"                =>    "nullable|string|max:255",
+            'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
+            'conversion_rate_to_bs' => ['nullable','numeric','min:0'],
         ];
     }
 
@@ -88,6 +97,9 @@ class CreateExpenseRequest extends FormRequest
             // Reglas para 'is_deductible'
             'is_deductible.boolean' => 'El campo deducible debe ser verdadero o falso.',
 
+            // Reglas para 'iva'
+            'iva.boolean' => 'El campo iva debe ser verdadero o falso.',
+
             // Reglas para 'expense_date'
             'expense_date.required' => 'La fecha del gasto es obligatoria.',
             'expense_date.date' => 'La fecha debe ser una fecha válida.',
@@ -101,9 +113,28 @@ class CreateExpenseRequest extends FormRequest
             'count.required' => 'El método de pago es obligatorio.',
             'count.string' => 'El método de pago debe ser una cadena de texto.',
             'count.in' => 'El método de pago seleccionado no es válido.',
+
+            // Reglas para 'amount_bs'
+            'amount_bs.required_if' => 'El Monto Bs es obligatorio si el gasto tiene IVA o es Deducible.',
+            'amount_bs.numeric' => 'El monto en USD debe ser un valor numérico.',
         ];
     }
 
+
+    protected function withValidator(Validator $validator): void
+    {
+        $validator->after(function ($validator) {
+            // Si es deducible y la moneda no es BS, se requiere la tasa de conversión
+            if ($this->is_deductible === true && $this->currency !== 'BS') {
+                if (empty($this->conversion_rate_to_bs) || $this->conversion_rate_to_bs <= 0) {
+                    $validator->errors()->add(
+                        'conversion_rate_to_bs',
+                        'La tasa de conversión a BS es obligatoria cuando el gasto es deducible y la moneda no es BS.'
+                    );
+                }
+            }
+        });
+    }
 
     protected function failedValidation(Validator $validator): JsonResponse
     {
@@ -122,9 +153,19 @@ class CreateExpenseRequest extends FormRequest
             "currency"                =>    $this->currency,
             "has_invoice"             =>    $this->has_invoice,
             "is_deductible"           =>    $this->is_deductible,
+            "iva"                     =>    $this->iva,
             "expense_date"            =>    $this->expense_date,
             "user_id"                 =>    $this->user_id,
             "count"                   =>    $this->count,
+            "account"                 =>    $this->account ?? null,
+            "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_NORMAL,
+            "amount_bs"              =>    $this->amount_bs,
+            "conversion_rate_to_bs"   =>    $this->conversion_rate_to_bs ?? null,
+            "exempt_amount"           =>    $this->exempt_amount ?? null,
+            "taxable_base"            =>    $this->taxable_base ?? null,
+            "tax_amount"              =>    $this->tax_amount ?? null,
+            "exchange_rate"           =>    $this->exchange_rate ?? null,
+            "total_usd"               =>    $this->total_usd ?? null,
         ]);
     }
 }

@@ -56,6 +56,22 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  },
+  activeDoctorOffers: {
+    type: Array,
+    default: () => [],
+  },
+  prescriptionDiscountPercentage: {
+    type: Number,
+    default: 0,
+  },
+  activeCompanyOffers: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits([
@@ -68,9 +84,48 @@ const emit = defineEmits([
   "reserve-order",
   "add-quotation-products",
   "add-reserved-order",
+  "update:selectedDiscountType",
+  "doctor-discount-selected",
+  "prescription-file-selected",
+  "company-discount-selected",
 ]);
 
+const discountOptions = ["Empresa", "Medico", "Recipe"];
+
 const quotationId = ref("");
+const selectedDoctor = ref(null);
+const selectedCompany = ref(null);
+const prescriptionFile = ref(null);
+
+watch(
+  () => selectedDoctor.value,
+  (newVal) => {
+    emit("doctor-discount-selected", newVal);
+  }
+);
+
+watch(
+  () => selectedCompany.value,
+  (newVal) => {
+    emit("company-discount-selected", newVal);
+  }
+);
+
+watch(prescriptionFile, (newVal) => {
+  emit("prescription-file-selected", newVal);
+});
+
+watch(
+  () => props.selectedDiscountType,
+  (newVal) => {
+    if (newVal !== "Recipe") {
+      prescriptionFile.value = null;
+    }
+    if (newVal !== "Empresa") {
+      selectedCompany.value = null;
+    }
+  }
+);
 
 const clientName = computed(() => {
   return props.cliente
@@ -151,7 +206,7 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let priceWithIva = (basePrice * product.selectedQuantity) * (1 + taxRate);
+  let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
@@ -169,7 +224,7 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
-  let Iva = (basePrice * product.selectedQuantity) * taxRate;
+  let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
@@ -273,34 +328,99 @@ watch(
         {{ clientName }} {{ Identidad }}
       </VCardTitle>
       <template #append>
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn
-              type="button"
-              color="primary"
-              variant="tonal"
-              density="default"
-              size="small"
-              class="ms-2"
-              v-bind="menuProps"
-            >
-              <span>{{ props.selectedDisplayCurrency }}</span>
-              <template #append>
-                <VIcon icon="tabler-chevron-down" size="16" />
-              </template>
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="currencyOption in availableCurrency"
-              :key="currencyOption"
-              :value="currencyOption"
-              @click="selectCurrency(currencyOption)"
-            >
-              <VListItemTitle>{{ currencyOption }}</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
+        <div class="d-flex align-center">
+          <VSelect
+            :model-value="props.selectedDiscountType"
+            :items="discountOptions"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 140px"
+            class="me-2"
+            placeholder="Descuento"
+            clearable
+            @update:model-value="emit('update:selectedDiscountType', $event)"
+          />
+          <VSelect
+            v-if="props.selectedDiscountType === 'Empresa'"
+            v-model="selectedCompany"
+            :items="props.activeCompanyOffers"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Seleccione Empresa"
+            item-title="title"
+            item-value="value"
+            clearable
+          />
+          <VSelect
+            v-if="props.selectedDiscountType === 'Medico'"
+            v-model="selectedDoctor"
+            :items="props.activeDoctorOffers"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Seleccione Médico"
+            item-title="title"
+            item-value="value"
+            clearable
+          />
+          <VFileInput
+            v-if="props.selectedDiscountType === 'Recipe'"
+            v-model="prescriptionFile"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Subir Recipe"
+            accept="image/*"
+            prepend-icon=""
+            append-inner-icon="tabler-upload"
+            clearable
+          />
+          <span
+            v-if="
+              props.selectedDiscountType === 'Recipe' &&
+              props.prescriptionDiscountPercentage > 0
+            "
+            class="text-body-2 text-success font-weight-bold"
+            style="white-space: nowrap"
+          >
+            {{ props.prescriptionDiscountPercentage }}% Descuento
+          </span>
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                type="button"
+                variant="tonal"
+                density="default"
+                size="small"
+                class="ms-2"
+                v-bind="menuProps"
+              >
+                <span>{{ props.selectedDisplayCurrency }}</span>
+                <template #append>
+                  <VIcon icon="tabler-chevron-down" size="16" />
+                </template>
+              </VBtn>
+            </template>
+            <VList>
+              <VListItem
+                v-for="currencyOption in availableCurrency"
+                :key="currencyOption"
+                :value="currencyOption"
+                @click="selectCurrency(currencyOption)"
+              >
+                <VListItemTitle>{{ currencyOption }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+        </div>
       </template>
     </VCardItem>
 
@@ -365,9 +485,10 @@ watch(
 
     <VCardText class="py-2 bg-grey-lighten-4">
       <VTable density="compact" lines="none">
-      <tbody>
-        <tr v-for="(product, index) in props.orderProducts" :key="product.id">
-          <td>  <div class="d-flex flex-column">
+        <tbody>
+          <tr v-for="(product, index) in props.orderProducts" :key="product.id">
+            <td>
+              <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ product.title }}
                 </span>
@@ -376,16 +497,19 @@ watch(
                   {{ product.laboratory ? `- ${product.laboratory}` : "" }}
                 </span>
               </div>
-          </td>
-          <td> <div class="d-flex align-center">
+            </td>
+            <td>
+              <div class="d-flex align-center">
                 <VBtn
                   icon
                   size="x-small"
                   variant="text"
-                  @click="handleClickProductItem(
-                    product.product_id,
-                    product.selectedQuantity
-                  )"
+                  @click="
+                    handleClickProductItem(
+                      product.product_id,
+                      product.selectedQuantity
+                    )
+                  "
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -402,68 +526,77 @@ watch(
                   icon
                   size="x-small"
                   variant="text"
-                  @click="$emit('update-quantity', { productId: product.product_id, quantity: product.selectedQuantity + 1 })"
-                  :disabled="product.selectedQuantity >= product.availableQuantity"
+                  @click="
+                    $emit('update-quantity', {
+                      productId: product.product_id,
+                      quantity: product.selectedQuantity + 1,
+                    })
+                  "
+                  :disabled="
+                    product.selectedQuantity >= product.availableQuantity
+                  "
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
-              </div></td>
-          <td class="text-right">
-           <div class="d-flex flex-column align-end me-4"><span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Precio</span
-                  >
-                  <span class="text-body-1 font-weight-regular">
-                    {{
-                      formatCurrency(
-                        getProductPriceSinIva(
-                          product,
-                          props.selectedDisplayCurrency
-                        ),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-          </td>
-           <td class="text-right">
-           <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >IVA</span
-                  >
-                  <span class="text-body-1 font-weight-regular">
-                    {{
-                      formatCurrency(
-                        getIva(product, props.selectedDisplayCurrency),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
-          </td>
-          <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Total</span
-                  >
-                  <span class="text-body-1 font-weight-bold text-black">
-                    {{
-                      formatCurrency(
-                        getProductPrice(product, props.selectedDisplayCurrency),
-                        props.selectedDisplayCurrency
-                      )
-                    }}
-                  </span>
-                </div>
+              </div>
             </td>
-        </tr>
-      </tbody>
-    </VTable>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >Precio</span
+                >
+                <span class="text-body-1 font-weight-regular">
+                  {{
+                    formatCurrency(
+                      getProductPriceSinIva(
+                        product,
+                        props.selectedDisplayCurrency
+                      ),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >IVA</span
+                >
+                <span class="text-body-1 font-weight-regular">
+                  {{
+                    formatCurrency(
+                      getIva(product, props.selectedDisplayCurrency),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >Total</span
+                >
+                <span class="text-body-1 font-weight-bold text-black">
+                  {{
+                    formatCurrency(
+                      getProductPrice(product, props.selectedDisplayCurrency),
+                      props.selectedDisplayCurrency
+                    )
+                  }}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </VTable>
     </VCardText>
     <VDivider class="mt-auto" />
 
@@ -486,7 +619,7 @@ watch(
         >
           RESERVAR
         </VBtn>
-         <VBtn
+        <VBtn
           v-if="props.orderReserved"
           color="success"
           variant="flat"

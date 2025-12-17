@@ -11,6 +11,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
+import { useRouter } from 'vue-router';
 
 const suppliers = ref([]);
 const totalSupplier = ref(0);
@@ -41,6 +42,8 @@ const isSupplierDiscountRuleDialogVisible = ref(false);
 const isSupplierDiscountDialogVisible = ref(false);
 
 const checkingApiSupplierId = ref(null);
+
+const router = useRouter();
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -82,7 +85,9 @@ const fetchSuppliers = async () => {
 };
 
 const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/laboratories`);
+  const { data } = await axios.get(
+    `/suppliers/${currentSupplier.value.id}/laboratories`
+  );
   laboratoryLinks.value = data.laboratory_links;
 };
 
@@ -128,7 +133,9 @@ const fetchPaymentRules = async () => {
 
 const fetchSupplierDiscount = async () => {
   try {
-    const { data } = await axios.get(`/suppliers/${currentSupplier.value.id}/discounts`);
+    const { data } = await axios.get(
+      `/suppliers/${currentSupplier.value.id}/discounts`
+    );
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
@@ -161,7 +168,9 @@ const handleAddSupplier = () => {
 
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
-  const url = isNewSupplier ? "/suppliers" : `/suppliers/${currentSupplier.value.id}`;
+  const url = isNewSupplier
+    ? "/suppliers"
+    : `/suppliers/${currentSupplier.value.id}`;
 
   const payloadKeys = Object.keys(supplierFormData);
   if (!isNewSupplier && payloadKeys.length === 0) {
@@ -178,7 +187,9 @@ const handleSaveSupplier = async (supplierFormData) => {
 
     await axios.post(url, payload);
 
-    toast.success(`Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`);
+    toast.success(
+      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
+    );
     isEditDialogVisible.value = false;
     await fetchSuppliers();
   } catch (error) {
@@ -225,8 +236,10 @@ const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
   try {
-    toast.info(`Procesando los datos de ${supplier.name}, le notificaremos al finalizar`);
-    await axios.get(`/suppliers/${supplier.id}/connection`);    
+    toast.info(
+      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
+    );
+    await axios.get(`/suppliers/${supplier.id}/connection`);
   } catch (error) {
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
   } finally {
@@ -247,13 +260,12 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
   try {
-    const payload = { ...paymentRuleFormData };
-
+   const payload = {
+      rules: paymentRuleFormData,
+    };
     await axios.post(url, payload);
-
     toast.success(`Reglas de pago creadas con éxito`);
     isPaymentRuleDialogVisible.value = false;
-
     await fetchPaymentRules();
     await fetchSuppliers();
   } catch (error) {
@@ -278,12 +290,11 @@ const handleSupplierLaboratory = async (supplier) => {
 const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
   const url = `/suppliers/${currentSupplier.value.id}/laboratories`;
   try {
-    const payload = { ...supplierLaboratoryFormData };
-
+    const payload = {
+      rulesLaboratory: supplierLaboratoryFormData,
+    };
     await axios.post(url, payload);
-
     toast.success("Laboratorio vinculado con éxito");
-
     isSupplierLaboratoryDialogVisible.value = false;
     await fetchLaboratoryLinks();
     await fetchSuppliers();
@@ -299,10 +310,16 @@ const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
 };
 
 const handleSupplierPendingInvoices = async (supplier) => {
-  currentSupplier.value = { ...supplier };
-  isPendingInvoicesDialogVisible.value = true;
-
-  await fetchPendingInvoices();
+ // currentSupplier.value = { ...supplier };
+ // isPendingInvoicesDialogVisible.value = true;
+ // await fetchPendingInvoices();
+ const supplierId = supplier.id;
+ await router.push({ 
+        name: 'finances-pending-payments', 
+        query: { 
+          supplierId: supplierId 
+        }
+      });
 };
 
 const handleSupplierDiscountRule = async (supplier) => {
@@ -315,12 +332,12 @@ const handleSupplierDiscountRule = async (supplier) => {
 };
 
 const handleSaveDiscountRules = async (formData) => {
+  const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
   try {
-    await axios.post(
-      `/supplier-laboratories/${formData.supplier_laboratory_id}/discount-rules`,
-      formData
-    );
-
+    const payload = {
+      rules: formData,
+    };
+    await axios.post(url, payload);
     toast.success("Reglas de descuento guardadas con éxito");
     isSupplierDiscountRuleDialogVisible.value = false;
 
@@ -350,13 +367,12 @@ const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/discounts`;
   try {
-    const payload = { ...supplierDiscountFormData };
-
+  const payload = {
+      discounts: supplierDiscountFormData,
+    };
     await axios.post(url, payload);
-
     toast.success(`Descuentos creados con éxito`);
     isPaymentRuleDialogVisible.value = false;
-
     await fetchSupplierDiscount();
     await fetchSuppliers();
   } catch (error) {
@@ -460,6 +476,7 @@ const updateTableOptions = (options) => {
     <SupplierDiscountRulesDialog
       v-model="isSupplierDiscountRuleDialogVisible"
       :supplier="currentSupplier"
+      :laboratories="laboratories"
       :laboratory-links="laboratoryLinks"
       :discount-rules="discountRules"
       :loading="loading"

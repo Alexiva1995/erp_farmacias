@@ -90,6 +90,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Company::class)
             ->give(CompanyServices::class);
 
+        $this->app->when(CompanyController::class)
+            ->needs(Client::class)
+            ->give(ClientServices::class);
+
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);
@@ -129,6 +133,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(ExpensesController::class)
             ->needs(Expenses::class)
             ->give(ExpensesServices::class);
+
+        $this->app->when(ExpensesController::class)
+            ->needs(Transaction::class)
+            ->give(TransactionServices::class);
 
         $this->app->when(ExpenseCategoryController::class)
             ->needs(ExpenseCategory::class)

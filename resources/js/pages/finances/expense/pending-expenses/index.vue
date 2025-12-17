@@ -5,7 +5,7 @@ import PendingExpenseTable from '@/components/PendingExpenseTable.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfGastos from '@/utils/pdfGastos';
-// import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 import { onMounted, reactive, watch } from 'vue';
 // import { useRouter } from "vue-router";
 // const route= useRouter()
@@ -27,6 +27,7 @@ const category_id_filtro= ref("");
 const currency= ref("");
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
+const type_of_expense = ["Normal","Recurrente"];
 const status= ["Pending"];
 
 const loading = ref(false)
@@ -35,6 +36,9 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref()
 const orderBy = ref()
+
+const isDeductible = ref(false);
+const hasInvoice = ref(false);
 
 watch(
     [
@@ -46,7 +50,9 @@ watch(
       page,
       itemsPerPage,
       sortBy,
-      orderBy
+      orderBy,
+      isDeductible,
+      hasInvoice
   ],
   async () =>{
     actualizarTabla()
@@ -73,6 +79,9 @@ async function consultarGastos(){
     itemsPerPage:itemsPerPage.value,
     sortBy:sortBy.value,
     orderBy:orderBy.value,
+    type_of_expense:type_of_expense,
+    isDeductible: isDeductible.value,
+    hasInvoice: hasInvoice.value,
   }
   let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
   if(respuestaApi.status!=200){
@@ -104,6 +113,8 @@ function limpliarFiltros(){
   category_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
+  isDeductible.value=false
+  hasInvoice.value=false
 }
 
 async function generaPdf(){
@@ -114,7 +125,8 @@ async function generaPdf(){
       currency:currency.value,
       category_id_filtro:category_id_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value
+      fechaHasta_filtro:fechaHasta_filtro.value,
+      type_of_expense:type_of_expense,
   }
   let respuestaApi=await axios.post(`/finances/expenses`,DATA)
   if(respuestaApi.status!=200){
@@ -137,7 +149,8 @@ async function exportarExcel(formato){
         currency:currency.value,
         category_id_filtro:category_id_filtro.value,
         fechaDesde_filtro:fechaDesde_filtro.value,
-        fechaHasta_filtro:fechaHasta_filtro.value
+        fechaHasta_filtro:fechaHasta_filtro.value,
+        type_of_expense:type_of_expense,
     }
 
     let respuestaApi = await axios.post(
@@ -182,10 +195,26 @@ async function exportarExcel(formato){
 
 }
 
+function confirmarEstado(payload){
+ const statusText = payload.status == 'Cancelled' ? 'Cancelar': 'Aprobar'
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: `¡Desea ${statusText} el estado del producto!`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      cambiarEstado(payload)
+    }
+  });
+}
 
 async function cambiarEstado(payload){
-  // console.log("estado => ",payload)
-
+const statusText = payload.status == 'Cancelled' ? 'Cancelado': 'Aprobado'
   let respuestaApi=await axios.post("/finances/expenses/change-status",payload)
   if(respuestaApi.status!=200){
     toast.error("Error al cambiar el estado del gasto")
@@ -195,6 +224,7 @@ async function cambiarEstado(payload){
   statuModule.loadingApp=true
   await actualizarTabla()
   statuModule.loadingApp=false
+  toast.success(`El gasto fue ${statusText}`)
 }
 
 onMounted(async () => {
@@ -214,7 +244,10 @@ onMounted(async () => {
       v-model:category_id_filtro="category_id_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
+      v-model:isDeductible="isDeductible"
+      v-model:hasInvoice="hasInvoice"
       :categorias="statuModule.categorias"
+      :show-add-button="false" 
       @export-excel="exportarExcel"
       @export-pdf="generaPdf"
       @clear="limpliarFiltros"
@@ -228,7 +261,7 @@ onMounted(async () => {
         :items-per-page="itemsPerPage"
         :page="page"
         @update:options="updateTableOptions"
-        @cambiarEstado="cambiarEstado"
+        @cambiarEstado="confirmarEstado"
       />
     </VCard>
   </div>

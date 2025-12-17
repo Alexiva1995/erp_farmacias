@@ -6,6 +6,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   products: { type: Array, default: () => [] },
   suppliers: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
   isEditing: { type: Boolean, default: false },
   lotToEdit: { type: Object, default: null },
 });
@@ -40,6 +41,8 @@ watch(
   (isVisible) => {
     if (isVisible) {
       if (props.isEditing && props.lotToEdit) {
+      console.log('hola');
+      console.log(lotData);
         lotData.value = {
           id: props.lotToEdit.id,
           product_id: props.lotToEdit.product_id,
@@ -135,9 +138,14 @@ const onCancel = () => emit("update:modelValue", false);
             </VCol>
 
             <VCol cols="12" sm="6">
-              <VTextField
+               <VAutocomplete
                 v-model="lotData.location"
                 label="Ubicación (Opcional)"
+                :items="props.origins"
+                item-title="name"
+                item-value="name"
+                placeholder="Busca un ubicación"
+                clearable
               />
             </VCol>
 

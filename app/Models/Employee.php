@@ -56,6 +56,18 @@ class Employee extends Model
         return $this->belongsToMany(Product::class, 'employee_product')
             ->withTimestamps();
     }
+
+    /**
+     * Un empleado puede tener asignadas muchas actividades de limpieza.
+     * Una actividad de limpieza puede estar asignada a muchos empleados.
+     */
+    public function cleaningActivities(): BelongsToMany
+    {
+        return $this->belongsToMany(CleaningActivity::class, 'employee_cleaning_activity')
+            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+            ->withTimestamps();
+    }
+
     public function settlement()
     {
         return $this->hasOne(EmployeeSettlement::class);
@@ -64,5 +76,27 @@ class Employee extends Model
     public function resignation()
     {
         return $this->hasOne(Resignation::class);
+    }
+    public function cleaningActivityExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class);
+    }
+
+    /**
+     * Ejecuciones pendientes
+     */
+    public function pendingExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class)
+            ->where('status', 'Pendiente');
+    }
+
+    /**
+     * Ejecuciones procesadas (esperando aprobación)
+     */
+    public function processedExecutions()
+    {
+        return $this->hasMany(CleaningActivityExecution::class)
+            ->where('status', 'Procesada');
     }
 }

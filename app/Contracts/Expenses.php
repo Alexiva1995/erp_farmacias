@@ -3,6 +3,8 @@
 
 namespace App\Contracts;
 
+use App\Data\CreateExpenseData;
+use App\Data\CreateExpenseRecurrenceData;
 use App\Exports\ExpenseExport;
 use App\Models\Expense;
 use Illuminate\Database\Eloquent\Collection;
@@ -12,7 +14,9 @@ interface Expenses
 {
 
 
-    public function crearGasto(array $data): Expense;
+    public function crearGasto(CreateExpenseData $data): Expense;
+
+    public function crearGastoRecurrente(CreateExpenseRecurrenceData $data): Expense;
 
     public function editarGasto(array $data): Expense;
 
@@ -31,4 +35,6 @@ interface Expenses
     public function changeStatus(int $id, string $status): Expense;
 
     public function exportExcel(array $filtros): ExpenseExport;
+
+    public function ejecutarGastosRecurrentesDeHoy(): void;
 }

@@ -45,7 +45,6 @@ class Product extends Model
         'barcode',
         'photo_url',
         'sales_average',
-        'group_id',
         'cycle_id',
         'is_deleted',
         'stock',
@@ -288,5 +287,62 @@ class Product extends Model
     public function setNameAttribute($value): void
     {
         $this->attributes['name'] = Str::upper($value);
+    }
+
+    /**
+     * Obtener la fecha de expiración más próxima del producto
+     */
+    public function getNextExpirationAttribute()
+    {
+        $nextLot = $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->first();
+
+        return $nextLot ? $nextLot->expiration_date : null;
+    }
+
+    /**
+     * Obtener el lote con la fecha de expiración más próxima
+     */
+    public function getNextExpiringLotAttribute()
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->first();
+    }
+
+    /**
+     * Obtener todos los lotes con stock disponibles, ordenados por expiración
+     */
+    public function getAvailableLotsAttribute()
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date')
+            ->get();
+    }
+
+    /**
+     * Verificar si el producto tiene stock disponible
+     */
+    public function getHasStockAttribute(): bool
+    {
+        return $this->stock > 0;
+    }
+
+    /**
+     * Obtener el stock total disponible
+     */
+    public function getAvailableStockAttribute(): int
+    {
+        return $this->lots()
+            ->withStock()
+            ->where('expiration_date', '>', now())
+            ->sum('quantity');
     }
 }

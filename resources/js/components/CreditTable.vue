@@ -1,6 +1,4 @@
 <script setup>
-import { toast } from "@/plugins/sweetalert";
-import axios from "@/plugins/axios";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
@@ -11,11 +9,20 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "open-payment-modal", "reload", "view-order-modal","print-order"]);
+const emit = defineEmits([
+  "update:options",
+  "open-payment-modal",
+  "reload",
+  "view-order-modal",
+  "print-order",
+]);
 
 const headers = [
+  { title: "Fecha", key: "credit_date", sortable: true },
+  { title: "Documento", key: "client_identification", sortable: false },
   { title: "Nombre", key: "client_full_name", sortable: true },
   { title: "Monto", key: "total_pending_amount", sortable: true },
+  { title: "Estado", key: "status", sortable: true },
   { title: "Acciones", key: "action", sortable: false },
 ];
 
@@ -35,20 +42,53 @@ const authStore = useAuthStore();
       height="auto"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template v-slot:item.credit_date="{ item }">
+        <span>{{
+          item.credit_date ? item.credit_date.split(" ")[0] : "N/A"
+        }}</span>
+      </template>
+
+      <template v-slot:item.client_identification="{ item }">
+        {{ item.client.identification_type }}{{ item.client.identification }}
+      </template>
+
       <template v-slot:item.client_full_name="{ item }">
         {{ item.client.name }} {{ item.client.last_name }}
       </template>
 
+      <template v-slot:item.status="{ item }">
+        <span
+          :class="
+            item.status === 0
+              ? 'text-error'
+              : item.status === 1
+              ? 'text-info'
+              : 'text-success'
+          "
+          class="font-weight-medium text-uppercase"
+        >
+          {{
+            item.status === 0
+              ? "DEBE"
+              : item.status === 1
+              ? "PARCIALMENTE PAGADO"
+              : "PAGADO"
+          }}
+        </span>
+      </template>
+
       <template v-slot:item.action="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn @click="emit('open-payment-modal', item)" :disabled="item.is_paid">
+          <IconBtn
+            @click="emit('open-payment-modal', item)"
+            :disabled="item.status === 2"
+          >
             <VIcon icon="tabler-wallet"
           /></IconBtn>
           <IconBtn @click="emit('view-order-modal', item)">
             <VIcon icon="tabler-eye"
           /></IconBtn>
-            <IconBtn
-            @click="emit('print-order', item)">
+          <IconBtn @click="emit('print-order', item)">
             <VIcon icon="tabler-printer" />
           </IconBtn>
         </div>

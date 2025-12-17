@@ -17,7 +17,8 @@ class InvoiceDetail extends Model
         'unit_cost',
         'total_cost',
         'location',
-        'tax_enabled'
+        'tax_enabled',
+        'auto_order_details_id'
     ];
 
     public const FILLABLEDETAILS = [
@@ -27,6 +28,7 @@ class InvoiceDetail extends Model
         'expiration_date',
         'total_cost',
         'product_id',
+        'tax_enabled',
     ];
 
     protected $fillableDetails = self::FILLABLEDETAILS;
@@ -41,8 +43,8 @@ class InvoiceDetail extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function autoOrder(): BelongsTo
+    public function autoOrderDetail(): BelongsTo
     {
-        return $this->belongsTo(AutoOrder::class);
+        return $this->belongsTo(AutoOrderDetail::class);
     }
 }

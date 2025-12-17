@@ -112,6 +112,12 @@ class CashClosureActionService
 
     DB::beginTransaction();
     try {
+        $dailyCashClosureInstance = new \App\Models\DailyCashClosure();
+        $TotalCopPaymentInUsd = $dailyCashClosureInstance->getTotalCopPaymentInUsd($cashClosings);
+        $TotalBsPaymentInUsd = $dailyCashClosureInstance->getTotalBsPaymentInUsd($cashClosings);
+        $TotalCopDeliveryInUsd = $dailyCashClosureInstance->getTotalCopDeliveryInUsd($cashClosings);
+        $TotalBsDeliveryInUsd = $dailyCashClosureInstance->getTotalBsDeliveryInUsd($cashClosings);
+
         $dailyClosure = DailyCashClosure::create([
             'total_sales' => $cashClosings->sum('total_sales'),
             'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
@@ -122,6 +128,9 @@ class CashClosureActionService
             'usd_delivered' => $cashClosings->sum('usd_delivered'),
             'cop_delivered' => $cashClosings->sum('cop_delivered'),
             'bs_delivered' => $cashClosings->sum('bs_delivered'),
+            'total_credits' => $cashClosings->sum('usd_credit'),
+            'total_payment_credit' => $cashClosings->sum('usd_transfer_payment_credit') + $cashClosings->sum('usd_cash_payment_credit') + $cashClosings->sum('usd_paypal_payment_credit') + $cashClosings->sum('usd_binance_payment_credit') + $TotalCopPaymentInUsd + $TotalBsPaymentInUsd,
+            'total_delivery' => $TotalCopDeliveryInUsd + $cashClosings->sum('usd_delivered') + $cashClosings->sum('usd_transfer') + $cashClosings->sum('usd_paypal') + $cashClosings->sum('usd_binance') + $TotalBsDeliveryInUsd,
         ]);
 
         foreach ($cashClosings as $cashClosing) {
