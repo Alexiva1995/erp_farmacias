@@ -44,26 +44,25 @@ class CalculateMonthlyCompanyDiscount extends Command
                 continue;
             }
 
-            $volumenTotal = DB::table('order_details') 
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereIn('orders.client_id', $clientIds)
-                ->whereMonth('orders.created_at', $lastMonth->month)
-                ->whereYear('orders.created_at', $lastMonth->year)
-                ->where('orders.status', 'Completed') 
-                ->sum('order_details.quantity');
+            $montoTotal = DB::table('orders')
+                ->whereIn('client_id', $clientIds)
+                ->whereMonth('created_at', $lastMonth->month)
+                ->whereYear('created_at', $lastMonth->year)
+                ->where('status', 'Completed') 
+                ->sum('total_amount');
 
             $oferta = $company->offers->first();
             $nuevoDescuento = 0;
 
             if ($oferta) {
                 $escalaGanadora = $oferta->scales()
-                ->where('min_volume', '<=', $volumenTotal)
-                ->where(function($query) use ($volumenTotal) {
-                    $query->where('max_volume', '>=', $volumenTotal)
-                        ->orWhereNull('max_volume');
-                })
-                ->orderBy('min_volume', 'desc')
-                ->first();
+                    ->where('min_amount', '<=', $montoTotal)
+                    ->where(function($query) use ($montoTotal) {
+                        $query->where('max_amount', '>=', $montoTotal)
+                            ->orWhereNull('max_amount');
+                    })
+                    ->orderBy('min_amount', 'desc') // Tomamos la escala más alta alcanzada
+                    ->first();
 
                 $nuevoDescuento = $escalaGanadora ? $escalaGanadora->discount_percentage : 0;
             }
@@ -71,7 +70,7 @@ class CalculateMonthlyCompanyDiscount extends Command
             $company->update([
                 'current_discount' => $nuevoDescuento
             ]);
-            $this->info("Empresa: {$company->name} | Volumen: {$volumenTotal} | Descuento: {$nuevoDescuento}%");
+            $this->info("Empresa: {$company->name} | Monto Total: $ {$montoTotal} USD | Descuento: {$nuevoDescuento}%");
         }
         $this->info('Proceso finalizado con éxito.');
     }

@@ -33,8 +33,8 @@ const companiesOfferData = ref({
 
 const scalesData = ref([
   {
-    min_volume: "",
-    max_volume: "",
+    min_amount: "",
+    max_amount: "",
     discount_percentage: "",
   },
 ]);
@@ -91,8 +91,8 @@ const resetForm = () => {
   };
   scalesData.value = [
     {
-      min_volume: "",
-      max_volume: "",
+      min_amount: "",
+      max_amount: "",
       discount_percentage: "",
     },
   ];
@@ -113,8 +113,8 @@ const prevStep = () => {
 
 const addScale = () => {
   scalesData.value.push({
-    min_volume: "",
-    max_volume: "",
+    min_amount: "",
+    max_amount: "",
     discount_percentage: "",
   });
 };
@@ -131,13 +131,13 @@ const validateScales = () => {
   for (let i = 0; i < scalesData.value.length; i++) {
     const scale = scalesData.value[i];
 
-    if (!scale.min_volume || !scale.max_volume || !scale.discount_percentage) {
+    if (!scale.min_amount || !scale.max_amount || !scale.discount_percentage) {
       errors.push(`La escala ${i + 1} tiene campos vacíos`);
     }
 
-    if (parseInt(scale.min_volume) >= parseInt(scale.max_volume)) {
+    if (parseFloat(scale.min_amount) >= parseFloat(scale.max_amount)) {
       errors.push(
-        `En la escala ${i + 1}, el volumen máximo debe ser mayor al mínimo`
+        `En la escala ${i + 1}, el monto máximo debe ser mayor al mínimo`
       );
     }
 
@@ -174,8 +174,8 @@ const onSave = async () => {
     const payload = {
       ...companiesOfferData.value,
       scales: scalesData.value.map((scale) => ({
-        min_volume: parseInt(scale.min_volume),
-        max_volume: parseInt(scale.max_volume),
+        min_amount: parseFloat(scale.min_amount),
+        max_amount: parseFloat(scale.max_amount),
         discount_percentage: parseFloat(scale.discount_percentage),
       })),
     };
@@ -231,8 +231,8 @@ watch(
         scalesData.value = props.companiesOfferToEdit.scales.map((scale) => ({
           id: scale.id,
           company_offer_id: scale.company_offer_id,
-          min_volume: scale.min_volume.toString(),
-          max_volume: scale.max_volume.toString(),
+          min_amount: scale.min_amount.toString(),
+          max_amount: scale.max_amount.toString(),
           discount_percentage: scale.discount_percentage.toString(),
         }));
       }
@@ -360,7 +360,7 @@ const formatDateForInput = (dateString) => {
         </div>
 
         <p class="text-caption text-medium-emphasis mb-4">
-          Define los rangos de volumen y sus respectivos descuentos
+          Define los rangos del monto y sus respectivos descuentos
         </p>
 
         <VRow
@@ -370,23 +370,23 @@ const formatDateForInput = (dateString) => {
         >
           <VCol cols="12" sm="4">
             <VTextField
-              v-model="scale.min_volume"
-              label="Volumen Mínimo Productos"
+              v-model="scale.min_amount"
+              label="Monto Mínimo"
               type="number"
               placeholder="0"
               variant="outlined"
-              :error-messages="formErrors[`scales.${index}.min_volume`]"
+              :error-messages="formErrors[`scales.${index}.min_amount`]"
             />
           </VCol>
 
           <VCol cols="12" sm="4">
             <VTextField
-              v-model="scale.max_volume"
-              label="Volumen Máximo Productos"
+              v-model="scale.max_amount"
+              label="Monto Máximo"
               type="number"
               placeholder="0"
               variant="outlined"
-              :error-messages="formErrors[`scales.${index}.max_volume`]"
+              :error-messages="formErrors[`scales.${index}.max_amount`]"
             />
           </VCol>
 

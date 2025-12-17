@@ -319,6 +319,22 @@ watch(
   },
   { deep: true }
 );
+
+
+// Watcher para detectar si el cliente tiene empresa y autoseleccionar
+watch(
+  () => props.cliente,
+  (newCliente) => {
+    if (newCliente && newCliente.company_id !== null && newCliente.company_id !== undefined) {
+      emit("update:selectedDiscountType", "Empresa");
+      selectedCompany.value = newCliente.company_id;
+    } else {
+      selectedCompany.value = null;
+    }
+  },
+  { immediate: true }
+);
+
 </script>
 
 <template>
