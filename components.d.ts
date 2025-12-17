@@ -251,6 +251,7 @@ declare module 'vue' {
     ReferenceTable: typeof import('./resources/js/components/ReferenceTable.vue')['default']
     ResignationFormDialog: typeof import('./resources/js/components/dialogs/ResignationFormDialog.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
+    ReturnsFilter: typeof import('./resources/js/components/ReturnsFilter.vue')['default']
     ReturnsOrderGeneralTable: typeof import('./resources/js/components/ReturnsOrderGeneralTable.vue')['default']
     ReturnsOrderTable: typeof import('./resources/js/components/ReturnsOrderTable.vue')['default']
     ReturnsSupervisorTable: typeof import('./resources/js/components/ReturnsSupervisorTable.vue')['default']
