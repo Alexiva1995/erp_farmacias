@@ -15,6 +15,7 @@ use App\Models\SupplierDiscount;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class InvoiceActionService
 {
@@ -45,8 +46,8 @@ class InvoiceActionService
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
-                'registered_by' => 1,
-                'uploaded_by' => 1,
+                'registered_by' => Auth::id(),
+                'uploaded_by' => Auth::id(),
                 'status_payment' => 0,
             ];
             return Invoice::create($invoiceData);
@@ -231,7 +232,10 @@ class InvoiceActionService
             throw new Exception("Solo se pueden finalizar facturas en estado 'pendiente'.");
         }
 
-        $invoice->update(['status' => 'loaded']);
+        $invoice->update([
+            'status' => 'loaded',
+            'loaded_by' => Auth::id()
+        ]);
 
         return $invoice->fresh(['details.product', 'supplier']);
     }
@@ -393,7 +397,10 @@ class InvoiceActionService
                 }
             }
 
-            $invoice->update(['status' => 'ordered']);
+            $invoice->update([
+                'status' => 'ordered',
+                'ordered_by' => Auth::id()
+            ]);
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }

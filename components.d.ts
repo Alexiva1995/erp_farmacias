@@ -113,6 +113,7 @@ declare module 'vue' {
     EmployeeLaboratoriesFilters: typeof import('./resources/js/components/EmployeeLaboratoriesFilters.vue')['default']
     EmployeeLaboratoriesTable: typeof import('./resources/js/components/EmployeeLaboratoriesTable.vue')['default']
     EmployeeLaboratoryDialog: typeof import('./resources/js/components/dialogs/EmployeeLaboratoryDialog.vue')['default']
+    EmployeeMonthTable: typeof import('./resources/js/components/EmployeeMonthTable.vue')['default']
     EmployeePaymentDialog: typeof import('./resources/js/components/dialogs/EmployeePaymentDialog.vue')['default']
     EmployeeProductDialog: typeof import('./resources/js/components/dialogs/EmployeeProductDialog.vue')['default']
     EmployeeProductsFilters: typeof import('./resources/js/components/EmployeeProductsFilters.vue')['default']
