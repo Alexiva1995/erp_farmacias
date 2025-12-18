@@ -137,7 +137,11 @@ const confirmGenerateResignation = async (employee) => {
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar empleado" location="top">
+        <VTooltip
+          text="Eliminar empleado"
+          location="top"
+          v-if="user?.role_id == 1"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('delete-employee', item.id)">
               <VIcon icon="tabler-trash" />

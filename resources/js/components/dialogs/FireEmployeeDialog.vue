@@ -124,6 +124,7 @@ const submitForm = async () => {
 };
 
 const closeDialog = () => {
+  emit("update:modelValue", false);
   emit("close");
 };
 
@@ -572,12 +573,17 @@ const formatDate = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="text" @click="closeDialog">
+      <VCardActions class="pa-4 d-flex gap-2">
+        <VBtn
+          class="flex-grow-1"
+          color="secondary"
+          variant="tonal"
+          @click="closeDialog"
+        >
           Cancelar
         </VBtn>
         <VBtn
+          class="flex-grow-1"
           color="primary"
           variant="elevated"
           @click="submitForm"

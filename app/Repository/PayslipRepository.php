@@ -184,7 +184,7 @@ class PayslipRepository
       'movement_type' => 'OUT',
       'transaction_date' => now()
     ]);
-    return $payslip->update(['status' => 1]);
+    return $payslip->update(['status' => 1, 'payed' => $total, 'currency' => $currency]);
   }
 
   public function exportableData(Payslip $payslip, string $type)
