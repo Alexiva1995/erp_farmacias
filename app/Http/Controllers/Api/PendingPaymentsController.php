@@ -486,7 +486,7 @@ class PendingPaymentsController extends Controller
                 'payment_method' => $normalizedCurrency, // Usar moneda normalizada
                 'reference' => $reference, // Referencia bancaria/transferencia
                 'status' => 'paid',
-                'payment_by' => 1, // TODO: Obtener ID del usuario autenticado
+                'payment_by' => auth()->id(),
                 'photo_url' => $request->photo_url,
             ]);
 
@@ -572,7 +572,8 @@ class PendingPaymentsController extends Controller
                         ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
                             $supplierQuery->where('name', 'like', "%{$search}%");
                         });
-                });
+                })
+                    ->orWhere('reference', 'like', "%{$search}%");
             }
 
             $payments = $query->paginate(15);
