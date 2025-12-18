@@ -133,6 +133,27 @@ const normalPayments = computed(() => {
     (payment) => payment.isDebt === false || payment.isDebt == null
   );
 });
+
+const hasCompanyDiscount = computed(() => {
+  return props.orderData.details?.some(detail => detail.discount_type === 'company') || false;
+});
+
+
+const companyDiscountAmount = computed(() => {
+   if (!props.orderData || !props.orderData.details) return 0;
+  return props.orderData.details.reduce((acc, detail) => {
+    if (detail.discount_type === 'Empresa' || detail.discount_type === 'company') {
+      const price = parseFloat(detail.price) || 0;
+      const quantity = parseInt(detail.quantity) || 0;
+      const percentage = parseFloat(detail.discount_percentage) || 0;
+
+      const discountItem = (price * quantity) * (percentage / 100);
+      return acc + discountItem;
+    }
+    return acc;
+  }, 0);
+});
+
 </script>
 
 <template>
@@ -275,6 +296,13 @@ const normalPayments = computed(() => {
           </VList>
         </div>
         <hr />
+        <div v-if="hasCompanyDiscount" class="ticket-total d-flex justify-space-between align-center">
+          <span class="font-weight-bold text-h6">Descuento Empresa:</span>
+          <span class="text-end font-weight-bold text-h6">
+            - {{ formatCurrency(companyDiscountAmount, selectedCurrency) }}
+          </span>
+        </div>
+
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold text-h6">TOTAL VENTA:</span>
           <span class="text-end font-weight-bold text-h6">

@@ -132,6 +132,7 @@ class OrderController extends Controller
     public function updateOrderTotals(UpdateOrderTotalsRequest $request, Order $order)
     {
         try {
+        
             $query = $this->orderActionService->updateordenCurrency($order, $request->validated());
             return response()->json([
                 'message' => 'Orden y detalles actualizado exitosamente.',

@@ -72,6 +72,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  companyDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -334,6 +338,11 @@ watch(
   },
   { immediate: true }
 );
+
+
+const formattedCompanyDiscount = computed(() => {
+  return formatCurrency(props.companyDiscountTotal, props.selectedDisplayCurrency);
+});
 
 </script>
 
@@ -616,6 +625,64 @@ watch(
     </VCardText>
     <VDivider class="mt-auto" />
 
+    <div v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
+    
+      <VCardText class="py-2 bg-grey-lighten-4">
+        <VTable density="compact" lines="none">
+          <tbody>
+            <tr>
+            <td>
+              <div class="d-flex flex-column">
+                  <span class="text-subtitle-1 me-2 text-error font-weight-medium">Descuento Empresa:</span>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex align-center"></div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  ></span
+                >
+                <span class="text-body-1 font-weight-regular">
+                  
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end me-4">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  ></span
+                >
+                <span class="text-body-1 font-weight-regular">
+              
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="d-flex flex-column align-end">
+                <span
+                  v-if="index === 0"
+                  class="text-caption text-medium-emphasis"
+                  >Total</span
+                >
+                <span class="text-body-1 font-weight-bold text-error">
+                - {{ formattedCompanyDiscount }}
+                </span>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </VTable>
+      </VCardText>
+
+      <VDivider class="mt-auto"/>
+    </div>
+
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
       <div class="d-flex flex-wrap gap-4 flex-grow-1">
         <VBtn
@@ -653,10 +720,10 @@ watch(
           COMPLETAR
         </VBtn>
       </div>
-      <div class="d-flex align-center">
-        <h4 class="text-h4 me-2">Monto Total</h4>
-        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
-      </div>
+    <div class="d-flex align-center">
+      <h4 class="text-h4 me-2">Monto Total</h4>
+      <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+    </div>
     </VCardActions>
   </VCard>
 </template>
