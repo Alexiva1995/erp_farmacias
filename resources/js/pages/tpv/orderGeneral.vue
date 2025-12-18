@@ -595,6 +595,31 @@ const handleViewOrder = async (orderId) => {
     toast.error("Error al obtener los detalles de la orden.");
   }
 };
+
+const selectedDiscountType = computed(() => {
+  const itemWithDiscount = orderData.value?.details?.find(
+    detail => detail.discount_type !== null && detail.discount_type !== ""
+  );
+  return itemWithDiscount ? itemWithDiscount.discount_type : null;
+});
+
+const totalCompanyDiscountAmount = computed(() => {
+  if (!orderData.value || !orderData.value.details) return 0;
+
+
+  return orderData.value.details.reduce((acc, detail) => {
+    if (detail.discount_type === 'Empresa' || detail.discount_type === 'company') {
+      const price = parseFloat(detail.price) || 0;
+      const quantity = parseInt(detail.quantity) || 0;
+      const percentage = parseFloat(detail.discount_percentage) || 0;
+
+      const discountItem = (price * quantity) * (percentage / 100);
+      return acc + discountItem;
+    }
+    return acc;
+  }, 0);
+});
+
 </script>
 <template>
   <div>
@@ -715,6 +740,8 @@ const handleViewOrder = async (orderId) => {
         :change-amount="changeAmountForPrint"
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
+        :company-discount-total="totalCompanyDiscountAmount"
+        :selected-discount-type="selectedDiscountType"
       />
     </div>
 

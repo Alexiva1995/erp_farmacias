@@ -11,10 +11,15 @@ class CompanyOfferScale extends Model
 
     protected $fillable = [
         'company_offer_id',
-        'min_volume',
-        'max_volume',
+        'min_amount',
+        'max_amount',
         'discount_percentage',
     ];
+
+    protected $casts = [
+    'min_amount' => 'decimal:2',
+    'max_amount' => 'decimal:2',
+];
 
     /* Relacion con CompanyOffer*/
     public function offer()

@@ -137,23 +137,23 @@ const isOfferActive = computed(() => {
               <VTable v-if="props.offerData.scales && props.offerData.scales.length > 0">
                 <thead>
                   <tr>
-                    <th class="text-left">Volumen Mínimo</th>
-                    <th class="text-left">Volumen Máximo</th>
+                    <th class="text-left">Monto Mínimo</th>
+                    <th class="text-left">Monto Máximo</th>
                     <th class="text-left">% Descuento</th>
                     <th class="text-left">Rango</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(scale, index) in props.offerData.scales" :key="scale.id || index">
-                    <td>{{ scale.min_volume }}</td>
-                    <td>{{ scale.max_volume }}</td>
+                    <td>{{ scale.min_amount }}</td>
+                    <td>{{ scale.max_amount }}</td>
                     <td>
                       <VChip size="small" color="primary" variant="flat">
                         {{ scale.discount_percentage }}%
                       </VChip>
                     </td>
                     <td class="text-caption text-disabled">
-                      {{ scale.min_volume }} - {{ scale.max_volume }} unidades
+                      {{ scale.min_amount }} - {{ scale.max_amount }} montos
                     </td>
                   </tr>
                 </tbody>
