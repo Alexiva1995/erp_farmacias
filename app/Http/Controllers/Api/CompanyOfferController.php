@@ -87,8 +87,8 @@ class CompanyOfferController extends Controller
                 'end_date' => 'required|date|after_or_equal:start_date',
                 'is_active' => 'required|boolean',
                 'scales' => 'required|array|min:1',
-                'scales.*.min_volume' => 'required|integer|min:0',
-                'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
+                'scales.*.min_amount' => 'required|numeric|min:0',
+                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
                 'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
             ]);
 
@@ -104,8 +104,8 @@ class CompanyOfferController extends Controller
             foreach ($validated['scales'] as $scaleData) {
                 CompanyOfferScale::create([
                     'company_offer_id' => $offer->id,
-                    'min_volume' => $scaleData['min_volume'],
-                    'max_volume' => $scaleData['max_volume'],
+                    'min_amount' => $scaleData['min_amount'],
+                    'max_amount' => $scaleData['max_amount'],
                     'discount_percentage' => $scaleData['discount_percentage'],
                 ]);
             }
@@ -153,8 +153,8 @@ class CompanyOfferController extends Controller
                 'end_date' => 'required|date|after_or_equal:start_date',
                 'is_active' => 'required|boolean',
                 'scales' => 'required|array|min:1',
-                'scales.*.min_volume' => 'required|integer|min:0',
-                'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
+                'scales.*.min_amount' => 'required|numeric|min:0',
+                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
                 'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
             ]);
 
@@ -174,8 +174,8 @@ class CompanyOfferController extends Controller
             foreach ($validated['scales'] as $index => $scaleData) {
                 $scalesToCreate[] = [
                     'company_offer_id' => $companyOffer->id,
-                    'min_volume' => $scaleData['min_volume'],
-                    'max_volume' => $scaleData['max_volume'],
+                    'min_amount' => $scaleData['min_amount'],
+                    'max_amount' => $scaleData['max_amount'],
                     'discount_percentage' => $scaleData['discount_percentage'],
                     'created_at' => now(),
                     'updated_at' => now(),

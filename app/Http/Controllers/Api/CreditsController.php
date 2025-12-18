@@ -16,7 +16,8 @@ class CreditsController extends Controller
     public function __construct(
         private CreditsQueryService $creditsQueryService,
         private CreditsActionService $creditsActionService,
-    ) {}
+    ) {
+    }
 
     public function index(Request $request)
     {
@@ -94,7 +95,24 @@ class CreditsController extends Controller
         $payments = \App\Models\CreditPayment::with('seller')
             ->where('client_id', $request->input('client_id'))
             ->orderBy('payment_date', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($credit) {
+                $methodPayments = $credit->method_Payment;
+                foreach ($methodPayments as $payment) {
+                    $credit['payments'] = [
+                        'amount' => $payment['amount'],
+                        'method' => $payment['method'],
+                        'currency' => $payment['currency'],
+                        'reference' => $payment['reference'],
+                        'date' => $credit->payment_date,
+                        'seller' => $credit->seller->username,
+                    ];
+                }
+
+                unset($credit->method_Payment);
+
+                return $credit;
+            });
 
         return response()->json($payments);
     }

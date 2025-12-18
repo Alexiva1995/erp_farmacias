@@ -81,7 +81,7 @@ const filteredPayments = computed(() => {
     );
   }
 
-  return filtered;
+  return filtered.map((payment) => payment.payments);
 });
 
 const totalPaid = computed(() => {
@@ -109,6 +109,25 @@ const fetchPayments = async () => {
   }
 };
 
+const translateMethod = (method) => {
+  const options = {
+    cash_cop: "Efectivo",
+    bank_transfer: "Transferencia",
+    mobile_payment: "Pago Móvil",
+    bank_transfer_bs: "Transferencia",
+    debit_card: "T. Debito",
+    credit_card: "T. Crédito",
+    cash_bs: "Efectivo",
+    cash_usd: "Efectivo",
+    binance: "Binance",
+    paypal: "PayPal",
+    credit: "Crédito",
+    balance: "Saldo",
+  };
+
+  return options[method] || method;
+};
+
 watch(
   () => props.isDialogVisible,
   (newVal) => {
@@ -125,9 +144,10 @@ onMounted(() => {
 });
 
 const paymentHeaders = [
-  { title: "Fecha", key: "payment_date", sortable: false },
-  { title: "Monto", key: "money_returns", sortable: false },
-  { title: "Método", key: "method_Payment", sortable: false },
+  { title: "Fecha", key: "date", sortable: false },
+  { title: "Monto", key: "amount", sortable: false },
+  { title: "Moneda", key: "currency", sortable: false },
+  { title: "Método", key: "method", sortable: false },
   { title: "Vendedor", key: "seller", sortable: false },
 ];
 </script>
@@ -292,36 +312,39 @@ const paymentHeaders = [
             :items-per-page="5"
             no-data-text="No hay pagos registrados"
           >
-            <template v-slot:item.payment_date="{ item }">
-              <span>{{
-                item.payment_date ? item.payment_date.split(" ")[0] : "N/A"
-              }}</span>
+            <template v-slot:item.date="{ item }">
+              <span>{{ item.date ? item.date.split(" ")[0] : "N/A" }}</span>
             </template>
 
-            <template v-slot:item.money_returns="{ item }">
-              <span class="font-weight-medium text-success">
-                {{ parseFloat(item.money_returns).toFixed(2) }} USD
+            <template v-slot:item.amount="{ item }">
+              <span class="font-weight-medium">
+                {{ parseFloat(item.amount).toFixed(2) }}
               </span>
             </template>
 
-            <template v-slot:item.method_Payment="{ item }">
-              <div v-if="item.method_Payment && item.method_Payment.length">
-                <VChip
-                  v-for="(method, index) in item.method_Payment"
-                  :key="index"
-                  size="x-small"
-                  class="ma-1"
-                  color="info"
-                >
-                  {{ method.method }}:
-                  {{ parseFloat(method.amount).toFixed(2) }}
-                </VChip>
-              </div>
-              <span v-else>N/A</span>
+            <template v-slot:item.currency="{ item }">
+              <VChip
+                size="x-small"
+                :color="
+                  item.currency === 'USD'
+                    ? 'success'
+                    : item.currency === 'COP'
+                    ? 'info'
+                    : 'primary'
+                "
+              >
+                {{ item.currency }}
+              </VChip>
+            </template>
+
+            <template v-slot:item.method="{ item }">
+              <VChip size="x-small">
+                {{ translateMethod(item.method) }}
+              </VChip>
             </template>
 
             <template v-slot:item.seller="{ item }">
-              <span>{{ item.seller?.username || "N/A" }}</span>
+              <span>{{ item.seller || "N/A" }}</span>
             </template>
           </VDataTable>
         </div>

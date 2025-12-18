@@ -33,6 +33,14 @@ const props = defineProps({
     type: String,
     default: "COP",
   },
+  companyDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  }
 });
 
 const emit = defineEmits([
@@ -218,7 +226,7 @@ const fetchExchangeRates = async () => {
         );
       }
     });
-    console.log(formattedRates);
+  
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
   } catch (error) {
@@ -234,8 +242,8 @@ onMounted(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional, ahora se calcula automáticamente
 const roundedTotalAmountToPay = computed(() => {
-  let baseAmount = props.totalAmount;
-
+  //let baseAmount = props.totalAmount;
+   let baseAmount = props.totalAmount;
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
@@ -246,7 +254,7 @@ const roundedTotalAmountToPay = computed(() => {
 });
 
 // ACTUALIZADO: Eliminar lógica SPE adicional
-const remainingAmount = computed(() => {
+/*const remainingAmount = computed(() => {
   let totalToPay = props.totalAmount;
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
@@ -259,7 +267,22 @@ const remainingAmount = computed(() => {
   }
 
   return roundToTwoDecimalPlaces(rawDifference);
+});*/
+
+
+const remainingAmount = computed(() => {
+  // Aplicamos el descuento aquí también
+  let totalWithDiscount = props.totalAmount;
+
+  const rawDifference = totalWithDiscount - totalPaidAmount.value;
+
+   if (props.selectedCurrency === "COP") {
+    return roundUpToNearestHundred(rawDifference);
+  }
+
+  return roundToTwoDecimalPlaces(rawDifference);
 });
+
 
 const getConvertedRemainingAmount = (currency) => {
   const baseCurrency = props.selectedCurrency;
@@ -649,7 +672,8 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
-  let totalToPay = props.totalAmount;
+  //let totalToPay = props.totalAmount;
+   let totalToPay = props.totalAmount;
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
@@ -1057,6 +1081,14 @@ const handleMethodChange = (payment, newMethod) => {
         <VDivider />
 
         <!-- Total a pagar -->
+
+        <div class="d-flex align-center flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+          </p>
+        </div>
+
         <div class="d-flex align-center flex-wrap justify-space-between">
           <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0">
@@ -1152,7 +1184,7 @@ const handleMethodChange = (payment, newMethod) => {
           v-if="remainingAmount > 0"
           class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
@@ -1180,7 +1212,7 @@ const handleMethodChange = (payment, newMethod) => {
             v-if="remainingAmount > 0"
             class="d-flex align-center flex-wrap justify-space-between"
           >
-            <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+            <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
             <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
               {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
             </p>
@@ -1294,6 +1326,14 @@ const handleMethodChange = (payment, newMethod) => {
             </div>
 
             <!-- Totales en el ticket -->
+
+          <div class="d-flex flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
+              <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
+                  <p class="text-h6 font-weight-medium mt-2 mb-0">
+                - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+              </p>
+          </div>
+
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">

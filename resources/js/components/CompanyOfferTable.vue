@@ -1,4 +1,6 @@
 <script setup>
+import { formatCurrency } from "@/utils/currencyFormatter";
+
 const props = defineProps({
   companies: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -18,8 +20,8 @@ const headers = [
     sortable: true,
     width: "120px",
   },
-  { title: "Vol Min", key: "min_volume", sortable: true, width: "100px" },
-  { title: "Vol Max", key: "max_volume", sortable: true, width: "100px" },
+  { title: "Monto Min", key: "min_amount", sortable: true, width: "100px" },
+  { title: "Monto Max", key: "max_amount", sortable: true, width: "100px" },
   { title: "Fecha Inicio", key: "start_date", sortable: true, width: "120px" },
   { title: "Fecha Final", key: "end_date", sortable: true, width: "120px" },
   { title: "Estatus", key: "is_active", sortable: true, width: "100px" },
@@ -58,8 +60,8 @@ const getDiscountPercentage = (scales) => {
 
 const getVolumeRange = (scales) => {
   if (!scales || scales.length === 0) return { min: "N/A", max: "N/A" };
-  const min = Math.min(...scales.map((s) => s.min_volume));
-  const max = Math.max(...scales.map((s) => s.max_volume));
+  const min = Math.min(...scales.map((s) => s.min_amount));
+  const max = Math.max(...scales.map((s) => s.max_amount));
 
   return { min, max };
 };
@@ -104,12 +106,12 @@ const handleDelete = (company) => {
         </VChip>
       </template>
 
-      <template #item.min_volume="{ item }">
-        {{ getVolumeRange(item.scales).min }}
+      <template #item.min_amount="{ item }">
+        {{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}
       </template>
 
-      <template #item.max_volume="{ item }">
-        {{ getVolumeRange(item.scales).max }}
+      <template #item.max_amount="{ item }">
+        {{ formatCurrency(getVolumeRange(item.scales).max, 'USD') }}
       </template>
 
       <template #item.start_date="{ item }">
