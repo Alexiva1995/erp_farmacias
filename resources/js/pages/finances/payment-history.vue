@@ -104,7 +104,7 @@
               v-if="item.currency === 'BS'"
               class="text-caption text-success text-medium-emphasis"
             >
-              {{ formatCurrency(item.amount_usd || 0, "USD") }}
+              {{ formatWithoutCurrency(item.amount_usd || 0) }}
             </div>
           </template>
 
@@ -176,7 +176,7 @@
     </VCard>
 
     <!-- Modal de Detalles del Pago -->
-    <VDialog v-model="showPaymentModal" max-width="600">
+    <VDialog v-model="showPaymentModal" max-width="600" persistent scrollable>
       <VCard class="overflow-hidden">
         <!-- Header minimalista -->
         <VCardTitle
@@ -387,12 +387,7 @@
                       <td>
                         <div class="d-flex align-center">
                           <div class="font-weight-medium">
-                            {{
-                              formatNumber(invoice.invoice_number).replace(
-                                ",00",
-                                ""
-                              )
-                            }}
+                            {{ invoice.invoice_number }}
                           </div>
                         </div>
                       </td>
@@ -483,7 +478,7 @@ const receiptUrl = ref("");
 const headers = [
   { title: "Fecha de Pago", key: "payment_date", sortable: true },
   { title: "Proveedor", key: "supplier", sortable: false },
-  { title: "Monto USD", key: "invoice_total_usd", sortable: true },
+  { title: "Monto Fac. USD", key: "invoice_total_usd", sortable: true },
   { title: "Monto Pagado", key: "amount", sortable: true },
   { title: "Moneda", key: "currency", sortable: true },
   { title: "Equivalente USD", key: "amount_usd", sortable: true },
