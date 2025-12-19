@@ -23,15 +23,16 @@ class AddOrderItemRequest extends FormRequest
     {
         return [
             'product_id' => ['required', 'exists:products,id'],
-            'quantity' =>  ['required', 'integer', 'min:1'],
+            'quantity' => ['required', 'integer', 'min:1'],
             'price_at_product' => ['required', 'numeric', 'min:0'],
             'currency_at_order' => ['required', 'string', 'in:USD,BS,COP'],
             'price_usd_unit' => ['required', 'numeric', 'min:0'],
+            'pack_id' => ['nullable', 'integer', 'exists:product_packs,id'],
         ];
     }
 
 
-     public function messages(): array
+    public function messages(): array
     {
         return [
             'product_id.required' => 'El prodcuto es obligatorio',

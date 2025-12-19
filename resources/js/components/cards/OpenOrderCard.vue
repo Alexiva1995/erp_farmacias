@@ -236,11 +236,15 @@ const getIva = (product, currency) => {
   return Iva;
 };
 
-const handleClickProductItem = (productId, currentQuantity) => {
-  if (currentQuantity > 1) {
-    emit("update-quantity", { productId, quantity: currentQuantity - 1 });
+const handleClickProductItem = (product) => {
+  if (product.selectedQuantity > 1) {
+    emit("update-quantity", {
+      productId: product.product_id,
+      quantity: product.selectedQuantity - 1,
+      orderDetailId: product.order_detail_id,
+    });
   } else {
-    emit("remove-item", productId);
+    emit("remove-item", product.product_id);
   }
 };
 
@@ -324,12 +328,20 @@ watch(
   { deep: true }
 );
 
-
 // Watcher para detectar si el cliente tiene empresa y autoseleccionar
 watch(
   () => props.cliente,
-  (newCliente) => {
-    if (newCliente && newCliente.company_id !== null && newCliente.company_id !== undefined) {
+  (newCliente, oldCliente) => {
+    // Prevent reset if it's the same client (e.g. during reload/currency change)
+    if (newCliente?.id === oldCliente?.id) {
+      return;
+    }
+
+    if (
+      newCliente &&
+      newCliente.company_id !== null &&
+      newCliente.company_id !== undefined
+    ) {
       emit("update:selectedDiscountType", "Empresa");
       selectedCompany.value = newCliente.company_id;
     } else {
@@ -339,11 +351,12 @@ watch(
   { immediate: true }
 );
 
-
 const formattedCompanyDiscount = computed(() => {
-  return formatCurrency(props.companyDiscountTotal, props.selectedDisplayCurrency);
+  return formatCurrency(
+    props.companyDiscountTotal,
+    props.selectedDisplayCurrency
+  );
 });
-
 </script>
 
 <template>
@@ -516,6 +529,26 @@ const formattedCompanyDiscount = computed(() => {
               <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ product.title }}
+                  <VIcon
+                    v-if="product.pack_id"
+                    icon="tabler-lock"
+                    size="x-small"
+                    color="warning"
+                    class="ms-1"
+                    title="Pack Item (Cantidad Fija)"
+                  />
+                  <VChip
+                    v-if="
+                      product.discount_type === 'expiration' &&
+                      product.discount_percentage > 0
+                    "
+                    color="error"
+                    size="x-small"
+                    class="ms-1"
+                    label
+                  >
+                    Expira (-{{ product.discount_percentage }}%)
+                  </VChip>
                 </span>
                 <span class="text-sm text-disabled">
                   {{ product.active_ingredient }}
@@ -529,12 +562,8 @@ const formattedCompanyDiscount = computed(() => {
                   icon
                   size="x-small"
                   variant="text"
-                  @click="
-                    handleClickProductItem(
-                      product.product_id,
-                      product.selectedQuantity
-                    )
-                  "
+                  @click="handleClickProductItem(product)"
+                  :disabled="!!product.pack_id"
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -546,6 +575,14 @@ const formattedCompanyDiscount = computed(() => {
                   hide-details
                   class="mx-1"
                   style="width: 50px; text-align: center"
+                  :disabled="!!product.pack_id"
+                  @change="
+                    $emit('update-quantity', {
+                      productId: product.product_id,
+                      quantity: product.selectedQuantity,
+                      orderDetailId: product.order_detail_id,
+                    })
+                  "
                 />
                 <VBtn
                   icon
@@ -555,10 +592,12 @@ const formattedCompanyDiscount = computed(() => {
                     $emit('update-quantity', {
                       productId: product.product_id,
                       quantity: product.selectedQuantity + 1,
+                      orderDetailId: product.order_detail_id,
                     })
                   "
                   :disabled="
-                    product.selectedQuantity >= product.availableQuantity
+                    product.selectedQuantity >= product.availableQuantity ||
+                    !!product.pack_id
                   "
                 >
                   <VIcon icon="tabler-plus" />
@@ -625,62 +664,63 @@ const formattedCompanyDiscount = computed(() => {
     </VCardText>
     <VDivider class="mt-auto" />
 
-    <div v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
-    
+    <div
+      v-if="
+        props.selectedDiscountType === 'Empresa' &&
+        props.companyDiscountTotal > 0
+      "
+    >
       <VCardText class="py-2 bg-grey-lighten-4">
         <VTable density="compact" lines="none">
           <tbody>
             <tr>
-            <td>
-              <div class="d-flex flex-column">
-                  <span class="text-subtitle-1 me-2 text-error font-weight-medium">Descuento Empresa:</span>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex align-center"></div>
-            </td>
-            <td class="text-right">
-              <div class="d-flex flex-column align-end me-4">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  ></span
-                >
-                <span class="text-body-1 font-weight-regular">
-                  
-                </span>
-              </div>
-            </td>
-            <td class="text-right">
-              <div class="d-flex flex-column align-end me-4">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  ></span
-                >
-                <span class="text-body-1 font-weight-regular">
-              
-                </span>
-              </div>
-            </td>
-            <td class="text-right">
-              <div class="d-flex flex-column align-end">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  >Total</span
-                >
-                <span class="text-body-1 font-weight-bold text-error">
-                - {{ formattedCompanyDiscount }}
-                </span>
-              </div>
-            </td>
-          </tr>
+              <td>
+                <div class="d-flex flex-column">
+                  <span
+                    class="text-subtitle-1 me-2 text-error font-weight-medium"
+                    >Descuento Empresa:</span
+                  >
+                </div>
+              </td>
+              <td>
+                <div class="d-flex align-center"></div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                  ></span>
+                  <span class="text-body-1 font-weight-regular"> </span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end me-4">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                  ></span>
+                  <span class="text-body-1 font-weight-regular"> </span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span
+                    v-if="index === 0"
+                    class="text-caption text-medium-emphasis"
+                    >Total</span
+                  >
+                  <span class="text-body-1 font-weight-bold text-error">
+                    - {{ formattedCompanyDiscount }}
+                  </span>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </VTable>
       </VCardText>
 
-      <VDivider class="mt-auto"/>
+      <VDivider class="mt-auto" />
     </div>
 
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
@@ -720,10 +760,10 @@ const formattedCompanyDiscount = computed(() => {
           COMPLETAR
         </VBtn>
       </div>
-    <div class="d-flex align-center">
-      <h4 class="text-h4 me-2">Monto Total</h4>
-      <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
-    </div>
+      <div class="d-flex align-center">
+        <h4 class="text-h4 me-2">Monto Total</h4>
+        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+      </div>
     </VCardActions>
   </VCard>
 </template>

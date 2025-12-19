@@ -3,21 +3,33 @@ import ExpirationOfferFilters from "@/components/ExpirationOfferFilters.vue";
 import ExpirationOfferTable from "@/components/ExpirationOfferTable.vue";
 import ExpirationCreateOffer from "@/components/dialogs/ExpirationOfferModal.vue";
 import axios from "@/plugins/axios";
-import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 
 // Datos y estado
-const availableProductLots = ref([]);
+// ... (imports)
+
+// Datos y estado
+// const availableProductLots = ref([]); // Removed
 const productExpirationOfferData = ref([]);
+// ...
+
+// Obtener lotes disponibles -> REMOVED / CHANGED to open dialog directly
+const openCreateOfferModal = () => {
+  isEditingMode.value = false;
+  currentOfferToEdit.value = null;
+  isOfferDialogVisible.value = true;
+};
+
 const totalExpirations = ref(0);
 const loadingExpirations = ref(false);
 const pageExpirations = ref(1);
 const itemsPerPageExpirations = ref(10);
-const sortByExpirations = ref('created_at');
-const orderByExpirations = ref('desc');
-const filterSearchQueryExpirationsOffer = ref('');
-const filterStatusExpirationsOffer = ref('');
-const filterMonthsExpirationsOffer = ref('');
+const sortByExpirations = ref("created_at");
+const orderByExpirations = ref("desc");
+const filterSearchQueryExpirationsOffer = ref("");
+const filterStatusExpirationsOffer = ref("");
+const filterMonthsExpirationsOffer = ref("");
 
 // Estados de Modales
 const isOfferDialogVisible = ref(false);
@@ -28,7 +40,7 @@ const isEditingMode = ref(false);
 // Obtener ofertas
 const fetchExpirationOffers = async () => {
   loadingExpirations.value = true;
-  
+
   try {
     const params = {
       q: filterSearchQueryExpirationsOffer.value,
@@ -41,11 +53,14 @@ const fetchExpirationOffers = async () => {
     };
 
     Object.keys(params).forEach(
-      (key) => (params[key] === null || params[key] === "") && delete params[key]
+      (key) =>
+        (params[key] === null || params[key] === "") && delete params[key]
     );
 
-    const response = await axios.get("/tpv/promotions/expiration-offer", { params });
-    
+    const response = await axios.get("/tpv/promotions/expiration-offer", {
+      params,
+    });
+
     if (response.data.success) {
       productExpirationOfferData.value = response.data.data;
       totalExpirations.value = response.data.total;
@@ -60,44 +75,27 @@ const fetchExpirationOffers = async () => {
   }
 };
 
-// Obtener lotes disponibles para nueva oferta
-const fetchAvailableProductLots = async () => {
-  isLoadingDialogData.value = true;
-  
-  try {
-    const response = await axios.get("/tpv/promotions/expiration-offer/available-product-lots");
-    availableProductLots.value = response.data.data || [];
-    //isEditingMode.value = false;
-    //currentOfferToEdit.value = null;
-    isOfferDialogVisible.value = true;
-    
-  } catch (error) {
-    console.error("Error al obtener lotes:", error);
-    toast.error("Error al obtener lotes disponibles.");
-  } finally {
-    isLoadingDialogData.value = false;
-  }
-};
-
 // Manejar creación/edición
 const handleSaveOffer = async (offerData) => {
   try {
-    
     // VERIFICAR QUE TENEMOS EL ID EN MODO EDICIÓN
-    if (isEditingMode.value && (!currentOfferToEdit.value || !currentOfferToEdit.value.id)) {
-      console.error('ERROR: No hay ID de oferta para editar');
-      toast.error('Error: No se puede identificar la oferta a editar');
+    if (
+      isEditingMode.value &&
+      (!currentOfferToEdit.value || !currentOfferToEdit.value.id)
+    ) {
+      console.error("ERROR: No hay ID de oferta para editar");
+      toast.error("Error: No se puede identificar la oferta a editar");
       return;
     }
-    
-    const url = isEditingMode.value 
+
+    const url = isEditingMode.value
       ? `/tpv/promotions/expiration-offer/${currentOfferToEdit.value.id}`
-      : '/tpv/promotions/expiration-offer';
-    
-    const method = isEditingMode.value ? 'put' : 'post';
-    
+      : "/tpv/promotions/expiration-offer";
+
+    const method = isEditingMode.value ? "put" : "post";
+
     const response = await axios[method](url, offerData);
-    
+
     if (response.data.success) {
       toast.success(response.data.message);
       closeExpirationOfferModal();
@@ -106,10 +104,11 @@ const handleSaveOffer = async (offerData) => {
       throw new Error(response.data.message);
     }
   } catch (error) {
-    console.error('Error al guardar oferta:', error);
-    console.error('Respuesta del error:', error.response?.data);
-    
-    const errorMessage = error.response?.data?.message || "Error al guardar la oferta";
+    console.error("Error al guardar oferta:", error);
+    console.error("Respuesta del error:", error.response?.data);
+
+    const errorMessage =
+      error.response?.data?.message || "Error al guardar la oferta";
     toast.error(errorMessage);
   }
 };
@@ -117,19 +116,21 @@ const handleSaveOffer = async (offerData) => {
 // Manejar eliminación
 const handleDeleteOffer = async (offerId) => {
   const result = await Swal.fire({
-    title: '¿Estás seguro?',
+    title: "¿Estás seguro?",
     text: "Esta acción no se puede deshacer",
-    icon: 'warning',
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
   });
 
   if (result.isConfirmed) {
     try {
-      const response = await axios.delete(`/tpv/promotions/expiration-offer/${offerId}`);
+      const response = await axios.delete(
+        `/tpv/promotions/expiration-offer/${offerId}`
+      );
       if (response.data.success) {
         toast.success(response.data.message);
         fetchExpirationOffers();
@@ -143,27 +144,21 @@ const handleDeleteOffer = async (offerId) => {
 
 // Editar oferta
 const handleEditOffer = (offer) => {
-  
   // Asegurarnos de que tenemos el ID
   if (!offer.id) {
-    console.error('ERROR: La oferta no tiene ID');
-    toast.error('Error: No se puede editar la oferta sin ID');
+    console.error("ERROR: La oferta no tiene ID");
+    toast.error("Error: No se puede editar la oferta sin ID");
     return;
   }
-  
+
   currentOfferToEdit.value = {
     id: offer.id,
     months_to_expiration: parseInt(offer.months_to_expiration),
     discount_percentage: parseFloat(offer.discount_percentage),
     is_active: Boolean(offer.is_active),
-    product_lots: offer.product_lots || [],
-    product_lots_count: offer.product_lots_count || 0
   };
-  
+
   isEditingMode.value = true;
-  
-  // Cargar lotes disponibles
-  fetchAvailableProductLots();
   isOfferDialogVisible.value = true;
 };
 
@@ -178,12 +173,12 @@ const closeExpirationOfferModal = () => {
 const updateTableOptionsExpiration = (options) => {
   pageExpirations.value = options.page;
   itemsPerPageExpirations.value = options.itemsPerPage;
-  
+
   if (options.sortBy && options.sortBy.length > 0) {
     sortByExpirations.value = options.sortBy[0].key;
     orderByExpirations.value = options.sortBy[0].order;
   }
-  
+
   fetchExpirationOffers();
 };
 
@@ -210,7 +205,7 @@ onMounted(() => {
       :loading="loadingExpirations"
       :add-offer-loading="isLoadingDialogData"
       @clear="handleClearFiltersExpirationOffer"
-      @add-expiration-offer="fetchAvailableProductLots"
+      @add-expiration-offer="openCreateOfferModal"
       @search="fetchExpirationOffers"
     />
 
@@ -234,7 +229,6 @@ onMounted(() => {
       :loading="isLoadingDialogData"
       :is-editing="isEditingMode"
       :offer-to-edit="currentOfferToEdit"
-      :available-product-lots="availableProductLots"
       @save="handleSaveOffer"
       @modal-closed="closeExpirationOfferModal"
     />

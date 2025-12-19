@@ -1,13 +1,53 @@
 <script setup>
 import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import axios from "axios";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 const employees = ref([]);
+const date = new Date();
+const currentMonth = date.getMonth() + 1; // 1-12
+const currentYear = date.getFullYear();
+
+const selectedMonth = ref(currentMonth);
+const selectedYear = ref(currentYear);
+
+// Generate list of months (e.g., current year + previous year)
+const availableMonths = computed(() => {
+  const months = [
+    { value: 1, title: "Enero" },
+    { value: 2, title: "Febrero" },
+    { value: 3, title: "Marzo" },
+    { value: 4, title: "Abril" },
+    { value: 5, title: "Mayo" },
+    { value: 6, title: "Junio" },
+    { value: 7, title: "Julio" },
+    { value: 8, title: "Agosto" },
+    { value: 9, title: "Septiembre" },
+    { value: 10, title: "Octubre" },
+    { value: 11, title: "Noviembre" },
+    { value: 12, title: "Diciembre" },
+  ];
+  return months;
+});
+
+// Years: Current and Previous
+const availableYears = computed(() => {
+  return [currentYear, currentYear - 1];
+});
+
+const monthTitle = computed(() => {
+  const m = availableMonths.value.find((m) => m.value === selectedMonth.value);
+  return m ? `${m.title} ${selectedYear.value}` : "";
+});
 
 const fetchEmployees = async () => {
   try {
-    const response = await axios.get("/api/rrhh/employee-performance");
+    const response = await axios.get("/api/rrhh/employee-performance", {
+      params: {
+        month: selectedMonth.value,
+        year: selectedYear.value,
+      },
+    });
     if (response.data && response.data.status) {
       employees.value = response.data.data;
     }
@@ -15,6 +55,10 @@ const fetchEmployees = async () => {
     console.error("Error fetching employee performance:", error);
   }
 };
+
+watch([selectedMonth, selectedYear], () => {
+  fetchEmployees();
+});
 
 onMounted(() => {
   fetchEmployees();
@@ -86,6 +130,30 @@ const calculatedEmployees = computed(() => {
 
 <template>
   <VContainer fluid>
+    <div class="d-flex align-center justify-space-between mb-4">
+      <h2 class="text-h4 font-weight-bold">Métricas de {{ monthTitle }}</h2>
+      <div class="d-flex gap-4" style="max-width: 400px">
+        <VSelect
+          v-model="selectedMonth"
+          :items="availableMonths"
+          item-title="title"
+          item-value="value"
+          label="Mes"
+          density="compact"
+          hide-details
+          class="me-2"
+          style="width: 150px"
+        />
+        <VSelect
+          v-model="selectedYear"
+          :items="availableYears"
+          label="Año"
+          density="compact"
+          hide-details
+          style="width: 100px"
+        />
+      </div>
+    </div>
     <EmployeeMonthTable :items="calculatedEmployees" />
   </VContainer>
 </template>

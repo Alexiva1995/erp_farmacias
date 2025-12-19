@@ -978,7 +978,8 @@ const detailsHeaders = computed(() => {
 
   if (isLocationMode.value) {
     return headers.filter(
-      (h) => !["tax_amount", "total_cost", "actions"].includes(h.key)
+      (h) =>
+        !["tax_amount", "total_cost", "actions", "unit_cost"].includes(h.key)
     );
   }
 
