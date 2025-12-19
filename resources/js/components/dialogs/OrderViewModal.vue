@@ -138,22 +138,30 @@ const hasCompanyDiscount = computed(() => {
   return props.orderData.details?.some(detail => detail.discount_type === 'company') || false;
 });
 
-
-const companyDiscountAmount = computed(() => {
-   if (!props.orderData || !props.orderData.details) return 0;
-  return props.orderData.details.reduce((acc, detail) => {
-    if (detail.discount_type === 'Empresa' || detail.discount_type === 'company') {
-      const price = parseFloat(detail.price) || 0;
-      const quantity = parseInt(detail.quantity) || 0;
-      const percentage = parseFloat(detail.discount_percentage) || 0;
-
-      const discountItem = (price * quantity) * (percentage / 100);
-      return acc + discountItem;
-    }
-    return acc;
-  }, 0);
+const hasDoctorDiscount = computed(() => {
+  return props.orderData.details?.some(detail => detail.discount_type === 'doctor') || false;
 });
 
+
+const orderDiscounts = computed(() => {
+  const totals = { company: 0, doctor: 0 };
+  if (!props.orderData?.details) return totals;
+  props.orderData.details.forEach((detail) => {
+    const type = detail.discount_type?.toLowerCase();
+    const price = parseFloat(detail.price) || 0;
+    const quantity = parseInt(detail.quantity) || 0;
+    const percentage = parseFloat(detail.discount_percentage) || 0;
+    const discountAmount = (price * quantity) * (percentage / 100);
+
+    if (type === 'Empresa' || type === 'company') {
+      totals.company += discountAmount;
+    } else if (type === 'Medico' || type === 'doctor') {
+      totals.doctor += discountAmount;
+    }
+  });
+
+  return totals;
+});
 </script>
 
 <template>
@@ -299,7 +307,14 @@ const companyDiscountAmount = computed(() => {
         <div v-if="hasCompanyDiscount" class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold text-h6">Descuento Empresa:</span>
           <span class="text-end font-weight-bold text-h6">
-            - {{ formatCurrency(companyDiscountAmount, selectedCurrency) }}
+            - {{ formatCurrency(orderDiscounts.company, selectedCurrency) }}
+          </span>
+        </div>
+
+        <div v-if="hasDoctorDiscount" class="ticket-total d-flex justify-space-between align-center">
+          <span class="font-weight-bold text-h6">Descuento Médico:</span>
+          <span class="text-end font-weight-bold text-h6">
+            - {{ formatCurrency(orderDiscounts.doctor, selectedCurrency) }}
           </span>
         </div>
 

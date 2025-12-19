@@ -620,6 +620,22 @@ const totalCompanyDiscountAmount = computed(() => {
   }, 0);
 });
 
+
+const totalDoctorDiscountAmount = computed(() => {
+  if (!orderData.value || !orderData.value.details) return 0;
+  return orderData.value.details.reduce((acc, detail) => {
+    if (detail.discount_type === 'Medico' || detail.discount_type === 'doctor') {
+      const price = parseFloat(detail.price) || 0;
+      const quantity = parseInt(detail.quantity) || 0;
+      const percentage = parseFloat(detail.discount_percentage) || 0;
+
+      const discountItem = (price * quantity) * (percentage / 100);
+      return acc + discountItem;
+    }
+    return acc;
+  }, 0);
+});
+
 </script>
 <template>
   <div>
@@ -742,6 +758,7 @@ const totalCompanyDiscountAmount = computed(() => {
         :credit="creditForPrint"
         :company-discount-total="totalCompanyDiscountAmount"
         :selected-discount-type="selectedDiscountType"
+        :doctor-discount-total="totalDoctorDiscountAmount"
       />
     </div>
 
