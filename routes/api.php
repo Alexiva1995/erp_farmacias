@@ -206,6 +206,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
+        Route::get('/credits/payments', [CreditsController::class, 'payments']);
         Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
