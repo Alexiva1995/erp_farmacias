@@ -376,6 +376,7 @@
     "pdfProductsAssistantReportGenerator": true,
     "pdfEmployeesGenerator": true,
     "pdfPayslipGenerator": true,
-    "pdfGastos": true
+    "pdfGastos": true,
+    "translateMethod": true
   }
 }

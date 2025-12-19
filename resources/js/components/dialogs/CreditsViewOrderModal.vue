@@ -1,5 +1,6 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { translateMethod } from "@/utils/paymentMethods";
 import axios from "axios";
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
 
@@ -107,25 +108,6 @@ const fetchPayments = async () => {
   } finally {
     loadingPayments.value = false;
   }
-};
-
-const translateMethod = (method) => {
-  const options = {
-    cash_cop: "Efectivo",
-    bank_transfer: "Transferencia",
-    mobile_payment: "Pago Móvil",
-    bank_transfer_bs: "Transferencia",
-    debit_card: "T. Debito",
-    credit_card: "T. Crédito",
-    cash_bs: "Efectivo",
-    cash_usd: "Efectivo",
-    binance: "Binance",
-    paypal: "PayPal",
-    credit: "Crédito",
-    balance: "Saldo",
-  };
-
-  return options[method] || method;
 };
 
 watch(

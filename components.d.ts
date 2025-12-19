@@ -71,6 +71,8 @@ declare module 'vue' {
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
     CreditFilters: typeof import('./resources/js/components/CreditFilters.vue')['default']
     CreditoFiscalTable: typeof import('./resources/js/components/CreditoFiscalTable.vue')['default']
+    CreditPaymentsFilter: typeof import('./resources/js/components/CreditPaymentsFilter.vue')['default']
+    CreditPaymentsTable: typeof import('./resources/js/components/CreditPaymentsTable.vue')['default']
     CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
     CreditsOrderTicket: typeof import('./resources/js/components/CreditsOrderTicket.vue')['default']
     CreditsTicket: typeof import('./resources/js/components/CreditsTicket.vue')['default']
