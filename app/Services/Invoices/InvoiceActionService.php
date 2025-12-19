@@ -114,11 +114,7 @@ class InvoiceActionService
 
             $autoOrderDetailMapping = [];
 
-            if (!empty($productIds)) {
-                if (empty($invoice->autoOrder)) {
-                    throw new Exception("La factura no está asociada a ningún pedido.");
-                }
-
+            if (!empty($productIds) && !empty($invoice->autoOrder)) {
                 $autoOrderDetails = DB::table('auto_order_details')
                     ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
                     ->where('auto_order_details.order_id', $invoice->autoOrder->id)
@@ -199,7 +195,7 @@ class InvoiceActionService
                 }
             }
 
-            if (!empty($autoOrderDetailsToUpdate)) {
+            if (!empty($autoOrderDetailsToUpdate) && !empty($invoice->autoOrder)) {
                 DB::table('auto_order_details')
                     ->whereIn('id', array_values($autoOrderDetailsToUpdate))
                     ->update([
