@@ -13,6 +13,7 @@ class OrderDetail extends Model
         'product_type',
         'product_id',
         'quantity',
+        'quantity_expiration',
         'price',
         'unit_cost',
         'unit_price_usd',
