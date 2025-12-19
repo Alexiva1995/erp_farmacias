@@ -1307,6 +1307,7 @@ const handleBuysCompletion = async (
       spe: switchStates.spe,
       items: orderItems.value.map((item) => ({
         order_detail_id: item.order_detail_id,
+        quantity: item.selectedQuantity,
         price: item.price,
         discount_percentage: item.discountApplied
           ? item.appliedDiscountPercentage

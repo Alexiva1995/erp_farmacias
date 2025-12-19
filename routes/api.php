@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeCleaningActivityController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeePerformanceController;
 use App\Http\Controllers\Api\IslrController;
 use App\Http\Controllers\Api\EmployeeLaboratoryController;
 use App\Http\Controllers\Api\EmployeeProductController;
@@ -317,6 +318,7 @@ Route::prefix("crm")->group(function () {
 });
 
 Route::prefix('rrhh')->group(function () {
+    Route::get('/employee-performance', [EmployeePerformanceController::class, 'index']);
     Route::prefix('employees')->group(function () {
         Route::get('/', [EmployeeController::class, 'list']);
         Route::post('/', [EmployeeController::class, 'store']);
@@ -611,6 +613,11 @@ Route::prefix('employee-cleaning-activities')->group(function () {
     Route::patch('/{employee}/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateStatus']);
     Route::get('/stats', [EmployeeCleaningActivityController::class, 'stats']);
 });
+
+Route::prefix('employee-performance')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'index']);
+});
+
 Route::prefix('my-cleaning-activities')->group(function () {
     Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
     Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
