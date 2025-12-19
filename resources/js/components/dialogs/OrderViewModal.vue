@@ -135,32 +135,58 @@ const normalPayments = computed(() => {
 });
 
 const hasCompanyDiscount = computed(() => {
-  return props.orderData.details?.some(detail => detail.discount_type === 'company') || false;
+  return (
+    props.orderData.details?.some(
+      (detail) => detail.discount_type === "company"
+    ) || false
+  );
 });
 
 const hasDoctorDiscount = computed(() => {
-  return props.orderData.details?.some(detail => detail.discount_type === 'doctor') || false;
+  return (
+    props.orderData.details?.some(
+      (detail) => detail.discount_type === "doctor"
+    ) || false
+  );
 });
 
+const hasRecipeDiscount = computed(() => {
+  return (
+    props.orderData.details?.some(
+      (detail) => detail.discount_type === "recipe"
+    ) || false
+  );
+});
 
 const orderDiscounts = computed(() => {
-  const totals = { company: 0, doctor: 0 };
+  const totals = { company: 0, doctor: 0, recipe: 0 };
   if (!props.orderData?.details) return totals;
   props.orderData.details.forEach((detail) => {
     const type = detail.discount_type?.toLowerCase();
     const price = parseFloat(detail.price) || 0;
     const quantity = parseInt(detail.quantity) || 0;
     const percentage = parseFloat(detail.discount_percentage) || 0;
-    const discountAmount = (price * quantity) * (percentage / 100);
-
-    if (type === 'Empresa' || type === 'company') {
+    const discountAmount = price * quantity * (percentage / 100);
+    if (type === "Empresa" || type === "company") {
       totals.company += discountAmount;
-    } else if (type === 'Medico' || type === 'doctor') {
+    } else if (type === "Medico" || type === "doctor") {
       totals.doctor += discountAmount;
+    } else if (type === "Recipe" || type === "recipe") {
+      totals.recipe += discountAmount;
     }
   });
-
   return totals;
+});
+
+const activeDiscount = computed(() => {
+  const discounts = orderDiscounts.value;
+  if (discounts.company > 0)
+    return { label: "Descuento Empresa", amount: discounts.company };
+  if (discounts.doctor > 0)
+    return { label: "Descuento Médico", amount: discounts.doctor };
+  if (discounts.recipe > 0)
+    return { label: "Descuento Recipe", amount: discounts.recipe };
+  return null;
 });
 </script>
 
@@ -304,17 +330,15 @@ const orderDiscounts = computed(() => {
           </VList>
         </div>
         <hr />
-        <div v-if="hasCompanyDiscount" class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold text-h6">Descuento Empresa:</span>
+        <div
+          v-if="activeDiscount"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold text-h6"
+            >{{ activeDiscount.label }}:</span
+          >
           <span class="text-end font-weight-bold text-h6">
-            - {{ formatCurrency(orderDiscounts.company, selectedCurrency) }}
-          </span>
-        </div>
-
-        <div v-if="hasDoctorDiscount" class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold text-h6">Descuento Médico:</span>
-          <span class="text-end font-weight-bold text-h6">
-            - {{ formatCurrency(orderDiscounts.doctor, selectedCurrency) }}
+            - {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}
           </span>
         </div>
 
