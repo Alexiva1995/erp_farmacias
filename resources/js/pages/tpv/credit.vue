@@ -8,7 +8,10 @@ import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import { nextTick, onMounted, ref, watch } from "vue";
+
+const { isVendedor } = useAuthStore();
 
 const credits = ref([]);
 const totalCredits = ref(0);
@@ -106,7 +109,13 @@ watch(
   { deep: true }
 );
 
-onMounted(() => Promise.all([fetchCredits(), fetchCreditPayments()]));
+onMounted(() => {
+  if (!isVendedor) {
+    Promise.all([fetchCredits(), fetchCreditPayments()]);
+  } else {
+    fetchCredits();
+  }
+});
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -257,6 +266,8 @@ const handleCreditsCompletion = async (
       changeAmountForPrint.value = 0;
       creditAmountForPrint.value = 0;
     }, 500);
+
+    fetchCreditPayments();
   } catch (error) {
     console.error(
       "Error al finalizar el pago del crédito:",
@@ -385,9 +396,10 @@ watch(
     @print-order="printCreditOrders"
   />
 
-  <VSpacer class="my-6" />
+  <VSpacer v-if="!isVendedor" class="my-6" />
 
   <CreditPaymentsFilters
+    v-if="!isVendedor"
     :client="clientFilter"
     :date="dateFilter"
     :currency="currencyFilter"
@@ -398,6 +410,7 @@ watch(
   />
 
   <CreditPaymentsTable
+    v-if="!isVendedor"
     :payments="payments"
     :loading="paymentsLoading"
     :total-payments="totalPayments"
