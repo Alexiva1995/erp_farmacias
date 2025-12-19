@@ -66,6 +66,7 @@ declare module 'vue-router/auto-routes' {
     'lot-list': RouteRecordInfo<'lot-list', '/lot/list', Record<never, never>, Record<never, never>>,
     'lot-products': RouteRecordInfo<'lot-products', '/lot/products', Record<never, never>, Record<never, never>>,
     'productivity-cleaning': RouteRecordInfo<'productivity-cleaning', '/productivity/cleaning', Record<never, never>, Record<never, never>>,
+    'productivity-employee-month': RouteRecordInfo<'productivity-employee-month', '/productivity/employeeMonth', Record<never, never>, Record<never, never>>,
     'productivity-employee-task': RouteRecordInfo<'productivity-employee-task', '/productivity/employeeTask', Record<never, never>, Record<never, never>>,
     'productivity-laboratory': RouteRecordInfo<'productivity-laboratory', '/productivity/laboratory', Record<never, never>, Record<never, never>>,
     'productivity-my-cleaning-activities': RouteRecordInfo<'productivity-my-cleaning-activities', '/productivity/myCleaningActivities', Record<never, never>, Record<never, never>>,
