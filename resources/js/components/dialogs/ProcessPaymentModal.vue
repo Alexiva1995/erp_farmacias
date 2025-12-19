@@ -8,6 +8,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+  },
   paymentGroup: {
     type: Object,
     default: null,
@@ -171,9 +175,15 @@ const totalInUSD = computed(() => {
 
 const totalInBS = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
-  return selectedInvoices.value.reduce((sum, invoice) => {
+  const total = selectedInvoices.value.reduce((sum, invoice) => {
     return sum + parseFloat(invoice.total_amount || 0);
   }, 0);
+
+  const hasAtLeastOneIndexed = selectedInvoices.value.some(
+    (invoice) => invoice.indexed_data.is_indexed
+  );
+
+  return hasAtLeastOneIndexed ? (total * props.exchangeRate).toFixed(2) : total;
 });
 
 const suggestedAmountInLocalCurrency = computed(() => {
@@ -945,7 +955,7 @@ onMounted(() => {
         <VBtn
           color="primary"
           @click="processPayment"
-          :loading="loading"
+          :loading="loading || uploading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
           class="flex-grow-1 w-0"
         >
