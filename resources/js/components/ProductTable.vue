@@ -21,7 +21,7 @@ const emit = defineEmits([
 ]);
 
 const headers = ref([
-  { title: "id", key: "id", sortable: true },
+  { title: "id", key: "id", sortable: true, visible: true },
   {
     title: "Producto",
     key: "name",
