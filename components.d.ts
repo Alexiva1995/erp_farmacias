@@ -71,6 +71,8 @@ declare module 'vue' {
     CreateAppDialog: typeof import('./resources/js/components/dialogs/CreateAppDialog.vue')['default']
     CreditFilters: typeof import('./resources/js/components/CreditFilters.vue')['default']
     CreditoFiscalTable: typeof import('./resources/js/components/CreditoFiscalTable.vue')['default']
+    CreditPaymentsFilter: typeof import('./resources/js/components/CreditPaymentsFilter.vue')['default']
+    CreditPaymentsTable: typeof import('./resources/js/components/CreditPaymentsTable.vue')['default']
     CreditsModal: typeof import('./resources/js/components/dialogs/CreditsModal.vue')['default']
     CreditsOrderTicket: typeof import('./resources/js/components/CreditsOrderTicket.vue')['default']
     CreditsTicket: typeof import('./resources/js/components/CreditsTicket.vue')['default']
@@ -113,6 +115,7 @@ declare module 'vue' {
     EmployeeLaboratoriesFilters: typeof import('./resources/js/components/EmployeeLaboratoriesFilters.vue')['default']
     EmployeeLaboratoriesTable: typeof import('./resources/js/components/EmployeeLaboratoriesTable.vue')['default']
     EmployeeLaboratoryDialog: typeof import('./resources/js/components/dialogs/EmployeeLaboratoryDialog.vue')['default']
+    EmployeeMonthTable: typeof import('./resources/js/components/EmployeeMonthTable.vue')['default']
     EmployeePaymentDialog: typeof import('./resources/js/components/dialogs/EmployeePaymentDialog.vue')['default']
     EmployeeProductDialog: typeof import('./resources/js/components/dialogs/EmployeeProductDialog.vue')['default']
     EmployeeProductsFilters: typeof import('./resources/js/components/EmployeeProductsFilters.vue')['default']
@@ -251,6 +254,7 @@ declare module 'vue' {
     ReferenceTable: typeof import('./resources/js/components/ReferenceTable.vue')['default']
     ResignationFormDialog: typeof import('./resources/js/components/dialogs/ResignationFormDialog.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
+    ReturnsFilter: typeof import('./resources/js/components/ReturnsFilter.vue')['default']
     ReturnsOrderGeneralTable: typeof import('./resources/js/components/ReturnsOrderGeneralTable.vue')['default']
     ReturnsOrderTable: typeof import('./resources/js/components/ReturnsOrderTable.vue')['default']
     ReturnsSupervisorTable: typeof import('./resources/js/components/ReturnsSupervisorTable.vue')['default']
@@ -300,5 +304,6 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

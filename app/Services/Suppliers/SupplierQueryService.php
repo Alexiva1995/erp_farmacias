@@ -198,6 +198,7 @@ class SupplierQueryService
 
                     $invoiceModel = $supplier->invoices()->create([
                         ...Arr::only($header, Invoice::FILLABLEHEADER),
+                        'status' => $invoice['status'] ?? 'pending',
                         'uploaded_by' => auth()->id() ?? 1,
                         'registered_by' => auth()->id() ?? 1,
                     ]);

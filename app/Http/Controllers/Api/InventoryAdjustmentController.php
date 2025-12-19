@@ -26,8 +26,9 @@ class InventoryAdjustmentController extends Controller
         return response()->json(['message' => 'El código de barras escaneado no corresponde a este producto.'], 422);
     }
 
-    public function processCount(Request $request, Product $product){
-       
+    public function processCount(Request $request, Product $product)
+    {
+
         $request->validate([
             'counted_quantity' => 'required|number|min:1',
             'product_id' => 'required',
@@ -35,8 +36,7 @@ class InventoryAdjustmentController extends Controller
 
         $productId = $request->input('product_id');
         $countedQuantity = $request->input('counted_quantity');
-        
-         dd($request);
+
     }
 
 }

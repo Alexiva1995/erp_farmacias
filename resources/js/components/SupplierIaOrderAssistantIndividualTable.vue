@@ -17,7 +17,7 @@ const headers = [
   { title: "Ventas", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "lote_quantity", sortable: true },
   {
-    title: "Preferencia",
+    title: "Pref",
     key: "preferencia_product",
     sortable: true,
     value: (item) =>
@@ -37,7 +37,7 @@ const headers = [
   {
     title: "AO",
     key: "totalQuantityInAutoOrder",
-    sortable: false,
+    sortable: true,
   },
   {
     title: "Análisis",

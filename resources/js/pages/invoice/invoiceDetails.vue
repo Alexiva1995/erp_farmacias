@@ -1237,6 +1237,7 @@ const detailsHeaders = [
                   v-if="isLocationMode && !isItemReturned(item)"
                   :model-value="item.location"
                   @update:model-value="updateLocation(item.id, $event)"
+                  @focus="updateLocation(item.id, null)"
                   :items="locations"
                   density="compact"
                   hide-details

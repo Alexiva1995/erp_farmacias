@@ -43,6 +43,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+    companyDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  }
 });
 
 const authStore = useAuthStore();
@@ -198,6 +206,14 @@ const showChangeAmount = computed(() => {
           </span>
         </div>
         <hr />
+
+        <div class="ticket-total d-flex justify-space-between align-center" v-if="(props.selectedDiscountType === 'Empresa' || props.selectedDiscountType === 'company') && props.companyDiscountTotal > 0">
+          <span class="font-weight-bold tituloAzulPrint">Descuento Empresa:</span>
+          <span class="text-end font-weight-black tituloAzulPrint">
+            - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+          </span>
+        </div>
+
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
           <span class="text-end font-weight-black tituloAzulPrint">

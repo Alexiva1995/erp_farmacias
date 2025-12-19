@@ -587,7 +587,7 @@ const getDisplayAmount = (item) => {
   }
 
   // Si no está indexada, usar el monto restante normal
-  return item.remaining_amount || item.total_amount;
+  return item.total_amount || item.total_amount;
 };
 
 // ISSUE #3: Función para obtener monto USD a mostrar (considerando indexación)
@@ -924,7 +924,10 @@ onMounted(async () => {
           <template #item.total_supplier_currency="{ item }">
             <div class="font-weight-bold text-primary">
               {{
-                formatCurrency(item.total_amount || 0, item.currency || "USD")
+                formatCurrency(
+                  item.remaining_amount || 0,
+                  item.currency || "USD"
+                )
               }}
             </div>
             <div

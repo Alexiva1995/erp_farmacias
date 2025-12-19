@@ -103,10 +103,10 @@ const calculatePaymentDate = () => {
     return;
   }
 
-  const paymentMethod = selectedSupplier.value.payment_due_type; // 'invoice_date', 'early_payment', 'custom'
+  const paymentMethod = selectedSupplier.value.payment_due_type;
   const customDays = Number(selectedSupplier.value.custom_due_days) || 0;
-  const paymentRef = selectedSupplier.value.payment_due_reference; // 'receipt_date', 'issue_date'
-  const invoiceDateRef = selectedSupplier.value.invoice_date_reference; // 'receipt_date', 'expiration_date', 'issue_date'
+  const paymentRef = selectedSupplier.value.payment_due_reference;
+  const invoiceDateRef = selectedSupplier.value.invoice_date_reference;
   const supplierPaymentRules = selectedSupplier.value.payment_rules || [];
 
   let calculatedDate = null;

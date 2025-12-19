@@ -302,6 +302,7 @@ class OrderActionService
 
     public function complete(Order $orderId, Request $request, $sellerId): array
     {
+
         DB::beginTransaction();
         try {
             $orderId->status = Order::COMPLETED;
@@ -321,6 +322,10 @@ class OrderActionService
                             // Update other potential fields if needed, e.g. price_bs, price_cop if stored
                             // But OrderDetail only has price (base currency?) and unit_price_usd?
                             // Checked migration: price, unit_cost. unit_price_usd added later.
+
+                            if (isset($itemData['quantity'])) {
+                                $detail->quantity = $itemData['quantity'];
+                            }
 
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];
@@ -393,23 +398,49 @@ class OrderActionService
 
             foreach ($orderId->details as $detail) {
                 $quantityToReduce = $detail->quantity;
+
+
+                $quantityExpiration = 0;
                 $lots = $detail->product->lots->sortBy('expiration_date');
+
+
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
                         break;
                     }
+
+                    $taken = 0;
                     if ($lot->quantity >= $quantityToReduce) {
+                        $taken = $quantityToReduce;
                         $lot->quantity -= $quantityToReduce;
                         $lot->save();
                         $quantityToReduce = 0;
                     } else {
+                        $taken = $lot->quantity;
                         $quantityToReduce -= $lot->quantity;
                         $lot->quantity = 0;
                         $lot->save();
                     }
+
+
+                    // Check if this lot is expiring (within 6 months)
+                    if ($lot->expiration_date) {
+                        $expDate = Carbon::parse($lot->expiration_date);
+                        $sixMonthsLimit = Carbon::now()->addMonths(6);
+                        if ($expDate->lt($sixMonthsLimit)) {
+                            $quantityExpiration += $taken;
+                        }
+                    }
                 }
+
                 if ($quantityToReduce > 0) {
                     throw new \Exception("No hay suficiente stock en los lotes para el producto ID: {$detail->product->id}");
+                }
+
+                // Save quantity_expiration
+                if ($quantityExpiration > 0) {
+                    $detail->quantity_expiration = $quantityExpiration;
+                    $detail->save();
                 }
             }
 
@@ -709,7 +740,7 @@ class OrderActionService
                 $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
                 $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
                 $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
-            
+
                 $cashClosing->total_bs = $total_bs;
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;

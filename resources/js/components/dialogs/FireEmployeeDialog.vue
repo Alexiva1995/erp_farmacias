@@ -2,7 +2,6 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
-import { VNumberInput } from "vuetify/components";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -125,6 +124,7 @@ const submitForm = async () => {
 };
 
 const closeDialog = () => {
+  emit("update:modelValue", false);
   emit("close");
 };
 
@@ -416,8 +416,7 @@ const formatDate = (dateString) => {
                         <td class="text-end text-error">
                           {{
                             displayAmount(settlement?.total_deductions ?? 0)
-                          }}
-                          Bs
+                          }}https://animefenix2.tv/ Bs
                         </td>
                       </tr>
                       <tr>
@@ -480,15 +479,13 @@ const formatDate = (dateString) => {
                 </div>
               </VCol>
               <VCol cols="12" md="4">
-                <VNumberInput
+                <AppTextField
                   v-model="percentage"
                   label="% Liquidación"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                  control-variant="stacked"
-                  :min="0"
-                  :max="100"
+                  placeholder="Ej: 25"
+                  type="number"
+                  suffix="%"
+                  autofocus
                 />
               </VCol>
               <VCol cols="12" md="4" class="text-end">
@@ -576,12 +573,17 @@ const formatDate = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="text" @click="closeDialog">
+      <VCardActions class="pa-4 d-flex gap-2">
+        <VBtn
+          class="flex-grow-1"
+          color="secondary"
+          variant="tonal"
+          @click="closeDialog"
+        >
           Cancelar
         </VBtn>
         <VBtn
+          class="flex-grow-1"
           color="primary"
           variant="elevated"
           @click="submitForm"
