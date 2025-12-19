@@ -302,29 +302,10 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
-/*const handleDoctorDiscountSelected = (offerId) => {
-  const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
-  selectedDoctorOffer.value = offer;
-
-  if (offer) {
-    applyDiscount(offer.percentage, {
-      type: "doctor",
-      name: offer.title,
-      id: offer.id,
-    });
-  } else {
-    removeDiscount();
-    selectedDoctorOffer.value = null;
-    toast.info("Descuento de médico removido.");
-  }
-};*/
-
 const handleCompanyDiscountSelected = (companyId) => {
   selectedCompanyId.value = companyId;
   validateAndApplyCompanyDiscount();
 };
-
-
 
 const validateAndApplyCompanyDiscount = () => {
   if (!selectedCompanyId.value) {
@@ -352,89 +333,7 @@ if (porcentaje > 0) {
       `Esta empresa no cuenta con un descuento activo para el periodo actual.`
     );
   }
-
-  /*if (!offer) return;
-  const porcentaje = parseFloat(offer.current_discount || 0);*/
-/*
-  if (porcentaje > 0) {
-    applyDiscount(porcentaje, {
-      type: "company",
-      name: offer.title,
-      id: offer.id,
-    });
-    toast.success(`Descuento de empresa ${porcentaje}% aplicado.`);
-  } else {
-    removeDiscount();
-    toast.info(
-      `Esta empresa no cuenta con un descuento activo para el periodo actual.`
-    );
-  }*/
 };
-
-/*const validateAndApplyCompanyDiscount = () => {
-  if (!selectedCompanyId.value) {
-    if (selectedDiscountType.value === "Empresa") {
-      removeDiscount();
-    }
-    return;
-  }
-
-  const offer = activeCompanyOffers.value.find(
-    (o) => o.value === selectedCompanyId.value
-  );
-  if (!offer) return;
-
-  // Calculate total quantity of items (excluding filtered items if any logic existed for that, but usually total quantity)
-  // Assuming company discount applies to ALL items or requires total volume of order
-  let totalQuantity = 0;
-  orderItems.value.forEach((item) => {
-    totalQuantity += item.selectedQuantity || 0;
-  });
-
-  // Find matching scale
-  // scale: { min_volume, max_volume, discount_percentage }
-  const validScale = offer.scales.find(
-    (scale) =>
-      totalQuantity >= scale.min_volume && totalQuantity <= scale.max_volume
-  );
-
-  if (validScale) {
-    applyDiscount(parseFloat(validScale.discount_percentage), {
-      type: "company",
-      name: offer.title,
-      id: offer.id,
-    });
-    // toast.success(`Descuento de empresa ${validScale.discount_percentage}% aplicado.`); // Optional: prevent spamming toasts on quantity change
-  } else {
-    removeDiscount();
-    toast.warning(
-      `La cantidad total (${totalQuantity}) no cumple con los rangos de volumen para el descuento de esta empresa.`
-    );
-  }
-};*/
-/*
-const applyDiscount = (percentage, source) => {
-  orderItems.value = orderItems.value.map((item) => {
-    if (!item.originalPrice) {
-      item.originalPrice = item.price;
-      item.originalPriceBs = item.price_bs;
-      item.originalPriceCop = item.price_cop;
-    }
-
-    const discountFactor = 1 - percentage / 100;
-
-    return {
-      ...item,
-      price: item.originalPrice * discountFactor,
-      price_bs: item.originalPriceBs * discountFactor,
-      price_cop: item.originalPriceCop * discountFactor,
-      discountApplied: true,
-      discountSource: source.type,
-      discountSourceId: source.id,
-      appliedDiscountPercentage: percentage,
-    };
-  });
-};*/
 
 const removeDiscount = () => {
   orderItems.value = orderItems.value.map((item) => {
@@ -837,7 +736,6 @@ const totalCompanyDiscountAmount = computed(() => {
   return 0;
 });
 
-
 const totalDoctorDiscountAmount = computed(() => {
   if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
     const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
@@ -848,35 +746,28 @@ const totalDoctorDiscountAmount = computed(() => {
   return 0;
 });
 
-/*const totalOrderAmount = computed(() => {
-  //return totalProductsAmount.value + totalIVAAmount.value;
-  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
-  return baseTotal - totalCompanyDiscountAmount.value;
-});*/
+const totalRecipeDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+    const porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
+    if (porcentaje > 0) {
+      return totalProductsAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
 
 const totalOrderAmount = computed(() => {
   const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
   let discountToSubtract = 0;
   if (selectedDiscountType.value === 'Empresa') {
     discountToSubtract = totalCompanyDiscountAmount.value;
-  } else if (selectedDiscountType.value === 'Medico') {
+  }else if (selectedDiscountType.value === 'Medico') {
     discountToSubtract = totalDoctorDiscountAmount.value;
+  }else if (selectedDiscountType.value === 'Recipe') {
+    discountToSubtract = totalRecipeDiscountAmount.value;
   }
   return baseTotal - discountToSubtract;
 });
-
-/*const myCalculatedTotal = computed(() => {
-  let valor = totalProductsAmount.value + totalIVAAmount.value; // Ahora totalIVAAmount ya incluye el descuento SPE
-  if (selectedDisplayCurrency.value === "COP") {
-    return roundUpToNearestHundred(valor);
-  }
-  return parseFloat(valor.toFixed(2));
-});*/
-
-
-function roundToTwoDecimalPlaces(num) {
-  return Number(Math.round(num + "e+2") + "e-2");
-}
 
 const myCalculatedTotal = computed(() => {
   // 1. Sumamos el subtotal de productos + IVA (que ya tiene el beneficio SPE)
@@ -888,17 +779,16 @@ const myCalculatedTotal = computed(() => {
     descuentoTotal = totalCompanyDiscountAmount.value || 0;
   } else if (selectedDiscountType.value === 'Medico') {
     descuentoTotal = totalDoctorDiscountAmount.value || 0;
+  } else if (selectedDiscountType.value === 'Recipe') {
+    descuentoTotal = totalRecipeDiscountAmount.value || 0;
   }
 
   valor = valor - descuentoTotal;
   if (selectedDisplayCurrency.value === "COP") {
     return roundUpToNearestHundred(valor);
   }
-
   return parseFloat(valor.toFixed(2));
-  //return roundToTwoDecimalPlaces(valor);
 });
-
 
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
@@ -992,6 +882,8 @@ const totalAmountUsd = computed(() => {
     porcentaje = parseFloat(offer?.current_discount || 0);
   }else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
     porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
+  }else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+    porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
 
   const descuentoUSD = subtotalProductosUSD * (porcentaje / 100);
@@ -1368,8 +1260,9 @@ const handleBuysCompletion = async (
       currentPercentage = parseFloat(selectedDoctorOffer.value.percentage || 0);
       currentSourceId = selectedDoctorOffer.value.id;
       currentTypeName = 'doctor';
-    } else if (selectedDiscountType.value === 'Recipe' && prescriptionDiscountPercentage.value > 0) {
-      currentPercentage = prescriptionDiscountPercentage.value;
+    } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+      currentPercentage = currentPrescriptionDiscountPercentage.value;
+      currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = 'recipe';
     }
 
@@ -1584,6 +1477,7 @@ const addReserverOrder = async () => {
         :total-order-amount="totalOrderAmount"
         :company-discount-total="totalCompanyDiscountAmount"
         :doctor-discount-total="totalDoctorDiscountAmount"
+        :recipe-discount-total="totalRecipeDiscountAmount"
         :cliente="selectedClient"
         :selected-display-currency="selectedDisplayCurrency"
         @currency-changed="handleCurrencyChanged"
@@ -1662,6 +1556,7 @@ const addReserverOrder = async () => {
       :company-discount-total="totalCompanyDiscountAmount"
       :selected-discount-type="selectedDiscountType"
       :doctor-discount-total="totalDoctorDiscountAmount"
+      :recipe-discount-total="totalRecipeDiscountAmount"
     />
 
     <div
@@ -1681,6 +1576,7 @@ const addReserverOrder = async () => {
         :company-discount-total="totalCompanyDiscountAmount"
         :selected-discount-type="selectedDiscountType"
         :doctor-discount-total="totalDoctorDiscountAmount"
+        :recipe-discount-total="totalRecipeDiscountAmount"
       />
     </div>
   </div>
