@@ -185,6 +185,7 @@ declare module 'vue' {
     OrderClienteCard: typeof import('./resources/js/components/cards/OrderClienteCard.vue')['default']
     OrderFilters: typeof import('./resources/js/components/OrderFilters.vue')['default']
     OrderFiltersGeneral: typeof import('./resources/js/components/OrderFiltersGeneral.vue')['default']
+    OrderPacksTable: typeof import('./resources/js/components/OrderPacksTable.vue')['default']
     OrderProductListTable: typeof import('./resources/js/components/OrderProductListTable.vue')['default']
     OrderProductsTable: typeof import('./resources/js/components/OrderProductsTable.vue')['default']
     OrderTable: typeof import('./resources/js/components/OrderTable.vue')['default']

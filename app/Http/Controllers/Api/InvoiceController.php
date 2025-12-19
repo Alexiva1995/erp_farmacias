@@ -175,6 +175,7 @@ class InvoiceController extends Controller
             'tax_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|gt:0',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
+            'created_invoice_date' => 'required|date',
         ];
         $currency = $request->input('currency');
 

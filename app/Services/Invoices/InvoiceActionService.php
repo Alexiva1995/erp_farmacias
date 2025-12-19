@@ -89,6 +89,7 @@ class InvoiceActionService
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
+                'created_invoice_date' => $data['created_invoice_date'],
             ];
 
             $invoice->update($invoiceData);
