@@ -15,6 +15,7 @@ use App\Models\SupplierDiscount;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class InvoiceActionService
 {
@@ -28,7 +29,7 @@ class InvoiceActionService
                 ->first();
 
             $invoiceData = [
-                'auto_order_id' => $autoOrder->id,
+                'auto_order_id' => $autoOrder->id ?? null,
                 'supplier_id' => $data['supplier_id'],
                 'invoice_number' => $data['invoice_number'],
                 'control_number' => $data['control_number'],
@@ -45,8 +46,8 @@ class InvoiceActionService
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
-                'registered_by' => 1,
-                'uploaded_by' => 1,
+                'registered_by' => Auth::id(),
+                'uploaded_by' => Auth::id(),
                 'status_payment' => 0,
             ];
             return Invoice::create($invoiceData);
@@ -113,11 +114,7 @@ class InvoiceActionService
 
             $autoOrderDetailMapping = [];
 
-            if (!empty($productIds)) {
-                if (empty($invoice->autoOrder)) {
-                    throw new Exception("La factura no está asociada a ningún pedido.");
-                }
-
+            if (!empty($productIds) && !empty($invoice->autoOrder)) {
                 $autoOrderDetails = DB::table('auto_order_details')
                     ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
                     ->where('auto_order_details.order_id', $invoice->autoOrder->id)
@@ -198,7 +195,7 @@ class InvoiceActionService
                 }
             }
 
-            if (!empty($autoOrderDetailsToUpdate)) {
+            if (!empty($autoOrderDetailsToUpdate) && !empty($invoice->autoOrder)) {
                 DB::table('auto_order_details')
                     ->whereIn('id', array_values($autoOrderDetailsToUpdate))
                     ->update([
@@ -231,7 +228,10 @@ class InvoiceActionService
             throw new Exception("Solo se pueden finalizar facturas en estado 'pendiente'.");
         }
 
-        $invoice->update(['status' => 'loaded']);
+        $invoice->update([
+            'status' => 'loaded',
+            'loaded_by' => Auth::id()
+        ]);
 
         return $invoice->fresh(['details.product', 'supplier']);
     }
@@ -393,7 +393,10 @@ class InvoiceActionService
                 }
             }
 
-            $invoice->update(['status' => 'ordered']);
+            $invoice->update([
+                'status' => 'ordered',
+                'ordered_by' => Auth::id()
+            ]);
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }

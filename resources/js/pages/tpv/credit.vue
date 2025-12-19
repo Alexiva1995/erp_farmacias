@@ -1,5 +1,7 @@
 <script setup>
 import CreditFilters from "@/components/CreditFilters.vue";
+import CreditPaymentsFilters from "@/components/CreditPaymentsFilter.vue";
+import CreditPaymentsTable from "@/components/CreditPaymentsTable.vue";
 import CreditsTicket from "@/components/CreditsTicket.vue";
 import CreditTable from "@/components/CreditTable.vue";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
@@ -10,7 +12,18 @@ import { nextTick, onMounted, ref, watch } from "vue";
 
 const credits = ref([]);
 const totalCredits = ref(0);
+const payments = ref([]);
+const totalPayments = ref(0);
 const loading = ref(false);
+const paymentsLoading = ref(false);
+
+const clientFilter = ref(null);
+const dateFilter = ref(null);
+const currencyFilter = ref(null);
+const paymentsPage = ref(1);
+const paymentsItemsPerPage = ref(10);
+const paymentsSortBy = ref();
+const paymentsOrderBy = ref();
 
 const searchQuery = ref("");
 const page = ref(1);
@@ -56,9 +69,36 @@ const fetchCredits = async () => {
   }
 };
 
+const fetchCreditPayments = async () => {
+  paymentsLoading.value = true;
+  const params = {
+    page: paymentsPage.value,
+    items_per_psage: paymentsItemsPerPage.value,
+    sort_by: paymentsSortBy.value,
+    order_by: paymentsOrderBy.value,
+    client: clientFilter.value,
+    date: dateFilter.value,
+    currency: currencyFilter.value,
+  };
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+  try {
+    const { data } = await axios.get("/tpv/credits/payments", { params });
+    payments.value = data.data;
+    totalPayments.value = data.total;
+    console.log(data, totalPayments.value);
+  } catch (error) {
+    console.error("Hubo un error al obtener los pagos de créditos:", error);
+    toast.error("Error al obtener los pagos de créditos.");
+  } finally {
+    paymentsLoading.value = false;
+  }
+};
+
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery],
+  [page, itemsPerPage, searchQuery],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCredits(), 300);
@@ -66,9 +106,7 @@ watch(
   { deep: true }
 );
 
-onMounted(() => {
-  fetchCredits();
-});
+onMounted(() => Promise.all([fetchCredits(), fetchCreditPayments()]));
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -77,8 +115,26 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+const updatePaymentsTableOptions = (options) => {
+  paymentsPage.value = options.page;
+  paymentsItemsPerPage.value = options.itemsPerPage;
+  paymentsSortBy.value = options.sortBy[0]?.key;
+  paymentsOrderBy.value = options.sortBy[0]?.order;
+};
+
 const clearFilters = () => {
   searchQuery.value = "";
+};
+
+const clearPaymentFilters = () => {
+  searchQuery.value = "";
+  page.value = 1;
+  itemsPerPage.value = 10;
+  sortBy.value = null;
+  orderBy.value = null;
+  clientFilter.value = null;
+  dateFilter.value = null;
+  currencyFilter.value = null;
 };
 
 const openCreditsModal = (credit) => {
@@ -290,6 +346,23 @@ const printCreditOrders = async (credit) => {
     creditsData.value = null;
   }
 };
+
+let paymentsDebouncer;
+watch(
+  [
+    paymentsPage,
+    paymentsItemsPerPage,
+    paymentsSortBy,
+    paymentsOrderBy,
+    clientFilter,
+    dateFilter,
+    currencyFilter,
+  ],
+  () => {
+    clearTimeout(paymentsDebouncer);
+    paymentsDebouncer = setTimeout(() => fetchCreditPayments(), 300);
+  }
+);
 </script>
 
 <template>
@@ -310,6 +383,27 @@ const printCreditOrders = async (credit) => {
     @reload="fetchCredits"
     @view-order-modal="viewOrderCreditsModal"
     @print-order="printCreditOrders"
+  />
+
+  <VSpacer class="my-6" />
+
+  <CreditPaymentsFilters
+    :client="clientFilter"
+    :date="dateFilter"
+    :currency="currencyFilter"
+    @update:client="clientFilter = $event"
+    @update:date="dateFilter = $event"
+    @update:currency="currencyFilter = $event"
+    @clear="clearPaymentFilters"
+  />
+
+  <CreditPaymentsTable
+    :payments="payments"
+    :loading="paymentsLoading"
+    :total-payments="totalPayments"
+    :items-per-page="paymentsItemsPerPage"
+    :page="page"
+    @update:options="updatePaymentsTableOptions"
   />
 
   <CreditsModal

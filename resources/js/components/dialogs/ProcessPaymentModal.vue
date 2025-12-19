@@ -8,6 +8,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+  },
   paymentGroup: {
     type: Object,
     default: null,
@@ -25,7 +29,7 @@ const form = ref({
   payment_currency: "USD",
   payment_amount: 0,
   payment_date: new Date().toISOString().split("T")[0],
-  payment_receipt: null,
+  photo_url: null,
   reference: "",
 });
 
@@ -171,9 +175,15 @@ const totalInUSD = computed(() => {
 
 const totalInBS = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
-  return selectedInvoices.value.reduce((sum, invoice) => {
-    return sum + parseFloat(invoice.remaining_amount || 0);
+  const total = selectedInvoices.value.reduce((sum, invoice) => {
+    return sum + parseFloat(invoice.total_amount || 0);
   }, 0);
+
+  const hasAtLeastOneIndexed = selectedInvoices.value.some(
+    (invoice) => invoice.indexed_data.is_indexed
+  );
+
+  return hasAtLeastOneIndexed ? (total * props.exchangeRate).toFixed(2) : total;
 });
 
 const suggestedAmountInLocalCurrency = computed(() => {
@@ -323,7 +333,7 @@ const resetForm = () => {
     payment_currency: "USD",
     payment_amount: 0,
     payment_date: new Date().toISOString().split("T")[0],
-    payment_receipt: null,
+    photo_url: null,
     reference: "",
   };
   errors.value = {};
@@ -429,9 +439,7 @@ const processPayment = async () => {
       payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
       reference: form.value.reference || null,
-      photo_url: form.value.payment_receipt
-        ? form.value.payment_receipt.name
-        : null,
+      photo_url: form.value.photo_url,
       invoice_ids: selectedInvoices.value.map((inv) => inv.id),
     };
 
@@ -467,9 +475,29 @@ const processPayment = async () => {
 };
 
 // Manejar subida de archivo
-const handleFileUpload = (file) => {
+const handleFileUpload = async (file) => {
   if (file) {
-    form.value.payment_receipt = file;
+    uploading.value = true;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await axios.post(
+        "/finances/pending-payments/upload-receipt",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      form.value.photo_url = response.data.data.url; // Guardar la URL del archivo
+      toast.success("Comprobante subido exitosamente");
+    } catch (error) {
+      toast.error("Error al subir el comprobante");
+    } finally {
+      uploading.value = false;
+    }
   }
 };
 
@@ -841,11 +869,10 @@ onMounted(() => {
             </VCol>
             <VCol cols="12" md="6">
               <VFileInput
-                v-model="form.payment_receipt"
                 label="Comprobante de Pago"
                 accept="image/*"
                 :loading="uploading"
-                @change="handleFileUpload"
+                @change="handleFileUpload($event.target.files[0])"
                 prepend-icon="tabler-upload"
               />
             </VCol>
@@ -928,7 +955,7 @@ onMounted(() => {
         <VBtn
           color="primary"
           @click="processPayment"
-          :loading="loading"
+          :loading="loading || uploading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
           class="flex-grow-1 w-0"
         >

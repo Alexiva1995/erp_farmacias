@@ -255,7 +255,7 @@ onMounted(() => {
     <VCard class="mb-6">
       <VCardText>
         <VRow>
-          <VCol cols="12" md="6">
+          <VCol cols="12" md="12">
             <AppTextField
               v-model="search"
               placeholder="Buscar renuncia..."
@@ -318,11 +318,7 @@ onMounted(() => {
           <template #item.actions="{ item }">
             <VTooltip text="Descargar Carta" location="top">
               <template #activator="{ props }">
-                <IconBtn
-                  v-bind="props"
-                  @click="downloadResignationPDF(item)"
-                  color="primary"
-                >
+                <IconBtn v-bind="props" @click="downloadResignationPDF(item)">
                   <VIcon icon="tabler-download" />
                 </IconBtn>
               </template>
@@ -330,11 +326,7 @@ onMounted(() => {
 
             <VTooltip text="Editar Renuncia" location="top">
               <template #activator="{ props }">
-                <IconBtn
-                  v-bind="props"
-                  @click="editResignation(item)"
-                  color="warning"
-                >
+                <IconBtn v-bind="props" @click="editResignation(item)">
                   <VIcon icon="tabler-edit" />
                 </IconBtn>
               </template>
@@ -344,9 +336,6 @@ onMounted(() => {
               <template #activator="{ props }">
                 <IconBtn
                   v-bind="props"
-                  :color="
-                    item.employee_status === 'Activo' ? 'error' : 'success'
-                  "
                   @click="
                     openToggleConfirmDialog(
                       item.employee_id,
@@ -368,11 +357,7 @@ onMounted(() => {
 
             <VTooltip text="Eliminar Renuncia" location="top">
               <template #activator="{ props }">
-                <IconBtn
-                  v-bind="props"
-                  @click="deleteResignation(item)"
-                  color="error"
-                >
+                <IconBtn v-bind="props" @click="deleteResignation(item)">
                   <VIcon icon="tabler-trash" />
                 </IconBtn>
               </template>

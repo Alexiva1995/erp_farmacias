@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use DB;
 use Illuminate\Http\Request;
 use App\Services\Credits\CreditsQueryService;
 use App\Services\Credits\CreditsActionService;
@@ -16,7 +17,8 @@ class CreditsController extends Controller
     public function __construct(
         private CreditsQueryService $creditsQueryService,
         private CreditsActionService $creditsActionService,
-    ) {}
+    ) {
+    }
 
     public function index(Request $request)
     {
@@ -94,8 +96,113 @@ class CreditsController extends Controller
         $payments = \App\Models\CreditPayment::with('seller')
             ->where('client_id', $request->input('client_id'))
             ->orderBy('payment_date', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($credit) {
+                $methodPayments = $credit->method_Payment;
+                foreach ($methodPayments as $payment) {
+                    $credit['payments'] = [
+                        'amount' => $payment['amount'],
+                        'method' => $payment['method'],
+                        'currency' => $payment['currency'],
+                        'reference' => $payment['reference'],
+                        'date' => $credit->payment_date,
+                        'seller' => $credit->seller->username,
+                    ];
+                }
+
+                unset($credit->method_Payment);
+
+                return $credit;
+            });
 
         return response()->json($payments);
+    }
+
+    public function payments(Request $request)
+    {
+        $search = $request->input('client');
+        $sortBy = $request->input('sort_by', 'date');
+        $orderBy = in_array($request->input('order_by'), ['asc', 'desc']) ? $request->input('order_by') : 'desc';
+        $itemsPerPage = (int) $request->input('items_per_page', 10);
+
+        $query = DB::table('credit_payments as cp')
+            ->crossJoin(DB::raw('JSON_TABLE(
+            cp.method_Payment,
+            "$[*]" COLUMNS (
+                amount DECIMAL(15,2) PATH "$.amount",
+                method VARCHAR(50) PATH "$.method",
+                currency VARCHAR(10) PATH "$.currency",
+                reference VARCHAR(100) PATH "$.reference"
+            )
+        ) AS payment'))
+            ->join('clients', 'cp.client_id', '=', 'clients.id')
+            ->join('users as seller', 'cp.seller_id', '=', 'seller.id')
+            ->select([
+                'payment.amount',
+                'payment.method',
+                'payment.currency',
+                'payment.reference',
+                'cp.payment_date',
+                DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client"),
+                'seller.username as seller',
+            ]);
+
+        if ($currency = $request->input('currency')) {
+            $query->where('payment.currency', $currency);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('clients.name', 'LIKE', "%{$search}%")
+                    ->orWhere('clients.last_name', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($date = $request->input('date')) {
+            $query->whereDate('cp.payment_date', $date);
+        }
+
+        switch ($sortBy) {
+            case 'client':
+                $query->orderBy(DB::raw("CONCAT(clients.name, ' ', clients.last_name)"), $orderBy);
+                break;
+            case 'seller':
+                $query->orderBy('seller.username', $orderBy);
+                break;
+            case 'currency':
+                $query->orderBy('payment.currency', $orderBy);
+                break;
+            case 'amount':
+                $query->orderBy('payment.amount', $orderBy);
+                break;
+            case 'method':
+                $query->orderBy('payment.method', $orderBy);
+                break;
+            case 'reference':
+                $query->orderBy('payment.reference', $orderBy);
+                break;
+            case 'date':
+            default:
+                $query->orderBy('cp.payment_date', $orderBy);
+                break;
+        }
+
+        $payments = $query->paginate($itemsPerPage)
+            ->through(function ($row) {
+                return [
+                    'amount' => $row->amount,
+                    'method' => $row->method,
+                    'currency' => $row->currency,
+                    'reference' => $row->reference ?? 'N/A',
+                    'date' => $row->payment_date,
+                    'seller' => $row->seller,
+                    'client' => $row->client,
+                ];
+            });
+
+        return response()->json([
+            'data' => $payments->items(),
+            'total' => $payments->total(),
+        ]);
     }
 }

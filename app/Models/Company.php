@@ -21,6 +21,7 @@ class Company extends Model
         "identification",
         "address",
         "type_company", // De la rama 5.0-CRM
+        'current_discount',
     ];
 
     /**

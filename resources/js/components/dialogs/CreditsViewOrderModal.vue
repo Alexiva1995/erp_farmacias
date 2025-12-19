@@ -1,5 +1,6 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { translateMethod } from "@/utils/paymentMethods";
 import axios from "axios";
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from "vue";
 
@@ -41,17 +42,21 @@ const logoSrc = computed(() => {
 });
 
 const totalCredits = computed(() => {
-  return props.creditsData.reduce((sum, credit) => {
-    const creditAmount = parseFloat(credit.credit_amount) || 0;
-    return sum + creditAmount;
-  }, 0);
+  return props.creditsData
+    .reduce((sum, credit) => {
+      const creditAmount = parseFloat(credit.credit_amount) || 0;
+      return sum + creditAmount;
+    }, 0)
+    .toFixed(2);
 });
 
 const totalPendingAmount = computed(() => {
-  return props.creditsData.reduce((sum, credit) => {
-    const pendingAmount = parseFloat(credit.pending_amount) || 0;
-    return sum + pendingAmount;
-  }, 0);
+  return props.creditsData
+    .reduce((sum, credit) => {
+      const pendingAmount = parseFloat(credit.pending_amount) || 0;
+      return sum + pendingAmount;
+    }, 0)
+    .toFixed(2);
 });
 
 const filteredPayments = computed(() => {
@@ -77,7 +82,7 @@ const filteredPayments = computed(() => {
     );
   }
 
-  return filtered;
+  return filtered.map((payment) => payment.payments);
 });
 
 const totalPaid = computed(() => {
@@ -121,9 +126,10 @@ onMounted(() => {
 });
 
 const paymentHeaders = [
-  { title: "Fecha", key: "payment_date", sortable: false },
-  { title: "Monto", key: "money_returns", sortable: false },
-  { title: "Método", key: "method_Payment", sortable: false },
+  { title: "Fecha", key: "date", sortable: false },
+  { title: "Monto", key: "amount", sortable: false },
+  { title: "Moneda", key: "currency", sortable: false },
+  { title: "Método", key: "method", sortable: false },
   { title: "Vendedor", key: "seller", sortable: false },
 ];
 </script>
@@ -288,36 +294,39 @@ const paymentHeaders = [
             :items-per-page="5"
             no-data-text="No hay pagos registrados"
           >
-            <template v-slot:item.payment_date="{ item }">
-              <span>{{
-                item.payment_date ? item.payment_date.split(" ")[0] : "N/A"
-              }}</span>
+            <template v-slot:item.date="{ item }">
+              <span>{{ item.date ? item.date.split(" ")[0] : "N/A" }}</span>
             </template>
 
-            <template v-slot:item.money_returns="{ item }">
-              <span class="font-weight-medium text-success">
-                {{ parseFloat(item.money_returns).toFixed(2) }} USD
+            <template v-slot:item.amount="{ item }">
+              <span class="font-weight-medium">
+                {{ parseFloat(item.amount).toFixed(2) }}
               </span>
             </template>
 
-            <template v-slot:item.method_Payment="{ item }">
-              <div v-if="item.method_Payment && item.method_Payment.length">
-                <VChip
-                  v-for="(method, index) in item.method_Payment"
-                  :key="index"
-                  size="x-small"
-                  class="ma-1"
-                  color="info"
-                >
-                  {{ method.method }}:
-                  {{ parseFloat(method.amount).toFixed(2) }}
-                </VChip>
-              </div>
-              <span v-else>N/A</span>
+            <template v-slot:item.currency="{ item }">
+              <VChip
+                size="x-small"
+                :color="
+                  item.currency === 'USD'
+                    ? 'success'
+                    : item.currency === 'COP'
+                    ? 'info'
+                    : 'primary'
+                "
+              >
+                {{ item.currency }}
+              </VChip>
+            </template>
+
+            <template v-slot:item.method="{ item }">
+              <VChip size="x-small">
+                {{ translateMethod(item.method) }}
+              </VChip>
             </template>
 
             <template v-slot:item.seller="{ item }">
-              <span>{{ item.seller?.username || "N/A" }}</span>
+              <span>{{ item.seller || "N/A" }}</span>
             </template>
           </VDataTable>
         </div>

@@ -33,6 +33,14 @@ const props = defineProps({
     type: String,
     default: "COP",
   },
+  companyDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  }
 });
 
 const emit = defineEmits([
@@ -96,6 +104,8 @@ const paymentMethodsByCurrency = {
 };
 
 const exchangeRates = ref({});
+
+const isCredit = (value) => value === "credit" || value === "credit_card";
 
 const continueButtonText = computed(() => {
   return currentProgress.value === 100 ? "Finalizar" : "Continuar";
@@ -216,7 +226,7 @@ const fetchExchangeRates = async () => {
         );
       }
     });
-    console.log(formattedRates);
+  
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
   } catch (error) {
@@ -232,8 +242,8 @@ onMounted(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional, ahora se calcula automáticamente
 const roundedTotalAmountToPay = computed(() => {
-  let baseAmount = props.totalAmount;
-
+  //let baseAmount = props.totalAmount;
+   let baseAmount = props.totalAmount;
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
@@ -244,7 +254,7 @@ const roundedTotalAmountToPay = computed(() => {
 });
 
 // ACTUALIZADO: Eliminar lógica SPE adicional
-const remainingAmount = computed(() => {
+/*const remainingAmount = computed(() => {
   let totalToPay = props.totalAmount;
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
@@ -257,7 +267,22 @@ const remainingAmount = computed(() => {
   }
 
   return roundToTwoDecimalPlaces(rawDifference);
+});*/
+
+
+const remainingAmount = computed(() => {
+  // Aplicamos el descuento aquí también
+  let totalWithDiscount = props.totalAmount;
+
+  const rawDifference = totalWithDiscount - totalPaidAmount.value;
+
+   if (props.selectedCurrency === "COP") {
+    return roundUpToNearestHundred(rawDifference);
+  }
+
+  return roundToTwoDecimalPlaces(rawDifference);
 });
+
 
 const getConvertedRemainingAmount = (currency) => {
   const baseCurrency = props.selectedCurrency;
@@ -310,13 +335,13 @@ const addPaymentBlock = () => {
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
   if (remainingAmount.value <= 0) return false;
-  if (payments.value[0].method === "credit") return false;
+  if (isCredit(payments.value[0].method)) return false;
   if (!lastPayment.method) return false;
   if (isTransferMethod(lastPayment.method) && !lastPayment.reference)
     return false;
 
   if (
-    lastPayment.method !== "credit" &&
+    !isCredit(lastPayment.method) &&
     (Number(lastPayment.amount) <= 0 || lastPayment.amount === null)
   ) {
     return false;
@@ -362,7 +387,7 @@ const handleCompletePurchase = () => {
     }
   });
 
-  if (currentProgress.value === 0 && payments.value[0].method !== "credit") {
+  if (currentProgress.value === 0 && !isCredit(payments.value[0].method)) {
     let totalToPayCalculated = props.totalAmount;
 
     /*if (speSwitch.value) {
@@ -439,10 +464,7 @@ const handleCompletePurchase = () => {
 
       if (!p.method) return true;
       if (isTransferMethod(p.method) && !p.reference) return true;
-      if (
-        p.method !== "credit" &&
-        (Number(p.amount) <= 0 || p.amount === null)
-      ) {
+      if (!isCredit(p.method) && (Number(p.amount) <= 0 || p.amount === null)) {
         return true;
       }
       return false;
@@ -613,7 +635,7 @@ const totalSPESavings = computed(() => {
 });
 
 const hasCreditPayment = computed(() => {
-  return payments.value.some((payment) => payment.method === "credit");
+  return payments.value.some((payment) => isCredit(payment.method));
 });
 
 const totalSelectedQuantity = computed(() => {
@@ -650,7 +672,8 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
-  let totalToPay = props.totalAmount;
+  //let totalToPay = props.totalAmount;
+   let totalToPay = props.totalAmount;
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
@@ -983,7 +1006,7 @@ const handleMethodChange = (payment, newMethod) => {
                 <VRow
                   class="payment-block"
                   v-if="
-                    payment.method !== 'balance' && payment.method !== 'credit'
+                    payment.method !== 'balance' && !isCredit(payment.method)
                   "
                   :key="payment.method"
                 >
@@ -1039,7 +1062,7 @@ const handleMethodChange = (payment, newMethod) => {
                   </VCol>
                 </VRow>
 
-                <VRow v-if="payment.method === 'credit'">
+                <VRow v-if="isCredit(payment.method)">
                   <VCol cols="12" sm="6">
                     <VTextField
                       :model-value="
@@ -1058,6 +1081,14 @@ const handleMethodChange = (payment, newMethod) => {
         <VDivider />
 
         <!-- Total a pagar -->
+
+        <div class="d-flex align-center flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+          </p>
+        </div>
+
         <div class="d-flex align-center flex-wrap justify-space-between">
           <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0">
@@ -1153,7 +1184,7 @@ const handleMethodChange = (payment, newMethod) => {
           v-if="remainingAmount > 0"
           class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
@@ -1181,7 +1212,7 @@ const handleMethodChange = (payment, newMethod) => {
             v-if="remainingAmount > 0"
             class="d-flex align-center flex-wrap justify-space-between"
           >
-            <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:</p>
+            <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
             <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
               {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
             </p>
@@ -1295,6 +1326,14 @@ const handleMethodChange = (payment, newMethod) => {
             </div>
 
             <!-- Totales en el ticket -->
+
+          <div class="d-flex flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
+              <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
+                  <p class="text-h6 font-weight-medium mt-2 mb-0">
+                - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+              </p>
+          </div>
+
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">

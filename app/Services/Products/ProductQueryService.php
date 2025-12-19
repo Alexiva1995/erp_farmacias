@@ -57,6 +57,7 @@ class ProductQueryService
                         $subQuery->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('name', 'like', "%{$word}%")
                                 ->orWhere('active_ingredient', 'like', "%{$word}%")
+                                ->orWhere('id', 'like', "%{$word}%")
                                 ->orWhereHas('laboratory', function ($labQuery) use ($word) {
                                     $labQuery->where('name', 'like', "%{$word}%");
                                 });
@@ -155,6 +156,7 @@ class ProductQueryService
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'id':
+                return $query->orderBy('products.id', $orderBy);
             case 'product.name':
                 return $query->orderBy('products.name', $orderBy);
                 break;

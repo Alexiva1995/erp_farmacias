@@ -241,6 +241,7 @@ const fetchCompanyOffers = async () => {
           value: offer.company_id,
           scales: scales,
           id: offer.id,
+          current_discount: offer.company?.current_discount || 0
         };
       });
     }
@@ -310,7 +311,38 @@ const handleCompanyDiscountSelected = (companyId) => {
   validateAndApplyCompanyDiscount();
 };
 
+
+
 const validateAndApplyCompanyDiscount = () => {
+  if (!selectedCompanyId.value) {
+    if (selectedDiscountType.value === "Empresa") {
+      removeDiscount();
+    }
+    return;
+  }
+  const offer = activeCompanyOffers.value.find(
+    (o) => o.value === selectedCompanyId.value
+  );
+  
+  if (!offer) return;
+  const porcentaje = parseFloat(offer.current_discount || 0);
+
+  if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "company",
+      name: offer.title,
+      id: offer.id,
+    });
+    toast.success(`Descuento de empresa ${porcentaje}% aplicado.`);
+  } else {
+    removeDiscount();
+    toast.info(
+      `Esta empresa no cuenta con un descuento activo para el periodo actual.`
+    );
+  }
+};
+
+/*const validateAndApplyCompanyDiscount = () => {
   if (!selectedCompanyId.value) {
     if (selectedDiscountType.value === "Empresa") {
       removeDiscount();
@@ -350,7 +382,7 @@ const validateAndApplyCompanyDiscount = () => {
       `La cantidad total (${totalQuantity}) no cumple con los rangos de volumen para el descuento de esta empresa.`
     );
   }
-};
+};*/
 
 const applyDiscount = (percentage, source) => {
   orderItems.value = orderItems.value.map((item) => {
@@ -472,7 +504,7 @@ onMounted(() => {
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
-  console.log(product);
+
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
@@ -762,17 +794,50 @@ const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
 };
 
-const totalOrderAmount = computed(() => {
-  return totalProductsAmount.value + totalIVAAmount.value;
+
+const totalCompanyDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompanyId.value
+    );
+    const porcentaje = parseFloat(offer?.current_discount || 0);
+    if (porcentaje > 0) {
+      return totalProductsAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
 });
 
-const myCalculatedTotal = computed(() => {
+const totalOrderAmount = computed(() => {
+  //return totalProductsAmount.value + totalIVAAmount.value;
+  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
+  return baseTotal - totalCompanyDiscountAmount.value;
+});
+
+/*const myCalculatedTotal = computed(() => {
   let valor = totalProductsAmount.value + totalIVAAmount.value; // Ahora totalIVAAmount ya incluye el descuento SPE
   if (selectedDisplayCurrency.value === "COP") {
     return roundUpToNearestHundred(valor);
   }
   return parseFloat(valor.toFixed(2));
+});*/
+
+const myCalculatedTotal = computed(() => {
+  // 1. Sumamos el subtotal de productos + IVA (que ya tiene el beneficio SPE)
+  let valor = totalProductsAmount.value + totalIVAAmount.value;
+
+  // 2. Restamos el descuento de empresa
+  const descuento = totalCompanyDiscountAmount.value || 0;
+  valor = valor - descuento;
+
+  if (selectedDisplayCurrency.value === "COP") {
+    return roundUpToNearestHundred(valor);
+  }
+
+  return parseFloat(valor.toFixed(2));
 });
+
+
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
 
@@ -839,6 +904,8 @@ const totalAmountBs = computed(() => {
 
 const totalAmountUsd = computed(() => {
   let total = 0;
+  let subtotalProductosUSD = 0;
+
   orderItems.value.forEach((item) => {
     const basePriceUsd = item.price || 0;
     const quantity = item.selectedQuantity || 0;
@@ -850,9 +917,23 @@ const totalAmountUsd = computed(() => {
       effectiveTaxRate = taxRate * 0.25;
     }
 
+    subtotalProductosUSD += basePriceUsd * quantity;
     total += basePriceUsd * quantity * (1 + effectiveTaxRate);
   });
-  return total;
+
+ // return total;
+
+  let porcentaje = 0;
+
+  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
+    porcentaje = parseFloat(offer?.current_discount || 0);
+  }
+
+  const descuentoEnUSD = subtotalProductosUSD * (porcentaje / 100);
+  const finalTotalUSD = total - descuentoEnUSD;
+  return finalTotalUSD;
+
 });
 
 const totalAmountCop = computed(() => {
@@ -884,12 +965,16 @@ const updateOrderTotalsInBackend = async () => {
       : totalOrderAmount.value;
 
   try {
+
+   console.log('hola antes de payload' + total);
     const payload = {
       total_amount: total,
       total_amount_usd: totalAmountUsd.value,
       total_cost: totalOrderCost.value,
       currency: selectedDisplayCurrency.value,
+      discount_type: selectedDiscountType.value,
     };
+   console.log('hola despues de payload' + payload);
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
   } catch (error) {
     toast.error("Error al actualizar los totales de la orden.");
@@ -1222,6 +1307,7 @@ const handleBuysCompletion = async (
       spe: switchStates.spe,
       items: orderItems.value.map((item) => ({
         order_detail_id: item.order_detail_id,
+        quantity: item.selectedQuantity,
         price: item.price,
         discount_percentage: item.discountApplied
           ? item.appliedDiscountPercentage
@@ -1396,10 +1482,9 @@ const addReserverOrder = async () => {
     toast.success("Orden agregada exitosamente.");
     return response.data.data.order;
   } catch (error) {
-    console.error(
-      "Error al agregar la orden:",
-      error.response ? error.response.data : error.message
-    );
+    const errorMessage =
+      error.response?.data?.message ||
+      "Error al reservar la orden. Inténtalo de nuevo.";
     toast.error(errorMessage);
   }
 };
@@ -1419,6 +1504,7 @@ const addReserverOrder = async () => {
         :total-products-amount="totalProductsAmount"
         :total-iva-amount="totalIVAAmount"
         :total-order-amount="totalOrderAmount"
+        :company-discount-total="totalCompanyDiscountAmount"
         :cliente="selectedClient"
         :selected-display-currency="selectedDisplayCurrency"
         @currency-changed="handleCurrencyChanged"
@@ -1496,6 +1582,8 @@ const addReserverOrder = async () => {
       :selected-currency="selectedDisplayCurrency"
       @modal-closed="closeBuysModal"
       @purchase-completed="handleBuysCompletion"
+      :company-discount-total="totalCompanyDiscountAmount"
+      :selected-discount-type="selectedDiscountType"
     />
 
     <div
@@ -1512,6 +1600,8 @@ const addReserverOrder = async () => {
         :change-amount="changeAmountForPrint"
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
+        :company-discount-total="totalCompanyDiscountAmount"
+        :selected-discount-type="selectedDiscountType"
       />
     </div>
   </div>

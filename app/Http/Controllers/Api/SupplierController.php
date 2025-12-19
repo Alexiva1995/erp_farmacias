@@ -156,11 +156,13 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
+      
         $sentIds = Arr::pluck($validated['rules'], 'id');
+        
         $sentIds = array_filter($sentIds, function($id) {
             return is_numeric($id) && $id > 0;
         });
-
+        
         if (!empty($sentIds)) {
             $supplier->paymentRules()
             ->whereNotIn('id', $sentIds)
@@ -168,7 +170,7 @@ class SupplierController extends Controller
         } else {
             $supplier->paymentRules()->delete();
         }
-
+           
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
                 'days' => $rule['days'],

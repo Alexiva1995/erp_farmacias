@@ -103,20 +103,6 @@ const fetchSuppliers = async () => {
 const fetchPendingPayments = async () => {
   loading.value = true;
 
-  // 🔍 LOG DEBUG: Inicio de fetchPendingPayments
-  console.log("🔍 [DEBUG] fetchPendingPayments - INICIO", {
-    timestamp: new Date().toISOString(),
-    params_antes_limpiar: {
-      page: page.value,
-      itemsPerPage: itemsPerPage.value,
-      q: searchQuery.value,
-      supplier_id: selectedSupplier.value,
-      start_date: startDate.value,
-      end_date: endDate.value,
-      show_overdue_only: showOverdueOnly.value,
-    },
-  });
-
   try {
     const params = {
       page: page.value,
@@ -135,52 +121,14 @@ const fetchPendingPayments = async () => {
       }
     });
 
-    // 🔍 LOG DEBUG: Parámetros finales
-    console.log("🔍 [DEBUG] Parámetros finales enviados", {
-      params_finales: params,
-      url: "/finances/pending-payments",
-    });
-
     const response = await axios.get("/finances/pending-payments", {
       params,
     });
 
-    // 🔍 LOG DEBUG: Respuesta recibida
-    console.log("🔍 [DEBUG] Respuesta recibida del servidor", {
-      status: response.status,
-      statusText: response.statusText,
-      response_data: response.data,
-      response_structure: {
-        has_status: "status" in response.data,
-        has_success: "success" in response.data,
-        has_data: "data" in response.data,
-        data_keys: response.data.data
-          ? Object.keys(response.data.data)
-          : "no_data",
-        pending_payments_count:
-          response.data.data?.pending_payments?.length || 0,
-      },
-    });
-
     if (response.data.status === "success" || response.data.success) {
-      // 🔍 LOG DEBUG: Procesando datos exitosos
-      console.log("🔍 [DEBUG] Procesando datos exitosos", {
-        pending_payments_raw: response.data.data.pending_payments,
-        total_groups_raw: response.data.data.total_groups,
-        total_suppliers_raw: response.data.data.total_suppliers,
-        totals_by_currency_raw: response.data.data.totals_by_currency,
-      });
-
       // Aplanar las facturas agrupadas para mostrar cada factura individualmente
       const allInvoices = [];
       response.data.data.pending_payments.forEach((group, groupIndex) => {
-        console.log(`🔍 [DEBUG] Procesando grupo ${groupIndex}`, {
-          group_supplier_name: group.supplier_name,
-          group_payment_date: group.payment_date,
-          group_invoices_count: group.invoices?.length || 0,
-          group_invoices: group.invoices,
-        });
-
         group.invoices.forEach((invoice, invoiceIndex) => {
           const flattenedInvoice = {
             ...invoice,
@@ -192,26 +140,8 @@ const fetchPendingPayments = async () => {
             supplier_preferred_currency: group.supplier_preferred_currency,
           };
 
-          console.log(
-            `🔍 [DEBUG] Factura ${invoiceIndex} del grupo ${groupIndex}`,
-            {
-              invoice_id: flattenedInvoice.id,
-              invoice_number: flattenedInvoice.invoice_number,
-              supplier_name: flattenedInvoice.supplier_name,
-              currency: flattenedInvoice.currency,
-              total_amount: flattenedInvoice.total_amount,
-            }
-          );
-
           allInvoices.push(flattenedInvoice);
         });
-      });
-
-      // 🔍 LOG DEBUG: Datos procesados
-      console.log("🔍 [DEBUG] Datos procesados completamente", {
-        allInvoices_count: allInvoices.length,
-        allInvoices_sample: allInvoices.slice(0, 3), // Primeras 3 facturas
-        pendingPayments_antes_asignar: pendingPayments.value.length,
       });
 
       pendingPayments.value = allInvoices;
@@ -224,49 +154,23 @@ const fetchPendingPayments = async () => {
         usd_converted: 0,
       };
 
-      // 🔍 LOG DEBUG: Variables reactivas asignadas
-      console.log("🔍 [DEBUG] Variables reactivas asignadas", {
-        pendingPayments_length: pendingPayments.value.length,
-        totalGroups_value: totalGroups.value,
-        totalSuppliers_value: totalSuppliers.value,
-        totalsByCurrency_value: totalsByCurrency.value,
-        loading_value: loading.value,
-      });
-
       // totalAmount se calcula ahora con totalAmountUSD (computed)
     } else {
-      console.error(
-        "🔍 [DEBUG] Error en respuesta del servidor:",
-        response.data.message
-      );
       toast.error(
         response.data.message || "Error al cargar los pagos pendientes"
       );
     }
   } catch (error) {
-    console.error("🔍 [DEBUG] Error en fetchPendingPayments:", error);
-    console.error("🔍 [DEBUG] Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
     toast.error("Error al cargar los pagos pendientes");
   } finally {
     loading.value = false;
-
-    // 🔍 LOG DEBUG: Final de fetchPendingPayments
-    console.log("🔍 [DEBUG] fetchPendingPayments - FINAL", {
-      loading_final: loading.value,
-      pendingPayments_final: pendingPayments.value.length,
-      timestamp: new Date().toISOString(),
-    });
   }
 };
 
 // Cargar tasas de cambio
 const fetchExchangeRates = async () => {
   try {
-    const response = await axios.get("/api/public/exchange-rates");
+    const response = await axios.get("/public/exchange-rates");
     if (Array.isArray(response.data)) {
       exchangeRates.value = response.data.reduce((acc, rate) => {
         acc[rate.currency_code] = parseFloat(rate.rate);
@@ -305,17 +209,6 @@ const totalAmountUSD = computed(() => {
     return sum + (parseFloat(invoice.total_amount_usd) || 0);
   }, 0);
 
-  // 🔍 LOG DEBUG: Computed totalAmountUSD
-  console.log("🔍 [DEBUG] Computed totalAmountUSD", {
-    pendingPayments_length: pendingPayments.value.length,
-    result: result,
-    sample_invoices: pendingPayments.value.slice(0, 2).map((inv) => ({
-      id: inv.id,
-      total_amount_usd: inv.total_amount_usd,
-      parsed: parseFloat(inv.total_amount_usd) || 0,
-    })),
-  });
-
   return result;
 });
 
@@ -338,13 +231,6 @@ const currencyBreakdown = computed(() => {
     const usdAmount = parseFloat(invoice.total_amount_usd) || 0;
 
     breakdown[currency].totalUSD += usdAmount;
-  });
-
-  // 🔍 LOG DEBUG: Computed currencyBreakdown
-  console.log("🔍 [DEBUG] Computed currencyBreakdown", {
-    pendingPayments_length: pendingPayments.value.length,
-    breakdown_result: breakdown,
-    currencies_found: Object.keys(breakdown),
   });
 
   return breakdown;
@@ -526,7 +412,7 @@ const formatDate = (date) => {
 
 // Formatear moneda
 const formatCurrency = (amount, currency, omitCurrency) => {
-  if (!amount || amount === 0) return "N/A";
+  if (!amount || amount === 0) return "0";
 
   // Redondear a 2 decimales
   const roundedAmount = Math.round(amount * 100) / 100;
@@ -587,7 +473,7 @@ const getDisplayAmount = (item) => {
   }
 
   // Si no está indexada, usar el monto restante normal
-  return item.remaining_amount || item.total_amount;
+  return item.total_amount || item.total_amount;
 };
 
 // ISSUE #3: Función para obtener monto USD a mostrar (considerando indexación)
@@ -890,7 +776,9 @@ onMounted(async () => {
 
           <!-- Columna de fecha de pago -->
           <template #item.payment_date="{ item }">
-            <div>{{ formatDate(item.payment_date) }}</div>
+            <div>
+              {{ item.payment_date ? formatDate(item.payment_date) : "N/A" }}
+            </div>
           </template>
 
           <!-- Columna de monto original -->
@@ -924,14 +812,17 @@ onMounted(async () => {
           <template #item.total_supplier_currency="{ item }">
             <div class="font-weight-bold text-primary">
               {{
-                formatCurrency(item.total_amount || 0, item.currency || "USD")
+                formatCurrency(
+                  item.supplier_total_bs || 0,
+                  item.currency || "USD"
+                )
               }}
             </div>
             <div
               v-if="item.currency === 'Bs'"
               class="text-caption text-medium-emphasis"
             >
-              {{ formatCurrency(item.remaining_amount_usd || 0, "USD") }}
+              {{ formatCurrency(item.supplier_total_usd || 0, "USD") }}
             </div>
           </template>
 
@@ -983,6 +874,7 @@ onMounted(async () => {
     <!-- Modal para procesar pago -->
     <ProcessPaymentModal
       v-model="showProcessModal"
+      :exchange-rate="exchangeRates.bs"
       :payment-group="selectedPaymentGroup"
       :invoices="selectedInvoices"
       @close="closeProcessModal"

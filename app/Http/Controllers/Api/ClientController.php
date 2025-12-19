@@ -18,7 +18,8 @@ class ClientController extends Controller
 
     public function __construct(
         protected Client $client
-    ) {}
+    ) {
+    }
 
 
     public function create(CreateClientRequest $request): JsonResponse
@@ -88,7 +89,6 @@ class ClientController extends Controller
 
     public function consultAll(Request $request)
     {
-        dd($request);
         $respuestaDB = $this->client->consultAll();
         return ApiResponse::success($respuestaDB, "Operación exitosa", 200);
     }
