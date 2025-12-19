@@ -40,7 +40,11 @@ const props = defineProps({
   selectedDiscountType: {
     type: String,
     default: null,
-  }
+  },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -244,13 +248,15 @@ onMounted(() => {
 const roundedTotalAmountToPay = computed(() => {
   //let baseAmount = props.totalAmount;
    let baseAmount = props.totalAmount;
+
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(baseAmount);
   }
-  return roundToTwoDecimalPlaces(baseAmount);
+  return parseFloat(baseAmount.toFixed(2));
+  //return roundToTwoDecimalPlaces(baseAmount);
 });
 
 // ACTUALIZADO: Eliminar lógica SPE adicional
@@ -1089,6 +1095,13 @@ const handleMethodChange = (payment, newMethod) => {
           </p>
         </div>
 
+        <div class="d-flex align-center flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Medico' && props.doctorDiscountTotal > 0">
+          <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Médico:</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            - {{ formatCurrency(props.doctorDiscountTotal, props.selectedCurrency) }}
+          </p>
+        </div>
+
         <div class="d-flex align-center flex-wrap justify-space-between">
           <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0">
@@ -1331,6 +1344,13 @@ const handleMethodChange = (payment, newMethod) => {
               <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
                   <p class="text-h6 font-weight-medium mt-2 mb-0">
                 - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+              </p>
+          </div>
+
+          <div class="d-flex flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Medico' && props.doctorDiscountTotal > 0">
+              <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Médico:</p>
+                  <p class="text-h6 font-weight-medium mt-2 mb-0">
+                - {{ formatCurrency(props.doctorDiscountTotal, props.selectedCurrency) }}
               </p>
           </div>
 

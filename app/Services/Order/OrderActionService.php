@@ -321,7 +321,7 @@ class OrderActionService
                             // Update other potential fields if needed, e.g. price_bs, price_cop if stored
                             // But OrderDetail only has price (base currency?) and unit_price_usd?
                             // Checked migration: price, unit_cost. unit_price_usd added later.
-
+                                
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];
                                 $detail->discount_type = $itemData['discount_type'] ?? null;

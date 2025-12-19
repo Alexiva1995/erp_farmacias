@@ -43,14 +43,18 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-    companyDiscountTotal: {
+  companyDiscountTotal: {
     type: Number,
     default: 0,
   },
   selectedDiscountType: {
     type: String,
     default: null,
-  }
+  },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const authStore = useAuthStore();
@@ -211,6 +215,13 @@ const showChangeAmount = computed(() => {
           <span class="font-weight-bold tituloAzulPrint">Descuento Empresa:</span>
           <span class="text-end font-weight-black tituloAzulPrint">
             - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+          </span>
+        </div>
+
+        <div class="ticket-total d-flex justify-space-between align-center" v-if="(props.selectedDiscountType === 'Medico' || props.selectedDiscountType === 'doctor') && props.doctorDiscountTotal > 0">
+          <span class="font-weight-bold tituloAzulPrint">Descuento Médico:</span>
+          <span class="text-end font-weight-black tituloAzulPrint">
+            - {{ formatCurrency(props.doctorDiscountTotal, props.selectedCurrency) }}
           </span>
         </div>
 
