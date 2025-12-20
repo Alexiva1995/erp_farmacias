@@ -477,9 +477,7 @@ class OrderActionService
             $ivaEjecuted = false;
 
             if ($request->hasFile('prescription_image')) {
-                // Guardar la imagen en storage/app/public/prescriptions
                 $path = $request->file('prescription_image')->store('recipe', 'public');
-                // Asignamos la ruta al modelo (asegúrate de tener este campo en tu DB)
                 $orderId->url_recipe = $path;
             }
 
@@ -496,8 +494,9 @@ class OrderActionService
                                 $detail->quantity = $itemData['quantity'];
                             }
 
-                            $detail->unit_cost = $itemData['price'];
                             $detail->price = $itemData['price'] * $detail->quantity;
+                            $detail->unit_cost = $itemData['price'];
+                            
                                 
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];

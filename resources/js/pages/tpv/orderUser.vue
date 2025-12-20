@@ -1603,6 +1603,13 @@ const closeBuysModal = () => {
 };*/
 
 
+const resetFormSelectors = () => {
+  selectedDiscountType.value = null;
+  selectedCompanyId.value = null;
+  selectedDoctorOffer.value = null;
+  prescriptionFile.value = null;
+  currentPrescriptionDiscountPercentage.value = 0;
+};
 
 const handleBuysCompletion = async (
   orderId,
@@ -1636,11 +1643,7 @@ const handleBuysCompletion = async (
       currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = 'recipe';
     }
-
-    // --- CAMBIO AQUÍ: Usamos FormData en lugar de un objeto plano ---
     const formData = new FormData();
-    
-    // Datos simples
     formData.append('order_id', orderId);
     formData.append('total_amount', myCalculatedTotal.value);
     formData.append('currency', selectedDisplayCurrency.value);
@@ -1652,8 +1655,6 @@ const handleBuysCompletion = async (
     formData.append('changeAmount', changeAmount);
     formData.append('changeAmountUSD', changeAmountUSD);
     formData.append('spe', switchStates.spe ? 1 : 0);
-
-    // Arrays de datos (deben enviarse como JSON string para que FormData los acepte)
     formData.append('payments', JSON.stringify(paymentsData));
     
     const mappedItems = orderItems.value.map((item) => ({
@@ -1670,7 +1671,6 @@ const handleBuysCompletion = async (
       formData.append('prescription_image', prescriptionFile.value);
     }
 
-    // Envío con Axios configurado para multipart/form-data
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
@@ -1683,11 +1683,7 @@ const handleBuysCompletion = async (
 
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
-      
-      // Limpiar el archivo después del éxito
       prescriptionFile.value = null;
-
-      // ... (resto de tu lógica de impresión y reseteo de variables igual que antes)
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = myCalculatedTotal.value;
@@ -1701,7 +1697,6 @@ const handleBuysCompletion = async (
       companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
       discountTypeForPrint.value = selectedDiscountType.value;
 
-      // ... (Lógica de impresión omitida por brevedad, se mantiene igual)
       await nextTick();
       const printContents = document.getElementById("orderPrint");
       if (printContents) {
@@ -1745,8 +1740,6 @@ const handleBuysCompletion = async (
         );
         window.print();
       }
-
-      // Resetear estados finales
        if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
@@ -1763,8 +1756,6 @@ const handleBuysCompletion = async (
         reservedOrderData.value = null;
         clientIdentification.value = "";
       }
-
-
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
@@ -1773,6 +1764,8 @@ const handleBuysCompletion = async (
   } finally {
     setTimeout(() => {
        isFinishingOrder.value = false;
+       resetFormSelectors();
+       isPrinting.value = false;
     }, 500);
   }
 };

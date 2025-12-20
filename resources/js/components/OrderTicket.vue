@@ -133,7 +133,7 @@ const activeDiscountDisplay = computed(() => {
   const currency = props.selectedCurrency;
 
   const config = {
-    Empresa: {
+    empresa: {
       label: "Descuento Empresa",
       amount: props.companyDiscountTotal,
       formatted: formatCurrency(props.companyDiscountTotal, currency),
@@ -143,7 +143,7 @@ const activeDiscountDisplay = computed(() => {
       amount: props.companyDiscountTotal,
       formatted: formatCurrency(props.companyDiscountTotal, currency),
     },
-    Medico: {
+    medico: {
       label: "Descuento Médico",
       amount: props.doctorDiscountTotal,
       formatted: formatCurrency(props.doctorDiscountTotal, currency),
@@ -152,11 +152,6 @@ const activeDiscountDisplay = computed(() => {
       label: "Descuento Médico",
       amount: props.doctorDiscountTotal,
       formatted: formatCurrency(props.doctorDiscountTotal, currency),
-    },
-    Recipe: {
-      label: "Descuento Recipe",
-      amount: props.recipeDiscountTotal,
-      formatted: formatCurrency(props.recipeDiscountTotal, currency),
     },
     recipe: {
       label: "Descuento Recipe",
@@ -271,7 +266,6 @@ const activeDiscountDisplay = computed(() => {
             - {{ activeDiscountDisplay.formatted }}
           </span>
         </div>
-
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
           <span class="text-end font-weight-black tituloAzulPrint">

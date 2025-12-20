@@ -1378,7 +1378,7 @@ const activeDiscountDisplay = computed(() => {
                 - {{ activeDiscountDisplay.formatted }}
               </p>
             </div>
-
+            
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">
