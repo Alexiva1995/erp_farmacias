@@ -459,17 +459,18 @@ const getRemainingAmountClass = (item) => {
 const getDisplayAmount = (item) => {
   // CORRECCIÓN: Para facturas indexadas, calcular el monto restante indexado
   if (item.is_indexed && item.indexed_data && item.indexed_data.is_indexed) {
+    return item.indexed_data.indexed_amount;
     // Calcular el porcentaje pagado
-    const originalAmount = parseFloat(item.indexed_data.original_amount_usd);
-    const remainingAmountUSD = parseFloat(item.remaining_amount_usd);
-    const paidAmountUSD = originalAmount - remainingAmountUSD;
-    const paidPercentage = paidAmountUSD / originalAmount;
+    // const originalAmount = parseFloat(item.indexed_data.original_amount_usd);
+    // const remainingAmountUSD = parseFloat(item.remaining_amount_usd);
+    // const paidAmountUSD = originalAmount - remainingAmountUSD;
+    // const paidPercentage = paidAmountUSD / originalAmount;
 
-    // Aplicar el mismo porcentaje al monto indexado
-    const indexedAmount = parseFloat(item.indexed_data.indexed_amount);
-    const remainingIndexedAmount = indexedAmount * (1 - paidPercentage);
+    // // Aplicar el mismo porcentaje al monto indexado
+    // const indexedAmount = parseFloat(item.indexed_data.indexed_amount);
+    // const remainingIndexedAmount = indexedAmount * (1 - paidPercentage);
 
-    return Math.round(remainingIndexedAmount);
+    // return Math.round(remainingIndexedAmount);
   }
 
   // Si no está indexada, usar el monto restante normal
@@ -836,9 +837,6 @@ onMounted(async () => {
           <!-- Columna de acciones -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
-              <IconBtn @click="viewInvoice(item)">
-                <VIcon icon="tabler-eye" />
-              </IconBtn>
               <IconBtn @click="processPayment(item)">
                 <VIcon icon="tabler-credit-card" />
               </IconBtn>
