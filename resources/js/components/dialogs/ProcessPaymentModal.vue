@@ -618,9 +618,7 @@ const paidAmountUSD = computed(() => {
     }
   }
 
-  // CORRECCIÓN: Incluir pagos anteriores + pago actual
-  const previousPaymentsUSD = paymentInfo.value.total_paid_usd || 0;
-  return previousPaymentsUSD + currentPaymentUSD;
+  return currentPaymentUSD;
 });
 
 // Porcentaje de ahorro
@@ -905,18 +903,6 @@ onMounted(() => {
                     <div class="text-center pa-3 bg-success-lighten-5 rounded">
                       <div class="text-h6 font-weight-bold text-success">
                         {{ formatCurrency(paidAmountUSD, "USD") }}
-                      </div>
-                      <div class="text-caption text-medium-emphasis">
-                        Total Pagado (Incluye este pago)
-                      </div>
-                      <div
-                        v-if="paymentInfo.has_previous_payments"
-                        class="text-caption text-info mt-1"
-                      >
-                        Anterior:
-                        {{
-                          formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
-                        }}
                       </div>
                     </div>
                   </VCol>
