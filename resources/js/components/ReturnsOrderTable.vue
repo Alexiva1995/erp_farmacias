@@ -10,6 +10,7 @@ const props = defineProps({
   totalOrder: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isVendedor: { type: Boolean, required: true },
 });
 const emit = defineEmits(["update:options"]);
 const expanded = ref([]);
@@ -246,7 +247,14 @@ const orderItemHeaders = [
                     {{ detailItem.quantity }}
                   </template>
                   <template #item.price="{ item: detailItem }">
-                    {{ formatCurrency(parseFloat(detailItem.price), "USD") }}
+                    {{
+                      props.isVendedor
+                        ? formatCurrency(
+                            parseFloat(detailItem.seller_price),
+                            detailItem.seller_currency
+                          )
+                        : formatCurrency(parseFloat(detailItem.price), "USD")
+                    }}
                   </template>
                   <template #item.returns_quantity="{ item: detailItem }">
                     <VTextField
