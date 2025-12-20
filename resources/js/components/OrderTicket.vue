@@ -43,14 +43,22 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-    companyDiscountTotal: {
+  companyDiscountTotal: {
     type: Number,
     default: 0,
   },
   selectedDiscountType: {
     type: String,
     default: null,
-  }
+  },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  recipeDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const authStore = useAuthStore();
@@ -118,6 +126,46 @@ const getPaymentMethodLabel = (methodValue, currency) => {
 };
 const showChangeAmount = computed(() => {
   return props.changeAmount > 0;
+});
+
+const activeDiscountDisplay = computed(() => {
+  const type = props.selectedDiscountType?.toLowerCase();
+  const currency = props.selectedCurrency;
+
+  const config = {
+    empresa: {
+      label: "Descuento Empresa",
+      amount: props.companyDiscountTotal,
+      formatted: formatCurrency(props.companyDiscountTotal, currency),
+    },
+    company: {
+      label: "Descuento Empresa",
+      amount: props.companyDiscountTotal,
+      formatted: formatCurrency(props.companyDiscountTotal, currency),
+    },
+    medico: {
+      label: "Descuento Médico",
+      amount: props.doctorDiscountTotal,
+      formatted: formatCurrency(props.doctorDiscountTotal, currency),
+    },
+    doctor: {
+      label: "Descuento Médico",
+      amount: props.doctorDiscountTotal,
+      formatted: formatCurrency(props.doctorDiscountTotal, currency),
+    },
+    recipe: {
+      label: "Descuento Recipe",
+      amount: props.recipeDiscountTotal,
+      formatted: formatCurrency(props.recipeDiscountTotal, currency),
+    },
+  };
+
+  const current = config[type];
+  if (current && current.amount > 0) {
+    return current;
+  }
+
+  return null;
 });
 </script>
 <template>
@@ -207,13 +255,17 @@ const showChangeAmount = computed(() => {
         </div>
         <hr />
 
-        <div class="ticket-total d-flex justify-space-between align-center" v-if="(props.selectedDiscountType === 'Empresa' || props.selectedDiscountType === 'company') && props.companyDiscountTotal > 0">
-          <span class="font-weight-bold tituloAzulPrint">Descuento Empresa:</span>
+        <div
+          v-if="activeDiscountDisplay"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold tituloAzulPrint">
+            {{ activeDiscountDisplay.label }}:
+          </span>
           <span class="text-end font-weight-black tituloAzulPrint">
-            - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+            - {{ activeDiscountDisplay.formatted }}
           </span>
         </div>
-
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
           <span class="text-end font-weight-black tituloAzulPrint">

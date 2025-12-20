@@ -181,8 +181,15 @@ class OrderController extends Controller
         }
 
         try {
-            //$sellerId = Auth::id();
-            $sellerId = 2; //para realizar pruebas
+            $sellerId = Auth::id();
+            //$sellerId = 2; //para realizar pruebas
+
+            if ($request->has('items')) {
+                $request->merge(['items' => json_decode($request->items, true)]);
+            }
+            if ($request->has('payments')) {
+                $request->merge(['payments' => json_decode($request->payments, true)]);
+            }
 
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);

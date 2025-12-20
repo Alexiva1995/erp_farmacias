@@ -40,7 +40,15 @@ const props = defineProps({
   selectedDiscountType: {
     type: String,
     default: null,
-  }
+  },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  recipeDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -226,7 +234,7 @@ const fetchExchangeRates = async () => {
         );
       }
     });
-  
+
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
   } catch (error) {
@@ -243,14 +251,16 @@ onMounted(() => {
 // ACTUALIZADO: Eliminar lógica SPE adicional, ahora se calcula automáticamente
 const roundedTotalAmountToPay = computed(() => {
   //let baseAmount = props.totalAmount;
-   let baseAmount = props.totalAmount;
+  let baseAmount = props.totalAmount;
+
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(baseAmount);
   }
-  return roundToTwoDecimalPlaces(baseAmount);
+  return parseFloat(baseAmount.toFixed(2));
+  //return roundToTwoDecimalPlaces(baseAmount);
 });
 
 // ACTUALIZADO: Eliminar lógica SPE adicional
@@ -269,20 +279,18 @@ const roundedTotalAmountToPay = computed(() => {
   return roundToTwoDecimalPlaces(rawDifference);
 });*/
 
-
 const remainingAmount = computed(() => {
   // Aplicamos el descuento aquí también
   let totalWithDiscount = props.totalAmount;
 
   const rawDifference = totalWithDiscount - totalPaidAmount.value;
 
-   if (props.selectedCurrency === "COP") {
+  if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(rawDifference);
   }
 
   return roundToTwoDecimalPlaces(rawDifference);
 });
-
 
 const getConvertedRemainingAmount = (currency) => {
   const baseCurrency = props.selectedCurrency;
@@ -673,7 +681,7 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 // ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
   //let totalToPay = props.totalAmount;
-   let totalToPay = props.totalAmount;
+  let totalToPay = props.totalAmount;
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
@@ -809,6 +817,30 @@ const handleMethodChange = (payment, newMethod) => {
   }
   payment.reference = null;
 };
+
+const activeDiscountDisplay = computed(() => {
+  const type = props.selectedDiscountType;
+  const currency = props.selectedCurrency;
+  const config = {
+    Empresa: {
+      label: "Descuento Empresa",
+      amount: props.companyDiscountTotal,
+      formatted: formatCurrency(props.companyDiscountTotal, currency),
+    },
+    Medico: {
+      label: "Descuento Médico",
+      amount: props.doctorDiscountTotal,
+      formatted: formatCurrency(props.doctorDiscountTotal, currency),
+    },
+    Recipe: {
+      label: "Descuento Recipe",
+      amount: props.recipeDiscountTotal,
+      formatted: formatCurrency(props.recipeDiscountTotal, currency),
+    },
+  };
+  const current = config[type];
+  return current && current.amount > 0 ? current : null;
+});
 </script>
 <template>
   <VDialog v-model="dialogVisible">
@@ -1082,10 +1114,15 @@ const handleMethodChange = (payment, newMethod) => {
 
         <!-- Total a pagar -->
 
-        <div class="d-flex align-center flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
-          <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
+        <div
+          v-if="activeDiscountDisplay"
+          class="d-flex align-center flex-wrap justify-space-between"
+        >
           <p class="text-h6 font-weight-medium mt-2 mb-0">
-            - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+            {{ activeDiscountDisplay.label }}:
+          </p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
+            - {{ activeDiscountDisplay.formatted }}
           </p>
         </div>
 
@@ -1184,7 +1221,9 @@ const handleMethodChange = (payment, newMethod) => {
           v-if="remainingAmount > 0"
           class="d-flex align-center flex-wrap justify-space-between"
         >
-          <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            Monto Restante:&nbsp;
+          </p>
           <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
             {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
           </p>
@@ -1212,7 +1251,9 @@ const handleMethodChange = (payment, newMethod) => {
             v-if="remainingAmount > 0"
             class="d-flex align-center flex-wrap justify-space-between"
           >
-            <p class="text-h6 font-weight-medium mt-2 mb-0">Monto Restante:&nbsp;</p>
+            <p class="text-h6 font-weight-medium mt-2 mb-0">
+              Monto Restante:&nbsp;
+            </p>
             <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
               {{ formatCurrency(remainingAmount, props.selectedCurrency) }}
             </p>
@@ -1326,14 +1367,18 @@ const handleMethodChange = (payment, newMethod) => {
             </div>
 
             <!-- Totales en el ticket -->
-
-          <div class="d-flex flex-wrap justify-space-between" v-if="props.selectedDiscountType === 'Empresa' && props.companyDiscountTotal > 0">
-              <p class="text-h6 font-weight-medium mt-2 mb-0">Descuento Empresa:</p>
-                  <p class="text-h6 font-weight-medium mt-2 mb-0">
-                - {{ formatCurrency(props.companyDiscountTotal, props.selectedCurrency) }}
+            <div
+              v-if="activeDiscountDisplay"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                {{ activeDiscountDisplay.label }}:
               </p>
-          </div>
-
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                - {{ activeDiscountDisplay.formatted }}
+              </p>
+            </div>
+            
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">

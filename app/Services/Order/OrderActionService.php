@@ -476,6 +476,11 @@ class OrderActionService
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
 
+            if ($request->hasFile('prescription_image')) {
+                $path = $request->file('prescription_image')->store('recipe', 'public');
+                $orderId->url_recipe = $path;
+            }
+
             // Save discount details if provided
             if ($request->has('items')) {
                 foreach ($request->items as $itemData) {
@@ -489,9 +494,10 @@ class OrderActionService
                                 $detail->quantity = $itemData['quantity'];
                             }
 
-                            $detail->unit_cost = $itemData['price'];
                             $detail->price = $itemData['price'] * $detail->quantity;
-
+                            $detail->unit_cost = $itemData['price'];
+                            
+                                
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];
                                 $detail->discount_type = $itemData['discount_type'] ?? null;
