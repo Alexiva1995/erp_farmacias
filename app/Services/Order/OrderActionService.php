@@ -102,53 +102,194 @@ class OrderActionService
             $requestedQuantity = $validatedData['quantity'];
             $unitPriceAtOrder = $validatedData['price_at_product'];
             $price_usd = $validatedData['price_usd_unit'];
+            $packId = $validatedData['pack_id'] ?? null;
 
-            $orderItem = $order->details()->where('product_id', $validatedData['product_id'])->first();
+            // HANDLE PACKS: Use standard logic (single line, no splitting)
+            if ($packId) {
+                // ... Existing Pack Logic ...
+                $orderItem = $order->details()->where('product_id', $validatedData['product_id'])->where('pack_id', $packId)->first();
+
+                if ($requestedQuantity === 0) {
+                    if ($orderItem) {
+                        $orderItem->delete();
+                        DB::commit();
+                        $orderItem->quantity = 0;
+                        return $orderItem;
+                    }
+                    DB::commit();
+                    return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
+                }
+
+                if ($requestedQuantity > $availableStock) {
+                    throw new InsufficientStockException(
+                        $product->name,
+                        $availableStock,
+                        $requestedQuantity,
+                        'Stock insuficiente para la cantidad solicitada.'
+                    );
+                }
+
+                if ($orderItem) {
+                    $orderItem->quantity = $requestedQuantity;
+                    // Pack price handling (usually overridden by caller or pack logic, but keeping existing update logic)
+                    $orderItem->price = $unitPriceAtOrder * $requestedQuantity;
+                    $orderItem->unit_cost = $unitPriceAtOrder;
+                    $orderItem->unit_price_usd = $price_usd;
+                    $orderItem->save();
+                } else {
+                    $orderItem = $order->details()->create([
+                        'product_id' => $validatedData['product_id'],
+                        'quantity' => $requestedQuantity,
+                        'price' => $unitPriceAtOrder * $requestedQuantity,
+                        'unit_cost' => $unitPriceAtOrder,
+                        'unit_price_usd' => $price_usd,
+                        'pack_id' => $packId,
+                        'product_type' => 'pack',
+                    ]);
+                }
+
+                DB::commit();
+                $orderItem->load([
+                    'product' => function ($q) {
+                        $q->withSum('lots', 'quantity');
+                    }
+                ]);
+                $orderItem->product->valid_stock_sum = $orderItem->product->lots_sum_quantity;
+                return $orderItem;
+            }
+
+            // HANDLE NORMAL PRODUCTS: Split based on Expiration Rules
+
+            // 1. Remove existing non-pack items for this product to re-calculate distribution
+            $order->details()->where('product_id', $validatedData['product_id'])->whereNull('pack_id')->delete();
 
             if ($requestedQuantity === 0) {
-                if ($orderItem) {
-                    $orderItem->delete();
-                    DB::commit();
-                    $orderItem->quantity = 0;
-                    return $orderItem;
-                }
                 DB::commit();
                 return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
             }
 
             if ($requestedQuantity > $availableStock) {
-                throw new InsufficientStockException(
-                    $product->name,
-                    $availableStock,
-                    $requestedQuantity,
-                    'Stock insuficiente para la cantidad solicitada.'
-                );
+                throw new InsufficientStockException($product->name, $availableStock, $requestedQuantity, 'Stock insuficiente.');
             }
 
-            if ($orderItem) {
-                $orderItem->quantity = $requestedQuantity;
-                $orderItem->price = $unitPriceAtOrder * $requestedQuantity;
-                $orderItem->unit_cost = $unitPriceAtOrder;
-                $orderItem->unit_price_usd = $price_usd;
-                $orderItem->save();
-            } else {
-                $orderItem = $order->details()->create([
-                    'product_id' => $validatedData['product_id'],
-                    'quantity' => $requestedQuantity,
-                    'price' => $unitPriceAtOrder * $requestedQuantity,
-                    'unit_cost' => $unitPriceAtOrder,
-                    'unit_price_usd' => $price_usd,
-                ]);
-            }
-            DB::commit();
-            $orderItem->load([
-                'product' => function ($q) {
-                    $q->with('laboratory')
-                        ->withSum('lots', 'quantity');
+            // 2. Fetch Rules and Lots
+            $expirationOffers = \App\Models\ExpirationOffer::where('is_active', true)
+                ->orderBy('months_to_expiration', 'asc') // "Less number of months first"
+                ->get();
+
+            $lots = $product->lots()->where('quantity', '>', 0)->orderBy('expiration_date', 'asc')->get();
+
+            // 3. Distribute
+            $remainingQty = $requestedQuantity;
+            $buckets = []; // Key: 'rule_ID' (or 'normal'), Value: Quantity
+
+            foreach ($lots as $lot) {
+                if ($remainingQty <= 0)
+                    break;
+
+                $take = min($remainingQty, $lot->quantity);
+                $remainingQty -= $take;
+
+                $matchedRule = null;
+                if ($lot->expiration_date && $expirationOffers->isNotEmpty()) {
+                    $monthsToExpiry = Carbon::now()->floatDiffInMonths($lot->expiration_date, false);
+
+                    // Logic: Rule applies if lot expires WITHIN X months. 
+                    // Example: Exp in 2.5 months. Rule 3 months -> Matches (2.5 <= 3). 
+                    // Rule 2 months -> No Match (2.5 > 2).
+                    foreach ($expirationOffers as $offer) {
+                        if ($monthsToExpiry <= $offer->months_to_expiration) {
+                            $matchedRule = $offer;
+                            break; // Pick the first one (sorted by ASC months, so "smallest months" rule)
+                        }
+                    }
                 }
-            ]);
-            $orderItem->product->valid_stock_sum = $orderItem->product->lots_sum_quantity;
-            return $orderItem;
+
+                $key = $matchedRule ? 'offer_' . $matchedRule->id : 'normal';
+                if (!isset($buckets[$key])) {
+                    $buckets[$key] = [
+                        'qty' => 0,
+                        'rule' => $matchedRule
+                    ];
+                }
+                $buckets[$key]['qty'] += $take;
+            }
+
+            // If requested qty > sum of lots (should be covered by InsufficientStockException check earlier, but if lots drift...)
+            // The availableStock check earlier used lots_sum_quantity, so strictly we are safe.
+            // But if there is any gap, remainingQty might be > 0 if lots changed. 
+            // We'll treat any remainder as 'normal' (standard stock pointer).
+            if ($remainingQty > 0) {
+                if (!isset($buckets['normal']))
+                    $buckets['normal'] = ['qty' => 0, 'rule' => null];
+                $buckets['normal']['qty'] += $remainingQty;
+            }
+
+            // 4. Create Lines
+            $mainItem = null;
+
+            foreach ($buckets as $key => $data) {
+                $qty = $data['qty'];
+                $rule = $data['rule'];
+
+                if ($qty <= 0)
+                    continue;
+
+                $finalUnitPrice = $unitPriceAtOrder;
+                $discountPct = 0;
+                $discountType = null;
+                $discountSource = null;
+
+                if ($rule) {
+                    $discountPct = $rule->discount_percentage;
+                    $discountType = 'expiration';
+                    $discountSource = $rule->id;
+                    // Apply discount
+                    $finalUnitPrice = $unitPriceAtOrder * (1 - ($discountPct / 100));
+                }
+
+                // Compute Total Price Explicitly (Unit * Qty)
+                $calculatedTotalPrice = (float) ($finalUnitPrice * $qty);
+                $calculatedUsdPrice = (float) ($price_usd * $qty);
+
+
+
+                // If mixing currencies, price_usd handling might need adjustment but assuming base behavior
+
+                $newItem = $order->details()->create([
+                    'product_id' => $validatedData['product_id'],
+                    'quantity' => $qty,
+                    'price' => $calculatedTotalPrice, // Use explicit variable
+                    'unit_cost' => $finalUnitPrice,     // Unit price for this line
+                    'unit_price_usd' => $rule ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
+
+                    'pack_id' => null,
+                    'product_type' => $rule ? 'offer' : 'normal',
+                    'discount_percentage' => $discountPct > 0 ? $discountPct : null,
+                    'discount_type' => $discountType,
+                    'discount_source_id' => $discountSource,
+                ]);
+
+                if (!$mainItem || $qty > $mainItem->quantity) {
+                    $mainItem = $newItem;
+                }
+            }
+
+            DB::commit();
+            if ($mainItem) {
+                $mainItem->load([
+                    'product' => function ($q) {
+                        $q->withSum('lots', 'quantity');
+                    }
+                ]);
+                $mainItem->product->valid_stock_sum = $mainItem->product->lots_sum_quantity;
+                return $mainItem;
+            }
+
+            // Fallback if transaction commited but no items created (qty 0 case handled above)
+            return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
+
+
         } catch (InsufficientStockException $e) {
             DB::rollBack();
             Log::warning("Intento de agregar o actualizar productos con stock insuficiente: " . $e->getMessage(), [
@@ -182,19 +323,46 @@ class OrderActionService
             foreach ($order->details as $item) {
                 $product = $item->product;
                 $priceToSet = 0;
-                switch ($targetCurrency) {
-                    case 'USD':
-                        $priceToSet = $product->sale_price ?? $product->price ?? 0;
-                        break;
-                    case 'BS':
-                        $priceToSet = $product->price_bs ?? 0;
-                        break;
-                    case 'COP':
-                        $priceToSet = $product->price_cop ?? 0;
-                        break;
-                    default:
-                        $priceToSet = $product->sale_price ?? $product->price ?? 0;
-                        break;
+                if ($item->pack_id && $item->unit_price_usd > 0) {
+                    switch ($targetCurrency) {
+                        case 'USD':
+                            $priceToSet = $item->unit_price_usd;
+                            break;
+                        case 'BS':
+                            $rate = ($product->sale_price > 0) ? ($product->price_bs / $product->sale_price) : 0;
+                            // Fallback if rate calculation fails, though product should have prices
+                            if ($rate == 0 && $product->price_bs > 0)
+                                $rate = 1; // Unlikely but fail safe to avoid 0
+                            $priceToSet = $item->unit_price_usd * $rate;
+                            break;
+                        case 'COP':
+                            $rate = ($product->sale_price > 0) ? ($product->price_cop / $product->sale_price) : 0;
+                            $priceToSet = $item->unit_price_usd * $rate;
+                            break;
+                        default:
+                            $priceToSet = $item->unit_price_usd;
+                    }
+                } else {
+                    switch ($targetCurrency) {
+                        case 'USD':
+                            $priceToSet = $product->sale_price ?? $product->price ?? 0;
+                            break;
+                        case 'BS':
+                            $priceToSet = $product->price_bs ?? 0;
+                            break;
+                        case 'COP':
+                            $priceToSet = $product->price_cop ?? 0;
+                            break;
+                        default:
+                            $priceToSet = $product->sale_price ?? $product->price ?? 0;
+                            break;
+                    }
+                }
+
+                // Preservar y re-aplicar descuento si existe
+                if ($item->discount_percentage > 0 && $item->discount_type) {
+                    $discountFactor = 1 - ($item->discount_percentage / 100);
+                    $priceToSet = $priceToSet * $discountFactor;
                 }
 
                 $item->price = $priceToSet * $item->quantity;
@@ -276,7 +444,6 @@ class OrderActionService
                 }
             }
 
-            //$totalAmountBs = $spe ? $exemptAmount + ($totalIva * 0.25) : $exemptAmount + $totalIva;
             $totalAmountBs = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
 
             $fiscalHistory = FiscalHistory::create([
@@ -302,6 +469,7 @@ class OrderActionService
 
     public function complete(Order $orderId, Request $request, $sellerId): array
     {
+
         DB::beginTransaction();
         try {
             $orderId->status = Order::COMPLETED;
@@ -324,10 +492,12 @@ class OrderActionService
                             ->first();
 
                         if ($detail) {
-                            $detail->price = $itemData['price']; // Update price with discount
-                            // Update other potential fields if needed, e.g. price_bs, price_cop if stored
-                            // But OrderDetail only has price (base currency?) and unit_price_usd?
-                            // Checked migration: price, unit_cost. unit_price_usd added later.
+                            if (isset($itemData['quantity'])) {
+                                $detail->quantity = $itemData['quantity'];
+                            }
+
+                            $detail->unit_cost = $itemData['price'];
+                            $detail->price = $itemData['price'] * $detail->quantity;
                                 
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];
@@ -337,11 +507,6 @@ class OrderActionService
                             // Also update unit_price_usd if sent?
                             if (isset($itemData['price_usd'])) { // Assuming logic handles currency conversion elsewhere or passed here
                                 // $detail->unit_price_usd = ...; 
-                            }
-
-                            // Recalculate unit_cost to reflect the discounted unit price as requested by user
-                            if ($detail->quantity > 0) {
-                                $detail->unit_cost = $detail->price / $detail->quantity;
                             }
 
                             $detail->save();
@@ -400,23 +565,49 @@ class OrderActionService
 
             foreach ($orderId->details as $detail) {
                 $quantityToReduce = $detail->quantity;
+
+
+                $quantityExpiration = 0;
                 $lots = $detail->product->lots->sortBy('expiration_date');
+
+
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
                         break;
                     }
+
+                    $taken = 0;
                     if ($lot->quantity >= $quantityToReduce) {
+                        $taken = $quantityToReduce;
                         $lot->quantity -= $quantityToReduce;
                         $lot->save();
                         $quantityToReduce = 0;
                     } else {
+                        $taken = $lot->quantity;
                         $quantityToReduce -= $lot->quantity;
                         $lot->quantity = 0;
                         $lot->save();
                     }
+
+
+                    // Check if this lot is expiring (within 6 months)
+                    if ($lot->expiration_date) {
+                        $expDate = Carbon::parse($lot->expiration_date);
+                        $sixMonthsLimit = Carbon::now()->addMonths(6);
+                        if ($expDate->lt($sixMonthsLimit)) {
+                            $quantityExpiration += $taken;
+                        }
+                    }
                 }
+
                 if ($quantityToReduce > 0) {
                     throw new \Exception("No hay suficiente stock en los lotes para el producto ID: {$detail->product->id}");
+                }
+
+                // Save quantity_expiration
+                if ($quantityExpiration > 0) {
+                    $detail->quantity_expiration = $quantityExpiration;
+                    $detail->save();
                 }
             }
 
@@ -554,30 +745,12 @@ class OrderActionService
         try {
             $order->status = Order::RESERVED;
             $order->save();
-            /*$openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
-                ->where('status', CashClosing::OPEN)
-                ->first();
-
-            if (!$openCashRegisterClosing) {
-                throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
-            } 
-
-                $data['client_id'] = $order->client_id;
-                $data['seller_id'] = $sellerId;
-                $data['cash_closing_id'] = $openCashRegisterClosing->id;
-                $data['total_amount'] =  0;
-                $data['money_returns'] =  0;
-                $data['payment_methods'] = null;
-
-            $newOrder = Order::create($data);
-            $newOrder->load('seller', 'client', 'details.product');*/
             $order->load('seller', 'client', 'details.product');
 
             DB::commit();
             Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
             return [
                 'reserved_order' => $order,
-                //'pending_order' => $newOrder
             ];
         } catch (\Throwable $e) {
 
@@ -716,7 +889,7 @@ class OrderActionService
                 $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
                 $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
                 $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
-            
+
                 $cashClosing->total_bs = $total_bs;
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;

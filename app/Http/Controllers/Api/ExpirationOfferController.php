@@ -18,18 +18,14 @@ class ExpirationOfferController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = ExpirationOffer::withCount(['productLots as product_lots_count'])
-                ->with(['productLots.product', 'productLots.supplier']);
+            $query = ExpirationOffer::query();
 
             // Búsqueda
             if ($request->has('q') && $request->q) {
                 $search = $request->q;
                 $query->where(function ($q) use ($search) {
                     $q->where('months_to_expiration', 'like', "%{$search}%")
-                        ->orWhere('discount_percentage', 'like', "%{$search}%")
-                        ->orWhereHas('productLots.product', function ($productQuery) use ($search) {
-                            $productQuery->where('name', 'like', "%{$search}%");
-                        });
+                        ->orWhere('discount_percentage', 'like', "%{$search}%");
                 });
             }
 
@@ -81,34 +77,23 @@ class ExpirationOfferController extends Controller
                 'months_to_expiration' => 'required|integer|min:1|max:36',
                 'discount_percentage' => 'required|numeric|min:0.01|max:100',
                 'is_active' => 'boolean',
-                'product_lot_ids' => 'required|array|min:1',
-                'product_lot_ids.*' => 'exists:product_lots,id'
             ]);
 
-            // Verificar que los lotes no tengan ofertas activas para los mismos meses
-            $existingOffers = ExpirationOffer::where('months_to_expiration', $validated['months_to_expiration'])
+            // Verificar si ya existe una regla activa para estos meses
+            $existingOffer = ExpirationOffer::where('months_to_expiration', $validated['months_to_expiration'])
                 ->where('is_active', true)
-                ->whereHas('productLots', function ($query) use ($validated) {
-                    $query->whereIn('product_lots.id', $validated['product_lot_ids']);
-                })
                 ->exists();
 
-            if ($existingOffers) {
+            if ($existingOffer) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Algunos lotes seleccionados ya tienen ofertas activas para este período'
+                    'message' => 'Ya existe una oferta activa para este periodo de caducidad (' . $validated['months_to_expiration'] . ' meses).'
                 ], 422);
             }
 
             $offer = ExpirationOffer::create($validated);
 
-            // Asociar los lotes de productos
-            $offer->productLots()->attach($validated['product_lot_ids']);
-
             DB::commit();
-
-            // Cargar relaciones para la respuesta
-            $offer->load(['productLots.product', 'productLots.supplier']);
 
             return response()->json([
                 'success' => true,
@@ -142,12 +127,11 @@ class ExpirationOfferController extends Controller
         try {
 
             // Validar primero
+            // Validar primero
             $validated = $request->validate([
                 'months_to_expiration' => 'sometimes|integer|min:1|max:36',
                 'discount_percentage' => 'sometimes|numeric|min:0.01|max:100',
                 'is_active' => 'sometimes|boolean',
-                'product_lot_ids' => 'sometimes|array|min:1',
-                'product_lot_ids.*' => 'exists:product_lots,id'
             ]);
 
             // Buscar la oferta manualmente
@@ -160,14 +144,29 @@ class ExpirationOfferController extends Controller
                 ], 404);
             }
 
+            // Verificar si los cambios causarían duplicidad de regla activa
+            if (
+                (isset($validated['months_to_expiration']) || isset($validated['is_active'])) &&
+                ($validated['is_active'] ?? $expirationOffer->is_active)
+            ) {
+                $targetMonths = $validated['months_to_expiration'] ?? $expirationOffer->months_to_expiration;
+
+                $conflict = ExpirationOffer::where('months_to_expiration', $targetMonths)
+                    ->where('is_active', true)
+                    ->where('id', '!=', $id)
+                    ->exists();
+
+                if ($conflict) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ya existe otra oferta activa para ' . $targetMonths . ' meses.'
+                    ], 422);
+                }
+            }
+
             // Actualizar los datos básicos de la oferta
             if (count($validated) > 0) {
                 $expirationOffer->update($validated);
-            }
-
-            // Actualizar lotes asociados si se proporcionan
-            if (isset($validated['product_lot_ids'])) {
-                $expirationOffer->productLots()->sync($validated['product_lot_ids']);
             }
 
             DB::commit();
@@ -175,7 +174,7 @@ class ExpirationOfferController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Oferta actualizada exitosamente',
-                'data' => $expirationOffer->fresh(['productLots.product', 'productLots.supplier'])
+                'data' => $expirationOffer
             ]);
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -212,7 +211,6 @@ class ExpirationOfferController extends Controller
                 ], 404);
             }
 
-            $expirationOffer->productLots()->detach();
             $expirationOffer->delete();
 
             DB::commit();

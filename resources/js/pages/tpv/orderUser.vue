@@ -1,16 +1,27 @@
 <script setup>
 import OrderFilters from "@/components/OrderFilters.vue";
+import OrderPacksTable from "@/components/OrderPacksTable.vue";
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import BuysModal from "@/components/dialogs/BuysModal.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
+import PackDetailsModal from "@/components/dialogs/PackDetailsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
+
+const activeTab = ref("products");
+const packs = ref([]);
+const totalPacks = ref(0);
+const loadingPacks = ref(false);
+const packsPage = ref(1);
+const packsItemsPerPage = ref(10);
+const showPackDetailsModal = ref(false);
+const selectedPack = ref(null);
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -251,7 +262,7 @@ const fetchCompanyOffers = async () => {
           value: offer.company_id,
           scales: scales,
           id: offer.id,
-          current_discount: offer.company?.current_discount || 0
+          current_discount: offer.company?.current_discount || 0,
         };
       });
     }
@@ -341,6 +352,7 @@ const validateAndApplyCompanyDiscount = () => {
     return;
   }
 
+
   const porcentaje = parseFloat(offer.current_discount || 0);
 
 if (porcentaje > 0) {
@@ -353,8 +365,83 @@ if (porcentaje > 0) {
   }
 };
 
+/*const validateAndApplyCompanyDiscount = () => {
+  if (!selectedCompanyId.value) {
+    if (selectedDiscountType.value === "Empresa") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activeCompanyOffers.value.find(
+    (o) => o.value === selectedCompanyId.value
+  );
+  if (!offer) return;
+
+  // Calculate total quantity of items (excluding filtered items if any logic existed for that, but usually total quantity)
+  // Assuming company discount applies to ALL items or requires total volume of order
+  let totalQuantity = 0;
+  orderItems.value.forEach((item) => {
+    totalQuantity += item.selectedQuantity || 0;
+  });
+
+  // Find matching scale
+  // scale: { min_volume, max_volume, discount_percentage }
+  const validScale = offer.scales.find(
+    (scale) =>
+      totalQuantity >= scale.min_volume && totalQuantity <= scale.max_volume
+  );
+
+  if (validScale) {
+    applyDiscount(parseFloat(validScale.discount_percentage), {
+      type: "company",
+      name: offer.title,
+      id: offer.id,
+    });
+    // toast.success(`Descuento de empresa ${validScale.discount_percentage}% aplicado.`); // Optional: prevent spamming toasts on quantity change
+  } else {
+    removeDiscount();
+    toast.warning(
+      `La cantidad total (${totalQuantity}) no cumple con los rangos de volumen para el descuento de esta empresa.`
+    );
+  }
+};*/
+
+const applyDiscount = (percentage, source) => {
+  orderItems.value = orderItems.value.map((item) => {
+    // Exclude expiration items from global discounts
+    if (item.discount_type === "expiration") {
+      return item;
+    }
+
+    if (!item.originalPrice) {
+      item.originalPrice = item.price;
+      item.originalPriceBs = item.price_bs;
+      item.originalPriceCop = item.price_cop;
+    }
+
+    const discountFactor = 1 - percentage / 100;
+
+    return {
+      ...item,
+      price: item.originalPrice * discountFactor,
+      price_bs: item.originalPriceBs * discountFactor,
+      price_cop: item.originalPriceCop * discountFactor,
+      discountApplied: true,
+      discountSource: source.type,
+      discountSourceId: source.id,
+      appliedDiscountPercentage: percentage,
+    };
+  });
+};
+
 const removeDiscount = () => {
   orderItems.value = orderItems.value.map((item) => {
+    // Exclude expiration items from global discount removal
+    if (item.discount_type === "expiration") {
+      return item;
+    }
+
     if (item.originalPrice) {
       return {
         ...item,
@@ -451,28 +538,45 @@ const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
 
+  const discountFactor =
+    backendItem.discount_type === "expiration" &&
+    backendItem.discount_percentage
+      ? 1 - backendItem.discount_percentage / 100
+      : 1;
+
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
     title: product.name,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
-    price: parseFloat(product.sale_price) || 0,
-    price_bs: parseFloat(product.price_bs) || 0,
-    price_cop: parseFloat(product.price_cop) || 0,
+    price:
+      parseFloat(backendItem.unit_cost) ||
+      (parseFloat(product.sale_price) || 0) * discountFactor,
+    price_bs: (parseFloat(product.price_bs) || 0) * discountFactor,
+    price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
     unitCost: parseFloat(product.unit_cost) || 0,
+    basePrice: parseFloat(product.sale_price) || 0, // Store original base price
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
+    pack_id: backendItem.pack_id || null,
+    discount_percentage: backendItem.discount_percentage || 0,
+    discount_type: backendItem.discount_type || null,
+    discount_source_id: backendItem.discount_source_id || null,
   };
 };
 
-onMounted(async () => {
+const fetchOpenOrder = async () => {
   try {
     const response = await axios.get("/tpv/order/seller/my-open-order");
-    if (response.data.data && response.data.data.order) {
+    if (
+      response.data.data &&
+      response.data.data.order &&
+      response.data.data.order.pending_order
+    ) {
       openOrderData.value = response.data.data.order.pending_order;
       reservedOrderData.value = response.data.data.order.reserved_order;
       selectedClient.value = response.data.data.order.pending_order.client;
@@ -504,6 +608,16 @@ onMounted(async () => {
   } finally {
     isLoadingInitialOrder.value = false;
   }
+};
+
+onMounted(async () => {
+  await fetchOpenOrder();
+  fetchSelectOptions();
+  fetchProducts();
+  consultAllcomapanies();
+  fetchDoctorOffers();
+  fetchPrescriptionOffers();
+  fetchCompanyOffers();
 });
 
 const totalOrderCost = computed(() => {
@@ -736,13 +850,54 @@ const clearFormErrors = () => {
   newClientFormErrors.value = {};
 };
 
-const handleCurrencyChanged = (newCurrency) => {
-  selectedDisplayCurrency.value = newCurrency;
+const handleCurrencyChanged = async (newCurrency) => {
+  try {
+    if (hasOpenOrder.value && openOrderData.value?.id) {
+      // Calculate totals for the new currency to satisfy backend validation
+      let calculatedTotal = 0;
+      let calculatedTotalUSD = 0;
+      let calculatedTotalCost = 0;
+
+      orderItems.value.forEach((item) => {
+        const qty = item.selectedQuantity || 0;
+        calculatedTotalCost += (item.unitCost || 0) * qty;
+
+        // Calculate USD Total (Use basePrice if available, else fallback)
+        const usdPrice =
+          item.basePrice ||
+          (selectedDisplayCurrency.value === "USD" ? item.price : 0);
+        // Note: If current view is not USD, and basePrice missing, we can't easily guess USD price.
+        // But basePrice should be present for all valid products now.
+        calculatedTotalUSD += usdPrice * qty;
+
+        // Calculate Target Currency Total
+        if (newCurrency === "BS") {
+          calculatedTotal += (item.price_bs || 0) * qty;
+        } else if (newCurrency === "COP") {
+          calculatedTotal += (item.price_cop || 0) * qty;
+        } else {
+          // USD
+          calculatedTotal += usdPrice * qty;
+        }
+      });
+
+      await axios.patch(`/tpv/orders/${openOrderData.value.id}`, {
+        currency: newCurrency,
+        total_amount: calculatedTotal,
+        total_amount_usd: calculatedTotalUSD,
+        total_cost: calculatedTotalCost,
+      });
+      await fetchOpenOrder();
+    }
+    selectedDisplayCurrency.value = newCurrency;
+  } catch (error) {
+    console.error("Error updating currency:", error);
+    toast.error("Error al actualizar la moneda de la orden.");
+  }
 };
 
-
 const totalCompanyDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
     const offer = activeCompanyOffers.value.find(
       (o) => o.value === selectedCompanyId.value
     );
@@ -891,12 +1046,14 @@ const totalAmountUsd = computed(() => {
     total += basePriceUsd * quantity * (1 + effectiveTaxRate);
   });
 
- // return total;
+  // return total;
 
   let porcentaje = 0;
 
-  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
-    const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompanyId.value
+    );
     porcentaje = parseFloat(offer?.current_discount || 0);
   }else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
     porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
@@ -907,7 +1064,6 @@ const totalAmountUsd = computed(() => {
   const descuentoUSD = subtotalProductosUSD * (porcentaje / 100);
   const finalTotalUSD = total - descuentoUSD;
   return finalTotalUSD;
-
 });
 
 const totalAmountCop = computed(() => {
@@ -954,7 +1110,11 @@ const updateOrderTotalsInBackend = async () => {
   }
 };
 
-const updateOrderItemQuantity = async ({ productId, quantity }) => {
+const updateOrderItemQuantity = async ({
+  productId,
+  quantity,
+  orderDetailId,
+}) => {
   if (quantity <= 0) {
     return;
   }
@@ -965,9 +1125,37 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
   }
 
   try {
-    const currentItem = orderItems.value.find(
-      (item) => item.product_id === productId
-    );
+    let currentItem = null;
+    let computedTotalQuantity = quantity;
+
+    if (orderDetailId) {
+      currentItem = orderItems.value.find(
+        (item) => item.order_detail_id === orderDetailId
+      );
+
+      // Calculate cumulative quantity for split items (non-packs)
+      if (currentItem && !currentItem.pack_id) {
+        // Sum quantity of OTHER matching items + NEW quantity for THIS item
+        const otherItemsQuantity = orderItems.value
+          .filter(
+            (item) =>
+              item.product_id === productId &&
+              !item.pack_id &&
+              item.order_detail_id !== orderDetailId
+          )
+          .reduce((sum, item) => sum + item.selectedQuantity, 0);
+
+        computedTotalQuantity = otherItemsQuantity + quantity;
+      }
+    }
+
+    // Fallback if no orderDetailId or item not found (legacy behavior)
+    if (!currentItem) {
+      currentItem = orderItems.value.find(
+        (item) => item.product_id === productId
+      );
+    }
+
     if (!currentItem) {
       toast.error(
         "Producto no encontrado en la orden para actualizar su cantidad."
@@ -976,9 +1164,10 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
     }
     const payload = {
       product_id: productId,
-      quantity: quantity,
-      price_usd_unit: currentItem.price,
-      price_at_product: currentItem.orderPrice || currentItem.price,
+      quantity: computedTotalQuantity,
+      price_usd_unit: currentItem.basePrice || currentItem.price,
+      price_at_product:
+        currentItem.basePrice || currentItem.orderPrice || currentItem.price,
       currency_at_order: selectedDisplayCurrency.value,
     };
 
@@ -986,22 +1175,9 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
       `/tpv/orders/${openOrderData.value.id}/items`,
       payload
     );
-    const backendOrderItem = backendResponse.data.data.order_item;
-
-    const existingItemIndex = orderItems.value.findIndex(
-      (item) => item.product_id === backendOrderItem.product_id
-    );
-    if (existingItemIndex !== -1) {
-      orderItems.value[existingItemIndex] =
-        formatOrderItemForFrontend(backendOrderItem);
-      toast.success(
-        `Cantidad de "${orderItems.value[existingItemIndex].title}" actualizada a ${backendOrderItem.quantity}.`
-      );
-    } else {
-      const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
-      orderItems.value.push(itemToAdd);
-      toast.success(`"${itemToAdd.title}" agregado a la orden.`);
-    }
+    // Force refresh of the order to reflect any backend-side logical splits (e.g. expiration offers)
+    await fetchOpenOrder();
+    toast.success("Cantidad actualizada correctamente.");
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
@@ -1021,7 +1197,12 @@ const updateOrderItemQuantity = async ({ productId, quantity }) => {
   }
 };
 
-const addProductToOrder = async ({ productId, quantity }) => {
+const addProductToOrder = async ({
+  productId,
+  quantity,
+  packId = null,
+  customPrice = null,
+}) => {
   if (quantity <= 0) {
     toast.error("La cantidad a agregar debe ser mayor que cero.");
     return;
@@ -1053,17 +1234,22 @@ const addProductToOrder = async ({ productId, quantity }) => {
       return;
     }
 
-    const priceInSelectedCurrency = getItemPriceByCurrency(
-      productDetails,
-      selectedDisplayCurrency.value
-    );
+    const priceInSelectedCurrency =
+      customPrice !== null
+        ? parseFloat(customPrice)
+        : getItemPriceByCurrency(productDetails, selectedDisplayCurrency.value);
+
     const payload = {
       product_id: productDetails.id,
       quantity: newTotalQuantity,
-      price_usd_unit: productDetails.sale_price,
+      price_usd_unit:
+        customPrice !== null
+          ? parseFloat(customPrice)
+          : productDetails.sale_price,
       price_at_product: priceInSelectedCurrency,
       tax_rate_at_order: productDetails.iva == 1 ? 0.16 : 0,
       currency_at_order: selectedDisplayCurrency.value,
+      pack_id: packId,
     };
 
     const backendResponse = await axios.post(
@@ -1305,6 +1491,7 @@ const closeBuysModal = () => {
       spe: switchStates.spe,
       items: orderItems.value.map((item) => ({
         order_detail_id: item.order_detail_id,
+        quantity: item.selectedQuantity,
         price: item.price,
         discount_percentage: currentPercentage > 0 ? currentPercentage : null,
         discount_type: currentPercentage > 0 ? currentTypeName : null,
@@ -1658,6 +1845,91 @@ const addReserverOrder = async () => {
     toast.error(errorMessage);
   }
 };
+
+const fetchPacks = async () => {
+  loadingPacks.value = true;
+  try {
+    const response = await axios.get("/tpv/promotions/product-packs", {
+      params: {
+        page: packsPage.value,
+        itemsPerPage: packsItemsPerPage.value,
+      },
+    });
+    if (response.data.data) {
+      packs.value = response.data.data;
+      totalPacks.value = response.data.total || response.data.data.length;
+    }
+  } catch (error) {
+    console.error("Error fetching packs:", error);
+    toast.error("Error al cargar los packs.");
+  } finally {
+    loadingPacks.value = false;
+  }
+};
+
+const updatePacksOptions = (options) => {
+  packsPage.value = options.page;
+  packsItemsPerPage.value = options.itemsPerPage;
+  fetchPacks();
+};
+
+const handleViewPackDetails = (pack) => {
+  selectedPack.value = pack;
+  showPackDetailsModal.value = true;
+};
+
+const handleAddPackToOrder = async ({ pack, quantity }) => {
+  if (!pack || !pack.pack_config) return;
+
+  let addedCount = 0;
+  const productsToAdd = Object.entries(pack.pack_config);
+
+  if (productsToAdd.length === 0) {
+    toast.warning("El pack no contiene configuración de productos.");
+    return;
+  }
+
+  loading.value = true;
+  for (let i = 0; i < quantity; i++) {
+    for (const [productId, config] of productsToAdd) {
+      try {
+        // Handle both object {quantity: 1, sale_price: 1.2} and direct number formats
+        const productQty =
+          typeof config === "object" && config !== null
+            ? config.quantity || 1
+            : config;
+
+        const productPrice =
+          typeof config === "object" && config !== null
+            ? config.sale_price !== undefined
+              ? config.sale_price
+              : null
+            : null;
+
+        await addProductToOrder({
+          productId: parseInt(productId),
+          quantity: parseInt(productQty),
+          packId: pack.id,
+          customPrice: productPrice,
+        });
+        addedCount++;
+      } catch (e) {
+        console.error(`Error adding product ${productId} from pack`, e);
+      }
+    }
+  }
+  loading.value = false;
+
+  if (addedCount > 0) {
+    toast.success(`Pack agregado (x${quantity}).`);
+  }
+};
+
+watch(activeTab, (val) => {
+  if (val === "packs" && packs.value.length === 0 && totalPacks.value === 0) {
+    fetchPacks();
+  }
+});
 </script>
 <template>
   <div>
@@ -1703,34 +1975,61 @@ const addReserverOrder = async () => {
       />
     </div>
 
-    <OrderFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      v-model:isStrictSearch="isStrictSearch"
-      :laboratories="laboratories"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-      @back="handleBackFromGroupView"
-    >
-    </OrderFilters>
+    <VTabs v-model="activeTab" class="mb-4">
+      <VTab value="products">Productos Individuales</VTab>
+      <VTab value="packs">Packs Promocionales</VTab>
+    </VTabs>
 
-    <OrderProductsTable
-      :products="products"
-      :loading="loading"
-      :total-product="totalProduct"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      :discount-min-products="discountMinProducts"
-      :discount-max-products="discountMaxProducts"
-      :current-discount="discount"
-      :order-items="orderItems"
-      @update:options="updateTableOptions"
-      @add-product="addProductToOrder"
-      @view-group-products="fetchGroupProducts"
+    <VWindow v-model="activeTab">
+      <VWindowItem value="products">
+        <OrderFilters
+          v-model:searchQuery="filterSearchQuery"
+          v-model:selectedLaboratory="selectedLaboratory"
+          v-model:selectedOrigin="selectedOrigin"
+          v-model:stockStatusFilter="stockStatusFilter"
+          v-model:isStrictSearch="isStrictSearch"
+          :laboratories="laboratories"
+          :origins="origins"
+          :loading="isLoadingFilters"
+          @clear="handleClearFilters"
+          @sort="handleSort"
+          @back="handleBackFromGroupView"
+        >
+        </OrderFilters>
+
+        <OrderProductsTable
+          :products="products"
+          :loading="loading"
+          :total-product="totalProduct"
+          :items-per-page="itemsPerPage"
+          :page="page"
+          :discount-min-products="discountMinProducts"
+          :discount-max-products="discountMaxProducts"
+          :current-discount="discount"
+          :order-items="orderItems"
+          @update:options="updateTableOptions"
+          @add-product="addProductToOrder"
+          @view-group-products="fetchGroupProducts"
+        />
+      </VWindowItem>
+
+      <VWindowItem value="packs">
+        <OrderPacksTable
+          :packs="packs"
+          :loading="loadingPacks"
+          :total-packs="totalPacks"
+          :items-per-page="packsItemsPerPage"
+          :page="packsPage"
+          @update:options="updatePacksOptions"
+          @add-pack="handleAddPackToOrder"
+          @view-pack-details="handleViewPackDetails"
+        />
+      </VWindowItem>
+    </VWindow>
+
+    <PackDetailsModal
+      v-model:isDialogVisible="showPackDetailsModal"
+      :pack="selectedPack"
     />
 
     <RegisterClientModal

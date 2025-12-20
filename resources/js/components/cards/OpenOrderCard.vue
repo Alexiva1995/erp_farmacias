@@ -249,11 +249,15 @@ const getIva = (product, currency) => {
   return Iva;
 };
 
-const handleClickProductItem = (productId, currentQuantity) => {
-  if (currentQuantity > 1) {
-    emit("update-quantity", { productId, quantity: currentQuantity - 1 });
+const handleClickProductItem = (product) => {
+  if (product.selectedQuantity > 1) {
+    emit("update-quantity", {
+      productId: product.product_id,
+      quantity: product.selectedQuantity - 1,
+      orderDetailId: product.order_detail_id,
+    });
   } else {
-    emit("remove-item", productId);
+    emit("remove-item", product.product_id);
   }
 };
 
@@ -340,7 +344,12 @@ watch(
 // Watcher para detectar si el cliente tiene empresa y autoseleccionar
 watch(
   () => props.cliente,
-  (newCliente) => {
+  (newCliente, oldCliente) => {
+    // Prevent reset if it's the same client (e.g. during reload/currency change)
+    if (newCliente?.id === oldCliente?.id) {
+      return;
+    }
+
     if (
       newCliente &&
       newCliente.company_id !== null &&
@@ -561,6 +570,26 @@ const activeDiscountDisplay = computed(() => {
               <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ product.title }}
+                  <VIcon
+                    v-if="product.pack_id"
+                    icon="tabler-lock"
+                    size="x-small"
+                    color="warning"
+                    class="ms-1"
+                    title="Pack Item (Cantidad Fija)"
+                  />
+                  <VChip
+                    v-if="
+                      product.discount_type === 'expiration' &&
+                      product.discount_percentage > 0
+                    "
+                    color="error"
+                    size="x-small"
+                    class="ms-1"
+                    label
+                  >
+                    Expira (-{{ product.discount_percentage }}%)
+                  </VChip>
                 </span>
                 <span class="text-sm text-disabled">
                   {{ product.active_ingredient }}
@@ -574,12 +603,8 @@ const activeDiscountDisplay = computed(() => {
                   icon
                   size="x-small"
                   variant="text"
-                  @click="
-                    handleClickProductItem(
-                      product.product_id,
-                      product.selectedQuantity
-                    )
-                  "
+                  @click="handleClickProductItem(product)"
+                  :disabled="!!product.pack_id"
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -591,6 +616,14 @@ const activeDiscountDisplay = computed(() => {
                   hide-details
                   class="mx-1"
                   style="width: 50px; text-align: center"
+                  :disabled="!!product.pack_id"
+                  @change="
+                    $emit('update-quantity', {
+                      productId: product.product_id,
+                      quantity: product.selectedQuantity,
+                      orderDetailId: product.order_detail_id,
+                    })
+                  "
                 />
                 <VBtn
                   icon
@@ -600,10 +633,12 @@ const activeDiscountDisplay = computed(() => {
                     $emit('update-quantity', {
                       productId: product.product_id,
                       quantity: product.selectedQuantity + 1,
+                      orderDetailId: product.order_detail_id,
                     })
                   "
                   :disabled="
-                    product.selectedQuantity >= product.availableQuantity
+                    product.selectedQuantity >= product.availableQuantity ||
+                    !!product.pack_id
                   "
                 >
                   <VIcon icon="tabler-plus" />

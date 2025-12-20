@@ -178,19 +178,7 @@ const calculatePaymentDate = () => {
 
   if (calculatedDate) {
     formData.value.payment_date = calculatedDate;
-    console.log(
-      "Fecha de pago calculada:",
-      calculatedDate,
-      "Método:",
-      paymentMethod
-    );
   } else {
-    console.log("No se pudo calcular fecha pago", {
-      paymentMethod,
-      paymentRef,
-      invoiceDateRef,
-      customDays,
-    });
   }
 };
 
@@ -421,13 +409,19 @@ const fetchSuppliers = async () => {
 const fetchDiscountRules = async (supplierId) => {
   loadingRules.value = true;
   try {
-    const response = await axios.get(`/suppliers/${supplierId}/discount-rules`);
-    discountRules.value = response.data.map((rule) => ({
+    const response = await axios.get(
+      `/supplier-laboratories/${supplierId}/discount-rules`
+    );
+    // Verificar si existe la propiedad discount_rules o si es response.data directamente
+    const rulesData = response.data.discount_rules || [];
+
+    discountRules.value = rulesData.map((rule) => ({
       ...rule,
       description: `${rule.days} días con un descuento de ${rule.descPorcentaje}%`,
     }));
   } catch (error) {
     console.error("Error al obtener las reglas de descuento:", error);
+    discountRules.value = [];
   } finally {
     loadingRules.value = false;
   }
@@ -476,7 +470,6 @@ const handleCancel = () => {
   if (props.isEditMode) {
     emit("back-to-list");
   } else {
-    console.log("Operación cancelada");
   }
 };
 </script>
