@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.role_id === 1)
   const isSupervisor = computed(() => user.value?.role_id === 2)
-  const isVendeor = computed(() => user.value?.role_id === 3)
+  const isVendedor = computed(() => user.value?.role_id === 3)
   const isLoaded = ref(false);
 
   function updateAbility(userObject) {
@@ -47,5 +47,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, isAuthenticated, isAdmin, fetchUser, logout, isLoaded}
+  return { user, isAuthenticated, isAdmin, isVendedor, isSupervisor, fetchUser, logout, isLoaded }
 })
