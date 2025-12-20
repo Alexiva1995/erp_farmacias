@@ -308,6 +308,13 @@ class OrderActionService
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
 
+            if ($request->hasFile('prescription_image')) {
+                // Guardar la imagen en storage/app/public/prescriptions
+                $path = $request->file('prescription_image')->store('recipe', 'public');
+                // Asignamos la ruta al modelo (asegúrate de tener este campo en tu DB)
+                $orderId->url_recipe = $path;
+            }
+
             // Save discount details if provided
             if ($request->has('items')) {
                 foreach ($request->items as $itemData) {

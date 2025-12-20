@@ -46,6 +46,16 @@ const isPrinting = ref(false);
 
 const selectedDisplayCurrency = ref("COP");
 
+
+const recipeDiscountForPrint = ref(0);
+const doctorDiscountForPrint = ref(0);
+const companyDiscountForPrint = ref(0);
+const discountTypeForPrint = ref(null);
+
+
+const isFinishingOrder = ref(false);
+
+
 const newClientFormData = ref({
   id: null,
   identification_type: "",
@@ -105,7 +115,7 @@ const selectedCompanyId = ref(null);
 
 const currentPrescriptionDiscountPercentage = computed(() => {
   if (activePrescriptionOffers.value.length > 0) {
-    return activePrescriptionOffers.value[0].discount_percentage;
+    return parseFloat(activePrescriptionOffers.value[0].discount_percentage);
   }
   return 0;
 });
@@ -250,7 +260,7 @@ const fetchCompanyOffers = async () => {
   }
 };
 
-const handlePrescriptionFileSelected = (file) => {
+/*const handlePrescriptionFileSelected = (file) => {
   prescriptionFile.value = file;
   if (file && activePrescriptionOffers.value.length > 0) {
     // Apply discount from the first active offer (highest discount due to sort)
@@ -287,8 +297,16 @@ const handlePrescriptionFileSelected = (file) => {
     // BUT we should be careful if we want to support stacking (likely not based on UI)
     // For now, assuming mutually exclusive discounts based on selectedDiscountType
   }
-};
+};*/
 
+
+const handlePrescriptionFileSelected = (file) => {
+  prescriptionFile.value = file;
+  if (file && activePrescriptionOffers.value.length > 0) {
+    const offer = activePrescriptionOffers.value[0];
+    toast.success(`Descuento de receta del ${offer.discount_percentage}% detectado.`);
+  }
+};
 
 
 const handleDoctorDiscountSelected = (offerId) => {
@@ -747,7 +765,7 @@ const totalDoctorDiscountAmount = computed(() => {
 });
 
 const totalRecipeDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+  if (selectedDiscountType.value === 'Recipe') {
     const porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
     if (porcentaje > 0) {
       return totalProductsAmount.value * (porcentaje / 100);
@@ -882,7 +900,7 @@ const totalAmountUsd = computed(() => {
     porcentaje = parseFloat(offer?.current_discount || 0);
   }else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
     porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
-  }else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+  }else if (selectedDiscountType.value === 'Recipe') {
     porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
 
@@ -1094,11 +1112,13 @@ const addProductToOrder = async ({ productId, quantity }) => {
 watch(
   [totalOrderAmount, selectedDisplayCurrency],
   async (newValue, oldValue) => {
+  if (!isFinishingOrder.value) {
     if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
       if (hasOpenOrder.value && openOrderData.value?.id) {
         await updateOrderTotalsInBackend();
       }
     }
+  }
   },
   { deep: false }
 );
@@ -1227,6 +1247,10 @@ const reserverOrder = async () => {
 };
 
 const openBuysModal = () => {
+  if (selectedDiscountType.value === 'Recipe' && !prescriptionFile.value) {
+    toast.error("Debe adjuntar la foto de la receta para aplicar este descuento.");
+    return;
+  }
   showBuysModal.value = true;
 };
 
@@ -1234,7 +1258,7 @@ const closeBuysModal = () => {
   showBuysModal.value = false;
 };
 
-const handleBuysCompletion = async (
+/*const handleBuysCompletion = async (
   orderId,
   paymentsData,
   credit,
@@ -1261,7 +1285,7 @@ const handleBuysCompletion = async (
       currentSourceId = selectedDoctorOffer.value.id;
       currentTypeName = 'doctor';
     } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
-      currentPercentage = currentPrescriptionDiscountPercentage.value;
+      currentPercentage = parseFloat(currentPrescriptionDiscountPercentage.value)
       currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = 'recipe';
     }
@@ -1388,6 +1412,181 @@ const handleBuysCompletion = async (
     changeAmountForPrint.value = 0;
     creditAmountForPrint.value = 0;
     creditForPrint.value = false;
+  }
+};*/
+
+
+
+const handleBuysCompletion = async (
+  orderId,
+  paymentsData,
+  credit,
+  changeAmount,
+  changeAmountUSD,
+  switchStates
+) => {
+  try {
+    isFinishingOrder.value = true;
+    const balanceUsed = paymentsData.some(
+      (payment) => payment.type === "balance"
+    );
+
+    let currentPercentage = 0;
+    let currentSourceId = null;
+    let currentTypeName = null;
+
+    if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
+      const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
+      currentPercentage = parseFloat(offer?.current_discount || 0);
+      currentSourceId = selectedCompanyId.value;
+      currentTypeName = 'company';
+    } else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
+      currentPercentage = parseFloat(selectedDoctorOffer.value.percentage || 0);
+      currentSourceId = selectedDoctorOffer.value.id;
+      currentTypeName = 'doctor';
+    } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+      currentPercentage = parseFloat(currentPrescriptionDiscountPercentage.value);
+      currentSourceId = activePrescriptionOffers.value[0]?.id;
+      currentTypeName = 'recipe';
+    }
+
+    // --- CAMBIO AQUÍ: Usamos FormData en lugar de un objeto plano ---
+    const formData = new FormData();
+    
+    // Datos simples
+    formData.append('order_id', orderId);
+    formData.append('total_amount', myCalculatedTotal.value);
+    formData.append('currency', selectedDisplayCurrency.value);
+    formData.append('client_id', selectedClient.value?.id || '');
+    formData.append('seller_id', currentUser.value?.id || '');
+    formData.append('balance_used', balanceUsed ? 1 : 0);
+    formData.append('generate_invoice', switchStates.invoice_switch ? 1 : 0);
+    formData.append('credit', credit ? 1 : 0);
+    formData.append('changeAmount', changeAmount);
+    formData.append('changeAmountUSD', changeAmountUSD);
+    formData.append('spe', switchStates.spe ? 1 : 0);
+
+    // Arrays de datos (deben enviarse como JSON string para que FormData los acepte)
+    formData.append('payments', JSON.stringify(paymentsData));
+    
+    const mappedItems = orderItems.value.map((item) => ({
+      order_detail_id: item.order_detail_id,
+      price: item.price,
+      discount_percentage: currentPercentage > 0 ? currentPercentage : null,
+      discount_type: currentPercentage > 0 ? currentTypeName : null,
+      discount_source_id: currentPercentage > 0 ? currentSourceId : null,
+    }));
+    formData.append('items', JSON.stringify(mappedItems));
+
+    // ADJUNTO DE IMAGEN: Solo si es tipo Recipe y hay archivo
+    if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
+      formData.append('prescription_image', prescriptionFile.value);
+    }
+
+    // Envío con Axios configurado para multipart/form-data
+    const response = await axios.post(
+      `/tpv/orders/${orderId}/complete`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    if (response.status === 200 || response.status === 201) {
+      toast.success("¡Compra finalizada y registrada con éxito!");
+      
+      // Limpiar el archivo después del éxito
+      prescriptionFile.value = null;
+
+      // ... (resto de tu lógica de impresión y reseteo de variables igual que antes)
+      paymentsForPrint.value = [...paymentsData];
+      changeAmountForPrint.value = changeAmount;
+      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditForPrint.value = credit;
+      clientIdentification.value = "";
+      await fetchProducts();
+      showBuysModal.value = false;
+      isPrinting.value = true;
+      recipeDiscountForPrint.value = totalRecipeDiscountAmount.value;
+      doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
+      companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
+      discountTypeForPrint.value = selectedDiscountType.value;
+
+      // ... (Lógica de impresión omitida por brevedad, se mantiene igual)
+      await nextTick();
+      const printContents = document.getElementById("orderPrint");
+      if (printContents) {
+        const printWindow = window.open("", "", "height=600,width=800");
+        printWindow.document.write(
+          "<html><head><title>Farmacia Barrio Sucre</title>"
+        );
+        const styleSheets = document.styleSheets;
+        for (let i = 0; i < styleSheets.length; i++) {
+          const sheet = styleSheets[i];
+          try {
+            if (sheet.cssRules) {
+              let cssText = "";
+              for (let j = 0; j < sheet.cssRules.length; j++) {
+                cssText += sheet.cssRules[j].cssText;
+              }
+              printWindow.document.write(`<style>${cssText}</style>`);
+            } else if (sheet.href) {
+              printWindow.document.write(
+                `<link rel="stylesheet" href="${sheet.href}">`
+              );
+            }
+          } catch (e) {
+            console.warn(
+              "No se pudo acceder a la hoja de estilo:",
+              sheet.href || sheet,
+              e
+            );
+          }
+        }
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(printContents.innerHTML);
+        printWindow.document.write("</body></html>");
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      } else {
+        console.warn(
+          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        );
+        window.print();
+      }
+
+      // Resetear estados finales
+       if (response.data.data.order) {
+        hasOpenOrder.value = true;
+        openOrderData.value = response.data.data.order;
+        selectedClient.value = openOrderData.value.client;
+        reservedOrderData.value = null;
+        orderItems.value = openOrderData.value.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
+        hasOpenOrder.value = false;
+        openOrderData.value = null;
+        selectedClient.value = null;
+        orderItems.value = [];
+        reservedOrderData.value = null;
+        clientIdentification.value = "";
+      }
+
+
+    }
+  } catch (error) {
+    console.error("Error al finalizar la compra:", error);
+    toast.error("Hubo un problema al procesar su compra.");
+    isPrinting.value = false;
+  } finally {
+    setTimeout(() => {
+       isFinishingOrder.value = false;
+    }, 500);
   }
 };
 
@@ -1573,10 +1772,10 @@ const addReserverOrder = async () => {
         :change-amount="changeAmountForPrint"
         :credit-amount="creditAmountForPrint"
         :credit="creditForPrint"
-        :company-discount-total="totalCompanyDiscountAmount"
-        :selected-discount-type="selectedDiscountType"
-        :doctor-discount-total="totalDoctorDiscountAmount"
-        :recipe-discount-total="totalRecipeDiscountAmount"
+        :company-discount-total="companyDiscountForPrint"
+        :selected-discount-type="discountTypeForPrint"
+        :doctor-discount-total="doctorDiscountForPrint"
+        :recipe-discount-total="recipeDiscountForPrint"
       />
     </div>
   </div>
