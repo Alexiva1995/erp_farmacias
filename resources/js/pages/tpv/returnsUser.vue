@@ -3,12 +3,15 @@ import ReturnsClientCard from "@/components/cards/ReturnsClientCard.vue";
 import ReturnsOrderTable from "@/components/ReturnsOrderTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 
 const clientIdentification = ref("");
 const orders = ref([]);
 const totalOrder = ref(0);
 const loading = ref(false);
 const options = ref({ page: 1, itemsPerPage: 10, sortBy: [] });
+
+const { isVendedor } = useAuthStore();
 
 const fetchOrders = async () => {
   if (!clientIdentification.value) {
@@ -90,6 +93,7 @@ const handleClearSearch = () => {
     :total-order="totalOrder"
     :items-per-page="options.itemsPerPage"
     :page="options.page"
+    :is-vendedor="isVendedor"
     @update:options="updateTableOptions"
     @return-product="handleReturnProduct"
   />

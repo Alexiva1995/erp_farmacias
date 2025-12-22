@@ -76,6 +76,14 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  recipeDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -170,10 +178,15 @@ const breakdownItems = computed(() => {
 
 const formattedTotalQuotation = computed(() => {
   let amountToFormat = props.totalOrderAmount;
+
   if (props.selectedDisplayCurrency === "COP") {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
   }
-  return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
+  return formatCurrency(
+    parseFloat(amountToFormat.toFixed(2)),
+    props.selectedDisplayCurrency
+  );
+  // return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
 
 const selectCurrency = (currency) => {
@@ -361,11 +374,39 @@ watch(
   { immediate: true }
 );
 
-const formattedCompanyDiscount = computed(() => {
-  return formatCurrency(
-    props.companyDiscountTotal,
-    props.selectedDisplayCurrency
-  );
+const formattedDiscounts = computed(() => {
+  const currency = props.selectedDisplayCurrency;
+  return {
+    company: formatCurrency(props.companyDiscountTotal || 0, currency),
+    doctor: formatCurrency(props.doctorDiscountTotal || 0, currency),
+    recipe: formatCurrency(props.recipeDiscountTotal || 0, currency),
+  };
+});
+
+const activeDiscountDisplay = computed(() => {
+  const type = props.selectedDiscountType;
+  const config = {
+    Empresa: {
+      label: "Descuento Empresa",
+      amount: props.companyDiscountTotal,
+      formatted: formattedDiscounts.value.company,
+    },
+    Medico: {
+      label: "Descuento Médico",
+      amount: props.doctorDiscountTotal,
+      formatted: formattedDiscounts.value.doctor,
+    },
+    Recipe: {
+      label: "Descuento Recipe",
+      amount: props.recipeDiscountTotal,
+      formatted: formattedDiscounts.value.recipe,
+    },
+  };
+  const current = config[type];
+  if (current && current.amount > 0) {
+    return current;
+  }
+  return null;
 });
 </script>
 
@@ -674,12 +715,7 @@ const formattedCompanyDiscount = computed(() => {
     </VCardText>
     <VDivider class="mt-auto" />
 
-    <div
-      v-if="
-        props.selectedDiscountType === 'Empresa' &&
-        props.companyDiscountTotal > 0
-      "
-    >
+    <div v-if="activeDiscountDisplay">
       <VCardText class="py-2 bg-grey-lighten-4">
         <VTable density="compact" lines="none">
           <tbody>
@@ -688,40 +724,18 @@ const formattedCompanyDiscount = computed(() => {
                 <div class="d-flex flex-column">
                   <span
                     class="text-subtitle-1 me-2 text-error font-weight-medium"
-                    >Descuento Empresa:</span
                   >
+                    {{ activeDiscountDisplay.label }}:
+                  </span>
                 </div>
               </td>
-              <td>
-                <div class="d-flex align-center"></div>
-              </td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                  ></span>
-                  <span class="text-body-1 font-weight-regular"> </span>
-                </div>
-              </td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end me-4">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                  ></span>
-                  <span class="text-body-1 font-weight-regular"> </span>
-                </div>
-              </td>
+              <td><div class="d-flex align-center"></div></td>
+              <td class="text-right"></td>
+              <td class="text-right"></td>
               <td class="text-right">
                 <div class="d-flex flex-column align-end">
-                  <span
-                    v-if="index === 0"
-                    class="text-caption text-medium-emphasis"
-                    >Total</span
-                  >
                   <span class="text-body-1 font-weight-bold text-error">
-                    - {{ formattedCompanyDiscount }}
+                    - {{ activeDiscountDisplay.formatted }}
                   </span>
                 </div>
               </td>
@@ -729,7 +743,6 @@ const formattedCompanyDiscount = computed(() => {
           </tbody>
         </VTable>
       </VCardText>
-
       <VDivider class="mt-auto" />
     </div>
 
@@ -772,7 +785,7 @@ const formattedCompanyDiscount = computed(() => {
       </div>
       <div class="d-flex align-center">
         <h4 class="text-h4 me-2">Monto Total</h4>
-        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+        <span class="text-h4 text-success"> {{ formattedTotalQuotation }}</span>
       </div>
     </VCardActions>
   </VCard>

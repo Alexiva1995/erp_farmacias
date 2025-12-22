@@ -8,6 +8,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+  },
   paymentGroup: {
     type: Object,
     default: null,
@@ -171,9 +175,15 @@ const totalInUSD = computed(() => {
 
 const totalInBS = computed(() => {
   if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
-  return selectedInvoices.value.reduce((sum, invoice) => {
+  const total = selectedInvoices.value.reduce((sum, invoice) => {
     return sum + parseFloat(invoice.total_amount || 0);
   }, 0);
+
+  const hasAtLeastOneIndexed = selectedInvoices.value.some(
+    (invoice) => invoice.indexed_data.is_indexed
+  );
+
+  return hasAtLeastOneIndexed ? (total * props.exchangeRate).toFixed(2) : total;
 });
 
 const suggestedAmountInLocalCurrency = computed(() => {
@@ -608,9 +618,7 @@ const paidAmountUSD = computed(() => {
     }
   }
 
-  // CORRECCIÓN: Incluir pagos anteriores + pago actual
-  const previousPaymentsUSD = paymentInfo.value.total_paid_usd || 0;
-  return previousPaymentsUSD + currentPaymentUSD;
+  return currentPaymentUSD;
 });
 
 // Porcentaje de ahorro
@@ -896,18 +904,6 @@ onMounted(() => {
                       <div class="text-h6 font-weight-bold text-success">
                         {{ formatCurrency(paidAmountUSD, "USD") }}
                       </div>
-                      <div class="text-caption text-medium-emphasis">
-                        Total Pagado (Incluye este pago)
-                      </div>
-                      <div
-                        v-if="paymentInfo.has_previous_payments"
-                        class="text-caption text-info mt-1"
-                      >
-                        Anterior:
-                        {{
-                          formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
-                        }}
-                      </div>
                     </div>
                   </VCol>
 
@@ -945,7 +941,7 @@ onMounted(() => {
         <VBtn
           color="primary"
           @click="processPayment"
-          :loading="loading"
+          :loading="loading || uploading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
           class="flex-grow-1 w-0"
         >
