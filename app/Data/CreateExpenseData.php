@@ -1,6 +1,4 @@
 <?php
-
-
 namespace App\Data;
 
 use DateTime;
@@ -12,28 +10,27 @@ class CreateExpenseData extends Data
 {
 
     public function __construct(
-        public string       $name,
-        public int          $category_id,
-        public float        $amount,
-        public float        $amount_usd,
-        public string       $currency,
-        public bool|null    $has_invoice,
-        public bool|null    $is_deductible,
-        public bool         $iva = false,
+        public string $name,
+        public int $category_id,
+        public float $amount,
+        public float $amount_usd,
+        public string $currency,
+        public bool | null $has_invoice,
+        public bool | null $is_deductible,
+        public bool $iva = false,
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d')]
-        public DateTime     $expense_date,
-        public int          $user_id,
-        public string       $count,
-        public ?string      $account = null,
-        public ?string      $status,
-        public string       $type_of_expense,
-        public float        $amount_bs,
-        public ?float       $conversion_rate_to_bs = null,
-        public ?float       $exempt_amount = null,
-        public ?float       $taxable_base = null,
-        public ?float       $tax_amount = null,
-        public ?float       $exchange_rate = null,
-        public ?float       $total_usd = null,
+        public DateTime $expense_date,
+        public int $user_id,
+        public string $count,
+        public ?string $status,
+        public string $type_of_expense,
+        public ?float $amount_bs = null,
+        public ?float $conversion_rate_to_bs = null,
+        public ?float $exempt_amount = null,
+        public ?float $taxable_base = null,
+        public ?float $tax_amount = null,
+        public ?float $exchange_rate = null,
+        public ?float $total_usd = null,
 
     ) {}
 }

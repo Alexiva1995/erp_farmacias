@@ -24,7 +24,6 @@ const headers = [
   { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
   { title: 'Categoria', key: 'category.name', sortable: false },
   { title: 'Monto', key: 'amount', sortable: true },
-  { title: 'USD', key: 'amount_usd', sortable: true },
   { title: 'Moneda', key: 'currency', sortable: true },
   { title: 'Cuenta', key: 'count', sortable: true },
   { title: 'Deducible', key: 'is_deductible', sortable: false, value: (item) => {
