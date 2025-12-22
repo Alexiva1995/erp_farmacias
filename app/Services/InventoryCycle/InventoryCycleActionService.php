@@ -219,6 +219,7 @@ class InventoryCycleActionService
         $productCount->discrepancy = $finalDiscrepancy;
         $productCount->status = 'approved';
         $productCount->supervisor_id = Auth::id();
+        $productCount->correction_difference = $isCorrection ? abs($productCount->getOriginal('counted_quantity') - $finalQuantity) : 0;
         $productCount->save();
 
         $productCount->load(['product', 'user', 'distributions.productLot']);

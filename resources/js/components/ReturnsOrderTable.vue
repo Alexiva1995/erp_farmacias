@@ -1,8 +1,8 @@
 <script setup>
+import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import Swal from "sweetalert2";
 import { ref, watch } from "vue";
-import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -10,6 +10,7 @@ const props = defineProps({
   totalOrder: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isVendedor: { type: Boolean, required: true },
 });
 const emit = defineEmits(["update:options"]);
 const expanded = ref([]);
@@ -19,7 +20,7 @@ watch(
   () => props.orders,
   (newOrders) => {
     newOrders.forEach((order) => {
-     if (!selectedProductsToReturn.value[order.id]) {
+      if (!selectedProductsToReturn.value[order.id]) {
         selectedProductsToReturn.value[order.id] = [];
       }
       order.details.forEach((detail) => {
@@ -35,13 +36,15 @@ watch(
 const handleReturnProduct = (detailItem, order) => {
   const quantity = parseFloat(detailItem.returns_quantity);
 
-if (isNaN(quantity) || quantity <= 0) {
+  if (isNaN(quantity) || quantity <= 0) {
     toast.warning("La cantidad a devolver debe ser mayor a cero.");
-    return; 
+    return;
   }
 
   if (quantity > detailItem.quantity) {
-    toast.warning("La cantidad a devolver no puede ser mayor que la cantidad vendida.");
+    toast.warning(
+      "La cantidad a devolver no puede ser mayor que la cantidad vendida."
+    );
     return;
   }
 
@@ -65,7 +68,6 @@ if (isNaN(quantity) || quantity <= 0) {
   });
 };
 
-
 const handleReturnSelectedProducts = (order) => {
   const selected = selectedProductsToReturn.value[order.id];
 
@@ -74,9 +76,15 @@ const handleReturnSelectedProducts = (order) => {
     return;
   }
 
-    const itemsToReturn = selected.map((selectedItem) => {
-    const upToDateProduct = order.details.find((detail) => detail.id === selectedItem);
-    if (!upToDateProduct ||isNaN(parseFloat(upToDateProduct.returns_quantity)) ||parseFloat(upToDateProduct.returns_quantity) <= 0) {
+  const itemsToReturn = selected.map((selectedItem) => {
+    const upToDateProduct = order.details.find(
+      (detail) => detail.id === selectedItem
+    );
+    if (
+      !upToDateProduct ||
+      isNaN(parseFloat(upToDateProduct.returns_quantity)) ||
+      parseFloat(upToDateProduct.returns_quantity) <= 0
+    ) {
       toast.warning(
         "Verifique las cantidades. Alguna cantidad a devolver no es válida."
       );
@@ -170,7 +178,11 @@ const orderItemHeaders = [
         }}</span>
       </template>
       <template
-        v-slot:item.data-table-expand="{ internalItem, isExpanded, toggleExpand }"
+        v-slot:item.data-table-expand="{
+          internalItem,
+          isExpanded,
+          toggleExpand,
+        }"
       >
         <v-btn
           :append-icon="
@@ -236,10 +248,12 @@ const orderItemHeaders = [
                   </template>
                   <template #item.price="{ item: detailItem }">
                     {{
-                      formatCurrency(
-                        parseFloat(detailItem.price),
-                        item.currency
-                      )
+                      props.isVendedor
+                        ? formatCurrency(
+                            parseFloat(detailItem.seller_price),
+                            detailItem.seller_currency
+                          )
+                        : formatCurrency(parseFloat(detailItem.price), "USD")
                     }}
                   </template>
                   <template #item.returns_quantity="{ item: detailItem }">
@@ -265,9 +279,7 @@ const orderItemHeaders = [
                     :disabled="selectedProductsToReturn[item.id].length === 0"
                     @click="handleReturnSelectedProducts(item)"
                   >
-                    Devolver ({{
-                      selectedProductsToReturn[item.id].length
-                    }})
+                    Devolver ({{ selectedProductsToReturn[item.id].length }})
                   </VBtn>
                 </div>
               </VCardText>

@@ -77,7 +77,7 @@ class ReturnsActionService
             }
             $orderDetail = (object) $orderDetail;
 
-            $returnAmount = $returnsQuantity * (float) $orderDetail->unit_price_usd;
+            $returnAmount = round(($returnsQuantity * (float) $orderDetail->unit_price_usd) * (100 - (float) $orderDetail->discount_percentage) / 100, 2);
             $clientData = $orderData['client'];
 
             if (!$clientData) {
@@ -107,6 +107,7 @@ class ReturnsActionService
                 'quantity' => $returnsQuantity,
                 'amount_refunded' => $returnAmount,
                 'return_date' => Carbon::now(),
+                'status' => null
             ]);
 
             ProductObserver::handleReturnMovement($return);

@@ -21,10 +21,10 @@ class PayslipServices implements Payslip
     return $this->payslipRepository->index($data);
   }
 
-  public function generate(Carbon $date): bool
+  public function generate(Carbon $date, bool $payFoodVoucher = false): bool
   {
     $name = $this->generateName($date);
-    $details = $this->payslipRepository->getEligibleSalaryDetails();
+    $details = $this->payslipRepository->getEligibleSalaryDetails($payFoodVoucher);
 
     return $this->payslipRepository->generate($date, $name, $details);
   }

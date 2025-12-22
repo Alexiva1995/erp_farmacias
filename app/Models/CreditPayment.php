@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreditPayment extends Model
 {
-      protected $fillable = [
+    protected $fillable = [
         'client_id',
         'seller_id',
         'cash_closing_id',
@@ -15,8 +15,17 @@ class CreditPayment extends Model
         'method_Payment',
     ];
 
-        protected $casts = [
+    protected $casts = [
         'method_Payment' => 'array',
     ];
 
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
 }

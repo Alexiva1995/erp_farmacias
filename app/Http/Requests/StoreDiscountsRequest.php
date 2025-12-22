@@ -25,6 +25,7 @@ class StoreDiscountsRequest extends FormRequest
     {
         return [
             'discounts' => 'required|array',
+            'discounts.*.id' => 'nullable|integer',
             'discounts.*.name' => 'required',
             'discounts.*.discount_percentage' => 'required|numeric|min:0|max:100'
         ];

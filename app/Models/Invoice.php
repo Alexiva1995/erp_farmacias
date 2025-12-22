@@ -29,6 +29,7 @@ class Invoice extends Model
         'status_payment',
         'uploaded_by',
         'registered_by',
+        'loaded_by',
         'ordered_by',
         'created_invoice_date',
         'status_payment',
@@ -100,6 +101,11 @@ class Invoice extends Model
     public function orderedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'ordered_by');
+    }
+
+    public function loadedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'loaded_by');
     }
 
     public function autoOrder(): BelongsTo

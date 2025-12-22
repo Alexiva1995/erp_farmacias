@@ -151,7 +151,8 @@ const validateExpDate = (date) => {
   }
 
   if (expDate > sixMonthsFromNow) {
-    expDateError.value = "La fecha de vencimiento no puede ser más de 6 meses en el futuro";
+    expDateError.value =
+      "La fecha de vencimiento no puede ser más de 6 meses en el futuro";
     return false;
   }
 
@@ -232,7 +233,9 @@ const fetchSuppliers = async () => {
 const fetchDiscountRules = async (supplierId) => {
   loadingRules.value = true;
   try {
-    const response = await axios.get(`/suppliers/${supplierId}/discount-rules`);
+    const response = await axios.get(
+      `/supplier-laboratories/${supplierId}/discount-rules`
+    );
     discountRules.value = response.data.map((rule) => ({
       ...rule,
       description: `${rule.days} días con un descuento de ${rule.descPorcentaje}%`,
@@ -326,6 +329,15 @@ const handleCancel = () => {
           </VRow>
 
           <VRow>
+            <!-- Field added: Created Invoice Date -->
+            <VCol cols="12" md="4">
+              <VTextField
+                v-model="formData.created_invoice_date"
+                label="Fecha de Emisión"
+                type="date"
+                placeholder="YYYY-MM-DD"
+              />
+            </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.exp_date"
@@ -391,7 +403,6 @@ const handleCancel = () => {
                 label="Impuesto 16%"
                 type="number"
                 :prefix="getCurrencySymbol"
-                readonly
               />
             </VCol>
             <VCol cols="12" md="2">
@@ -400,7 +411,6 @@ const handleCancel = () => {
                 label="Total Factura"
                 type="number"
                 :prefix="getCurrencySymbol"
-                readonly
               />
             </VCol>
             <VCol v-if="shouldShowExchangeRate" cols="12" md="2">

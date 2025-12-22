@@ -12,8 +12,7 @@ const emit = defineEmits(["update:options", "status"]);
 const expanded = ref([]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "100px" },
-  { title: "N° Orden", key: "order_id", sortable: true, width: "100px" },
+  { title: "ID", key: "order_id", sortable: true, width: "100px" },
   { title: "Usuario", key: "client", sortable: true },
   { title: "Identificación", key: "identificacion", sortable: true },
   { title: "Monto", key: "amount_refunded", sortable: true },
@@ -127,12 +126,29 @@ const handleRejectReturn = async (item) => {
 
       <template #item.actions="{ item }">
         <div v-if="item.status == null" class="d-flex align-center gap-2">
-          <IconBtn @click="handleApproveReturn(item)" color="primary">
-            <VIcon icon="tabler-circle-check" />
-          </IconBtn>
-          <IconBtn @click="handleRejectReturn(item)" color="warning">
-            <VIcon icon="tabler-circle-x" />
-          </IconBtn>
+          <VTooltip text="Aprobar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleApproveReturn(item)"
+                color="success"
+              >
+                <VIcon icon="tabler-circle-check" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Rechazar" location="top">
+            <template #activator="{ props }">
+              <IconBtn
+                v-bind="props"
+                @click="handleRejectReturn(item)"
+                color="error"
+              >
+                <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
     </VDataTableServer>

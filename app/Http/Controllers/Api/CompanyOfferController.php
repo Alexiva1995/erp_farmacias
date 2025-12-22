@@ -15,58 +15,58 @@ class CompanyOfferController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-        $query = CompanyOffer::with(['company', 'scales']);
+            $query = CompanyOffer::with(['company', 'scales']);
 
-        // Búsqueda por ID o nombre de empresa
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                // Buscar por ID de empresa (exacto)
-                if (is_numeric($search)) {
-                    $q->where('company_id', $search);
-                }
-                
-                // Buscar por nombre de empresa (like)
-                $q->orWhereHas('company', function($companyQuery) use ($search) {
-                    $companyQuery->where('name', 'like', "%{$search}%");
+            // Búsqueda por ID o nombre de empresa
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    // Buscar por ID de empresa (exacto)
+                    if (is_numeric($search)) {
+                        $q->where('company_id', $search);
+                    }
+
+                    // Buscar por nombre de empresa (like)
+                    $q->orWhereHas('company', function ($companyQuery) use ($search) {
+                        $companyQuery->where('name', 'like', "%{$search}%");
+                    });
                 });
-            });
-        }
-
-        // Filtro por estado activo/inactivo
-        if ($request->has('is_active') && $request->is_active !== '') {
-            $query->where('is_active', $request->is_active);
-        }
-
-        // Sorting
-        if ($request->has('sort_by') && $request->has('order_by')) {
-            $sortBy = $request->sort_by;
-            $orderBy = $request->order_by;
-
-            if (in_array($sortBy, ['id', 'start_date', 'end_date', 'is_active', 'created_at'])) {
-                $query->orderBy($sortBy, $orderBy);
-            } elseif ($sortBy === 'company_id') {
-                $query->join('companies', 'company_offers.company_id', '=', 'companies.id')
-                    ->orderBy('companies.name', $orderBy)
-                    ->select('company_offers.*');
             }
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
 
-        // Pagination
-        $perPage = $request->get('items_per_page', 10);
-        $page = $request->get('page', 1);
+            // Filtro por estado activo/inactivo
+            if ($request->has('is_active') && $request->is_active !== '') {
+                $isActive = filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN);
+                $query->where('is_active', $isActive ? 1 : 0);
+            }
 
-        $offers = $query->paginate($perPage, ['*'], 'page', $page);
+            // Sorting
+            if ($request->has('sort_by') && $request->has('order_by')) {
+                $sortBy = $request->sort_by;
+                $orderBy = $request->order_by;
 
-        return response()->json([
-            'data' => $offers->items(),
-            'total' => $offers->total(),
-            'current_page' => $offers->currentPage(),
-            'per_page' => $offers->perPage(),
-            'last_page' => $offers->lastPage(),
-        ]);
+                if (in_array($sortBy, ['id', 'start_date', 'end_date', 'is_active', 'created_at'])) {
+                    $query->orderBy($sortBy, $orderBy);
+                } elseif ($sortBy === 'company_id') {
+                    $query->join('companies', 'company_offers.company_id', '=', 'companies.id')
+                        ->orderBy('companies.name', $orderBy)
+                        ->select('company_offers.*');
+                }
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+
+            // Pagination
+            $perPage = $request->get('items_per_page', 10);
+            $page = $request->get('page', 1);
+            $offers = $query->paginate($perPage, ['*'], 'page', $page);
+
+            return response()->json([
+                'data' => $offers->items(),
+                'total' => $offers->total(),
+                'current_page' => $offers->currentPage(),
+                'per_page' => $offers->perPage(),
+                'last_page' => $offers->lastPage(),
+            ]);
 
         } catch (\Throwable $e) {
 
@@ -87,8 +87,8 @@ class CompanyOfferController extends Controller
                 'end_date' => 'required|date|after_or_equal:start_date',
                 'is_active' => 'required|boolean',
                 'scales' => 'required|array|min:1',
-                'scales.*.min_volume' => 'required|integer|min:0',
-                'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
+                'scales.*.min_amount' => 'required|numeric|min:0',
+                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
                 'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
             ]);
 
@@ -104,8 +104,8 @@ class CompanyOfferController extends Controller
             foreach ($validated['scales'] as $scaleData) {
                 CompanyOfferScale::create([
                     'company_offer_id' => $offer->id,
-                    'min_volume' => $scaleData['min_volume'],
-                    'max_volume' => $scaleData['max_volume'],
+                    'min_amount' => $scaleData['min_amount'],
+                    'max_amount' => $scaleData['max_amount'],
                     'discount_percentage' => $scaleData['discount_percentage'],
                 ]);
             }
@@ -139,7 +139,7 @@ class CompanyOfferController extends Controller
 
             // Buscar el modelo manualmente
             $companyOffer = CompanyOffer::find($id);
-            
+
             if (!$companyOffer) {
                 return response()->json([
                     'message' => 'Oferta no encontrada.',
@@ -153,8 +153,8 @@ class CompanyOfferController extends Controller
                 'end_date' => 'required|date|after_or_equal:start_date',
                 'is_active' => 'required|boolean',
                 'scales' => 'required|array|min:1',
-                'scales.*.min_volume' => 'required|integer|min:0',
-                'scales.*.max_volume' => 'required|integer|min:0|gt:scales.*.min_volume',
+                'scales.*.min_amount' => 'required|numeric|min:0',
+                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
                 'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
             ]);
 
@@ -174,13 +174,13 @@ class CompanyOfferController extends Controller
             foreach ($validated['scales'] as $index => $scaleData) {
                 $scalesToCreate[] = [
                     'company_offer_id' => $companyOffer->id,
-                    'min_volume' => $scaleData['min_volume'],
-                    'max_volume' => $scaleData['max_volume'],
+                    'min_amount' => $scaleData['min_amount'],
+                    'max_amount' => $scaleData['max_amount'],
                     'discount_percentage' => $scaleData['discount_percentage'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
-                
+
             }
 
             // Insertar todas las escalas
@@ -200,14 +200,14 @@ class CompanyOfferController extends Controller
 
         } catch (ValidationException $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Error de validación.',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Error al actualizar la oferta.',
                 'error' => $e->getMessage()
@@ -216,14 +216,14 @@ class CompanyOfferController extends Controller
     }
 
 
-   public function destroy($id): JsonResponse
+    public function destroy($id): JsonResponse
     {
         DB::beginTransaction();
         try {
 
             // Buscar la oferta manualmente
             $companyOffer = CompanyOffer::find($id);
-            
+
             if (!$companyOffer) {
                 DB::rollBack();
                 return response()->json([
@@ -253,7 +253,7 @@ class CompanyOfferController extends Controller
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Error al eliminar la oferta.',
                 'error' => $e->getMessage()

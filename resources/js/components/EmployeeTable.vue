@@ -1,4 +1,6 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
+import { storeToRefs } from "pinia";
 import Swal from "sweetalert2";
 
 const props = defineProps({
@@ -26,6 +28,9 @@ const emit = defineEmits([
   "generate-resignation",
   "reset-2fa",
 ]);
+
+const authStore = useAuthStore();
+const { user } = storeToRefs(authStore);
 
 const confirmGenerateResignation = async (employee) => {
   try {
@@ -77,14 +82,22 @@ const confirmGenerateResignation = async (employee) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.actions="{ item }">
-        <VTooltip text="Editar empleado" location="top">
+        <VTooltip
+          text="Editar empleado"
+          location="top"
+          v-if="user?.role_id !== 2 && user?.role_id !== 3"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('edit-employee', item)">
               <VIcon icon="tabler-pencil" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Ver empleado" location="top">
+        <VTooltip
+          text="Ver empleado"
+          location="top"
+          v-if="user?.role_id !== 2 && user?.role_id !== 3"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
               <VIcon icon="tabler-eye" />
@@ -102,21 +115,33 @@ const confirmGenerateResignation = async (employee) => {
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Despedir empleado" location="top">
+        <VTooltip
+          text="Despedir empleado"
+          location="top"
+          v-if="user?.role_id !== 2 && user?.role_id !== 3"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('fire-employee', item)">
               <VIcon icon="tabler-cancel" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Reiniciar autenticación" location="top">
+        <VTooltip
+          text="Reiniciar autenticación"
+          location="top"
+          v-if="user?.role_id !== 3"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('reset-2fa', item.id)">
               <VIcon icon="tabler-auth-2fa" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip text="Eliminar empleado" location="top">
+        <VTooltip
+          text="Eliminar empleado"
+          location="top"
+          v-if="user?.role_id == 1"
+        >
           <template #activator="{ props }">
             <IconBtn v-bind="props" @click="emit('delete-employee', item.id)">
               <VIcon icon="tabler-trash" />

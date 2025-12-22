@@ -53,7 +53,13 @@ class CreditsQueryService
       ->select('client_id')
       ->selectRaw('SUM(pending_amount) as total_pending_amount')
       ->selectRaw('GROUP_CONCAT(id) as credit_ids')
-      ->selectRaw('COUNT(CASE WHEN status != "Paid" THEN 1 END) = 0 as is_paid')
+      ->selectRaw('
+        CASE 
+            WHEN SUM(status = "Paid") = COUNT(*) THEN 2  -- Todos los creditos pagados
+            WHEN SUM(pending_amount != credit_amount) = 0 THEN 0  -- No hay creditos pagados
+            ELSE 1  -- Al menos un credito tiene un pago
+        END as status')
+      ->selectRaw('MAX(credit_date) as credit_date')
       ->groupBy('client_id');
 
     $query = $this->applySearch($query, $request->input('search'));

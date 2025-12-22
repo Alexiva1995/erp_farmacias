@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductPackController extends Controller
 {
-    
+
     public function index(Request $request): JsonResponse
     {
         try {
@@ -35,7 +35,7 @@ class ProductPackController extends Controller
             // Ordenamiento
             $sortBy = $request->get('sort_by', 'id');
             $order = $request->get('order', 'desc');
-            
+
             $allowedSorts = ['id', 'name', 'total_price', 'max_quantity', 'max_sale_date', 'is_active', 'created_at'];
             if (in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $order);
@@ -47,7 +47,9 @@ class ProductPackController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $packs->items(),
+                'data' => collect($packs->items())->map(function ($pack) {
+                    return $this->formatPackResponse($pack);
+                }),
                 'total' => $packs->total(),
                 'current_page' => $packs->currentPage(),
                 'per_page' => $packs->perPage(),

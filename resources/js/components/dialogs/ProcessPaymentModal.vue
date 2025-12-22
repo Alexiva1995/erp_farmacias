@@ -8,6 +8,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+  },
   paymentGroup: {
     type: Object,
     default: null,
@@ -25,7 +29,7 @@ const form = ref({
   payment_currency: "USD",
   payment_amount: 0,
   payment_date: new Date().toISOString().split("T")[0],
-  payment_receipt: null,
+  photo_url: null,
   reference: "",
 });
 
@@ -167,6 +171,19 @@ const totalInUSD = computed(() => {
     // Siempre usar total_usd de la base de datos para el "Total a Pagar"
     return sum + parseFloat(invoice.total_usd || 0);
   }, 0);
+});
+
+const totalInBS = computed(() => {
+  if (!selectedInvoices.value || selectedInvoices.value.length === 0) return 0;
+  const total = selectedInvoices.value.reduce((sum, invoice) => {
+    return sum + parseFloat(invoice.total_amount || 0);
+  }, 0);
+
+  const hasAtLeastOneIndexed = selectedInvoices.value.some(
+    (invoice) => invoice.indexed_data.is_indexed
+  );
+
+  return hasAtLeastOneIndexed ? (total * props.exchangeRate).toFixed(2) : total;
 });
 
 const suggestedAmountInLocalCurrency = computed(() => {
@@ -316,7 +333,7 @@ const resetForm = () => {
     payment_currency: "USD",
     payment_amount: 0,
     payment_date: new Date().toISOString().split("T")[0],
-    payment_receipt: null,
+    photo_url: null,
     reference: "",
   };
   errors.value = {};
@@ -422,9 +439,7 @@ const processPayment = async () => {
       payment_amount: form.value.payment_amount,
       payment_date: form.value.payment_date,
       reference: form.value.reference || null,
-      photo_url: form.value.payment_receipt
-        ? form.value.payment_receipt.name
-        : null,
+      photo_url: form.value.photo_url,
       invoice_ids: selectedInvoices.value.map((inv) => inv.id),
     };
 
@@ -460,9 +475,29 @@ const processPayment = async () => {
 };
 
 // Manejar subida de archivo
-const handleFileUpload = (file) => {
+const handleFileUpload = async (file) => {
   if (file) {
-    form.value.payment_receipt = file;
+    uploading.value = true;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await axios.post(
+        "/finances/pending-payments/upload-receipt",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      form.value.photo_url = response.data.data.url; // Guardar la URL del archivo
+      toast.success("Comprobante subido exitosamente");
+    } catch (error) {
+      toast.error("Error al subir el comprobante");
+    } finally {
+      uploading.value = false;
+    }
   }
 };
 
@@ -583,9 +618,7 @@ const paidAmountUSD = computed(() => {
     }
   }
 
-  // CORRECCIÓN: Incluir pagos anteriores + pago actual
-  const previousPaymentsUSD = paymentInfo.value.total_paid_usd || 0;
-  return previousPaymentsUSD + currentPaymentUSD;
+  return currentPaymentUSD;
 });
 
 // Porcentaje de ahorro
@@ -744,34 +777,6 @@ onMounted(() => {
           </VCol>
         </VRow>
 
-        <!-- Información del proveedor -->
-        <div v-if="supplierInfo" class="mb-6">
-          <VCard variant="tonal" color="primary" title="Detalles de pago">
-            <VCardText>
-              <VRow>
-                <VCol cols="12" md="6">
-                  <div class="text-h6 font-weight-bold">
-                    {{ supplierInfo.name }}
-                    {{
-                      formatCurrency(
-                        totalInSupplierCurrency,
-                        supplierInfo.currency
-                      )
-                    }}
-                    O
-                    {{ formatCurrency(totalInUSD, "USD") }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Fecha de Pago: {{ formatDate(supplierInfo.paymentDate) }}
-                  </div>
-                </VCol>
-              </VRow>
-            </VCardText>
-          </VCard>
-        </div>
-
-        <VDivider class="my-6" />
-
         <!-- Formulario de pago -->
         <VForm @submit.prevent="processPayment">
           <!-- CORRECCIÓN ISSUE #2: Mostrar monto de referencia en USD -->
@@ -786,7 +791,8 @@ onMounted(() => {
                 </template>
                 <div class="text-center">
                   <div class="text-h4 font-weight-bold text-primary mb-2">
-                    {{ formatCurrency(totalInUSD, "USD") }}
+                    {{ formatCurrency(totalInUSD, "USD") }} |
+                    {{ formatWithoutCurrency(totalInBS) }} Bs
                   </div>
                   <div class="text-body-2 text-medium-emphasis">
                     Este es el monto de la factura en USD. Puede pagar más o
@@ -861,11 +867,10 @@ onMounted(() => {
             </VCol>
             <VCol cols="12" md="6">
               <VFileInput
-                v-model="form.payment_receipt"
                 label="Comprobante de Pago"
                 accept="image/*"
                 :loading="uploading"
-                @change="handleFileUpload"
+                @change="handleFileUpload($event.target.files[0])"
                 prepend-icon="tabler-upload"
               />
             </VCol>
@@ -899,18 +904,6 @@ onMounted(() => {
                       <div class="text-h6 font-weight-bold text-success">
                         {{ formatCurrency(paidAmountUSD, "USD") }}
                       </div>
-                      <div class="text-caption text-medium-emphasis">
-                        Total Pagado (Incluye este pago)
-                      </div>
-                      <div
-                        v-if="paymentInfo.has_previous_payments"
-                        class="text-caption text-info mt-1"
-                      >
-                        Anterior:
-                        {{
-                          formatCurrency(paymentInfo.total_paid_usd || 0, "USD")
-                        }}
-                      </div>
                     </div>
                   </VCol>
 
@@ -936,20 +929,21 @@ onMounted(() => {
       <VDivider />
 
       <VCardActions class="pa-4">
-        <VSpacer />
         <VBtn
           variant="outlined"
           color="secondary"
           @click="closeModal"
           :disabled="loading"
+          class="flex-grow-1 w-0 mr-4"
         >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
           @click="processPayment"
-          :loading="loading"
+          :loading="loading || uploading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
+          class="flex-grow-1 w-0"
         >
           Procesar Pago
         </VBtn>

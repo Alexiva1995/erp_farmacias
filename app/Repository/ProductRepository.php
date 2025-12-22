@@ -247,6 +247,13 @@ class ProductRepository
                 THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -444,6 +451,13 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
             DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
         ];
 

@@ -56,6 +56,34 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  },
+  activeDoctorOffers: {
+    type: Array,
+    default: () => [],
+  },
+  prescriptionDiscountPercentage: {
+    type: Number,
+    default: 0,
+  },
+  activeCompanyOffers: {
+    type: Array,
+    default: () => [],
+  },
+  companyDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  doctorDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  recipeDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -68,9 +96,48 @@ const emit = defineEmits([
   "reserve-order",
   "add-quotation-products",
   "add-reserved-order",
+  "update:selectedDiscountType",
+  "doctor-discount-selected",
+  "prescription-file-selected",
+  "company-discount-selected",
 ]);
 
+const discountOptions = ["Empresa", "Medico", "Recipe"];
+
 const quotationId = ref("");
+const selectedDoctor = ref(null);
+const selectedCompany = ref(null);
+const prescriptionFile = ref(null);
+
+watch(
+  () => selectedDoctor.value,
+  (newVal) => {
+    emit("doctor-discount-selected", newVal);
+  }
+);
+
+watch(
+  () => selectedCompany.value,
+  (newVal) => {
+    emit("company-discount-selected", newVal);
+  }
+);
+
+watch(prescriptionFile, (newVal) => {
+  emit("prescription-file-selected", newVal);
+});
+
+watch(
+  () => props.selectedDiscountType,
+  (newVal) => {
+    if (newVal !== "Recipe") {
+      prescriptionFile.value = null;
+    }
+    if (newVal !== "Empresa") {
+      selectedCompany.value = null;
+    }
+  }
+);
 
 const clientName = computed(() => {
   return props.cliente
@@ -101,10 +168,15 @@ const breakdownItems = computed(() => {
 
 const formattedTotalQuotation = computed(() => {
   let amountToFormat = props.totalOrderAmount;
+
   if (props.selectedDisplayCurrency === "COP") {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
   }
-  return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
+  return formatCurrency(
+    parseFloat(amountToFormat.toFixed(2)),
+    props.selectedDisplayCurrency
+  );
+  // return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
 
 const selectCurrency = (currency) => {
@@ -177,11 +249,15 @@ const getIva = (product, currency) => {
   return Iva;
 };
 
-const handleClickProductItem = (productId, currentQuantity) => {
-  if (currentQuantity > 1) {
-    emit("update-quantity", { productId, quantity: currentQuantity - 1 });
+const handleClickProductItem = (product) => {
+  if (product.selectedQuantity > 1) {
+    emit("update-quantity", {
+      productId: product.product_id,
+      quantity: product.selectedQuantity - 1,
+      orderDetailId: product.order_detail_id,
+    });
   } else {
-    emit("remove-item", productId);
+    emit("remove-item", product.product_id);
   }
 };
 
@@ -264,6 +340,64 @@ watch(
   },
   { deep: true }
 );
+
+// Watcher para detectar si el cliente tiene empresa y autoseleccionar
+watch(
+  () => props.cliente,
+  (newCliente, oldCliente) => {
+    // Prevent reset if it's the same client (e.g. during reload/currency change)
+    if (newCliente?.id === oldCliente?.id) {
+      return;
+    }
+
+    if (
+      newCliente &&
+      newCliente.company_id !== null &&
+      newCliente.company_id !== undefined
+    ) {
+      emit("update:selectedDiscountType", "Empresa");
+      selectedCompany.value = newCliente.company_id;
+    } else {
+      selectedCompany.value = null;
+    }
+  },
+  { immediate: true }
+);
+
+const formattedDiscounts = computed(() => {
+  const currency = props.selectedDisplayCurrency;
+  return {
+    company: formatCurrency(props.companyDiscountTotal || 0, currency),
+    doctor: formatCurrency(props.doctorDiscountTotal || 0, currency),
+    recipe: formatCurrency(props.recipeDiscountTotal || 0, currency),
+  };
+});
+
+const activeDiscountDisplay = computed(() => {
+  const type = props.selectedDiscountType;
+  const config = {
+    Empresa: {
+      label: "Descuento Empresa",
+      amount: props.companyDiscountTotal,
+      formatted: formattedDiscounts.value.company,
+    },
+    Medico: {
+      label: "Descuento Médico",
+      amount: props.doctorDiscountTotal,
+      formatted: formattedDiscounts.value.doctor,
+    },
+    Recipe: {
+      label: "Descuento Recipe",
+      amount: props.recipeDiscountTotal,
+      formatted: formattedDiscounts.value.recipe,
+    },
+  };
+  const current = config[type];
+  if (current && current.amount > 0) {
+    return current;
+  }
+  return null;
+});
 </script>
 
 <template>
@@ -273,34 +407,99 @@ watch(
         {{ clientName }} {{ Identidad }}
       </VCardTitle>
       <template #append>
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn
-              type="button"
-              color="primary"
-              variant="tonal"
-              density="default"
-              size="small"
-              class="ms-2"
-              v-bind="menuProps"
-            >
-              <span>{{ props.selectedDisplayCurrency }}</span>
-              <template #append>
-                <VIcon icon="tabler-chevron-down" size="16" />
-              </template>
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="currencyOption in availableCurrency"
-              :key="currencyOption"
-              :value="currencyOption"
-              @click="selectCurrency(currencyOption)"
-            >
-              <VListItemTitle>{{ currencyOption }}</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
+        <div class="d-flex align-center">
+          <VSelect
+            :model-value="props.selectedDiscountType"
+            :items="discountOptions"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 140px"
+            class="me-2"
+            placeholder="Descuento"
+            clearable
+            @update:model-value="emit('update:selectedDiscountType', $event)"
+          />
+          <VSelect
+            v-if="props.selectedDiscountType === 'Empresa'"
+            v-model="selectedCompany"
+            :items="props.activeCompanyOffers"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Seleccione Empresa"
+            item-title="title"
+            item-value="value"
+            clearable
+          />
+          <VSelect
+            v-if="props.selectedDiscountType === 'Medico'"
+            v-model="selectedDoctor"
+            :items="props.activeDoctorOffers"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Seleccione Médico"
+            item-title="title"
+            item-value="value"
+            clearable
+          />
+          <VFileInput
+            v-if="props.selectedDiscountType === 'Recipe'"
+            v-model="prescriptionFile"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="width: 250px"
+            class="me-2"
+            placeholder="Subir Recipe"
+            accept="image/*"
+            prepend-icon=""
+            append-inner-icon="tabler-upload"
+            clearable
+          />
+          <span
+            v-if="
+              props.selectedDiscountType === 'Recipe' &&
+              props.prescriptionDiscountPercentage > 0
+            "
+            class="text-body-2 text-success font-weight-bold"
+            style="white-space: nowrap"
+          >
+            {{ props.prescriptionDiscountPercentage }}% Descuento
+          </span>
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                type="button"
+                variant="tonal"
+                density="default"
+                size="small"
+                class="ms-2"
+                v-bind="menuProps"
+              >
+                <span>{{ props.selectedDisplayCurrency }}</span>
+                <template #append>
+                  <VIcon icon="tabler-chevron-down" size="16" />
+                </template>
+              </VBtn>
+            </template>
+            <VList>
+              <VListItem
+                v-for="currencyOption in availableCurrency"
+                :key="currencyOption"
+                :value="currencyOption"
+                @click="selectCurrency(currencyOption)"
+              >
+                <VListItemTitle>{{ currencyOption }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+        </div>
       </template>
     </VCardItem>
 
@@ -371,6 +570,26 @@ watch(
               <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis">
                   {{ product.title }}
+                  <VIcon
+                    v-if="product.pack_id"
+                    icon="tabler-lock"
+                    size="x-small"
+                    color="warning"
+                    class="ms-1"
+                    title="Pack Item (Cantidad Fija)"
+                  />
+                  <VChip
+                    v-if="
+                      product.discount_type === 'expiration' &&
+                      product.discount_percentage > 0
+                    "
+                    color="error"
+                    size="x-small"
+                    class="ms-1"
+                    label
+                  >
+                    Expira (-{{ product.discount_percentage }}%)
+                  </VChip>
                 </span>
                 <span class="text-sm text-disabled">
                   {{ product.active_ingredient }}
@@ -384,12 +603,8 @@ watch(
                   icon
                   size="x-small"
                   variant="text"
-                  @click="
-                    handleClickProductItem(
-                      product.product_id,
-                      product.selectedQuantity
-                    )
-                  "
+                  @click="handleClickProductItem(product)"
+                  :disabled="!!product.pack_id"
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -401,6 +616,14 @@ watch(
                   hide-details
                   class="mx-1"
                   style="width: 50px; text-align: center"
+                  :disabled="!!product.pack_id"
+                  @change="
+                    $emit('update-quantity', {
+                      productId: product.product_id,
+                      quantity: product.selectedQuantity,
+                      orderDetailId: product.order_detail_id,
+                    })
+                  "
                 />
                 <VBtn
                   icon
@@ -410,10 +633,12 @@ watch(
                     $emit('update-quantity', {
                       productId: product.product_id,
                       quantity: product.selectedQuantity + 1,
+                      orderDetailId: product.order_detail_id,
                     })
                   "
                   :disabled="
-                    product.selectedQuantity >= product.availableQuantity
+                    product.selectedQuantity >= product.availableQuantity ||
+                    !!product.pack_id
                   "
                 >
                   <VIcon icon="tabler-plus" />
@@ -480,6 +705,37 @@ watch(
     </VCardText>
     <VDivider class="mt-auto" />
 
+    <div v-if="activeDiscountDisplay">
+      <VCardText class="py-2 bg-grey-lighten-4">
+        <VTable density="compact" lines="none">
+          <tbody>
+            <tr>
+              <td>
+                <div class="d-flex flex-column">
+                  <span
+                    class="text-subtitle-1 me-2 text-error font-weight-medium"
+                  >
+                    {{ activeDiscountDisplay.label }}:
+                  </span>
+                </div>
+              </td>
+              <td><div class="d-flex align-center"></div></td>
+              <td class="text-right"></td>
+              <td class="text-right"></td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span class="text-body-1 font-weight-bold text-error">
+                    - {{ activeDiscountDisplay.formatted }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
+      </VCardText>
+      <VDivider class="mt-auto" />
+    </div>
+
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
       <div class="d-flex flex-wrap gap-4 flex-grow-1">
         <VBtn
@@ -519,7 +775,7 @@ watch(
       </div>
       <div class="d-flex align-center">
         <h4 class="text-h4 me-2">Monto Total</h4>
-        <span class="text-h4 text-success">{{ formattedTotalQuotation }}</span>
+        <span class="text-h4 text-success"> {{ formattedTotalQuotation }}</span>
       </div>
     </VCardActions>
   </VCard>

@@ -13,7 +13,6 @@ export default [
         title: 'Empleados',
         to: 'rrhh-employees',
         action: 'manage',
-        subject: 'admin',
       },
       {
         title: 'Prestaciones Sociales',
@@ -39,13 +38,17 @@ export default [
             to: 'productivity-laboratory',
           },
           {
-         title: 'Productos Empleados',
-          to: 'productivity-product',
+            title: 'Productos Empleados',
+            to: 'productivity-product',
           },
           {
-          title: 'Tareas Empleados',
+            title: 'Tareas Empleados',
             to: 'productivity-employee-task',
-        },
+          },
+          {
+        title: 'Empleado del Mes',
+        to: 'productivity-employee-month',
+      },
         ],
       }
     ],

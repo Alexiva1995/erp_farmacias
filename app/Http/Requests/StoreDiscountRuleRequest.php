@@ -23,9 +23,9 @@ class StoreDiscountRuleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'scale_type' => 'required|in:units,amount',
+            'rules.*.scale_type.id' => 'required|in:units,amount',
             'rules' => 'required|array',
-            'rules.*.supplier_laboratory_id' => 'required|exists:supplier_laboratories,id',
+            'rules.*.laboratory.id' => 'required|exists:laboratories,id',
             'rules.*.min' => 'required|numeric',
             'rules.*.max' => 'required|numeric',
             'rules.*.discount_percentage' => 'required|numeric|min:0|max:100',
@@ -40,12 +40,12 @@ class StoreDiscountRuleRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'scale_type.required' => 'El tipo de escala es obligatorio.',
-            'scale_type.in' => 'El tipo de escala debe ser "Unidad" o "Monto".',
+            'rules.*.scale_type.id.required' => 'El tipo de escala es obligatorio.',
+            'rules.*.scale_type.id.in' => 'El tipo de escala debe ser "Unidad" o "Monto".',
             'rules.required' => 'Las reglas son obligatorias.',
             'rules.array' => 'Las reglas deben ser un arreglo.',
-            'rules.*.supplier_laboratory_id.required' => 'El ID del laboratorio proveedor es obligatorio.',
-            'rules.*.supplier_laboratory_id.exists' => 'El laboratorio proveedor seleccionado no existe.',
+            'rules.*.laboratory.id.required' => 'El ID del laboratorio es obligatorio.',
+            'rules.*.laboratory.id.exists' => 'El laboratorio seleccionado no existe.',
             'rules.*.min.required' => 'El valor mínimo es obligatorio.',
             'rules.*.min.numeric' => 'El valor mínimo debe ser un número.',
             'rules.*.max.required' => 'El valor máximo es obligatorio.',

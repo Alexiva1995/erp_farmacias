@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ExchangeRate;
 use App\Models\ReturnEntry;
 use Illuminate\Http\Request;
 use App\Services\Returns\ReturnsActionService;
@@ -48,11 +49,41 @@ class ReturnsController extends Controller
                 return response()->json(['data' => $items, 'total' => $items->count()]);
             }
 
-            $paginatedResult = $ordersQuery->paginate($perPage);
+            // Get exchange rates with proper case handling
+            $exchangeRate = ExchangeRate::pluck('rate', 'currency_code')
+                ->mapWithKeys(function ($rate, $currency) {
+                    return [strtoupper($currency) => $rate];
+                });
+
+            $paginator = $ordersQuery->paginate($perPage);
+
+            // Transform orders while preserving all original fields
+            $mappedItems = $paginator->getCollection()->map(function ($order) use ($exchangeRate) {
+                // Convert to array to preserve all fields including 'id'
+                $orderArray = $order->toArray();
+
+                $currency = strtoupper($order->currency);
+                $rate = $exchangeRate->get($currency, 1.0); // Default to 1.0 if not found
+
+                // Process each detail
+                $orderArray['details'] = collect($orderArray['details'])->map(function ($detail) use ($rate, $currency) {
+                    // Handle price conversion safely
+                    $price = isset($detail['price']) ? (float) $detail['price'] : 0.0;
+
+                    $detail['seller_price'] = $price * $rate;
+                    $detail['seller_currency'] = $currency;
+
+                    return $detail;
+                })->all();
+
+                return $orderArray;
+            });
+
+            $paginator->setCollection($mappedItems);
 
             return response()->json([
-                'data' => $paginatedResult->items(),
-                'total' => $paginatedResult->total()
+                'data' => $paginator->getCollection()->all(),
+                'total' => $paginator->total()
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 404);

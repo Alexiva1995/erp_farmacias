@@ -1,257 +1,126 @@
 <script setup>
-import { computed, defineEmits } from "vue";
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { defineEmits, defineProps } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
     type: Boolean,
     required: true,
   },
-  packData: {
+  pack: {
     type: Object,
-    default: () => ({}),
+    default: null,
   },
 });
 
 const emit = defineEmits(["update:isDialogVisible"]);
 
-const dialogVisible = computed({
-  get: () => props.isDialogVisible,
-  set: (val) => emit("update:isDialogVisible", val),
-});
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(amount || 0);
-};
-
-const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('es-ES');
-};
-
-const calculateProductSubtotal = (productConfig) => {
-  const unitPrice = productConfig.sale_price;
-  const quantity = productConfig.quantity;
-  return unitPrice * quantity;
-};
-
-const closeModal = () => {
-  dialogVisible.value = false;
+const handleClose = () => {
+  emit("update:isDialogVisible", false);
 };
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="900" persistent>
-    <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center p-4 bg-primary">
-        <VIcon color="white" class="me-2">tabler-package</VIcon>
-        <span class="text-h5 font-weight-bold text-white">
-          Detalles del Pack: {{ packData.name }}
-        </span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal" color="white">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+  <VDialog
+    :model-value="props.isDialogVisible"
+    @update:model-value="handleClose"
+    max-width="800px"
+  >
+    <VCard v-if="props.pack">
+      <VCardTitle class="d-flex justify-space-between align-center">
+        <span>Detalles del Pack: {{ props.pack.name }}</span>
+        <IconBtn @click="handleClose">
+          <VIcon icon="tabler-x" />
+        </IconBtn>
       </VCardTitle>
-      
-      <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6">
-        <VRow>
-          <!-- Información General del Pack -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100">
-              <VCardTitle class="text-h6 bg-light-primary">
-                <VIcon color="primary" class="me-2" size="20">tabler-info-circle</VIcon>
-                Información General
-              </VCardTitle>
-              <VCardText>
-                <VList class="py-0">
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Nombre del Pack:</VListItemTitle>
-                    <VListItemSubtitle class="text-body-1">{{ packData.name }}</VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Precio Total:</VListItemTitle>
-                    <VListItemSubtitle class="text-h6 text-success">
-                      {{ formatCurrency(packData.total_price) }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Cantidad de Productos:</VListItemTitle>
-                    <VListItemSubtitle>
-                      <VChip variant="outlined" color="primary" size="small">
-                        {{ Object.keys(packData.pack_config || {}).length }} productos
-                      </VChip>
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Cantidad Máxima de Ventas:</VListItemTitle>
-                    <VListItemSubtitle>
-                      {{ packData.max_quantity || 'Ilimitado' }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Fecha Límite de Venta:</VListItemTitle>
-                    <VListItemSubtitle>
-                      {{ formatDate(packData.max_sale_date) || 'Sin fecha límite' }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                  
-                  <VDivider class="my-2" />
-                  
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold text-primary">Estado:</VListItemTitle>
-                    <VListItemSubtitle>
-                      <VChip 
-                        :color="packData.is_active ? 'success' : 'error'" 
-                        variant="flat" 
-                        size="small"
-                      >
-                        {{ packData.is_active ? 'Activo' : 'Inactivo' }}
-                      </VChip>
-                    </VListItemSubtitle>
-                  </VListItem>
-                </VList>
-              </VCardText>
-            </VCard>
-          </VCol>
-
-          <!-- Productos Incluidos -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100">
-              <VCardTitle class="text-h6 bg-light-info">
-                <VIcon color="info" class="me-2" size="20">tabler-shopping-cart</VIcon>
-                Productos Incluidos
-              </VCardTitle>
-              <VCardText>
-                <VList class="py-0">
-                  <template v-if="packData.pack_config && Object.keys(packData.pack_config).length > 0">
-                    <VListItem
-                      v-for="(productConfig, productId, index) in packData.pack_config"
-                      :key="productId"
-                      class="px-0 mb-3"
-                    >
-                      <VCard variant="tonal" class="w-100">
-                        <VCardText>
-                          <!-- Encabezado del producto -->
-                          <div class="d-flex justify-space-between align-start mb-2">
-                            <div>
-                              <div class="font-weight-bold text-body-1">
-                                Producto {{ index + 1 }}
-                              </div>
-                              <div class="text-caption text-medium-emphasis">
-                                ID: {{ productId }}
-                              </div>
-                            </div>
-                            <VChip variant="outlined" color="primary" size="small">
-                              {{ productConfig.quantity }} und.
-                            </VChip>
-                          </div>
-
-                          <!-- Detalles del producto -->
-                          <VRow class="mt-2">
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Descuento Aplicado:</div>
-                              <div class="text-body-2 text-success">
-                                {{ productConfig.discount_percentage }}%
-                              </div>
-                            </VCol>
-                            <VCol cols="6">
-                              <div class="text-caption font-weight-bold">Precio Unitario:</div>
-                              <div class="text-body-2">
-                                {{ formatCurrency(productConfig.sale_price) }}
-                              </div>
-                            </VCol>
-                          </VRow>
-
-                          <!-- Subtotal -->
-                          <VDivider class="my-2" />
-                          <div class="d-flex justify-space-between align-center">
-                            <span class="font-weight-bold">Subtotal:</span>
-                            <span class="text-h6 text-success">
-                              {{ formatCurrency(calculateProductSubtotal(productConfig)) }}
-                            </span>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VListItem>
-                  </template>
-                  
-                  <VListItem v-else class="px-0">
-                    <VListItemTitle class="text-medium-emphasis text-center">
-                      <VIcon size="48" color="grey" class="mb-2">tabler-package-off</VIcon>
-                      <div>No hay productos en este pack</div>
-                    </VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
-
-        <!-- Resumen Final -->
-        <VRow class="mt-4">
-          <VCol cols="12">
-            <VCard color="primary" variant="flat">
-              <VCardText class="text-center py-4">
-                <div class="d-flex justify-center align-center">
-                  <VIcon color="white" size="32" class="me-3">tabler-cash</VIcon>
-                  <div>
-                    <div class="text-h5 font-weight-bold text-white">
-                      Precio Final del Pack: {{ formatCurrency(packData.total_price) }}
-                    </div>
-                    <div class="text-caption text-white">
-                      Incluye todos los descuentos aplicados
-                    </div>
+      <VCardText>
+        <VTable hover class="text-no-wrap mb-4">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 80px">Cant.</th>
+              <th scope="col">Producto</th>
+              <th scope="col">ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template
+              v-if="props.pack.products_info && props.pack.products_info.length"
+            >
+              <tr
+                v-for="product in props.pack.products_info"
+                :key="product.product_id"
+              >
+                <td class="font-weight-bold text-center">
+                  {{ product.quantity }}
+                </td>
+                <td>
+                  <div class="d-flex flex-column">
+                    <span class="font-weight-medium">{{
+                      product.product_name
+                    }}</span>
+                    <span class="text-xs text-disabled">{{
+                      product.product_info?.active_ingredient
+                    }}</span>
                   </div>
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
+                </td>
+                <td class="text-disabled text-caption">
+                  {{ product.product_id }}
+                </td>
+              </tr>
+            </template>
+            <template
+              v-else-if="props.pack.products && props.pack.products.length"
+            >
+              <tr v-for="product in props.pack.products" :key="product.id">
+                <td class="font-weight-bold text-center">
+                  {{ product.pivot?.quantity || 1 }}
+                </td>
+                <td>
+                  <div class="d-flex flex-column">
+                    <span class="font-weight-medium">{{ product.name }}</span>
+                    <span class="text-xs text-disabled">{{
+                      product.active_ingredient
+                    }}</span>
+                  </div>
+                </td>
+                <td class="text-disabled text-caption">{{ product.id }}</td>
+              </tr>
+            </template>
+            <template v-else-if="props.pack.pack_config">
+              <tr
+                v-for="(quantity, productId) in props.pack.pack_config"
+                :key="productId"
+              >
+                <td class="font-weight-bold text-center">{{ quantity }}</td>
+                <td>Producto ID: {{ productId }}</td>
+                <td class="text-disabled text-caption">{{ productId }}</td>
+              </tr>
+            </template>
+            <tr v-else>
+              <td colspan="3" class="text-center text-disabled">
+                No hay información de productos disponible.
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
+
+        <div
+          class="d-flex justify-space-between align-center bg-var-theme-background surface-variant rounded pa-4"
+        >
+          <span class="text-h6">Precio Total del Pack:</span>
+          <span class="text-h6 text-success font-weight-bold">{{
+            formatCurrency(parseFloat(props.pack.total_price))
+          }}</span>
+        </div>
       </VCardText>
 
-      <!-- Botón de Cerrar -->
-      <VCardActions class="pa-4">
+      <VCardActions>
         <VSpacer />
-        <VBtn
-          color="primary"
-          variant="flat"
-          prepend-icon="tabler-x"
-          @click="closeModal"
-        >
+        <VBtn color="secondary" variant="tonal" @click="handleClose">
           Cerrar
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
-
-<style scoped>
-.bg-light-primary {
-  background-color: rgba(var(--v-theme-primary), 0.08);
-}
-
-.bg-light-info {
-  background-color: rgba(var(--v-theme-info), 0.08);
-}
-
-.v-list-item {
-  min-height: 48px;
-}
-</style>

@@ -18,10 +18,10 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros de Facturas" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por N° Factura, Control..."
@@ -29,7 +29,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="3">
           <VAutocomplete
             :model-value="props.selectedSupplier"
             :items="props.suppliers"
@@ -41,7 +41,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:selectedSupplier', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Fecha de Recibo Desde"
@@ -49,7 +49,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Fecha de Recibo Hasta"

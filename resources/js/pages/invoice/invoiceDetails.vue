@@ -174,8 +174,8 @@ const processedInvoiceDetails = computed(() => {
     return {
       ...detail,
       product_name_with_tax: detail.tax_enabled
-        ? `${detail.product.name} (G)`
-        : detail.product.name,
+        ? `${detail.product?.name || "Sin nombre"} (G)`
+        : detail.product?.name || "Sin nombre",
       tax_amount: taxAmount,
       total_cost: finalTotal,
       unit_cost_usd: unitCostUsd,
@@ -407,16 +407,18 @@ const handleSaveProgress = async () => {
       ...formData.value,
       supplier_discount_id: selectedSupplierDiscountId.value,
     },
-    details: invoiceDetails.value.map((d) => ({
-      product: { id: d.product.id },
-      quantity: d.quantity,
-      unit_cost: d.unit_cost,
-      lot_number: d.lot_number,
-      expiration_date: d.expiration_date,
-      location: d.location,
-      tax_enabled: d.tax_enabled,
-      is_return: !!d.is_return,
-    })),
+    details: invoiceDetails.value
+      .filter((d) => d.product && d.product.id)
+      .map((d) => ({
+        product: { id: d.product.id },
+        quantity: d.quantity,
+        unit_cost: d.unit_cost,
+        lot_number: d.lot_number,
+        expiration_date: d.expiration_date,
+        location: d.location,
+        tax_enabled: d.tax_enabled,
+        is_return: !!d.is_return,
+      })),
   };
   try {
     const response = await axios.put(
@@ -728,6 +730,13 @@ const cancelEditingDetail = () => {
   editedDetailData.value = {};
 };
 
+const updateLocation = (id, newLocation) => {
+  const index = invoiceDetails.value.findIndex((d) => d.id === id);
+  if (index !== -1) {
+    invoiceDetails.value[index].location = newLocation;
+  }
+};
+
 const handleSaveLocations = async () => {
   const hasEmptyLocation = invoiceDetails.value.some(
     (d) =>
@@ -828,7 +837,11 @@ const checkAndMarkAsReturn = (item, forceCheck = false) => {
     item.location = "N/A";
 
     toast.info(
-      `Producto "${item.product.name}" marcado automáticamente como devolución por proximidad a vencimiento (${item.expiration_date})`
+      `Producto "${
+        item.product?.name || "Desconocido"
+      }" marcado automáticamente como devolución por proximidad a vencimiento (${
+        item.expiration_date
+      })`
     );
 
     return true;
@@ -897,70 +910,81 @@ const formattedSupplierDiscounts = computed(() => {
   }));
 });
 
-const detailsHeaders = [
-  {
-    title: "Descripción",
-    key: "product_name_with_tax",
-    sortable: false,
-    width: "25%",
-  },
-  {
-    title: "N° Lote",
-    key: "lot_number",
-    align: "center",
-    sortable: false,
-    width: "10%",
-  },
-  {
-    title: "F. Vencimiento",
-    key: "expiration_date",
-    align: "center",
-    sortable: false,
-    width: "10%",
-  },
-  {
-    title: "Localización",
-    key: "location",
-    align: "center",
-    sortable: false,
-    width: "10%",
-  },
-  {
-    title: "Unidades",
-    key: "quantity",
-    align: "end",
-    sortable: false,
-    width: "8%",
-  },
-  {
-    title: "Costo Unitario",
-    key: "unit_cost",
-    align: "end",
-    sortable: false,
-    width: "10%",
-  },
-  {
-    title: "IVA (16%)",
-    key: "tax_amount",
-    align: "end",
-    sortable: false,
-    width: "10%",
-  },
-  {
-    title: "Costo Total",
-    key: "total_cost",
-    align: "end",
-    sortable: false,
-    width: "12%",
-  },
-  {
-    title: "Acciones",
-    key: "actions",
-    sortable: false,
-    align: "center",
-    width: "5%",
-  },
-];
+const detailsHeaders = computed(() => {
+  const headers = [
+    {
+      title: "Descripción",
+      key: "product_name_with_tax",
+      sortable: false,
+      width: "25%",
+    },
+    {
+      title: "N° Lote",
+      key: "lot_number",
+      align: "center",
+      sortable: false,
+      width: "10%",
+    },
+    {
+      title: "F. Vencimiento",
+      key: "expiration_date",
+      align: "center",
+      sortable: false,
+      width: "10%",
+    },
+    {
+      title: "Localización",
+      key: "location",
+      align: "center",
+      sortable: false,
+      width: "10%",
+    },
+    {
+      title: "Unidades",
+      key: "quantity",
+      align: "end",
+      sortable: false,
+      width: "8%",
+    },
+    {
+      title: "Costo Unitario",
+      key: "unit_cost",
+      align: "end",
+      sortable: false,
+      width: "10%",
+    },
+    {
+      title: "IVA (16%)",
+      key: "tax_amount",
+      align: "end",
+      sortable: false,
+      width: "10%",
+    },
+    {
+      title: "Costo Total",
+      key: "total_cost",
+      align: "end",
+      sortable: false,
+      width: "12%",
+    },
+    {
+      title: "Acciones",
+      key: "actions",
+      sortable: false,
+      align: "center",
+      width: "5%",
+    },
+  ];
+
+  if (isLocationMode.value) {
+    return headers.filter(
+      (h) =>
+        !["tax_amount", "total_cost", "actions", "unit_cost"].includes(h.key)
+    );
+  }
+
+  return headers;
+});
 </script>
 <template>
   <div>
@@ -1148,6 +1172,7 @@ const detailsHeaders = [
               :items="processedInvoiceDetails"
               :loading="loadingDetails"
               :hide-default-footer="true"
+              :items-per-page="-1"
               class="invoice-products-table"
             >
               <template #item.product_name_with_tax="{ item }">
@@ -1155,7 +1180,7 @@ const detailsHeaders = [
                   <span :class="{ 'returned-item': isItemReturned(item) }">
                     {{ item.product_name_with_tax }}
                     <span class="text-sm text-disabled">{{
-                      item.product.laboratory.name
+                      item.product?.laboratory?.name
                     }}</span>
                   </span>
                   <span class="text-sm text-disabled"></span>
@@ -1225,9 +1250,11 @@ const detailsHeaders = [
                 </div>
               </template>
               <template #item.location="{ item, index }">
-                <VSelect
+                <VAutocomplete
                   v-if="isLocationMode && !isItemReturned(item)"
-                  v-model="invoiceDetails[index].location"
+                  :model-value="item.location"
+                  @update:model-value="updateLocation(item.id, $event)"
+                  @focus="updateLocation(item.id, null)"
                   :items="locations"
                   density="compact"
                   hide-details
@@ -1235,6 +1262,7 @@ const detailsHeaders = [
                   class="editable-cell"
                   placeholder="Ej: A-01-B"
                   :return-object="false"
+                  auto-select-first
                 />
                 <span
                   v-else

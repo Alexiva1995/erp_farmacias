@@ -73,7 +73,7 @@ const validateRule = (rule, index) => {
   }
   let isValid = true;
 
-  if (isNaN(rule.days) || rule.days <= 0) {
+  if (isNaN(rule.days) || rule.days < 0) {
     internalErrors.value[`days_${index}`] = "El día es requerido";
     isValid = false;
   } else {
@@ -89,7 +89,7 @@ const validateRule = (rule, index) => {
 const addNewRuleRow = () => {
   editableRules.value.push({
     id: tempIdCounter.value,
-    days: 1,
+    days: 0,
     discount_percentage:1,
     _markedForEdit: true,
     _markedForDeletion: false,
@@ -162,13 +162,19 @@ const onSave = () => {
   });
 
   if (allFormFieldsValid) {
-    const rulesToSave = editableRules.value.map((rule) => ({
-      id: rule.id && rule.id > 0 ? rule.id : undefined,
-      days: parseFloat(rule.days),
-      discount_percentage: parseFloat(rule.discount_percentage),
-    }));
+    const rulesToSave = editableRules.value.map((rule) => {
+      const data = {
+        days: parseFloat(rule.days),
+        discount_percentage: parseFloat(rule.discount_percentage),
+      };
+      if (rule.id && rule.id > 0) {
+        data.id = rule.id;
+      }
+      return data;
+    });
     emit("save", rulesToSave);
   }
+
 };
 
 const sortedRules = computed(() => {
@@ -288,7 +294,7 @@ const sortedRules = computed(() => {
           :disabled="!canSave"
           class="flex-grow-1 w-0"
         >
-          Guardar Cambios
+          Guardar
         </VBtn>
       </VCardActions>
     </VCard>

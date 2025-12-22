@@ -102,6 +102,9 @@ class FinancialStatementController extends Controller
 
             // Calcular gastos con conversión a USD
             $expenses = Expense::whereBetween('expense_date', [$startDate, $endDate])
+                ->whereDoesntHave('category', function ($q) {
+                    $q->where('name', 'Pagos de Facturas');
+                })
                 ->get(['amount_usd', 'amount_bs']);
 
             $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
@@ -144,7 +147,6 @@ class FinancialStatementController extends Controller
         try {
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
-
             // Si no se proporcionan fechas, usar desde el principio de los tiempos
             if (!$startDate) {
                 $startDate = '2020-01-01';
@@ -176,6 +178,9 @@ class FinancialStatementController extends Controller
 
             // Calcular gastos con conversión a USD
             $expenses = Expense::whereBetween('expense_date', [$startDate, $endDate])
+                ->whereDoesntHave('category', function ($q) {
+                    $q->where('name', 'Pagos de Facturas');
+                })
                 ->get(['amount_usd', 'amount_bs']);
 
             $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
@@ -266,6 +271,9 @@ class FinancialStatementController extends Controller
             // Obtener gastos
             $expenses = Expense::with(['category'])
                 ->whereBetween('expense_date', [$startDate, $endDate])
+                ->whereDoesntHave('category', function ($q) {
+                    $q->where('name', 'Pagos de Facturas');
+                })
                 ->orderBy('expense_date', 'desc')
                 ->get();
 

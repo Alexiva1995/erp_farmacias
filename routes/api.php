@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeCleaningActivityController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeePerformanceController;
 use App\Http\Controllers\Api\IslrController;
 use App\Http\Controllers\Api\EmployeeLaboratoryController;
 use App\Http\Controllers\Api\EmployeeProductController;
@@ -206,6 +207,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
+        Route::get('/credits/payments', [CreditsController::class, 'payments']);
+        Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
@@ -315,6 +318,7 @@ Route::prefix("crm")->group(function () {
 });
 
 Route::prefix('rrhh')->group(function () {
+    Route::get('/employee-performance', [EmployeePerformanceController::class, 'index']);
     Route::prefix('employees')->group(function () {
         Route::get('/', [EmployeeController::class, 'list']);
         Route::post('/', [EmployeeController::class, 'store']);
@@ -429,7 +433,7 @@ Route::prefix("suppliers/purchase-orders")->group(function () {
 });
 Route::prefix("supplier-laboratories")->group(function () {
     Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
-    Route::post("/{lab}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
+    Route::post("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);
 });
 
 // Asistente IA
@@ -503,6 +507,7 @@ Route::prefix("finances")->group(function () {
 
     Route::prefix('payslips')->group(function () {
         Route::get('', [PayslipController::class, 'index']);
+        Route::post('', [PayslipController::class, 'store']);
         Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
         Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
         Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
@@ -608,6 +613,11 @@ Route::prefix('employee-cleaning-activities')->group(function () {
     Route::patch('/{employee}/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateStatus']);
     Route::get('/stats', [EmployeeCleaningActivityController::class, 'stats']);
 });
+
+Route::prefix('employee-performance')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'index']);
+});
+
 Route::prefix('my-cleaning-activities')->group(function () {
     Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
     Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);

@@ -7,10 +7,10 @@ const emit = defineEmits(["update:search", "clear"]);
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="4">
+        <VCol cols="12" sm="6">
           <AppTextField
             :model-value="props.search"
             placeholder="Buscar por nombre, apellido, cédula o correo"

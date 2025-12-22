@@ -156,11 +156,13 @@ class SupplierController extends Controller
 
         $createdRules = [];
 
+      
         $sentIds = Arr::pluck($validated['rules'], 'id');
+        
         $sentIds = array_filter($sentIds, function($id) {
             return is_numeric($id) && $id > 0;
         });
-
+        
         if (!empty($sentIds)) {
             $supplier->paymentRules()
             ->whereNotIn('id', $sentIds)
@@ -168,7 +170,7 @@ class SupplierController extends Controller
         } else {
             $supplier->paymentRules()->delete();
         }
-
+           
         foreach ($validated['rules'] as $rule) {
             $ruleData = [
                 'days' => $rule['days'],
@@ -290,8 +292,11 @@ class SupplierController extends Controller
                 "name" => $rule["name"],
                 "discount_percentage" => $rule["discount_percentage"],
             ];
+            $isCreated = !isset($rule["id"]);
 
-            $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            if ($isCreated){
+                $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+            }
         }
 
         return response()->json([

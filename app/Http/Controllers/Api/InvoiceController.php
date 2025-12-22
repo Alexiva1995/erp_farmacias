@@ -51,7 +51,7 @@ class InvoiceController extends Controller
             'control_number' => 'required|string|max:50',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
             'exp_date' => 'required|date',
-            'payment_date' => 'nullable|date|after_or_equal:exp_date',
+            'payment_date' => 'nullable|date|after_or_equal:received_date',
             'received_date' => 'required|date',
             'discount_rule_id' => 'nullable|exists:discount_rules,id',
             'exempt_amount' => 'nullable|numeric|min:0',
@@ -167,7 +167,7 @@ class InvoiceController extends Controller
             'invoice_number' => 'required|string|max:50',
             'control_number' => 'required|string|max:50',
             'exp_date' => 'required|date',
-            'payment_date' => 'nullable|date|after_or_equal:exp_date',
+            'payment_date' => 'nullable|date|after_or_equal:received_date',
             'received_date' => 'required|date',
             'discount_rule_id' => 'nullable|exists:discount_rules,id',
             'exempt_amount' => 'nullable|numeric|min:0',
@@ -175,6 +175,7 @@ class InvoiceController extends Controller
             'tax_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|gt:0',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
+            'created_invoice_date' => 'required|date',
         ];
         $currency = $request->input('currency');
 

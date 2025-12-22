@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ProcessSupplierConnectionJob implements ShouldQueue
 {
@@ -24,7 +25,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
      */
     public function __construct(
         public Supplier $supplier,
-        public int $userId,
+        public ?int $userId,
         public ?string $filePath = null,
         public array $columnMap = [],
     ) {
@@ -99,7 +100,17 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
                 Storage::disk('local')->delete($this->filePath);
             } else {
+                Log::info("Starting API connection for supplier: {$this->supplier->name} (ID: {$this->supplier->id})");
                 $results = $connectionService->fetchData($this->supplier->connections->first());
+
+                $invoiceCount = isset($results['invoices']) ? count($results['invoices']) : 0;
+                $productCount = isset($results['products']) ? count($results['products']) : 0;
+
+                Log::info("API result for supplier {$this->supplier->id}: Found {$invoiceCount} invoices and {$productCount} products.");
+
+                if ($invoiceCount === 0) {
+                    Log::warning("API returned 0 invoices for supplier {$this->supplier->id}. Possible issue with API response or no pending invoices.");
+                }
             }
 
             if (isset($results['invoices']) && is_array($results['invoices'])) {
@@ -127,7 +138,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
         } catch (\Throwable $e) {
             // ... (Manejo de errores existente) ...
-            \Log::error('Supplier import failed', [
+            Log::error('Supplier import failed', [
                 'supplier_id' => $this->supplier->id,
                 'file' => $this->filePath ?? 'none',
                 'error' => $e->getMessage(),
@@ -139,7 +150,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 "message" => $e->getMessage(),
             ]);
 
-            throw $e;
+            //throw $e;
         }
     }
 }

@@ -167,7 +167,7 @@ class PendingPaymentsController extends Controller
                     'total_in_supplier_currency' => $totalInSupplierCurrency, // ISSUE #4: Total en moneda del proveedor
                     'supplier_preferred_currency' => $supplierPreferredCurrency, // ISSUE #4: Moneda preferida del proveedor
                     'invoice_count' => $group->count(),
-                    'invoices' => $group->map(function ($invoice) use ($remainingAmountOriginal, $remainingAmountUSD, $totalAmountOriginal, $totalAmountUSD) {
+                    'invoices' => $group->map(function ($invoice) use ($totalInSupplierCurrency, $totalAmountUSD) {
                         // ISSUE #3: Calcular montos indexados si aplica
                         $indexedData = $this->calculateIndexedAmount($invoice);
 
@@ -244,6 +244,8 @@ class PendingPaymentsController extends Controller
                             'indexed_data' => $indexedData, // ISSUE #3: Datos completos de indexación
                             'exchange_rate' => $invoice->exchange_rate,
                             'exp_date' => $invoice->exp_date,
+                            'supplier_total_bs' => $totalInSupplierCurrency,
+                            'supplier_total_usd' => $totalAmountUSD
                         ];
                     })
                 ];
@@ -435,7 +437,7 @@ class PendingPaymentsController extends Controller
             // 2. Normalizar código de moneda y obtener tasa de cambio
             $normalizedCurrency = $this->normalizeCurrencyCode($request->payment_currency);
             $exchangeRate = ExchangeRate::where('currency_code', $normalizedCurrency)->first();
-            if (!$exchangeRate) {
+            if (!$exchangeRate && $normalizedCurrency !== 'USD') {
                 return ApiResponse::error('No se encontró tasa de cambio para la moneda seleccionada', 400);
             }
 
@@ -486,7 +488,7 @@ class PendingPaymentsController extends Controller
                 'payment_method' => $normalizedCurrency, // Usar moneda normalizada
                 'reference' => $reference, // Referencia bancaria/transferencia
                 'status' => 'paid',
-                'payment_by' => 1, // TODO: Obtener ID del usuario autenticado
+                'payment_by' => auth()->id(),
                 'photo_url' => $request->photo_url,
             ]);
 
@@ -524,7 +526,7 @@ class PendingPaymentsController extends Controller
                 'amount_paid' => $request->payment_amount,
                 'currency' => $request->payment_currency,
                 'amount_usd' => $amountUSD,
-                'exchange_rate' => $exchangeRate->rate,
+                'exchange_rate' => $exchangeRate->rate ?? 1,
                 'payment_status' => $paymentStatus,
                 'total_invoice_amount' => $totalInvoiceAmount,
                 'remaining_amount' => $totalInvoiceAmount - $amountUSD // Monto restante
@@ -572,7 +574,8 @@ class PendingPaymentsController extends Controller
                         ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
                             $supplierQuery->where('name', 'like', "%{$search}%");
                         });
-                });
+                })
+                    ->orWhere('reference', 'like', "%{$search}%");
             }
 
             $payments = $query->paginate(15);

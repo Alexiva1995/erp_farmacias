@@ -9,10 +9,11 @@ const props = defineProps({
 
 const headers = [
   { title: "ID", key: "id", sortable: false },
-  { title: "Nombre", key: "name", sortable: false },
   { title: "Fecha", key: "payslip_date", sortable: false },
   { title: "Estado", key: "status", sortable: false },
   { title: "Total", key: "total", sortable: false },
+  { title: "Total Pagado", key: "payed", sortable: false },
+  { title: "Moneda", key: "currency", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -51,6 +52,22 @@ const emit = defineEmits([
           }}
           $</span
         >
+      </template>
+      <template #item.payed="{ item }">
+        <span v-if="item.status === 1" class="text-success font-weight-bold">
+          {{
+            Intl.NumberFormat("es-ES", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(item.payed)
+          }}
+          $</span
+        >
+        <span v-else>-</span>
+      </template>
+      <template #item.currency="{ item }">
+        <span v-if="item.status === 1">{{ item.currency }}</span>
+        <span v-else>-</span>
       </template>
       <template #item.actions="{ item }">
         <VTooltip text="Ver nómina" location="top">

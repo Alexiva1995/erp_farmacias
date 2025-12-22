@@ -39,6 +39,9 @@ class EmployeeRepository
           ->orWhere('users.email', 'like', "%$search%")
           ->orWhere('identification', 'like', "%$search%");
       })
+      ->when(auth()->user()->role_id === 3, function ($query) {
+        $query->where('employees.user_id', auth()->id());
+      })
       ->where('employees.is_active', '=', $active)
       ->paginate($perPage);
   }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Supplier extends Model
 {
@@ -129,7 +130,10 @@ class Supplier extends Model
 
     public function getDebtAttribute(): float
     {
-        return $this->invoices->sum->outstanding_debt;
+        //return $this->invoices->sum->outstanding_debt;
+        return $this->invoices()
+            ->where('status_payment', 0)
+            ->sum(DB::raw('COALESCE(Total_usd, 0)'));
     }
 
     public function discounts()

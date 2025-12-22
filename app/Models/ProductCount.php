@@ -16,6 +16,7 @@ class ProductCount extends Model
         'status',
         'user_id',
         'supervisor_id',
+        'correction_difference', // Nueva columna para correcciones
     ];
 
     protected $casts = [

@@ -185,7 +185,7 @@ class PendingPaymentsController extends Controller
                         if ($invoice->is_indexed && $invoice->currency === 'Bs') {
                             // Para facturas indexadas: USD siempre fijo, Bs se calcula dinámicamente
                             $invoiceRemainingUSD = $invoice->total_usd; // USD fijo
-
+    
                             // Calcular Bs usando la tasa BCV actual
                             $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
                             if ($bcvRate) {

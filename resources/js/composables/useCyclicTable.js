@@ -66,7 +66,8 @@ export function useCyclicTable(endpointPrefix, filters) {
   
   const callProcessApi = async (itemId, payload) => {
     try {
-      const processEndpoint = endpointPrefix.replace('/products', '/count').replace('', '');
+      // Fix: Ensure we target /inventory/count when using /products prefix
+      const processEndpoint = endpointPrefix.replace('/products', '/inventory/count');
       console.log("processEndpoint:", processEndpoint);
       
       const response = await axios.post(`${processEndpoint}/${itemId}/process`, payload);

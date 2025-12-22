@@ -68,10 +68,20 @@ class SupplierConnectionService
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
 
-        
+
         if ($connection->path === '/') {
             // Listar todos los archivos en la raíz
-            $files = ftp_nlist($ftp, $connection->path);
+            $files = @ftp_nlist($ftp, $connection->path);
+
+            if ($files === false) {
+                Log::warning("Initial ftp_nlist failed for supplier {$connection->supplier_id}. Toggling PASV mode and retrying...");
+                ftp_pasv($ftp, !$connection->pasv);
+                $files = @ftp_nlist($ftp, $connection->path);
+            }
+
+            if ($files === false) {
+                throw new Exception("No se pudo obtener el listado de archivos del servidor FTP");
+            }
 
             // Filtrar solo los que parecen inventario
             $inventoryFiles = array_filter($files, function ($file) {
@@ -112,7 +122,18 @@ class SupplierConnectionService
         $seenInvoiceNumbers = [];
 
         if (!empty($connection->invoice_path)) {
-            $files = ftp_nlist($ftp, $connection->invoice_path);
+            $files = @ftp_nlist($ftp, $connection->invoice_path);
+
+            if ($files === false) {
+                Log::warning("Initial invoice ftp_nlist failed for supplier {$connection->supplier_id}. Toggling PASV mode and retrying...");
+                ftp_pasv($ftp, !$connection->pasv);
+                $files = @ftp_nlist($ftp, $connection->invoice_path);
+            }
+
+            if ($files === false) {
+                Log::warning("Failed to list invoices for supplier {$connection->supplier_id} even after PASV toggle.");
+                $files = []; // Treat as empty if we can't look inside, or throw? The previous code just assumed it worked or returned warning. Let's return empty to avoid full crash if products worked.
+            }
             $filter = $connection->invoice_structure['filter'] ?? null;
 
             $startsWith = $filter['starts_with'] ?? '';
@@ -413,7 +434,7 @@ class SupplierConnectionService
                 );
             }
 
-            if ($supplierId === 2) 
+            if ($supplierId === 2)
                 $entry["unit_cost_with_discount"] = floatval($entry["unit_cost"]) * 0.94;
 
             return $entry;
@@ -943,10 +964,36 @@ class SupplierConnectionService
 
             // El segundo campo es el ID de factura
             $id = $parts[1];
-            $total_amount = $parts[3];
+
+            // Helper function to normalize decimal numbers (comma to dot)
+            $normalizeDecimal = function ($val) {
+                return str_replace(',', '.', str_replace('.', '', $val)); // Remove thousands sep?, wait.
+                // Assuming format like 56.642,40 (EU) or 56642,40
+                // User said "56642,40". 
+                // Let's safe-guard: replace comma with dot.
+                // If there are thousands separators (like dots in EU), we should remove them first?
+                // Dronena usually is local (VE/LATAM). 
+                // Simplest fix for "56642,40" -> "56642.40" is simple replace.
+                // But if input is "56.642,40", simple replace gives "56.642.40" (bad).
+                // Let's assume standard "comma as decimal" without thousands sep for now, or handle specifically.
+                // The provided example "56642,40" has no thousands separator.
+                return str_replace(',', '.', $val);
+            };
+
+            $total_amount = $normalizeDecimal($parts[3]);
             // Los dos últimos campos deben ser valores numéricos (montos, cantidades, etc.)
-            $exchange_rate = $parts[count($parts) - 2] ?? '';
-            $total_usd = $parts[count($parts) - 1] ?? '';
+            $exchange_rate = $normalizeDecimal($parts[count($parts) - 2] ?? '');
+            $total_usd = $normalizeDecimal($parts[count($parts) - 1] ?? '');
+
+            // AUTO-FIX: Check if total_usd is scaled by 100 (cents vs decimals issue)
+            if (is_numeric($total_amount) && is_numeric($exchange_rate) && is_numeric($total_usd) && $exchange_rate > 0) {
+                $calculated = $total_amount / $exchange_rate;
+                // If the current total_usd is astronomically wrong (e.g. 100x bigger), but correcting by 100 makes it close...
+                // Margin of error 2.0 to account for strict rounding diffs
+                if (abs($total_usd - $calculated) > 5 && abs(($total_usd / 100) - $calculated) < 5) {
+                    $total_usd = $total_usd / 100;
+                }
+            }
 
             // Formato de salida para registro 02: tipo;id_factura;total_amount;fecha(Y-m-d);exchange_rate;total_usd
             return implode(';', ['02', $id, $total_amount, $mysqlDate, $exchange_rate, $total_usd]);

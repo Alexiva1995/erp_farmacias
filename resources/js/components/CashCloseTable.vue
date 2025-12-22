@@ -1,4 +1,6 @@
 <script setup>
+import { formatCurrency } from "@/utils/currencyFormatter";
+
 defineProps({
   items: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -11,13 +13,13 @@ const headers = [
   { title: "Monto", key: "amount", align: "end", sortable: true },
 ];
 
-const formatCurrency = (value) => {
+/*const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
     minimumFractionDigits: 0,
   }).format(value);
-};
+};*/
 </script>
 
 <template>
@@ -58,7 +60,7 @@ const formatCurrency = (value) => {
           <span class="font-weight-medium">{{ item.product.name }}</span>
           <span class="text-caption text-disabled"
             >Precio unitario:
-            {{ formatCurrency(item.product.sale_price) }}</span
+            {{ formatCurrency(parseFloat(item.product.sale_price)) }}</span
           >
         </div>
       </template>
