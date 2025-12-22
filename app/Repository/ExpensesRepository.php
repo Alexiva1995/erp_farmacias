@@ -20,12 +20,17 @@ class ExpensesRepository
     public function createGasto(CreateExpenseData $data): Expense
     {
         $expenseData = $data->toArray();
-        
+
         // Asegurar que expense_date sea solo la fecha sin hora
         if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
             $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
         }
-        
+
+        if (isset($expenseData['account'])) {
+            $expenseData['count'] = $expenseData['account'];
+            unset($expenseData['account']);
+        }
+
         return Expense::create($expenseData);
     }
 

@@ -24,7 +24,8 @@ class ExpensesController extends Controller
     public function __construct(
         protected Expenses $expenses,
         protected Transaction $transaction
-    ) {}
+    ) {
+    }
 
 
     public function createExpense(CreateExpenseRequest $request): JsonResponse
@@ -86,7 +87,7 @@ class ExpensesController extends Controller
 
         $filtros = [
             "itemsPerPage" => $request->itemsPerPage,
-            "page"         => $request->page,
+            "page" => $request->page,
         ];
 
         if ($request->filled("buscardor_filtro")) {

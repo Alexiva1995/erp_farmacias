@@ -84,6 +84,7 @@ watch(
     if (newValue !== undefined && newValue !== null) {
       const base = Number(newValue) || 0;
       props.formData.tax_amount = parseFloat((base * 0.16).toFixed(2));
+      props.formData.iva = base > 0;
     }
   }
 );
@@ -122,7 +123,7 @@ watch(
     } else if (exchangeRate > 0) {
       totalUsd = totalAmount / exchangeRate;
     }
-    
+
     props.formData.total_usd = parseFloat(totalUsd.toFixed(2));
   },
   { deep: true }
@@ -285,20 +286,21 @@ function submitForm(){
               label="Es Deducible"
               :items="[
                 { title: 'No', value: false },
-                { title: 'Sí', value: true }
+                { title: 'Sí', value: true },
               ]"
               :error-messages="props.formError.is_deductible"
               variant="outlined"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VCheckbox v-model="props.formData.iva" class="mt-0 pt-0">
-              <template v-slot:label>IVA</template>
-            </VCheckbox>
-          </VCol>
+
           <VCol
-            cols="12" sm="6" md="6"
-            v-if="props.formData.is_deductible === true && props.formData.currency !== 'BS'"
+            cols="12"
+            sm="6"
+            md="6"
+            v-if="
+              props.formData.is_deductible === true &&
+              props.formData.currency !== 'BS'
+            "
           >
             <VTextField
               v-model.number="props.formData.conversion_rate_to_bs"
@@ -311,8 +313,13 @@ function submitForm(){
             />
           </VCol>
           <VCol
-            cols="12" sm="6" md="6"
-            v-if="props.formData.iva == true || props.formData.is_deductible === true"
+            cols="12"
+            sm="6"
+            md="6"
+            v-if="
+              props.formData.iva == true ||
+              props.formData.is_deductible === true
+            "
           >
             <VTextField
               v-model.number="props.formData.amount_bs"
@@ -320,10 +327,13 @@ function submitForm(){
               label="Monto Bs"
               type="number"
               variant="outlined"
-              :readonly="props.formData.is_deductible === true && props.formData.currency !== 'BS' && props.formData.conversion_rate_to_bs > 0"
+              :readonly="
+                props.formData.is_deductible === true &&
+                props.formData.currency !== 'BS' &&
+                props.formData.conversion_rate_to_bs > 0
+              "
             />
           </VCol>
-
         </VRow>
         <VRow>
           <VCol cols="12" md="4">

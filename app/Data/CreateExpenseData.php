@@ -15,13 +15,13 @@ class CreateExpenseData extends Data
         public float $amount,
         public float $amount_usd,
         public string $currency,
-        public bool | null $has_invoice,
-        public bool | null $is_deductible,
+        public bool|null $has_invoice,
+        public bool|null $is_deductible,
         public bool $iva = false,
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d')]
         public DateTime $expense_date,
         public int $user_id,
-        public string $count,
+        public string $account,
         public ?string $status,
         public string $type_of_expense,
         public ?float $amount_bs = null,
@@ -32,5 +32,6 @@ class CreateExpenseData extends Data
         public ?float $exchange_rate = null,
         public ?float $total_usd = null,
 
-    ) {}
+    ) {
+    }
 }
