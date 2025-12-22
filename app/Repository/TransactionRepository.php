@@ -20,7 +20,7 @@ class TransactionRepository
 
     $baseQuery = Transaction::query()
       ->leftJoin('users', 'users.id', '=', 'transactions.user_id')
-      ->leftJoin('categories', 'categories.id', '=', 'transactions.category_id')
+      ->leftJoin('expense_categories', 'expense_categories.id', '=', 'transactions.category_id')
       ->leftJoin('exchange_rates as r', 'r.id', '=', 'transactions.exchange_rate_id')
       ->when(
         $currency,
@@ -57,7 +57,7 @@ class TransactionRepository
       ->select([
         'transactions.*',
         'users.username as user_name',
-        'categories.name as category_name',
+        'expense_categories.name as category_name',
       ])
       ->orderByDesc('transactions.transaction_date')
       ->orderByDesc('transactions.id')

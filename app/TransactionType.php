@@ -4,6 +4,13 @@ namespace App;
 
 enum TransactionType: string
 {
+    /**
+     * Tipos
+     * 
+     * BS (Efectivo, Tarjeta, Pago movil, Transferencia)
+     * COP (Efectivo, Transferencia)
+     * USD (Efectivo, binance, paypal, credito)
+     */
     case CASH = 'CASH';
     case CARD = 'CARD';
     case TRANSFER = 'TRANSFER';

@@ -1,5 +1,6 @@
 <script setup>
 import CashoutFilters from "@/components/CashoutFilters.vue";
+import TransactionsTable from "@/components/TransactionsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";

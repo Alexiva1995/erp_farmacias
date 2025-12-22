@@ -1,4 +1,6 @@
 <script setup>
+import { formatCurrency } from "@/utils/currencyFormatter";
+
 const props = defineProps({
   transactions: { type: [Array, Object], default: () => [] },
   loading: { type: Boolean, default: false },
@@ -46,14 +48,7 @@ const headers = [
           <td colspan="2"></td>
           <td>
             <span class="text-success text-h6 pr-4">
-              {{
-                Intl.NumberFormat("es", {
-                  style: "currency",
-                  currency: "USD",
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(props.previousTotalUsd)
-              }}
+              {{ formatCurrency(parseFloat(props.previousTotalUsd), "USD") }}
             </span>
           </td>
         </tr>
@@ -63,25 +58,13 @@ const headers = [
         <span
           class="font-weight-medium"
           :class="item.movement_type === 'IN' ? 'text-success' : 'text-error'"
-          >{{
-            Intl.NumberFormat("es", {
-              style: "currency",
-              currency: item.currency === "BS" ? "VES" : item.currency,
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(item.amount)
-          }}</span
+          >{{ formatCurrency(parseFloat(item.amount), item.currency) }}</span
         >
       </template>
 
       <template #item.balance="{ item }">
         <span class="font-weight-medium">{{
-          Intl.NumberFormat("es", {
-            style: "currency",
-            currency: item.currency === "BS" ? "VES" : item.currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(item.balance)
+          formatCurrency(parseFloat(item.balance), item.currency)
         }}</span>
       </template>
     </VDataTableServer>

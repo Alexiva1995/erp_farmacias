@@ -10,12 +10,15 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Supplier;
 use App\Helpers\ApiResponse;
+use App\Models\Transaction;
+use App\TransactionType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class PendingPaymentsController extends Controller
 {
@@ -336,6 +339,13 @@ class PendingPaymentsController extends Controller
     public function processPayment(Request $request): JsonResponse
     {
         try {
+            $allowedMethods = match ($request->payment_currency) {
+                'USD' => ['CASH', 'BINANCE', 'PAYPAL', 'CREDIT'],
+                'VES', 'BS' => ['CASH', 'CARD', 'MOBILE', 'TRANSFER'],
+                'COP' => ['CASH', 'TRANSFER'],
+                default => [],
+            };
+
             $request->validate([
                 'invoice_ids' => 'required|array',
                 'invoice_ids.*' => 'exists:invoices,id',
@@ -343,10 +353,14 @@ class PendingPaymentsController extends Controller
                 'payment_currency' => 'required|in:VES,USD,COP',
                 'payment_amount' => 'required|numeric|min:0.01',
                 'payment_date' => 'required|date',
+                'payment_method' => ['required', Rule::in($allowedMethods)],
                 'reference' => 'nullable|string|max:100',
                 'photo_url' => 'nullable|string',
                 'notes' => 'nullable|string|max:500',
                 'has_iva' => 'nullable|boolean',
+            ], [
+                'payment_method.required' => 'El método de pago es necesario',
+                'payment_method.in' => 'El método de pago seleccionado no es válido para la moneda seleccionada',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('ProcessPayment - Validation Error:', [
@@ -490,6 +504,7 @@ class PendingPaymentsController extends Controller
                 'status' => 'paid',
                 'payment_by' => auth()->id(),
                 'photo_url' => $request->photo_url,
+                'method' => $request->payment_method
             ]);
 
             // 5. Crear relaciones en tabla pivot
@@ -516,6 +531,19 @@ class PendingPaymentsController extends Controller
 
             // 7. Crear expense
             $this->createExpense($invoices, $payment, $amountUSD, false);
+
+            // 8. Guardar pago para mostrar en cierre de caja
+            Transaction::create([
+                'user_id' => auth()->id(),
+                'category_id' => ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas'])->id,
+                'exchange_rate_id' => $exchangeRate->id ?? null,   // tasa usada para convertir
+                'description' => "Pago factura(s) {$invoices->pluck('invoice_number')->join(', ')}",
+                'currency' => $normalizedCurrency,
+                'type' => $payment->method,
+                'amount' => $request->payment_amount,
+                'movement_type' => 'OUT',
+                'transaction_date' => $request->payment_date,
+            ]);
 
             DB::commit();
 
