@@ -10,7 +10,6 @@ import pdfGastos from '@/utils/pdfGastos';
 import { onMounted, reactive, ref, watch } from 'vue';
 
 const isDeductible = ref(false);
-const hasInvoice = ref(false);
 
 const modal= reactive({
   statu:false,
@@ -28,21 +27,13 @@ const formulario= reactive({
   id:null,
   name:"",
   category_id:"",
-  amount:"",
-  amount_usd:"",
   amount_bs:"",
   currency:"USD",
-  has_invoice:false,
-  invoice_number:null,
-  invoice_date:null,
-  control_number:null,
   is_deductible:false,
   iva:false,
   expense_date:"",
   user_id:"",
   count:"",
-  account:null,
-  file_factura:null,
   conversion_rate_to_bs:0,
   exempt_amount:0,
   taxable_base:0,
@@ -57,21 +48,13 @@ const formularioError= reactive({
   id:"",
   name:"",
   category_id:"",
-  amount:"",
-  amount_usd:"",
   amount_bs:"",
   currency:"",
-  has_invoice:"",
-  invoice_number:"",
-  invoice_date:"",
-  control_number:"",
   is_deductible:"",
   iva:"",
   expense_date:null,
   count:"",
-  account:"",
   conversion_rate_to_bs:"",
-  file_factura:null,
   exempt_amount:"",
   taxable_base:"",
   tax_amount:"",
@@ -99,13 +82,12 @@ const orderBy = ref();
 
 function insertarDatosAlFormulario(datos){
   formulario.id=datos.id
-  formulario.id=datos.name
+  formulario.name=datos.name
   formulario.category_id=datos.category_id
-  formulario.amount=datos.amount
-  formulario.amount_usd=datos.amount_usd
+  formulario.total_amount=datos.amount  // Mapear amount a total_amount
+  formulario.total_usd=datos.amount_usd  // Mapear amount_usd a total_usd
   formulario.amount_bs=datos.amount_bs
   formulario.currency=datos.currency
-  formulario.has_invoice=datos.has_invoice
   formulario.is_deductible=datos.is_deductible
   formulario.iva=datos.iva
   formulario.expense_date=datos.expense_date
@@ -116,20 +98,12 @@ function limpiarDatosFormulario(){
   formulario.id=null
   formulario.name=""
   formulario.category_id=""
-  formulario.amount=""
-  formulario.amount_usd=""
   formulario.amount_bs=""
   formulario.currency="USD"
-  formulario.has_invoice=false
-  formulario.invoice_number=null
-  formulario.invoice_date=null
-  formulario.control_number=null
   formulario.is_deductible=false
   formulario.iva=false
   formulario.expense_date=""
   formulario.count=""
-  formulario.account=null
-  formulario.file_factura=null
   formulario.conversion_rate_to_bs=0
   formulario.exempt_amount=0
   formulario.taxable_base=0
@@ -143,19 +117,12 @@ function limpiarErroresFormulario(){
   formularioError.id=""
   formularioError.name=""
   formularioError.category_id=""
-  formularioError.amount=""
-  formularioError.amount_usd=""
   formularioError.amount_bs=""
   formularioError.currency=""
-  formularioError.has_invoice=""
-  formularioError.invoice_number=""
-  formularioError.invoice_date=""
-  formularioError.control_number=""
   formularioError.is_deductible=""
   formularioError.iva=""
   formularioError.expense_date=""
   formularioError.count=""
-  formularioError.account=""
   formularioError.conversion_rate_to_bs=""
   formularioError.exempt_amount=""
   formularioError.taxable_base=""
@@ -164,26 +131,18 @@ function limpiarErroresFormulario(){
   formularioError.total_amount=""
   formularioError.total_usd=""
   // formularioError.recurrence=""
-  formularioError.file_factura=""
 }
 
 function cargarErrores(errores){
   formularioError.id=(errores.id)?errores.id.join(", "):""
   formularioError.name=(errores.name)?errores.name.join(", "):""
   formularioError.category_id=(errores.category_id)?errores.category_id.join(", "):""
-  formularioError.amount=(errores.amount)?errores.amount.join(", "):""
-  formularioError.amount_usd=(errores.amount_usd)?errores.amount_usd.join(", "):""
   formularioError.amount_bs=(errores.amount_bs)?errores.amount_bs.join(", "):""
   formularioError.currency=(errores.currency)?errores.currency.join(", "):""
-  formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
-  formularioError.invoice_number=(errores.invoice_number)?errores.invoice_number.join(", "):""
-  formularioError.invoice_date=(errores.invoice_date)?errores.invoice_date.join(", "):""
-  formularioError.control_number=(errores.control_number)?errores.control_number.join(", "):""
   formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
   formularioError.iva=(errores.iva)?errores.iva.join(", "):""
   formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
   formularioError.count=(errores.count)?errores.count.join(", "):""
-  formularioError.account=(errores.account)?errores.account.join(", "):""
   formularioError.conversion_rate_to_bs=(errores.conversion_rate_to_bs)?errores.conversion_rate_to_bs.join(", "):""
   formularioError.exempt_amount=(errores.exempt_amount)?errores.exempt_amount.join(", "):""
   formularioError.taxable_base=(errores.taxable_base)?errores.taxable_base.join(", "):""
@@ -192,7 +151,6 @@ function cargarErrores(errores){
   formularioError.total_amount=(errores.total_amount)?errores.total_amount.join(", "):""
   formularioError.total_usd=(errores.total_usd)?errores.total_usd.join(", "):""
   // formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
-  formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
 }
 
 function mostarModal(){
@@ -229,7 +187,6 @@ watch(
     fechaDesde_filtro,
     fechaHasta_filtro,
     isDeductible,
-    hasInvoice,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -248,7 +205,6 @@ watch(
     fechaDesde_filtro,
     fechaHasta_filtro,
     isDeductible,
-    hasInvoice,
   ],
   () => {
     page.value = 1;
@@ -288,7 +244,6 @@ async function consultarGastos() {
     orderBy: orderBy.value,
     type_of_expense: type_of_expense,
     isDeductible: isDeductible.value,
-    hasInvoice: hasInvoice.value,
   };
 
   // Limpiar parámetros vacíos
@@ -343,7 +298,6 @@ function limpliarFiltros() {
   fechaDesde_filtro.value = null;
   fechaHasta_filtro.value = null;
   isDeductible.value = false;
-  hasInvoice.value = false;
 }
 
 
@@ -357,13 +311,12 @@ async function generaPdf(){
     fechaDesde_filtro: fechaDesde_filtro.value,
     fechaHasta_filtro: fechaHasta_filtro.value,
     isDeductible: isDeductible.value,
-    hasInvoice: hasInvoice.value,
   };
 
   // Limpiar parámetros vacíos
   Object.keys(DATA).forEach((key) => {
     if (DATA[key] === null || DATA[key] === "" || DATA[key] === false) {
-      if (key !== 'isDeductible' && key !== 'hasInvoice' && key !== 'status') {
+      if (key !== 'isDeductible' && key !== 'status') {
         delete DATA[key];
       }
     }
@@ -397,13 +350,12 @@ async function exportarExcel(formato){
       fechaDesde_filtro: fechaDesde_filtro.value,
       fechaHasta_filtro: fechaHasta_filtro.value,
       isDeductible: isDeductible.value,
-      hasInvoice: hasInvoice.value,
     };
 
     // Limpiar parámetros vacíos
     Object.keys(params).forEach((key) => {
       if (params[key] === null || params[key] === "" || params[key] === false) {
-        if (key !== 'isDeductible' && key !== 'hasInvoice' && key !== 'status' && key !== 'formato') {
+        if (key !== 'isDeductible' && key !== 'status' && key !== 'formato') {
           delete params[key];
         }
       }
@@ -454,34 +406,18 @@ async function exportarExcel(formato){
 async function enviar(payload){
   try {
     statuModule.loadingApp=true
-    let respuesApi=await axios.post("/finances/expenses/create-normal",payload)
-    if(respuesApi.status==200 && payload.has_invoice==false){
+    // Mapear total_amount a amount y total_usd a amount_usd
+    const payloadToSend = {
+      ...payload,
+      total_amount: payload.total_amount,
+      total_usd: payload.total_usd,
+    }
+    let respuesApi=await axios.post("/finances/expenses/create-normal",payloadToSend)
+    if(respuesApi.status==200){
       toast.success("El gasto se a guardado correctamente")
       cerrarModal(false)
       await actualizarTabla()
       statuModule.loadingApp=false
-    }
-    console.log("respuesta api gasto => ",respuesApi.data.data)
-    let gasto=respuesApi.data.data
-
-    if(payload.has_invoice==true){
-      let data=new FormData()
-      data.append("id",gasto.id)
-      data.append("file_invoice",payload.file_factura)
-
-      let config= {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-
-      let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
-      if(respuesApiFileUploaa.status==200){
-        toast.success("El archivo de la factura a sido guardado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
-        statuModule.loadingApp=false
-      }
     }
 
   } catch (error) {
@@ -509,7 +445,6 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       v-model:isDeductible="isDeductible"
-      v-model:hasInvoice="hasInvoice"
       :categorias="statuModule.categorias"
       :loading="isLoadingFilters"
       :show-add-button="true"
