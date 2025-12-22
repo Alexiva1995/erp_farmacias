@@ -18,6 +18,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Models\DailyCashClosure;
 use App\Services\Resources\ResourceService;
+use App\Models\Transaction;
+use App\Models\Category;
 
 class CashClosureActionService
 {
@@ -27,6 +29,52 @@ class CashClosureActionService
      public function __construct(ResourceService $resourceService)
     {
         $this->resourceService = $resourceService;
+    }
+
+
+    public function generateClosingTransactions(CashClosing $cashClosure)
+    {
+        $metrics = [
+            'bs_mobile'    => ['currency' => 'BS',  'type' => 'MOBILE'],
+            'bs_transfer'  => ['currency' => 'BS',  'type' => 'TRANSFER'],
+            'bs_card'      => ['currency' => 'BS',  'type' => 'CARD'],
+            'bs_cash'      => ['currency' => 'BS',  'type' => 'CASH'],
+            'cop_delivered'     => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_transfer' => ['currency' => 'COP', 'type' => 'TRANSFER'],
+            'cop_spare' => ['currency' => 'COP', 'type' => 'CASH'],
+            'usd_delivered'     => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_binance'  => ['currency' => 'USD', 'type' => 'BINANCE'],
+            'usd_paypal'   => ['currency' => 'USD', 'type' => 'PAYPAL'],
+            'usd_credit'   => ['currency' => 'USD', 'type' => 'CREDIT'],
+
+            //pagos de creditos
+            'bs_cash_payment_credit'  => ['currency' => 'BS', 'type' => 'CASH'],
+            'bs_card_payment_credit'  => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_transfer_payment_credit'  => ['currency' => 'BS', 'type' => 'TRANSFER'],
+            'bs_mobile_payment_credit'  => ['currency' => 'BS', 'type' => 'MOBILE'],
+            'cop_cash_payment_credit'  => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_transfer_payment_credit'  => ['currency' => 'COP', 'type' => 'TRANSFER'],
+            'usd_transfer_payment_credit'  => ['currency' => 'USD', 'type' => 'TRANSFER'],
+            'usd_cash_payment_credit'  => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_paypal_payment_credit'  => ['currency' => 'USD', 'type' => 'PAYPAL'],
+            'usd_binance_payment_credit'  => ['currency' => 'USD', 'type' => 'BINANCE'],
+        ];
+
+        foreach ($metrics as $field => $info) {
+            $amount = $cashClosure->$field;
+            if ($amount > 0) {
+                Transaction::create([
+                    'user_id'          => $cashClosure->seller_id,
+                    'category_id'      => null,
+                    'description'      => "Cierre de caja #" . $cashClosure->id,
+                    'currency'         => $info['currency'],
+                    'type'             => $info['type'],
+                    'amount'           => $amount,
+                    'movement_type'    => 'OUT',
+                    'transaction_date' => Carbon::now(),
+                ]);
+            }
+        }
     }
 
     public function allCashClosing(): ?CashClosing
@@ -43,7 +91,6 @@ class CashClosureActionService
     {
         $validatedData = $request->validated();
         $sellerId = Auth::id();
-        //$sellerId = 2;
         $cashClosure = CashClosing::findOrFail($validatedData['id']);
         $pendingOrders = $cashClosure->orders()->whereIn('status', [Order::RESERVED, Order::PENDING])->get();
 
@@ -83,6 +130,8 @@ class CashClosureActionService
         $destinatariosToHistory = ['alexisvalera@farmaciabs.com'];
         $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';*/
         //Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
+
+        $this->generateClosingTransactions($cashClosure);
 
         CashClosing::create([
             'seller_id' => $sellerId,
@@ -139,6 +188,8 @@ class CashClosureActionService
                 'daily_closure_id' => $dailyClosure->id,
                 'closing_date' => Carbon::now(),
             ]);
+
+            $this->generateClosingTransactions($cashClosing);
         }
 
         $sellers = User::all();
@@ -339,4 +390,5 @@ class CashClosureActionService
         $groupedBySeller = $cashClosings->groupBy('seller_id');
         return $groupedBySeller;
     }
+
 }
