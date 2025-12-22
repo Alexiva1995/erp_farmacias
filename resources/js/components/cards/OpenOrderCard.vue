@@ -94,7 +94,17 @@ const emit = defineEmits([
   "company-discount-selected",
 ]);
 
-const discountOptions = ["Empresa", "Medico", "Recipe"];
+const discountOptions = computed(() => {
+  const options = ["Medico", "Recipe"];
+  if (
+    props.cliente &&
+    props.cliente.company_id !== null &&
+    props.cliente.company_id !== undefined
+  ) {
+    options.unshift("Empresa");
+  }
+  return options;
+});
 
 const quotationId = ref("");
 const selectedDoctor = ref(null);

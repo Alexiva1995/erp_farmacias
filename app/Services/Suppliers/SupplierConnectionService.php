@@ -599,6 +599,15 @@ class SupplierConnectionService
                         $value = $this->castValue($raw, $meta);
                         $header[$meta["field"]] = $value;
                     }
+
+                    if ($connection->supplier_id === 27) {
+                        $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                        $totalAmount = floatval($header['total_amount'] ?? 0);
+
+                        if ($exchangeRate > 0) {
+                            $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
+                        }
+                    }
                     $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
                     $header['invoice_number'] = $invoiceNumber;
 
