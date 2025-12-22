@@ -49,6 +49,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  expirationDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -1126,6 +1130,21 @@ const activeDiscountDisplay = computed(() => {
           </p>
         </div>
 
+        <div
+          v-if="expirationDiscountTotal > 0"
+          class="d-flex align-center flex-wrap justify-space-between"
+        >
+          <p class="text-h6 font-weight-medium mt-2 mb-0">
+            Descuento Vencimiento:
+          </p>
+          <p class="text-h6 font-weight-medium mt-2 mb-0 text-error">
+            -
+            {{
+              formatCurrency(expirationDiscountTotal, props.selectedCurrency)
+            }}
+          </p>
+        </div>
+
         <div class="d-flex align-center flex-wrap justify-space-between">
           <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0">
@@ -1378,7 +1397,24 @@ const activeDiscountDisplay = computed(() => {
                 - {{ activeDiscountDisplay.formatted }}
               </p>
             </div>
-            
+            <div
+              v-if="expirationDiscountTotal > 0"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                Descuento Vencimiento:
+              </p>
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                -
+                {{
+                  formatCurrency(
+                    expirationDiscountTotal,
+                    props.selectedCurrency
+                  )
+                }}
+              </p>
+            </div>
+
             <div class="d-flex flex-wrap justify-space-between">
               <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">

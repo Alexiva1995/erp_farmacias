@@ -57,15 +57,13 @@ const isPrinting = ref(false);
 
 const selectedDisplayCurrency = ref("COP");
 
-
 const recipeDiscountForPrint = ref(0);
 const doctorDiscountForPrint = ref(0);
 const companyDiscountForPrint = ref(0);
 const discountTypeForPrint = ref(null);
-
+const expirationDiscountForPrint = ref(0);
 
 const isFinishingOrder = ref(false);
-
 
 const newClientFormData = ref({
   id: null,
@@ -310,15 +308,15 @@ const fetchCompanyOffers = async () => {
   }
 };*/
 
-
 const handlePrescriptionFileSelected = (file) => {
   prescriptionFile.value = file;
   if (file && activePrescriptionOffers.value.length > 0) {
     const offer = activePrescriptionOffers.value[0];
-    toast.success(`Descuento de receta del ${offer.discount_percentage}% detectado.`);
+    toast.success(
+      `Descuento de receta del ${offer.discount_percentage}% detectado.`
+    );
   }
 };
-
 
 const handleDoctorDiscountSelected = (offerId) => {
   const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
@@ -346,19 +344,21 @@ const validateAndApplyCompanyDiscount = () => {
   const offer = activeCompanyOffers.value.find(
     (o) => o.value === selectedCompanyId.value
   );
-  
+
   if (!offer) {
     selectedCompanyId.value = null;
     return;
   }
 
-
+  console.log(offer);
   const porcentaje = parseFloat(offer.current_discount || 0);
 
-if (porcentaje > 0) {
-    toast.success(`Descuento de empresa ${porcentaje}% habilitado para esta orden.`);
+  if (porcentaje > 0) {
+    toast.success(
+      `Descuento de empresa ${porcentaje}% habilitado para esta orden.`
+    );
   } else {
-    selectedCompanyId.value = null; 
+    selectedCompanyId.value = null;
     toast.info(
       `Esta empresa no cuenta con un descuento activo para el periodo actual.`
     );
@@ -557,13 +557,16 @@ const formatOrderItemForFrontend = (backendItem) => {
     price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
     unitCost: parseFloat(product.unit_cost) || 0,
     basePrice: parseFloat(product.sale_price) || 0, // Store original base price
+    original_price_usd: parseFloat(product.sale_price) || 0,
+    original_price_bs: parseFloat(product.price_bs) || 0,
+    original_price_cop: parseFloat(product.price_cop) || 0,
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
     taxRate: product.iva == 1 ? 0.16 : 0,
     pack_id: backendItem.pack_id || null,
-    discount_percentage: backendItem.discount_percentage || 0,
+    discount_percentage: parseFloat(backendItem.discount_percentage) || 0,
     discount_type: backendItem.discount_type || null,
     discount_source_id: backendItem.discount_source_id || null,
   };
@@ -896,6 +899,20 @@ const handleCurrencyChanged = async (newCurrency) => {
   }
 };
 
+const totalEligibleAmount = computed(() => {
+  let total = 0;
+  orderItems.value.forEach((item) => {
+    // Exclude items with expiration discount from the eligible base
+    if (item.discount_type === "expiration") {
+      return;
+    }
+    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+    const quantity = item.selectedQuantity || 0;
+    total += price * quantity;
+  });
+  return total;
+});
+
 const totalCompanyDiscountAmount = computed(() => {
   if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
     const offer = activeCompanyOffers.value.find(
@@ -903,40 +920,69 @@ const totalCompanyDiscountAmount = computed(() => {
     );
     const porcentaje = parseFloat(offer?.current_discount || 0);
     if (porcentaje > 0) {
-      return totalProductsAmount.value * (porcentaje / 100);
+      return totalEligibleAmount.value * (porcentaje / 100);
     }
   }
   return 0;
 });
 
 const totalDoctorDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
+  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
     const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
     if (porcentaje > 0) {
-      return totalProductsAmount.value * (porcentaje / 100);
+      return totalEligibleAmount.value * (porcentaje / 100);
     }
   }
   return 0;
 });
 
 const totalRecipeDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === 'Recipe') {
-    const porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
+  if (selectedDiscountType.value === "Recipe") {
+    const porcentaje = parseFloat(
+      currentPrescriptionDiscountPercentage.value || 0
+    );
     if (porcentaje > 0) {
-      return totalProductsAmount.value * (porcentaje / 100);
+      return totalEligibleAmount.value * (porcentaje / 100);
     }
   }
   return 0;
 });
 
+const totalExpirationDiscountAmount = computed(() => {
+  let total = 0;
+  orderItems.value.forEach((item) => {
+    const percentage = parseFloat(item.discount_percentage || 0);
+    if (item.discount_type === "expiration" && percentage > 0) {
+      let originalPrice = item.basePrice || 0;
+      if (selectedDisplayCurrency.value === "BS") {
+        originalPrice = item.original_price_bs || 0;
+      } else if (selectedDisplayCurrency.value === "COP") {
+        originalPrice = item.original_price_cop || 0;
+        // For COP, we typically round up price before calculating total
+        if (typeof roundUpToNearestHundred === "function") {
+          originalPrice = roundUpToNearestHundred(originalPrice);
+        } else {
+          // Quick inline round up if function not in scope here (it is imported usually)
+          originalPrice = Math.ceil(originalPrice / 100) * 100;
+        }
+      }
+
+      const quantity = item.selectedQuantity || 0;
+      const discountAmount = originalPrice * quantity * (percentage / 100);
+      total += discountAmount;
+    }
+  });
+  return total;
+});
+
 const totalOrderAmount = computed(() => {
   const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
   let discountToSubtract = 0;
-  if (selectedDiscountType.value === 'Empresa') {
+  if (selectedDiscountType.value === "Empresa") {
     discountToSubtract = totalCompanyDiscountAmount.value;
-  }else if (selectedDiscountType.value === 'Medico') {
+  } else if (selectedDiscountType.value === "Medico") {
     discountToSubtract = totalDoctorDiscountAmount.value;
-  }else if (selectedDiscountType.value === 'Recipe') {
+  } else if (selectedDiscountType.value === "Recipe") {
     discountToSubtract = totalRecipeDiscountAmount.value;
   }
   return baseTotal - discountToSubtract;
@@ -948,11 +994,11 @@ const myCalculatedTotal = computed(() => {
   let descuentoTotal = 0;
 
   // 2. Restamos el descuento
-  if (selectedDiscountType.value === 'Empresa') {
+  if (selectedDiscountType.value === "Empresa") {
     descuentoTotal = totalCompanyDiscountAmount.value || 0;
-  } else if (selectedDiscountType.value === 'Medico') {
+  } else if (selectedDiscountType.value === "Medico") {
     descuentoTotal = totalDoctorDiscountAmount.value || 0;
-  } else if (selectedDiscountType.value === 'Recipe') {
+  } else if (selectedDiscountType.value === "Recipe") {
     descuentoTotal = totalRecipeDiscountAmount.value || 0;
   }
 
@@ -1055,9 +1101,12 @@ const totalAmountUsd = computed(() => {
       (o) => o.value === selectedCompanyId.value
     );
     porcentaje = parseFloat(offer?.current_discount || 0);
-  }else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
+  } else if (
+    selectedDiscountType.value === "Medico" &&
+    selectedDoctorOffer.value
+  ) {
     porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
-  }else if (selectedDiscountType.value === 'Recipe') {
+  } else if (selectedDiscountType.value === "Recipe") {
     porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
 
@@ -1095,7 +1144,6 @@ const updateOrderTotalsInBackend = async () => {
       : totalOrderAmount.value.toFixed(2);
 
   try {
-
     const payload = {
       total_amount: total,
       total_amount_usd: totalAmountUsd.value,
@@ -1298,13 +1346,13 @@ const addProductToOrder = async ({
 watch(
   [totalOrderAmount, selectedDisplayCurrency],
   async (newValue, oldValue) => {
-  if (!isFinishingOrder.value) {
-    if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
-      if (hasOpenOrder.value && openOrderData.value?.id) {
-        await updateOrderTotalsInBackend();
+    if (!isFinishingOrder.value) {
+      if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
+        if (hasOpenOrder.value && openOrderData.value?.id) {
+          await updateOrderTotalsInBackend();
+        }
       }
     }
-  }
   },
   { deep: false }
 );
@@ -1433,8 +1481,10 @@ const reserverOrder = async () => {
 };
 
 const openBuysModal = () => {
-  if (selectedDiscountType.value === 'Recipe' && !prescriptionFile.value) {
-    toast.error("Debe adjuntar la foto de la receta para aplicar este descuento.");
+  if (selectedDiscountType.value === "Recipe" && !prescriptionFile.value) {
+    toast.error(
+      "Debe adjuntar la foto de la receta para aplicar este descuento."
+    );
     return;
   }
   showBuysModal.value = true;
@@ -1509,6 +1559,22 @@ const closeBuysModal = () => {
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = myCalculatedTotal.value;
       creditForPrint.value = credit;
+      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditForPrint.value = credit;
+
+      // Manual calculation to ensure accuracy
+      let manualExpTotal = 0;
+      orderItems.value.forEach(item => {
+         const p = parseFloat(item.discount_percentage || 0);
+         if (item.discount_type === 'expiration' && p > 0) {
+            const price = item.basePrice || 0;
+            const qty = item.selectedQuantity || 0;
+            manualExpTotal += price * qty * (p / 100);
+         }
+      });
+      console.log("Manual Expiration Total:", manualExpTotal);
+      expirationDiscountForPrint.value = manualExpTotal;
+
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -1602,7 +1668,6 @@ const closeBuysModal = () => {
   }
 };*/
 
-
 const resetFormSelectors = () => {
   selectedDiscountType.value = null;
   selectedCompanyId.value = null;
@@ -1629,46 +1694,95 @@ const handleBuysCompletion = async (
     let currentSourceId = null;
     let currentTypeName = null;
 
-    if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
-      const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
+    if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+      const offer = activeCompanyOffers.value.find(
+        (o) => o.value === selectedCompanyId.value
+      );
       currentPercentage = parseFloat(offer?.current_discount || 0);
       currentSourceId = selectedCompanyId.value;
-      currentTypeName = 'company';
-    } else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
+      currentTypeName = "company";
+    } else if (
+      selectedDiscountType.value === "Medico" &&
+      selectedDoctorOffer.value
+    ) {
       currentPercentage = parseFloat(selectedDoctorOffer.value.percentage || 0);
       currentSourceId = selectedDoctorOffer.value.id;
-      currentTypeName = 'doctor';
-    } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
-      currentPercentage = parseFloat(currentPrescriptionDiscountPercentage.value);
+      currentTypeName = "doctor";
+    } else if (
+      selectedDiscountType.value === "Recipe" &&
+      prescriptionFile.value
+    ) {
+      currentPercentage = parseFloat(
+        currentPrescriptionDiscountPercentage.value
+      );
       currentSourceId = activePrescriptionOffers.value[0]?.id;
-      currentTypeName = 'recipe';
+      currentTypeName = "recipe";
     }
     const formData = new FormData();
-    formData.append('order_id', orderId);
-    formData.append('total_amount', myCalculatedTotal.value);
-    formData.append('currency', selectedDisplayCurrency.value);
-    formData.append('client_id', selectedClient.value?.id || '');
-    formData.append('seller_id', currentUser.value?.id || '');
-    formData.append('balance_used', balanceUsed ? 1 : 0);
-    formData.append('generate_invoice', switchStates.invoice_switch ? 1 : 0);
-    formData.append('credit', credit ? 1 : 0);
-    formData.append('changeAmount', changeAmount);
-    formData.append('changeAmountUSD', changeAmountUSD);
-    formData.append('spe', switchStates.spe ? 1 : 0);
-    formData.append('payments', JSON.stringify(paymentsData));
-    
-    const mappedItems = orderItems.value.map((item) => ({
-      order_detail_id: item.order_detail_id,
-      price: item.price,
-      discount_percentage: currentPercentage > 0 ? currentPercentage : null,
-      discount_type: currentPercentage > 0 ? currentTypeName : null,
-      discount_source_id: currentPercentage > 0 ? currentSourceId : null,
-    }));
-    formData.append('items', JSON.stringify(mappedItems));
+    formData.append("order_id", orderId);
+    formData.append("total_amount", myCalculatedTotal.value);
+    formData.append("currency", selectedDisplayCurrency.value);
+    formData.append("client_id", selectedClient.value?.id || "");
+    formData.append("seller_id", currentUser.value?.id || "");
+    formData.append("balance_used", balanceUsed ? 1 : 0);
+    formData.append("generate_invoice", switchStates.invoice_switch ? 1 : 0);
+    formData.append("credit", credit ? 1 : 0);
+    formData.append("changeAmount", changeAmount);
+    formData.append("changeAmountUSD", changeAmountUSD);
+    formData.append("spe", switchStates.spe ? 1 : 0);
+    formData.append("payments", JSON.stringify(paymentsData));
+
+    const mappedItems = orderItems.value.map((item) => {
+      // 1. Determine Base Price in Current Currency
+      let finalPrice = getItemPriceByCurrency(
+        item,
+        selectedDisplayCurrency.value
+      );
+
+      // 2. Determine Discount Details
+      let dType = null;
+      let dPercent = 0;
+      let dSourceId = null;
+
+      if (item.discount_type === "expiration") {
+        // Priority: Expiration Discount (Item specific)
+        dType = "expiration";
+        dPercent = parseFloat(item.discount_percentage || 0);
+        dSourceId = item.discount_source_id || null;
+      } else if (currentPercentage > 0) {
+        // Global Discount (Company/Doctor/Recipe)
+        dType = currentTypeName;
+        dPercent = currentPercentage;
+        dSourceId = currentSourceId;
+      }
+
+      // 3. Apply Discount to Price
+      // Note: Expiration items already have their price discounted in the view model.
+      // Global discount items do not, so we calculate it here.
+      if (dPercent > 0 && dType !== "expiration") {
+        finalPrice = finalPrice * (1 - dPercent / 100);
+      }
+
+      // 4. Rounding for specific currencies if needed (e.g. COP)
+      // getItemPriceByCurrency usually handles base rounding, but discount might introduce decimals.
+      /*if (selectedDisplayCurrency.value === 'COP') {
+          // finalPrice = roundUpToNearestHundred(finalPrice); 
+          // Depending on if backend expects strict rounding or specific value
+      }*/
+
+      return {
+        order_detail_id: item.order_detail_id,
+        price: finalPrice,
+        discount_percentage: dPercent > 0 ? dPercent : null,
+        discount_type: dType,
+        discount_source_id: dSourceId,
+      };
+    });
+    formData.append("items", JSON.stringify(mappedItems));
 
     // ADJUNTO DE IMAGEN: Solo si es tipo Recipe y hay archivo
-    if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
-      formData.append('prescription_image', prescriptionFile.value);
+    if (selectedDiscountType.value === "Recipe" && prescriptionFile.value) {
+      formData.append("prescription_image", prescriptionFile.value);
     }
 
     const response = await axios.post(
@@ -1676,7 +1790,7 @@ const handleBuysCompletion = async (
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       }
     );
@@ -1688,6 +1802,9 @@ const handleBuysCompletion = async (
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = myCalculatedTotal.value;
       creditForPrint.value = credit;
+
+      expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
+
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -1740,7 +1857,7 @@ const handleBuysCompletion = async (
         );
         window.print();
       }
-       if (response.data.data.order) {
+      if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
         selectedClient.value = openOrderData.value.client;
@@ -1763,9 +1880,9 @@ const handleBuysCompletion = async (
     isPrinting.value = false;
   } finally {
     setTimeout(() => {
-       isFinishingOrder.value = false;
-       resetFormSelectors();
-       isPrinting.value = false;
+      isFinishingOrder.value = false;
+      resetFormSelectors();
+      isPrinting.value = false;
     }, 500);
   }
 };
@@ -1942,6 +2059,7 @@ watch(activeTab, (val) => {
         :company-discount-total="totalCompanyDiscountAmount"
         :doctor-discount-total="totalDoctorDiscountAmount"
         :recipe-discount-total="totalRecipeDiscountAmount"
+        :expiration-discount-total="totalExpirationDiscountAmount"
         :cliente="selectedClient"
         :selected-display-currency="selectedDisplayCurrency"
         @currency-changed="handleCurrencyChanged"
@@ -1954,7 +2072,9 @@ watch(activeTab, (val) => {
         @add-reserved-order="addReserverOrder"
         v-model:selected-discount-type="selectedDiscountType"
         :active-doctor-offers="activeDoctorOffers"
-        :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
+        :prescription-discount-percentage="
+          currentPrescriptionDiscountPercentage
+        "
         :active-company-offers="activeCompanyOffers"
         @doctor-discount-selected="handleDoctorDiscountSelected"
         @prescription-file-selected="handlePrescriptionFileSelected"
@@ -2048,6 +2168,7 @@ watch(activeTab, (val) => {
       :selected-discount-type="selectedDiscountType"
       :doctor-discount-total="totalDoctorDiscountAmount"
       :recipe-discount-total="totalRecipeDiscountAmount"
+      :expiration-discount-total="totalExpirationDiscountAmount"
     />
 
     <div
@@ -2068,6 +2189,7 @@ watch(activeTab, (val) => {
         :selected-discount-type="discountTypeForPrint"
         :doctor-discount-total="doctorDiscountForPrint"
         :recipe-discount-total="recipeDiscountForPrint"
+        :expiration-discount-total="expirationDiscountForPrint"
       />
     </div>
   </div>
