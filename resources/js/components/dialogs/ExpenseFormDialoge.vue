@@ -228,24 +228,6 @@ function submitForm(){
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" lg="6">
-            <VTextField
-              v-model="props.formData.amount"
-              :error-messages="props.formError.amount"
-              label="Monto"
-              type="number"
-              variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
-            <VTextField
-              v-model="props.formData.amount_usd"
-              :error-messages="props.formError.amount_usd"
-              label="Monto USD"
-              type="number"
-              variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
             <VSelect
               v-model="props.formData.currency"
               label="Moneda"
@@ -274,17 +256,6 @@ function submitForm(){
               label="Método de Pago"
               :items="cop"
               :error-messages="props.formError.count"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
-            <VTextField
-              v-model="props.formData.account"
-              :error-messages="props.formError.account"
-              label="Cuenta / Número de Cuenta"
-              type="text"
-              variant="outlined"
-              hint="Ej: 0102-1234-5678901234 (cuenta bancaria), wallet de Binance, email de PayPal, etc."
-              persistent-hint
             />
           </VCol>
           <VCol cols="12" sm="6" md="6" v-if="type_of_expense == 'recurrente'">
@@ -355,55 +326,7 @@ function submitForm(){
 
         </VRow>
         <VRow>
-          <VCol
-            cols="12"
-            sm="12"
-            md="12"
-            lg="12"
-            v-if="type_of_expense == 'normal'"
-          >
-            <VCheckbox v-model="props.formData.has_invoice">
-              <template v-slot:label> Tiene Factura </template>
-            </VCheckbox>
-          </VCol>
-        </VRow>
-        <VRow v-if="props.formData.has_invoice == true && type_of_expense == 'normal'">
-          <VCol cols="12">
-            <VDivider class="my-2" />
-            <h3 class="text-h6 mb-4">Datos de la Factura</h3>
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <VTextField
-              v-model="props.formData.invoice_number"
-              :error-messages="props.formError.invoice_number"
-              label="N° de Factura"
-              type="text"
-              variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <AppDateTimePicker
-              v-model="props.formData.invoice_date"
-              :error-messages="props.formError.invoice_date"
-              label="Fecha de Factura"
-              variant="outlined"
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <VTextField
-              v-model="props.formData.control_number"
-              :error-messages="props.formError.control_number"
-              label="N° de Control"
-              type="text"
-              variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model.number="props.formData.exempt_amount"
               :error-messages="props.formError.exempt_amount"
@@ -413,7 +336,7 @@ function submitForm(){
               :prefix="getCurrencySymbol"
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model.number="props.formData.taxable_base"
               :error-messages="props.formError.taxable_base"
@@ -423,7 +346,7 @@ function submitForm(){
               :prefix="getCurrencySymbol"
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model.number="props.formData.tax_amount"
               :error-messages="props.formError.tax_amount"
@@ -434,7 +357,7 @@ function submitForm(){
               readonly
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model.number="props.formData.total_amount"
               :error-messages="props.formError.total_amount"
@@ -445,7 +368,7 @@ function submitForm(){
               readonly
             />
           </VCol>
-          <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
+          <VCol v-if="shouldShowExchangeRate" cols="12" md="4">
             <VTextField
               v-model.number="props.formData.exchange_rate"
               :error-messages="props.formError.exchange_rate"
@@ -454,7 +377,7 @@ function submitForm(){
               variant="outlined"
             />
           </VCol>
-          <VCol cols="12" md="2">
+          <VCol cols="12" md="4">
             <VTextField
               v-model.number="props.formData.total_usd"
               :error-messages="props.formError.total_usd"
@@ -463,16 +386,6 @@ function submitForm(){
               variant="outlined"
               prefix="$"
               readonly
-            />
-          </VCol>
-          <VCol cols="12">
-            <v-file-input
-              v-model="props.formData.file_factura"
-              :error-messages="props.formError.file_factura"
-              accept="image/png, image/jpeg, image/jpg"
-              clearable
-              label="Archivo de Factura"
-              variant="outlined"
             />
           </VCol>
         </VRow>

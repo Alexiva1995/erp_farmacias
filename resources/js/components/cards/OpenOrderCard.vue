@@ -84,6 +84,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  expirationDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -102,7 +106,17 @@ const emit = defineEmits([
   "company-discount-selected",
 ]);
 
-const discountOptions = ["Empresa", "Medico", "Recipe"];
+const discountOptions = computed(() => {
+  const options = ["Medico", "Recipe"];
+  if (
+    props.cliente &&
+    props.cliente.company_id !== null &&
+    props.cliente.company_id !== undefined
+  ) {
+    options.unshift("Empresa");
+  }
+  return options;
+});
 
 const quotationId = ref("");
 const selectedDoctor = ref(null);
@@ -195,6 +209,16 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
+const getDiscountFactor = (product) => {
+  if (
+    currentGlobalDiscountDetails.value &&
+    product.discount_type !== "expiration"
+  ) {
+    return 1 - currentGlobalDiscountDetails.value.percentage / 100;
+  }
+  return 1;
+};
+
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
   if (currency === "BS") {
@@ -204,6 +228,9 @@ const getProductPriceSinIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
+
+  // Apply visual discount
+  basePrice = basePrice * getDiscountFactor(product);
 
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -223,6 +250,10 @@ const getProductPrice = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
+
+  // Apply visual discount
+  basePrice = basePrice * getDiscountFactor(product);
+
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
@@ -241,6 +272,10 @@ const getIva = (product, currency) => {
   } else {
     basePrice = product.price || 0;
   }
+
+  // Apply visual discount
+  basePrice = basePrice * getDiscountFactor(product);
+
   let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
@@ -395,6 +430,44 @@ const activeDiscountDisplay = computed(() => {
   const current = config[type];
   if (current && current.amount > 0) {
     return current;
+  }
+  return null;
+});
+
+const currentGlobalDiscountDetails = computed(() => {
+  if (props.selectedDiscountType === "Empresa" && selectedCompany.value) {
+    const offer = props.activeCompanyOffers.find(
+      (o) => o.value === selectedCompany.value
+    );
+    if (offer && offer.current_discount > 0) {
+      return {
+        type: "Empresa",
+        percentage: parseFloat(offer.current_discount),
+        label: "Empresa",
+      };
+    }
+  }
+  if (props.selectedDiscountType === "Medico" && selectedDoctor.value) {
+    const offer = props.activeDoctorOffers.find(
+      (o) => o.value === selectedDoctor.value
+    );
+    if (offer && offer.percentage > 0) {
+      return {
+        type: "Medico",
+        percentage: parseFloat(offer.percentage),
+        label: "Médico",
+      };
+    }
+  }
+  if (
+    props.selectedDiscountType === "Recipe" &&
+    props.prescriptionDiscountPercentage > 0
+  ) {
+    return {
+      type: "Recipe",
+      percentage: parseFloat(props.prescriptionDiscountPercentage),
+      label: "Recipe",
+    };
   }
   return null;
 });
@@ -590,6 +663,22 @@ const activeDiscountDisplay = computed(() => {
                   >
                     Expira (-{{ product.discount_percentage }}%)
                   </VChip>
+
+                  <!-- Badge para Descuentos Globales (Empresa, Médico, Recipe) -->
+                  <VChip
+                    v-if="
+                      currentGlobalDiscountDetails &&
+                      product.discount_type !== 'expiration'
+                    "
+                    color="primary"
+                    size="x-small"
+                    class="ms-1"
+                    label
+                  >
+                    {{ currentGlobalDiscountDetails.label }} (-{{
+                      currentGlobalDiscountDetails.percentage
+                    }}%)
+                  </VChip>
                 </span>
                 <span class="text-sm text-disabled">
                   {{ product.active_ingredient }}
@@ -726,6 +815,43 @@ const activeDiscountDisplay = computed(() => {
                 <div class="d-flex flex-column align-end">
                   <span class="text-body-1 font-weight-bold text-error">
                     - {{ activeDiscountDisplay.formatted }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
+      </VCardText>
+      <VDivider class="mt-auto" />
+    </div>
+
+    <div v-if="props.expirationDiscountTotal > 0">
+      <VCardText class="py-2 bg-grey-lighten-4">
+        <VTable density="compact" lines="none">
+          <tbody>
+            <tr>
+              <td>
+                <div class="d-flex flex-column">
+                  <span
+                    class="text-subtitle-1 me-2 text-error font-weight-medium"
+                  >
+                    Descuento por Vencimiento:
+                  </span>
+                </div>
+              </td>
+              <td><div class="d-flex align-center"></div></td>
+              <td class="text-right"></td>
+              <td class="text-right"></td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span class="text-body-1 font-weight-bold text-error">
+                    -
+                    {{
+                      formatCurrency(
+                        props.expirationDiscountTotal,
+                        props.selectedDisplayCurrency
+                      )
+                    }}
                   </span>
                 </div>
               </td>

@@ -169,7 +169,10 @@ const orderItemHeaders = [
       </template>
       <template #item.amount="{ item }">
         <span class="font-weight-medium">{{
-          formatCurrency(parseFloat(item.total_amount), item.currency)
+          formatCurrency(
+            parseFloat(item.total_amount),
+            item.currency?.toUpperCase()
+          )
         }}</span>
       </template>
       <template #item.date="{ item }">
@@ -248,12 +251,10 @@ const orderItemHeaders = [
                   </template>
                   <template #item.price="{ item: detailItem }">
                     {{
-                      props.isVendedor
-                        ? formatCurrency(
-                            parseFloat(detailItem.seller_price),
-                            detailItem.seller_currency
-                          )
-                        : formatCurrency(parseFloat(detailItem.price), "USD")
+                      formatCurrency(
+                        parseFloat(detailItem.price),
+                        detailItem.currency
+                      )
                     }}
                   </template>
                   <template #item.returns_quantity="{ item: detailItem }">

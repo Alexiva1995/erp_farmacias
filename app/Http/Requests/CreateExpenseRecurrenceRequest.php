@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests;
 
 use App\Data\CreateExpenseRecurrenceData;
@@ -31,17 +30,17 @@ class CreateExpenseRecurrenceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name"                   =>    "required|string|max:255",
-            "category_id"            =>    "required|numeric|exists:expense_categories,id",
-            "amount"                 =>    "required|numeric",
-            "amount_usd"             =>    "required|numeric",
-            "currency"               =>    "required|string|max:10",
-            "has_invoice"            =>    "nullable|boolean:strict",
-            "is_deductible"          =>    "nullable|boolean:strict",
-            "iva"                    =>    "nullable|boolean:strict",
+            "name"          => "required|string|max:255",
+            "category_id"   => "required|numeric|exists:expense_categories,id",
+            "total_amount"  => "required|numeric",
+            "total_usd"     => "required|numeric",
+            "currency"      => "required|string|max:10",
+            "has_invoice"   => "nullable|boolean:strict",
+            "is_deductible" => "nullable|boolean:strict",
+            "iva"           => "nullable|boolean:strict",
             // "expense_date"           =>    "required|date",
-            "user_id"                =>    "required|numeric|exists:users,id",
-            "count"                  =>    [
+            "user_id"       => "required|numeric|exists:users,id",
+            "count"         => [
                 "required",
                 "string",
                 Rule::in([
@@ -51,18 +50,18 @@ class CreateExpenseRecurrenceRequest extends FormRequest
                     Expense::COUNT_TRANSFERENCIA,
                     Expense::COUNT_BINANCE,
                     Expense::COUNT_PAYPAL,
-                ])
+                ]),
             ],
-            "recurrence"             =>    [
+            "recurrence"    => [
                 "required",
                 "string",
                 Rule::in([
                     Expense::RECURRENCE_MENSUAL,
                     Expense::RECURRENCE_SEMESTRAL,
                     Expense::RECURRENCE_ANUAL,
-                ])
+                ]),
             ],
-            'amount_bs' => ['nullable','numeric','required_if:iva,true','required_if:is_deductible,true',],
+            'amount_bs'     => ['nullable', 'numeric'],
         ];
     }
 
@@ -70,88 +69,92 @@ class CreateExpenseRecurrenceRequest extends FormRequest
     {
         return [
             // Reglas para 'name'
-            'name.required' => 'El nombre del gasto es obligatorio.',
-            'name.string' => 'El nombre debe ser una cadena de texto.',
-            'name.max' => 'El nombre no puede exceder los 255 caracteres.',
+            'name.required'         => 'El nombre del gasto es obligatorio.',
+            'name.string'           => 'El nombre debe ser una cadena de texto.',
+            'name.max'              => 'El nombre no puede exceder los 255 caracteres.',
 
             // Reglas para 'category_id'
-            'category_id.required' => 'La categoría del gasto es obligatoria.',
-            'category_id.numeric' => 'La categoría debe ser un valor numérico.',
-            'category_id.exists' => 'La categoría seleccionada no es válida.',
+            'category_id.required'  => 'La categoría del gasto es obligatoria.',
+            'category_id.numeric'   => 'La categoría debe ser un valor numérico.',
+            'category_id.exists'    => 'La categoría seleccionada no es válida.',
 
-            // Reglas para 'amount'
-            'amount.required' => 'El monto del gasto es obligatorio.',
-            'amount.numeric' => 'El monto debe debe ser un valor numérico.',
+            // Reglas para 'total_amount'
+            'total_amount.required' => 'El total de la factura es obligatorio.',
+            'total_amount.numeric'  => 'El total de la factura debe ser un valor numérico.',
 
-            // Reglas para 'amount_usd'
-            'amount_usd.required' => 'El monto en USD es obligatorio.',
-            'amount_usd.numeric' => 'El monto en USD debe ser un valor numérico.',
+            // Reglas para 'total_usd'
+            'total_usd.required'    => 'El total en USD es obligatorio.',
+            'total_usd.numeric'     => 'El total en USD debe ser un valor numérico.',
 
             // Reglas para 'currency'
-            'currency.required' => 'La moneda es obligatoria.',
-            'currency.string' => 'La moneda debe ser una cadena de texto.',
-            'currency.max' => 'La moneda no puede exceder los 10 caracteres.',
+            'currency.required'     => 'La moneda es obligatoria.',
+            'currency.string'       => 'La moneda debe ser una cadena de texto.',
+            'currency.max'          => 'La moneda no puede exceder los 10 caracteres.',
 
             // Reglas para 'has_invoice'
-            'has_invoice.boolean' => 'El campo de factura debe ser verdadero o falso.',
+            'has_invoice.boolean'   => 'El campo de factura debe ser verdadero o falso.',
 
             // Reglas para 'is_deductible'
             'is_deductible.boolean' => 'El campo deducible debe ser verdadero o falso.',
 
-             // Reglas para 'iva'
-            'iva.boolean' => 'El campo iva debe ser verdadero o falso.',
+            // Reglas para 'iva'
+            'iva.boolean'           => 'El campo iva debe ser verdadero o falso.',
 
             // Reglas para 'expense_date'
             // 'expense_date.required' => 'La fecha del gasto es obligatoria.',
             // 'expense_date.date' => 'La fecha debe ser una fecha válida.',
 
             // Reglas para 'user_id'
-            'user_id.required' => 'El usuario es obligatorio.',
-            'user_id.numeric' => 'El usuario debe ser un valor numérico.',
-            'user_id.exists' => 'El usuario seleccionado no es válido.',
+            'user_id.required'      => 'El usuario es obligatorio.',
+            'user_id.numeric'       => 'El usuario debe ser un valor numérico.',
+            'user_id.exists'        => 'El usuario seleccionado no es válido.',
 
             // Reglas para 'count'
-            'count.required' => 'El método de pago es obligatorio.',
-            'count.string' => 'El método de pago debe ser una cadena de texto.',
-            'count.in' => 'El método de pago seleccionado no es válido.',
+            'count.required'        => 'El método de pago es obligatorio.',
+            'count.string'          => 'El método de pago debe ser una cadena de texto.',
+            'count.in'              => 'El método de pago seleccionado no es válido.',
 
             // Reglas para 'recurrence'
-            'recurrence.required' => 'La recurrencia es obligatoria.',
-            'recurrence.string' => 'La recurrencia debe ser una cadena de texto.',
-            'recurrence.in' => 'La recurrencia seleccionada no es válida.',
+            'recurrence.required'   => 'La recurrencia es obligatoria.',
+            'recurrence.string'     => 'La recurrencia debe ser una cadena de texto.',
+            'recurrence.in'         => 'La recurrencia seleccionada no es válida.',
 
             // Reglas para 'amount_bs'
-            'amount_bs.required_if' => 'El Monto Bs es obligatorio si el gasto tiene IVA o es Deducible.',
-            'amount_bs.numeric' => 'El monto en USD debe ser un valor numérico.',
+            'amount_bs.numeric'     => 'El monto en BS debe ser un valor numérico.',
         ];
     }
 
-
     protected function failedValidation(Validator $validator): JsonResponse
     {
-        $errors = $validator->errors();
+        $errors   = $validator->errors();
         $response = ApiResponse::error("Error", 422, $errors);
         throw new HttpResponseException($response);
     }
 
     protected function passedValidation()
     {
+        // Si la moneda es BS, amount_bs debe ser igual a total_amount
+        $amountBs = $this->amount_bs;
+        if ($this->currency === 'BS') {
+            $amountBs = $this->total_amount;
+        }
+
         $this->data = CreateExpenseRecurrenceData::from([
-            "name"                    =>    $this->name,
-            "category_id"             =>    $this->category_id,
-            "amount"                  =>    $this->amount,
-            "amount_usd"              =>    $this->amount_usd,
-            "currency"                =>    $this->currency,
-            "has_invoice"             =>    $this->has_invoice,
-            "is_deductible"           =>    $this->is_deductible,
-            "iva"                     =>    $this->iva,
+            "name"            => $this->name,
+            "category_id"     => $this->category_id,
+            "amount"          => $this->total_amount, // Mapear total_amount a amount
+            "amount_usd"      => $this->total_usd,    // Mapear total_usd a amount_usd
+            "currency"        => $this->currency,
+            "has_invoice"     => $this->has_invoice,
+            "is_deductible"   => $this->is_deductible,
+            "iva"             => $this->iva,
             // "expense_date"            =>    new \DateTime($this->expense_date),
-            "user_id"                 =>    $this->user_id,
-            "count"                   =>    $this->count,
-            "type_of_expense"         =>    Expense::TYPE_OF_EXPENSE_RECURRENTE,
-            "recurrence"              =>    $this->recurrence,
+            "user_id"         => $this->user_id,
+            "count"           => $this->count,
+            "type_of_expense" => Expense::TYPE_OF_EXPENSE_RECURRENTE,
+            "recurrence"      => $this->recurrence,
             // "next_expense_date"       =>    $this->next_expense_date,
-            "amount_bs"              =>    $this->amount_bs,
+            "amount_bs"       => $amountBs,
         ]);
     }
 }

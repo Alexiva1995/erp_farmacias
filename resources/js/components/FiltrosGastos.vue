@@ -7,7 +7,6 @@ const props = defineProps({
   fechaHasta_filtro: { type: String, required: true, default: () => "" },
   fechaDesde_filtro: { type: String, required: true, default: () => "" },
   isDeductible: Boolean,
-  hasInvoice: Boolean,
   showAddButton: { type: Boolean, required: false, default: true },
   loading: { type: Boolean, default: false },
 });
@@ -25,7 +24,6 @@ const emit = defineEmits([
   "export-pdf",
   "add",
   "update:isDeductible",
-  "update:hasInvoice",
 ]);
 </script>
 <template>
@@ -90,20 +88,12 @@ const emit = defineEmits([
           />
         </VCol>
         <VCol cols="12" sm="3" md="2">
-          <div class="d-flex align-center gap-2">
-            <VCheckbox
-              label="Deducibles"
-              :model-value="props.isDeductible"
-              @update:model-value="emit('update:isDeductible', $event)"
-              hide-details
-            />
-            <VCheckbox
-              label="Con Factura"
-              :model-value="props.hasInvoice"
-              @update:model-value="emit('update:hasInvoice', $event)"
-              hide-details
-            />
-          </div>
+          <VCheckbox
+            label="Deducibles"
+            :model-value="props.isDeductible"
+            @update:model-value="emit('update:isDeductible', $event)"
+            hide-details
+          />
         </VCol>
       </VRow>
     </VCardText>
