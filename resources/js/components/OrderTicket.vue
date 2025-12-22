@@ -5,7 +5,6 @@ import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed } from "vue";
-
 const props = defineProps({
   orderData: {
     type: Object,
@@ -56,6 +55,10 @@ const props = defineProps({
     default: 0,
   },
   recipeDiscountTotal: {
+    type: Number,
+    default: 0,
+  },
+  expirationDiscountTotal: {
     type: Number,
     default: 0,
   },
@@ -167,6 +170,13 @@ const activeDiscountDisplay = computed(() => {
 
   return null;
 });
+
+onMounted(() => {
+  console.log(
+    "OrderTicket mounted inside ticket. Expiration Discount prop:",
+    props.expirationDiscountTotal
+  );
+});
 </script>
 <template>
   <div class="col-12 col-md-8 mx-auto">
@@ -264,6 +274,23 @@ const activeDiscountDisplay = computed(() => {
           </span>
           <span class="text-end font-weight-black tituloAzulPrint">
             - {{ activeDiscountDisplay.formatted }}
+          </span>
+        </div>
+        <div
+          v-if="props.expirationDiscountTotal > 0"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold tituloAzulPrint">
+            Descuento Vencimiento:
+          </span>
+          <span class="text-end font-weight-black tituloAzulPrint">
+            -
+            {{
+              formatCurrency(
+                props.expirationDiscountTotal,
+                props.selectedCurrency
+              )
+            }}
           </span>
         </div>
         <div class="ticket-total d-flex justify-space-between align-center">

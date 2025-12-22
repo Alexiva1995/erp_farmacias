@@ -23,6 +23,21 @@ const headers = [
   { title: "Categoría", key: "category_name", sortable: false },
   { title: "Fecha", key: "transaction_date", sortable: false },
 ];
+
+const formatCurrency = (amount, currencyCode) => {
+  const currency = currencyCode === "BS" ? "VES" : currencyCode;
+  const isCop = currency === "COP";
+  if (currencyCode === "COP") {
+    return `${amount} COP`;
+  }
+
+  return new Intl.NumberFormat("es", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: isCop ? 0 : 2,
+    maximumFractionDigits: isCop ? 0 : 2,
+  }).format(amount);
+};
 </script>
 
 <template>
@@ -63,25 +78,14 @@ const headers = [
         <span
           class="font-weight-medium"
           :class="item.movement_type === 'IN' ? 'text-success' : 'text-error'"
-          >{{
-            Intl.NumberFormat("es", {
-              style: "currency",
-              currency: item.currency === "BS" ? "VES" : item.currency,
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(item.amount)
-          }}</span
+        >
+          {{ formatCurrency(item.amount, item.currency) }}</span
         >
       </template>
 
       <template #item.balance="{ item }">
         <span class="font-weight-medium">{{
-          Intl.NumberFormat("es", {
-            style: "currency",
-            currency: item.currency === "BS" ? "VES" : item.currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(item.balance)
+          formatCurrency(item.balance, item.currency)
         }}</span>
       </template>
     </VDataTableServer>

@@ -11,6 +11,52 @@ const currentYear = date.getFullYear();
 const selectedMonth = ref(currentMonth);
 const selectedYear = ref(currentYear);
 
+// Sort State
+const selectedSort = ref({ key: "total", order: "desc" });
+
+const sortOptions = [
+  {
+    title: "Puntaje Total",
+    icon: "tabler-trophy",
+    key: "total",
+    order: "desc",
+  },
+  {
+    title: "Ventas",
+    icon: "tabler-currency-dollar",
+    key: "sales",
+    order: "desc",
+  },
+  {
+    title: "Crecimiento",
+    icon: "tabler-trending-up",
+    key: "growth",
+    order: "desc",
+  },
+  {
+    title: "Inventario",
+    icon: "tabler-package",
+    key: "inventory_score",
+    order: "desc",
+  },
+  {
+    title: "Vencimientos",
+    icon: "tabler-calendar-off",
+    key: "scores.expiration", // Sort by score to reward fewer expirations
+    order: "desc",
+  },
+];
+
+const handleSortClick = (option) => {
+  selectedSort.value = { key: option.key, order: option.order };
+};
+
+const handleClear = () => {
+  selectedMonth.value = currentMonth;
+  selectedYear.value = currentYear;
+  selectedSort.value = { key: "total", order: "desc" };
+};
+
 // Generate list of months (e.g., current year + previous year)
 const availableMonths = computed(() => {
   const months = [
@@ -79,81 +125,147 @@ const calculatedEmployees = computed(() => {
     Math.max(...data.map((e) => e.cleaning_completed)) || 1;
   const maxStrategy = Math.max(...data.map((e) => e.strategy_sales)) || 1;
 
-  return data
-    .map((e) => {
-      /* SCORING LOGIC */
-      const salesScore = (e.sales / maxSales) * 25;
-      const growthScore = (e.growth / maxGrowth) * 15;
-      const expirationScore = (e.expirations / maxExpirations) * 15;
+  const processed = data.map((e) => {
+    /* SCORING LOGIC */
+    const salesScore = (e.sales / maxSales) * 25;
+    const growthScore = (e.growth / maxGrowth) * 15;
+    const expirationScore = (e.expirations / maxExpirations) * 15;
 
-      // Inventory
-      const inventoryBase = (e.inventory_counted / maxInventoryCount) * 10;
-      const inventoryPenalty = e.inventory_errors * 0.01;
-      const inventoryScore = Math.max(0, inventoryBase - inventoryPenalty);
+    // Inventory
+    const inventoryBase = (e.inventory_counted / maxInventoryCount) * 10;
+    const inventoryPenalty = e.inventory_errors * 0.01;
+    const inventoryScore = Math.max(0, inventoryBase - inventoryPenalty);
 
-      const premiumScore = (e.premium_products / maxPremium) * 10;
-      const invoiceScore =
-        (e.score_loaded || 0) +
-        (e.score_registered || 0) +
-        (e.score_ordered || 0);
-      const cleaningScore = (e.cleaning_completed / maxCleaningCompleted) * 5;
-      const strategyScore = (e.strategy_sales / maxStrategy) * 5;
+    const premiumScore = (e.premium_products / maxPremium) * 10;
+    const invoiceScore =
+      (e.score_loaded || 0) +
+      (e.score_registered || 0) +
+      (e.score_ordered || 0);
+    const cleaningScore = (e.cleaning_completed / maxCleaningCompleted) * 5;
+    const strategyScore = (e.strategy_sales / maxStrategy) * 5;
 
-      const totalScore =
-        salesScore +
-        growthScore +
-        expirationScore +
-        inventoryScore +
-        premiumScore +
-        invoiceScore +
-        cleaningScore +
-        strategyScore;
+    const totalScore =
+      salesScore +
+      growthScore +
+      expirationScore +
+      inventoryScore +
+      premiumScore +
+      invoiceScore +
+      cleaningScore +
+      strategyScore;
 
-      return {
-        ...e,
-        scores: {
-          sales: salesScore,
-          growth: growthScore,
-          expiration: expirationScore,
-          inventory: inventoryScore,
-          premium: premiumScore,
-          invoice: invoiceScore,
-          cleaning: cleaningScore,
-          strategy: strategyScore,
-          total: totalScore,
-        },
-      };
-    })
-    .sort((a, b) => b.scores.total - a.scores.total); // Rank by total score
+    return {
+      ...e,
+      scores: {
+        sales: salesScore,
+        growth: growthScore,
+        expiration: expirationScore,
+        inventory: inventoryScore,
+        premium: premiumScore,
+        invoice: invoiceScore,
+        cleaning: cleaningScore,
+        strategy: strategyScore,
+        total: totalScore,
+      },
+      // Helper for sorting
+      inventory_score: inventoryScore,
+    };
+  });
+
+  // Dynamic Sorting
+  return processed.sort((a, b) => {
+    const key = selectedSort.value.key;
+    const order = selectedSort.value.order === "asc" ? 1 : -1;
+
+    let valA, valB;
+
+    if (key.includes(".")) {
+      const keys = key.split(".");
+      valA = a[keys[0]][keys[1]];
+      valB = b[keys[0]][keys[1]];
+    } else {
+      valA = a[key];
+      valB = b[key];
+    }
+
+    if (valA < valB) return -1 * order;
+    if (valA > valB) return 1 * order;
+    return 0;
+  });
 });
 </script>
 
 <template>
   <VContainer fluid>
-    <div class="d-flex align-center justify-space-between mb-4">
-      <h2 class="text-h4 font-weight-bold">Métricas de {{ monthTitle }}</h2>
-      <div class="d-flex gap-4" style="max-width: 400px">
-        <VSelect
-          v-model="selectedMonth"
-          :items="availableMonths"
-          item-title="title"
-          item-value="value"
-          label="Mes"
-          density="compact"
-          hide-details
-          class="me-2"
-          style="width: 150px"
-        />
-        <VSelect
-          v-model="selectedYear"
-          :items="availableYears"
-          label="Año"
-          density="compact"
-          hide-details
-          style="width: 100px"
-        />
-      </div>
-    </div>
+    <VCard class="mb-6">
+      <VCardText>
+        <VRow>
+          <VCol cols="12" sm="6" md="6">
+            <AppSelect
+              v-model="selectedMonth"
+              :items="availableMonths"
+              item-title="title"
+              item-value="value"
+              label="Mes"
+              placeholder="Seleccionar Mes"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="6">
+            <AppSelect
+              v-model="selectedYear"
+              :items="availableYears"
+              label="Año"
+              placeholder="Seleccionar Año"
+              clearable
+            />
+          </VCol>
+        </VRow>
+      </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+        <VBtn color="secondary" variant="outlined" @click="handleClear">
+          Limpiar Filtros
+        </VBtn>
+
+        <VMenu>
+          <VList>
+            <VListItem
+              v-for="(option, index) in sortOptions"
+              :key="index"
+              @click="handleSortClick(option)"
+            >
+              <template #prepend>
+                <VIcon :icon="option.icon" size="20" class="me-2" />
+              </template>
+              <VListItemTitle>{{ option.title }}</VListItemTitle>
+              <template #append>
+                <VIcon
+                  v-if="selectedSort.key === option.key"
+                  icon="tabler-check"
+                  size="16"
+                  color="primary"
+                />
+              </template>
+            </VListItem>
+          </VList>
+        </VMenu>
+
+        <VChip
+          v-if="selectedSort.key !== 'total'"
+          color="primary"
+          variant="tonal"
+          size="small"
+          closable
+          @click="selectedSort = { key: 'total', order: 'desc' }"
+        >
+          <VIcon icon="tabler-sort-descending" size="14" class="me-1" />
+          Orden Personalizado
+        </VChip>
+      </VCardActions>
+    </VCard>
     <EmployeeMonthTable :items="calculatedEmployees" />
   </VContainer>
 </template>

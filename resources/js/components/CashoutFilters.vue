@@ -106,7 +106,7 @@ function toggleCurrency(cur) {
             }}
           </h5>
           <div class="text-sm">
-            {{ `Dólares (USD) - ${dateRange != null ? "mensual" : "total"}` }}
+            {{ `USD - ${dateRange != null ? "mensual" : "total"}` }}
           </div>
         </VCardText>
         <SparklineCard :stats="props.stats['USD'] || []" color="warning" />
@@ -123,9 +123,10 @@ function toggleCurrency(cur) {
         <VCardText>
           <h5 class="text-h3">
             {{
-              Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats.total_cop
-              )
+              Intl.NumberFormat("es", {
+                notation: "standard",
+                maximumFractionDigits: 0,
+              }).format(props.stats.total_cop)
             }}
           </h5>
           <div class="text-sm">
