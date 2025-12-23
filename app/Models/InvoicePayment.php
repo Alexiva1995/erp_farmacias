@@ -15,6 +15,7 @@ class InvoicePayment extends Model
         'status',
         'payment_by',
         'photo_url',
+        'method'
     ];
 
     public function user(): BelongsTo

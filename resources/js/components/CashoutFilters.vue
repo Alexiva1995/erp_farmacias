@@ -101,7 +101,7 @@ function toggleCurrency(cur) {
           <h5 class="text-h3">
             {{
               Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats.total_usd
+                props.stats.total_usd ?? 0
               )
             }}
           </h5>
@@ -126,7 +126,7 @@ function toggleCurrency(cur) {
               Intl.NumberFormat("es", {
                 notation: "standard",
                 maximumFractionDigits: 0,
-              }).format(props.stats.total_cop)
+              }).format(props.stats.total_cop ?? 0)
             }}
           </h5>
           <div class="text-sm">
@@ -148,7 +148,7 @@ function toggleCurrency(cur) {
           <h5 class="text-h3">
             {{
               Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats.total_bs
+                props.stats.total_bs ?? 0
               )
             }}
           </h5>

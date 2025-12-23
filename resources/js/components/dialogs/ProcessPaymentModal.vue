@@ -31,12 +31,44 @@ const form = ref({
   payment_date: new Date().toISOString().split("T")[0],
   photo_url: null,
   reference: "",
+  payment_method: null,
 });
 
 // Estado de carga
 const loading = ref(false);
 const uploading = ref(false);
 const exchangeRates = ref({});
+
+const availablePaymentMethods = computed(() => {
+  const currency = form.value.payment_currency;
+
+  const methodMap = {
+    CASH: { value: "cash", label: "Efectivo" },
+    CARD: { value: "card", label: "Tarjeta" },
+    MOBILE: { value: "mobile", label: "Pago móvil" },
+    TRANSFER: { value: "transfer", label: "Transferencia" },
+    BINANCE: { value: "binance", label: "Binance" },
+    PAYPAL: { value: "paypal", label: "PayPal" },
+    CREDIT: { value: "credit", label: "Crédito" },
+  };
+
+  let allowed;
+
+  if (currency === "VES" || currency === "BS") {
+    // BS → Efectivo, Tarjeta, Pago móvil, Transferencia
+    allowed = ["CASH", "CARD", "MOBILE", "TRANSFER"];
+  } else if (currency === "COP") {
+    // COP → Efectivo, Transferencia
+    allowed = ["CASH", "TRANSFER"];
+  } else if (currency === "USD") {
+    // USD → Efectivo, Binance, PayPal, Crédito
+    allowed = ["CASH", "BINANCE", "PAYPAL", "CREDIT"];
+  } else {
+    allowed = []; // Fallback
+  }
+
+  return allowed.map((key) => methodMap[key]);
+});
 
 // Estado de pagos previos
 const paymentInfo = ref({
@@ -433,6 +465,16 @@ const processPayment = async () => {
   }
 
   try {
+    const frontendToEnumMap = {
+      cash: "CASH",
+      card: "CARD",
+      mobile: "MOBILE",
+      transfer: "TRANSFER",
+      binance: "BINANCE",
+      paypal: "PAYPAL",
+      credit: "CREDIT",
+    };
+
     const paymentData = {
       payment_type: "full",
       payment_currency: form.value.payment_currency,
@@ -441,6 +483,7 @@ const processPayment = async () => {
       reference: form.value.reference || null,
       photo_url: form.value.photo_url,
       invoice_ids: selectedInvoices.value.map((inv) => inv.id),
+      payment_method: frontendToEnumMap[form.value.payment_method] || null,
     };
 
     const response = await axios.post(
@@ -459,13 +502,15 @@ const processPayment = async () => {
     console.error("Error al procesar pago:", error);
     console.error("Error response:", error.response?.data);
 
-    if (error.response?.data?.errors) {
-      errors.value = error.response.data.errors;
+    if (error.response?.data?.data?.errors) {
+      errors.value = error.response.data.data.errors;
+      console.log(errors.value);
       toast.error(
-        "Error de validación: " + JSON.stringify(error.response.data.errors)
+        "Error de validación: " +
+          JSON.stringify(error.response.data.data.errors)
       );
-    } else if (error.response?.data?.message) {
-      toast.error("Error: " + error.response.data.message);
+    } else if (error.response?.data?.data?.message) {
+      toast.error("Error: " + error.response.data.data.message);
     } else {
       toast.error("Error al procesar el pago");
     }
@@ -688,6 +733,7 @@ watch(
 watch(
   () => form.value.payment_currency,
   () => {
+    form.value.payment_method = null;
     // CORRECCIÓN: No establecer monto sugerido automáticamente
     // form.value.payment_amount = suggestedAmountInLocalCurrency.value;
   }
@@ -818,6 +864,18 @@ onMounted(() => {
               />
             </VCol>
             <VCol cols="12" md="4">
+              <VSelect
+                v-model="form.payment_method"
+                :items="availablePaymentMethods"
+                item-title="label"
+                item-value="value"
+                label="Método de Pago"
+                :error-messages="errors.payment_method"
+                required
+                :return-object="false"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
               <VTextField
                 v-model.number="form.payment_amount"
                 label="Monto a Pagar"
@@ -853,10 +911,7 @@ onMounted(() => {
                 persistent-hint
               />
             </VCol>
-          </VRow>
-
-          <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VTextField
                 v-model="form.payment_date"
                 label="Fecha de Pago"
@@ -865,7 +920,7 @@ onMounted(() => {
                 required
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="4">
               <VFileInput
                 label="Comprobante de Pago"
                 accept="image/*"

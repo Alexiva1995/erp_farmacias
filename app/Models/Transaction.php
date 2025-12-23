@@ -15,7 +15,7 @@ class Transaction extends Model
 
     public function category()
     {
-        return $this->hasOne(Category::class);
+        return $this->hasOne(ExpenseCategory::class);
     }
 
     public function exchange()

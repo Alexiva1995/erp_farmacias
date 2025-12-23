@@ -1,4 +1,6 @@
 <script setup>
+import { formatCurrency } from "@/utils/currencyFormatter";
+
 const props = defineProps({
   transactions: { type: [Array, Object], default: () => [] },
   loading: { type: Boolean, default: false },
@@ -23,21 +25,6 @@ const headers = [
   { title: "Categoría", key: "category_name", sortable: false },
   { title: "Fecha", key: "transaction_date", sortable: false },
 ];
-
-const formatCurrency = (amount, currencyCode) => {
-  const currency = currencyCode === "BS" ? "VES" : currencyCode;
-  const isCop = currency === "COP";
-  if (currencyCode === "COP") {
-    return `${amount} COP`;
-  }
-
-  return new Intl.NumberFormat("es", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: isCop ? 0 : 2,
-    maximumFractionDigits: isCop ? 0 : 2,
-  }).format(amount);
-};
 </script>
 
 <template>
@@ -61,14 +48,7 @@ const formatCurrency = (amount, currencyCode) => {
           <td colspan="2"></td>
           <td>
             <span class="text-success text-h6 pr-4">
-              {{
-                Intl.NumberFormat("es", {
-                  style: "currency",
-                  currency: "USD",
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(props.previousTotalUsd)
-              }}
+              {{ formatCurrency(parseFloat(props.previousTotalUsd), "USD") }}
             </span>
           </td>
         </tr>
@@ -78,14 +58,13 @@ const formatCurrency = (amount, currencyCode) => {
         <span
           class="font-weight-medium"
           :class="item.movement_type === 'IN' ? 'text-success' : 'text-error'"
-        >
-          {{ formatCurrency(item.amount, item.currency) }}</span
+          >{{ formatCurrency(parseFloat(item.amount), item.currency) }}</span
         >
       </template>
 
       <template #item.balance="{ item }">
         <span class="font-weight-medium">{{
-          formatCurrency(item.balance, item.currency)
+          formatCurrency(parseFloat(item.balance), item.currency)
         }}</span>
       </template>
     </VDataTableServer>
