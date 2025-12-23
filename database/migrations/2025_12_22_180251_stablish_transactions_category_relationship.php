@@ -11,6 +11,13 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('transactions', function (Blueprint $table) {
+            // Primero eliminamos la foránea anterior si existe
+            // Usamos try-catch o comprobación si es necesario, pero dropForeign suele fallar si no existe en algunos drivers.
+            // Dado el error, sabemos que EXISTE.
+            $table->dropForeign(['category_id']);
+        });
+
+        Schema::table('transactions', function (Blueprint $table) {
             $table->unsignedBigInteger('category_id')->nullable()->change();
 
             $table->foreign('category_id')
@@ -27,7 +34,13 @@ return new class extends Migration {
     {
         Schema::table('transactions', function (Blueprint $table) {
             $table->dropForeign(['category_id']);
+        });
 
+        Schema::table('transactions', function (Blueprint $table) {
+            $table->foreign('category_id')
+                ->references('id')
+                ->on('categories')
+                ->onDelete('set null');
         });
     }
 };
