@@ -190,7 +190,7 @@ class ExpensesServices implements Expenses
                 "iva" => $expense->iva,
                 "expense_date" => $hoy->format('Y-m-d'),
                 "user_id" => $expense->user_id,
-                "count" => $expense->count,
+                "account" => $expense->count,
                 "type_of_expense" => Expense::TYPE_OF_EXPENSE_NORMAL,
                 "status" => "Pending",
                 "amount_bs" => $expense->amount_bs,
