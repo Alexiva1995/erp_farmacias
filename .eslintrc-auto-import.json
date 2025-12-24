@@ -377,6 +377,7 @@
     "pdfEmployeesGenerator": true,
     "pdfPayslipGenerator": true,
     "pdfGastos": true,
-    "translateMethod": true
+    "translateMethod": true,
+    "useExpenses": true
   }
 }
