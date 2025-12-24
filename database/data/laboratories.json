@@ -1,0 +1,3019 @@
+[
+	{
+		"id": 1,
+		"name": "PORTUGAL",
+		"group_id": 4,
+		"created_at": "2024-12-20 19:56:29",
+		"updated_at": "2024-12-20 19:56:29"
+	},
+	{
+		"id": 2,
+		"name": "VALMORCA",
+		"group_id": 4,
+		"created_at": "2024-12-21 12:23:14",
+		"updated_at": "2024-12-21 12:23:14"
+	},
+	{
+		"id": 3,
+		"name": "MEDIGEN",
+		"group_id": 5,
+		"created_at": "2024-12-21 12:37:09",
+		"updated_at": "2024-12-21 12:37:09"
+	},
+	{
+		"id": 4,
+		"name": "BIOFARCO",
+		"group_id": 1,
+		"created_at": "2024-12-21 12:46:11",
+		"updated_at": "2024-12-21 12:46:11"
+	},
+	{
+		"id": 5,
+		"name": "PLUSANDEX",
+		"group_id": 1,
+		"created_at": "2024-12-21 13:09:11",
+		"updated_at": "2024-12-21 13:09:11"
+	},
+	{
+		"id": 6,
+		"name": "MEYER",
+		"group_id": 2,
+		"created_at": "2024-12-21 13:14:42",
+		"updated_at": "2024-12-21 13:14:42"
+	},
+	{
+		"id": 7,
+		"name": "MCK",
+		"group_id": 4,
+		"created_at": "2024-12-21 13:19:12",
+		"updated_at": "2024-12-21 13:19:12"
+	},
+	{
+		"id": 8,
+		"name": "FARMA",
+		"group_id": 2,
+		"created_at": "2024-12-21 14:11:10",
+		"updated_at": "2024-12-21 14:11:10"
+	},
+	{
+		"id": 9,
+		"name": "GENCER",
+		"group_id": 3,
+		"created_at": "2024-12-21 14:57:29",
+		"updated_at": "2024-12-21 14:57:29"
+	},
+	{
+		"id": 10,
+		"name": "OFTALMI",
+		"group_id": 4,
+		"created_at": "2024-12-21 15:03:28",
+		"updated_at": "2024-12-21 15:03:28"
+	},
+	{
+		"id": 11,
+		"name": "ZAKI",
+		"group_id": 4,
+		"created_at": "2024-12-21 15:31:04",
+		"updated_at": "2024-12-21 15:31:04"
+	},
+	{
+		"id": 12,
+		"name": "COFASA",
+		"group_id": 4,
+		"created_at": "2024-12-21 16:04:07",
+		"updated_at": "2024-12-21 16:04:07"
+	},
+	{
+		"id": 13,
+		"name": "VIVAX",
+		"group_id": 3,
+		"created_at": "2024-12-21 16:16:01",
+		"updated_at": "2024-12-21 16:16:01"
+	},
+	{
+		"id": 14,
+		"name": "ELMOR",
+		"group_id": 1,
+		"created_at": "2024-12-21 17:05:00",
+		"updated_at": "2024-12-21 17:05:00"
+	},
+	{
+		"id": 15,
+		"name": "VICTUS",
+		"group_id": 5,
+		"created_at": "2024-12-23 14:25:03",
+		"updated_at": "2024-12-23 14:25:03"
+	},
+	{
+		"id": 16,
+		"name": "GARDEN HOUSE",
+		"group_id": 2,
+		"created_at": "2024-12-23 14:33:24",
+		"updated_at": "2024-12-23 14:33:24"
+	},
+	{
+		"id": 17,
+		"name": "BIONECTAR",
+		"group_id": 3,
+		"created_at": "2024-12-23 14:43:49",
+		"updated_at": "2024-12-23 14:43:49"
+	},
+	{
+		"id": 20,
+		"name": "DPT",
+		"group_id": 3,
+		"created_at": "2024-12-23 15:17:42",
+		"updated_at": "2024-12-23 15:17:42"
+	},
+	{
+		"id": 21,
+		"name": "LYA",
+		"group_id": 5,
+		"created_at": "2024-12-23 15:27:52",
+		"updated_at": "2024-12-23 15:27:52"
+	},
+	{
+		"id": 23,
+		"name": "BIOVENEZUELA",
+		"group_id": 5,
+		"created_at": "2024-12-23 15:46:51",
+		"updated_at": "2024-12-23 15:46:51"
+	},
+	{
+		"id": 24,
+		"name": "QUIM-FAR",
+		"group_id": 2,
+		"created_at": "2024-12-23 16:25:13",
+		"updated_at": "2024-12-23 16:25:13"
+	},
+	{
+		"id": 25,
+		"name": "CALOX",
+		"group_id": 3,
+		"created_at": "2024-12-23 16:32:22",
+		"updated_at": "2024-12-23 16:32:22"
+	},
+	{
+		"id": 26,
+		"name": "ALESS",
+		"group_id": 2,
+		"created_at": "2024-12-23 17:28:40",
+		"updated_at": "2024-12-23 17:28:40"
+	},
+	{
+		"id": 27,
+		"name": "genve -leti",
+		"group_id": 4,
+		"created_at": "2024-12-23 17:35:35",
+		"updated_at": "2024-12-23 17:35:35"
+	},
+	{
+		"id": 28,
+		"name": "GENVE- LETI",
+		"group_id": 1,
+		"created_at": "2024-12-23 17:35:54",
+		"updated_at": "2024-12-23 17:35:54"
+	},
+	{
+		"id": 29,
+		"name": "KMPLUS",
+		"group_id": 2,
+		"created_at": "2024-12-23 17:50:10",
+		"updated_at": "2024-12-23 17:50:10"
+	},
+	{
+		"id": 30,
+		"name": "BIOQUIMICA",
+		"group_id": 2,
+		"created_at": "2024-12-23 17:55:18",
+		"updated_at": "2024-12-23 17:55:18"
+	},
+	{
+		"id": 31,
+		"name": "FARMAMED",
+		"group_id": 1,
+		"created_at": "2024-12-23 18:20:34",
+		"updated_at": "2024-12-23 18:20:34"
+	},
+	{
+		"id": 32,
+		"name": "LAPROFF",
+		"group_id": 4,
+		"created_at": "2024-12-23 18:34:45",
+		"updated_at": "2024-12-23 18:34:45"
+	},
+	{
+		"id": 34,
+		"name": "SANTE",
+		"group_id": 5,
+		"created_at": "2024-12-23 18:43:16",
+		"updated_at": "2024-12-23 18:43:16"
+	},
+	{
+		"id": 36,
+		"name": "RECETTE MARK",
+		"group_id": 1,
+		"created_at": "2024-12-27 19:50:38",
+		"updated_at": "2024-12-27 19:50:38"
+	},
+	{
+		"id": 37,
+		"name": "JOHNSONS",
+		"group_id": 4,
+		"created_at": "2024-12-27 20:17:16",
+		"updated_at": "2024-12-27 20:17:16"
+	},
+	{
+		"id": 38,
+		"name": "DROTAFARMA",
+		"group_id": 4,
+		"created_at": "2024-12-28 17:02:33",
+		"updated_at": "2024-12-28 17:02:33"
+	},
+	{
+		"id": 39,
+		"name": "coaspharma",
+		"group_id": 4,
+		"created_at": "2024-12-28 17:34:25",
+		"updated_at": "2024-12-28 17:34:25"
+	},
+	{
+		"id": 40,
+		"name": "WILDLIFE",
+		"group_id": 3,
+		"created_at": "2024-12-29 20:35:35",
+		"updated_at": "2024-12-29 20:35:35"
+	},
+	{
+		"id": 41,
+		"name": "POLINAC",
+		"group_id": 5,
+		"created_at": "2024-12-29 21:42:22",
+		"updated_at": "2024-12-29 21:42:22"
+	},
+	{
+		"id": 42,
+		"name": "ANGLOPHARMA",
+		"group_id": 5,
+		"created_at": "2024-12-30 17:04:56",
+		"updated_at": "2024-12-30 17:04:56"
+	},
+	{
+		"id": 43,
+		"name": "VITALIS",
+		"group_id": 3,
+		"created_at": "2024-12-30 17:11:18",
+		"updated_at": "2024-12-30 17:11:18"
+	},
+	{
+		"id": 44,
+		"name": "BAYER",
+		"group_id": 3,
+		"created_at": "2024-12-30 17:23:14",
+		"updated_at": "2024-12-30 17:23:14"
+	},
+	{
+		"id": 47,
+		"name": "LETI",
+		"group_id": 5,
+		"created_at": "2024-12-30 18:22:12",
+		"updated_at": "2024-12-30 18:22:12"
+	},
+	{
+		"id": 48,
+		"name": "ECAR",
+		"group_id": 4,
+		"created_at": "2024-12-30 19:50:58",
+		"updated_at": "2024-12-30 19:50:58"
+	},
+	{
+		"id": 49,
+		"name": "GENVEN",
+		"group_id": 1,
+		"created_at": "2024-12-30 20:08:47",
+		"updated_at": "2024-12-30 20:08:47"
+	},
+	{
+		"id": 50,
+		"name": "GAMA",
+		"group_id": 4,
+		"created_at": "2025-01-09 13:33:21",
+		"updated_at": "2025-01-09 13:33:21"
+	},
+	{
+		"id": 51,
+		"name": "COLMED",
+		"group_id": 2,
+		"created_at": "2025-01-09 21:40:33",
+		"updated_at": "2025-01-09 21:40:33"
+	},
+	{
+		"id": 52,
+		"name": "BIOGLAS",
+		"group_id": 5,
+		"created_at": "2025-01-10 18:58:49",
+		"updated_at": "2025-01-10 18:58:49"
+	},
+	{
+		"id": 53,
+		"name": "KLINOS",
+		"group_id": 2,
+		"created_at": "2025-01-11 20:10:07",
+		"updated_at": "2025-01-11 20:10:07"
+	},
+	{
+		"id": 54,
+		"name": "MEGALAB",
+		"group_id": 1,
+		"created_at": "2025-01-11 20:44:05",
+		"updated_at": "2025-01-11 20:44:05"
+	},
+	{
+		"id": 55,
+		"name": "ANGELUS",
+		"group_id": 4,
+		"created_at": "2025-01-11 21:08:07",
+		"updated_at": "2025-01-11 21:08:07"
+	},
+	{
+		"id": 56,
+		"name": "CAMBRIBGE",
+		"group_id": 2,
+		"created_at": "2025-01-11 21:15:08",
+		"updated_at": "2025-01-11 21:15:08"
+	},
+	{
+		"id": 57,
+		"name": "EVERMED",
+		"group_id": 5,
+		"created_at": "2025-01-13 19:56:57",
+		"updated_at": "2025-01-13 19:56:57"
+	},
+	{
+		"id": 58,
+		"name": "CIMA-PHARMA",
+		"group_id": 1,
+		"created_at": "2025-01-14 16:50:55",
+		"updated_at": "2025-01-14 16:50:55"
+	},
+	{
+		"id": 59,
+		"name": "NIO",
+		"group_id": 2,
+		"created_at": "2025-01-14 17:01:37",
+		"updated_at": "2025-01-14 17:01:37"
+	},
+	{
+		"id": 60,
+		"name": "DRENE",
+		"group_id": 5,
+		"created_at": "2025-01-14 17:56:35",
+		"updated_at": "2025-01-14 17:56:35"
+	},
+	{
+		"id": 61,
+		"name": "EVERY NYGHT",
+		"group_id": 5,
+		"created_at": "2025-01-14 18:01:48",
+		"updated_at": "2025-01-14 18:01:48"
+	},
+	{
+		"id": 62,
+		"name": "LOREAL-VIVE",
+		"group_id": 2,
+		"created_at": "2025-01-14 18:54:32",
+		"updated_at": "2025-01-14 18:54:32"
+	},
+	{
+		"id": 63,
+		"name": "SAVITAL",
+		"group_id": 3,
+		"created_at": "2025-01-14 19:28:04",
+		"updated_at": "2025-01-14 19:28:04"
+	},
+	{
+		"id": 64,
+		"name": "FAES FARMA",
+		"group_id": 5,
+		"created_at": "2025-01-14 19:34:14",
+		"updated_at": "2025-01-14 19:34:14"
+	},
+	{
+		"id": 65,
+		"name": "LABQUIFAR",
+		"group_id": 3,
+		"created_at": "2025-01-15 16:57:24",
+		"updated_at": "2025-01-15 16:57:24"
+	},
+	{
+		"id": 66,
+		"name": "MT",
+		"group_id": 3,
+		"created_at": "2025-01-15 17:09:52",
+		"updated_at": "2025-01-15 17:09:52"
+	},
+	{
+		"id": 67,
+		"name": "G-TABS",
+		"group_id": 4,
+		"created_at": "2025-01-15 17:14:56",
+		"updated_at": "2025-01-15 17:14:56"
+	},
+	{
+		"id": 68,
+		"name": "PROCAPS",
+		"group_id": 4,
+		"created_at": "2025-01-15 17:15:49",
+		"updated_at": "2025-01-15 17:15:49"
+	},
+	{
+		"id": 69,
+		"name": "ETIFAR",
+		"group_id": 3,
+		"created_at": "2025-01-15 17:17:54",
+		"updated_at": "2025-01-15 17:17:54"
+	},
+	{
+		"id": 70,
+		"name": "3M",
+		"group_id": 3,
+		"created_at": "2025-01-15 17:49:00",
+		"updated_at": "2025-01-15 17:49:00"
+	},
+	{
+		"id": 71,
+		"name": "BRIUTCARE",
+		"group_id": 3,
+		"created_at": "2025-01-15 17:59:21",
+		"updated_at": "2025-01-15 17:59:21"
+	},
+	{
+		"id": 72,
+		"name": "REXONA",
+		"group_id": 4,
+		"created_at": "2025-01-15 18:45:31",
+		"updated_at": "2025-01-15 18:45:31"
+	},
+	{
+		"id": 73,
+		"name": "DORCO",
+		"group_id": 2,
+		"created_at": "2025-01-15 18:56:25",
+		"updated_at": "2025-01-15 18:56:25"
+	},
+	{
+		"id": 74,
+		"name": "ALNA",
+		"group_id": 3,
+		"created_at": "2025-01-15 19:20:31",
+		"updated_at": "2025-01-15 19:20:31"
+	},
+	{
+		"id": 75,
+		"name": "GUARDIAN",
+		"group_id": 2,
+		"created_at": "2025-01-15 19:30:00",
+		"updated_at": "2025-01-15 19:30:00"
+	},
+	{
+		"id": 76,
+		"name": "ECOMED",
+		"group_id": 5,
+		"created_at": "2025-01-15 20:09:06",
+		"updated_at": "2025-01-15 20:09:06"
+	},
+	{
+		"id": 77,
+		"name": "JHC MEDICAL",
+		"group_id": 1,
+		"created_at": "2025-01-15 20:22:16",
+		"updated_at": "2025-01-15 20:22:16"
+	},
+	{
+		"id": 78,
+		"name": "VALEMEDIC",
+		"group_id": 2,
+		"created_at": "2025-01-15 20:27:12",
+		"updated_at": "2025-01-15 20:27:12"
+	},
+	{
+		"id": 79,
+		"name": "VINCENTI",
+		"group_id": 1,
+		"created_at": "2025-01-15 23:35:47",
+		"updated_at": "2025-01-15 23:35:47"
+	},
+	{
+		"id": 80,
+		"name": "INSUMOS MEDICOS",
+		"group_id": 2,
+		"created_at": "2025-01-16 16:47:35",
+		"updated_at": "2025-01-16 16:47:35"
+	},
+	{
+		"id": 81,
+		"name": "ALVA",
+		"group_id": 1,
+		"created_at": "2025-01-16 18:09:09",
+		"updated_at": "2025-01-16 18:09:09"
+	},
+	{
+		"id": 82,
+		"name": "SANOL",
+		"group_id": 5,
+		"created_at": "2025-01-16 18:13:36",
+		"updated_at": "2025-01-16 18:13:36"
+	},
+	{
+		"id": 83,
+		"name": "ASPEN",
+		"group_id": 2,
+		"created_at": "2025-01-16 18:46:37",
+		"updated_at": "2025-01-16 18:46:37"
+	},
+	{
+		"id": 84,
+		"name": "ADN",
+		"group_id": 2,
+		"created_at": "2025-01-16 18:51:13",
+		"updated_at": "2025-01-16 18:51:13"
+	},
+	{
+		"id": 85,
+		"name": "ALGOBAP",
+		"group_id": 1,
+		"created_at": "2025-01-16 18:58:44",
+		"updated_at": "2025-01-16 18:58:44"
+	},
+	{
+		"id": 86,
+		"name": "ALVE",
+		"group_id": 3,
+		"created_at": "2025-01-16 19:09:27",
+		"updated_at": "2025-01-16 19:09:27"
+	},
+	{
+		"id": 87,
+		"name": "RONAVA",
+		"group_id": 2,
+		"created_at": "2025-01-16 19:11:49",
+		"updated_at": "2025-01-16 19:11:49"
+	},
+	{
+		"id": 88,
+		"name": "SANOFI",
+		"group_id": 3,
+		"created_at": "2025-01-16 19:43:51",
+		"updated_at": "2025-01-16 19:43:51"
+	},
+	{
+		"id": 89,
+		"name": "PHARMETIQUE",
+		"group_id": 3,
+		"created_at": "2025-01-16 20:00:11",
+		"updated_at": "2025-01-16 20:00:11"
+	},
+	{
+		"id": 90,
+		"name": "FAHD",
+		"group_id": 1,
+		"created_at": "2025-01-16 21:07:06",
+		"updated_at": "2025-01-16 21:07:06"
+	},
+	{
+		"id": 91,
+		"name": "MEMPHIS",
+		"group_id": 4,
+		"created_at": "2025-01-16 21:17:27",
+		"updated_at": "2025-01-16 21:17:27"
+	},
+	{
+		"id": 92,
+		"name": "BIOSANO",
+		"group_id": 4,
+		"created_at": "2025-01-18 17:12:25",
+		"updated_at": "2025-01-18 17:12:25"
+	},
+	{
+		"id": 93,
+		"name": "BIOTECH",
+		"group_id": 1,
+		"created_at": "2025-01-18 17:26:12",
+		"updated_at": "2025-01-18 17:26:12"
+	},
+	{
+		"id": 94,
+		"name": "ARTE MEDICO",
+		"group_id": 3,
+		"created_at": "2025-01-18 19:13:08",
+		"updated_at": "2025-01-18 19:13:08"
+	},
+	{
+		"id": 95,
+		"name": "BRIXMEDICA",
+		"group_id": 4,
+		"created_at": "2025-01-18 19:16:07",
+		"updated_at": "2025-01-18 19:16:07"
+	},
+	{
+		"id": 96,
+		"name": "ZN",
+		"group_id": 5,
+		"created_at": "2025-01-18 20:16:44",
+		"updated_at": "2025-01-18 20:16:44"
+	},
+	{
+		"id": 97,
+		"name": "DEVA",
+		"group_id": 4,
+		"created_at": "2025-01-18 21:27:18",
+		"updated_at": "2025-01-18 21:27:18"
+	},
+	{
+		"id": 98,
+		"name": "LAND",
+		"group_id": 2,
+		"created_at": "2025-01-18 22:24:31",
+		"updated_at": "2025-01-18 22:24:31"
+	},
+	{
+		"id": 99,
+		"name": "SPEFAR",
+		"group_id": 1,
+		"created_at": "2025-01-18 22:27:27",
+		"updated_at": "2025-01-18 22:27:27"
+	},
+	{
+		"id": 100,
+		"name": "BIUMAK",
+		"group_id": 4,
+		"created_at": "2025-01-18 22:34:41",
+		"updated_at": "2025-01-18 22:34:41"
+	},
+	{
+		"id": 101,
+		"name": "BUKA",
+		"group_id": 4,
+		"created_at": "2025-01-18 22:38:58",
+		"updated_at": "2025-01-18 22:38:58"
+	},
+	{
+		"id": 102,
+		"name": "GENFAR",
+		"group_id": 1,
+		"created_at": "2025-01-18 22:43:30",
+		"updated_at": "2025-01-18 22:43:30"
+	},
+	{
+		"id": 103,
+		"name": "H-M",
+		"group_id": 5,
+		"created_at": "2025-01-18 22:59:14",
+		"updated_at": "2025-01-18 22:59:14"
+	},
+	{
+		"id": 104,
+		"name": "VENEQUIMEX",
+		"group_id": 1,
+		"created_at": "2025-01-18 23:03:31",
+		"updated_at": "2025-01-18 23:03:31"
+	},
+	{
+		"id": 105,
+		"name": "ROWER",
+		"group_id": 3,
+		"created_at": "2025-01-24 20:02:27",
+		"updated_at": "2025-01-24 20:02:27"
+	},
+	{
+		"id": 106,
+		"name": "TIARES",
+		"group_id": 3,
+		"created_at": "2025-01-24 20:15:39",
+		"updated_at": "2025-01-24 20:15:39"
+	},
+	{
+		"id": 107,
+		"name": "VARGAS",
+		"group_id": 3,
+		"created_at": "2025-01-24 20:28:40",
+		"updated_at": "2025-01-24 20:28:40"
+	},
+	{
+		"id": 108,
+		"name": "CIFARMA",
+		"group_id": 3,
+		"created_at": "2025-01-24 20:40:34",
+		"updated_at": "2025-01-24 20:40:34"
+	},
+	{
+		"id": 109,
+		"name": "BIONANOTECNOLOGIA",
+		"group_id": 4,
+		"created_at": "2025-01-24 21:22:02",
+		"updated_at": "2025-01-24 21:22:02"
+	},
+	{
+		"id": 110,
+		"name": "NATURLIFES",
+		"group_id": 1,
+		"created_at": "2025-01-24 21:34:01",
+		"updated_at": "2025-01-24 21:34:01"
+	},
+	{
+		"id": 111,
+		"name": "SGG",
+		"group_id": 5,
+		"created_at": "2025-01-29 13:41:46",
+		"updated_at": "2025-01-29 13:41:46"
+	},
+	{
+		"id": 112,
+		"name": "BIOQUIFAR",
+		"group_id": 3,
+		"created_at": "2025-01-29 14:11:46",
+		"updated_at": "2025-01-29 14:11:46"
+	},
+	{
+		"id": 113,
+		"name": "BEHRENS",
+		"group_id": 4,
+		"created_at": "2025-01-29 14:34:56",
+		"updated_at": "2025-01-29 14:34:56"
+	},
+	{
+		"id": 114,
+		"name": "GRUNENTHAL",
+		"group_id": 5,
+		"created_at": "2025-01-29 15:55:55",
+		"updated_at": "2025-01-29 15:55:55"
+	},
+	{
+		"id": 115,
+		"name": "ALFA",
+		"group_id": 3,
+		"created_at": "2025-01-29 16:06:47",
+		"updated_at": "2025-01-29 16:06:47"
+	},
+	{
+		"id": 116,
+		"name": "BENET",
+		"group_id": 3,
+		"created_at": "2025-01-29 16:31:45",
+		"updated_at": "2025-01-29 16:31:45"
+	},
+	{
+		"id": 117,
+		"name": "ABEJITA",
+		"group_id": 1,
+		"created_at": "2025-01-29 17:52:54",
+		"updated_at": "2025-01-29 17:52:54"
+	},
+	{
+		"id": 118,
+		"name": "ARCO IRIS",
+		"group_id": 1,
+		"created_at": "2025-01-29 17:54:08",
+		"updated_at": "2025-01-29 17:54:08"
+	},
+	{
+		"id": 119,
+		"name": "GEAGAR",
+		"group_id": 3,
+		"created_at": "2025-01-29 18:14:12",
+		"updated_at": "2025-01-29 18:14:12"
+	},
+	{
+		"id": 120,
+		"name": "MOMENTA",
+		"group_id": 5,
+		"created_at": "2025-01-29 18:28:57",
+		"updated_at": "2025-01-29 18:28:57"
+	},
+	{
+		"id": 121,
+		"name": "ZORIAK",
+		"group_id": 4,
+		"created_at": "2025-01-29 18:32:28",
+		"updated_at": "2025-01-29 18:32:28"
+	},
+	{
+		"id": 122,
+		"name": "CLEO",
+		"group_id": 5,
+		"created_at": "2025-01-29 18:37:29",
+		"updated_at": "2025-01-29 18:37:29"
+	},
+	{
+		"id": 123,
+		"name": "BLASKOV",
+		"group_id": 5,
+		"created_at": "2025-01-30 18:51:27",
+		"updated_at": "2025-01-30 18:51:27"
+	},
+	{
+		"id": 124,
+		"name": "BIOMERCY",
+		"group_id": 1,
+		"created_at": "2025-01-30 20:34:38",
+		"updated_at": "2025-01-30 20:34:38"
+	},
+	{
+		"id": 125,
+		"name": "ZUZU",
+		"group_id": 2,
+		"created_at": "2025-01-30 21:51:47",
+		"updated_at": "2025-01-30 21:51:47"
+	},
+	{
+		"id": 126,
+		"name": "BLUE MEDICAL",
+		"group_id": 2,
+		"created_at": "2025-01-30 22:10:24",
+		"updated_at": "2025-01-30 22:10:24"
+	},
+	{
+		"id": 127,
+		"name": "SPA LINE",
+		"group_id": 2,
+		"created_at": "2025-01-30 22:13:56",
+		"updated_at": "2025-01-30 22:13:56"
+	},
+	{
+		"id": 128,
+		"name": "VITA",
+		"group_id": 1,
+		"created_at": "2025-01-30 22:28:58",
+		"updated_at": "2025-01-30 22:28:58"
+	},
+	{
+		"id": 129,
+		"name": "POEN",
+		"group_id": 4,
+		"created_at": "2025-01-31 15:05:15",
+		"updated_at": "2025-01-31 15:05:15"
+	},
+	{
+		"id": 130,
+		"name": "ZUOZ",
+		"group_id": 5,
+		"created_at": "2025-01-31 15:09:22",
+		"updated_at": "2025-01-31 15:09:22"
+	},
+	{
+		"id": 132,
+		"name": "BRUPHARM",
+		"group_id": 1,
+		"created_at": "2025-01-31 15:49:21",
+		"updated_at": "2025-01-31 15:49:21"
+	},
+	{
+		"id": 133,
+		"name": "CAPSUVEN PHARFA",
+		"group_id": 3,
+		"created_at": "2025-01-31 18:56:25",
+		"updated_at": "2025-01-31 18:56:25"
+	},
+	{
+		"id": 134,
+		"name": "DISPROMED",
+		"group_id": 1,
+		"created_at": "2025-01-31 23:53:09",
+		"updated_at": "2025-01-31 23:53:09"
+	},
+	{
+		"id": 135,
+		"name": "BOOZ",
+		"group_id": 3,
+		"created_at": "2025-02-01 00:24:04",
+		"updated_at": "2025-02-01 00:24:04"
+	},
+	{
+		"id": 136,
+		"name": "ADN MEDICAL",
+		"group_id": 5,
+		"created_at": "2025-02-01 01:28:36",
+		"updated_at": "2025-02-01 01:28:36"
+	},
+	{
+		"id": 137,
+		"name": "DISTRILAB",
+		"group_id": 4,
+		"created_at": "2025-02-01 03:24:21",
+		"updated_at": "2025-02-01 03:24:21"
+	},
+	{
+		"id": 138,
+		"name": "KIMICEG",
+		"group_id": 4,
+		"created_at": "2025-02-01 03:45:37",
+		"updated_at": "2025-02-01 03:45:37"
+	},
+	{
+		"id": 139,
+		"name": "DAC 55",
+		"group_id": 2,
+		"created_at": "2025-02-01 04:26:05",
+		"updated_at": "2025-02-01 04:26:05"
+	},
+	{
+		"id": 140,
+		"name": "INTERCO",
+		"group_id": 1,
+		"created_at": "2025-02-01 13:07:13",
+		"updated_at": "2025-02-01 13:07:13"
+	},
+	{
+		"id": 141,
+		"name": "GSK",
+		"group_id": 5,
+		"created_at": "2025-02-01 13:15:17",
+		"updated_at": "2025-02-01 13:15:17"
+	},
+	{
+		"id": 142,
+		"name": "CORPUS",
+		"group_id": 5,
+		"created_at": "2025-02-01 22:35:35",
+		"updated_at": "2025-02-01 22:35:35"
+	},
+	{
+		"id": 143,
+		"name": "HERBAPLANT",
+		"group_id": 5,
+		"created_at": "2025-02-01 22:52:53",
+		"updated_at": "2025-02-01 22:52:53"
+	},
+	{
+		"id": 144,
+		"name": "LA ABEJITA",
+		"group_id": 3,
+		"created_at": "2025-02-03 15:37:15",
+		"updated_at": "2025-02-03 15:37:15"
+	},
+	{
+		"id": 145,
+		"name": "AG MEDICAMENTOS",
+		"group_id": 3,
+		"created_at": "2025-02-06 18:23:06",
+		"updated_at": "2025-02-06 18:23:06"
+	},
+	{
+		"id": 146,
+		"name": "ANTIBIOTICOS DA COLOMBIA",
+		"group_id": 3,
+		"created_at": "2025-02-06 18:26:31",
+		"updated_at": "2025-02-06 18:26:31"
+	},
+	{
+		"id": 147,
+		"name": "JL PHARMA",
+		"group_id": 5,
+		"created_at": "2025-02-06 19:22:25",
+		"updated_at": "2025-02-06 19:22:25"
+	},
+	{
+		"id": 148,
+		"name": "REYOUNG",
+		"group_id": 1,
+		"created_at": "2025-02-06 19:32:45",
+		"updated_at": "2025-02-06 19:32:45"
+	},
+	{
+		"id": 149,
+		"name": "MK",
+		"group_id": 4,
+		"created_at": "2025-02-07 21:21:37",
+		"updated_at": "2025-02-07 21:21:37"
+	},
+	{
+		"id": 150,
+		"name": "CHICCO",
+		"group_id": 3,
+		"created_at": "2025-02-08 23:50:52",
+		"updated_at": "2025-02-08 23:50:52"
+	},
+	{
+		"id": 151,
+		"name": "GENOMMA",
+		"group_id": 3,
+		"created_at": "2025-02-09 02:41:38",
+		"updated_at": "2025-02-09 02:41:38"
+	},
+	{
+		"id": 152,
+		"name": "CR MEDICARE",
+		"group_id": 3,
+		"created_at": "2025-02-09 03:10:01",
+		"updated_at": "2025-02-09 03:10:01"
+	},
+	{
+		"id": 153,
+		"name": "DOLLDER",
+		"group_id": 4,
+		"created_at": "2025-02-09 07:56:15",
+		"updated_at": "2025-02-09 07:56:15"
+	},
+	{
+		"id": 154,
+		"name": "GLOBALMEDIC",
+		"group_id": 5,
+		"created_at": "2025-02-09 08:17:00",
+		"updated_at": "2025-02-09 08:17:00"
+	},
+	{
+		"id": 155,
+		"name": "GENERICOS DE CALIDAD",
+		"group_id": 4,
+		"created_at": "2025-02-09 08:34:11",
+		"updated_at": "2025-02-09 08:34:11"
+	},
+	{
+		"id": 156,
+		"name": "GEOLAB",
+		"group_id": 4,
+		"created_at": "2025-02-09 14:21:12",
+		"updated_at": "2025-02-09 14:21:12"
+	},
+	{
+		"id": 157,
+		"name": "CAMBRIDGE",
+		"group_id": 4,
+		"created_at": "2025-02-09 14:26:19",
+		"updated_at": "2025-02-09 14:26:19"
+	},
+	{
+		"id": 158,
+		"name": "FARMAGENIK",
+		"group_id": 1,
+		"created_at": "2025-02-09 14:37:32",
+		"updated_at": "2025-02-09 14:37:32"
+	},
+	{
+		"id": 159,
+		"name": "ATRAL",
+		"group_id": 5,
+		"created_at": "2025-02-09 15:01:43",
+		"updated_at": "2025-02-09 15:01:43"
+	},
+	{
+		"id": 160,
+		"name": "ROWE",
+		"group_id": 5,
+		"created_at": "2025-02-09 15:08:27",
+		"updated_at": "2025-02-09 15:08:27"
+	},
+	{
+		"id": 161,
+		"name": "FARMIONNI",
+		"group_id": 2,
+		"created_at": "2025-02-09 15:29:43",
+		"updated_at": "2025-02-09 15:29:43"
+	},
+	{
+		"id": 162,
+		"name": "BIO ESTERIL",
+		"group_id": 5,
+		"created_at": "2025-02-09 15:42:58",
+		"updated_at": "2025-02-09 15:42:58"
+	},
+	{
+		"id": 163,
+		"name": "UNIPHARMA",
+		"group_id": 5,
+		"created_at": "2025-02-09 15:46:31",
+		"updated_at": "2025-02-09 15:46:31"
+	},
+	{
+		"id": 164,
+		"name": "OPHALAC",
+		"group_id": 5,
+		"created_at": "2025-02-09 15:50:33",
+		"updated_at": "2025-02-09 15:50:33"
+	},
+	{
+		"id": 165,
+		"name": "Pfizer",
+		"group_id": 1,
+		"created_at": "2025-02-09 19:21:01",
+		"updated_at": "2025-02-09 19:21:01"
+	},
+	{
+		"id": 166,
+		"name": "CAI - PROVESALUD",
+		"group_id": 1,
+		"created_at": "2025-02-09 19:23:18",
+		"updated_at": "2025-02-09 19:23:18"
+	},
+	{
+		"id": 167,
+		"name": "EDS",
+		"group_id": 1,
+		"created_at": "2025-02-09 19:24:54",
+		"updated_at": "2025-02-09 19:24:54"
+	},
+	{
+		"id": 168,
+		"name": "SERVIER",
+		"group_id": 3,
+		"created_at": "2025-02-09 19:25:28",
+		"updated_at": "2025-02-09 19:25:28"
+	},
+	{
+		"id": 169,
+		"name": "LICOL",
+		"group_id": 5,
+		"created_at": "2025-02-09 19:32:56",
+		"updated_at": "2025-02-09 19:32:56"
+	},
+	{
+		"id": 170,
+		"name": "LABINCO",
+		"group_id": 5,
+		"created_at": "2025-02-09 19:39:42",
+		"updated_at": "2025-02-09 19:39:42"
+	},
+	{
+		"id": 171,
+		"name": "FARMASER",
+		"group_id": 2,
+		"created_at": "2025-02-09 19:41:41",
+		"updated_at": "2025-02-09 19:41:41"
+	},
+	{
+		"id": 172,
+		"name": "mediheal",
+		"group_id": 3,
+		"created_at": "2025-02-09 19:50:57",
+		"updated_at": "2025-02-09 19:50:57"
+	},
+	{
+		"id": 173,
+		"name": "LAFAR - ARTE MEDICO",
+		"group_id": 5,
+		"created_at": "2025-02-09 19:56:27",
+		"updated_at": "2025-02-09 19:56:27"
+	},
+	{
+		"id": 174,
+		"name": "MEDICBRAND",
+		"group_id": 3,
+		"created_at": "2025-02-09 19:57:34",
+		"updated_at": "2025-02-09 19:57:34"
+	},
+	{
+		"id": 175,
+		"name": "ABBOTT",
+		"group_id": 4,
+		"created_at": "2025-02-09 20:32:38",
+		"updated_at": "2025-02-09 20:32:38"
+	},
+	{
+		"id": 176,
+		"name": "FISA",
+		"group_id": 4,
+		"created_at": "2025-02-09 21:03:46",
+		"updated_at": "2025-02-09 21:03:46"
+	},
+	{
+		"id": 177,
+		"name": "OLD SPICE",
+		"group_id": 2,
+		"created_at": "2025-02-09 22:29:41",
+		"updated_at": "2025-02-09 22:29:41"
+	},
+	{
+		"id": 178,
+		"name": "AXE",
+		"group_id": 1,
+		"created_at": "2025-02-09 22:52:42",
+		"updated_at": "2025-02-09 22:52:42"
+	},
+	{
+		"id": 179,
+		"name": "BALANCE",
+		"group_id": 3,
+		"created_at": "2025-02-09 23:02:20",
+		"updated_at": "2025-02-09 23:02:20"
+	},
+	{
+		"id": 180,
+		"name": "DOVE",
+		"group_id": 1,
+		"created_at": "2025-02-09 23:29:42",
+		"updated_at": "2025-02-09 23:29:42"
+	},
+	{
+		"id": 181,
+		"name": "PONCE Y BENZO",
+		"group_id": 5,
+		"created_at": "2025-02-09 23:49:38",
+		"updated_at": "2025-02-09 23:49:38"
+	},
+	{
+		"id": 182,
+		"name": "NIVEA",
+		"group_id": 2,
+		"created_at": "2025-02-10 00:16:18",
+		"updated_at": "2025-02-10 00:16:18"
+	},
+	{
+		"id": 183,
+		"name": "LADY SPEED STICK",
+		"group_id": 1,
+		"created_at": "2025-02-10 00:23:25",
+		"updated_at": "2025-02-10 00:23:25"
+	},
+	{
+		"id": 184,
+		"name": "SECRET",
+		"group_id": 4,
+		"created_at": "2025-02-10 00:33:19",
+		"updated_at": "2025-02-10 00:33:19"
+	},
+	{
+		"id": 185,
+		"name": "ARDEN FOR MEN",
+		"group_id": 1,
+		"created_at": "2025-02-10 00:36:09",
+		"updated_at": "2025-02-10 00:36:09"
+	},
+	{
+		"id": 186,
+		"name": "VITA PLANT",
+		"group_id": 3,
+		"created_at": "2025-02-10 13:01:55",
+		"updated_at": "2025-02-10 13:01:55"
+	},
+	{
+		"id": 187,
+		"name": "GENBER",
+		"group_id": 3,
+		"created_at": "2025-02-10 13:04:23",
+		"updated_at": "2025-02-10 13:04:23"
+	},
+	{
+		"id": 188,
+		"name": "HEINZ",
+		"group_id": 3,
+		"created_at": "2025-02-10 13:08:58",
+		"updated_at": "2025-02-10 13:08:58"
+	},
+	{
+		"id": 189,
+		"name": "POLLY",
+		"group_id": 1,
+		"created_at": "2025-02-10 13:12:30",
+		"updated_at": "2025-02-10 13:12:30"
+	},
+	{
+		"id": 190,
+		"name": "COLGATE",
+		"group_id": 1,
+		"created_at": "2025-02-10 16:49:05",
+		"updated_at": "2025-02-10 16:49:05"
+	},
+	{
+		"id": 191,
+		"name": "KX MEDICAL",
+		"group_id": 1,
+		"created_at": "2025-02-10 17:02:20",
+		"updated_at": "2025-02-10 17:02:20"
+	},
+	{
+		"id": 192,
+		"name": "ARRURRU",
+		"group_id": 3,
+		"created_at": "2025-02-10 17:31:08",
+		"updated_at": "2025-02-10 17:31:08"
+	},
+	{
+		"id": 193,
+		"name": "CLIMAX",
+		"group_id": 1,
+		"created_at": "2025-02-10 18:04:42",
+		"updated_at": "2025-02-10 18:04:42"
+	},
+	{
+		"id": 195,
+		"name": "PROFAMILIA",
+		"group_id": 2,
+		"created_at": "2025-02-10 19:52:52",
+		"updated_at": "2025-02-10 19:52:52"
+	},
+	{
+		"id": 196,
+		"name": "Rb/health",
+		"group_id": 2,
+		"created_at": "2025-02-10 19:57:19",
+		"updated_at": "2025-02-10 19:57:19"
+	},
+	{
+		"id": 197,
+		"name": "M-ZONE",
+		"group_id": 1,
+		"created_at": "2025-02-10 20:14:03",
+		"updated_at": "2025-02-10 20:14:03"
+	},
+	{
+		"id": 198,
+		"name": "SEXSTYLES",
+		"group_id": 3,
+		"created_at": "2025-02-10 20:45:02",
+		"updated_at": "2025-02-10 20:45:02"
+	},
+	{
+		"id": 199,
+		"name": "USA",
+		"group_id": 1,
+		"created_at": "2025-02-10 21:38:23",
+		"updated_at": "2025-02-10 21:38:23"
+	},
+	{
+		"id": 200,
+		"name": "PRUDENCE",
+		"group_id": 1,
+		"created_at": "2025-02-10 21:50:59",
+		"updated_at": "2025-02-10 21:50:59"
+	},
+	{
+		"id": 201,
+		"name": "LIALI",
+		"group_id": 2,
+		"created_at": "2025-02-10 22:32:08",
+		"updated_at": "2025-02-10 22:32:08"
+	},
+	{
+		"id": 202,
+		"name": "CRUZ VERDE",
+		"group_id": 4,
+		"created_at": "2025-02-10 22:39:00",
+		"updated_at": "2025-02-10 22:39:00"
+	},
+	{
+		"id": 203,
+		"name": "OFA",
+		"group_id": 5,
+		"created_at": "2025-02-10 23:09:10",
+		"updated_at": "2025-02-10 23:09:10"
+	},
+	{
+		"id": 204,
+		"name": "UNICURE",
+		"group_id": 3,
+		"created_at": "2025-02-10 23:47:05",
+		"updated_at": "2025-02-10 23:47:05"
+	},
+	{
+		"id": 205,
+		"name": "INMENOL",
+		"group_id": 5,
+		"created_at": "2025-02-11 00:15:40",
+		"updated_at": "2025-02-11 00:15:40"
+	},
+	{
+		"id": 206,
+		"name": "S-G",
+		"group_id": 1,
+		"created_at": "2025-02-11 00:18:40",
+		"updated_at": "2025-02-11 00:18:40"
+	},
+	{
+		"id": 207,
+		"name": "MEYER-SIEGFRIED",
+		"group_id": 4,
+		"created_at": "2025-02-11 13:48:14",
+		"updated_at": "2025-02-11 13:48:14"
+	},
+	{
+		"id": 208,
+		"name": "CERO",
+		"group_id": 2,
+		"created_at": "2025-02-11 15:21:29",
+		"updated_at": "2025-02-11 15:21:29"
+	},
+	{
+		"id": 209,
+		"name": "CICATRICURE",
+		"group_id": 4,
+		"created_at": "2025-02-11 15:32:07",
+		"updated_at": "2025-02-11 15:32:07"
+	},
+	{
+		"id": 210,
+		"name": "XPERIAN",
+		"group_id": 4,
+		"created_at": "2025-02-11 15:34:32",
+		"updated_at": "2025-02-11 15:34:32"
+	},
+	{
+		"id": 211,
+		"name": "EVERY NIGHT",
+		"group_id": 2,
+		"created_at": "2025-02-11 18:49:34",
+		"updated_at": "2025-02-11 18:49:34"
+	},
+	{
+		"id": 212,
+		"name": "LUBRIDERM",
+		"group_id": 2,
+		"created_at": "2025-02-11 18:51:04",
+		"updated_at": "2025-02-11 18:51:04"
+	},
+	{
+		"id": 213,
+		"name": "VENUS",
+		"group_id": 1,
+		"created_at": "2025-02-11 19:00:47",
+		"updated_at": "2025-02-11 19:00:47"
+	},
+	{
+		"id": 214,
+		"name": "VEET",
+		"group_id": 3,
+		"created_at": "2025-02-11 19:13:41",
+		"updated_at": "2025-02-11 19:13:41"
+	},
+	{
+		"id": 215,
+		"name": "VITA C.A",
+		"group_id": 2,
+		"created_at": "2025-02-11 19:19:21",
+		"updated_at": "2025-02-11 19:19:21"
+	},
+	{
+		"id": 216,
+		"name": "SANFARMA",
+		"group_id": 1,
+		"created_at": "2025-02-11 19:29:41",
+		"updated_at": "2025-02-11 19:29:41"
+	},
+	{
+		"id": 217,
+		"name": "NOVAMED",
+		"group_id": 4,
+		"created_at": "2025-02-11 19:32:37",
+		"updated_at": "2025-02-11 19:32:37"
+	},
+	{
+		"id": 218,
+		"name": "CARE",
+		"group_id": 1,
+		"created_at": "2025-02-11 20:10:29",
+		"updated_at": "2025-02-11 20:10:29"
+	},
+	{
+		"id": 219,
+		"name": "H.C MEDICAL",
+		"group_id": 1,
+		"created_at": "2025-02-11 20:45:27",
+		"updated_at": "2025-02-11 20:45:27"
+	},
+	{
+		"id": 220,
+		"name": "LEUKOPLAST",
+		"group_id": 1,
+		"created_at": "2025-02-11 20:54:24",
+		"updated_at": "2025-02-11 20:54:24"
+	},
+	{
+		"id": 221,
+		"name": "GIDAGUS",
+		"group_id": 3,
+		"created_at": "2025-02-11 20:58:34",
+		"updated_at": "2025-02-11 20:58:34"
+	},
+	{
+		"id": 222,
+		"name": "FARMACEUTICA",
+		"group_id": 5,
+		"created_at": "2025-02-11 21:17:29",
+		"updated_at": "2025-02-11 21:17:29"
+	},
+	{
+		"id": 223,
+		"name": "PAPELES VENEZUELA",
+		"group_id": 2,
+		"created_at": "2025-02-11 21:26:30",
+		"updated_at": "2025-02-11 21:26:30"
+	},
+	{
+		"id": 224,
+		"name": "PHARMA",
+		"group_id": 4,
+		"created_at": "2025-02-11 21:32:18",
+		"updated_at": "2025-02-11 21:32:18"
+	},
+	{
+		"id": 225,
+		"name": "PRISM",
+		"group_id": 4,
+		"created_at": "2025-02-11 22:03:40",
+		"updated_at": "2025-02-11 22:03:40"
+	},
+	{
+		"id": 226,
+		"name": "FARMOZ",
+		"group_id": 4,
+		"created_at": "2025-02-11 22:06:46",
+		"updated_at": "2025-02-11 22:06:46"
+	},
+	{
+		"id": 227,
+		"name": "ZUOS PHARMA",
+		"group_id": 4,
+		"created_at": "2025-02-11 23:12:53",
+		"updated_at": "2025-02-11 23:12:53"
+	},
+	{
+		"id": 228,
+		"name": "JEWIM PHARMACEUTICAL",
+		"group_id": 1,
+		"created_at": "2025-02-11 23:47:58",
+		"updated_at": "2025-02-11 23:47:58"
+	},
+	{
+		"id": 229,
+		"name": "DELTA",
+		"group_id": 1,
+		"created_at": "2025-02-11 23:54:34",
+		"updated_at": "2025-02-11 23:54:34"
+	},
+	{
+		"id": 230,
+		"name": "EGO",
+		"group_id": 2,
+		"created_at": "2025-02-12 12:24:48",
+		"updated_at": "2025-02-12 12:24:48"
+	},
+	{
+		"id": 231,
+		"name": "PISA",
+		"group_id": 5,
+		"created_at": "2025-02-12 12:27:44",
+		"updated_at": "2025-02-12 12:27:44"
+	},
+	{
+		"id": 232,
+		"name": "BRIXMEDIC",
+		"group_id": 2,
+		"created_at": "2025-02-12 12:29:03",
+		"updated_at": "2025-02-12 12:29:03"
+	},
+	{
+		"id": 233,
+		"name": "LA SANTE",
+		"group_id": 4,
+		"created_at": "2025-02-12 12:30:21",
+		"updated_at": "2025-02-12 12:30:21"
+	},
+	{
+		"id": 234,
+		"name": "HALEON",
+		"group_id": 2,
+		"created_at": "2025-02-12 12:53:45",
+		"updated_at": "2025-02-12 12:53:45"
+	},
+	{
+		"id": 235,
+		"name": "ZAHN",
+		"group_id": 3,
+		"created_at": "2025-02-12 13:09:00",
+		"updated_at": "2025-02-12 13:09:00"
+	},
+	{
+		"id": 236,
+		"name": "ORAL B",
+		"group_id": 3,
+		"created_at": "2025-02-12 13:31:22",
+		"updated_at": "2025-02-12 13:31:22"
+	},
+	{
+		"id": 237,
+		"name": "JMW",
+		"group_id": 1,
+		"created_at": "2025-02-12 13:45:02",
+		"updated_at": "2025-02-12 13:45:02"
+	},
+	{
+		"id": 238,
+		"name": "JERICO",
+		"group_id": 4,
+		"created_at": "2025-02-12 14:09:08",
+		"updated_at": "2025-02-12 14:09:08"
+	},
+	{
+		"id": 239,
+		"name": "JD PHARMA",
+		"group_id": 3,
+		"created_at": "2025-02-12 14:15:22",
+		"updated_at": "2025-02-12 14:15:22"
+	},
+	{
+		"id": 240,
+		"name": "MERCK",
+		"group_id": 1,
+		"created_at": "2025-02-12 14:58:15",
+		"updated_at": "2025-02-12 14:58:15"
+	},
+	{
+		"id": 241,
+		"name": "MEDIHEALTH",
+		"group_id": 3,
+		"created_at": "2025-02-12 15:07:03",
+		"updated_at": "2025-02-12 15:07:03"
+	},
+	{
+		"id": 242,
+		"name": "FARDEL",
+		"group_id": 2,
+		"created_at": "2025-02-12 15:48:06",
+		"updated_at": "2025-02-12 15:48:06"
+	},
+	{
+		"id": 243,
+		"name": "ELEA",
+		"group_id": 1,
+		"created_at": "2025-02-12 16:04:42",
+		"updated_at": "2025-02-12 16:04:42"
+	},
+	{
+		"id": 244,
+		"name": "GALACTIC",
+		"group_id": 1,
+		"created_at": "2025-02-12 16:17:13",
+		"updated_at": "2025-02-12 16:17:13"
+	},
+	{
+		"id": 245,
+		"name": "STERIPHARMA",
+		"group_id": 3,
+		"created_at": "2025-02-12 17:24:35",
+		"updated_at": "2025-02-12 17:24:35"
+	},
+	{
+		"id": 246,
+		"name": "EBEN",
+		"group_id": 2,
+		"created_at": "2025-02-12 17:27:29",
+		"updated_at": "2025-02-12 17:27:29"
+	},
+	{
+		"id": 247,
+		"name": "STERI GUAZE",
+		"group_id": 4,
+		"created_at": "2025-02-12 17:31:45",
+		"updated_at": "2025-02-12 17:31:45"
+	},
+	{
+		"id": 248,
+		"name": "ziboject",
+		"group_id": 2,
+		"created_at": "2025-02-12 18:56:45",
+		"updated_at": "2025-02-12 18:56:45"
+	},
+	{
+		"id": 249,
+		"name": "ZIBOJECT.",
+		"group_id": 2,
+		"created_at": "2025-02-12 18:58:42",
+		"updated_at": "2025-02-12 18:58:42"
+	},
+	{
+		"id": 250,
+		"name": "SEBIS",
+		"group_id": 5,
+		"created_at": "2025-02-12 19:03:52",
+		"updated_at": "2025-02-12 19:03:52"
+	},
+	{
+		"id": 251,
+		"name": "Unión",
+		"group_id": 2,
+		"created_at": "2025-02-12 19:10:10",
+		"updated_at": "2025-02-12 19:10:10"
+	},
+	{
+		"id": 252,
+		"name": "Dynanet",
+		"group_id": 1,
+		"created_at": "2025-02-12 19:14:04",
+		"updated_at": "2025-02-12 19:14:04"
+	},
+	{
+		"id": 253,
+		"name": "HEALTH",
+		"group_id": 3,
+		"created_at": "2025-02-12 23:31:02",
+		"updated_at": "2025-02-12 23:31:02"
+	},
+	{
+		"id": 254,
+		"name": "AGRADO",
+		"group_id": 2,
+		"created_at": "2025-02-12 23:57:26",
+		"updated_at": "2025-02-12 23:57:26"
+	},
+	{
+		"id": 255,
+		"name": "NEO QUIMICA",
+		"group_id": 4,
+		"created_at": "2025-02-13 14:23:44",
+		"updated_at": "2025-02-13 14:23:44"
+	},
+	{
+		"id": 256,
+		"name": "NATURISSIMA",
+		"group_id": 5,
+		"created_at": "2025-02-13 14:47:34",
+		"updated_at": "2025-02-13 14:47:34"
+	},
+	{
+		"id": 257,
+		"name": "BIO-MERCY",
+		"group_id": 3,
+		"created_at": "2025-02-13 15:11:12",
+		"updated_at": "2025-02-13 15:11:12"
+	},
+	{
+		"id": 258,
+		"name": "VICENTI",
+		"group_id": 5,
+		"created_at": "2025-02-13 21:40:04",
+		"updated_at": "2025-02-13 21:40:04"
+	},
+	{
+		"id": 259,
+		"name": "AULEN PHARMA",
+		"group_id": 5,
+		"created_at": "2025-02-13 21:41:55",
+		"updated_at": "2025-02-13 21:41:55"
+	},
+	{
+		"id": 260,
+		"name": "UNILEVER",
+		"group_id": 5,
+		"created_at": "2025-02-13 21:51:03",
+		"updated_at": "2025-02-13 21:51:03"
+	},
+	{
+		"id": 261,
+		"name": "QUIFARMA",
+		"group_id": 4,
+		"created_at": "2025-02-13 21:56:19",
+		"updated_at": "2025-02-13 21:56:19"
+	},
+	{
+		"id": 262,
+		"name": "PSICOFARMA",
+		"group_id": 2,
+		"created_at": "2025-02-13 22:10:03",
+		"updated_at": "2025-02-13 22:10:03"
+	},
+	{
+		"id": 263,
+		"name": "BIOVERDES",
+		"group_id": 2,
+		"created_at": "2025-02-13 22:18:20",
+		"updated_at": "2025-02-13 22:18:20"
+	},
+	{
+		"id": 264,
+		"name": "GERBER",
+		"group_id": 3,
+		"created_at": "2025-02-13 23:07:46",
+		"updated_at": "2025-02-13 23:07:46"
+	},
+	{
+		"id": 265,
+		"name": "CALIDAD DE RODENEZA",
+		"group_id": 5,
+		"created_at": "2025-02-13 23:12:00",
+		"updated_at": "2025-02-13 23:12:00"
+	},
+	{
+		"id": 266,
+		"name": "PHARMATECH",
+		"group_id": 2,
+		"created_at": "2025-02-13 23:13:25",
+		"updated_at": "2025-02-13 23:13:25"
+	},
+	{
+		"id": 267,
+		"name": "GILLETTE",
+		"group_id": 5,
+		"created_at": "2025-02-13 23:15:32",
+		"updated_at": "2025-02-13 23:15:32"
+	},
+	{
+		"id": 268,
+		"name": "PROBIOTICCA",
+		"group_id": 2,
+		"created_at": "2025-02-14 16:45:59",
+		"updated_at": "2025-02-14 16:45:59"
+	},
+	{
+		"id": 269,
+		"name": "A MEDICAL",
+		"group_id": 5,
+		"created_at": "2025-02-14 17:00:30",
+		"updated_at": "2025-02-14 17:00:30"
+	},
+	{
+		"id": 270,
+		"name": "ICERBERG",
+		"group_id": 5,
+		"created_at": "2025-02-14 17:35:01",
+		"updated_at": "2025-02-14 17:35:01"
+	},
+	{
+		"id": 271,
+		"name": "DISUMED",
+		"group_id": 5,
+		"created_at": "2025-02-14 17:59:45",
+		"updated_at": "2025-02-14 17:59:45"
+	},
+	{
+		"id": 272,
+		"name": "TECNOFARMA",
+		"group_id": 4,
+		"created_at": "2025-02-14 18:23:38",
+		"updated_at": "2025-02-14 18:23:38"
+	},
+	{
+		"id": 273,
+		"name": "BIOLIFE",
+		"group_id": 2,
+		"created_at": "2025-02-14 23:31:54",
+		"updated_at": "2025-02-14 23:31:54"
+	},
+	{
+		"id": 274,
+		"name": "PLUS VITAL",
+		"group_id": 1,
+		"created_at": "2025-02-14 23:33:12",
+		"updated_at": "2025-02-14 23:33:12"
+	},
+	{
+		"id": 275,
+		"name": "BIVIEN",
+		"group_id": 2,
+		"created_at": "2025-02-14 23:36:21",
+		"updated_at": "2025-02-14 23:36:21"
+	},
+	{
+		"id": 276,
+		"name": "HEAD & SHOULDER",
+		"group_id": 5,
+		"created_at": "2025-02-15 14:24:40",
+		"updated_at": "2025-02-15 14:24:40"
+	},
+	{
+		"id": 277,
+		"name": "SEFARLA",
+		"group_id": 2,
+		"created_at": "2025-02-15 15:09:45",
+		"updated_at": "2025-02-15 15:09:45"
+	},
+	{
+		"id": 278,
+		"name": "HTBRUSH",
+		"group_id": 1,
+		"created_at": "2025-02-15 15:19:31",
+		"updated_at": "2025-02-15 15:19:31"
+	},
+	{
+		"id": 279,
+		"name": "HUGGIES",
+		"group_id": 2,
+		"created_at": "2025-02-15 15:21:01",
+		"updated_at": "2025-02-15 15:21:01"
+	},
+	{
+		"id": 280,
+		"name": "BIOS",
+		"group_id": 3,
+		"created_at": "2025-02-15 15:45:07",
+		"updated_at": "2025-02-15 15:45:07"
+	},
+	{
+		"id": 281,
+		"name": "intylact",
+		"group_id": 1,
+		"created_at": "2025-02-15 15:56:33",
+		"updated_at": "2025-02-15 15:56:33"
+	},
+	{
+		"id": 282,
+		"name": "NOSOTRAS",
+		"group_id": 3,
+		"created_at": "2025-02-15 15:58:14",
+		"updated_at": "2025-02-15 15:58:14"
+	},
+	{
+		"id": 283,
+		"name": "PALMOLIVE",
+		"group_id": 2,
+		"created_at": "2025-02-15 16:03:51",
+		"updated_at": "2025-02-15 16:03:51"
+	},
+	{
+		"id": 284,
+		"name": "PEDI",
+		"group_id": 2,
+		"created_at": "2025-02-15 16:11:57",
+		"updated_at": "2025-02-15 16:11:57"
+	},
+	{
+		"id": 285,
+		"name": "PROTEX",
+		"group_id": 3,
+		"created_at": "2025-02-15 16:40:59",
+		"updated_at": "2025-02-15 16:40:59"
+	},
+	{
+		"id": 286,
+		"name": "JENGIMIEL",
+		"group_id": 4,
+		"created_at": "2025-02-15 16:59:42",
+		"updated_at": "2025-02-15 16:59:42"
+	},
+	{
+		"id": 287,
+		"name": "DOROPHARMA",
+		"group_id": 2,
+		"created_at": "2025-02-15 18:03:36",
+		"updated_at": "2025-02-15 18:03:36"
+	},
+	{
+		"id": 288,
+		"name": "PROBIOTIC",
+		"group_id": 1,
+		"created_at": "2025-02-15 18:49:04",
+		"updated_at": "2025-02-15 18:49:04"
+	},
+	{
+		"id": 289,
+		"name": "INDAR",
+		"group_id": 3,
+		"created_at": "2025-02-15 18:51:07",
+		"updated_at": "2025-02-15 18:51:07"
+	},
+	{
+		"id": 290,
+		"name": "SOMA",
+		"group_id": 1,
+		"created_at": "2025-02-15 18:55:29",
+		"updated_at": "2025-02-15 18:55:29"
+	},
+	{
+		"id": 291,
+		"name": "DIPHOCARE",
+		"group_id": 3,
+		"created_at": "2025-02-15 20:29:26",
+		"updated_at": "2025-02-15 20:29:26"
+	},
+	{
+		"id": 292,
+		"name": "JECB PHARMA",
+		"group_id": 4,
+		"created_at": "2025-02-15 20:32:53",
+		"updated_at": "2025-02-15 20:32:53"
+	},
+	{
+		"id": 293,
+		"name": "JEBC PHARMA",
+		"group_id": 5,
+		"created_at": "2025-02-15 23:15:13",
+		"updated_at": "2025-02-15 23:15:13"
+	},
+	{
+		"id": 294,
+		"name": "BIOS VITA",
+		"group_id": 3,
+		"created_at": "2025-02-16 15:37:31",
+		"updated_at": "2025-02-16 15:37:31"
+	},
+	{
+		"id": 295,
+		"name": "FRESENIUS KABI",
+		"group_id": 3,
+		"created_at": "2025-02-16 18:04:07",
+		"updated_at": "2025-02-16 18:04:07"
+	},
+	{
+		"id": 296,
+		"name": "MC MEDICAL",
+		"group_id": 4,
+		"created_at": "2025-02-16 18:10:49",
+		"updated_at": "2025-02-16 18:10:49"
+	},
+	{
+		"id": 297,
+		"name": "POLYTEX",
+		"group_id": 3,
+		"created_at": "2025-02-16 18:22:21",
+		"updated_at": "2025-02-16 18:22:21"
+	},
+	{
+		"id": 298,
+		"name": "ULTRA CARE",
+		"group_id": 3,
+		"created_at": "2025-02-16 18:24:12",
+		"updated_at": "2025-02-16 18:24:12"
+	},
+	{
+		"id": 299,
+		"name": "BLOOD GOOD",
+		"group_id": 4,
+		"created_at": "2025-02-16 18:34:03",
+		"updated_at": "2025-02-16 18:34:03"
+	},
+	{
+		"id": 300,
+		"name": "DESCAR INDU",
+		"group_id": 4,
+		"created_at": "2025-02-16 18:39:53",
+		"updated_at": "2025-02-16 18:39:53"
+	},
+	{
+		"id": 301,
+		"name": "GRANDIOSA",
+		"group_id": 1,
+		"created_at": "2025-02-16 18:44:10",
+		"updated_at": "2025-02-16 18:44:10"
+	},
+	{
+		"id": 302,
+		"name": "WELLONA PHARMA",
+		"group_id": 3,
+		"created_at": "2025-02-16 19:41:41",
+		"updated_at": "2025-02-16 19:41:41"
+	},
+	{
+		"id": 303,
+		"name": "NOW",
+		"group_id": 2,
+		"created_at": "2025-02-16 19:45:52",
+		"updated_at": "2025-02-16 19:45:52"
+	},
+	{
+		"id": 304,
+		"name": "VAL",
+		"group_id": 4,
+		"created_at": "2025-02-16 19:51:10",
+		"updated_at": "2025-02-16 19:51:10"
+	},
+	{
+		"id": 305,
+		"name": "SULCAGEL",
+		"group_id": 1,
+		"created_at": "2025-02-17 14:53:56",
+		"updated_at": "2025-02-17 14:53:56"
+	},
+	{
+		"id": 306,
+		"name": "GALDERMA",
+		"group_id": 4,
+		"created_at": "2025-02-17 14:56:35",
+		"updated_at": "2025-02-17 14:56:35"
+	},
+	{
+		"id": 307,
+		"name": "LISTERINE",
+		"group_id": 4,
+		"created_at": "2025-02-17 15:56:22",
+		"updated_at": "2025-02-17 15:56:22"
+	},
+	{
+		"id": 308,
+		"name": "DROVENPLUS",
+		"group_id": 4,
+		"created_at": "2025-02-17 17:10:41",
+		"updated_at": "2025-02-17 17:10:41"
+	},
+	{
+		"id": 309,
+		"name": "MEDIFARM",
+		"group_id": 5,
+		"created_at": "2025-02-17 18:49:18",
+		"updated_at": "2025-02-17 18:49:18"
+	},
+	{
+		"id": 310,
+		"name": "NESTLE",
+		"group_id": 5,
+		"created_at": "2025-02-17 20:23:18",
+		"updated_at": "2025-02-17 20:23:18"
+	},
+	{
+		"id": 311,
+		"name": "OPTIKO",
+		"group_id": 2,
+		"created_at": "2025-02-17 20:50:29",
+		"updated_at": "2025-02-17 20:50:29"
+	},
+	{
+		"id": 312,
+		"name": "ZIEL",
+		"group_id": 5,
+		"created_at": "2025-02-17 22:17:11",
+		"updated_at": "2025-02-17 22:17:11"
+	},
+	{
+		"id": 313,
+		"name": "DAVIS",
+		"group_id": 3,
+		"created_at": "2025-02-17 22:20:36",
+		"updated_at": "2025-02-17 22:20:36"
+	},
+	{
+		"id": 314,
+		"name": "VICAR",
+		"group_id": 4,
+		"created_at": "2025-02-17 22:40:07",
+		"updated_at": "2025-02-17 22:40:07"
+	},
+	{
+		"id": 315,
+		"name": "BIOSMER",
+		"group_id": 1,
+		"created_at": "2025-02-17 22:48:19",
+		"updated_at": "2025-02-17 22:48:19"
+	},
+	{
+		"id": 316,
+		"name": "SANDOZ",
+		"group_id": 3,
+		"created_at": "2025-02-17 23:03:04",
+		"updated_at": "2025-02-17 23:03:04"
+	},
+	{
+		"id": 317,
+		"name": "BIOMEDIC",
+		"group_id": 3,
+		"created_at": "2025-02-17 23:24:32",
+		"updated_at": "2025-02-17 23:24:32"
+	},
+	{
+		"id": 318,
+		"name": "CAICLO",
+		"group_id": 2,
+		"created_at": "2025-02-18 16:12:44",
+		"updated_at": "2025-02-18 16:12:44"
+	},
+	{
+		"id": 319,
+		"name": "NENE-DENT",
+		"group_id": 4,
+		"created_at": "2025-02-18 16:38:52",
+		"updated_at": "2025-02-18 16:38:52"
+	},
+	{
+		"id": 320,
+		"name": "ASTRA ZENECA",
+		"group_id": 4,
+		"created_at": "2025-02-18 18:25:35",
+		"updated_at": "2025-02-18 18:25:35"
+	},
+	{
+		"id": 321,
+		"name": "H&M",
+		"group_id": 5,
+		"created_at": "2025-02-18 19:02:41",
+		"updated_at": "2025-02-18 19:02:41"
+	},
+	{
+		"id": 322,
+		"name": "MM",
+		"group_id": 4,
+		"created_at": "2025-02-18 19:27:26",
+		"updated_at": "2025-02-18 19:27:26"
+	},
+	{
+		"id": 323,
+		"name": "LAFRANCOL",
+		"group_id": 5,
+		"created_at": "2025-02-18 19:31:54",
+		"updated_at": "2025-02-18 19:31:54"
+	},
+	{
+		"id": 324,
+		"name": "CAPLIN",
+		"group_id": 5,
+		"created_at": "2025-02-18 19:38:09",
+		"updated_at": "2025-02-18 19:38:09"
+	},
+	{
+		"id": 325,
+		"name": "HUMAN BIOSCI",
+		"group_id": 1,
+		"created_at": "2025-02-18 19:44:31",
+		"updated_at": "2025-02-18 19:44:31"
+	},
+	{
+		"id": 326,
+		"name": "MULTILENTE",
+		"group_id": 1,
+		"created_at": "2025-02-18 19:51:20",
+		"updated_at": "2025-02-18 19:51:20"
+	},
+	{
+		"id": 327,
+		"name": "ZAKIMED",
+		"group_id": 4,
+		"created_at": "2025-02-18 19:53:58",
+		"updated_at": "2025-02-18 19:53:58"
+	},
+	{
+		"id": 328,
+		"name": "NOVEX",
+		"group_id": 1,
+		"created_at": "2025-02-18 20:31:38",
+		"updated_at": "2025-02-18 20:31:38"
+	},
+	{
+		"id": 329,
+		"name": "VIDA LABS",
+		"group_id": 1,
+		"created_at": "2025-02-18 20:45:36",
+		"updated_at": "2025-02-18 20:45:36"
+	},
+	{
+		"id": 330,
+		"name": "FARMACOL CHINOIN",
+		"group_id": 5,
+		"created_at": "2025-02-18 20:48:13",
+		"updated_at": "2025-02-18 20:48:13"
+	},
+	{
+		"id": 331,
+		"name": "LEPERPHARM",
+		"group_id": 2,
+		"created_at": "2025-02-18 21:02:24",
+		"updated_at": "2025-02-18 21:02:24"
+	},
+	{
+		"id": 332,
+		"name": "NUVILLE",
+		"group_id": 3,
+		"created_at": "2025-02-18 21:04:00",
+		"updated_at": "2025-02-18 21:04:00"
+	},
+	{
+		"id": 333,
+		"name": "HUMA",
+		"group_id": 1,
+		"created_at": "2025-02-18 21:34:19",
+		"updated_at": "2025-02-18 21:34:19"
+	},
+	{
+		"id": 334,
+		"name": "H-M MEDICAL",
+		"group_id": 3,
+		"created_at": "2025-02-18 21:45:12",
+		"updated_at": "2025-02-18 21:45:12"
+	},
+	{
+		"id": 335,
+		"name": "EL MORRO",
+		"group_id": 5,
+		"created_at": "2025-02-18 22:04:56",
+		"updated_at": "2025-02-18 22:04:56"
+	},
+	{
+		"id": 336,
+		"name": "GMP",
+		"group_id": 4,
+		"created_at": "2025-02-18 22:28:45",
+		"updated_at": "2025-02-18 22:28:45"
+	},
+	{
+		"id": 337,
+		"name": "LG-PHARMA",
+		"group_id": 4,
+		"created_at": "2025-02-18 22:49:01",
+		"updated_at": "2025-02-18 22:49:01"
+	},
+	{
+		"id": 338,
+		"name": "RUECAM",
+		"group_id": 3,
+		"created_at": "2025-02-18 22:53:07",
+		"updated_at": "2025-02-18 22:53:07"
+	},
+	{
+		"id": 339,
+		"name": "PHARMARIS",
+		"group_id": 2,
+		"created_at": "2025-02-18 22:56:38",
+		"updated_at": "2025-02-18 22:56:38"
+	},
+	{
+		"id": 340,
+		"name": "SALUDX",
+		"group_id": 4,
+		"created_at": "2025-02-18 23:26:21",
+		"updated_at": "2025-02-18 23:26:21"
+	},
+	{
+		"id": 341,
+		"name": "ROEMMERS",
+		"group_id": 2,
+		"created_at": "2025-02-18 23:41:24",
+		"updated_at": "2025-02-18 23:41:24"
+	},
+	{
+		"id": 342,
+		"name": "HVM MEDICAL",
+		"group_id": 4,
+		"created_at": "2025-02-18 23:52:34",
+		"updated_at": "2025-02-18 23:52:34"
+	},
+	{
+		"id": 343,
+		"name": "RIGA",
+		"group_id": 5,
+		"created_at": "2025-02-19 02:40:46",
+		"updated_at": "2025-02-19 02:40:46"
+	},
+	{
+		"id": 344,
+		"name": "ZAMBON",
+		"group_id": 2,
+		"created_at": "2025-02-19 05:50:26",
+		"updated_at": "2025-02-19 05:50:26"
+	},
+	{
+		"id": 345,
+		"name": "BIOFAR",
+		"group_id": 4,
+		"created_at": "2025-02-19 21:10:15",
+		"updated_at": "2025-02-19 21:10:15"
+	},
+	{
+		"id": 346,
+		"name": "ropsal plus",
+		"group_id": 4,
+		"created_at": "2025-02-20 04:11:01",
+		"updated_at": "2025-02-20 04:11:01"
+	},
+	{
+		"id": 347,
+		"name": "rosal plus",
+		"group_id": 1,
+		"created_at": "2025-02-20 04:17:08",
+		"updated_at": "2025-02-20 04:17:08"
+	},
+	{
+		"id": 348,
+		"name": "megalabs",
+		"group_id": 3,
+		"created_at": "2025-02-20 11:18:38",
+		"updated_at": "2025-02-20 11:18:38"
+	},
+	{
+		"id": 349,
+		"name": "CIPLA",
+		"group_id": 2,
+		"created_at": "2025-02-20 13:39:50",
+		"updated_at": "2025-02-20 13:39:50"
+	},
+	{
+		"id": 350,
+		"name": "MISSION PHARMACAL",
+		"group_id": 2,
+		"created_at": "2025-02-20 16:46:24",
+		"updated_at": "2025-02-20 16:46:24"
+	},
+	{
+		"id": 352,
+		"name": "MALLEN",
+		"group_id": 4,
+		"created_at": "2025-02-20 16:54:34",
+		"updated_at": "2025-02-20 16:54:34"
+	},
+	{
+		"id": 353,
+		"name": "LATTAN",
+		"group_id": 1,
+		"created_at": "2025-02-20 17:41:49",
+		"updated_at": "2025-02-20 17:41:49"
+	},
+	{
+		"id": 354,
+		"name": "DERNIER",
+		"group_id": 3,
+		"created_at": "2025-02-20 18:07:28",
+		"updated_at": "2025-02-20 18:07:28"
+	},
+	{
+		"id": 355,
+		"name": "RECAMIER",
+		"group_id": 5,
+		"created_at": "2025-02-20 18:11:33",
+		"updated_at": "2025-02-20 18:11:33"
+	},
+	{
+		"id": 356,
+		"name": "BIODERMA",
+		"group_id": 4,
+		"created_at": "2025-02-20 18:34:42",
+		"updated_at": "2025-02-20 18:34:42"
+	},
+	{
+		"id": 357,
+		"name": "JAVP TRADING",
+		"group_id": 4,
+		"created_at": "2025-02-20 18:38:02",
+		"updated_at": "2025-02-20 18:38:02"
+	},
+	{
+		"id": 358,
+		"name": "SEDAL",
+		"group_id": 4,
+		"created_at": "2025-02-20 18:45:11",
+		"updated_at": "2025-02-20 18:45:11"
+	},
+	{
+		"id": 359,
+		"name": "ROCIPHAR",
+		"group_id": 5,
+		"created_at": "2025-02-20 18:50:46",
+		"updated_at": "2025-02-20 18:50:46"
+	},
+	{
+		"id": 360,
+		"name": "ELECTRONIC",
+		"group_id": 4,
+		"created_at": "2025-02-20 19:42:39",
+		"updated_at": "2025-02-20 19:42:39"
+	},
+	{
+		"id": 361,
+		"name": "ANAROID",
+		"group_id": 3,
+		"created_at": "2025-02-20 19:44:10",
+		"updated_at": "2025-02-20 19:44:10"
+	},
+	{
+		"id": 362,
+		"name": "FLEXMED",
+		"group_id": 4,
+		"created_at": "2025-02-20 23:43:21",
+		"updated_at": "2025-02-20 23:43:21"
+	},
+	{
+		"id": 363,
+		"name": "FC LABORATORIOS",
+		"group_id": 3,
+		"created_at": "2025-02-21 04:40:29",
+		"updated_at": "2025-02-21 04:40:29"
+	},
+	{
+		"id": 364,
+		"name": "LAB XPERIAN CA",
+		"group_id": 5,
+		"created_at": "2025-02-21 04:42:51",
+		"updated_at": "2025-02-21 04:42:51"
+	},
+	{
+		"id": 365,
+		"name": "West-coast",
+		"group_id": 1,
+		"created_at": "2025-02-21 11:37:16",
+		"updated_at": "2025-02-21 11:37:16"
+	},
+	{
+		"id": 366,
+		"name": "DROVENCA",
+		"group_id": 4,
+		"created_at": "2025-02-21 16:57:15",
+		"updated_at": "2025-02-21 16:57:15"
+	},
+	{
+		"id": 367,
+		"name": "SUCCESSFUL",
+		"group_id": 4,
+		"created_at": "2025-02-21 17:00:02",
+		"updated_at": "2025-02-21 17:00:02"
+	},
+	{
+		"id": 368,
+		"name": "GENIAL",
+		"group_id": 4,
+		"created_at": "2025-02-21 17:04:46",
+		"updated_at": "2025-02-21 17:04:46"
+	},
+	{
+		"id": 369,
+		"name": "BALAXI",
+		"group_id": 5,
+		"created_at": "2025-02-21 17:06:35",
+		"updated_at": "2025-02-21 17:06:35"
+	},
+	{
+		"id": 370,
+		"name": "CHEMICAL DAMPE",
+		"group_id": 4,
+		"created_at": "2025-02-21 17:16:53",
+		"updated_at": "2025-02-21 17:16:53"
+	},
+	{
+		"id": 371,
+		"name": "D EMPAIRE",
+		"group_id": 2,
+		"created_at": "2025-02-21 17:37:48",
+		"updated_at": "2025-02-21 17:37:48"
+	},
+	{
+		"id": 372,
+		"name": "ZOAH",
+		"group_id": 1,
+		"created_at": "2025-02-21 17:37:57",
+		"updated_at": "2025-02-21 17:37:57"
+	},
+	{
+		"id": 373,
+		"name": "SALERMVISION",
+		"group_id": 3,
+		"created_at": "2025-02-21 17:44:49",
+		"updated_at": "2025-02-21 17:44:49"
+	},
+	{
+		"id": 374,
+		"name": "TIO NACHO",
+		"group_id": 3,
+		"created_at": "2025-02-21 17:59:46",
+		"updated_at": "2025-02-21 17:59:46"
+	},
+	{
+		"id": 375,
+		"name": "BALKER",
+		"group_id": 3,
+		"created_at": "2025-02-21 18:08:02",
+		"updated_at": "2025-02-21 18:08:02"
+	},
+	{
+		"id": 376,
+		"name": "CORPAUL",
+		"group_id": 5,
+		"created_at": "2025-02-21 20:22:15",
+		"updated_at": "2025-02-21 20:22:15"
+	},
+	{
+		"id": 377,
+		"name": "ALWAYS",
+		"group_id": 4,
+		"created_at": "2025-02-21 20:36:49",
+		"updated_at": "2025-02-21 20:36:49"
+	},
+	{
+		"id": 378,
+		"name": "SECUREZZA",
+		"group_id": 5,
+		"created_at": "2025-02-21 20:39:10",
+		"updated_at": "2025-02-21 20:39:10"
+	},
+	{
+		"id": 379,
+		"name": "KOTEX",
+		"group_id": 2,
+		"created_at": "2025-02-21 20:47:16",
+		"updated_at": "2025-02-21 20:47:16"
+	},
+	{
+		"id": 380,
+		"name": "VICK",
+		"group_id": 2,
+		"created_at": "2025-02-21 20:51:50",
+		"updated_at": "2025-02-21 20:51:50"
+	},
+	{
+		"id": 381,
+		"name": "KIMBERLY",
+		"group_id": 4,
+		"created_at": "2025-02-21 21:05:21",
+		"updated_at": "2025-02-21 21:05:21"
+	},
+	{
+		"id": 382,
+		"name": "LULUBLU",
+		"group_id": 3,
+		"created_at": "2025-02-21 21:08:30",
+		"updated_at": "2025-02-21 21:08:30"
+	},
+	{
+		"id": 383,
+		"name": "J&J",
+		"group_id": 3,
+		"created_at": "2025-02-21 21:10:56",
+		"updated_at": "2025-02-21 21:10:56"
+	},
+	{
+		"id": 384,
+		"name": "SIEMPRE LIBRE",
+		"group_id": 1,
+		"created_at": "2025-02-21 21:15:47",
+		"updated_at": "2025-02-21 21:15:47"
+	},
+	{
+		"id": 385,
+		"name": "STAYFREE",
+		"group_id": 2,
+		"created_at": "2025-02-21 21:31:01",
+		"updated_at": "2025-02-21 21:31:01"
+	},
+	{
+		"id": 386,
+		"name": "CAREFREE",
+		"group_id": 5,
+		"created_at": "2025-02-21 21:33:52",
+		"updated_at": "2025-02-21 21:33:52"
+	},
+	{
+		"id": 387,
+		"name": "FAMILIA",
+		"group_id": 5,
+		"created_at": "2025-02-21 21:46:43",
+		"updated_at": "2025-02-21 21:46:43"
+	},
+	{
+		"id": 388,
+		"name": "LIP CARE",
+		"group_id": 1,
+		"created_at": "2025-02-21 21:51:18",
+		"updated_at": "2025-02-21 21:51:18"
+	},
+	{
+		"id": 389,
+		"name": "ROSAL TOWEL",
+		"group_id": 5,
+		"created_at": "2025-02-21 21:54:52",
+		"updated_at": "2025-02-21 21:54:52"
+	},
+	{
+		"id": 390,
+		"name": "SCOT",
+		"group_id": 2,
+		"created_at": "2025-02-21 21:57:03",
+		"updated_at": "2025-02-21 21:57:03"
+	},
+	{
+		"id": 391,
+		"name": "PURA+",
+		"group_id": 1,
+		"created_at": "2025-02-21 22:00:12",
+		"updated_at": "2025-02-21 22:00:12"
+	},
+	{
+		"id": 392,
+		"name": "PROTEC",
+		"group_id": 2,
+		"created_at": "2025-02-21 22:04:52",
+		"updated_at": "2025-02-21 22:04:52"
+	},
+	{
+		"id": 393,
+		"name": "EXPOFARMA",
+		"group_id": 4,
+		"created_at": "2025-02-21 22:46:03",
+		"updated_at": "2025-02-21 22:46:03"
+	},
+	{
+		"id": 394,
+		"name": "PANTENE",
+		"group_id": 4,
+		"created_at": "2025-02-21 23:22:06",
+		"updated_at": "2025-02-21 23:22:06"
+	},
+	{
+		"id": 396,
+		"name": "LUKE MEDICAL",
+		"group_id": 3,
+		"created_at": "2025-02-22 17:39:24",
+		"updated_at": "2025-02-22 17:39:24"
+	},
+	{
+		"id": 397,
+		"name": "VENSALUD",
+		"group_id": 2,
+		"created_at": "2025-02-22 17:39:54",
+		"updated_at": "2025-02-22 17:39:54"
+	},
+	{
+		"id": 398,
+		"name": "GAESCA",
+		"group_id": 2,
+		"created_at": "2025-02-23 15:11:05",
+		"updated_at": "2025-02-23 15:11:05"
+	},
+	{
+		"id": 399,
+		"name": "GROSSMED",
+		"group_id": 1,
+		"created_at": "2025-02-23 15:28:10",
+		"updated_at": "2025-02-23 15:28:10"
+	},
+	{
+		"id": 400,
+		"name": "MIFAR",
+		"group_id": 5,
+		"created_at": "2025-02-23 20:27:22",
+		"updated_at": "2025-02-23 20:27:22"
+	},
+	{
+		"id": 401,
+		"name": "NATURAL",
+		"group_id": 2,
+		"created_at": "2025-02-24 23:44:58",
+		"updated_at": "2025-02-24 23:44:58"
+	},
+	{
+		"id": 402,
+		"name": "SAAD",
+		"group_id": 2,
+		"created_at": "2025-02-25 20:50:06",
+		"updated_at": "2025-02-25 20:50:06"
+	},
+	{
+		"id": 403,
+		"name": "ALPHARMA",
+		"group_id": 5,
+		"created_at": "2025-02-25 21:01:07",
+		"updated_at": "2025-02-25 21:01:07"
+	},
+	{
+		"id": 404,
+		"name": "MEDEK PHARMA",
+		"group_id": 2,
+		"created_at": "2025-02-25 22:03:02",
+		"updated_at": "2025-02-25 22:03:02"
+	},
+	{
+		"id": 405,
+		"name": "HEALTHY AMERICA",
+		"group_id": 2,
+		"created_at": "2025-02-26 20:05:48",
+		"updated_at": "2025-02-26 20:05:48"
+	},
+	{
+		"id": 406,
+		"name": "PLUS MEDIC",
+		"group_id": 1,
+		"created_at": "2025-03-03 15:27:05",
+		"updated_at": "2025-03-03 15:27:05"
+	},
+	{
+		"id": 407,
+		"name": "SALUS PHARMA",
+		"group_id": 5,
+		"created_at": "2025-03-03 18:58:56",
+		"updated_at": "2025-03-03 18:58:56"
+	},
+	{
+		"id": 408,
+		"name": "MESH",
+		"group_id": 3,
+		"created_at": "2025-03-15 23:02:02",
+		"updated_at": "2025-03-15 23:02:02"
+	},
+	{
+		"id": 409,
+		"name": "IM",
+		"group_id": 3,
+		"created_at": "2025-03-28 12:56:38",
+		"updated_at": "2025-03-28 12:56:38"
+	},
+	{
+		"id": 410,
+		"name": "VITA LABS",
+		"group_id": 4,
+		"created_at": "2025-04-17 07:40:26",
+		"updated_at": "2025-04-17 07:40:26"
+	},
+	{
+		"id": 435,
+		"name": "ORTOBAN",
+		"group_id": 1,
+		"created_at": "2025-08-08 07:22:01",
+		"updated_at": "2025-08-08 07:22:01"
+	},
+	{
+		"id": 434,
+		"name": "CREMER",
+		"group_id": 3,
+		"created_at": "2025-08-08 07:20:39",
+		"updated_at": "2025-08-08 07:20:39"
+	},
+	{
+		"id": 433,
+		"name": "MEDICAL SUPPLIES",
+		"group_id": 5,
+		"created_at": "2025-08-08 06:53:10",
+		"updated_at": "2025-08-08 06:53:10"
+	},
+	{
+		"id": 432,
+		"name": "GAVENTEX",
+		"group_id": 5,
+		"created_at": "2025-08-08 06:45:52",
+		"updated_at": "2025-08-08 06:45:52"
+	},
+	{
+		"id": 431,
+		"name": "KERFUL",
+		"group_id": 3,
+		"created_at": "2025-08-08 06:43:07",
+		"updated_at": "2025-08-08 06:43:07"
+	},
+	{
+		"id": 430,
+		"name": "PEQUEÑIN",
+		"group_id": 1,
+		"created_at": "2025-08-08 03:56:57",
+		"updated_at": "2025-08-08 03:56:57"
+	},
+	{
+		"id": 429,
+		"name": "ROHS",
+		"group_id": 2,
+		"created_at": "2025-08-08 03:51:02",
+		"updated_at": "2025-08-08 03:51:02"
+	},
+	{
+		"id": 428,
+		"name": "LANSIER",
+		"group_id": 2,
+		"created_at": "2025-08-08 03:04:22",
+		"updated_at": "2025-08-08 03:04:22"
+	},
+	{
+		"id": 427,
+		"name": "REMENY",
+		"group_id": 2,
+		"created_at": "2025-08-08 01:11:34",
+		"updated_at": "2025-08-08 01:11:34"
+	},
+	{
+		"id": 426,
+		"name": "INNOVACION QUIMICA",
+		"group_id": 2,
+		"created_at": "2025-08-08 01:08:25",
+		"updated_at": "2025-08-08 01:08:25"
+	},
+	{
+		"id": 425,
+		"name": "medaid",
+		"group_id": 1,
+		"created_at": "2025-08-07 20:40:16",
+		"updated_at": "2025-08-07 20:40:16"
+	},
+	{
+		"id": 424,
+		"name": "VINTER",
+		"group_id": 5,
+		"created_at": "2025-08-07 12:52:00",
+		"updated_at": "2025-08-07 12:52:00"
+	},
+	{
+		"id": 411,
+		"name": "BOEHRINGER",
+		"group_id": 5,
+		"created_at": "2025-05-14 22:57:58",
+		"updated_at": "2025-05-14 22:57:58"
+	},
+	{
+		"id": 412,
+		"name": "DB LIFE",
+		"group_id": 1,
+		"created_at": "2025-05-14 23:37:17",
+		"updated_at": "2025-05-14 23:37:17"
+	},
+	{
+		"id": 413,
+		"name": "EXELTIS",
+		"group_id": 3,
+		"created_at": "2025-05-16 06:36:34",
+		"updated_at": "2025-05-16 06:36:34"
+	},
+	{
+		"id": 414,
+		"name": "GEMA LABS",
+		"group_id": 1,
+		"created_at": "2025-05-16 13:06:29",
+		"updated_at": "2025-05-16 13:06:29"
+	},
+	{
+		"id": 415,
+		"name": "NUTRIEX",
+		"group_id": 4,
+		"created_at": "2025-05-17 13:19:06",
+		"updated_at": "2025-05-17 13:19:06"
+	},
+	{
+		"id": 416,
+		"name": "MINTLAB",
+		"group_id": 4,
+		"created_at": "2025-05-17 13:23:17",
+		"updated_at": "2025-05-17 13:23:17"
+	},
+	{
+		"id": 417,
+		"name": "MILAB",
+		"group_id": 4,
+		"created_at": "2025-05-17 13:26:01",
+		"updated_at": "2025-05-17 13:26:01"
+	},
+	{
+		"id": 418,
+		"name": "ENGELHARD",
+		"group_id": 1,
+		"created_at": "2025-05-17 13:31:19",
+		"updated_at": "2025-05-17 13:31:19"
+	},
+	{
+		"id": 419,
+		"name": "DRUG",
+		"group_id": 5,
+		"created_at": "2025-05-17 13:51:38",
+		"updated_at": "2025-05-17 13:51:38"
+	},
+	{
+		"id": 420,
+		"name": "P&G",
+		"group_id": 2,
+		"created_at": "2025-05-17 20:02:53",
+		"updated_at": "2025-05-17 20:02:53"
+	},
+	{
+		"id": 421,
+		"name": "DOLLYFARMA",
+		"group_id": 2,
+		"created_at": "2025-05-17 22:19:59",
+		"updated_at": "2025-05-17 22:19:59"
+	},
+	{
+		"id": 422,
+		"name": "TOMITIPI",
+		"group_id": 2,
+		"created_at": "2025-05-27 18:03:54",
+		"updated_at": "2025-05-27 18:03:54"
+	},
+	{
+		"id": 423,
+		"name": "BIALY",
+		"group_id": 3,
+		"created_at": "2025-06-22 17:23:59",
+		"updated_at": "2025-06-22 17:23:59"
+	},
+	{
+		"id": 436,
+		"name": "BASTOS VIEGAS",
+		"group_id": 1,
+		"created_at": "2025-08-08 07:23:58",
+		"updated_at": "2025-08-08 07:23:58"
+	},
+	{
+		"id": 437,
+		"name": "GYPSONA",
+		"group_id": 5,
+		"created_at": "2025-08-08 07:31:59",
+		"updated_at": "2025-08-08 07:31:59"
+	},
+	{
+		"id": 438,
+		"name": "SPEED STICK",
+		"group_id": 5,
+		"created_at": "2025-10-22 22:11:06",
+		"updated_at": "2025-10-22 22:11:06"
+	},
+	{
+		"id": 439,
+		"name": "OPTIMA",
+		"group_id": 2,
+		"created_at": "2025-10-24 01:25:48",
+		"updated_at": "2025-10-24 01:25:48"
+	},
+	{
+		"id": 440,
+		"name": "FITOSANA",
+		"group_id": 3,
+		"created_at": "2025-10-30 14:52:22",
+		"updated_at": "2025-10-30 14:52:22"
+	},
+	{
+		"id": 441,
+		"name": "PROCARE",
+		"group_id": 1,
+		"created_at": "2025-11-25 22:53:38",
+		"updated_at": "2025-11-25 22:53:38"
+	},
+	{
+		"id": 442,
+		"name": "DISKAM",
+		"group_id": 5,
+		"created_at": "2025-11-29 13:24:13",
+		"updated_at": "2025-11-29 13:24:13"
+	}
+]
