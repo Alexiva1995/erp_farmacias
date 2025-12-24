@@ -44,6 +44,35 @@ class PendingPaymentsController extends Controller
     }
 
     /**
+     * Calcular monto en BS usando la tabla exchange_rates
+     */
+    private function calculateBS($amount, $currency)
+    {
+        if ($currency === 'Bs') {
+            return (float) $amount;
+        }
+
+        $exchangeRate = ExchangeRate::where('currency_code', $currency)->first();
+
+        if (!$exchangeRate) {
+            return 0;
+        }
+
+        return round((float) $amount / (float) $exchangeRate->rate, 2);
+    }
+
+    private function getBsExchange($currency)
+    {
+        $exchangeRate = ExchangeRate::where('currency_code', $currency)->first();
+
+        if (!$exchangeRate) {
+            return 0;
+        }
+
+        return round((float) $exchangeRate->rate, 2);
+    }
+
+    /**
      * Obtener facturas pendientes de pago agrupadas por proveedor y fecha
      */
     public function index(Request $request): JsonResponse
@@ -470,6 +499,14 @@ class PendingPaymentsController extends Controller
                 $amountUSD = round($request->payment_amount / $exchangeRate->rate, 2);
             }
 
+            if ($normalizedCurrency === 'BS') {
+                $amountBS = $request->payment_amount;
+            } else {
+                $currentCurrencyConvertTo = $normalizedCurrency === 'USD' ? 'BS' : 'COP';
+                $exchangeRate = ExchangeRate::where('currency_code', $currentCurrencyConvertTo)->first();
+                $amountBS = round($request->payment_amount * $exchangeRate->rate, 2);
+            }
+
             // LOG TEMPORAL PARA DEBUGGING
             Log::info('ProcessPayment Debug:', [
                 'payment_currency' => $request->payment_currency,
@@ -520,7 +557,7 @@ class PendingPaymentsController extends Controller
 
             // CORRECCIÓN CRÍTICA: Mantener status compatible con query Por Pagar
             // Solo cambiar status_payment, mantener status en valores válidos para Por Pagar
-            $newStatus = 'to_order'; // Siempre mantener en to_order para que aparezca en Por Pagar
+            $newStatus = 'ordered'; // Pagos completos
 
             Invoice::whereIn('id', $request->invoice_ids)->update([
                 'status' => $newStatus,
@@ -530,7 +567,7 @@ class PendingPaymentsController extends Controller
             ]);
 
             // 7. Crear expense
-            $this->createExpense($invoices, $payment, $amountUSD, false);
+            $this->createExpense($invoices, $payment, $amountUSD, $amountBS, false);
 
             // 8. Guardar pago para mostrar en cierre de caja
             Transaction::create([
@@ -872,25 +909,36 @@ class PendingPaymentsController extends Controller
     /**
      * Crear registro en expenses
      */
-    private function createExpense($invoices, $payment, $amountUSD, $iva): void
+    private function createExpense($invoices, $payment, $amountUSD, $amountBS, $iva): void
     {
         // Crear o obtener categoría
         $category = ExpenseCategory::firstOrCreate([
             'name' => 'Pagos de Facturas'
         ]);
 
+        $invoice = $invoices->first();
+
         // Crear expense
         Expense::create([
-            'name' => "Pago Factura # {$invoices->first()->invoice_number} Proveedor {$invoices->first()->supplier->name}",
+            'name' => "Pago Factura # {$invoice->invoice_number} Proveedor {$invoice->supplier->name}",
             'category_id' => $category->id,
             'amount' => $payment->amount,
             'amount_usd' => $amountUSD,
+            'amount_bs' => $amountBS,
             'currency' => $payment->payment_method,
             'expense_date' => $payment->payment_date,
             'user_id' => $payment->payment_by,
             'has_invoice' => true,
             'is_deductible' => true,
-            'iva' => $iva ?? false
+            'iva' => $iva ?? false,
+            'status' => 'Approved',
+            'conversion_rate_to_bs' => $amountBS == null ? $this->getBsExchange($payment->payment_method) : null,
+            'exempt_amount' => $invoice->exempt_amount ?? 0,
+            'tax_amount' => $invoice->tax_amount ?? 0,
+            'taxable_base' => $invoice->taxable_base ?? 0,
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->created_invoice_date,
+            'control_number' => $invoice->control_number,
         ]);
     }
 

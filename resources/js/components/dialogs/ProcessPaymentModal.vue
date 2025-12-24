@@ -504,11 +504,15 @@ const processPayment = async () => {
 
     if (error.response?.data?.data?.errors) {
       errors.value = error.response.data.data.errors;
-      console.log(errors.value);
-      toast.error(
-        "Error de validación: " +
-          JSON.stringify(error.response.data.data.errors)
-      );
+
+      if (error.response.data.data.errors.payment_method) {
+        toast.error("Error de validación: El método de pago es necesario");
+      } else {
+        toast.error(
+          "Error de validación: " +
+            JSON.stringify(error.response.data.data.errors)
+        );
+      }
     } else if (error.response?.data?.data?.message) {
       toast.error("Error: " + error.response.data.data.message);
     } else {
