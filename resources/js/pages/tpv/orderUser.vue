@@ -1897,6 +1897,23 @@ const fetchGroupProducts = async (groupId) => {
   }
   currentGroupId.value = groupId;
 };
+
+const fetchFailuresProducts = async (productId) => {
+  try {
+    const response = await axios.post('/tpv/product-failure', {
+      product_id: productId,
+    })
+    toast.info("Reporte de falla guardado correctamente.");
+  } catch (error) {
+    if (error.response) {
+      console.error('Errores de validación:', error.response.data.errors)
+      toast.error("Hubo un problema al procesar su reporte de falla.");
+    } else {
+      console.error('Error de conexión:', error.message)
+    }
+  }
+};
+
 const handleBackFromGroupView = () => {
   currentGroupId.value = null;
 };
@@ -2123,6 +2140,7 @@ watch(activeTab, (val) => {
           @update:options="updateTableOptions"
           @add-product="addProductToOrder"
           @view-group-products="fetchGroupProducts"
+          @failures-products="fetchFailuresProducts"
         />
       </VWindowItem>
 

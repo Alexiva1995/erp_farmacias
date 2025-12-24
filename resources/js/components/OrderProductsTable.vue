@@ -19,6 +19,7 @@ const emit = defineEmits([
   "update:options",
   "add-product",
   "view-group-products",
+  "failures-products",
 ]);
 
 const headers = [
@@ -167,6 +168,10 @@ const handleInputOrderChange = (productId, val) => {
 
 const handleViewGroupProducts = (product) => {
   emit("view-group-products", product.group_id);
+};
+
+const handleFailures = (product) => {
+  emit("failures-products", product.id);
 };
 
 // Función para calcular precio con IVA (sin descuento)
@@ -327,6 +332,9 @@ const totalDiscountPreview = computed(() => {
       <template #item.actions="{ item }">
         <IconBtn @click="handleViewGroupProducts(item)">
           <VIcon icon="tabler-eye" />
+        </IconBtn>
+         <IconBtn @click="handleFailures(item)" color="error">
+          <VIcon icon="tabler-alert-triangle" />
         </IconBtn>
       </template>
     </VDataTableServer>
