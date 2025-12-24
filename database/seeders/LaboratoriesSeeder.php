@@ -17,7 +17,7 @@ class LaboratoriesSeeder extends Seeder
         $groupIds = DB::table('groups_laboratories')->pluck('id')->toArray();
 
         // Cargar los datos desde el archivo JSON
-        $json = File::get(database_path('data/laboratory.json'));
+        $json = File::get(database_path('data/laboratories.json'));
         $data = json_decode($json, true);
 
         // Asignar group_id aleatorio y timestamps
