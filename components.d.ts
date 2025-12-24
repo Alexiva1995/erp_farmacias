@@ -253,6 +253,8 @@ declare module 'vue' {
     ReferAndEarnDialog: typeof import('./resources/js/components/dialogs/ReferAndEarnDialog.vue')['default']
     ReferenceModal: typeof import('./resources/js/components/dialogs/ReferenceModal.vue')['default']
     ReferenceTable: typeof import('./resources/js/components/ReferenceTable.vue')['default']
+    ReportAbcFilters: typeof import('./resources/js/components/ReportAbcFilters.vue')['default']
+    ReportAbcTable: typeof import('./resources/js/components/ReportAbcTable.vue')['default']
     ResignationFormDialog: typeof import('./resources/js/components/dialogs/ResignationFormDialog.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
     ReturnsFilter: typeof import('./resources/js/components/ReturnsFilter.vue')['default']
