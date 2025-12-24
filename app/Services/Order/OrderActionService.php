@@ -101,6 +101,12 @@ class OrderActionService
 
             $requestedQuantity = $validatedData['quantity'];
             $unitPriceAtOrder = $validatedData['price_at_product'];
+
+            if ($order->currency === 'COP') {
+                // Round up to nearest 100 COP
+                $unitPriceAtOrder = ceil($unitPriceAtOrder / 100) * 100;
+            }
+
             $price_usd = $validatedData['price_usd_unit'];
             $packId = $validatedData['pack_id'] ?? null;
 
@@ -245,7 +251,7 @@ class OrderActionService
                     $discountType = 'expiration';
                     $discountSource = $rule->id;
                     // Apply discount
-                    $finalUnitPrice = $unitPriceAtOrder * (1 - ($discountPct / 100));
+                    $finalUnitPrice = ceil($unitPriceAtOrder * (1 - ($discountPct / 100)) / 100) * 100;
                 }
 
                 // Compute Total Price Explicitly (Unit * Qty)
@@ -494,10 +500,14 @@ class OrderActionService
                                 $detail->quantity = $itemData['quantity'];
                             }
 
-                            $detail->price = $itemData['price'] * $detail->quantity;
-                            $detail->unit_cost = $itemData['price'];
-                            
-                                
+                            if ($orderId->currency === 'COP') {
+                                $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
+                                $detail->unit_cost = ceil($itemData['price'] / 100) * 100;
+                            } else {
+                                $detail->price = $itemData['price'] * $detail->quantity;
+                                $detail->unit_cost = $itemData['price'];
+                            }
+
                             if (isset($itemData['discount_percentage'])) {
                                 $detail->discount_percentage = $itemData['discount_percentage'];
                                 $detail->discount_type = $itemData['discount_type'] ?? null;

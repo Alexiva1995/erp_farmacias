@@ -7,16 +7,16 @@ const props = defineProps({
 });
 
 const headers = [
-  { title: "Empleado", key: "name", width: "200px" },
-  { title: "Total Pts.", key: "scores.total", align: "end", sortable: true },
-  { title: "Ventas (25)", key: "scores.sales", align: "end" },
-  { title: "Crec (15)", key: "scores.growth", align: "end" },
-  { title: "Venc (15)", key: "scores.expiration", align: "end" },
-  { title: "Inv (10)", key: "scores.inventory", align: "end" },
-  { title: "Premm (10)", key: "scores.premium", align: "end" },
-  { title: "Fact (10)", key: "scores.invoice", align: "end" },
-  { title: "Limp (5)", key: "scores.cleaning", align: "end" },
-  { title: "Estrat (5)", key: "scores.strategy", align: "end" },
+  { title: "Empl.", key: "name", width: "200px" },
+  { title: "Tota.", key: "scores.total", align: "end", sortable: true },
+  { title: "Vent.%", key: "scores.sales", align: "end" },
+  { title: "Crec.%", key: "scores.growth", align: "end" },
+  { title: "Venc.%", key: "scores.expiration", align: "end" },
+  { title: "Inv.%", key: "scores.inventory", align: "end" },
+  { title: "Prem.%", key: "scores.premium", align: "end" },
+  { title: "Fact.%", key: "scores.invoice", align: "end" },
+  { title: "Limp.%", key: "scores.cleaning", align: "end" },
+  { title: "Estr.%", key: "scores.strategy", align: "end" },
 ];
 
 const formatNumber = (num) =>
