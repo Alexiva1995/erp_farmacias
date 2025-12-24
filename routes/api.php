@@ -458,6 +458,7 @@ Route::prefix("users")->group(function () {
 });
 // Finanzas
 Route::prefix("finances")->group(function () {
+    Route::get('/reports/abc-analysis', \App\Http\Controllers\Api\ProductAbcReportController::class);
     Route::prefix("profitability")->group(function () {
         Route::get("/", [ProfitabilityController::class, "consultOne"]);
         Route::post("/store", [ProfitabilityController::class, "store"]);
