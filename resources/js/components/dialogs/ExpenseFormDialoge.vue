@@ -1,86 +1,71 @@
 <script setup lang="js">
-import { computed, watch } from 'vue';
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { computed, ref, watch } from 'vue';
 
-const props= defineProps({
-  type_of_expense:{type:String, required: true, default: () => 'normal'},
-  modalFormulario: {type: Boolean, required: true},
-  titulo: {type: String, required: true},
-  formData: {type: Object, default: () => {}},
-  formError: {type: Object, default: () => []},
-  categorias: {type: Array, default: () => []},
+const props = defineProps({
+  type_of_expense: { type: String, required: true, default: () => 'normal' },
+  modalFormulario: { type: Boolean, required: true },
+  titulo: { type: String, required: true },
+  formData: { type: Object, default: () => ({}) },
+  formError: { type: Object, default: () => ({}) },
+  categorias: { type: Array, default: () => [] },
 })
 
-const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
+const emit = defineEmits(["modalClose", 'save', 'clearErrorForm'])
 
-const bs=[
-      "Efectivo",
-      "Tarjeta",
-      "Pago móvil",
-      "Transferencia",
-    ]
+// File upload related refs
+const invoiceFile = ref(null);
+const invoicePreview = ref(null);
+const isUploading = ref(false);
+const uploadProgress = ref(0);
+const uploadedFileData = ref(null);
+const fileUploadError = ref(null);
 
-const usd=[
-      "Efectivo",
-      "Binance",
-      "PayPal",
-    ]
+const bs = [
+  "Efectivo",
+  "Tarjeta",
+  "Pago móvil",
+  "Transferencia",
+]
 
-const cop=[
-      "Efectivo",
-      "Transferencia",
-    ]
+const usd = [
+  "Efectivo",
+  "Binance",
+  "PayPal",
+]
 
-const currencies=["BS","USD", "COP"];
+const cop = [
+  "Efectivo",
+  "Transferencia",
+]
 
-const recurrencia=[
-  "Mensual","Semestral","Anual"
+const currencies = ["BS", "USD", "COP"];
+
+const recurrencia = [
+  "Mensual", "Semestral", "Anual"
 ];
 
-const shouldShowExchangeRate = computed(() => {
+const shouldShowExchangeRate = computed(() =>
+{
   return props.formData.currency === "BS" || props.formData.currency === "COP";
 });
 
-const calculatedTaxAmount = computed(() => {
-  const base = Number(props.formData.taxable_base) || 0;
-  return (base * 0.16).toFixed(2);
-});
-
-const calculatedTotalAmount = computed(() => {
-  const excento = Number(props.formData.exempt_amount) || 0;
-  const base = Number(props.formData.taxable_base) || 0;
-  const impuesto = Number(props.formData.tax_amount) || 0;
-  return (excento + base + impuesto).toFixed(2);
-});
-
-const calculatedTotalUsd = computed(() => {
-  const totalAmount = Number(props.formData.total_amount) || 0;
-  const currency = props.formData.currency;
-  const exchangeRate = Number(props.formData.exchange_rate) || 0;
-
-  if (currency === "USD") {
-    return totalAmount.toFixed(2);
-  }
-
-  if (exchangeRate > 0) {
-    return (totalAmount / exchangeRate).toFixed(2);
-  }
-
-  return "0.00";
-});
-
-const getCurrencySymbol = computed(() => {
+const getCurrencySymbol = computed(() =>
+{
   const symbolMap = {
     BS: "Bs.",
     USD: "$",
     COP: "COP$",
   };
-  return symbolMap[props.formData.currency] || "Bs.";
+  return symbolMap[props.formData.currency] || "$";
 });
 
 // Watch para calcular impuesto automáticamente
 watch(
   () => props.formData.taxable_base,
-  (newValue) => {
+  (newValue) =>
+  {
     if (newValue !== undefined && newValue !== null) {
       const base = Number(newValue) || 0;
       props.formData.tax_amount = parseFloat((base * 0.16).toFixed(2));
@@ -96,7 +81,8 @@ watch(
     props.formData.taxable_base,
     props.formData.tax_amount,
   ],
-  () => {
+  () =>
+  {
     const excento = Number(props.formData.exempt_amount) || 0;
     const base = Number(props.formData.taxable_base) || 0;
     const impuesto = Number(props.formData.tax_amount) || 0;
@@ -112,7 +98,8 @@ watch(
     props.formData.currency,
     props.formData.exchange_rate,
   ],
-  () => {
+  () =>
+  {
     const totalAmount = Number(props.formData.total_amount) || 0;
     const currency = props.formData.currency;
     const exchangeRate = Number(props.formData.exchange_rate) || 0;
@@ -132,7 +119,8 @@ watch(
 // Watch para limpiar tasa de cambio si la moneda es USD
 watch(
   () => props.formData.currency,
-  (newCurrency) => {
+  (newCurrency) =>
+  {
     if (newCurrency === "USD") {
       props.formData.exchange_rate = 0;
     }
@@ -147,7 +135,8 @@ watch(
     props.formData.amount,
     props.formData.conversion_rate_to_bs,
   ],
-  () => {
+  () =>
+  {
     if (
       props.formData.is_deductible === true &&
       props.formData.currency !== "BS" &&
@@ -165,37 +154,198 @@ watch(
   { deep: true }
 );
 
-function close(){
-  emit("modalClose",false)
+// FIXED: Handle file upload correctly for Vuetify VFileInput
+const handleFileUpload = (files) => {
+  // VFileInput passes the files array directly, not an event object
+  if (!files || files.length === 0) {
+    clearSelectedFile();
+    return;
+  }
+
+  const file = files[0]; // Get the first file
+
+  // Validate file type
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+
+  // Check if it's a File object or a string (for previously uploaded files)
+  if (file instanceof File) {
+    if (!allowedTypes.includes(file.type)) {
+      const allowedExtensions = allowedTypes.map(type => {
+        if (type.startsWith('image/')) return type.split('/')[1].toUpperCase();
+        return type.split('/')[1].toUpperCase();
+      }).join(', ');
+      fileUploadError.value = `Solo se permiten archivos ${allowedExtensions}`;
+      invoiceFile.value = null;
+      return;
+    }
+
+    if (file.size > maxSize) {
+      fileUploadError.value = 'El archivo no puede superar los 5MB';
+      invoiceFile.value = null;
+      return;
+    }
+
+    fileUploadError.value = null;
+    invoiceFile.value = file;
+
+    // Generate preview for image files
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        invoicePreview.value = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      invoicePreview.value = null;
+    }
+
+    // Clear any previously uploaded file data
+    if (uploadedFileData.value) {
+      uploadedFileData.value = null;
+    }
+  } else {
+    // Handle case where file is not a File object (shouldn't happen with proper setup)
+    fileUploadError.value = 'Archivo inválido seleccionado';
+    invoiceFile.value = null;
+  }
+};
+
+// Upload file to server
+const uploadInvoiceFile = async () => {
+  if (!invoiceFile.value || !props.formData.id) {
+    // If there's no ID yet (new expense), we can't upload the file yet
+    // The file will be uploaded after the expense is created
+    return true;
+  }
+
+  isUploading.value = true;
+  uploadProgress.value = 0;
+  fileUploadError.value = null;
+
+  try {
+    const formData = new FormData();
+    formData.append('id', props.formData.id);
+    formData.append('file_invoice', invoiceFile.value);
+
+    // Use axios with progress tracking
+    const response = await axios.post('/finances/expenses/upload-file-invoice', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: progressEvent => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          uploadProgress.value = percentCompleted;
+        }
+      }
+    });
+
+    if (response.data.success) {
+      uploadedFileData.value = response.data.data;
+      toast.success('Factura subida correctamente');
+
+      // Update form data with uploaded file info
+      Object.assign(props.formData, {
+        file_name: uploadedFileData.value.file_name,
+        extension_file: uploadedFileData.value.extension_file,
+        url_file: uploadedFileData.value.url,
+        date_upload: new Date().toISOString()
+      });
+
+      // Clear the file input since upload is complete
+      invoiceFile.value = null;
+
+      return true;
+    } else {
+      throw new Error(response.data.message || 'Error al subir la factura');
+    }
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    const errorMessage = error.response?.data?.message ||
+                        error.message ||
+                        'Error al subir el archivo. Intente nuevamente.';
+    fileUploadError.value = errorMessage;
+    toast.error(errorMessage);
+    return false;
+  } finally {
+    isUploading.value = false;
+    uploadProgress.value = 0;
+  }
+};
+
+// Clear selected file
+const clearSelectedFile = () => {
+  invoiceFile.value = null;
+  invoicePreview.value = null;
+  fileUploadError.value = null;
+};
+
+// Clear uploaded file (remove from server)
+const clearUploadedFile = async () => {
+  if (!props.formData.id || !props.formData.url_file) return;
+
+  try {
+    const response = await axios.post('/finances/expenses/remove-file-invoice', {
+      id: props.formData.id
+    });
+
+    if (response.data.success) {
+      // Clear file references from form data
+      props.formData.file_name = null;
+      props.formData.extension_file = null;
+      props.formData.url_file = null;
+      props.formData.date_upload = null;
+      uploadedFileData.value = null;
+      toast.success('Factura eliminada correctamente');
+    } else {
+      throw new Error(response.data.message || 'Error al eliminar la factura');
+    }
+  } catch (error) {
+    console.error('Error removing file:', error);
+    const errorMessage = error.response?.data?.message ||
+                         'Error al eliminar la factura. Intente nuevamente.';
+    toast.error(errorMessage);
+  }
+};
+
+function close() {
+  // Clear file references when closing modal
+  clearSelectedFile();
+  emit("modalClose", false);
 }
 
-// function generarFormData(estado){
+async function submitForm() {
+  emit("clearErrorForm");
 
-//   let formData = new FormData();
+  // Validate required fields first
+  if (!props.formData.name) {
+    toast.error('El nombre del gasto es requerido');
+    return;
+  }
 
-//   Object.entries(estado).forEach(([key, value]) => {
-//     if (value instanceof File) {
-//       formData.append(key, value); // Archivo (Blob/File)
-//     } else if (typeof value === 'object' && value !== null) {
-//       formData.append(key, JSON.stringify(value)); // Objetos anidados
-//     } else if (value === true || value === false) {
-//       formData.append(key, value);
-//     } else {
-//       formData.append(key, value); // Strings/números
-//     }
-//   });
+  if (!props.formData.category_id) {
+    toast.error('La categoría es requerida');
+    return;
+  }
 
-//   return formData
-// }
+  if (!props.formData.total_amount || props.formData.total_amount <= 0) {
+    toast.error('El monto total debe ser mayor a 0');
+    return;
+  }
 
+  // Emit the save event with form data and file
+  emit("save", {
+    ...props.formData,
+    // Pass the file to be handled by parent after expense creation
+    invoice_file: invoiceFile.value
+  });
 
-function submitForm(){
-  console.log("data XD => ",props.formData)
-  emit("clearErrorForm")
-  // let data=generarFormData(props.formData)
-  emit("save",props.formData)
+  // Clear the file input
+  clearSelectedFile();
 }
 </script>
+
 <template>
   <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
     <VCard>
@@ -271,7 +421,7 @@ function submitForm(){
             <AppDateTimePicker
               v-model="props.formData.expense_date"
               :error-messages="props.formError.expense_date"
-              label="Fecha"
+              placeholder="Fecha"
               variant="outlined"
               :config="{
                 altInput: true,
@@ -312,29 +462,8 @@ function submitForm(){
               persistent-hint
             />
           </VCol>
-          <VCol
-            cols="12"
-            sm="6"
-            md="6"
-            v-if="
-              props.formData.iva == true ||
-              props.formData.is_deductible === true
-            "
-          >
-            <VTextField
-              v-model.number="props.formData.amount_bs"
-              :error-messages="props.formError.amount_bs"
-              label="Monto Bs"
-              type="number"
-              variant="outlined"
-              :readonly="
-                props.formData.is_deductible === true &&
-                props.formData.currency !== 'BS' &&
-                props.formData.conversion_rate_to_bs > 0
-              "
-            />
-          </VCol>
         </VRow>
+
         <VRow>
           <VCol cols="12" md="4">
             <VTextField
@@ -398,26 +527,50 @@ function submitForm(){
               readonly
             />
           </VCol>
+          <VCol cols="12">
+            <VFileInput
+              v-model="invoiceFile"
+              label="Subir factura"
+              accept="image/*"
+              prepend-icon="tabler-file-invoice"
+              :disabled="isUploading"
+              show-size
+              chips
+              :error-messages="fileUploadError"
+              :loading="isUploading && uploadProgress > 0"
+              :progress="isUploading ? uploadProgress : undefined"
+            >
+            </VFileInput>
+
+            <p class="text-caption text-grey mt-1">
+              Formatos permitidos: JPG, PNG, PDF (máx. 5MB)
+            </p>
+          </VCol>
         </VRow>
       </VContainer>
-      <VDivider />
+      <VDivider class="mt-4" />
       <VCardActions class="pa-4">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="close"
           width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Cancelar</VBtn
+          class="d-flex flex-grow-1 w-0 me-4"
         >
+          Cancelar
+        </VBtn>
         <VBtn
           color="primary"
           variant="flat"
           @click="submitForm"
           width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Guardar Cambios</VBtn
+          class="d-flex flex-grow-1 w-0"
+          :loading="isUploading"
+          :disabled="isUploading"
         >
+          <template v-if="isUploading"> Subiendo factura... </template>
+          <template v-else> Guardar Cambios </template>
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

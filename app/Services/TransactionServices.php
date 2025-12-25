@@ -30,9 +30,8 @@ class TransactionServices implements Transaction
   public function createTransactionSalida(Expense $expense): ?ModelsTransaction
   {
     $timeZone = new DateTimeZone(config("app.timezone"));
-    $hoy = new DateTime("now", $timezone);
+    $hoy = new DateTime("now", $timeZone);
 
-    
     $data = CreateTransactionData::from([
       "user_id" => $expense->user_id,
       "category_id" => $expense->category_id,
