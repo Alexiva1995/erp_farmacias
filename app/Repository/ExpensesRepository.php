@@ -151,12 +151,6 @@ class ExpensesRepository
             }
         }
 
-        if (array_key_exists("type_of_expense", $filtros)) {
-            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
-                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
-            }
-        }
-
         if (array_key_exists("count", $filtros)) {
             $consulta->where("count", "=", $filtros["count"]);
         }

@@ -106,10 +106,6 @@ class ExpensesController extends Controller
             $filtros["status"] = $request->status;
         }
 
-        if ($request->filled("type_of_expense")) {
-            $filtros["type_of_expense"] = $request->type_of_expense;
-        }
-
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
             $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;

@@ -499,14 +499,6 @@ class PendingPaymentsController extends Controller
                 $amountUSD = round($request->payment_amount / $exchangeRate->rate, 2);
             }
 
-            if ($normalizedCurrency === 'BS') {
-                $amountBS = $request->payment_amount;
-            } else {
-                $currentCurrencyConvertTo = $normalizedCurrency === 'USD' ? 'BS' : 'COP';
-                $exchangeRate = ExchangeRate::where('currency_code', $currentCurrencyConvertTo)->first();
-                $amountBS = round($request->payment_amount * $exchangeRate->rate, 2);
-            }
-
             // LOG TEMPORAL PARA DEBUGGING
             Log::info('ProcessPayment Debug:', [
                 'payment_currency' => $request->payment_currency,
@@ -567,13 +559,13 @@ class PendingPaymentsController extends Controller
             ]);
 
             // 7. Crear expense
-            $this->createExpense($invoices, $payment, $amountUSD, $amountBS, false);
+            $this->createExpense($invoices, $payment, false);
 
             // 8. Guardar pago para mostrar en cierre de caja
             Transaction::create([
                 'user_id' => auth()->id(),
                 'category_id' => ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas'])->id,
-                'exchange_rate' => $exchangeRate->rate ?? 1,  
+                'exchange_rate' => $exchangeRate->rate ?? 1,
                 'description' => "Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$invoices->first()->supplier->name}",
                 'currency' => $normalizedCurrency,
                 'type' => $payment->method,
@@ -906,102 +898,107 @@ class PendingPaymentsController extends Controller
         }
     }
 
-/**
- * Crear registro en expenses sumando los montos de todas las facturas involucradas
- */
-/**
- * Crear registro en expenses
- */
-/**
- * Crear registro en expenses
- */
-/**
- * Crear registro en expenses
- */
-private function createExpense($invoices, $payment, $iva): void
-{
-    // Crear o obtener categoría
-    $category = ExpenseCategory::firstOrCreate([
-        'name' => 'Pagos de Facturas'
-    ]);
+    /**
+     * Crear registro en expenses sumando los montos de todas las facturas involucradas
+     */
+    /**
+     * Crear registro en expenses
+     */
+    /**
+     * Crear registro en expenses
+     */
+    /**
+     * Crear registro en expenses
+     */
+    private function createExpense($invoices, $payment, $iva): void
+    {
+        // Crear o obtener categoría
+        $category = ExpenseCategory::firstOrCreate([
+            'name' => 'Pagos de Facturas'
+        ]);
 
-    $invoice = $invoices->first();
+        $invoice = $invoices->first();
 
-    // === MAPEO DE MÉTODO DE PAGO (copiado de mapPaymentMethodToCount) ===
-    $mapping = [
-        'CASH' => 'Efectivo',
-        'CARD' => 'Tarjeta',
-        'MOBILE' => 'Pago Móvil',
-        'TRANSFER' => 'Transferencia',
-        'BINANCE' => 'Binance',
-        'PAYPAL' => 'PayPal',
-        'CREDIT' => 'Crédito',
-    ];
-    $countValue = $mapping[$payment->method] ?? null;
-    // ===============================================================
+        // === MAPEO DE MÉTODO DE PAGO (copiado de mapPaymentMethodToCount) ===
+        $mapping = [
+            'CASH' => 'Efectivo',
+            'CARD' => 'Tarjeta',
+            'MOBILE' => 'Pago Móvil',
+            'TRANSFER' => 'Transferencia',
+            'BINANCE' => 'Binance',
+            'PAYPAL' => 'PayPal',
+            'CREDIT' => 'Crédito',
+        ];
+        $countValue = $mapping[$payment->method] ?? null;
+        // ===============================================================
 
-    // ====== CONVERSION RATE - USAR LA MISMA LÓGICA QUE EN calculateUSD ======
-    $conversionRate = null;
-    
-    if ($payment->payment_method === 'USD') {
-        // Para USD, la tasa de conversión es 1
-        $conversionRate = 1.0000;
-    } else {
-        // Mapear moneda para buscar en exchange_rates
-        $currencyCode = $payment->payment_method === 'Bs' ? 'BS' : $payment->payment_method;
-        
-        $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
-        
-        if ($exchangeRate) {
-            $conversionRate = (float) $exchangeRate->rate;
+        // ====== CONVERSION RATE - USAR LA MISMA LÓGICA QUE EN calculateUSD ======
+        $conversionRate = null;
+
+        if ($payment->payment_method === 'USD') {
+            // Para USD, la tasa de conversión es 1
+            $conversionRate = 1.0000;
         } else {
-            // Si no se encuentra la tasa, dejamos null
-            \Log::warning("Tasa de cambio no encontrada para: {$payment->payment_method}");
+            // Mapear moneda para buscar en exchange_rates
+            $currencyCode = $payment->payment_method === 'Bs' ? 'BS' : $payment->payment_method;
+
+            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+
+            if ($exchangeRate) {
+                $conversionRate = (float) $exchangeRate->rate;
+            } else {
+                // Si no se encuentra la tasa, dejamos null
+                \Log::warning("Tasa de cambio no encontrada para: {$payment->payment_method}");
+            }
         }
+        // =======================================================================
+
+        // Calcular total_usd usando la misma lógica que en calculateUSD
+        $totalUSD = $payment->amount;
+        if ($payment->payment_method === 'USD') {
+            $totalUSD = (float) $payment->amount;
+        } elseif ($conversionRate && $conversionRate > 0) {
+            $totalUSD = round((float) $payment->amount / (float) $conversionRate, 2);
+        }
+
+        // DEBUG: Ver qué se está guardando
+        \Log::info('Guardando expense con:', [
+            'conversion_rate' => $conversionRate,
+            'payment_method' => $payment->payment_method,
+            'currencyCode' => $currencyCode ?? 'USD',
+            'countValue' => $countValue
+        ]);
+
+        $exchangeRate = $invoice->is_indexed ? $conversionRate : ($invoice->currency === 'USD' ? 1.0000 : $invoice->exchange_rate);
+        $exemptAmount = $invoice->is_indexed ? ($invoice->exempt_amount / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->exempt_amount ?? 0);
+        $taxableBase = $invoice->is_indexed ? ($invoice->taxable_base / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->taxable_base ?? 0);
+        $taxAmount = $invoice->is_indexed ? ($invoice->tax_amount / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->tax_amount ?? 0);
+
+        // Crear expense con la estructura correcta
+        Expense::create([
+            'name' => "Pago Factura # {$invoice->invoice_number} - Proveedor: {$invoice->supplier->name}",
+            'category_id' => $category->id,
+            'amount' => $payment->amount,
+            'conversion_rate' => $conversionRate, // <-- ESTE ES EL CAMPO IMPORTANTE
+            'currency' => $payment->payment_method,
+            'expense_date' => $payment->payment_date,
+            'user_id' => $payment->payment_by,
+            'has_invoice' => true,
+            'is_deductible' => true,
+            'iva' => $iva ?? false,
+            'status' => 'Approved',
+            'exchange_rate' => $exchangeRate,
+            'exempt_amount' => $exemptAmount,
+            'taxable_base' => $taxableBase,
+            'tax_amount' => $taxAmount,
+            'total_usd' => $totalUSD,
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->created_invoice_date,
+            'control_number' => $invoice->control_number,
+            'type_of_expense' => 'Normal',
+            'count' => $countValue,
+        ]);
     }
-    // =======================================================================
-
-    // Calcular total_usd usando la misma lógica que en calculateUSD
-    $totalUSD = $payment->amount;
-    if ($payment->payment_method === 'USD') {
-        $totalUSD = (float) $payment->amount;
-    } elseif ($conversionRate && $conversionRate > 0) {
-        $totalUSD = round((float) $payment->amount / (float) $conversionRate, 2);
-    }
-
-    // DEBUG: Ver qué se está guardando
-    \Log::info('Guardando expense con:', [
-        'conversion_rate' => $conversionRate,
-        'payment_method' => $payment->payment_method,
-        'currencyCode' => $currencyCode ?? 'USD',
-        'countValue' => $countValue
-    ]);
-
-    // Crear expense con la estructura correcta
-    Expense::create([
-        'name' => "Pago Factura # {$invoice->invoice_number} - Proveedor: {$invoice->supplier->name}",
-        'category_id' => $category->id,
-        'amount' => $payment->amount,
-        'conversion_rate' => $conversionRate, // <-- ESTE ES EL CAMPO IMPORTANTE
-        'currency' => $payment->payment_method,
-        'expense_date' => $payment->payment_date,
-        'user_id' => $payment->payment_by,
-        'has_invoice' => true,
-        'is_deductible' => true,
-        'iva' => $iva ?? false,
-        'status' => 'Approved',
-        'exchange_rate' => 1.0000,
-        'exempt_amount' => $invoice->exempt_amount ?? 0,
-        'taxable_base' => $invoice->taxable_base ?? 0,
-        'tax_amount' => $invoice->tax_amount ?? 0,
-        'total_usd' => $totalUSD,
-        'invoice_number' => $invoice->invoice_number,
-        'invoice_date' => $invoice->created_invoice_date,
-        'control_number' => $invoice->control_number,
-        'type_of_expense' => 'Normal',
-        'count' => $countValue,
-    ]);
-}
     /**
      * Obtener monto ya pagado de facturas específicas
      */
