@@ -18,15 +18,16 @@ class CashClosureController extends Controller
     public function __construct(
         private CashClosureActionService $cashClosureActionService,
         private CashClosureQueryService $cashClosureQueryService,
-    ) {}
+    ) {
+    }
 
-    public function  getCashClosure(Request $request)
+    public function getCashClosure(Request $request)
     {
         $query = $this->cashClosureActionService->allCashClosing($request);
         return $query;
     }
 
-    public function  getClosingHistory(Request $request)
+    public function getClosingHistory(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQuery($request);
         $perPage = $request->input('itemsPerPage', 10);
@@ -44,14 +45,27 @@ class CashClosureController extends Controller
     {
 
         $html = str_replace(
-        ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ñ','°'],
-        ['&aacute;', '&eacute;', '&iacute;', '&oacute;', '&uacute;', '&ntilde;', 
-         '&Aacute;', '&Eacute;', '&Iacute;', '&Oacute;', '&Uacute;', '&Ntilde;','&deg;'],
-        $html
-    );
+            ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ñ', '°'],
+            [
+                '&aacute;',
+                '&eacute;',
+                '&iacute;',
+                '&oacute;',
+                '&uacute;',
+                '&ntilde;',
+                '&Aacute;',
+                '&Eacute;',
+                '&Iacute;',
+                '&Oacute;',
+                '&Uacute;',
+                '&Ntilde;',
+                '&deg;'
+            ],
+            $html
+        );
         $pdf = Pdf::loadHtml($html);
         $pdf->setOptions([
-        'encoding'    => 'UTF-8'
+            'encoding' => 'UTF-8'
         ]);
         return $pdf;
     }
@@ -68,11 +82,10 @@ class CashClosureController extends Controller
 
     public function closeCash(CloseCashClosureRequest $request)
     {
-
         return $this->cashClosureActionService->closeCashClosing($request);
     }
 
-    public function  getCashClosureOrders(Request $request)
+    public function getCashClosureOrders(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQueryOrder($request);
         $perPage = $request->input('itemsPerPage', 10);
@@ -85,13 +98,13 @@ class CashClosureController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    public function  getSummarysales()
+    public function getSummarysales()
     {
         $summaryData = $this->cashClosureActionService->getMonthlySalesSummaryData();
         return response()->json($summaryData);
     }
 
-    public function  getDailyCashTable(Request $request)
+    public function getDailyCashTable(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQueryDaily($request);
         $perPage = $request->input('itemsPerPage', 10);
@@ -104,7 +117,7 @@ class CashClosureController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    public function  getMonthlyCashTable(Request $request)
+    public function getMonthlyCashTable(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQueryMonthly($request);
         $perPage = $request->input('itemsPerPage', 10);
@@ -113,10 +126,10 @@ class CashClosureController extends Controller
         $offset = ($page - 1) * $perPage;
         $itemsForCurrentPage = $query->slice($offset, $perPage)->values();
         $paginatedResult = new LengthAwarePaginator(
-            $itemsForCurrentPage, 
+            $itemsForCurrentPage,
             $query->count(),
-            $perPage,           
-            $page,        
+            $perPage,
+            $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
         return response()->json([
@@ -125,7 +138,7 @@ class CashClosureController extends Controller
         ]);
     }
     public function getSellerCashTable(Request $request)
-    {   
+    {
         $query = $this->cashClosureQueryService->getFilteredQuerySellerCash($request);
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -137,27 +150,31 @@ class CashClosureController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-    public function getmonthlyCashclosing(Request $request){
-        $dailyClosureIds = $request->input('closingMonthlyIds', []); 
+    public function getmonthlyCashclosing(Request $request)
+    {
+        $dailyClosureIds = $request->input('closingMonthlyIds', []);
         $cashClosings = $this->cashClosureActionService->getCashClosingsForMonthlySummary($dailyClosureIds);
         return response()->json([
             'data' => $cashClosings
         ]);
-     }
-
-    public function downloadReport(Request $request){
-        $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
-        $pdf = $this->pdf($request->input('html_content'));
-        return $pdf->download($filename );
     }
 
-    public function printdReport(Request $request){
+    public function downloadReport(Request $request)
+    {
         $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
-        return $pdf->stream($filename );
+        return $pdf->download($filename);
     }
 
-    public function getmonthlyCashclosingAllSellers(Request $request){
+    public function printdReport(Request $request)
+    {
+        $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
+        $pdf = $this->pdf($request->input('html_content'));
+        return $pdf->stream($filename);
+    }
+
+    public function getmonthlyCashclosingAllSellers(Request $request)
+    {
         $dailyClosureIds = $request->input('closingMonthlyIds', []);
         $cashClosings = $this->cashClosureActionService->getCashClosingsAllSellers($dailyClosureIds);
         return response()->json([

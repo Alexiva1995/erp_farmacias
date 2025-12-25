@@ -140,7 +140,7 @@ class CashClosureActionService
          $nameHistoryPDF = 'Historial_de_Cierre_' . $cashClosure->id . '.pdf';*/
         //Mail::to($destinatariosToHistory)->send(new ReporteHistoryCierreCajaMail($pdfHistoryContent, $nameHistoryPDF));
 
-        $this->generateClosingTransactions($cashClosure);
+        // $this->generateClosingTransactions($cashClosure);
 
         CashClosing::create([
             'seller_id' => $sellerId,
