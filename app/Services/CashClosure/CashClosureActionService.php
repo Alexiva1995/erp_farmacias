@@ -47,7 +47,7 @@ class CashClosureActionService
             'usd_paypal' => ['currency' => 'USD', 'type' => 'PAYPAL'],
             'usd_credit' => ['currency' => 'USD', 'type' => 'CREDIT'],
 
-            //pagos de creditos
+            // Pagos de créditos
             'bs_cash_payment_credit' => ['currency' => 'BS', 'type' => 'CASH'],
             'bs_card_payment_credit' => ['currency' => 'BS', 'type' => 'CARD'],
             'bs_transfer_payment_credit' => ['currency' => 'BS', 'type' => 'TRANSFER'],
@@ -60,27 +60,32 @@ class CashClosureActionService
             'usd_binance_payment_credit' => ['currency' => 'USD', 'type' => 'BINANCE'],
         ];
 
-        // Fetch rates to link correct ID
-        $rates = DB::table('exchange_rates')->pluck('id', 'currency_code');
+        // Obtenemos los valores numéricos de las tasas (rate) indexados por el código de moneda
+        $rates = DB::table('exchange_rates')->pluck('rate', 'currency_code');
 
         foreach ($metrics as $field => $info) {
             $amount = $cashClosure->$field;
+            
             if ($amount > 0) {
-                $rateId = null;
+                // Lógica de asignación de tasa
+                $exchangeRateValue = 1.0000; // Valor base para USD
+
                 if ($info['currency'] !== 'USD') {
-                    $rateId = $rates[$info['currency']] ?? null;
+                    // Para BS o COP, extrae el valor de la tabla. 
+                    // Si no existe, por seguridad se asigna 1.0000 o el valor que prefieras por defecto.
+                    $exchangeRateValue = $rates[$info['currency']] ?? 1.0000;
                 }
 
                 Transaction::create([
-                    'user_id' => $cashClosure->seller_id,
-                    'category_id' => null,
-                    'description' => "Cierre de caja #" . $cashClosure->id,
-                    'currency' => $info['currency'],
-                    'type' => $info['type'],
-                    'amount' => $amount,
-                    'movement_type' => 'OUT',
+                    'user_id'          => $cashClosure->seller_id,
+                    'category_id'      => null,
+                    'description'      => "Cierre de caja #" . $cashClosure->id,
+                    'currency'         => $info['currency'],
+                    'type'             => $info['type'],
+                    'amount'           => $amount,
+                    'movement_type'    => 'IN',
                     'transaction_date' => Carbon::now(),
-                    'exchange_rate_id' => $rateId,
+                    'exchange_rate'    => $exchangeRateValue, // Nuevo campo decimal
                 ]);
             }
         }

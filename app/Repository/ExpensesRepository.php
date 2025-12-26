@@ -31,6 +31,11 @@ class ExpensesRepository
             unset($expenseData['account']);
         }
 
+        if (isset($expenseData['is_deductible'])) {
+            $expenseData['exchange_rate'] = $expenseData['conversion_rate_to_bs'];
+            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $expenseData['conversion_rate_to_bs'];
+        }
+
         return Expense::create($expenseData);
     }
 
@@ -44,8 +49,12 @@ class ExpensesRepository
         $gasto->currency = $data->currency;
         $gasto->has_invoice = $data->has_invoice;
         $gasto->is_deductible = $data->is_deductible;
+
+        if ($data->is_deductible) {
+            $gasto->exchange_rate = $data->conversion_rate_to_bs;
+        }
+
         $gasto->iva = $data->iva;
-        // $gasto->expense_date = $data->expense_date;
         $gasto->user_id = $data->user_id;
         $gasto->count = $data->count;
         $gasto->type_of_expense = $data->type_of_expense;
@@ -61,12 +70,24 @@ class ExpensesRepository
     {
         $gasto = Expense::find($data["id"]);
 
-        $gasto->file_name = $data["file_name"];
-        $gasto->extension_file = $data["extension_file"];
-        $gasto->url_file = $data["url_file"];
-        $gasto->date_upload = $data["date_upload"];
+        if (!$gasto) {
+            throw new \Exception("Gasto no encontrado");
+        }
 
-        $gasto->save();
+        // Handle file upload
+        if (isset($data['file_invoice']) && $data['file_invoice'] instanceof \Illuminate\Http\UploadedFile) {
+            $file = $data['file_invoice'];
+            $fileName = 'invoice_' . time() . '_' . $gasto->id . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('expenses/invoices', $fileName, 'public');
+
+            $gasto->file_name = $fileName;
+            $gasto->extension_file = $file->getClientOriginalExtension();
+            $gasto->url_file = asset('storage/' . $path);
+            $gasto->date_upload = now();
+            $gasto->has_invoice = true;
+
+            $gasto->save();
+        }
 
         return $gasto;
     }
@@ -121,18 +142,14 @@ class ExpensesRepository
     {
         $consulta = Expense::query()->with(["user", "category"]);
 
+        $consulta->orderBy('id', 'desc');
+
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
                     $query->where("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("id", "like", "%" . $filtros["buscardor_filtro"] . "%");
                 });
-            }
-        }
-
-        if (array_key_exists("type_of_expense", $filtros)) {
-            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
-                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
             }
         }
 
@@ -156,7 +173,7 @@ class ExpensesRepository
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
             if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
-                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"] . " 00:00:00", $filtros["fechaHasta_filtro"] . " 23:59:59"]);
+                $consulta->whereBetween("expense_date", [$filtros["fechaDesde_filtro"] . " 00:00:00", $filtros["fechaHasta_filtro"] . " 23:59:59"]);
             }
         }
 
@@ -168,10 +185,15 @@ class ExpensesRepository
 
 
         if (array_key_exists("hasInvoice", $filtros)) {
-            if ($filtros["hasInvoice"] === 1 || $filtros["hasInvoice"] === true) {
+            $value = filter_var($filtros["hasInvoice"], FILTER_VALIDATE_BOOLEAN);
+
+            if ($value) {
                 $consulta->where("has_invoice", 1);
-            } elseif ($filtros["hasInvoice"] === 0 || $filtros["hasInvoice"] === false) {
-                $consulta->where("has_invoice", 0);
+            } else {
+                $consulta->where(function ($query) {
+                    $query->where("has_invoice", 0)
+                        ->orWhereNull("has_invoice");
+                });
             }
         }
 
@@ -212,7 +234,7 @@ class ExpensesRepository
     public function consultAllExpensesRecurringOfToday(): Collection
     {
         $timeZone = new DateTimeZone(config("app.timezone"));
-        $hoy = new DateTime('now', $timezone);
+        $hoy = new DateTime('now', $timeZone);
 
         $consulta = Expense::query()
             ->where("type_of_expense", "=", "Recurrente")

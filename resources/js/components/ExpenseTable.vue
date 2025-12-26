@@ -15,8 +15,7 @@ const props= defineProps({
 const emit= defineEmits(["edit",'delete','update:options'])
 
 function verImagne(item){
-  const fullUrl = import.meta.env.VITE_BASE_STORAGE_URL +  item.url_file;
-  window.open(fullUrl, "_blank");
+  window.open(item.url_file, "_blank");
 }
 
 const headers = [
@@ -64,12 +63,19 @@ const headers = [
 
       <template v-slot:item.status="{ item }">
         <VChip
-          :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'warning' : 'error'"
+          :color="
+            item.status === 'Approved'
+              ? 'success'
+              : item.status === 'Cancelled'
+              ? 'warning'
+              : 'error'
+          "
         >
           <span v-if="item.status === 'Pending'">Pendiente</span>
           <span v-else-if="item.status === 'Approved'">Aprobado</span>
           <span v-else-if="item.status === 'Cancelled'">Cancelado</span>
-          <span v-else>{{ item.status }}</span> </VChip>
+          <span v-else>{{ item.status }}</span>
+        </VChip>
       </template>
 
       <!-- <template #item.acciones="{ item }">
@@ -82,12 +88,9 @@ const headers = [
       </template> -->
 
       <template #item.acciones="{ item }">
-          <IconBtn 
-        @click="() => verImagne(item)" 
-        :disabled="!item.url_file" 
-    >
-        <VIcon icon="tabler-photo-search" />
-    </IconBtn>
+        <IconBtn @click="() => verImagne(item)" :disabled="!item.url_file">
+          <VIcon icon="tabler-photo-search" />
+        </IconBtn>
       </template>
     </VDataTableServer>
   </VCard>
