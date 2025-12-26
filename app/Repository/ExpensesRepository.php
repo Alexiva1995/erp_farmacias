@@ -22,8 +22,7 @@ class ExpensesRepository
     {
         $expenseData = $data->toArray();
 
-        $currency = $expenseData['currency'] === 'USD' ? 'BS' : $expenseData['currency'];
-        $exchangeRate = ExchangeRate::where('currency_code', $currency)->first();
+        $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first();
         $rate = $exchangeRate->rate;
 
         $expenseData['amount'] = $expenseData['total_amount'];
@@ -34,20 +33,17 @@ class ExpensesRepository
             $expenseData['tax_amount'] = $rate * $expenseData['tax_amount'];
             $expenseData['total_usd'] = $expenseData['amount'];
             $expenseData['exchange_rate'] = $rate;
-        } else if ($expenseData['currency'] === 'COP') {
-            $expenseData['conversion_rate'] = $rate;
         } else {
             $expenseData['conversion_rate'] = $expenseData['exchange_rate'];
         }
 
         if ($expenseData['currency'] === 'COP') {
-            $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first()->rate;
-
-            $expenseData['exempt_amount'] = $expenseData['exempt_amount'] === 0.0 ? 0.0 : $expenseData['exempt_amount'] / $expenseData['exchange_rate'];
-            $expenseData['taxable_base'] = $expenseData['taxable_base'] === 0.0 ? 0.0 : $expenseData['taxable_base'] / $expenseData['exchange_rate'];
-            $expenseData['tax_amount'] = $expenseData['tax_amount'] === 0.0 ? 0.0 : $expenseData['tax_amount'] / $expenseData['exchange_rate'];
+            $expenseData['exempt_amount'] = $this->convertAmountToBs($expenseData['exempt_amount'], $expenseData['conversion_rate'], $rate);
+            $expenseData['taxable_base'] = $this->convertAmountToBs($expenseData['taxable_base'], $expenseData['conversion_rate'], $rate);
+            $expenseData['tax_amount'] = $this->convertAmountToBs($expenseData['tax_amount'], $expenseData['conversion_rate'], $rate);
             $expenseData['total_usd'] = $expenseData['amount_usd'];
-            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $exchangeRate;
+            $expenseData['exchange_rate'] = $rate;
+            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $rate;
         }
 
         // Asegurar que expense_date sea solo la fecha sin hora
@@ -58,16 +54,6 @@ class ExpensesRepository
         if (isset($expenseData['account'])) {
             $expenseData['count'] = $expenseData['account'];
             unset($expenseData['account']);
-        }
-
-        if (isset($expenseData['is_deductible'])) {
-            if ($expenseData['currency'] !== 'USD') {
-                $expenseData['exchange_rate'] = $expenseData['conversion_rate'];
-            }
-
-            if ($expenseData['currency'] !== 'COP') {
-                $expenseData['amount_bs'] = $expenseData['amount_usd'] * $expenseData['conversion_rate'];
-            }
         }
 
         return Expense::create($expenseData);
@@ -276,5 +262,10 @@ class ExpensesRepository
             ->get();
 
         return $consulta;
+    }
+
+    private function convertAmountToBs($amount, $conversion_rate, $rate)
+    {
+        return ($amount === 0.0 ? 0.0 : $amount / $conversion_rate) * $rate;
     }
 }
