@@ -12,7 +12,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -121,6 +121,18 @@ const activePrescriptionOffers = ref([]);
 const prescriptionFile = ref(null);
 const activeCompanyOffers = ref([]);
 const selectedCompanyId = ref(null);
+
+const selectedCompany = ref(null); 
+const selectedDoctor = ref(null);
+
+
+const handleCompanySelected = (id) => {
+  selectedCompany.value = id;
+};
+
+const handleDoctorSelected = (id) => {
+  selectedDoctor.value = id;
+};
 
 const currentPrescriptionDiscountPercentage = computed(() => {
   if (activePrescriptionOffers.value.length > 0) {
@@ -329,6 +341,56 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
+
+watch(() => selectedClient.value, (newCliente) => {
+  if (newCliente?.company_id) {
+    selectedCompany.value = newCliente.company_id;
+    selectedDiscountType.value = "Empresa";
+  }
+}, { immediate: true });
+
+const currentGlobalDiscountDetails = computed(() => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompany.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompany.value
+    );
+    if (offer && offer.current_discount > 0) {
+
+      return {
+        type: "Empresa",
+        percentage: parseFloat(offer.current_discount),
+        label: "Empresa",
+      };
+    }
+  }
+
+  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+    const offer = activeDoctorOffers.value.find(
+      (o) => o.value === selectedDoctorOffer.value.value
+    );
+
+    if (offer && offer.percentage > 0) {
+      return {
+        type: "Medico",
+        percentage: parseFloat(offer.percentage),
+        label: "Médico",
+      };
+    }
+  }
+
+  if (
+    selectedDiscountType.value === "Recipe" &&
+    currentPrescriptionDiscountPercentage.value > 0
+  ) {
+    return {
+      type: "Recipe",
+      percentage: parseFloat(currentPrescriptionDiscountPercentage.value),
+      label: "Recipe",
+    };
+  }
+  return null;
+});
+
 const handleCompanyDiscountSelected = (companyId) => {
   selectedCompanyId.value = companyId;
   validateAndApplyCompanyDiscount();
@@ -349,10 +411,7 @@ const validateAndApplyCompanyDiscount = () => {
     selectedCompanyId.value = null;
     return;
   }
-
-  console.log(offer);
   const porcentaje = parseFloat(offer.current_discount || 0);
-
   if (porcentaje > 0) {
     toast.success(
       `Descuento de empresa ${porcentaje}% habilitado para esta orden.`
@@ -553,6 +612,9 @@ const formatOrderItemForFrontend = (backendItem) => {
     price:
       parseFloat(backendItem.unit_cost) ||
       (parseFloat(product.sale_price) || 0) * discountFactor,
+    price_before_discount:
+      parseFloat(backendItem.unit_cost) ||
+      (parseFloat(product.sale_price) || 0),
     price_bs: (parseFloat(product.price_bs) || 0) * discountFactor,
     price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
     unitCost: parseFloat(product.unit_cost) || 0,
@@ -986,6 +1048,12 @@ const totalOrderAmount = computed(() => {
     discountToSubtract = totalRecipeDiscountAmount.value;
   }
   return baseTotal - discountToSubtract;
+});
+
+const totalOrderAmountSinDiscount = computed(() => {
+  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
+  let discountToSubtract = 0;
+  return baseTotal;
 });
 
 const myCalculatedTotal = computed(() => {
@@ -1739,6 +1807,11 @@ const handleBuysCompletion = async (
         selectedDisplayCurrency.value
       );
 
+      let finalPriceBeforeDiscount = getItemPriceByCurrency(
+        item,
+        selectedDisplayCurrency.value
+      );
+
       // 2. Determine Discount Details
       let dType = null;
       let dPercent = 0;
@@ -1773,6 +1846,7 @@ const handleBuysCompletion = async (
       return {
         order_detail_id: item.order_detail_id,
         price: finalPrice,
+        price_before_discount: finalPriceBeforeDiscount,
         discount_percentage: dPercent > 0 ? dPercent : null,
         discount_type: dType,
         discount_source_id: dSourceId,
@@ -2057,6 +2131,28 @@ watch(activeTab, (val) => {
     fetchPacks();
   }
 });
+
+
+const itemsForTicket = computed(() => {
+  const globalDiscount = currentGlobalDiscountDetails.value;
+  return orderItems.value.map(item => {
+    if (item.discount_type === 'expiration') {
+      return { ...item };
+    }
+    if (globalDiscount && globalDiscount.percentage > 0) {
+      const factor = 1 - (globalDiscount.percentage / 100);
+      
+      return {
+        ...item,
+        price: (item.price_before_discount * factor) * item.selectedQuantity,
+        price_bs: (item.original_price_bs * factor) * item.selectedQuantity,
+        price_cop: (item.original_price_cop * factor) * item.selectedQuantity,
+        price_before_discount: item.price_before_discount * item.selectedQuantity
+      };
+    }
+    return { ...item };
+  });
+});
 </script>
 <template>
   <div>
@@ -2089,13 +2185,12 @@ watch(activeTab, (val) => {
         @add-reserved-order="addReserverOrder"
         v-model:selected-discount-type="selectedDiscountType"
         :active-doctor-offers="activeDoctorOffers"
-        :prescription-discount-percentage="
-          currentPrescriptionDiscountPercentage
-        "
+        :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
         :active-company-offers="activeCompanyOffers"
         @doctor-discount-selected="handleDoctorDiscountSelected"
         @prescription-file-selected="handlePrescriptionFileSelected"
         @company-discount-selected="handleCompanyDiscountSelected"
+        :global-discount="currentGlobalDiscountDetails"
       />
     </div>
     <div v-else>
@@ -2105,13 +2200,6 @@ watch(activeTab, (val) => {
       />
     </div>
 
-    <VTabs v-model="activeTab" class="mb-4">
-      <VTab value="products">Productos Individuales</VTab>
-      <VTab value="packs">Packs Promocionales</VTab>
-    </VTabs>
-
-    <VWindow v-model="activeTab">
-      <VWindowItem value="products">
         <OrderFilters
           v-model:searchQuery="filterSearchQuery"
           v-model:selectedLaboratory="selectedLaboratory"
@@ -2142,9 +2230,7 @@ watch(activeTab, (val) => {
           @view-group-products="fetchGroupProducts"
           @failures-products="fetchFailuresProducts"
         />
-      </VWindowItem>
 
-      <VWindowItem value="packs">
         <OrderPacksTable
           :packs="packs"
           :loading="loadingPacks"
@@ -2155,8 +2241,6 @@ watch(activeTab, (val) => {
           @add-pack="handleAddPackToOrder"
           @view-pack-details="handleViewPackDetails"
         />
-      </VWindowItem>
-    </VWindow>
 
     <PackDetailsModal
       v-model:isDialogVisible="showPackDetailsModal"
@@ -2187,6 +2271,10 @@ watch(activeTab, (val) => {
       :doctor-discount-total="totalDoctorDiscountAmount"
       :recipe-discount-total="totalRecipeDiscountAmount"
       :expiration-discount-total="totalExpirationDiscountAmount"
+      :active-doctor-offers="activeDoctorOffers"
+      :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
+      :active-company-offers="activeCompanyOffers"
+      :global-discount="currentGlobalDiscountDetails"
     />
 
     <div
@@ -2196,7 +2284,7 @@ watch(activeTab, (val) => {
       <OrderTicket
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
-        :order-products="orderItems"
+        :order-products="itemsForTicket"
         :total-amount="myCalculatedTotal"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"

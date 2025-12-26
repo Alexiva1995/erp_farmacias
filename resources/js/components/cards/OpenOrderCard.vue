@@ -88,6 +88,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  globalDiscount: {
+    type: Object,
+    default: () => null, 
+  },
 });
 
 const emit = defineEmits([
@@ -150,6 +154,9 @@ watch(
     if (newVal !== "Empresa") {
       selectedCompany.value = null;
     }
+    if (newVal !== "Medico") {
+      selectedDoctor.value = null; 
+    }
   }
 );
 
@@ -210,11 +217,15 @@ const totalSelectedQuantity = computed(() => {
 });
 
 const getDiscountFactor = (product) => {
+console.log(props.globalDiscount);
   if (
-    currentGlobalDiscountDetails.value &&
+    props.globalDiscount &&
+    props.globalDiscount.percentage > 0 &&
     product.discount_type !== "expiration"
   ) {
-    return 1 - currentGlobalDiscountDetails.value.percentage / 100;
+  console.log('hola');
+  console.log(props.globalDiscount.percentage);
+    return 1 - props.globalDiscount.percentage / 100;
   }
   return 1;
 };
@@ -230,7 +241,7 @@ const getProductPriceSinIva = (product, currency) => {
   }
 
   // Apply visual discount
-  basePrice = basePrice * getDiscountFactor(product);
+  //basePrice = basePrice * getDiscountFactor(product);
 
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -238,6 +249,25 @@ const getProductPriceSinIva = (product, currency) => {
   }
 
   return priceSinIva;
+};
+
+const getProductPriceSinDescuento = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+
+  let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
+  if (currency === "COP") {
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+  }
+
+  return priceWithIva;
 };
 
 const getProductPrice = (product, currency) => {
@@ -252,7 +282,10 @@ const getProductPrice = (product, currency) => {
   }
 
   // Apply visual discount
-  basePrice = basePrice * getDiscountFactor(product);
+  if (activeDiscountDisplay.value != null) {
+        console.log('dentro del if');
+      basePrice = basePrice * getDiscountFactor(product);
+  }
 
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
@@ -434,43 +467,7 @@ const activeDiscountDisplay = computed(() => {
   return null;
 });
 
-const currentGlobalDiscountDetails = computed(() => {
-  if (props.selectedDiscountType === "Empresa" && selectedCompany.value) {
-    const offer = props.activeCompanyOffers.find(
-      (o) => o.value === selectedCompany.value
-    );
-    if (offer && offer.current_discount > 0) {
-      return {
-        type: "Empresa",
-        percentage: parseFloat(offer.current_discount),
-        label: "Empresa",
-      };
-    }
-  }
-  if (props.selectedDiscountType === "Medico" && selectedDoctor.value) {
-    const offer = props.activeDoctorOffers.find(
-      (o) => o.value === selectedDoctor.value
-    );
-    if (offer && offer.percentage > 0) {
-      return {
-        type: "Medico",
-        percentage: parseFloat(offer.percentage),
-        label: "Médico",
-      };
-    }
-  }
-  if (
-    props.selectedDiscountType === "Recipe" &&
-    props.prescriptionDiscountPercentage > 0
-  ) {
-    return {
-      type: "Recipe",
-      percentage: parseFloat(props.prescriptionDiscountPercentage),
-      label: "Recipe",
-    };
-  }
-  return null;
-});
+
 </script>
 
 <template>
@@ -667,7 +664,7 @@ const currentGlobalDiscountDetails = computed(() => {
                   <!-- Badge para Descuentos Globales (Empresa, Médico, Recipe) -->
                   <VChip
                     v-if="
-                      currentGlobalDiscountDetails &&
+                      props.globalDiscount &&
                       product.discount_type !== 'expiration'
                     "
                     color="primary"
@@ -675,8 +672,8 @@ const currentGlobalDiscountDetails = computed(() => {
                     class="ms-1"
                     label
                   >
-                    {{ currentGlobalDiscountDetails.label }} (-{{
-                      currentGlobalDiscountDetails.percentage
+                    {{ props.globalDiscount.label }} (-{{
+                      props.globalDiscount.percentage
                     }}%)
                   </VChip>
                 </span>
@@ -771,6 +768,7 @@ const currentGlobalDiscountDetails = computed(() => {
                 </span>
               </div>
             </td>
+
             <td class="text-right">
               <div class="d-flex flex-column align-end">
                 <span
@@ -778,14 +776,31 @@ const currentGlobalDiscountDetails = computed(() => {
                   class="text-caption text-medium-emphasis"
                   >Total</span
                 >
-                <span class="text-body-1 font-weight-bold text-black">
-                  {{
-                    formatCurrency(
-                      getProductPrice(product, props.selectedDisplayCurrency),
-                      props.selectedDisplayCurrency
-                    )
-                  }}
-                </span>
+                <div class="d-flex align-center gap-1">
+                  <span
+                    v-if="activeDiscountDisplay"
+                    class="text-caption text-disabled text-decoration-line-through me-1 text-error"
+                  >
+                    {{
+                      formatCurrency(
+                        getProductPriceSinDescuento(
+                          product,
+                          props.selectedDisplayCurrency
+                        ),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+
+                  <span class="text-body-1 font-weight-bold text-black">
+                    {{
+                      formatCurrency(
+                        getProductPrice(product, props.selectedDisplayCurrency),
+                        props.selectedDisplayCurrency
+                      )
+                    }}
+                  </span>
+                </div>
               </div>
             </td>
           </tr>

@@ -315,11 +315,20 @@ const activeDiscount = computed(() => {
 
               <template #append>
                 <div class="d-flex align-center">
+                   <span
+                        v-if="activeDiscount"
+                        class="text-caption text-decoration-line-through text-error"
+                        style="margin-top: -4px"
+                      >
+                        {{formatCurrency(product.price_before_discount,
+                        selectedCurrency
+                      )
+                    
+                        }}</span>
                   <span class="text-body-1 me-2">
                     {{
                       formatCurrency(
-                        getItemPriceByCurrency(product, selectedCurrency) *
-                          product.selectedQuantity,
+                        getItemPriceByCurrency(product, selectedCurrency),
                         selectedCurrency
                       )
                     }}</span

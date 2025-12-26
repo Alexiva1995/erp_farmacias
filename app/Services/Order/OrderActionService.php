@@ -503,9 +503,11 @@ class OrderActionService
                             if ($orderId->currency === 'COP') {
                                 $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
                                 $detail->unit_cost = ceil($itemData['price'] / 100) * 100;
+                                $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100; 
                             } else {
                                 $detail->price = $itemData['price'] * $detail->quantity;
                                 $detail->unit_cost = $itemData['price'];
+                                $detail->price_before_discount = $itemData['price_before_discount'] * $detail->quantity;
                             }
 
                             if (isset($itemData['discount_percentage'])) {
