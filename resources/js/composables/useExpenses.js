@@ -29,7 +29,7 @@ export function useExpenses() {
     expense_date: "",
     user_id: "",
     count: "",
-    conversion_rate_to_bs: 0,
+    conversion_rate: 0,
     exempt_amount: 0,
     taxable_base: 0,
     tax_amount: 0,
@@ -48,7 +48,7 @@ export function useExpenses() {
     iva: "",
     expense_date: null,
     count: "",
-    conversion_rate_to_bs: "",
+    conversion_rate: "",
     exempt_amount: "",
     taxable_base: "",
     tax_amount: "",
@@ -83,7 +83,7 @@ export function useExpenses() {
     formulario.iva = false;
     formulario.expense_date = "";
     formulario.count = "";
-    formulario.conversion_rate_to_bs = 0;
+    formulario.conversion_rate = 0;
     formulario.exempt_amount = 0;
     formulario.taxable_base = 0;
     formulario.tax_amount = 0;
@@ -102,7 +102,7 @@ export function useExpenses() {
     formularioError.iva = "";
     formularioError.expense_date = "";
     formularioError.count = "";
-    formularioError.conversion_rate_to_bs = "";
+    formularioError.conversion_rate = "";
     formularioError.exempt_amount = "";
     formularioError.taxable_base = "";
     formularioError.tax_amount = "";
@@ -131,8 +131,8 @@ export function useExpenses() {
       ? errores.expense_date.join(", ")
       : "";
     formularioError.count = errores.count ? errores.count.join(", ") : "";
-    formularioError.conversion_rate_to_bs = errores.conversion_rate_to_bs
-      ? errores.conversion_rate_to_bs.join(", ")
+    formularioError.conversion_rate = errores.conversion_rate
+      ? errores.conversion_rate.join(", ")
       : "";
     formularioError.exempt_amount = errores.exempt_amount
       ? errores.exempt_amount.join(", ")
@@ -400,9 +400,8 @@ export function useExpenses() {
     try {
       statuModule.loadingApp = true;
 
-      // Extract file from payload if exists
       const invoiceFile = payload.invoice_file;
-      delete payload.invoice_file; // Remove file from payload to be sent separately
+      delete payload.invoice_file;
 
       const payloadToSend = {
         ...payload,
@@ -410,16 +409,14 @@ export function useExpenses() {
         total_usd: payload.total_usd,
       };
 
-      // Step 1: Create the expense
       let respuesApi = await axios.post(
         "/finances/expenses/create-normal",
         payloadToSend
       );
 
       if (respuesApi.status === 200) {
-        const newExpenseId = respuesApi.data.data.id; // Assuming the response contains the new expense ID
+        const newExpenseId = respuesApi.data.data.id;
 
-        // Step 2: Upload file if it exists
         if (invoiceFile) {
           await uploadInvoiceFile(newExpenseId, invoiceFile);
         }
@@ -441,7 +438,6 @@ export function useExpenses() {
     }
   }
 
-  // Add this helper function to upload the file
   async function uploadInvoiceFile(expenseId, file) {
     try {
       const formData = new FormData();

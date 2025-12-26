@@ -25,13 +25,13 @@ class CreateExpenseData extends Data
         public ?string $status,
         public string $type_of_expense,
         public ?float $amount_bs = null,
-        public ?float $conversion_rate_to_bs = null,
+        public ?float $conversion_rate = null,
         public ?float $exempt_amount = null,
         public ?float $taxable_base = null,
         public ?float $tax_amount = null,
         public ?float $exchange_rate = null,
         public ?float $total_usd = null,
-
+        public float $total_amount,
     ) {
     }
 }
