@@ -142,18 +142,14 @@ class ExpensesRepository
     {
         $consulta = Expense::query()->with(["user", "category"]);
 
+        $consulta->orderBy('id', 'desc');
+
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
                     $query->where("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("id", "like", "%" . $filtros["buscardor_filtro"] . "%");
                 });
-            }
-        }
-
-        if (array_key_exists("type_of_expense", $filtros)) {
-            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
-                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
             }
         }
 

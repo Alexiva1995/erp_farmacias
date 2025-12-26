@@ -31,19 +31,14 @@ class Expense extends Model
         'name',
         'category_id',
         'amount',
-        'amount_usd',
         'currency',
         'has_invoice',
         'is_deductible',
         'expense_date',
         'user_id',
-        'iva',
         'status',
         'count',
-        'account',
-        'amount_bs',
-        'conversion_rate_to_bs',
-        'type_of_expense',
+        'conversion_rate',
         'exempt_amount',
         'taxable_base',
         'tax_amount',
@@ -51,10 +46,9 @@ class Expense extends Model
         'total_usd',
     ];
 
-     protected $casts = [
+    protected $casts = [
         'is_deductible' => 'boolean',
-        'has_invoice' => 'boolean', 
-        'iva' => 'boolean',
+        'has_invoice' => 'boolean',
         'expense_date' => 'date',
     ];
 
