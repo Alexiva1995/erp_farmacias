@@ -55,7 +55,6 @@ onMounted(() => {
       @add="mostarModal"
     />
     <ExpenseFormDialoge
-      type_of_expense="normal"
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
       :form-data="formulario"

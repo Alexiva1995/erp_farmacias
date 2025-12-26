@@ -6,6 +6,7 @@ namespace App\Repository;
 use App\Data\CreateExpenseData;
 use App\Data\CreateExpenseRecurrenceData;
 use App\Data\EditExpenseRecurrenceData;
+use App\Models\ExchangeRate;
 use App\Models\Expense;
 use DateTime;
 use DateTimeZone;
@@ -21,6 +22,34 @@ class ExpensesRepository
     {
         $expenseData = $data->toArray();
 
+        $currency = $expenseData['currency'] === 'USD' ? 'BS' : $expenseData['currency'];
+        $exchangeRate = ExchangeRate::where('currency_code', $currency)->first();
+        $rate = $exchangeRate->rate;
+
+        $expenseData['amount'] = $expenseData['total_amount'];
+        if ($expenseData['currency'] === 'USD') {
+            $expenseData['conversion_rate'] = 1.0000;
+            $expenseData['exempt_amount'] = $rate * $expenseData['exempt_amount'];
+            $expenseData['taxable_base'] = $rate * $expenseData['taxable_base'];
+            $expenseData['tax_amount'] = $rate * $expenseData['tax_amount'];
+            $expenseData['total_usd'] = $expenseData['amount'];
+            $expenseData['exchange_rate'] = $rate;
+        } else if ($expenseData['currency'] === 'COP') {
+            $expenseData['conversion_rate'] = $rate;
+        } else {
+            $expenseData['conversion_rate'] = $expenseData['exchange_rate'];
+        }
+
+        if ($expenseData['currency'] === 'COP') {
+            $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first()->rate;
+
+            $expenseData['exempt_amount'] = $expenseData['exempt_amount'] === 0.0 ? 0.0 : $expenseData['exempt_amount'] / $expenseData['exchange_rate'];
+            $expenseData['taxable_base'] = $expenseData['taxable_base'] === 0.0 ? 0.0 : $expenseData['taxable_base'] / $expenseData['exchange_rate'];
+            $expenseData['tax_amount'] = $expenseData['tax_amount'] === 0.0 ? 0.0 : $expenseData['tax_amount'] / $expenseData['exchange_rate'];
+            $expenseData['total_usd'] = $expenseData['amount_usd'];
+            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $exchangeRate;
+        }
+
         // Asegurar que expense_date sea solo la fecha sin hora
         if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
             $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
@@ -32,8 +61,13 @@ class ExpensesRepository
         }
 
         if (isset($expenseData['is_deductible'])) {
-            $expenseData['exchange_rate'] = $expenseData['conversion_rate_to_bs'];
-            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $expenseData['conversion_rate_to_bs'];
+            if ($expenseData['currency'] !== 'USD') {
+                $expenseData['exchange_rate'] = $expenseData['conversion_rate'];
+            }
+
+            if ($expenseData['currency'] !== 'COP') {
+                $expenseData['amount_bs'] = $expenseData['amount_usd'] * $expenseData['conversion_rate'];
+            }
         }
 
         return Expense::create($expenseData);
@@ -51,7 +85,7 @@ class ExpensesRepository
         $gasto->is_deductible = $data->is_deductible;
 
         if ($data->is_deductible) {
-            $gasto->exchange_rate = $data->conversion_rate_to_bs;
+            $gasto->exchange_rate = $data->conversion_rate;
         }
 
         $gasto->iva = $data->iva;

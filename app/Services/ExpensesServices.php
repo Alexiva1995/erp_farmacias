@@ -42,11 +42,11 @@ class ExpensesServices implements Expenses
         $data->status = "Pending";
 
         if ($data->recurrence === Expense::RECURRENCE_MENSUAL) {
-            $next_expense_date = (new DateTime("now", $timezone))->modify('+1 month')->format('Y-m-d');
+            $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
         } elseif ($data->recurrence === Expense::RECURRENCE_ANUAL) {
-            $next_expense_date = (new DateTime("now", $timezone))->modify('+1 year')->format('Y-m-d');
+            $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 year')->format('Y-m-d');
         } elseif ($data->recurrence === Expense::RECURRENCE_SEMESTRAL) {
-            $next_expense_date = (new DateTime("now", $timezone))->modify('+6 months')->format('Y-m-d');
+            $next_expense_date = (new DateTime("now", $timeZone))->modify('+6 months')->format('Y-m-d');
         }
 
         $data->next_expense_date = $next_expense_date;
@@ -174,7 +174,7 @@ class ExpensesServices implements Expenses
         for ($index = 0; $index < count($expenses); $index++) {
             $expense = $expenses[$index];
             $timeZone = new DateTimeZone(config("app.timezone"));
-            $hoy = new DateTime('now', $timezone);
+            $hoy = new DateTime('now', $timeZone);
 
             Log::info("gastos programdo");
             Log::info($expense);
@@ -201,11 +201,11 @@ class ExpensesServices implements Expenses
 
             $next_expense_date = null;
             if ($expense->recurrence === Expense::RECURRENCE_MENSUAL) {
-                $next_expense_date = (new DateTime("now", $timezone))->modify('+1 month')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
             } elseif ($expense->recurrence === Expense::RECURRENCE_ANUAL) {
-                $next_expense_date = (new DateTime("now", $timezone))->modify('+1 year')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 year')->format('Y-m-d');
             } elseif ($expense->recurrence === Expense::RECURRENCE_SEMESTRAL) {
-                $next_expense_date = (new DateTime("now", $timezone))->modify('+6 months')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+6 months')->format('Y-m-d');
             }
 
             $expenseRecurenteData = EditExpenseRecurrenceData::from([
