@@ -142,6 +142,8 @@ class ExpensesRepository
     {
         $consulta = Expense::query()->with(["user", "category"]);
 
+        $consulta->orderBy('id', 'desc');
+
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
