@@ -20,6 +20,7 @@ class OrderDetail extends Model
         'discount_percentage',
         'discount_type',
         'discount_source_id',
+        'price_before_discount',
     ];
 
     public function order(): BelongsTo
