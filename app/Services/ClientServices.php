@@ -17,7 +17,8 @@ class ClientServices implements Client
 
     public function __construct(
         protected ClientRepository $clientRepository,
-    ) {}
+    ) {
+    }
 
     public function create(array $data): Model
     {
@@ -53,6 +54,10 @@ class ClientServices implements Client
     public function filtrar(array $filtros): LengthAwarePaginator
     {
         return $this->clientRepository->filtrar($filtros, $filtros["itemsPerPage"]);
+    }
+    public function pending(array $filters): LengthAwarePaginator
+    {
+        return $this->clientRepository->pending($filters, $filters["itemsPerPage"]);
     }
 
     public function filterWithoutPaginate(array $filtros): Collection

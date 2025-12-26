@@ -22,6 +22,14 @@ class ClientRepository
 
     public function edit(array $data): Model
     {
+        if (($data['name'] || empty($data['name'])) && ($data['last_name'] || empty($data['last_name'])) && strlen($data['phone']) === 10) {
+            $data['status'] = 2;
+        }
+
+        if ($data['phone'] === '0') {
+            $data['status'] = 1;
+        }
+
         Client::where("id", "=", $data["id"])->update($data);
         return Client::find($data["id"]);
     }
@@ -42,11 +50,23 @@ class ClientRepository
         return Client::query()->with("company")->get();
     }
 
+    public function pending($filters, $perPage = 10): LengthAwarePaginator
+    {
+        if (empty($filters['status']))
+            $filters['status'] = 0;
+
+        $query = $this->builerPaginate($filters);
+
+        return $query->paginate($perPage);
+    }
+
     public function builerPaginate($filtros): Builder
     {
-        $consulta = Client::query()->with(["company" => function ($query) {
-            $query->withTrashed();
-        }]);
+        $consulta = Client::query()->with([
+            "company" => function ($query) {
+                $query->withTrashed();
+            }
+        ]);
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
@@ -90,6 +110,10 @@ class ClientRepository
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
             $consulta->orderBy("name", "ASC");
+        }
+
+        if (array_key_exists('status', $filtros)) {
+            $consulta->where("status", "=", $filtros["status"]);
         }
 
         // $consulta->orderBy("name", "ASC");

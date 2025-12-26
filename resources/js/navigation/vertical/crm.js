@@ -17,7 +17,16 @@ export default [
       },
       {
         title: 'Clientes',
-        to: 'crm-clients',
+        children: [
+          {
+            title: 'Listado',
+            to: 'crm-clients',
+          },
+          {
+            title: 'Pendientes',
+            to: 'crm-clients-pending',
+          },
+        ]
       },
       {
         title: 'Empresas',
