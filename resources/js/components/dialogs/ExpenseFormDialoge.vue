@@ -337,38 +337,6 @@ async function submitForm() {
               }"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VSelect
-              v-model="props.formData.is_deductible"
-              label="Es Deducible"
-              :items="[
-                { title: 'No', value: false },
-                { title: 'Sí', value: true },
-              ]"
-              :error-messages="props.formError.is_deductible"
-              variant="outlined"
-            />
-          </VCol>
-
-          <VCol
-            cols="12"
-            sm="6"
-            md="6"
-            v-if="
-              props.formData.is_deductible === true &&
-              props.formData.currency !== 'BS'
-            "
-          >
-            <VTextField
-              v-model.number="props.formData.conversion_rate"
-              :error-messages="props.formError.conversion_rate"
-              label="Tasa de Conversión a BS"
-              type="number"
-              variant="outlined"
-              hint="Ingrese la tasa de cambio para convertir a Bolívares"
-              persistent-hint
-            />
-          </VCol>
         </VRow>
 
         <VRow>
