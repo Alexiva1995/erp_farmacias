@@ -23,13 +23,12 @@ class DatabaseSeeder extends Seeder
             SuppliersSeeder::class,
             ProductLotsSeeder::class,
             ProfitabilitySettingsSeeder::class,
-            FiscalHistorySeeder::class,
-            FiscalHistoryDetailSeeder::class,
             ExchangeRateSeeder::class,
             SupplierConnectionSeeder::class,
             RolesSeeder::class,
             CashClosingSeeder::class,
             ExpensesCategoriesSeeder::class,
+            FiscalHistorySeeder::class,
             InvoiceSeeder::class
         ]);
     }
