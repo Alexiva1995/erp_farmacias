@@ -307,6 +307,7 @@ Route::prefix("crm")->group(function () {
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
         Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
         Route::post("/filtrar", [ClientController::class, "filtrar"]);
+        Route::post("/pending", [ClientController::class, "pending"]);
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
     });
