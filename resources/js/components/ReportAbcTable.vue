@@ -12,6 +12,9 @@ const props = defineProps({
 
 const headers = [
   { title: "Producto", key: "name" },
+  { title: "Ven. Prom.", key: "sales_average", align: "end" },
+  { title: "Stock", key: "stock", align: "end" },
+  { title: "Cober.", key: "coverage_months", align: "end" },
   { title: "Ventas Totales ($)", key: "total_sales", align: "end" },
   { title: "% Participación", key: "participation_percentage", align: "end" },
   { title: "% Acumulado", key: "accumulated_percentage", align: "end" },
@@ -44,7 +47,7 @@ const getClassColor = (cls) => {
 </script>
 
 <template>
-  <VCard title="Análisis de Inventario ABC (Pareto)">
+  <VCard title="Análisis de Inventario ABC ">
     <VDataTable
       :headers="headers"
       :items="props.items"
@@ -52,6 +55,26 @@ const getClassColor = (cls) => {
       class="text-no-wrap"
       density="compact"
     >
+      <template #item.sales_average="{ item }">
+        {{ item.sales_average }}
+      </template>
+
+      <template #item.stock="{ item }">
+        {{ item.stock }}
+      </template>
+
+      <template #item.coverage_months="{ item }">
+        <VChip
+          v-if="item.is_dead_stock"
+          color="error"
+          size="small"
+          class="font-weight-bold"
+        >
+          Sin Movimiento
+        </VChip>
+        <span v-else> {{ item.coverage_months }} meses </span>
+      </template>
+
       <template #item.total_sales="{ item }">
         <span class="font-weight-medium text-high-emphasis">
           {{ formatCurrency(item.total_sales) }}
