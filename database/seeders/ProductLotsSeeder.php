@@ -15,17 +15,23 @@ class ProductLotsSeeder extends Seeder
     {
         $json = File::get(database_path('data/product_lots.json'));
         $lots = json_decode($json, true);
+        $data = [];
+
+        $products = DB::table('products')->pluck('id')->flip();
 
         foreach ($lots as &$lot) {
-            $lot['lot_number'] = $lot['lot'] ?? '';
-            $lot['unit_cost'] = $lot['cost'] ?? 0;
-            $lot['quantity'] = $lot['quantity_available'] ?? 0;
-            $lot['expiration_date'] = $lot['expiration_date'] ?? '1900-01-01';
-
-            unset($lot['lot'], $lot['cost'], $lot['quantity_available']);
+            if ($products->has($lot['product_id'])) {
+                $data[] = [
+                    'product_id' => $lot['product_id'],
+                    'lot_number' => $lot['lot'] ?? '',
+                    'unit_cost' => $lot['cost'] ?? 0,
+                    'quantity' => $lot['quantity_available'] ?? 0,
+                    'expiration_date' => $lot['expiration_date'] ?? '1900-01-01',
+                ];
+            }
         }
 
-        foreach (array_chunk($lots, 500) as $chunk) {
+        foreach (array_chunk($data, 500) as $chunk) {
             DB::table('product_lots')->insert($chunk);
         }
 

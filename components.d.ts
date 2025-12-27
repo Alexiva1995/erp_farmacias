@@ -208,6 +208,9 @@ declare module 'vue' {
     PendingExpenseTable: typeof import('./resources/js/components/PendingExpenseTable.vue')['default']
     PendingPaymentModal: typeof import('./resources/js/components/dialogs/PendingPaymentModal.vue')['default']
     PendingPaymentsFilters: typeof import('./resources/js/components/PendingPaymentsFilters.vue')['default']
+    PendingProductDialog: typeof import('./resources/js/components/dialogs/PendingProductDialog.vue')['default']
+    PendingProductsFilters: typeof import('./resources/js/components/PendingProductsFilters.vue')['default']
+    PendingProductsTable: typeof import('./resources/js/components/PendingProductsTable.vue')['default']
     PrescriptionDetailsModal: typeof import('./resources/js/components/dialogs/PrescriptionDetailsModal.vue')['default']
     PrescriptionFilters: typeof import('./resources/js/components/PrescriptionFilters.vue')['default']
     PrescriptionModal: typeof import('./resources/js/components/dialogs/PrescriptionModal.vue')['default']
@@ -310,5 +313,6 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

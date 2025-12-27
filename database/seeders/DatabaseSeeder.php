@@ -19,9 +19,7 @@ class DatabaseSeeder extends Seeder
             LaboratoriesSeeder::class,
             OriginsSeeder::class,
             CategoriesSeeder::class,
-            ProductsSeeder::class,
             SuppliersSeeder::class,
-            ProductLotsSeeder::class,
             ProfitabilitySettingsSeeder::class,
             ExchangeRateSeeder::class,
             SupplierConnectionSeeder::class,
@@ -29,7 +27,9 @@ class DatabaseSeeder extends Seeder
             CashClosingSeeder::class,
             ExpensesCategoriesSeeder::class,
             FiscalHistorySeeder::class,
-            InvoiceSeeder::class
+            InvoiceSeeder::class,
+            ProductsSeeder::class,
+            ProductLotsSeeder::class,
         ]);
     }
 }
