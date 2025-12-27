@@ -2073,10 +2073,22 @@ const updatePacksOptions = (options) => {
   packsItemsPerPage.value = options.itemsPerPage;
   fetchPacks();
 };
-
+/*
 const handleViewPackDetails = (pack) => {
+  console.log(pack);
   selectedPack.value = pack;
   showPackDetailsModal.value = true;
+};*/
+
+const handleViewPackDetails = async (item) => {
+  try {
+    const response = await axios.get(`/tpv/promotions/product-packs/${item.id}`);
+    const packCompleto = response.data;
+    selectedPack.value = packCompleto.data;
+    showPackDetailsModal.value = true;
+  } catch (error) {
+    console.error("Error al obtener los detalles del pack:", error);
+  }
 };
 
 const handleAddPackToOrder = async ({ pack, quantity }) => {
@@ -2229,6 +2241,7 @@ const itemsForTicket = computed(() => {
           @add-product="addProductToOrder"
           @view-group-products="fetchGroupProducts"
           @failures-products="fetchFailuresProducts"
+          @view-pack-details="handleViewPackDetails"
         />
 
         <OrderPacksTable

@@ -20,6 +20,7 @@ const emit = defineEmits([
   "add-product",
   "view-group-products",
   "failures-products",
+  "view-pack-details",
 ]);
 
 const headers = [
@@ -220,6 +221,10 @@ const totalDiscountPreview = computed(() => {
 
   return subtotalWithoutDiscount * (props.currentDiscount / 100);
 });
+
+const handleViewPack = (pack) => {
+  emit("view-pack-details", pack);
+};
 </script>
 
 <template>
@@ -319,6 +324,7 @@ const totalDiscountPreview = computed(() => {
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
+             v-if="item.item_type === 'product'"
             :disabled="
               (inputQuantities.get(item.id) ?? 0) <= 0 ||
               (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum ||
@@ -327,13 +333,43 @@ const totalDiscountPreview = computed(() => {
           >
             <VIcon icon="tabler-plus" />
           </IconBtn>
+           <IconBtn
+            @click="handleAddPack(item.id)"
+            v-else-if="item.item_type === 'pack'"
+            :disabled="
+              (inputQuantities.get(item.id) ?? 0) <= 0 || !item.is_active
+            "
+            color="primary"
+            variant="tonal"
+            size="small"
+          >
+            <VIcon icon="tabler-plus" />
+          </IconBtn>
         </div>
       </template>
       <template #item.actions="{ item }">
-        <IconBtn @click="handleViewGroupProducts(item)">
+        <IconBtn
+          @click="handleViewGroupProducts(item)"
+          v-if="item.item_type === 'product'"
+        >
           <VIcon icon="tabler-eye" />
         </IconBtn>
-         <IconBtn @click="handleFailures(item)" color="error">
+        <VBtn
+          v-else-if="item.item_type === 'pack'"
+          icon
+          variant="text"
+          size="small"
+          color="info"
+          @click="handleViewPack(item)"
+        >
+          <VIcon>tabler-eye</VIcon>
+        </VBtn>
+
+        <IconBtn
+          @click="handleFailures(item)"
+          color="error"
+          :disabled="item.item_type === 'pack'"
+        >
           <VIcon icon="tabler-alert-triangle" />
         </IconBtn>
       </template>
