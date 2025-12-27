@@ -1,10 +1,8 @@
 <script setup lang="js">
-import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
-  type_of_expense: { type: String, required: true, default: () => 'normal' },
   modalFormulario: { type: Boolean, required: true },
   titulo: { type: String, required: true },
   formData: { type: Object, default: () => ({}) },
@@ -133,18 +131,18 @@ watch(
     props.formData.is_deductible,
     props.formData.currency,
     props.formData.amount,
-    props.formData.conversion_rate_to_bs,
+    props.formData.conversion_rate,
   ],
   () =>
   {
     if (
       props.formData.is_deductible === true &&
       props.formData.currency !== "BS" &&
-      props.formData.conversion_rate_to_bs > 0 &&
+      props.formData.conversion_rate > 0 &&
       props.formData.amount > 0
     ) {
       const amount = Number(props.formData.amount) || 0;
-      const rate = Number(props.formData.conversion_rate_to_bs) || 0;
+      const rate = Number(props.formData.conversion_rate) || 0;
       props.formData.amount_bs = parseFloat((amount * rate).toFixed(2));
     } else if (props.formData.currency === "BS" && props.formData.is_deductible === true) {
       // Si la moneda es BS, amount_bs es igual a amount
@@ -211,102 +209,11 @@ const handleFileUpload = (files) => {
   }
 };
 
-// Upload file to server
-const uploadInvoiceFile = async () => {
-  if (!invoiceFile.value || !props.formData.id) {
-    // If there's no ID yet (new expense), we can't upload the file yet
-    // The file will be uploaded after the expense is created
-    return true;
-  }
-
-  isUploading.value = true;
-  uploadProgress.value = 0;
-  fileUploadError.value = null;
-
-  try {
-    const formData = new FormData();
-    formData.append('id', props.formData.id);
-    formData.append('file_invoice', invoiceFile.value);
-
-    // Use axios with progress tracking
-    const response = await axios.post('/finances/expenses/upload-file-invoice', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: progressEvent => {
-        if (progressEvent.total) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          uploadProgress.value = percentCompleted;
-        }
-      }
-    });
-
-    if (response.data.success) {
-      uploadedFileData.value = response.data.data;
-      toast.success('Factura subida correctamente');
-
-      // Update form data with uploaded file info
-      Object.assign(props.formData, {
-        file_name: uploadedFileData.value.file_name,
-        extension_file: uploadedFileData.value.extension_file,
-        url_file: uploadedFileData.value.url,
-        date_upload: new Date().toISOString()
-      });
-
-      // Clear the file input since upload is complete
-      invoiceFile.value = null;
-
-      return true;
-    } else {
-      throw new Error(response.data.message || 'Error al subir la factura');
-    }
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    const errorMessage = error.response?.data?.message ||
-                        error.message ||
-                        'Error al subir el archivo. Intente nuevamente.';
-    fileUploadError.value = errorMessage;
-    toast.error(errorMessage);
-    return false;
-  } finally {
-    isUploading.value = false;
-    uploadProgress.value = 0;
-  }
-};
-
 // Clear selected file
 const clearSelectedFile = () => {
   invoiceFile.value = null;
   invoicePreview.value = null;
   fileUploadError.value = null;
-};
-
-// Clear uploaded file (remove from server)
-const clearUploadedFile = async () => {
-  if (!props.formData.id || !props.formData.url_file) return;
-
-  try {
-    const response = await axios.post('/finances/expenses/remove-file-invoice', {
-      id: props.formData.id
-    });
-
-    if (response.data.success) {
-      // Clear file references from form data
-      props.formData.file_name = null;
-      props.formData.extension_file = null;
-      props.formData.url_file = null;
-      props.formData.date_upload = null;
-      uploadedFileData.value = null;
-      toast.success('Factura eliminada correctamente');
-    } else {
-      throw new Error(response.data.message || 'Error al eliminar la factura');
-    }
-  } catch (error) {
-    console.error('Error removing file:', error);
-    const errorMessage = error.response?.data?.message ||
-                         'Error al eliminar la factura. Intente nuevamente.';
-    toast.error(errorMessage);
-  }
 };
 
 function close() {
@@ -417,7 +324,7 @@ async function submitForm() {
               :error-messages="props.formError.recurrencia"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" v-if="type_of_expense == 'normal'">
+          <VCol cols="12" sm="6" md="6">
             <AppDateTimePicker
               v-model="props.formData.expense_date"
               :error-messages="props.formError.expense_date"
@@ -428,38 +335,6 @@ async function submitForm() {
                 altFormat: 'Y-m-d',
                 dateFormat: 'Y-m-d',
               }"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VSelect
-              v-model="props.formData.is_deductible"
-              label="Es Deducible"
-              :items="[
-                { title: 'No', value: false },
-                { title: 'Sí', value: true },
-              ]"
-              :error-messages="props.formError.is_deductible"
-              variant="outlined"
-            />
-          </VCol>
-
-          <VCol
-            cols="12"
-            sm="6"
-            md="6"
-            v-if="
-              props.formData.is_deductible === true &&
-              props.formData.currency !== 'BS'
-            "
-          >
-            <VTextField
-              v-model.number="props.formData.conversion_rate_to_bs"
-              :error-messages="props.formError.conversion_rate_to_bs"
-              label="Tasa de Conversión a BS"
-              type="number"
-              variant="outlined"
-              hint="Ingrese la tasa de cambio para convertir a Bolívares"
-              persistent-hint
             />
           </VCol>
         </VRow>

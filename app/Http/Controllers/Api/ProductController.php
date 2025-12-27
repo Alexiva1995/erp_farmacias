@@ -6,6 +6,7 @@ use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use App\Http\Requests\UpdateProductBarcodeRequest;
 use App\Models\Product;
 use App\Services\Products\ProductActionService;
 use App\Services\Products\ProductQueryService;
@@ -18,11 +19,25 @@ class ProductController extends Controller
     public function __construct(
         private ProductQueryService $productQueryService,
         private ProductActionService $productActionService
-    ) {}
+    ) {
+    }
 
     public function index(Request $request)
     {
         $query = $this->productQueryService->getFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function pending(Request $request)
+    {
+        $query = $this->productQueryService->getPendingProductsQuery($request);
         $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
@@ -50,6 +65,15 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'Producto actualizado con éxito.',
             'product' => $updatedProduct
+        ], 200);
+    }
+
+    public function updateProductBarcode(UpdateProductBarcodeRequest $request, Product $product)
+    {
+        $this->productActionService->updateProductBarcode($product, $request->integer('barcode'));
+
+        return response()->json([
+            'message' => 'Producto actualizado con éxito.',
         ], 200);
     }
 

@@ -91,9 +91,11 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de Productos
     Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/pending', [ProductController::class, 'pending']);
     Route::get('/productsAll', [ProductController::class, 'getProducts']);
     Route::get('/products/autocomplete', [ProductController::class, 'forAutocomplete']);
     Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
+    Route::patch('/products/pending/{product}', [ProductController::class, 'updateProductBarcode']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);
@@ -310,6 +312,7 @@ Route::prefix("crm")->group(function () {
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
         Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
         Route::post("/filtrar", [ClientController::class, "filtrar"]);
+        Route::post("/pending", [ClientController::class, "pending"]);
         Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
         Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
     });

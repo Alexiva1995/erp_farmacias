@@ -31,15 +31,10 @@ class ProductQueryService
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
-        // if (!empty($filters['q'])) {
-        //     $searchTerm = "%{$filters['q']}%";
-        //     $query->where(function ($subQuery) use ($searchTerm) {
-        //         $subQuery->where('name', 'like', $searchTerm)
-        //             ->orWhere('active_ingredient', 'like', $searchTerm)
-        //             ->orWhere('barcode', 'like', $searchTerm)
-        //             ->orWhere('id', 'like', $searchTerm);
-        //     });
-        // }
+        if (!empty($filters['null_barcodes'])) {
+            $query->whereNull('barcode');
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -197,6 +192,27 @@ class ProductQueryService
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getPendingProductsQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'groupId' => $request->groupId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'null_barcodes' => true
         ];
 
         $this->applyFilters($query, $filters);

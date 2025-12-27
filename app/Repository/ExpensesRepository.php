@@ -6,6 +6,7 @@ namespace App\Repository;
 use App\Data\CreateExpenseData;
 use App\Data\CreateExpenseRecurrenceData;
 use App\Data\EditExpenseRecurrenceData;
+use App\Models\ExchangeRate;
 use App\Models\Expense;
 use DateTime;
 use DateTimeZone;
@@ -21,6 +22,30 @@ class ExpensesRepository
     {
         $expenseData = $data->toArray();
 
+        $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first();
+        $rate = $exchangeRate->rate;
+
+        $expenseData['amount'] = $expenseData['total_amount'];
+        if ($expenseData['currency'] === 'USD') {
+            $expenseData['conversion_rate'] = 1.0000;
+            $expenseData['exempt_amount'] = $rate * $expenseData['exempt_amount'];
+            $expenseData['taxable_base'] = $rate * $expenseData['taxable_base'];
+            $expenseData['tax_amount'] = $rate * $expenseData['tax_amount'];
+            $expenseData['total_usd'] = $expenseData['amount'];
+            $expenseData['exchange_rate'] = $rate;
+        } else {
+            $expenseData['conversion_rate'] = $expenseData['exchange_rate'];
+        }
+
+        if ($expenseData['currency'] === 'COP') {
+            $expenseData['exempt_amount'] = $this->convertAmountToBs($expenseData['exempt_amount'], $expenseData['conversion_rate'], $rate);
+            $expenseData['taxable_base'] = $this->convertAmountToBs($expenseData['taxable_base'], $expenseData['conversion_rate'], $rate);
+            $expenseData['tax_amount'] = $this->convertAmountToBs($expenseData['tax_amount'], $expenseData['conversion_rate'], $rate);
+            $expenseData['total_usd'] = $expenseData['amount_usd'];
+            $expenseData['exchange_rate'] = $rate;
+            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $rate;
+        }
+
         // Asegurar que expense_date sea solo la fecha sin hora
         if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
             $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
@@ -29,11 +54,6 @@ class ExpensesRepository
         if (isset($expenseData['account'])) {
             $expenseData['count'] = $expenseData['account'];
             unset($expenseData['account']);
-        }
-
-        if (isset($expenseData['is_deductible'])) {
-            $expenseData['exchange_rate'] = $expenseData['conversion_rate_to_bs'];
-            $expenseData['amount_bs'] = $expenseData['amount_usd'] * $expenseData['conversion_rate_to_bs'];
         }
 
         return Expense::create($expenseData);
@@ -51,7 +71,7 @@ class ExpensesRepository
         $gasto->is_deductible = $data->is_deductible;
 
         if ($data->is_deductible) {
-            $gasto->exchange_rate = $data->conversion_rate_to_bs;
+            $gasto->exchange_rate = $data->conversion_rate;
         }
 
         $gasto->iva = $data->iva;
@@ -142,18 +162,14 @@ class ExpensesRepository
     {
         $consulta = Expense::query()->with(["user", "category"]);
 
+        $consulta->orderBy('id', 'desc');
+
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
                     $query->where("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("id", "like", "%" . $filtros["buscardor_filtro"] . "%");
                 });
-            }
-        }
-
-        if (array_key_exists("type_of_expense", $filtros)) {
-            if (is_array($filtros["type_of_expense"]) && count($filtros["type_of_expense"]) > 0) {
-                $consulta->whereIn("type_of_expense", $filtros["type_of_expense"]);
             }
         }
 
@@ -246,5 +262,10 @@ class ExpensesRepository
             ->get();
 
         return $consulta;
+    }
+
+    private function convertAmountToBs($amount, $conversion_rate, $rate)
+    {
+        return ($amount === 0.0 ? 0.0 : $amount / $conversion_rate) * $rate;
     }
 }

@@ -71,6 +71,20 @@ class ProductActionService
         return $product;
     }
 
+    public function updateProductBarcode(Product $product, int $barcode): bool
+    {
+        \DB::beginTransaction();
+        try {
+            $product->update(['barcode' => $barcode]);
+            \DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            \Log::error($e);
+            \DB::rollback();
+            return false;
+        }
+    }
+
     /**
      * Desasigna un producto de su grupo.
      *

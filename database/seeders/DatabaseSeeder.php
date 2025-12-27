@@ -19,18 +19,17 @@ class DatabaseSeeder extends Seeder
             LaboratoriesSeeder::class,
             OriginsSeeder::class,
             CategoriesSeeder::class,
-            ProductsSeeder::class,
             SuppliersSeeder::class,
-            ProductLotsSeeder::class,
             ProfitabilitySettingsSeeder::class,
-            FiscalHistorySeeder::class,
-            FiscalHistoryDetailSeeder::class,
             ExchangeRateSeeder::class,
             SupplierConnectionSeeder::class,
             RolesSeeder::class,
             CashClosingSeeder::class,
             ExpensesCategoriesSeeder::class,
-            InvoiceSeeder::class
+            FiscalHistorySeeder::class,
+            InvoiceSeeder::class,
+            ProductsSeeder::class,
+            ProductLotsSeeder::class,
         ]);
     }
 }

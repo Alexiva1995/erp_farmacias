@@ -8,6 +8,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  coverageOptions: {
+    type: Array,
+    required: true,
+  },
 });
 
 const emit = defineEmits(["update:filters", "clear"]);
@@ -21,7 +25,7 @@ const updateFilter = (key, value) => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" md="4">
+        <VCol cols="12" md="3">
           <AppDateTimePicker
             :model-value="props.filters.startDate"
             placeholder="Desde"
@@ -30,7 +34,7 @@ const updateFilter = (key, value) => {
             @update:model-value="updateFilter('startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" md="4">
+        <VCol cols="12" md="3">
           <AppDateTimePicker
             :model-value="props.filters.endDate"
             placeholder="Hasta"
@@ -39,12 +43,25 @@ const updateFilter = (key, value) => {
             @update:model-value="updateFilter('endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" md="4">
+
+        <VCol cols="12" md="3">
+          <VSelect
+            :model-value="props.filters.coverage_range"
+            :items="props.coverageOptions"
+            label="Filtro de Cobertura"
+            placeholder="Todas"
+            clearable
+            prepend-inner-icon="tabler-activity"
+            @update:model-value="updateFilter('coverage_range', $event)"
+          />
+        </VCol>
+
+        <VCol cols="12" md="3">
           <VSelect
             :model-value="props.filters.classification"
             :items="props.abcOptions"
-            label="Filtrar por Clase"
-            placeholder="Todas las Clases"
+            label="Clase"
+            placeholder="Todas"
             clearable
             prepend-inner-icon="tabler-filter"
             @update:model-value="updateFilter('classification', $event)"

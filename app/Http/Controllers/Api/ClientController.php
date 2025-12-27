@@ -230,4 +230,17 @@ class ClientController extends Controller
 
         return Excel::download($excel, $fileName);
     }
+
+    public function pending(Request $request)
+    {
+        $filtros = [
+            "itemsPerPage" => $request->itemsPerPage,
+            "page" => $request->page,
+            "status" => $request->status
+        ];
+
+        $repuesta = $this->client->pending($filtros);
+
+        return ApiResponse::success($repuesta, "OK", 200);
+    }
 }

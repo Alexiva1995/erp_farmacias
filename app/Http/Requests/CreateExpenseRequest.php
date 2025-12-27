@@ -58,7 +58,7 @@ class CreateExpenseRequest extends FormRequest
                 ]),
             ],
             'amount_bs' => ['nullable', 'numeric'],
-            'conversion_rate_to_bs' => ['nullable', 'numeric', 'min:0'],
+            'conversion_rate' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -121,9 +121,9 @@ class CreateExpenseRequest extends FormRequest
         $validator->after(function ($validator) {
             // Si es deducible y la moneda no es BS, se requiere la tasa de conversión
             if ($this->is_deductible === true && $this->currency !== 'BS') {
-                if (empty($this->conversion_rate_to_bs) || $this->conversion_rate_to_bs <= 0) {
+                if (empty($this->conversion_rate) || $this->conversion_rate <= 0) {
                     $validator->errors()->add(
-                        'conversion_rate_to_bs',
+                        'conversion_rate',
                         'La tasa de conversión a BS es obligatoria cuando el gasto es deducible y la moneda no es BS.'
                     );
                 }
@@ -160,12 +160,13 @@ class CreateExpenseRequest extends FormRequest
             "account" => $this->count,
             "type_of_expense" => Expense::TYPE_OF_EXPENSE_NORMAL,
             "amount_bs" => $amountBs,
-            "conversion_rate_to_bs" => $this->conversion_rate_to_bs ?? null,
+            "conversion_rate" => $this->conversion_rate ?? null,
             "exempt_amount" => $this->exempt_amount ?? null,
             "taxable_base" => $this->taxable_base ?? null,
             "tax_amount" => $this->tax_amount ?? null,
             "exchange_rate" => $this->exchange_rate ?? null,
             "total_usd" => $this->total_usd ?? null,
+            "total_amount" => $this->total_amount ?? null,
         ]);
     }
 }

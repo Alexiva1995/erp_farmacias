@@ -7,16 +7,33 @@ import { onMounted, ref, watch } from "vue";
 // --- State ---
 const loading = ref(false);
 const products = ref([]);
+const date = new Date();
+const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
+  .toISOString()
+  .substr(0, 10);
+const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  .toISOString()
+  .substr(0, 10);
+
 const filters = ref({
-  startDate: null,
-  endDate: null,
+  startDate: firstDay,
+  endDate: lastDay,
   classification: null,
+  coverage_range: null,
 });
 
 const abcOptions = [
   { title: "Clase A (Top 80%)", value: "A" },
   { title: "Clase B (Siguiente 15%)", value: "B" },
   { title: "Clase C (Último 5%)", value: "C" },
+];
+
+const coverageOptions = [
+  { title: "Sin Movimiento (Stock Muerto)", value: "dead_stock" },
+  { title: "Crítica (< 1 mes)", value: "critical" },
+  { title: "Baja (1 - 2 meses)", value: "low" },
+  { title: "Óptima (2 - 4 meses)", value: "optimal" },
+  { title: "Exceso (> 4 meses)", value: "excess" },
 ];
 
 // --- API Data Fetching ---
@@ -27,6 +44,7 @@ const fetchAbcData = async () => {
       start_date: filters.value.startDate,
       end_date: filters.value.endDate,
       classification: filters.value.classification,
+      coverage_range: filters.value.coverage_range,
     };
 
     // Clean params
@@ -69,9 +87,10 @@ onMounted(() => {
 });
 
 const handleClearFilters = () => {
-  filters.value.startDate = null;
-  filters.value.endDate = null;
+  filters.value.startDate = firstDay;
+  filters.value.endDate = lastDay;
   filters.value.classification = null;
+  filters.value.coverage_range = null;
 };
 
 const handleUpdateFilters = (newFilters) => {
@@ -84,6 +103,7 @@ const handleUpdateFilters = (newFilters) => {
     <ReportAbcFilters
       :filters="filters"
       :abc-options="abcOptions"
+      :coverage-options="coverageOptions"
       @update:filters="handleUpdateFilters"
       @clear="handleClearFilters"
     />

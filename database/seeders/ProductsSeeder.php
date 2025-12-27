@@ -16,30 +16,37 @@ class ProductsSeeder extends Seeder
     {
         $json = File::get(database_path('data/products.json'));
         $products = json_decode($json, true);
+        $data = [];
 
         $categoryIds = DB::table('categories')->pluck('id')->toArray();
-        $missingCount = 0;
+        $laboratories = DB::table('laboratories')->pluck('id')->flip();
+        $origins = DB::table('origins')->pluck('id')->flip();
 
         // Recorrer y preparar los datos
         foreach ($products as &$product) {
-            $missingCount++;
-
-            $product['category_id'] = $categoryIds[array_rand($categoryIds)];
-            $product['origin_id'] = $product['provenance_id'];
-            $product['unit_cost'] = $product['cost'];
-            $product['sale_price'] = $product['price'] ?? 0;
-            $product['is_colombian_origin'] = $product['is_colombian'] ?? 0;
-            $product['active_ingredient'] = $product['active_ingredient'] ?? 'MISSING';
-            $product['barcode'] = $product['code_bar'] ?? 'MISSING-' . str_pad($missingCount, 6, '0', STR_PAD_LEFT);
-            $product['iva'] = 0;
-            $product['psychotropic'] = 0;
-            $product['photo_url'] = null;
-
-            unset($product['cost'], $product['price'], $product['units'], $product['is_colombian'], $product['code_bar'], $product['provenance_id']);
+            $data[] = [
+                'id' => $product['id'],
+                'category_id' => $categoryIds[array_rand($categoryIds)],
+                'laboratory_id' => $laboratories->has($product['laboratory_id']) ? $product['laboratory_id'] : null,
+                'origin_id' => $origins->has($product['provenance_id']) ? $product['provenance_id'] : null,
+                'name' => $product['name'],
+                'active_ingredient' => $product['active_ingredient'] ?? null,
+                'unit_cost' => $product['cost'] ?? 0.0,
+                'sale_price' => $product['price'] ?? 0.0,
+                'is_colombian_origin' => $product['is_colombian'] ?? 0,
+                'barcode' => $product['code_bar'] ?? null,
+                'iva' => $product['has_tax'],
+                'stock' => $product['units'],
+                'psychotropic' => 0,
+                'photo_url' => null,
+                'sales_average' => $products['average_sales'] ?? 0.0,
+                'created_at' => $product['created_at'],
+                'updated_at' => $product['updated_at'],
+            ];
         }
 
         // Insertar en chunks
-        foreach (array_chunk($products, 500) as $chunk) {
+        foreach (array_chunk($data, 500) as $chunk) {
             DB::table('products')->insert($chunk);
         }
     }

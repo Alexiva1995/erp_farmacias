@@ -13,161 +13,61 @@ class InvoiceSeeder extends Seeder
         try {
             DB::beginTransaction();
 
-            $headersData = $this->loadJsonRows('data/invoices.json');
-            $linesData = $this->loadJsonRows('data/invoice_details.json');
+            $invoices = $this->loadJsonRows('data/invoices.json');
+            $details = $this->loadJsonRows('data/invoice_details.json');
+            $data = [];
 
-            if (empty($headersData) && empty($linesData)) {
-                DB::rollBack();
-                return;
-            }
-
-            $validClientIds = DB::table('clients')->pluck('id')->flip();
-            $validSellerIds = DB::table('users')->pluck('id')->flip();
-            $validProductIds = DB::table('products')->pluck('id')->flip();
-
-            $idMap = [];
-            $orderDetailsBatch = [];
-            $fiscalDetailsBatch = [];
-
-            // Facturas
-            foreach ($headersData as $header) {
-                $invoiceDate = $this->parseDate($header['Fecha'] ?? null);
-                $createdAt = $this->parseDateTime($header['created_at'] ?? now());
-
-                $clientId = $header['cod_cliente'] ?? null;
-                $sellerId = $header['id_vendedor'] ?? null;
-
-                if ($clientId !== null && !isset($validClientIds[$clientId]))
-                    $clientId = null;
-                if ($sellerId !== null && !isset($validSellerIds[$sellerId]))
-                    $sellerId = null;
-
-                $orderId = DB::table('orders')->insertGetId([
-                    'client_id' => $clientId,
-                    'seller_id' => $sellerId,
-                    'cash_closing_id' => 1,
-                    'total_amount' => $header['total'] ?? 0,
-                    'money_returns' => 0,
-                    'usd_conversion' => 0,
-                    'currency' => 'Bs',
-                    'total_cost' => 0,
-                    'order_date' => $invoiceDate,
-                    'status' => 'completed',
-                    'has_multiple_currencies' => 0,
-                    'payment_methods' => null,
-                    'total_amount_usd' => 0,
-                    'url_recipe' => null,
-                    'created_at' => $createdAt,
-                    'updated_at' => $createdAt,
-                ]);
-
-                $fiscalHistoryId = DB::table('fiscal_history')->insertGetId([
-                    'user_id' => $sellerId,
-                    'fiscal_id' => $header['Num_Fac_Fiscal'] ?? null,
-                    'invoice_number' => null,
-                    'business_name' => $header['nombre'] ?? 'N/A',
-                    'identification' => $header['rif'] ?? 'N/A',
-                    'address' => $header['direccion'] ?? 'N/A',
-                    'exempt_amount' => 0.0,
-                    'iva_amount' => $header['iva'] ?? 0,
-                    'spe' => 0,
-                    'total_amount' => $header['total'] ?? 0,
-                    'taxable_amount' => null,
-                    'invoice_date' => $invoiceDate,
-                    'order_id' => $orderId,
-                    'status' => 'finalized',
-                    'created_at' => $createdAt,
-                    'updated_at' => $createdAt,
-                ]);
-
-                $facturaId = $header['factura_id'] ?? null;
-                if (!empty($facturaId)) {
-                    $idMap[$facturaId] = [
-                        'order_id' => $orderId,
-                        'fiscal_history_id' => $fiscalHistoryId,
-                        'created_at' => $createdAt,
-                    ];
-                }
-            }
-
-            // Detalles de Facturas
-            foreach ($linesData as $line) {
-                $fid = $line['factura_id'] ?? null;
-                if (!$fid)
-                    continue;
-
-                // Registros sin relación
-                if (!isset($idMap[$fid])) {
-                    $createdAt = $this->parseDateTime($line['created_at'] ?? now());
-                    $invoiceDate = substr($createdAt, 0, 10);
-
-                    $oId = DB::table('orders')->insertGetId([
-                        'cash_closing_id' => 1,
-                        'total_amount' => 0,
-                        'currency' => 'Bs',
-                        'money_returns' => 0,
-                        'usd_conversion' => 0,
-                        'total_cost' => 0,
-                        'order_date' => $invoiceDate,
-                        'status' => 'completed',
-                        'created_at' => $createdAt,
-                        'updated_at' => $createdAt,
-                    ]);
-
-                    $fHId = DB::table('fiscal_history')->insertGetId([
-                        'order_id' => $oId,
-                        'business_name' => 'N/A',
-                        'identification' => 'N/A',
-                        'address' => 'N/A',
-                        'iva_amount' => 0,
-                        'total_amount' => 0,
-                        'taxable_amount' => 0,
-                        'invoice_date' => $invoiceDate,
-                        'status' => 'finalized',
-                        'created_at' => $createdAt,
-                        'updated_at' => $createdAt,
-                    ]);
-
-                    $idMap[$fid] = ['order_id' => $oId, 'fiscal_history_id' => $fHId, 'created_at' => $createdAt];
-                }
-
-                $map = $idMap[$fid];
-                $productId = $line['cod_producto'] ?? null;
-                if ($productId !== null && !isset($validProductIds[$productId]))
-                    $productId = null;
-
-                $orderDetailsBatch[] = [
-                    'order_id' => $map['order_id'],
-                    'product_id' => $productId,
-                    'product_type' => 'normal',
-                    'quantity' => $line['cantidad'] ?? 0,
-                    'price' => ($line['precio'] ?? 0) * ($line['cantidad'] ?? 0),
-                    'unit_cost' => $line['precio'] ?? 0,
-                    'created_at' => $line['created_at'] ?? $map['created_at'],
-                    'updated_at' => $line['updated_at'] ?? $map['created_at'],
-                ];
-
-                $fiscalDetailsBatch[] = [
-                    'fiscal_history_id' => $map['fiscal_history_id'],
-                    'product_id' => $productId,
-                    'product_name' => $line['nombre'] ?? 'N/A',
-                    'quantity' => $line['cantidad'] ?? 0,
-                    'vat_status' => $line['act_iva'] ?? 0,
-                    'big_amount' => $line['big'] ?? 0,
-                    'total_amount' => ($line['cantidad'] ?? 0) * ($line['precio'] ?? 0),
-                    'created_at' => $line['created_at'] ?? $map['created_at'],
-                    'updated_at' => $line['updated_at'] ?? $map['created_at'],
+            foreach ($invoices as $invoice) {
+                $data[] = [
+                    "id" => $invoice['id'],
+                    "invoice_number" => $invoice['number'],
+                    "supplier_id" => $invoice['supplier_id'],
+                    "status_payment" => $invoice['was_paid'],
+                    "exp_date" => $this->parseDate($invoice['expiration_date']),
+                    "created_at" => $this->parseDateTime($invoice['created_at']),
+                    "updated_at" => $this->parseDateTime($invoice['updated_at']),
+                    "exchange_rate" => $invoice['tasa_bcv'],
+                    "created_invoice_date" => $this->parseDate($invoice['date_emission']),
+                    "received_date" => $invoice['fecha_recibo'],
+                    "exempt_amount" => $invoice['monto_excento_iva'] ?? 0.0,
+                    "total_amount" => $invoice['total'] ?? 0.0,
+                    "total_usd" => $invoice['total_usd'] ?? 0.0,
+                    "control_number" => $invoice['num_control'],
+                    "uploaded_by" => 1,
+                    "registered_by" => 1,
                 ];
             }
 
-            foreach (array_chunk($orderDetailsBatch, 1000) as $chunk) {
-                if (!DB::table('order_details')->insert($chunk)) {
-                    throw new \Exception("Batch insert failed for order_details");
+            foreach (array_chunk($data, 1000) as $chunk) {
+                if (!DB::table('invoices')->insert($chunk)) {
+                    throw new \Exception("Batch insert failed for invoices");
                 }
             }
-            foreach (array_chunk($fiscalDetailsBatch, 1000) as $chunk) {
-                if (!DB::table('fiscal_history_details')->insert($chunk)) {
-                    throw new \Exception("Batch insert failed for fiscal_history_details");
+
+            unset($data);
+            $invoices = DB::table('invoices')->pluck('id')->flip();
+            $products = DB::table('products')->pluck('id')->flip();
+
+            foreach ($details as $detail) {
+                $data[] = [
+                    "id" => $detail['id'],
+                    "invoice_id" => $invoices->contains($detail['invoice_id']) ? $detail['invoice_id'] : null,
+                    "product_id" => $products->contains($detail['product_id']) ? $detail['product_id'] : null,
+                    "lot_number" => $detail['p_lot'],
+                    "created_at" => $this->parseDateTime($detail['created_at']),
+                    "updated_at" => $this->parseDateTime($detail['updated_at']),
+                    "expiration_date" => $this->parseDate($detail['p_expiration_date']),
+                    "quantity" => $detail['p_units'],
+                    "unit_cost" => $detail['p_cost'],
+                    "total_cost" => $detail['p_units'] * $detail['p_cost'],
+                    "location" => null,
+                    "tax_enabled" => $detail["p_has_tax"] ?? false,
+                ];
+            }
+
+            foreach (array_chunk($data, 1000) as $chunk) {
+                if (!DB::table('invoice_details')->insert($chunk)) {
+                    throw new \Exception("Batch insert failed for invoice details");
                 }
             }
 

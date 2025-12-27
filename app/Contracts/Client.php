@@ -16,13 +16,14 @@ interface Client
 
     public function consultAll(): Collection;
 
-    public function consultById(string $id): Model | null;
+    public function consultById(string $id): Model|null;
 
-    public function consultByIdentification(string $identification): Model | null;
+    public function consultByIdentification(string $identification): Model|null;
 
     public function deleteById(string $id): void;
 
     public function filtrar(array $filtros): LengthAwarePaginator;
+    public function pending(array $filters): LengthAwarePaginator;
 
     public function filterWithoutPaginate(array $filtros): Collection;
 
