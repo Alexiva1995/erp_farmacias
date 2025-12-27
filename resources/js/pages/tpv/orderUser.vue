@@ -2287,7 +2287,7 @@ const handleExternalSort = async (sortData) => {
           @view-pack-details="handleViewPackDetails"
         />
 
-        <OrderPacksTable
+      <!--  <OrderPacksTable
           :packs="packs"
           :loading="loadingPacks"
           :total-packs="totalPacks"
@@ -2296,7 +2296,7 @@ const handleExternalSort = async (sortData) => {
           @update:options="updatePacksOptions"
           @add-pack="handleAddPackToOrder"
           @view-pack-details="handleViewPackDetails"
-        />
+        />-->
 
     <PackDetailsModal
       v-model:isDialogVisible="showPackDetailsModal"
