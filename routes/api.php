@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\ProductPackController;
 use App\Http\Controllers\Api\PrescriptionOfferController;
 use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
+use App\Http\Controllers\Api\ProductFailureController;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,6 +87,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/user", function (Request $request) {
         return $request->user();
     });
+    Route::get('/user/config', function (Request $request) {
+        return $request->user()->load('config'); 
+    });
+    Route::post('/user/update-sort-config', [UserController::class, 'updateSortConfig']);
     Route::post("/logout", [LoginController::class, "logout"]);
 
     // Rutas de Productos
@@ -263,6 +268,8 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::delete('/{id}', [PrescriptionOfferController::class, 'destroy']);
             });
         });
+        //ruta para productos con fallas
+        Route::post('/product-failure', [ProductFailureController::class, 'store'])->name('product-failure.store');
     });
     Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
     Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);

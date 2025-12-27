@@ -53,6 +53,22 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  activeDoctorOffers: {
+    type: Array,
+    default: () => [],
+  },
+  prescriptionDiscountPercentage: {
+    type: Number,
+    default: 0,
+  },
+  activeCompanyOffers: {
+    type: Array,
+    default: () => [],
+  },
+  globalDiscount: {
+    type: Object,
+    default: () => null, // Por defecto null si no hay descuento activo
+  },
 });
 
 const emit = defineEmits([
@@ -577,6 +593,48 @@ const getProductPrice = (product, currency) => {
     basePrice = product.price || 0;
   }
 
+  // Apply visual discount
+  if (activeDiscountDisplay.value != null) {
+      basePrice = basePrice * getDiscountFactor(product);
+  }
+
+  // Calcular el IVA con descuento SPE si aplica
+  let effectiveTaxRate = taxRate;
+  if (props.orderData?.client?.is_spe) {
+    effectiveTaxRate = taxRate * 0.25; // Solo aplicar 25% del IVA para clientes SPE
+  }
+
+  let priceWithIva = basePrice * (1 + effectiveTaxRate);
+
+  if (currency === "COP") {
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+  }
+
+  priceWithIva = priceWithIva * product.selectedQuantity;
+  return priceWithIva;
+};
+
+const getDiscountFactor = (product) => {
+  if (
+    props.globalDiscount &&
+    props.globalDiscount.percentage > 0 &&
+    product.discount_type !== "expiration"
+  ) {
+    return 1 - props.globalDiscount.percentage / 100;
+  }
+  return 1;
+};
+const getProductPriceSinDescuento = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") {
+    basePrice = product.price_bs || 0;
+  } else if (currency === "COP") {
+    basePrice = product.price_cop || 0;
+  } else {
+    basePrice = product.price || 0;
+  }
+
   // Calcular el IVA con descuento SPE si aplica
   let effectiveTaxRate = taxRate;
   if (props.orderData?.client?.is_spe) {
@@ -742,8 +800,7 @@ const changeAmountInCOP = computed(() => {
     console.log(vueltoEnMonedaOrden);
     return vueltoEnMonedaOrden;
   }
-  console.log(vueltoEnMonedaOrden);
-  console.log(props.selectedCurrency);
+
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   console.log(rate);
   if (rate) {
@@ -946,14 +1003,30 @@ const activeDiscountDisplay = computed(() => {
                       class="text-caption text-medium-emphasis"
                       >Total</span
                     >
-                    <span class="text-body-1 font-weight-bold text-black">
-                      {{
-                        formatCurrency(
-                          getProductPrice(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}
-                    </span>
+                    <div class="d-flex align-center gap-1">
+                      <span
+                        v-if="activeDiscountDisplay"
+                        class="text-caption text-disabled text-decoration-line-through me-2 text-error"
+                      >
+                        {{
+                          formatCurrency(
+                            getProductPriceSinDescuento(
+                              product,
+                              props.selectedCurrency
+                            ),
+                            props.selectedCurrency
+                          )
+                        }}
+                      </span>
+                      <span class="text-body-1 font-weight-bold text-black">
+                        {{
+                          formatCurrency(
+                            getProductPrice(product, props.selectedCurrency),
+                            props.selectedCurrency
+                          )
+                        }}
+                      </span>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -1372,13 +1445,31 @@ const activeDiscountDisplay = computed(() => {
                   >
 
                   <template #append>
-                    <div class="d-flex align-center">
-                      <span class="text-body-1 me-2">{{
-                        formatCurrency(
-                          getProductPrice(product, props.selectedCurrency),
-                          props.selectedCurrency
-                        )
-                      }}</span>
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-body-1 font-weight-bold">
+                        {{
+                          formatCurrency(
+                            getProductPrice(product, props.selectedCurrency),
+                            props.selectedCurrency
+                          )
+                        }}
+                      </span>
+
+                      <span
+                        v-if="activeDiscountDisplay"
+                        class="text-caption text-decoration-line-through text-error"
+                        style="margin-top: -4px"
+                      >
+                        {{
+                          formatCurrency(
+                            getProductPriceSinDescuento(
+                              product,
+                              props.selectedCurrency
+                            ),
+                            props.selectedCurrency
+                          )
+                        }}
+                      </span>
                     </div>
                   </template>
                 </VListItem>

@@ -41,8 +41,6 @@ watch(
   (isVisible) => {
     if (isVisible) {
       if (props.isEditing && props.lotToEdit) {
-      console.log('hola');
-      console.log(lotData);
         lotData.value = {
           id: props.lotToEdit.id,
           product_id: props.lotToEdit.product_id,
@@ -72,6 +70,60 @@ const formatDateForInput = (dateString) => {
 
 const onSave = () => emit("save", lotData.value);
 const onCancel = () => emit("update:modelValue", false);
+const locations = [
+  "E-001",
+  "E-002",
+  "E-003",
+  "E-004",
+  "E-005",
+  "E-006",
+  "E-007",
+  "E-008",
+  "E-009",
+  "E-010",
+  "G-001",
+  "G-002",
+  "G-003",
+  "G-004",
+  "G-005",
+  "G-006",
+  "G-007",
+  "G-008",
+  "G-009",
+  "G-010",
+  "I-001",
+  "I-002",
+  "I-003",
+  "I-004",
+  "I-005",
+  "I-006",
+  "I-007",
+  "I-008",
+  "I-009",
+  "I-010",
+  "N-001",
+  "N-002",
+  "P-001",
+  "P-002",
+  "P-003",
+  "P-004",
+  "P-005",
+  "P-006",
+  "P-007",
+  "P-008",
+  "P-009",
+  "P-010",
+  "D-001",
+  "D-002",
+  "D-003",
+  "D-004",
+  "D-005",
+  "D-006",
+  "D-007",
+  "D-008",
+  "D-009",
+  "D-010",
+].sort();
 </script>
 
 <template>
@@ -138,12 +190,10 @@ const onCancel = () => emit("update:modelValue", false);
             </VCol>
 
             <VCol cols="12" sm="6">
-               <VAutocomplete
+              <VAutocomplete
                 v-model="lotData.location"
                 label="Ubicación (Opcional)"
-                :items="props.origins"
-                item-title="name"
-                item-value="name"
+                :items="locations"
                 placeholder="Busca un ubicación"
                 clearable
               />

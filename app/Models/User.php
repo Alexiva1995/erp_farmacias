@@ -137,4 +137,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(CleaningActivityExecution::class, 'approved_by');
     }
+
+    public function config()
+    {
+        return $this->hasOne(UserConfig::class, 'user_id');
+    }
 }

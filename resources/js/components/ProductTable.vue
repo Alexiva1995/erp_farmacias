@@ -102,7 +102,7 @@ const calculateSalePriceWithIva = (product) => {
   if (product.iva == 1) {
     const priceWithIva = basePrice * 1.16;
 
-    return priceWithIva.toFixed(2);
+    return priceWithIva;
   }
   return basePrice;
 };

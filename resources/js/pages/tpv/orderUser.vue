@@ -12,7 +12,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -93,6 +93,13 @@ const newClientFormErrors = reactive({
   is_spe: "",
 });
 
+
+const tableOptions = ref({
+  page: 1,
+  itemsPerPage: 10,
+  sortBy: [],
+});
+
 const companies = ref([]);
 
 const authStore = useAuthStore();
@@ -121,6 +128,18 @@ const activePrescriptionOffers = ref([]);
 const prescriptionFile = ref(null);
 const activeCompanyOffers = ref([]);
 const selectedCompanyId = ref(null);
+
+const selectedCompany = ref(null); 
+const selectedDoctor = ref(null);
+
+
+const handleCompanySelected = (id) => {
+  selectedCompany.value = id;
+};
+
+const handleDoctorSelected = (id) => {
+  selectedDoctor.value = id;
+};
 
 const currentPrescriptionDiscountPercentage = computed(() => {
   if (activePrescriptionOffers.value.length > 0) {
@@ -329,6 +348,56 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
+
+watch(() => selectedClient.value, (newCliente) => {
+  if (newCliente?.company_id) {
+    selectedCompany.value = newCliente.company_id;
+    selectedDiscountType.value = "Empresa";
+  }
+}, { immediate: true });
+
+const currentGlobalDiscountDetails = computed(() => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompany.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompany.value
+    );
+    if (offer && offer.current_discount > 0) {
+
+      return {
+        type: "Empresa",
+        percentage: parseFloat(offer.current_discount),
+        label: "Empresa",
+      };
+    }
+  }
+
+  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+    const offer = activeDoctorOffers.value.find(
+      (o) => o.value === selectedDoctorOffer.value.value
+    );
+
+    if (offer && offer.percentage > 0) {
+      return {
+        type: "Medico",
+        percentage: parseFloat(offer.percentage),
+        label: "Médico",
+      };
+    }
+  }
+
+  if (
+    selectedDiscountType.value === "Recipe" &&
+    currentPrescriptionDiscountPercentage.value > 0
+  ) {
+    return {
+      type: "Recipe",
+      percentage: parseFloat(currentPrescriptionDiscountPercentage.value),
+      label: "Recipe",
+    };
+  }
+  return null;
+});
+
 const handleCompanyDiscountSelected = (companyId) => {
   selectedCompanyId.value = companyId;
   validateAndApplyCompanyDiscount();
@@ -349,10 +418,7 @@ const validateAndApplyCompanyDiscount = () => {
     selectedCompanyId.value = null;
     return;
   }
-
-  console.log(offer);
   const porcentaje = parseFloat(offer.current_discount || 0);
-
   if (porcentaje > 0) {
     toast.success(
       `Descuento de empresa ${porcentaje}% habilitado para esta orden.`
@@ -553,6 +619,9 @@ const formatOrderItemForFrontend = (backendItem) => {
     price:
       parseFloat(backendItem.unit_cost) ||
       (parseFloat(product.sale_price) || 0) * discountFactor,
+    price_before_discount:
+      parseFloat(backendItem.unit_cost) ||
+      (parseFloat(product.sale_price) || 0),
     price_bs: (parseFloat(product.price_bs) || 0) * discountFactor,
     price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
     unitCost: parseFloat(product.unit_cost) || 0,
@@ -623,6 +692,22 @@ onMounted(async () => {
   fetchCompanyOffers();
 });
 
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/user/config');
+    if (data.config && data.config.sort_products_orders) {
+      const [key, order] = data.config.sort_products_orders.split('|');
+      sortBy.value = key;
+      orderBy.value = order;
+      tableOptions.value.sortBy = [{ key, order }];
+    }
+  } catch (error) {
+    console.error("Error al cargar configuración");
+  }
+});
+
+
 const totalOrderCost = computed(() => {
   let totalCost = 0;
   orderItems.value.forEach((item) => {
@@ -636,8 +721,12 @@ const totalOrderCost = computed(() => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  
+  // Si la tabla cambia el orden por clic en columna
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  }
 };
 
 const addProductToQuotation = async ({ productId, quantity }) => {};
@@ -986,6 +1075,12 @@ const totalOrderAmount = computed(() => {
     discountToSubtract = totalRecipeDiscountAmount.value;
   }
   return baseTotal - discountToSubtract;
+});
+
+const totalOrderAmountSinDiscount = computed(() => {
+  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
+  let discountToSubtract = 0;
+  return baseTotal;
 });
 
 const myCalculatedTotal = computed(() => {
@@ -1739,6 +1834,11 @@ const handleBuysCompletion = async (
         selectedDisplayCurrency.value
       );
 
+      let finalPriceBeforeDiscount = getItemPriceByCurrency(
+        item,
+        selectedDisplayCurrency.value
+      );
+
       // 2. Determine Discount Details
       let dType = null;
       let dPercent = 0;
@@ -1773,6 +1873,7 @@ const handleBuysCompletion = async (
       return {
         order_detail_id: item.order_detail_id,
         price: finalPrice,
+        price_before_discount: finalPriceBeforeDiscount,
         discount_percentage: dPercent > 0 ? dPercent : null,
         discount_type: dType,
         discount_source_id: dSourceId,
@@ -1897,6 +1998,23 @@ const fetchGroupProducts = async (groupId) => {
   }
   currentGroupId.value = groupId;
 };
+
+const fetchFailuresProducts = async (productId) => {
+  try {
+    const response = await axios.post('/tpv/product-failure', {
+      product_id: productId,
+    })
+    toast.info("Reporte de falla guardado correctamente.");
+  } catch (error) {
+    if (error.response) {
+      console.error('Errores de validación:', error.response.data.errors)
+      toast.error("Hubo un problema al procesar su reporte de falla.");
+    } else {
+      console.error('Error de conexión:', error.message)
+    }
+  }
+};
+
 const handleBackFromGroupView = () => {
   currentGroupId.value = null;
 };
@@ -1982,10 +2100,22 @@ const updatePacksOptions = (options) => {
   packsItemsPerPage.value = options.itemsPerPage;
   fetchPacks();
 };
-
+/*
 const handleViewPackDetails = (pack) => {
+  console.log(pack);
   selectedPack.value = pack;
   showPackDetailsModal.value = true;
+};*/
+
+const handleViewPackDetails = async (item) => {
+  try {
+    const response = await axios.get(`/tpv/promotions/product-packs/${item.id}`);
+    const packCompleto = response.data;
+    selectedPack.value = packCompleto.data;
+    showPackDetailsModal.value = true;
+  } catch (error) {
+    console.error("Error al obtener los detalles del pack:", error);
+  }
 };
 
 const handleAddPackToOrder = async ({ pack, quantity }) => {
@@ -2040,6 +2170,43 @@ watch(activeTab, (val) => {
     fetchPacks();
   }
 });
+
+
+const itemsForTicket = computed(() => {
+  const globalDiscount = currentGlobalDiscountDetails.value;
+  return orderItems.value.map(item => {
+    if (item.discount_type === 'expiration') {
+      return { ...item };
+    }
+    if (globalDiscount && globalDiscount.percentage > 0) {
+      const factor = 1 - (globalDiscount.percentage / 100);
+      
+      return {
+        ...item,
+        price: (item.price_before_discount * factor) * item.selectedQuantity,
+        price_bs: (item.original_price_bs * factor) * item.selectedQuantity,
+        price_cop: (item.original_price_cop * factor) * item.selectedQuantity,
+        price_before_discount: item.price_before_discount * item.selectedQuantity
+      };
+    }
+    return { ...item };
+  });
+});
+
+const handleExternalSort = async (sortData) => {
+  sortBy.value = sortData.key;
+  orderBy.value = sortData.order;
+  tableOptions.value.sortBy = [{ key: sortData.key, order: sortData.order }];
+  try {
+    await axios.post('/user/update-sort-config', {
+      sortBy: sortData.key,
+      orderBy: sortData.order
+    });
+    toast.success("Orden guardado como preferido");
+  } catch (error) {
+    console.error("Error al guardar preferencia:", error);
+  }
+};
 </script>
 <template>
   <div>
@@ -2072,13 +2239,12 @@ watch(activeTab, (val) => {
         @add-reserved-order="addReserverOrder"
         v-model:selected-discount-type="selectedDiscountType"
         :active-doctor-offers="activeDoctorOffers"
-        :prescription-discount-percentage="
-          currentPrescriptionDiscountPercentage
-        "
+        :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
         :active-company-offers="activeCompanyOffers"
         @doctor-discount-selected="handleDoctorDiscountSelected"
         @prescription-file-selected="handlePrescriptionFileSelected"
         @company-discount-selected="handleCompanyDiscountSelected"
+        :global-discount="currentGlobalDiscountDetails"
       />
     </div>
     <div v-else>
@@ -2088,13 +2254,6 @@ watch(activeTab, (val) => {
       />
     </div>
 
-    <VTabs v-model="activeTab" class="mb-4">
-      <VTab value="products">Productos Individuales</VTab>
-      <VTab value="packs">Packs Promocionales</VTab>
-    </VTabs>
-
-    <VWindow v-model="activeTab">
-      <VWindowItem value="products">
         <OrderFilters
           v-model:searchQuery="filterSearchQuery"
           v-model:selectedLaboratory="selectedLaboratory"
@@ -2105,7 +2264,7 @@ watch(activeTab, (val) => {
           :origins="origins"
           :loading="isLoadingFilters"
           @clear="handleClearFilters"
-          @sort="handleSort"
+          @sort="handleExternalSort"
           @back="handleBackFromGroupView"
         >
         </OrderFilters>
@@ -2114,20 +2273,21 @@ watch(activeTab, (val) => {
           :products="products"
           :loading="loading"
           :total-product="totalProduct"
-          :items-per-page="itemsPerPage"
-          :page="page"
+          v-model:items-per-page="itemsPerPage"
+          v-model:page="page""
           :discount-min-products="discountMinProducts"
           :discount-max-products="discountMaxProducts"
           :current-discount="discount"
           :order-items="orderItems"
+          :options="tableOptions"
           @update:options="updateTableOptions"
           @add-product="addProductToOrder"
           @view-group-products="fetchGroupProducts"
+          @failures-products="fetchFailuresProducts"
+          @view-pack-details="handleViewPackDetails"
         />
-      </VWindowItem>
 
-      <VWindowItem value="packs">
-        <OrderPacksTable
+      <!--  <OrderPacksTable
           :packs="packs"
           :loading="loadingPacks"
           :total-packs="totalPacks"
@@ -2136,9 +2296,7 @@ watch(activeTab, (val) => {
           @update:options="updatePacksOptions"
           @add-pack="handleAddPackToOrder"
           @view-pack-details="handleViewPackDetails"
-        />
-      </VWindowItem>
-    </VWindow>
+        />-->
 
     <PackDetailsModal
       v-model:isDialogVisible="showPackDetailsModal"
@@ -2169,6 +2327,10 @@ watch(activeTab, (val) => {
       :doctor-discount-total="totalDoctorDiscountAmount"
       :recipe-discount-total="totalRecipeDiscountAmount"
       :expiration-discount-total="totalExpirationDiscountAmount"
+      :active-doctor-offers="activeDoctorOffers"
+      :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
+      :active-company-offers="activeCompanyOffers"
+      :global-discount="currentGlobalDiscountDetails"
     />
 
     <div
@@ -2178,7 +2340,7 @@ watch(activeTab, (val) => {
       <OrderTicket
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
-        :order-products="orderItems"
+        :order-products="itemsForTicket"
         :total-amount="myCalculatedTotal"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"

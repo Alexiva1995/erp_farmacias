@@ -341,6 +341,7 @@ const handleViewOrder = async (orderId) => {
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
+        price_before_discount: parseFloat(detail.price_before_discount),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
       
