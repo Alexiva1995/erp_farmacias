@@ -18,28 +18,6 @@ class CashClosingSeeder extends Seeder
      */
     public function run(): void
     {
-        $sellers = User::get();
-
-        if ($sellers->isEmpty()) {
-            $seller = User::factory()->create([
-                'username' => 'empleado',
-                'email' => 'empleado@example.com',
-                'password_hash' => Hash::make('12345678'),
-                'is_active' => true
-            ]);
-            $sellers->push($seller);
-        }
-
-        foreach ($sellers as $seller) {
-            CashClosing::factory()
-                ->count(1)
-                ->for($seller, 'seller')
-                ->create([
-                    'status' => CashClosing::OPEN,
-                    'closing_date' => Carbon::now(),
-                ]);
-        }
-
         $json = File::get(database_path('data/cash_closing.json'));
         $data = json_decode($json, true);
         $cashClosingData = [];
