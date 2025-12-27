@@ -103,9 +103,10 @@ private function getBaseQueryProduct(array $filters = []): QueryBuilder
             'products.id', 'products.name', 'products.sale_price',
             DB::raw("ROUND(products.sale_price * {$tasaBs}, 2) as price_bs"),
             DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
-            'products.active_ingredient', 'products.laboratory_id', 'products.group_id',
+            'products.active_ingredient', 'products.laboratory_id', 'products.group_id','products.origin_id', 'products.sales_average',
             'laboratories.name as laboratory_name',
             DB::raw("'product' as item_type"),
+            DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
             DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
         ])
         ->whereNull('products.deleted_at');
@@ -128,10 +129,11 @@ private function getBaseQueryProduct(array $filters = []): QueryBuilder
                     CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON)
                 )
             ) as active_ingredient"),
-            DB::raw('NULL as laboratory_id'), DB::raw('NULL as group_id'),
-            DB::raw("'Pack Promocional' as laboratory_name"),
+            DB::raw('NULL as laboratory_id'), DB::raw('NULL as group_id'), DB::raw('NULL as origin_id'), DB::raw('NULL as sales_average'),
+            DB::raw("'' as laboratory_name"), 
             DB::raw("'pack' as item_type"),
-            DB::raw('max_quantity as valid_stock_sum')
+            'product_packs.max_sale_date as next_expiration',
+            'product_packs.max_quantity as valid_stock_sum'
         ])->where('product_packs.is_active', true) 
     ->where(function($q) {
         $q->whereNull('product_packs.max_sale_date')
@@ -180,17 +182,25 @@ private function getBaseQueryProduct(array $filters = []): QueryBuilder
         $packsQuery->whereRaw('1 = 0'); 
     }
 
+    if (!empty($filters['originId'])) {
+        $productsQuery->where('origin_id', $filters['originId']);
+        $packsQuery->whereRaw('1 = 0');
+    }
+
     if (!empty($filters['groupId'])) {
         $productsQuery->where('products.group_id', $filters['groupId']);
         $packsQuery->whereRaw('1 = 0');
     }
 
-    if (isset($filters['hasStock'])) {
-        if ($filters['hasStock'] === true) {
+
+     $hasStock = $filters['hasStock'] ?? null;
+        if ($hasStock === true) {
             $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) > 0');
             $packsQuery->where('product_packs.max_quantity', '>', 0);
+        } elseif ($hasStock === false) {
+            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) = 0');
+            $packsQuery->where('product_packs.max_quantity', '=', 0);;
         }
-    }
     
     return $productsQuery->unionAll($packsQuery);
 }
@@ -366,24 +376,20 @@ private function applySortingProduct($query, ?string $sortBy, string $orderBy)
 
     switch ($sortBy) {
         case 'laboratory.name':
-            // Ya no hacemos join aquí porque 'laboratory_name' 
-            // ya fue incluido en el select del UNION
             return $query->orderBy('laboratory_name', $orderBy);
-
         case 'valid_stock':
         case 'lots_sum_quantity':
         case 'valid_stock_sum':
             return $query->orderBy('valid_stock_sum', $orderBy);
-
-        case 'id':
         case 'name':
             return $query->orderBy($sortBy, $orderBy);
-
         case 'sale_price':
-        case 'price': // En el UNION renombramos sale_price a price
-            return $query->orderBy('price', $orderBy);
-
+        case 'price':
+            return $query->orderBy('sale_price', $orderBy);
+        case 'sales_average':
+            return $query->orderBy('sales_average', $orderBy);
         case 'next_expiration':
+            return $query->orderBy('next_expiration', $orderBy);
             /**
              * Nota: Para los packs, este valor será NULL o muy lejano.
              * El ordenamiento funcionará basándose en el alias que definas en el select

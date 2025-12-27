@@ -1,6 +1,7 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { computed, ref, watch } from "vue";
+import axios from "@/plugins/axios";
+import { computed, ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -17,17 +18,29 @@ const props = defineProps({
 const inputQuantities = ref(new Map());
 const emit = defineEmits([
   "update:options",
+  "update:page",
+  "update:itemsPerPage",
+  "sort",
   "add-product",
   "view-group-products",
   "failures-products",
   "view-pack-details",
 ]);
 
+const isInitialLoad = ref(true);
+
+const options = ref({
+  page: 1,
+  itemsPerPage: 10,
+  sortBy: [],
+});
+
+
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
   { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
+  { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true },
   { title: "Bs", key: "price_bs", sortable: true },
   { title: "COP", key: "price_cop", sortable: true },
@@ -225,11 +238,40 @@ const totalDiscountPreview = computed(() => {
 const handleViewPack = (pack) => {
   emit("view-pack-details", pack);
 };
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/user/config');
+    // data suele ser el usuario, y el usuario tiene 'config'
+    const config = data.config; 
+    
+    if (config && config.sort_products_orders) {
+      const [key, order] = config.sort_products_orders.split('|');
+      
+      // IMPORTANTE: Esto dispara handleUpdateOptions automáticamente
+      options.value.sortBy = [{ key, order }];
+    }
+  } catch (error) {
+    console.error("Error cargando config inicial");
+  } finally {
+    // Damos un margen pequeño para que ignore el primer disparo automático
+    setTimeout(() => { isInitialLoad.value = false; }, 1000);
+  }
+});
+
+const handleUpdateOptions = (newOptions) => {
+  // Sincronizar con las props del padre si es necesario
+  emit('update:page', newOptions.page);
+  emit('update:itemsPerPage', newOptions.itemsPerPage);
+  // Emitir el evento completo al padre para el fetch de datos
+  emit('update:options', newOptions);
+};
 </script>
 
 <template>
   <VCard>
     <VDataTableServer
+      v-model:options="options"
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
@@ -237,8 +279,8 @@ const handleViewPack = (pack) => {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
+     @update:options="handleUpdateOptions" >
+
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>

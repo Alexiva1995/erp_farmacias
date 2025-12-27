@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_configs', function (Blueprint $table) {
+        Schema::create('user_config', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')
+             $table->foreignId('user_id')
                   ->constrained()
                   ->onDelete('cascade');
             $table->string('sort_products_orders', 191)->nullable();
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_configs');
+        Schema::dropIfExists('user_config');
     }
 };

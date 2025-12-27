@@ -87,6 +87,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/user", function (Request $request) {
         return $request->user();
     });
+    Route::get('/user/config', function (Request $request) {
+        return $request->user()->load('config'); 
+    });
+    Route::post('/user/update-sort-config', [UserController::class, 'updateSortConfig']);
     Route::post("/logout", [LoginController::class, "logout"]);
 
     // Rutas de Productos

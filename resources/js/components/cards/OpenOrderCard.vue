@@ -217,7 +217,6 @@ const totalSelectedQuantity = computed(() => {
 });
 
 const getDiscountFactor = (product) => {
-console.log(props.globalDiscount);
   if (
     props.globalDiscount &&
     props.globalDiscount.percentage > 0 &&

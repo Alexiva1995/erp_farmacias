@@ -93,6 +93,13 @@ const newClientFormErrors = reactive({
   is_spe: "",
 });
 
+
+const tableOptions = ref({
+  page: 1,
+  itemsPerPage: 10,
+  sortBy: [],
+});
+
 const companies = ref([]);
 
 const authStore = useAuthStore();
@@ -685,6 +692,22 @@ onMounted(async () => {
   fetchCompanyOffers();
 });
 
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/user/config');
+    if (data.config && data.config.sort_products_orders) {
+      const [key, order] = data.config.sort_products_orders.split('|');
+      sortBy.value = key;
+      orderBy.value = order;
+      tableOptions.value.sortBy = [{ key, order }];
+    }
+  } catch (error) {
+    console.error("Error al cargar configuración");
+  }
+});
+
+
 const totalOrderCost = computed(() => {
   let totalCost = 0;
   orderItems.value.forEach((item) => {
@@ -698,8 +721,12 @@ const totalOrderCost = computed(() => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  
+  // Si la tabla cambia el orden por clic en columna
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  }
 };
 
 const addProductToQuotation = async ({ productId, quantity }) => {};
@@ -2165,6 +2192,21 @@ const itemsForTicket = computed(() => {
     return { ...item };
   });
 });
+
+const handleExternalSort = async (sortData) => {
+  sortBy.value = sortData.key;
+  orderBy.value = sortData.order;
+  tableOptions.value.sortBy = [{ key: sortData.key, order: sortData.order }];
+  try {
+    await axios.post('/user/update-sort-config', {
+      sortBy: sortData.key,
+      orderBy: sortData.order
+    });
+    toast.success("Orden guardado como preferido");
+  } catch (error) {
+    console.error("Error al guardar preferencia:", error);
+  }
+};
 </script>
 <template>
   <div>
@@ -2222,7 +2264,7 @@ const itemsForTicket = computed(() => {
           :origins="origins"
           :loading="isLoadingFilters"
           @clear="handleClearFilters"
-          @sort="handleSort"
+          @sort="handleExternalSort"
           @back="handleBackFromGroupView"
         >
         </OrderFilters>
@@ -2231,12 +2273,13 @@ const itemsForTicket = computed(() => {
           :products="products"
           :loading="loading"
           :total-product="totalProduct"
-          :items-per-page="itemsPerPage"
-          :page="page"
+          v-model:items-per-page="itemsPerPage"
+          v-model:page="page""
           :discount-min-products="discountMinProducts"
           :discount-max-products="discountMaxProducts"
           :current-discount="discount"
           :order-items="orderItems"
+          :options="tableOptions"
           @update:options="updateTableOptions"
           @add-product="addProductToOrder"
           @view-group-products="fetchGroupProducts"
