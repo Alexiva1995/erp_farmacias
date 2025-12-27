@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             InvoiceSeeder::class,
             ProductsSeeder::class,
             ProductLotsSeeder::class,
+            ClientsSeeder::class,
             GroupsProductsSeeder::class,
             MigrarDailyClosuresSeeder::class,
         ]);
