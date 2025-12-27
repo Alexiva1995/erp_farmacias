@@ -30,6 +30,8 @@ class DatabaseSeeder extends Seeder
             InvoiceSeeder::class,
             ProductsSeeder::class,
             ProductLotsSeeder::class,
+            GroupsProductsSeeder::class,
+            MigrarDailyClosuresSeeder::class,
         ]);
     }
 }
