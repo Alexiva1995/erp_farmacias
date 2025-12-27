@@ -1,6 +1,7 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { computed, ref, watch } from "vue";
+import axios from "@/plugins/axios";
+import { computed, ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -17,15 +18,29 @@ const props = defineProps({
 const inputQuantities = ref(new Map());
 const emit = defineEmits([
   "update:options",
+  "update:page",
+  "update:itemsPerPage",
+  "sort",
   "add-product",
   "view-group-products",
+  "failures-products",
+  "view-pack-details",
 ]);
+
+const isInitialLoad = ref(true);
+
+const options = ref({
+  page: 1,
+  itemsPerPage: 10,
+  sortBy: [],
+});
+
 
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
   { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
+  { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true },
   { title: "Bs", key: "price_bs", sortable: true },
   { title: "COP", key: "price_cop", sortable: true },
@@ -169,6 +184,10 @@ const handleViewGroupProducts = (product) => {
   emit("view-group-products", product.group_id);
 };
 
+const handleFailures = (product) => {
+  emit("failures-products", product.id);
+};
+
 // Función para calcular precio con IVA (sin descuento)
 const calculatePriceWithIVA = (basePrice, product) => {
   const price = parseFloat(basePrice) || 0;
@@ -215,11 +234,44 @@ const totalDiscountPreview = computed(() => {
 
   return subtotalWithoutDiscount * (props.currentDiscount / 100);
 });
+
+const handleViewPack = (pack) => {
+  emit("view-pack-details", pack);
+};
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/user/config');
+    // data suele ser el usuario, y el usuario tiene 'config'
+    const config = data.config; 
+    
+    if (config && config.sort_products_orders) {
+      const [key, order] = config.sort_products_orders.split('|');
+      
+      // IMPORTANTE: Esto dispara handleUpdateOptions automáticamente
+      options.value.sortBy = [{ key, order }];
+    }
+  } catch (error) {
+    console.error("Error cargando config inicial");
+  } finally {
+    // Damos un margen pequeño para que ignore el primer disparo automático
+    setTimeout(() => { isInitialLoad.value = false; }, 1000);
+  }
+});
+
+const handleUpdateOptions = (newOptions) => {
+  // Sincronizar con las props del padre si es necesario
+  emit('update:page', newOptions.page);
+  emit('update:itemsPerPage', newOptions.itemsPerPage);
+  // Emitir el evento completo al padre para el fetch de datos
+  emit('update:options', newOptions);
+};
 </script>
 
 <template>
   <VCard>
     <VDataTableServer
+      v-model:options="options"
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
@@ -227,8 +279,8 @@ const totalDiscountPreview = computed(() => {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
+     @update:options="handleUpdateOptions" >
+
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
       </template>
@@ -314,6 +366,7 @@ const totalDiscountPreview = computed(() => {
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
+             v-if="item.item_type === 'product'"
             :disabled="
               (inputQuantities.get(item.id) ?? 0) <= 0 ||
               (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum ||
@@ -322,11 +375,44 @@ const totalDiscountPreview = computed(() => {
           >
             <VIcon icon="tabler-plus" />
           </IconBtn>
+           <IconBtn
+            @click="handleAddPack(item.id)"
+            v-else-if="item.item_type === 'pack'"
+            :disabled="
+              (inputQuantities.get(item.id) ?? 0) <= 0 || !item.is_active
+            "
+            color="primary"
+            variant="tonal"
+            size="small"
+          >
+            <VIcon icon="tabler-plus" />
+          </IconBtn>
         </div>
       </template>
       <template #item.actions="{ item }">
-        <IconBtn @click="handleViewGroupProducts(item)">
+        <IconBtn
+          @click="handleViewGroupProducts(item)"
+          v-if="item.item_type === 'product'"
+        >
           <VIcon icon="tabler-eye" />
+        </IconBtn>
+        <VBtn
+          v-else-if="item.item_type === 'pack'"
+          icon
+          variant="text"
+          size="small"
+          color="info"
+          @click="handleViewPack(item)"
+        >
+          <VIcon>tabler-eye</VIcon>
+        </VBtn>
+
+        <IconBtn
+          @click="handleFailures(item)"
+          color="error"
+          :disabled="item.item_type === 'pack'"
+        >
+          <VIcon icon="tabler-alert-triangle" />
         </IconBtn>
       </template>
     </VDataTableServer>

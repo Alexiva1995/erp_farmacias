@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class OrderQueryService
 {
@@ -89,10 +90,166 @@ class OrderQueryService
     }
 
 
+private function getBaseQueryProduct(array $filters = []): QueryBuilder
+{
+    $resourceService = app(\App\Services\Resources\ResourceService::class);
+    $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
+    $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
 
-    private function getBaseQueryProduct(): Builder
+    // 1. Consulta de PRODUCTOS
+    $productsQuery = DB::table('products')
+        ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+        ->select([
+            'products.id', 'products.name', 'products.sale_price',
+            DB::raw("ROUND(products.sale_price * {$tasaBs}, 2) as price_bs"),
+            DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
+            'products.active_ingredient', 'products.laboratory_id', 'products.group_id','products.origin_id', 'products.sales_average',
+            'laboratories.name as laboratory_name',
+            DB::raw("'product' as item_type"),
+            DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
+            DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
+        ])
+        ->whereNull('products.deleted_at');
+
+    // 2. Consulta de PACKS
+    $packsQuery = DB::table('product_packs')
+        ->select([
+            'product_packs.id', 'product_packs.name', 'product_packs.total_price as sale_price',
+            DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
+            DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
+           DB::raw("(
+                SELECT GROUP_CONCAT(
+                    CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') 
+                    SEPARATOR ' | '
+                )
+                FROM products p
+                LEFT JOIN laboratories l ON p.laboratory_id = l.id
+                WHERE JSON_CONTAINS(
+                    JSON_KEYS(product_packs.pack_config), 
+                    CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON)
+                )
+            ) as active_ingredient"),
+            DB::raw('NULL as laboratory_id'), DB::raw('NULL as group_id'), DB::raw('NULL as origin_id'), DB::raw('NULL as sales_average'),
+            DB::raw("'' as laboratory_name"), 
+            DB::raw("'pack' as item_type"),
+            'product_packs.max_sale_date as next_expiration',
+            'product_packs.max_quantity as valid_stock_sum'
+        ])->where('product_packs.is_active', true) 
+    ->where(function($q) {
+        $q->whereNull('product_packs.max_sale_date')
+          ->orWhere('product_packs.max_sale_date', '>=', now()->toDateString());
+    });
+
+    // APLICAR BUSCADOR 'Q' A AMBOS LADOS
+    if (!empty($filters['q'])) {
+        $searchTerm = $filters['q'];
+        $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+        // Filtro para PRODUCTOS
+        $productsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+            if ($isStrictSearch) {
+                $subQuery->where('products.name', 'like', "%{$searchTerm}%")
+                         ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
+            } else {
+                $words = explode(' ', $searchTerm);
+                foreach ($words as $word) {
+                    $subQuery->where(function ($wordQuery) use ($word) {
+                        $wordQuery->where('products.name', 'like', "%{$word}%")
+                                  ->orWhere('products.active_ingredient', 'like', "%{$word}%")
+                                  ->orWhere('laboratories.name', 'like', "%{$word}%");
+                    });
+                }
+            }
+        });
+
+        // Filtro para PACKS
+        $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+            if ($isStrictSearch) {
+                $subQuery->where('product_packs.name', 'like', "%{$searchTerm}%");
+            } else {
+                $words = explode(' ', $searchTerm);
+                foreach ($words as $word) {
+                    $subQuery->where('product_packs.name', 'like', "%{$word}%");
+                }
+            }
+        });
+    }
+
+    // APLICAR OTROS FILTROS (Solo a productos)
+    if (!empty($filters['laboratoryId'])) {
+        $productsQuery->where('products.laboratory_id', $filters['laboratoryId']);
+        // Esto hace que si filtras por laboratorio, los packs no salgan (porque no tienen laboratorio)
+        $packsQuery->whereRaw('1 = 0'); 
+    }
+
+    if (!empty($filters['originId'])) {
+        $productsQuery->where('origin_id', $filters['originId']);
+        $packsQuery->whereRaw('1 = 0');
+    }
+
+    if (!empty($filters['groupId'])) {
+        $productsQuery->where('products.group_id', $filters['groupId']);
+        $packsQuery->whereRaw('1 = 0');
+    }
+
+
+     $hasStock = $filters['hasStock'] ?? null;
+        if ($hasStock === true) {
+            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) > 0');
+            $packsQuery->where('product_packs.max_quantity', '>', 0);
+        } elseif ($hasStock === false) {
+            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) = 0');
+            $packsQuery->where('product_packs.max_quantity', '=', 0);;
+        }
+    
+    return $productsQuery->unionAll($packsQuery);
+}
+
+   /* private function getBaseQueryProduct(): QueryBuilder
     {
-        return Product::query()->select(
+        $resourceService = app(\App\Services\Resources\ResourceService::class);
+        $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
+        $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+
+        // 1. Definimos la consulta de PRODUCTOS
+    $productsQuery = DB::table('products')
+        ->select([
+            'products.id',
+            'products.name',
+            'products.sale_price',
+            DB::raw("ROUND(products.sale_price * {$tasaBs}, 2) as price_bs"),
+            DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
+            'products.active_ingredient',
+            'products.laboratory_id',                          
+            'products.group_id',
+            'laboratories.name as laboratory_name', // Join manual para evitar el 'with' que rompe el union
+            DB::raw("'product' as item_type"), // Diferenciador
+            DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
+        ])
+        ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+        ->whereNull('products.deleted_at');
+
+    // 2. Definimos la consulta de PACKS
+    $packsQuery = DB::table('product_packs')
+        ->select([
+            'product_packs.id',
+            'product_packs.name',
+            'product_packs.total_price as sale_price',
+            DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
+            DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
+            DB::raw("'' as active_ingredient"), // Los packs no suelen tener este campo, lo enviamos vacío
+            DB::raw('NULL as laboratory_id'),
+            DB::raw('NULL as group_id'),
+            DB::raw("'Pack Promocional' as laboratory_name"),
+            DB::raw("'pack' as item_type"), // Diferenciador
+            DB::raw('999 as valid_stock_sum') // Stock ficticio o lógica de stock de packs
+        ])
+        ->whereNull('product_packs.max_sale_date');
+
+    // 3. Unificamos
+    return $productsQuery->union($packsQuery);
+
+       /* return Product::query()->select(
             'products.*'
         )
             ->with([
@@ -100,11 +257,10 @@ class OrderQueryService
                 'origin',
                 'group',
             ])
-            ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));
-    }
+            ->addSelect(DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'));*/
+   /* }*/
 
-
-    private function applyFiltersProduct(Builder $query, array $filters): Builder
+   /* private function applyFiltersProduct(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
@@ -158,9 +314,96 @@ class OrderQueryService
         }
 
         return $query;
+    }*/
+
+        private function applyFiltersProduct($query, array $filters)
+{
+    if (!empty($filters['q'])) {
+        $searchTerm = $filters['q'];
+        $isStrictSearch = $filters['isStrictSearch'] ?? false;
+
+        $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+            if ($isStrictSearch) {
+                $subQuery->where('products.name', 'like', "%{$searchTerm}%")
+                         ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
+            } else {
+                $words = explode(' ', $searchTerm);
+                foreach ($words as $word) {
+                    $subQuery->where(function ($wordQuery) use ($word) {
+                        $wordQuery->where('products.name', 'like', "%{$word}%")
+                                  ->orWhere('products.active_ingredient', 'like', "%{$word}%")
+                                  // Como usamos UNION, laboratory_name ya debe venir calculado en el select
+                                  ->orWhere('laboratories.name', 'like', "%{$word}%");
+                    });
+                }
+            }
+        });
     }
 
-    private function applySortingProduct(Builder $query, ?string $sortBy, string $orderBy): Builder
+    // Filtros que solo afectan a productos (evitamos que rompan los packs)
+    if (!empty($filters['laboratoryId'])) {
+        $query->where(function($q) use ($filters) {
+            $q->where('laboratory_id', $filters['laboratoryId'])
+              ->orWhere('item_type', 'pack'); // Permitimos que los packs sigan pasando
+        });
+    }
+
+    // Lógica de Stock
+    $hasStock = $filters['hasStock'] ?? null;
+    if ($hasStock === true) {
+        $query->where('valid_stock_sum', '>', 0);
+    } elseif ($hasStock === false) {
+        $query->where('valid_stock_sum', '<=', 0);
+    }
+
+    if (!empty($filters['groupId'])) {
+    $query->where(function($q) use ($filters) {
+        $q->where('group_id', $filters['groupId']);
+          // Si quieres que los packs desaparezcan al filtrar grupos, quita la línea de abajo
+          //->orWhere('item_type', 'pack'); 
+    });
+}
+
+    return $query;
+}
+
+private function applySortingProduct($query, ?string $sortBy, string $orderBy)
+{
+    // Si no hay orden especificado, ordenamos por el nombre normalizado
+    if (empty($sortBy)) {
+        return $query->orderBy('name', 'asc');
+    }
+
+    switch ($sortBy) {
+        case 'laboratory.name':
+            return $query->orderBy('laboratory_name', $orderBy);
+        case 'valid_stock':
+        case 'lots_sum_quantity':
+        case 'valid_stock_sum':
+            return $query->orderBy('valid_stock_sum', $orderBy);
+        case 'name':
+            return $query->orderBy($sortBy, $orderBy);
+        case 'sale_price':
+        case 'price':
+            return $query->orderBy('sale_price', $orderBy);
+        case 'sales_average':
+            return $query->orderBy('sales_average', $orderBy);
+        case 'next_expiration':
+            return $query->orderBy('next_expiration', $orderBy);
+            /**
+             * Nota: Para los packs, este valor será NULL o muy lejano.
+             * El ordenamiento funcionará basándose en el alias que definas en el select
+             * si decides agregar el vencimiento al UNION.
+             */
+            return $query->orderBy('name', $orderBy); // Opcional: fallback por nombre
+
+        default:
+            // Intentamos ordenar por la columna directa si existe en el resultado unificado
+            return $query->orderBy('name', 'asc');
+    }
+}
+
+ /*   private function applySortingProduct(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         if (empty($sortBy)) {
             return $query->orderBy('products.name', 'asc');
@@ -191,11 +434,12 @@ class OrderQueryService
         }
 
         return $query;
-    }
+    }*/
 
-    public function getFilteredQueryProduct(Request $request): Builder
+    public function getFilteredQueryProduct(Request $request): QueryBuilder
     {
-        $query = $this->getBaseQueryProduct();
+
+      //  $query = $this->getBaseQueryProduct();
 
         $filters = [
             'q' => $request->q,
@@ -206,7 +450,9 @@ class OrderQueryService
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
-        $this->applyFiltersProduct($query, $filters);
+        $query = $this->getBaseQueryProduct($filters);
+
+        //$this->applyFiltersProduct($query, $filters);
         $this->applySortingProduct($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;

@@ -68,6 +68,8 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
 const getItemPriceByCurrency = (item, currency) => {
+  console.log('Hola ticket');
+  console.log(item);
   const taxRate = item.taxRate || 0;
   let basePrice = 0;
   if (currency === "BS") {
@@ -253,16 +255,18 @@ onMounted(() => {
         <div v-for="item in orderProducts" :key="item.id" class="ticket-item">
           <span class="ticket-item-qty">{{ item.selectedQuantity }}x</span>
           <span class="ticket-item-name">{{ item.title }}</span>
-          <span class="ticket-item-price">
-            {{
-              formatCurrency(
-                getItemPriceByCurrency(item, selectedCurrency) *
-                  item.selectedQuantity,
-                selectedCurrency
-              )
-            }}
-          </span>
+       <span 
+        v-if="activeDiscountDisplay && item.discount_type !== 'expiration'" 
+        class="text-caption text-decoration-line-through text-error"
+        style="font-size:0.65rem; color: #ff5252; line-height: 1;"
+      >
+        {{ formatCurrency(item.price_before_discount, selectedCurrency) }}
+      </span>
+      <span class="ticket-item-price" style="font-weight: bold;">
+        {{ formatCurrency(getItemPriceByCurrency(item, selectedCurrency), selectedCurrency) }}
+      </span>
         </div>
+
         <hr />
 
         <div

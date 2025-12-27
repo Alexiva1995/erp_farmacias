@@ -101,7 +101,7 @@ watch(
 </script>
 
 <template>
-  <VCard>
+  <VCard class='mt-6'>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -112,11 +112,40 @@ watch(
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.products_count="{ item }">
-        <VChip variant="outlined" color="primary" size="small">
+     <!-- <template #item.products_count="{ item }">
+         <VChip variant="outlined" color="primary" size="small">
           {{ item.pack_config ? Object.keys(item.pack_config).length : 0 }}
         </VChip>
-      </template>
+      </template>-->
+
+<template #item.products_count="{ item }">
+  <div class="d-flex flex-column gap-1 py-1">
+    <template v-if="item.products_info && item.products_info.length > 0">
+      <span 
+        v-for="(prod, index) in item.products_info" 
+        :key="index"
+        class="text-caption text-grey-darken-1 font-weight-medium"
+      >
+       ({{ prod.product_name}}
+        <span v-if="prod.product_info" class="text-sm text-disabled">
+          <template v-if="prod.product_info.laboratory">
+            &nbsp;-&nbsp;{{ prod.product_info.laboratory }}
+          </template>
+          <template v-if="prod.product_info.laboratory && prod.product_info.active_ingredient">
+            &nbsp;-&nbsp;
+          </template>
+          <template v-if="prod.product_info.active_ingredient">
+            {{prod.product_info.active_ingredient}}
+          </template>)
+        </span>
+      </span>
+    </template>
+    
+    <span v-else class="text-caption text-grey-lighten-1">
+      Sin productos
+    </span>
+  </div>
+</template>
 
       <template #item.total_price="{ item }">
         <span class="font-weight-bold">
