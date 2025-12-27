@@ -11,7 +11,16 @@ export default [
     children: [
       {
         title: 'Productos',
-        to: 'inventory-products',
+        children: [
+          {
+            title: 'Listado',
+            to: 'inventory-products',
+        },
+        {
+          title: 'Código de barras',
+          to: 'inventory-barcodes',
+        }
+        ],
       },
       {
         title: 'Grupos de Productos',
