@@ -26,6 +26,7 @@ const loadingLaboratories = ref(false);
 const selectedLaboratoryLots = ref(null);
 const startDateLots = ref(null);
 const endDateLots = ref(null);
+const isStrictSearchLots = ref(false);
 
 const allProducts = ref([]);
 const loadingAllProducts = ref(false);
@@ -68,9 +69,10 @@ const fetchLots = async () => {
     laboratory_id: selectedLaboratoryLots.value,
     start_date: startDateLots.value,
     end_date: endDateLots.value,
+    isStrictSearch: isStrictSearchLots.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "" || params[key] === false) && delete params[key]
   );
   try {
     const { data } = await axios.get("/products/expirations", { params });
@@ -123,52 +125,7 @@ const handleExpireLot = async (lotToExpire) => {
   }
 };
 
-const handleApplyDiscount = async (item) => {
-  try {
-    toast.info("Funcionalidad de descuento en desarrollo...");
-  } catch (error) {
-    console.error("Error al aplicar el descuento:", error);
-    toast.error("No se pudo aplicar el descuento.");
-  }
-};
 
-const handleApplyOfferSelected = async () => {
-  const selectedCount = selectedLots.value.length;
-  if (selectedCount === 0) {
-    toast.info("Por favor, selecciona al menos un lote.");
-    return;
-  }
-
-  const result = await Swal.fire({
-    title: `¿Estás seguro de aplicar esta oferta?`,
-    text: `Se aplicará la oferta a ${selectedCount} lotes seleccionados.`,
-    icon: "question",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Sí, aplicar oferta",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    toast.info("Funcionalidad de ofertas masivas en desarrollo...");
-  }
-};
 
 const handleExpireSelected = async () => {
   const selectedCount = selectedLots.value.length;
@@ -229,6 +186,7 @@ const handleClearFiltersLots = () => {
   selectedLaboratoryLots.value = null;
   startDateLots.value = null;
   endDateLots.value = null;
+  isStrictSearchLots.value = false;
 };
 
 const isDetailViewVisible = ref(false);
@@ -551,6 +509,7 @@ watch(
     selectedLaboratoryLots,
     startDateLots,
     endDateLots,
+    isStrictSearchLots,
   ],
   () => {
     clearTimeout(debounceTimerLots);
@@ -560,7 +519,7 @@ watch(
 );
 
 watch(
-  [searchQueryLots, selectedLaboratoryLots, startDateLots, endDateLots],
+  [searchQueryLots, selectedLaboratoryLots, startDateLots, endDateLots, isStrictSearchLots],
   () => {
     pageLots.value = 1;
   }
@@ -608,12 +567,12 @@ const formatCurrency = (value) => {
         v-model:selectedLaboratory="selectedLaboratoryLots"
         v-model:startDate="startDateLots"
         v-model:endDate="endDateLots"
+        v-model:isStrictSearch="isStrictSearchLots"
         :laboratories="laboratories"
         :loading="loadingLaboratories"
         :selected-lots="selectedLots"
         @clear="handleClearFiltersLots"
         @expire-selected="handleExpireSelected"
-        @apply-offer-selected="handleApplyOfferSelected"
       />
 
       <VCard>
@@ -635,7 +594,6 @@ const formatCurrency = (value) => {
             :items-per-page="itemsPerPageLots"
             :page="pageLots"
             @update:options="updateTableOptionsLots"
-            @apply-discount="handleApplyDiscount"
             @expire-lot="handleExpireLot"
           />
         </VCardText>
@@ -650,14 +608,19 @@ const formatCurrency = (value) => {
           <h4 class="text-h4 text-capitalize">
             {{ viewTitle }}
           </h4>
-          <VBtn
-            v-if="isDetailViewVisible"
-            variant="outlined"
-            prepend-icon="tabler-arrow-left"
-            @click="showSummaryView"
-          >
-            Volver a Resúmenes
-          </VBtn>
+          <VTooltip text="Volver a Resúmenes" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                v-if="isDetailViewVisible"
+                color="primary"
+                size="large"
+                @click="showSummaryView"
+              >
+                <VIcon icon="tabler-arrow-left" size="24" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </VCardTitle>
 
         <VCardText class="pa-0">
@@ -690,6 +653,7 @@ const formatCurrency = (value) => {
                   <template #activator="{ props: tooltipProps }">
                     <IconBtn
                       v-bind="tooltipProps"
+                      color="info"
                       @click="showDetailView(item.month)"
                     >
                       <VIcon icon="tabler-eye" />
@@ -700,6 +664,7 @@ const formatCurrency = (value) => {
                   <template #activator="{ props: tooltipProps }">
                     <div v-bind="tooltipProps" class="d-inline-block">
                       <IconBtn
+                        color="primary"
                         :disabled="item.donation_count === 0"
                         @click="handlePrintDonation(item.month)"
                       >
@@ -720,12 +685,13 @@ const formatCurrency = (value) => {
                         indeterminate
                         size="20"
                         width="2"
-                        color="primary"
+                        color="warning"
                         class="mt-2"
                       />
 
                       <IconBtn
                         v-else
+                        color="warning"
                         :disabled="item.has_price_adjustment"
                         @click="handlePriceAdjustmentExpired(item.month)"
                       >

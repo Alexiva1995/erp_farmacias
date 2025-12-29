@@ -30,9 +30,10 @@ export function generateDonationPDF(donationData) {
   doc.setFontSize(11);
   doc.text('SEÑORES:', 15, señoresYPosition);
   doc.setFont('helvetica', 'bold');
-  doc.text(institution.toUpperCase(), 15, señoresYPosition);
+  const institutionYPosition = señoresYPosition + 5;
+  doc.text(institution.toUpperCase(), 15, institutionYPosition);
 
-  const bodyYPosition = señoresYPosition + 15;
+  const bodyYPosition = institutionYPosition + 10;
   doc.setFont('helvetica', 'normal');
   const bodyText = `Reciba un saludo cordial de parte de la FARMACIA BARRIO SUCRE 2024 C.A J-505406957, por medio del presente expreso mi voluntad de donar a favor ${institution.toUpperCase()} siguientes medicamentos detallados en la lista adjunta, que beneficiaría a los pacientes o familiares de dicha institución.`;
   const splitBody = doc.splitTextToSize(bodyText, pageWidth - 30);

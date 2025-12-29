@@ -1,5 +1,4 @@
 <script setup>
-import Swal from "sweetalert2";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -32,13 +31,18 @@ const props = defineProps({
 const emit = defineEmits([
   "update:modelValue",
   "update:options",
-  "apply-discount",
   "expire-lot",
 ]);
 
 const headers = [
   { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product.name", sortable: true },
+  { 
+    title: "Laboratorio", 
+    key: "laboratory_name", 
+    sortable: true,
+    value: (item) => item.product?.laboratory?.name || "—"
+  },
   { title: "Nº Lote", key: "lot_number", sortable: false },
   { title: "Exp.", key: "expiration_date", sortable: true },
   { title: "Stock", key: "quantity", sortable: true },
@@ -54,38 +58,6 @@ const selected = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
 });
-
-const handleApplyDiscount = async (item) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `Vas a aplicar un descuento al lote Nº ${item.lot_number} del producto "${item.product.name}".`,
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Confirmar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    emit("apply-discount", item);
-  }
-};
 </script>
 
 <template>
@@ -106,7 +78,7 @@ const handleApplyDiscount = async (item) => {
       <template #item.product.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <VAvatar
-            v-if="item.product.photo_url"
+            v-if="item.product?.photo_url"
             size="38"
             variant="tonal"
             rounded
@@ -114,13 +86,17 @@ const handleApplyDiscount = async (item) => {
           />
           <div class="d-flex flex-column">
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{
-              item.product.name
+              item.product?.name?.toUpperCase() || ""
             }}</span>
             <span class="text-sm text-disabled">{{
-              item.product.active_ingredient
+              item.product?.active_ingredient || ""
             }}</span>
           </div>
         </div>
+      </template>
+
+      <template #item.laboratory_name="{ item }">
+        <span>{{ item.product?.laboratory?.name?.toUpperCase() || "—" }}</span>
       </template>
 
       <template #item.lot_number="{ item }">
@@ -138,22 +114,16 @@ const handleApplyDiscount = async (item) => {
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip location="top">
+        <VTooltip location="top" text="Marcar como Caducado">
           <template #activator="{ props: tooltipProps }">
-            <IconBtn v-bind="tooltipProps" @click="handleApplyDiscount(item)">
-              <VIcon icon="tabler-percentage" />
-            </IconBtn>
-          </template>
-          <span>Aplicar Descuento</span>
-        </VTooltip>
-
-        <VTooltip location="top">
-          <template #activator="{ props: tooltipProps }">
-            <IconBtn v-bind="tooltipProps" @click="emit('expire-lot', item)">
+            <IconBtn
+              v-bind="tooltipProps"
+              color="error"
+              @click="emit('expire-lot', item)"
+            >
               <VIcon icon="tabler-calendar-off" />
             </IconBtn>
           </template>
-          <span>Marcar como Caducado</span>
         </VTooltip>
       </template>
     </VDataTableServer>

@@ -91,12 +91,18 @@ const isFormValid = computed(() => {
 </script>
 
 <template>
-  <VDialog v-model="isVisible" max-width="900" persistent scrollable>
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between">
+  <VDialog
+    v-model="isVisible"
+    max-width="1000px"
+    persistent
+    :scrollable="true"
+    content-class="d-flex"
+  >
+    <VCard class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-6">
         <div>
-          <h4 class="text-h4 mb-1">Reajustar Precios</h4>
-          <p class="text-subtitle-1 text-medium-emphasis mb-0">
+          <span class="text-h5 font-weight-bold">Reajustar Precios</span>
+          <p class="text-subtitle-1 text-medium-emphasis mb-0 mt-1">
             {{
               monthName
                 ? `Productos caducados - ${monthName}`
@@ -104,16 +110,17 @@ const isFormValid = computed(() => {
             }}
           </p>
         </div>
-        <VBtn variant="text" icon size="small" @click="isVisible = false">
+        <VSpacer />
+        <VBtn icon variant="text" @click="isVisible = false">
           <VIcon icon="tabler-x" />
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="pa-6">
-        <div class="mb-6">
-          <h5 class="text-h5 mb-4">Productos a Excluir del Reajuste</h5>
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+        <div class="mb-8">
+          <p class="text-h6 font-weight-medium mb-1">Productos a Excluir del Reajuste</p>
           <p class="text-body-2 text-medium-emphasis mb-4">
             Selecciona los productos que NO recibirán el reajuste de precio
           </p>
@@ -127,8 +134,9 @@ const isFormValid = computed(() => {
                 item-value="id"
                 return-object
                 label="Buscar producto"
-                placeholder="Escriba para buscar..."
+                placeholder="Escribe para buscar..."
                 variant="outlined"
+                density="comfortable"
                 clearable
                 no-data-text="No se encontraron productos"
                 :custom-filter="() => true"
@@ -148,11 +156,13 @@ const isFormValid = computed(() => {
             </VCol>
             <VCol cols="12" md="3">
               <VBtn
-                color="primary"
+                color="success"
                 variant="flat"
                 @click="addProductToExclusions"
                 :disabled="!selectedProductForExclusion"
                 block
+                size="large"
+                prepend-icon="tabler-plus"
               >
                 Agregar
               </VBtn>
@@ -160,11 +170,16 @@ const isFormValid = computed(() => {
           </VRow>
         </div>
 
+        <VDivider class="my-8" />
+
         <div>
-          <div class="d-flex align-center justify-space-between mb-4">
-            <h5 class="text-h5">
+          <div class="mb-4">
+            <p class="text-h6 font-weight-medium mb-1">
               Productos Excluidos ({{ excludedProducts.length }})
-            </h5>
+            </p>
+            <p class="text-body-2 text-medium-emphasis">
+              Lista de productos que no recibirán el reajuste de precio
+            </p>
           </div>
 
           <div v-if="excludedProducts.length === 0" class="text-center py-8">
@@ -181,26 +196,16 @@ const isFormValid = computed(() => {
             </p>
           </div>
 
-          <VDataTable
-            v-else
-            :headers="headers"
-            :items="excludedProducts"
-            item-value="id"
-            class="text-no-wrap"
-            hide-default-footer
-          >
-            <template #item.name="{ item }">
-              <div class="d-flex align-center gap-x-3">
-                <VAvatar
-                  v-if="item.photo_url"
-                  size="32"
-                  variant="tonal"
-                  rounded
-                  :image="item.photo_url"
-                />
-                <VAvatar v-else size="32" variant="tonal" rounded>
-                  <VIcon icon="tabler-pill" />
-                </VAvatar>
+          <VCard variant="outlined" v-else class="overflow-hidden">
+            <VDataTable
+              :headers="headers"
+              :items="excludedProducts"
+              item-value="id"
+              density="comfortable"
+              class="rounded-lg"
+              hide-default-footer
+            >
+              <template #item.name="{ item }">
                 <div class="d-flex flex-column">
                   <span class="text-body-2 font-weight-medium">
                     {{ item.name || "Producto sin nombre" }}
@@ -209,37 +214,35 @@ const isFormValid = computed(() => {
                     {{ item.active_ingredient || "N/A" }}
                   </span>
                 </div>
-              </div>
-            </template>
+              </template>
 
-            <template #item.laboratory.name="{ item }">
-              <span class="font-weight-medium">
-                {{ item.laboratory?.name || "N/A" }}
-              </span>
-            </template>
+              <template #item["laboratory.name"]="{ item }">
+                <span class="font-weight-medium">
+                  {{ item.laboratory?.name || "N/A" }}
+                </span>
+              </template>
 
-            <template #item.unit_cost="{ item }">
-              <span class="font-weight-medium">
-                {{ formatCurrency(item.unit_cost || 0) }}
-              </span>
-            </template>
+              <template #item.unit_cost="{ item }">
+                <span class="font-weight-medium">
+                  {{ formatCurrency(item.unit_cost || 0) }}
+                </span>
+              </template>
 
-            <template #item.actions="{ item }">
-              <VTooltip text="Remover de exclusiones">
-                <template #activator="{ props: tooltipProps }">
-                  <IconBtn
-                    v-bind="tooltipProps"
-                    size="small"
-                    color="error"
-                    variant="text"
-                    @click="removeProductFromExclusions(item.id)"
-                  >
-                    <VIcon icon="tabler-trash" size="20" />
-                  </IconBtn>
-                </template>
-              </VTooltip>
-            </template>
-          </VDataTable>
+              <template #item.actions="{ item }">
+                <VTooltip text="Eliminar de exclusiones" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <IconBtn
+                      v-bind="tooltipProps"
+                      color="error"
+                      @click="removeProductFromExclusions(item.id)"
+                    >
+                      <VIcon icon="tabler-trash" />
+                    </IconBtn>
+                  </template>
+                </VTooltip>
+              </template>
+            </VDataTable>
+          </VCard>
         </div>
       </VCardText>
 
@@ -247,9 +250,11 @@ const isFormValid = computed(() => {
 
       <VCardActions class="pa-6">
         <VBtn
+          color="secondary"
           variant="outlined"
           @click="isVisible = false"
-          class="flex-fill me-2"
+          class="flex-grow-1 w-0 mr-4"
+          size="large"
         >
           Cancelar
         </VBtn>
@@ -258,7 +263,8 @@ const isFormValid = computed(() => {
           variant="flat"
           :disabled="!isFormValid"
           @click="handleSubmit"
-          class="flex-fill ms-2"
+          class="flex-grow-1 w-0"
+          size="large"
         >
           Aplicar Reajuste
         </VBtn>

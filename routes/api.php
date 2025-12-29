@@ -284,6 +284,7 @@ Route::prefix("sales/report")->controller(TraceabilityController::class)->group(
     Route::get("/", "index")->name("api.sales.report.index");
     Route::get("/filterByPsychotropics", "filterByPsychotropics");
     Route::get("/export", "export")->name("api.sales.report.export");
+    Route::get("/movement/{movement}", "getMovementDetails")->name("api.sales.report.movement.details");
 });
 
 // Rutas de CRM

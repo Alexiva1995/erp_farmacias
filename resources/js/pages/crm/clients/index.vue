@@ -161,7 +161,7 @@ async function crear(data){
   try {
     let respuesApi=await axios.post("/crm/clients",data)
     if(respuesApi.status==200){
-        toast.success("El cliente se a guardado correctamente")
+        toast.success("El cliente se ha guardado correctamente")
         cerrarModal(false)
         await actualizarTabla()
     }
@@ -300,7 +300,7 @@ async function eliminarCliente(id){
   try {
     let respuesApi=await axios.delete(`/crm/clients/${id}`)
     if(respuesApi.status==200){
-        toast.success("El cliente se a eliminado correctamente")
+        toast.success("El cliente se ha eliminado correctamente")
         cerrarModal(false)
         await actualizarTabla()
     }

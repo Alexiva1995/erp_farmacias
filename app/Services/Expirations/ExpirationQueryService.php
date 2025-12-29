@@ -36,16 +36,40 @@ class ExpirationQueryService
     private function applyFilters(Builder $query, Request $request): Builder
     {
         if ($request->filled('q')) {
-            $searchTerm = "%{$request->q}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('lot_number', 'like', $searchTerm)
-                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
-                        $productQuery->where('name', 'like', $searchTerm)
-                            ->orWhere('active_ingredient', 'like', $searchTerm)
-                            ->orWhere('barcode', 'like', $searchTerm)
-                            ->orWhere('id', 'like', $searchTerm);
-                    });
-            });
+            $searchTerm = $request->q;
+            $isStrictSearch = filter_var($request->get('isStrictSearch', false), FILTER_VALIDATE_BOOLEAN);
+            
+            if ($isStrictSearch) {
+                $searchPattern = "%{$searchTerm}%";
+                $query->where(function ($subQuery) use ($searchPattern) {
+                    $subQuery->where('lot_number', 'like', $searchPattern)
+                        ->orWhereHas('product', function ($productQuery) use ($searchPattern) {
+                            $productQuery->where('name', 'like', $searchPattern)
+                                ->orWhere('active_ingredient', 'like', $searchPattern)
+                                ->orWhere('barcode', 'like', $searchPattern)
+                                ->orWhere('id', 'like', $searchPattern);
+                        });
+                });
+            } else {
+                $words = explode(' ', trim($searchTerm));
+                $query->where(function ($subQuery) use ($words) {
+                    foreach ($words as $word) {
+                        $wordPattern = "%{$word}%";
+                        $subQuery->where(function ($wordQuery) use ($wordPattern) {
+                            $wordQuery->where('lot_number', 'like', $wordPattern)
+                                ->orWhereHas('product', function ($productQuery) use ($wordPattern) {
+                                    $productQuery->where('name', 'like', $wordPattern)
+                                        ->orWhere('active_ingredient', 'like', $wordPattern)
+                                        ->orWhere('barcode', 'like', $wordPattern)
+                                        ->orWhere('id', 'like', $wordPattern)
+                                        ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                            $labQuery->where('name', 'like', $wordPattern);
+                                        });
+                                });
+                        });
+                    }
+                });
+            }
         }
 
         if ($request->filled('laboratory_id')) {

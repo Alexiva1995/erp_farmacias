@@ -1,4 +1,7 @@
 <script setup>
+import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
+import { ref } from "vue";
+
 const props = defineProps({
   sales: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -8,6 +11,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options"]);
+
+const showDetailsDialog = ref(false);
+const selectedMovementId = ref(null);
+
+const handleReferenceClick = (item) => {
+  selectedMovementId.value = item.id;
+  showDetailsDialog.value = true;
+};
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -83,14 +94,27 @@ const headers = [
         >
       </template>
       <template #item.reference="{ item }">
-        <a href="#">{{
-          item.order_id != null
-            ? item.order_id
-            : item.invoice_id != null
-            ? item.invoice_id
-            : item.id
-        }}</a>
+        <VBtn
+          variant="text"
+          color="primary"
+          size="small"
+          @click="handleReferenceClick(item)"
+        >
+          {{
+            item.order_id != null
+              ? item.order_id
+              : item.invoice_id != null
+              ? item.invoice_id
+              : item.id
+          }}
+          <VIcon icon="tabler-external-link" class="ms-1" size="16" />
+        </VBtn>
       </template>
     </VDataTableServer>
   </VCard>
+
+  <TraceabilityMovementDetailsDialog
+    v-model="showDetailsDialog"
+    :movement-id="selectedMovementId"
+  />
 </template>

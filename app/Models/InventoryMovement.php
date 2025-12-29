@@ -28,7 +28,7 @@ class InventoryMovement extends Model
                 'return' => 'Devolución',
                 'sale' => 'Venta',
                 'purchase' => 'Compra',
-                'adjustment' => 'Venta',
+                'adjustment' => 'Ajuste',
                 'loss' => 'Pérdida',
                 'expired' => 'Caducado',
                 default => ucfirst($value),

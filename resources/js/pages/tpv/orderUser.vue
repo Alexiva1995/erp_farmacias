@@ -894,7 +894,7 @@ const handleSaveNewClient = async (formData) => {
   try {
     let respuesApi = await axios.post("/crm/clients", formData);
     if (respuesApi.status == 200) {
-      toast.success("El cliente se a guardado correctamente");
+      toast.success("El cliente se ha guardado correctamente");
       handleCloseRegisterModal();
       addOrden(respuesApi.data.data.id);
     }
@@ -2456,7 +2456,7 @@ const handleExternalSort = async (sortData) => {
       sortBy: sortData.key,
       orderBy: sortData.order
     });
-    toast.success("Orden guardado como preferido");
+    toast.success("Orden guardada como preferida");
   } catch (error) {
     console.error("Error al guardar preferencia:", error);
   }

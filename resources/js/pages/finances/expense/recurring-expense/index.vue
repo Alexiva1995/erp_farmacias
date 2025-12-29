@@ -181,7 +181,7 @@ async function enviar(payload){
     statuModule.loadingApp=true
     let respuesApi=await axios.post("/finances/expenses/create-recurrence",payload)
     if(respuesApi.status==200 && payload.has_invoice==false){
-      toast.success("El gasto se a guardado correctamente")
+      toast.success("El gasto se ha guardado correctamente")
       cerrarModal(false)
       await actualizarTabla()
       statuModule.loadingApp=false

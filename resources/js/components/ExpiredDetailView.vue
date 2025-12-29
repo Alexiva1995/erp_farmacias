@@ -19,6 +19,12 @@ const emit = defineEmits([
 const headers = [
   { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product_name", sortable: false },
+  { 
+    title: "Laboratorio", 
+    key: "laboratory_name", 
+    sortable: false,
+    value: (item) => item.product?.laboratory?.name || "—"
+  },
   { title: "Lote", key: "lot_number", align: "center", sortable: false },
   { title: "Vencimiento", key: "expired_at", align: "center", sortable: true },
   {
@@ -59,13 +65,18 @@ const formatDate = (dateString) => {
 <template>
   <VCard>
     <VCardText class="d-flex justify-end pa-4">
-      <VBtn
-        variant="tonal"
-        :disabled="selected.length === 0"
-        @click="emit('generate-donation')"
-      >
-        Generar Donación ({{ selected.length }})
-      </VBtn>
+      <VTooltip text="Generar Donación" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <IconBtn
+            v-bind="tooltipProps"
+            color="success"
+            :disabled="selected.length === 0"
+            @click="emit('generate-donation')"
+          >
+            <VIcon icon="tabler-gift" />
+          </IconBtn>
+        </template>
+      </VTooltip>
     </VCardText>
 
     <VDivider />
@@ -87,7 +98,7 @@ const formatDate = (dateString) => {
         <div class="d-flex align-center">
           <div class="d-flex flex-column">
             <span class="text-body-1 font-weight-medium">{{
-              item.product_name
+              item.product_name?.toUpperCase() || ""
             }}</span>
             <span v-if="item.product" class="text-sm text-disabled">{{
               item.product.active_ingredient
@@ -95,11 +106,17 @@ const formatDate = (dateString) => {
           </div>
         </div>
       </template>
+
+      <template #item.laboratory_name="{ item }">
+        <span>{{ item.product?.laboratory?.name || "—" }}</span>
+      </template>
+
       <template #item.expired_at="{ item }">
         <span>{{ formatDate(item.expired_at) }}</span>
       </template>
+
       <template #item.total_lost_value="{ item }">
-        <span>{{ formatCurrency(item.total_lost_value) }}</span>
+        <span class="font-weight-medium">{{ formatCurrency(item.total_lost_value) }}</span>
       </template>
     </VDataTableServer>
   </VCard>

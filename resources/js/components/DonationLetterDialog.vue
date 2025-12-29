@@ -20,7 +20,6 @@ watch(
       donationProducts.value = JSON.parse(
         JSON.stringify(props.initialProducts)
       );
-
       institutionName.value = "";
     }
   }
@@ -28,6 +27,12 @@ watch(
 
 const donationHeaders = [
   { title: "Producto", key: "product_name" },
+  { 
+    title: "Laboratorio", 
+    key: "laboratory_name", 
+    sortable: false,
+    value: (item) => item.product?.laboratory?.name || "—"
+  },
   { title: "Unds.", key: "expired_quantity", align: "end" },
   { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
@@ -64,54 +69,82 @@ const closeDialog = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="900px"
     persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard :loading="props.loading">
-      <VCardTitle class="d-flex align-center">
-        <span>Generar Carta de Donativo</span>
+    <VCard class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-6">
+        <span class="text-h5 font-weight-bold">Generar Carta de Donación</span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
+
       <VDivider />
-      <VCardText class="py-6">
-        <AppTextField
-          v-model="institutionName"
-          label="Nombre de la Institución"
-          class="mb-6"
-        />
-        <p class="font-weight-medium mb-2">Productos a donar:</p>
+
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+        <div class="mb-6">
+          <p class="text-h6 font-weight-medium mb-1">Información de la Institución</p>
+          <p class="text-body-2 text-medium-emphasis mb-4">Nombre de la institución que recibirá la donación</p>
+          <AppTextField
+            v-model="institutionName"
+            label="Nombre de la Institución"
+            variant="outlined"
+            density="comfortable"
+          />
+        </div>
+
+        <VDivider class="my-8" />
+
+        <div class="mb-4">
+          <p class="text-h6 font-weight-medium mb-1">Productos a Donar</p>
+          <p class="text-body-2 text-medium-emphasis">Lista de productos seleccionados para la donación</p>
+        </div>
+
         <VDataTable
           :headers="donationHeaders"
           :items="donationProducts"
-          density="compact"
-          class="mb-4"
-          height="300px"
-          fixed-header
+          density="comfortable"
+          class="rounded-lg"
           no-data-text="No hay productos seleccionados para donar."
         >
+          <template #item.product_name="{ item }">
+            <span class="font-weight-medium">{{ item.product_name?.toUpperCase() || "" }}</span>
+          </template>
+
+          <template #item.laboratory_name="{ item }">
+            <span>{{ item.product?.laboratory?.name || "—" }}</span>
+          </template>
+
           <template #item.actions="{ item }">
-            <VTooltip text="Descartar de la donación">
+            <VTooltip text="Descartar de la donación" location="top">
               <template #activator="{ props: tooltipProps }">
-                <IconBtn v-bind="tooltipProps" @click="discardProduct(item)">
-                  <VIcon icon="tabler-trash" color="error" />
+                <IconBtn
+                  v-bind="tooltipProps"
+                  color="error"
+                  @click="discardProduct(item)"
+                >
+                  <VIcon icon="tabler-trash" />
                 </IconBtn>
               </template>
             </VTooltip>
           </template>
-          <template #bottom></template>
         </VDataTable>
       </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
+
+      <VCardActions class="pa-6">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-fill me-2"
+          class="flex-grow-1 w-0 mr-4"
+          size="large"
         >
           Cancelar
         </VBtn>
@@ -119,7 +152,8 @@ const closeDialog = () => {
           color="primary"
           variant="flat"
           @click="handleGenerate"
-          class="flex-fill ms-2"
+          class="flex-grow-1 w-0"
+          size="large"
         >
           Generar Carta
         </VBtn>

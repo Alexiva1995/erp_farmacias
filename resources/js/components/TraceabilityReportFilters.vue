@@ -15,7 +15,7 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros del Reporte" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">

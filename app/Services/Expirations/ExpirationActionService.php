@@ -28,8 +28,16 @@ class ExpirationActionService
         DB::beginTransaction();
 
         try {
+            // Load product relationship if not already loaded
+            if (!$lot->relationLoaded('product')) {
+                $lot->load('product');
+            }
+
             $quantityToExpire = $lot->quantity;
-            $costPerUnit = $lot->unit_cost;
+            // Use product unit_cost if lot unit_cost is null or 0
+            $costPerUnit = $lot->unit_cost && $lot->unit_cost > 0 
+                ? $lot->unit_cost 
+                : ($lot->product->unit_cost ?? 0);
             $totalLostValue = $quantityToExpire * $costPerUnit;
 
             $lot->quantity = 0;

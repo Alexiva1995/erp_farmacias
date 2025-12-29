@@ -44,7 +44,7 @@ const verifyClientOrder = (identification) => {
   clientIdentification.value = identification;
   if (!clientIdentification.value) {
     toast.warning(
-      "Por favor, ingrese un número de identificación o N° de oden."
+      "Por favor, ingrese un número de identificación o N° de orden."
     );
     return;
   } else {

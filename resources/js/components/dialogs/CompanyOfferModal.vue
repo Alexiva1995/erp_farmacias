@@ -187,7 +187,7 @@ const onSave = async () => {
     const method = props.isEditing ? "put" : "post";
 
     const response = await axios[method](url, payload);
-    toast.success("La oferta se a guardado correctamente");
+    toast.success("La oferta se ha guardado correctamente");
     emit("saved");
     onCancel();
   } catch (error) {

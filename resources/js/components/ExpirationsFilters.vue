@@ -30,6 +30,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  isStrictSearch: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -37,9 +41,9 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:startDate",
   "update:endDate",
+  "update:isStrictSearch",
   "clear",
   "expire-selected",
-  "apply-offer-selected",
 ]);
 
 const searchQueryModel = computed({
@@ -62,6 +66,11 @@ const endDateModel = computed({
   set: (value) => emit("update:endDate", value),
 });
 
+const isStrictSearchModel = computed({
+  get: () => props.isStrictSearch,
+  set: (value) => emit("update:isStrictSearch", value),
+});
+
 const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 </script>
 
@@ -69,7 +78,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             v-model="searchQueryModel"
             placeholder="Buscar por Producto, Lote..."
@@ -77,7 +86,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             v-model="laboratoryModel"
             :items="props.laboratories"
@@ -90,7 +99,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="6">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             v-model="startDateModel"
             placeholder="Vencimiento Desde"
@@ -102,7 +111,8 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
             }"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="6">
+
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             v-model="endDateModel"
             placeholder="Vencimiento Hasta"
@@ -119,37 +129,58 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 
     <VDivider />
 
-    <VCardActions class="pa-4 px-6">
-      <div class="d-flex justify-space-between align-center w-100">
-        <!-- Botón de limpiar filtros -->
-        <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-          Limpiar Filtros
-        </VBtn>
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+        Limpiar Filtros
+      </VBtn>
 
-        <!-- Botones de acciones para productos seleccionados -->
-        <div v-if="hasSelectedLots" class="d-flex align-center gap-x-3">
-          <div class="text-body-2 text-medium-emphasis">
-            <span class="font-weight-medium">{{ selectedLots.length }}</span>
-            lote(s) seleccionado(s)
-          </div>
+      <div class="d-flex align-center gap-2">
+        <VCheckbox
+          v-model="isStrictSearchModel"
+          color="primary"
+          class="me-2"
+        >
+          <template #label>
+            <div class="d-flex align-center">
+              <VIcon icon="tabler-search" class="me-2" size="20" />
+              <span class="text-subtitle-1 font-weight-medium">
+                ¿Búsqueda Estricta?
+              </span>
+            </div>
+          </template>
+        </VCheckbox>
 
-          <VBtn
-            variant="tonal"
-            prepend-icon="tabler-percentage"
-            @click="emit('apply-offer-selected')"
-          >
-            Generar Oferta
-          </VBtn>
+        <VChip
+          v-if="isStrictSearchModel"
+          color="primary"
+          size="small"
+          class="ms-2"
+        >
+          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+          Modo Estricto Activo
+        </VChip>
+      </div>
 
-          <VBtn
-            variant="tonal"
-            color="warning"
-            prepend-icon="tabler-calendar-off"
-            @click="emit('expire-selected')"
-          >
-            Caducar Seleccionados
-          </VBtn>
+      <VSpacer />
+
+      <!-- Botones de acciones para productos seleccionados -->
+      <div v-if="hasSelectedLots" class="d-flex align-center gap-x-3">
+        <div class="text-body-2 text-medium-emphasis">
+          <span class="font-weight-medium">{{ props.selectedLots.length }}</span>
+          lote(s) seleccionado(s)
         </div>
+
+        <VTooltip text="Caducar Seleccionados" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <IconBtn
+              v-bind="tooltipProps"
+              color="error"
+              @click="emit('expire-selected')"
+            >
+              <VIcon icon="tabler-calendar-off" />
+            </IconBtn>
+          </template>
+        </VTooltip>
       </div>
     </VCardActions>
   </VCard>
