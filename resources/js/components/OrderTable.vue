@@ -133,7 +133,7 @@ const getPaymentMethodLabel = (methodValue) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn @click="handleView(item.id)">
+          <IconBtn @click="handleView(item.id)" color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
           <IconBtn @click="$emit('print-order', item.id)">

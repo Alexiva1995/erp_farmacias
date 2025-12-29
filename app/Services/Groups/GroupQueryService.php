@@ -62,6 +62,9 @@ class GroupQueryService
 
         if (in_array($sortBy, ['id', 'name'])) {
             $query->orderBy($sortBy, $orderBy);
+        } else {
+            // Si no se especifica sortBy, ordenar por nombre ascendente por defecto
+            $query->orderBy('name', 'asc');
         }
         return $query;
     }

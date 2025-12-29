@@ -393,6 +393,7 @@ const handleUpdateOptions = (newOptions) => {
         <IconBtn
           @click="handleViewGroupProducts(item)"
           v-if="item.item_type === 'product'"
+          color="info"
         >
           <VIcon icon="tabler-eye" />
         </IconBtn>

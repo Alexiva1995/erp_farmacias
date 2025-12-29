@@ -185,7 +185,7 @@ const viewCycleDetails = (cycleId) => {
                 icon="tabler-eye"
                 size="small"
                 variant="text"
-                color="primary"
+                color="info"
                 @click="viewCycleDetails(cycle.cycle_id)"
               />
             </template>

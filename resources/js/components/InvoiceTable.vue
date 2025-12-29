@@ -136,7 +136,7 @@ const processedInvoices = computed(() => {
           <div v-else-if="props.actionsMode === 'ordered'">
             <VTooltip text="Ver Detalles">
               <template #activator="{ props }">
-                <IconBtn v-bind="props" @click="emit('view-details', item)">
+                <IconBtn v-bind="props" @click="emit('view-details', item)" color="info">
                   <VIcon icon="tabler-eye" />
                 </IconBtn>
               </template>
@@ -156,6 +156,7 @@ const processedInvoices = computed(() => {
                 ><IconBtn
                   v-bind="props"
                   @click="emit('edit-invoice-form', item)"
+                  color="warning"
                   ><VIcon icon="tabler-edit" /></IconBtn></template
             ></VTooltip>
             <VTooltip text="Ver Productos"
@@ -168,6 +169,7 @@ const processedInvoices = computed(() => {
                 ><IconBtn
                   v-bind="props"
                   @click="emit('delete-invoice', item.id)"
+                  color="error"
                   ><VIcon icon="tabler-trash" /></IconBtn></template
             ></VTooltip>
           </div>

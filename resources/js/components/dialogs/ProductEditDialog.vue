@@ -97,7 +97,12 @@ watch(
   () => props.product,
   (newProduct) => {
     if (newProduct && Object.keys(newProduct).length > 0) {
-      formData.value = JSON.parse(JSON.stringify(newProduct));
+      const clonedProduct = JSON.parse(JSON.stringify(newProduct));
+      // Normalizar valores booleanos/números para los checkboxes
+      clonedProduct.iva = clonedProduct.iva ? 1 : 0;
+      clonedProduct.psychotropic = clonedProduct.psychotropic ? 1 : 0;
+      clonedProduct.is_colombian_origin = clonedProduct.is_colombian_origin ? 1 : 0;
+      formData.value = clonedProduct;
     } else {
       formData.value = {
         name: "",
@@ -177,14 +182,14 @@ const submitForm = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="1000px"
     persistent
     @update:model-value="closeDialog"
     :scrollable="true"
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
+      <VCardTitle class="d-flex align-center pa-6">
         <span class="text-h5 font-weight-bold">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
@@ -207,10 +212,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
-          <p class="text-h6 font-weight-medium mb-4">Datos Generales</p>
-          <VRow>
+          <div class="mb-6">
+            <p class="text-h6 font-weight-medium mb-1">Datos Generales</p>
+            <p class="text-body-2 text-medium-emphasis">Información básica del producto</p>
+          </div>
+          <VRow class="mb-6">
             <VCol cols="12" md="8">
               <VFileInput
                 v-model="imageFile"
@@ -220,6 +228,7 @@ const submitForm = () => {
                 prepend-icon="tabler-camera"
                 clearable
                 :error-messages="formErrors.photo_url"
+                density="comfortable"
               />
             </VCol>
             <VCol
@@ -230,19 +239,19 @@ const submitForm = () => {
             >
               <VImg
                 :src="imagePreviewUrl"
-                :width="150"
+                :width="180"
                 aspect-ratio="1"
                 class="border rounded"
               />
             </VCol>
           </VRow>
-          <VDivider class="my-4" />
-          <VRow>
+          <VRow class="mb-4">
             <VCol cols="12" md="6">
               <VTextField
                 v-model="formData.name"
                 label="Nombre"
                 variant="outlined"
+                density="comfortable"
                 :error-messages="formErrors.name"
               />
             </VCol>
@@ -251,11 +260,12 @@ const submitForm = () => {
                 v-model="formData.active_ingredient"
                 label="Principio Activo"
                 variant="outlined"
+                density="comfortable"
                 :error-messages="formErrors.active_ingredient"
               />
             </VCol>
           </VRow>
-          <VRow>
+          <VRow class="mb-4">
             <VCol cols="12" md="6">
               <VSelect
                 v-model="formData.laboratory_id"
@@ -264,6 +274,7 @@ const submitForm = () => {
                 item-title="name"
                 item-value="id"
                 variant="outlined"
+                density="comfortable"
                 clearable
                 :error-messages="formErrors.laboratory_id"
               />
@@ -275,12 +286,13 @@ const submitForm = () => {
                 type="number"
                 prefix="$"
                 variant="outlined"
+                density="comfortable"
                 :readonly="!authStore.isAdmin"
                 :error-messages="formErrors.unit_cost"
               />
             </VCol>
           </VRow>
-          <VRow>
+          <VRow class="mb-4">
             <VCol cols="12" md="6">
               <VSelect
                 v-model="formData.origin_id"
@@ -289,6 +301,7 @@ const submitForm = () => {
                 item-title="name"
                 item-value="id"
                 variant="outlined"
+                density="comfortable"
                 clearable
                 :error-messages="formErrors.origin_id"
               />
@@ -301,73 +314,81 @@ const submitForm = () => {
                 item-title="name"
                 item-value="id"
                 variant="outlined"
+                density="comfortable"
                 clearable
                 :error-messages="formErrors.category_id"
               />
             </VCol>
           </VRow>
-          <VRow>
+          <VRow class="mb-6">
             <VCol cols="12" md="6">
               <VTextField
                 v-model="formData.barcode"
                 label="Código de Barra"
                 variant="outlined"
+                density="comfortable"
                 :error-messages="formErrors.barcode"
               />
             </VCol>
             <VCol
               cols="12"
               md="6"
-              class="d-flex align-center flex-wrap gap-x-4"
+              class="d-flex align-center flex-wrap gap-4"
             >
               <VCheckbox
                 v-model="formData.iva"
-                label="Aplica IVA"
+                label="IVA"
                 :true-value="1"
                 :false-value="0"
+                density="comfortable"
               />
               <VCheckbox
                 v-model="formData.psychotropic"
                 label="Psicotrópico"
                 :true-value="1"
                 :false-value="0"
+                density="comfortable"
               />
               <VCheckbox
                 v-model="formData.is_colombian_origin"
-                label="P.Colombia"
+                label="Colombia"
                 :true-value="1"
                 :false-value="0"
+                density="comfortable"
               />
             </VCol>
           </VRow>
 
           <template v-if="!isNewProduct">
-            <VDivider class="my-6" />
-            <!-- se removio el color => #f5f5f5 Grupo de Productos por que en modo oscuro el fondo de componente tiene fondo blanco y desentona con el modo oscuro se ve igual de todas maneras si usas el modo blanco-->
-            <VSheet color="" variant="tonal" rounded="lg" class="pa-4">
-              <p class="text-h6 font-weight-medium mb-4">Grupo de Productos</p>
+            <VDivider class="my-8" />
+            <div class="mb-4">
+              <p class="text-h6 font-weight-medium mb-1">Grupo de Productos</p>
+              <p class="text-body-2 text-medium-emphasis">Asignar y gestionar grupos de productos relacionados</p>
+            </div>
+            <VSheet variant="tonal" rounded="lg" class="pa-6">
 
               <div
                 v-if="assignedGroupName"
-                class="d-flex align-center gap-4 mb-4"
+                class="d-flex align-center gap-4 mb-6"
               >
                 <span class="font-weight-medium">Grupo Asignado:</span>
-                <VChip color="primary" label>{{ assignedGroupName }}</VChip>
+                <VChip color="primary" label size="small">{{ assignedGroupName }}</VChip>
                 <VSpacer />
               </div>
 
-              <VRow align="center">
+              <VRow class="mb-4">
                 <VCol cols="12" md="9">
                   <VTextField
                     v-model="groupInput"
                     label="Nombre o ID del Grupo a Asignar"
                     variant="outlined"
+                    density="comfortable"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
                   />
                 </VCol>
-                <VCol cols="12" md="3">
-                  <VBtn color="primary" @click="assignGroup" block
+                <VCol cols="12" md="3" class="d-flex align-end">
+                  <VBtn color="primary" @click="assignGroup" block size="large"
                     >Asignar</VBtn
                   >
                 </VCol>
@@ -377,8 +398,8 @@ const submitForm = () => {
                 v-if="productsInGroup.length > 0"
                 :headers="groupProductsHeaders"
                 :items="productsInGroup"
-                density="compact"
-                class="mt-4 rounded-lg"
+                density="comfortable"
+                class="rounded-lg"
                 no-data-text="Ningún otro producto en este grupo."
               >
                 <template #item.lots="{ item }">
@@ -391,22 +412,18 @@ const submitForm = () => {
           <template
             v-if="!isNewProduct && formData.lots && formData.lots.length > 0"
           >
-            <VDivider class="my-6" />
+            <VDivider class="my-8" />
 
-            <!-- 1. Contenedor flexible para el título y el botón -->
-            <!-- 2. Botón de "Editar Lotes" que navega a la nueva ruta -->
-            <!-- <div class="d-flex align-center mb-4">
-              <p class="text-h6 font-weight-medium">Lotes del Producto</p>
-              <VSpacer />
-                <VBtn to="/lot/list" color="primary" prepend-icon="tabler-edit">
-                Editar Lotes
-              </VBtn>
-            </div> -->
+            <div class="mb-4">
+              <p class="text-h6 font-weight-medium mb-1">Lotes del Producto</p>
+              <p class="text-body-2 text-medium-emphasis">Inventario de lotes y fechas de expiración</p>
+            </div>
 
             <VDataTable
               :headers="lotHeaders"
               :items="formData.lots || []"
-              density="compact"
+              density="comfortable"
+              class="rounded-lg"
               no-data-text="Este producto no tiene lotes registrados."
             >
               <template #item.quantity="{ item }">
@@ -415,9 +432,6 @@ const submitForm = () => {
               <template #item.expiration_date="{ item }">
                 <span>{{ formatDate(item.expiration_date) }}</span>
               </template>
-
-              <!-- 3. Slot de acciones eliminado -->
-              <!-- <template #item.actions> ... </template> -->
             </VDataTable>
           </template>
         </VForm>
@@ -425,12 +439,14 @@ const submitForm = () => {
 
       <VDivider />
 
-      <!-- El VCardActions se mantiene igual, será el pie de página fijo -->
-      <VCardActions class="pa-4">
+      <VDivider />
+
+      <VCardActions class="pa-6">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
+          size="large"
           class="flex-grow-1 w-0 mr-4"
         >
           Cancelar
@@ -439,6 +455,7 @@ const submitForm = () => {
           color="primary"
           variant="flat"
           @click="submitForm"
+          size="large"
           class="flex-grow-1 w-0"
         >
           Guardar

@@ -144,11 +144,13 @@ const formatPrice = (price) => {
           <div class="d-flex flex-column">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 'text-primary': item.psychotropic == 1 }"
+              :class="{ 
+                'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+              }"
             >
               {{ item.name.toUpperCase() }}
-              <span v-if="item.iva == 1"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+              <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
             </span>
             <span class="text-sm text-disabled">{{
               item.active_ingredient
@@ -182,12 +184,13 @@ const formatPrice = (price) => {
 
       <template #item.actions="{ item }">
         <template v-if="mode === 'products'">
-          <IconBtn @click="emit('edit-product', item)">
+          <IconBtn @click="emit('edit-product', item)" color="warning">
             <VIcon icon="tabler-edit" />
           </IconBtn>
           <IconBtn
             @click="emit('delete-product', item.id)"
             v-if="authStore.isAdmin"
+            color="error"
           >
             <VIcon icon="tabler-trash" />
           </IconBtn>

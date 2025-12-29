@@ -108,11 +108,13 @@ const nextExpirationDate = (product) => {
           <div class="d-flex flex-column">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 'text-primary': item.psychotropic == 1 }"
+              :class="{ 
+                'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+              }"
             >
               {{ item.name.toUpperCase() }}
-              <span v-if="item.iva == 1"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+              <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
             </span>
             <span class="text-sm text-disabled">{{
               item.active_ingredient
@@ -166,7 +168,7 @@ const nextExpirationDate = (product) => {
             <VBtn icon="tabler-x" size="small" @click="cancelEdit" />
           </template>
           <template v-else>
-            <IconBtn @click="startEdit(item)">
+            <IconBtn @click="startEdit(item)" color="warning">
               <VIcon icon="tabler-edit" />
             </IconBtn>
           </template>

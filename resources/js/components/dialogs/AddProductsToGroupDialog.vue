@@ -1,8 +1,8 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref } from "vue";
-import QuotationFilters from "../QuotationFilters.vue";
+import { ref, onMounted, watch } from "vue";
+import ProductFilters from "../ProductFilters.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -22,11 +22,12 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-const barcodeSearchQuery = ref("");
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
+const startDate = ref(null);
+const endDate = ref(null);
 const isStrictSearch = ref(false);
 const isLoadingFilters = ref(false);
 
@@ -64,12 +65,14 @@ const fetchProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
   );
   try {
-    const response = await axios.get("/tpv/quotation", { params });
+    const response = await axios.get("/products", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
 
@@ -78,97 +81,11 @@ const fetchProducts = async () => {
         selectedProducts.value.add(product.id);
       }
     });
-
-    console.log(selectedProducts.value);
   } catch (error) {
     console.error("Hubo un error al obtener los productos:", error);
     toast.error("Error al obtener los productos.");
   } finally {
     loading.value = false;
-  }
-};
-
-const addProductToQuotationByBarcode = async (barcode) => {
-  try {
-    const response = await axios.get(`/barcode/${barcode}`);
-    const productDetails = response.data;
-    await addProductToQuotation({ productId: productDetails.id, quantity: 1 });
-  } catch (error) {
-    console.error(
-      "Error al agregar producto por código de barras:",
-      error.response ? error.response.data : error.message
-    );
-    toast.error(
-      "Producto no encontrado o error al agregar por código de barras."
-    );
-  }
-};
-
-const addProductToQuotation = async ({ productId, quantity }) => {
-  if (quantity <= 0) {
-    toast.error("La cantidad a agregar debe ser mayor que cero.");
-    return;
-  }
-
-  try {
-    const response = await axios.get(`/tpv/quotation/${productId}`);
-    const productDetails = response.data;
-    const availableQuantity = productDetails.valid_stock_sum;
-    if (quantity > availableQuantity) {
-      toast.error(
-        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`
-      );
-      return;
-    }
-
-    const existingItemIndex = quotationItems.value.findIndex(
-      (item) => item.id === productId
-    );
-    if (existingItemIndex !== -1) {
-      const currentSelectedQuantity =
-        quotationItems.value[existingItemIndex].selectedQuantity;
-      const newTotalSelectedQuantity = currentSelectedQuantity + quantity;
-
-      if (newTotalSelectedQuantity > availableQuantity) {
-        toast.warning(
-          `Ya se agrego la cantidad maxima disponible de "${productDetails.name}"`
-        );
-        quotationItems.value[existingItemIndex].selectedQuantity =
-          availableQuantity;
-      } else {
-        quotationItems.value[existingItemIndex].selectedQuantity =
-          newTotalSelectedQuantity;
-        toast.success(
-          `Cantidad de "${productDetails.name}" incrementada a ${newTotalSelectedQuantity}.`
-        );
-      }
-    } else {
-      const itemToAdd = {
-        id: productDetails.id,
-        title: productDetails.name,
-        active_ingredient: productDetails.active_ingredient,
-        itemCode: productDetails.barcode,
-        price: productDetails.sale_price,
-        price_bs: productDetails.price_bs,
-        price_cop: productDetails.price_cop,
-        availableQuantity: availableQuantity,
-        selectedQuantity: quantity,
-        laboratory: productDetails.laboratory
-          ? productDetails.laboratory.name
-          : "N/A",
-        taxRate: productDetails.iva == 1 ? 0.16 : 0,
-      };
-      quotationItems.value.push(itemToAdd);
-      toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
-    }
-  } catch (error) {
-    console.error(
-      "Error al obtener o agregar el producto a la cotización:",
-      error.response ? error.response.data : error.message
-    );
-    toast.error(
-      "Error al agregar el producto a la cotización. Inténtalo de nuevo."
-    );
   }
 };
 
@@ -190,6 +107,8 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    startDate,
+    endDate,
     isStrictSearch,
   ],
   () => {
@@ -200,24 +119,11 @@ watch(
 );
 
 watch(
-  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
+  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   }
 );
-
-watch(barcodeSearchQuery, (newValue) => {
-  clearTimeout(barcodeInputTimer);
-  if (!newValue) {
-    return;
-  }
-  if (newValue.length >= BARCODE_LENGTH_THRESHOLD) {
-    barcodeInputTimer = setTimeout(async () => {
-      await addProductToQuotationByBarcode(newValue);
-      barcodeSearchQuery.value = "";
-    }, 300);
-  }
-});
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -264,21 +170,13 @@ const submitForm = async () => {
     closeDialog();
   } catch (error) {
     console.log("Hubo un error al añadir los productos al grupo: ", error);
-    toast.error("Hubo un error al añadir los productos al gruopo");
+    toast.error("Hubo un error al añadir los productos al grupo");
   }
 };
 
 const closeDialog = () => {
   emit("update:modelValue", false);
   handleClearForm();
-};
-
-const getRowColor = (item) => {
-  const productId = item.item.id;
-
-  if (selectedProducts.value.has(productId)) {
-    return { class: "bg-primary" };
-  }
 };
 
 const handleClearSortOrder = () => {
@@ -291,14 +189,30 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
 
 const handleSort = (sortOptions) => {
-  sortBy.value = sortOptions.key;
-  orderBy.value = sortOptions.order;
+  if (sortOptions.key === undefined && sortOptions.order === undefined) {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  } else {
+    sortBy.value = sortOptions.key;
+    orderBy.value = sortOptions.order;
+  }
 };
+
+watch(
+  () => props.modelValue,
+  (isVisible) => {
+    if (isVisible) {
+      fetchProducts();
+    }
+  }
+);
 
 onMounted(() => {
   fetchSelectOptions();
@@ -309,14 +223,15 @@ onMounted(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    :scrollable="true"
-    max-width="900px"
+    max-width="1000px"
     persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold"> Añadir productos </span>
+    <VCard class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-6">
+        <span class="text-h5 font-weight-bold">Añadir productos al grupo</span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
@@ -325,19 +240,23 @@ onMounted(() => {
 
       <VDivider />
 
-      <VCardText>
-        <QuotationFilters
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+        <ProductFilters
           v-model:searchQuery="filterSearchQuery"
           v-model:selectedLaboratory="selectedLaboratory"
           v-model:selectedOrigin="selectedOrigin"
           v-model:stockStatusFilter="stockStatusFilter"
+          v-model:startDate="startDate"
+          v-model:endDate="endDate"
           v-model:isStrictSearch="isStrictSearch"
           :laboratories="laboratories"
           :origins="origins"
           :loading="isLoadingFilters"
+          mode="minimal"
+          :show-add-button="false"
+          :flat="true"
           @clear="handleClearFilters"
           @sort="handleSort"
-          @clear-sort="handleClearSortOrder"
         />
 
         <VDataTableServer
@@ -347,10 +266,7 @@ onMounted(() => {
           :items="products"
           :items-length="totalProduct"
           :loading="loading"
-          :row-props="getRowColor"
           class="text-no-wrap"
-          fixed-header
-          height="auto"
           @update:options="(options) => updateTableOptions(options)"
         >
           <template #item.id="{ item }">
@@ -359,10 +275,24 @@ onMounted(() => {
 
           <template #item.name="{ item }">
             <div class="d-flex align-center gap-x-4">
+              <VAvatar
+                v-if="item.photo_url"
+                size="38"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+              />
               <div class="d-flex flex-column">
-                <span class="text-body-1 font-weight-medium text-high-emphasis">
-                  {{ item.name }}</span
+                <span
+                  class="text-body-1 font-weight-medium text-high-emphasis"
+                  :class="{
+                    'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+                  }"
                 >
+                  {{ item.name.toUpperCase() }}
+                  <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                  <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                </span>
                 <span class="text-sm text-disabled">
                   {{ item.active_ingredient }}
                   {{ item.laboratory ? " - " + item.laboratory?.name : "" }}
@@ -372,30 +302,35 @@ onMounted(() => {
           </template>
 
           <template #item.actions="{ item }">
-            <IconBtn
-              :disabled="selectedProducts.has(item.id)"
-              @click="handleAddProduct(item)"
-            >
-              <VIcon icon="tabler-plus" />
-            </IconBtn>
-            <IconBtn
-              :disabled="!selectedProducts.has(item.id)"
-              @click="handleRemoveProduct(item)"
-            >
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
+            <div class="d-flex gap-2">
+              <IconBtn
+                :disabled="selectedProducts.has(item.id)"
+                @click="handleAddProduct(item)"
+                color="success"
+              >
+                <VIcon icon="tabler-plus" />
+              </IconBtn>
+              <IconBtn
+                :disabled="!selectedProducts.has(item.id)"
+                @click="handleRemoveProduct(item)"
+                color="error"
+              >
+                <VIcon icon="tabler-trash" />
+              </IconBtn>
+            </div>
           </template>
         </VDataTableServer>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-6">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1 w-0 mr-4"
+          size="large"
         >
           Cancelar
         </VBtn>
@@ -404,6 +339,7 @@ onMounted(() => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1 w-0"
+          size="large"
         >
           Guardar
         </VBtn>

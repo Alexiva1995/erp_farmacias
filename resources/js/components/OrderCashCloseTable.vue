@@ -136,7 +136,8 @@ const handleCancelled = (orderId) => {
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
           <IconBtn
-            @click="handleView(item.id)">
+            @click="handleView(item.id)"
+            color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
            <IconBtn

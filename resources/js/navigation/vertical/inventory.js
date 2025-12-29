@@ -23,6 +23,10 @@ export default [
         {
           title: 'Laboratorio',
           to: 'inventory-laboratory',
+        },
+        {
+          title: 'Origen',
+          to: 'inventory-origin',
         }
         ],
       },

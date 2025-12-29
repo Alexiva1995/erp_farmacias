@@ -85,7 +85,7 @@ const authStore = useAuthStore();
           >
             <VIcon icon="tabler-wallet"
           /></IconBtn>
-          <IconBtn @click="emit('view-order-modal', item)">
+          <IconBtn @click="emit('view-order-modal', item)" color="info">
             <VIcon icon="tabler-eye"
           /></IconBtn>
           <IconBtn @click="emit('print-order', item)">

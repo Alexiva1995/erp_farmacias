@@ -88,8 +88,8 @@ const confirmGenerateResignation = async (employee) => {
           v-if="user?.role_id !== 2 && user?.role_id !== 3"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-employee', item)">
-              <VIcon icon="tabler-pencil" />
+            <IconBtn v-bind="props" @click="emit('edit-employee', item)" color="warning">
+              <VIcon icon="tabler-edit" />
             </IconBtn>
           </template>
         </VTooltip>
@@ -99,7 +99,7 @@ const confirmGenerateResignation = async (employee) => {
           v-if="user?.role_id !== 2 && user?.role_id !== 3"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id">
+            <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id" color="info">
               <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
@@ -143,7 +143,7 @@ const confirmGenerateResignation = async (employee) => {
           v-if="user?.role_id == 1"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-employee', item.id)">
+            <IconBtn v-bind="props" @click="emit('delete-employee', item.id)" color="error">
               <VIcon icon="tabler-trash" />
             </IconBtn>
           </template>

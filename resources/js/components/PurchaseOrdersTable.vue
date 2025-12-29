@@ -106,7 +106,7 @@ const headers = [
         </VTooltip>
         <VTooltip text="Ver Orden de Compra" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)">
+            <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)" color="info">
               <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>

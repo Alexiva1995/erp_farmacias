@@ -268,7 +268,7 @@ const getStatusIcon = (status) => {
             </VCol>
             <VCol cols="12" md="2" class="d-flex align-center">
               <VBtn
-                color="primary"
+                color="success"
                 block
                 :disabled="!formData.new_activity_id || !formData.employee_id"
                 @click="handleAddActivity"
@@ -378,6 +378,7 @@ const getStatusIcon = (status) => {
                             <IconBtn
                               size="small"
                               @click="handleEditActivity(activity)"
+                              color="warning"
                             >
                               <VIcon icon="tabler-edit" size="20" />
                               <VTooltip activator="parent" location="top">

@@ -8,7 +8,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   productWithError: { type: [Number, null], default: null },
-  laboratories: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:options", "update-product"]);
@@ -30,6 +30,7 @@ const headers = [
     },
   },
   { title: "Exp.", key: "next_expiration", sortable: true },
+  { title: "Origen", key: "origin", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
@@ -37,7 +38,7 @@ const saveInlineEdit = async (product) => {
   try {
     emit("update-product", {
       id: product.id,
-      laboratory_id: editingValue.value,
+      origin_id: editingValue.value,
     });
   } catch (err) {
     console.error(err);
@@ -46,7 +47,7 @@ const saveInlineEdit = async (product) => {
 
 const startEdit = (product) => {
   editingProductId.value = product.id;
-  editingValue.value = product.laboratory_id || null;
+  editingValue.value = product.origin_id || null;
 };
 
 const cancelEdit = () => {
@@ -122,30 +123,7 @@ const nextExpirationDate = (product) => {
       </template>
 
       <template #item.laboratory="{ item }">
-        <template v-if="editingProductId === item.id">
-          <VAutocomplete
-            v-model="editingValue"
-            :items="props.laboratories"
-            item-title="name"
-            item-value="id"
-            density="compact"
-            variant="outlined"
-            style="width: 300px"
-            placeholder="Seleccionar laboratorio"
-            clearable
-            @keyup.enter="saveInlineEdit(item)"
-            autofocus
-            :error="props.productWithError === item.id"
-            :error-messages="
-              props.productWithError === item.id
-                ? 'Error al asignar laboratorio'
-                : ''
-            "
-          />
-        </template>
-        <template v-else>
-          {{ item.laboratory?.name || "—" }}
-        </template>
+        <span>{{ item.laboratory?.name || "—" }}</span>
       </template>
 
       <template #item.valid_stock="{ item }">
@@ -154,6 +132,33 @@ const nextExpirationDate = (product) => {
 
       <template #item.next_expiration="{ item }">
         <span>{{ nextExpirationDate(item) }}</span>
+      </template>
+
+      <template #item.origin="{ item }">
+        <template v-if="editingProductId === item.id">
+          <VAutocomplete
+            v-model="editingValue"
+            :items="props.origins"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            style="width: 300px"
+            placeholder="Seleccionar origen"
+            clearable
+            @keyup.enter="saveInlineEdit(item)"
+            autofocus
+            :error="props.productWithError === item.id"
+            :error-messages="
+              props.productWithError === item.id
+                ? 'Error al asignar origen'
+                : ''
+            "
+          />
+        </template>
+        <template v-else>
+          {{ item.origin?.name || "—" }}
+        </template>
       </template>
 
       <template #item.actions="{ item }">

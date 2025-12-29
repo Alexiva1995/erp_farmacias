@@ -42,16 +42,16 @@ const updateOptions = (options) => {
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex gap-1 justify-end">
-          <IconBtn @click="$emit('add-products', item)">
+          <IconBtn @click="$emit('add-products', item)" color="success">
             <VIcon icon="tabler-plus" />
           </IconBtn>
-          <IconBtn @click="$emit('show-group', item)">
+          <IconBtn @click="$emit('show-group', item)" color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
-          <IconBtn @click="$emit('edit-group', item)">
-            <VIcon icon="tabler-pencil" />
+          <IconBtn @click="$emit('edit-group', item)" color="warning">
+            <VIcon icon="tabler-edit" />
           </IconBtn>
-          <IconBtn @click="$emit('delete-group', item.id)">
+          <IconBtn @click="$emit('delete-group', item.id)" color="error">
             <VIcon icon="tabler-trash" />
           </IconBtn>
         </div>

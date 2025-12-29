@@ -50,7 +50,8 @@ const handleUpdateOptions = (options) => {
         <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
           <IconBtn
-             @click="emit('print-cash', item)">
+             @click="emit('print-cash', item)"
+             color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
           <IconBtn

@@ -39,6 +39,10 @@ class ProductQueryService
             $query->whereNull('laboratory_id');
         }
 
+        if (!empty($filters['null_origin'])) {
+            $query->whereNull('origin_id');
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -241,6 +245,30 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => $request->isStrictSearch,
             'null_laboratory' => true
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getProductsWithoutOriginQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'groupId' => $request->groupId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->hasStock,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => $request->isStrictSearch,
+            'null_origin' => true
         ];
 
         $this->applyFilters($query, $filters);

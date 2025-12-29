@@ -21,7 +21,7 @@ const handleClear = () => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="4">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
@@ -70,7 +70,7 @@ const handleClear = () => {
       <VSpacer />
 
       <VBtn
-        color="primary"
+        color="success"
         prepend-icon="tabler-plus"
         @click="emit('add-group')"
       >
