@@ -35,6 +35,10 @@ class ProductQueryService
             $query->whereNull('barcode');
         }
 
+        if (!empty($filters['null_laboratory'])) {
+            $query->whereNull('laboratory_id');
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = "%{$filters['q']}%";
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -213,6 +217,30 @@ class ProductQueryService
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
             'null_barcodes' => true
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getProductsWithoutLaboratoryQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'originId' => $request->originId,
+            'groupId' => $request->groupId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->hasStock,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => $request->isStrictSearch,
+            'null_laboratory' => true
         ];
 
         $this->applyFilters($query, $filters);

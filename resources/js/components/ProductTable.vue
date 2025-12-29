@@ -146,7 +146,7 @@ const formatPrice = (price) => {
               class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
             >
-              {{ item.name }}
+              {{ item.name.toUpperCase() }}
               <span v-if="item.iva == 1"> (G)</span>
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>

@@ -1,6 +1,6 @@
 <script setup>
 import ProductFilters from "@/components/ProductFilters.vue";
-import PendingProductsTable from "@/components/PendingProductsTable.vue";
+import ProductsWithoutLaboratoryTable from "@/components/ProductsWithoutLaboratoryTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -30,19 +30,19 @@ const categories = ref([]);
 
 const isLoadingFilters = ref(false);
 
-const handleUpdateProduct = async ({ id, barcode }) => {
+const handleUpdateProduct = async ({ id, laboratory_id }) => {
   if (productWithError.value === id) {
     productWithError.value = null;
   }
 
   try {
-    await axios.patch(`/products/pending/${id}`, { barcode });
-    toast.success("Se registró el código de barra en el producto");
+    await axios.patch(`/products/without-laboratory/${id}`, { laboratory_id });
+    toast.success("Se asignó el laboratorio al producto");
     await fetchProducts();
   } catch (err) {
     toast.error("Error al actualizar");
 
-    if (err.response.status === 422) {
+    if (err.response?.status === 422) {
       productWithError.value = id;
     }
   }
@@ -56,7 +56,6 @@ const fetchSelectOptions = async () => {
       axios.get("/origins"),
       axios.get("/categories"),
     ]);
-    console.log("laboratories response:", labResponse);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
@@ -72,7 +71,6 @@ const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
@@ -90,7 +88,7 @@ const fetchProducts = async () => {
   );
 
   try {
-    const response = await axios.get("/products/pending", { params });
+    const response = await axios.get("/products/without-laboratory", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -109,7 +107,6 @@ watch(
     sortBy,
     orderBy,
     searchQuery,
-    selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
     startDate,
@@ -126,7 +123,6 @@ watch(
 watch(
   [
     searchQuery,
-    selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
     startDate,
@@ -151,7 +147,6 @@ const updateTableOptions = (options) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
   startDate.value = null;
@@ -189,15 +184,17 @@ const handleSort = (sortOptions) => {
       @sort="handleSort"
     />
 
-    <PendingProductsTable
+    <ProductsWithoutLaboratoryTable
       :products="products"
       :loading="loading"
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
       :product-with-error="productWithError"
+      :laboratories="laboratories"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
     />
   </div>
 </template>
+
