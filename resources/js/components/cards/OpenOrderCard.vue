@@ -90,7 +90,7 @@ const props = defineProps({
   },
   globalDiscount: {
     type: Object,
-    default: () => null, 
+    default: () => null,
   },
 });
 
@@ -108,6 +108,7 @@ const emit = defineEmits([
   "doctor-discount-selected",
   "prescription-file-selected",
   "company-discount-selected",
+  "add-pack",
 ]);
 
 const discountOptions = computed(() => {
@@ -155,7 +156,7 @@ watch(
       selectedCompany.value = null;
     }
     if (newVal !== "Medico") {
-      selectedDoctor.value = null; 
+      selectedDoctor.value = null;
     }
   }
 );
@@ -222,8 +223,8 @@ const getDiscountFactor = (product) => {
     props.globalDiscount.percentage > 0 &&
     product.discount_type !== "expiration"
   ) {
-  console.log('hola');
-  console.log(props.globalDiscount.percentage);
+    console.log("hola");
+    console.log(props.globalDiscount.percentage);
     return 1 - props.globalDiscount.percentage / 100;
   }
   return 1;
@@ -282,8 +283,8 @@ const getProductPrice = (product, currency) => {
 
   // Apply visual discount
   if (activeDiscountDisplay.value != null) {
-        console.log('dentro del if');
-      basePrice = basePrice * getDiscountFactor(product);
+    console.log("dentro del if");
+    basePrice = basePrice * getDiscountFactor(product);
   }
 
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
@@ -316,7 +317,7 @@ const getIva = (product, currency) => {
   return Iva;
 };
 
-const handleClickProductItem = (product) => {
+/*const handleClickProductItem = (product) => {
   if (product.selectedQuantity > 1) {
     emit("update-quantity", {
       productId: product.product_id,
@@ -325,6 +326,60 @@ const handleClickProductItem = (product) => {
     });
   } else {
     emit("remove-item", product.product_id);
+  }
+};*/
+
+const handleClickProductItem = (product) => {
+  // 1. Verificar si el producto pertenece a un pack
+
+  if (product.pack_id) {
+    Swal.fire({
+      title: "¿Eliminar pack completo?",
+      text: "Este producto pertenece a un pack. Si continúas, se eliminarán todos los productos asociados a este pack de la orden.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar pack",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const packItems = props.orderProducts.filter(
+          (p) => p.pack_id === product.pack_id
+        );
+        console.log(packItems);
+        packItems.forEach((item) => {
+          emit("remove-item", item.product_id);
+        });
+
+        toast.success("Pack eliminado de la orden");
+      }
+    });
+    return;
+  }
+
+  // 2. Lógica normal para productos que NO son pack
+  if (product.selectedQuantity > 1) {
+    emit("update-quantity", {
+      productId: product.product_id,
+      quantity: product.selectedQuantity - 1,
+      orderDetailId: product.order_detail_id,
+    });
+  } else {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡Desea eliminar el producto!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Continuar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        emit("remove-item", product.product_id);
+      }
+    });
   }
 };
 
@@ -466,6 +521,26 @@ const activeDiscountDisplay = computed(() => {
   return null;
 });
 
+
+const handleIncrement = (product) => {
+
+ if (product.pack_id) {
+    const packSimulado = {
+      id: product.pack_id,
+      pack_config: product.original_pack_config || null
+    };
+    emit('add-pack', { 
+      pack: packSimulado, 
+      quantity: 1 
+    });
+  }else {
+    emit('update-quantity', {
+      productId: product.product_id,
+      quantity: product.selectedQuantity + 1,
+      orderDetailId: product.order_detail_id,
+    });
+  }
+};
 
 </script>
 
@@ -689,7 +764,6 @@ const activeDiscountDisplay = computed(() => {
                   size="x-small"
                   variant="text"
                   @click="handleClickProductItem(product)"
-                  :disabled="!!product.pack_id"
                 >
                   <VIcon icon="tabler-minus" />
                 </VBtn>
@@ -714,16 +788,9 @@ const activeDiscountDisplay = computed(() => {
                   icon
                   size="x-small"
                   variant="text"
-                  @click="
-                    $emit('update-quantity', {
-                      productId: product.product_id,
-                      quantity: product.selectedQuantity + 1,
-                      orderDetailId: product.order_detail_id,
-                    })
-                  "
+                  @click="handleIncrement(product)"
                   :disabled="
-                    product.selectedQuantity >= product.availableQuantity ||
-                    !!product.pack_id
+                    product.selectedQuantity >= product.availableQuantity || !!product.pack_id
                   "
                 >
                   <VIcon icon="tabler-plus" />

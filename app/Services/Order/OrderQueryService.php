@@ -105,6 +105,7 @@ private function getBaseQueryProduct(array $filters = []): QueryBuilder
             DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
             'products.active_ingredient', 'products.laboratory_id', 'products.group_id','products.origin_id', 'products.sales_average',
             'laboratories.name as laboratory_name',
+            DB::raw('NULL as pack_config'),
             DB::raw("'product' as item_type"),
             DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
             DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
@@ -131,6 +132,7 @@ private function getBaseQueryProduct(array $filters = []): QueryBuilder
             ) as active_ingredient"),
             DB::raw('NULL as laboratory_id'), DB::raw('NULL as group_id'), DB::raw('NULL as origin_id'), DB::raw('NULL as sales_average'),
             DB::raw("'' as laboratory_name"), 
+            DB::raw("product_packs.pack_config as pack_config"), 
             DB::raw("'pack' as item_type"),
             'product_packs.max_sale_date as next_expiration',
             'product_packs.max_quantity as valid_stock_sum'

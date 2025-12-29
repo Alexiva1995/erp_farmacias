@@ -638,6 +638,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     discount_percentage: parseFloat(backendItem.discount_percentage) || 0,
     discount_type: backendItem.discount_type || null,
     discount_source_id: backendItem.discount_source_id || null,
+    original_pack_config: backendItem.pack_config || (backendItem.product?.pack_config) || null,
   };
 };
 
@@ -1252,7 +1253,7 @@ const updateOrderTotalsInBackend = async () => {
     toast.error("Error al actualizar los totales de la orden.");
   }
 };
-
+/*
 const updateOrderItemQuantity = async ({
   productId,
   quantity,
@@ -1337,6 +1338,77 @@ const updateOrderItemQuantity = async ({
         `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
       );
     }
+  }
+};*/
+
+
+const updateOrderItemQuantity = async ({
+  productId,
+  quantity,
+  orderDetailId,
+}) => {
+  if (quantity <= 0) return;
+
+  if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
+    toast.error("Debe haber una orden abierta para modificar productos.");
+    return;
+  }
+
+  try {
+    // 1. Buscamos el ítem específico usando el orderDetailId
+    let currentItem = orderItems.value.find(
+      (item) => item.order_detail_id === orderDetailId
+    );
+
+    // Fallback por seguridad
+    if (!currentItem) {
+      currentItem = orderItems.value.find((item) => item.product_id === productId);
+    }
+
+    if (!currentItem) {
+      toast.error("Producto no encontrado en la orden.");
+      return;
+    }
+
+    // 2. Lógica de cantidad acumulada
+    let computedTotalQuantity = quantity;
+
+    // Solo acumulamos si NO es un pack (los packs se manejan por líneas únicas)
+    if (!currentItem.pack_id && orderDetailId) {
+      const otherItemsQuantity = orderItems.value
+        .filter(
+          (item) =>
+            item.product_id === productId &&
+            !item.pack_id &&
+            item.order_detail_id !== orderDetailId
+        )
+        .reduce((sum, item) => sum + item.selectedQuantity, 0);
+
+      computedTotalQuantity = otherItemsQuantity + quantity;
+    }
+
+    // 3. Construcción del Payload con pack_id
+    const payload = {
+      product_id: productId,
+      quantity: computedTotalQuantity,
+      price_usd_unit: currentItem.basePrice || currentItem.price,
+      price_at_product: currentItem.basePrice || currentItem.orderPrice || currentItem.price,
+      currency_at_order: selectedDisplayCurrency.value,
+      // --- CAMBIO CRUCIAL ---
+      // Enviamos el pack_id si el ítem lo tiene para que el backend mantenga la relación
+      pack_id: currentItem.pack_id || null, 
+    };
+
+    await axios.post(
+      `/tpv/orders/${openOrderData.value.id}/items`,
+      payload
+    );
+    await fetchOpenOrder();
+    toast.success("Cantidad actualizada.");
+  } catch (error) {
+    // ... tu manejo de errores actual
+    console.error("Error al actualizar cantidad:", error);
+    toast.error(error.response?.data?.message || "Error al actualizar");
   }
 };
 
@@ -1438,6 +1510,8 @@ const addProductToOrder = async ({
   }
 };
 
+
+
 watch(
   [totalOrderAmount, selectedDisplayCurrency],
   async (newValue, oldValue) => {
@@ -1463,7 +1537,8 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const removeOrderItem = async (productIdToRemove) => {
-  Swal.fire({
+console.log('funcion de padre remove');
+ /* Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea eliminar el producto!",
     icon: "warning",
@@ -1473,7 +1548,7 @@ const removeOrderItem = async (productIdToRemove) => {
     confirmButtonText: "Continuar",
     cancelButtonText: "Cancelar",
   }).then(async (result) => {
-    if (result.isConfirmed) {
+    if (result.isConfirmed) {*/
       if (
         !hasOpenOrder.value ||
         !openOrderData.value ||
@@ -1492,7 +1567,6 @@ const removeOrderItem = async (productIdToRemove) => {
           );
           return;
         }
-
         await axios.delete(
           `/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`
         );
@@ -1503,8 +1577,8 @@ const removeOrderItem = async (productIdToRemove) => {
       } catch (error) {
         toast.error("Error al eliminar el producto de la orden.");
       }
-    }
-  });
+    //}
+  //});
 };
 
 const cancelarOrder = async () => {
@@ -2118,20 +2192,23 @@ const handleViewPackDetails = async (item) => {
   }
 };
 
+/*
 const handleAddPackToOrder = async ({ pack, quantity }) => {
-  if (!pack || !pack.pack_config) return;
 
-  let addedCount = 0;
-  const productsToAdd = Object.entries(pack.pack_config);
+  //if (!pack || !pack.pack_config) return;
+  
 
-  if (productsToAdd.length === 0) {
+  const productsToAdd = JSON.parse(pack.pack_config)
+  if (Object.keys(productsToAdd).length === 0) {
     toast.warning("El pack no contiene configuración de productos.");
     return;
   }
 
   loading.value = true;
+  let addedCount = 0;
+
   for (let i = 0; i < quantity; i++) {
-    for (const [productId, config] of productsToAdd) {
+    for (const [productId, config] of Object.entries(productsToAdd)) {
       try {
         // Handle both object {quantity: 1, sale_price: 1.2} and direct number formats
         const productQty =
@@ -2151,6 +2228,7 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
           quantity: parseInt(productQty),
           packId: pack.id,
           customPrice: productPrice,
+          original_pack_config: pack.pack_config
         });
         addedCount++;
       } catch (e) {
@@ -2163,7 +2241,122 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
   if (addedCount > 0) {
     toast.success(`Pack agregado (x${quantity}).`);
   }
+};*/
+
+
+const handleAddPackToOrder = async ({ pack, quantity }) => {
+
+  console.log(pack);
+
+ // if (!pack || !pack.pack_config) return;
+
+
+
+   let configStr = pack.pack_config;
+  
+  if (!configStr) {
+    const itemWithConfig = orderItems.value.find(i => i.pack_id === pack.id && i.original_pack_config);
+    configStr = itemWithConfig?.original_pack_config;
+  }
+
+  if (!configStr) {
+    console.error("No se encontró la configuración del pack ID:", pack.id);
+    return;
+  }
+
+
+  const productsToAdd = JSON.parse(pack.pack_config);
+  loading.value = true;
+  console.log(orderItems);
+
+  try {
+  const itemsInOrderBelongingToPack = orderItems.value.filter(
+      (item) => item.pack_id === pack.id
+    );
+
+   console.log(itemsInOrderBelongingToPack.length);
+
+if (itemsInOrderBelongingToPack.length > 0) {
+      // CASO: EL PACK YA EXISTE EN LA ORDEN
+      // Iteramos sobre los productos que ya están en el carrito
+         console.log(itemsInOrderBelongingToPack);
+      for (const item of itemsInOrderBelongingToPack) {
+        console.log(item);
+        // Buscamos en la configuración cuánto debe aumentar este producto específico
+        const unitsPerPack = productsConfig[item.product_id]?.quantity || productsConfig[item.product_id] || 1;
+        const totalToAdd = unitsPerPack * quantity;
+
+        // Llamamos a actualizar con la cantidad acumulada
+        await updateOrderItemQuantity({
+          productId: item.product_id,
+          quantity: item.selectedQuantity + totalToAdd,
+          orderDetailId: item.order_detail_id,
+          packId: pack.id // IMPORTANTE: pasar el packId para que no se pierda
+        });
+      }
+    } else {
+      // CASO: EL PACK ES NUEVO (No hay productos con ese pack_id aún)
+      for (const [productId, config] of Object.entries(productsToAdd)) {
+        const unitsPerPack = typeof config === "object" ? (config.quantity || 1) : config;
+        const productPrice = typeof config === "object" ? config.sale_price : null;
+
+        await addProductToOrder({
+          productId: parseInt(productId),
+          quantity: unitsPerPack * quantity,
+          packId: pack.id,
+          customPrice: productPrice,
+        });
+      }
+    }
+
+    // Recorremos cada producto definido en la configuración del pack
+    /*for (const [productId, config] of Object.entries(productsToAdd)) {
+      const idNumeric = parseInt(productId);
+      
+      // 1. Obtenemos cuántas unidades de este producto vienen en 1 solo pack
+      const unitsPerPack = typeof config === "object" && config !== null 
+        ? parseInt(config.quantity || 1) 
+        : parseInt(config);
+
+      // 2. Calculamos cuánto vamos a añadir (unidades_del_pack * cantidad_de_packs_a_sumar)
+      // Si quantity es 1 y unitsPerPack es 2, sumaremos 2 unidades.
+      const amountToAdd = unitsPerPack * quantity;
+
+      // 3. Buscamos el producto en la orden actual que pertenezca a este pack
+      const existingItem = orderItems.value.find(
+        (item) => item.product_id === idNumeric && item.pack_id === pack.id
+      );
+
+      if (existingItem) {
+        console.log(idNumeric)
+        await updateOrderItemQuantity({
+          productId: idNumeric,
+          quantity: existingItem.selectedQuantity + amountToAdd,
+          orderDetailId: existingItem.order_detail_id,
+        });
+      } else {
+        const productPrice = typeof config === "object" && config !== null ? config.sale_price : null;
+        await addProductToOrder({
+          productId: idNumeric,
+          quantity: amountToAdd,
+          packId: pack.id,
+          customPrice: productPrice,
+        });
+      }
+    }*/
+    
+    // Sincronizamos la interfaz con el backend
+    await fetchOpenOrder();
+    toast.success(`Pack actualizado: +${quantity} unidad(es) de pack.`);
+
+  } catch (e) {
+    console.error("Error al procesar el pack:", e);
+    toast.error("Error al actualizar las cantidades del pack.");
+  } finally {
+    loading.value = false;
+  }
 };
+
 
 watch(activeTab, (val) => {
   if (val === "packs" && packs.value.length === 0 && totalPacks.value === 0) {
@@ -2171,7 +2364,68 @@ watch(activeTab, (val) => {
   }
 });
 
+/*
+const handleAddPackToOrder = async ({ pack, quantity }) => {
+  if (!pack || !pack.pack_config) return;
 
+  const productsInPack = JSON.parse(pack.pack_config);
+  if (Object.keys(productsInPack).length === 0) {
+    toast.warning("El pack no tiene productos configurados.");
+    return;
+  }
+
+  loading.value = true;
+  
+  try {
+    // 1. Agrupamos todos los productos del pack para enviarlos de forma eficiente
+    for (const [productId, config] of Object.entries(productsInPack)) {
+      const idNumeric = parseInt(productId);
+      
+      // Calculamos cuántas unidades totales se van a agregar de este producto
+      // (Cantidad base en el pack * cantidad de packs solicitados)
+      const baseQtyInPack = typeof config === "object" ? parseInt(config.quantity || 1) : parseInt(config);
+      const totalNewQty = baseQtyInPack * quantity;
+
+      const productPrice = typeof config === "object" ? config.sale_price : null;
+
+      // Buscamos si ya existe en la orden LOCALMENTE
+      const existingItem = orderItems.value.find(
+        (item) => Number(item.product_id) === idNumeric && Number(item.pack_id) === Number(pack.id)
+      );
+
+      if (existingItem) {
+        // Si existe, actualizamos cantidad sumando la nueva
+        await updateOrderItemQuantity({
+          productId: idNumeric,
+          quantity: existingItem.selectedQuantity + totalNewQty,
+          orderDetailId: existingItem.order_detail_id,
+        });
+      } else {
+        // Si no existe, lo creamos
+        await addProductToOrder({
+          productId: idNumeric,
+          quantity: totalNewQty,
+          pack_id: pack.id,
+          customPrice: productPrice,
+          original_pack_config: pack.pack_config
+        });
+      }
+      
+      // CRUCIAL: Refrescamos la orden después de cada producto del pack 
+      // para que el siguiente producto vea la lista actualizada y no duplique.
+      await fetchOpenOrder();
+    }
+
+    toast.success(`Pack "${pack.name}" procesado correctamente.`);
+  } catch (e) {
+    console.error("Error al procesar el pack:", e);
+    toast.error("Error al agregar algunos productos del pack.");
+  } finally {
+    loading.value = false;
+  }
+};
+
+*/
 const itemsForTicket = computed(() => {
   const globalDiscount = currentGlobalDiscountDetails.value;
   return orderItems.value.map(item => {
@@ -2245,6 +2499,7 @@ const handleExternalSort = async (sortData) => {
         @prescription-file-selected="handlePrescriptionFileSelected"
         @company-discount-selected="handleCompanyDiscountSelected"
         :global-discount="currentGlobalDiscountDetails"
+        @add-pack="handleAddPackToOrder"
       />
     </div>
     <div v-else>
@@ -2285,9 +2540,10 @@ const handleExternalSort = async (sortData) => {
           @view-group-products="fetchGroupProducts"
           @failures-products="fetchFailuresProducts"
           @view-pack-details="handleViewPackDetails"
+          @add-pack="handleAddPackToOrder"
         />
 
-      <!--  <OrderPacksTable
+    <!--   <OrderPacksTable
           :packs="packs"
           :loading="loadingPacks"
           :total-packs="totalPacks"
