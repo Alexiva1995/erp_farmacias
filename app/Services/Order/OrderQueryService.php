@@ -111,7 +111,8 @@ class OrderQueryService
                 'products.origin_id',
                 'products.sales_average',
                 'laboratories.name as laboratory_name',
-                DB::raw("'product' as item_type"),
+                DB::raw('NULL as pack_config'),
+            DB::raw("'product' as item_type"),
                 DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
                 DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
             ])
@@ -142,7 +143,8 @@ class OrderQueryService
                 DB::raw('NULL as origin_id'),
                 DB::raw('NULL as sales_average'),
                 DB::raw("'' as laboratory_name"),
-                DB::raw("'pack' as item_type"),
+                DB::raw("product_packs.pack_config as pack_config"), 
+            DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
                 'product_packs.max_quantity as valid_stock_sum'
             ])->where('product_packs.is_active', true)

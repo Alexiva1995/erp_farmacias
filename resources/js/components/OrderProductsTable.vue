@@ -1,7 +1,7 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import axios from "@/plugins/axios";
-import { computed, ref, watch, onMounted } from "vue";
+import { computed, ref, watch, onMounted, defineProps } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -25,6 +25,7 @@ const emit = defineEmits([
   "view-group-products",
   "failures-products",
   "view-pack-details",
+  "add-pack",
 ]);
 
 const isInitialLoad = ref(true);
@@ -266,6 +267,24 @@ const handleUpdateOptions = (newOptions) => {
   // Emitir el evento completo al padre para el fetch de datos
   emit('update:options', newOptions);
 };
+
+
+const handleAddPack = (packId) => {
+  const quantityToAdd = inputQuantities.value.get(packId);
+  if (
+    quantityToAdd === null ||
+    quantityToAdd === undefined ||
+    quantityToAdd <= 0
+  ) {
+    return;
+  }
+  const pack = props.products.find((p) => p.id === packId);
+  if (pack) {
+    emit("add-pack", { pack, quantity: quantityToAdd });
+  }
+  // Reset input
+  inputQuantities.value.set(packId, 1);
+};
 </script>
 
 <template>
@@ -377,10 +396,8 @@ const handleUpdateOptions = (newOptions) => {
           </IconBtn>
            <IconBtn
             @click="handleAddPack(item.id)"
-            v-else-if="item.item_type === 'pack'"
-            :disabled="
-              (inputQuantities.get(item.id) ?? 0) <= 0 || !item.is_active
-            "
+            v-else="item.item_type === 'pack'"
+            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
             color="primary"
             variant="tonal"
             size="small"
