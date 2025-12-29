@@ -42,7 +42,7 @@ class UsersLegacyImportSeeder extends Seeder
 
         // Extract values block
         // Matches content after VALUES until the closing semicolon
-        preg_match('/VALUES\s+(.*);/s', $sqlContent, $valuesBlock);
+        preg_match('/VALUES\s+(.*?);/s', $sqlContent, $valuesBlock);
 
         if (empty($valuesBlock[1])) {
             $this->command->error("No se encontraron valores para insertar.");

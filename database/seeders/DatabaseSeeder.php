@@ -33,6 +33,10 @@ class DatabaseSeeder extends Seeder
             ClientsSeeder::class,
             GroupsProductsSeeder::class,
             MigrarDailyClosuresSeeder::class,
+            OrdersLegacyImportSeeder::class,
+            OrderDetailsLegacyImportSeeder::class,
+            LaboratoriesLegacyImportSeeder::class,
+            UsersLegacyImportSeeder::class
         ]);
     }
 }
