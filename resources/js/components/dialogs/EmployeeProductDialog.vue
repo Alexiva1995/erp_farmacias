@@ -349,6 +349,7 @@ const getProductColor = (index) => {
                             <IconBtn
                               size="small"
                               @click="handleEditProduct(product)"
+                              color="warning"
                             >
                               <VIcon icon="tabler-edit" size="20" />
                               <VTooltip activator="parent" location="top">

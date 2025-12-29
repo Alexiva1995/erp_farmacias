@@ -62,6 +62,20 @@ const paymentMethodLabels = {
 const getPaymentMethodLabel = (methodValue) => {
   return paymentMethodLabels[methodValue] || methodValue;
 };
+const renderIdentification = (item) => {
+  if (item.client?.identification_type) {
+    return `${item.client.identification_type} ${item.client.identification}`;
+  } else {
+    return "N/A";
+  }
+};
+const renderUsername = (item) => {
+  if (item.client?.name) {
+    return `${item.client.name} ${item.client.last_name}`;
+  } else {
+    return "N/A";
+  }
+};
 </script>
 <template>
   <VCard>
@@ -77,10 +91,10 @@ const getPaymentMethodLabel = (methodValue) => {
       :expanded="expandedRows"
     >
       <template v-slot:item.identification="{ item }">
-        {{ item.client.identification_type }} {{ item.client.identification }}
+        {{ renderIdentification(item) }}
       </template>
       <template v-slot:item.client_full_name="{ item }">
-        {{ item.client.name }} {{ item.client.last_name }}
+        {{ renderUsername(item) }}
       </template>
 
       <template v-slot:item.total_amount="{ item }">
@@ -102,7 +116,12 @@ const getPaymentMethodLabel = (methodValue) => {
       </template>
 
       <template v-slot:item.currency="{ item }">
-        <span v-if="item.payment_methods?.some((p) => p.method === 'credit')">
+        <span
+          v-if="
+            Array.isArray(item.payment_methods) &&
+            item.payment_methods?.some((p) => p.method === 'credit')
+          "
+        >
           {{ item.currency }}*
         </span>
         <span v-else>
@@ -133,7 +152,7 @@ const getPaymentMethodLabel = (methodValue) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn @click="handleView(item.id)">
+          <IconBtn @click="handleView(item.id)" color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
           <IconBtn @click="$emit('print-order', item.id)">

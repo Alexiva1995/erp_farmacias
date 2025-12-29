@@ -99,7 +99,7 @@ const headers = [
         }}</a>
       </template>
       <template #item.recipe="{ item }">
-        <IconBtn @click="emit('actionVer', item)" v-if="item.order">
+        <IconBtn @click="emit('actionVer', item)" v-if="item.order" color="info">
           <VIcon icon="tabler-eye" />
         </IconBtn>
       </template>

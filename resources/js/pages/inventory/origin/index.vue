@@ -1,6 +1,6 @@
 <script setup>
 import ProductFilters from "@/components/ProductFilters.vue";
-import PendingProductsTable from "@/components/PendingProductsTable.vue";
+import ProductsWithoutOriginTable from "@/components/ProductsWithoutOriginTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -30,19 +30,19 @@ const categories = ref([]);
 
 const isLoadingFilters = ref(false);
 
-const handleUpdateProduct = async ({ id, barcode }) => {
+const handleUpdateProduct = async ({ id, origin_id }) => {
   if (productWithError.value === id) {
     productWithError.value = null;
   }
 
   try {
-    await axios.patch(`/products/pending/${id}`, { barcode });
-    toast.success("Se registró el código de barra en el producto");
+    await axios.patch(`/products/without-origin/${id}`, { origin_id });
+    toast.success("Se asignó el origen al producto");
     await fetchProducts();
   } catch (err) {
     toast.error("Error al actualizar");
 
-    if (err.response.status === 422) {
+    if (err.response?.status === 422) {
       productWithError.value = id;
     }
   }
@@ -56,7 +56,6 @@ const fetchSelectOptions = async () => {
       axios.get("/origins"),
       axios.get("/categories"),
     ]);
-    console.log("laboratories response:", labResponse);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
@@ -73,7 +72,6 @@ const fetchProducts = async () => {
   const params = {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -90,7 +88,7 @@ const fetchProducts = async () => {
   );
 
   try {
-    const response = await axios.get("/products/pending", { params });
+    const response = await axios.get("/products/without-origin", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -110,7 +108,6 @@ watch(
     orderBy,
     searchQuery,
     selectedLaboratory,
-    selectedOrigin,
     stockStatusFilter,
     startDate,
     endDate,
@@ -127,7 +124,6 @@ watch(
   [
     searchQuery,
     selectedLaboratory,
-    selectedOrigin,
     stockStatusFilter,
     startDate,
     endDate,
@@ -175,7 +171,6 @@ const handleSort = (sortOptions) => {
     <ProductFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
@@ -189,15 +184,17 @@ const handleSort = (sortOptions) => {
       @sort="handleSort"
     />
 
-    <PendingProductsTable
+    <ProductsWithoutOriginTable
       :products="products"
       :loading="loading"
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
       :product-with-error="productWithError"
+      :origins="origins"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
     />
   </div>
 </template>
+

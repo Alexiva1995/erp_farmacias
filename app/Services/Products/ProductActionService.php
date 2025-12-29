@@ -85,6 +85,34 @@ class ProductActionService
         }
     }
 
+    public function updateProductLaboratory(Product $product, ?int $laboratoryId): bool
+    {
+        \DB::beginTransaction();
+        try {
+            $product->update(['laboratory_id' => $laboratoryId]);
+            \DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            \Log::error($e);
+            \DB::rollback();
+            return false;
+        }
+    }
+
+    public function updateProductOrigin(Product $product, ?int $originId): bool
+    {
+        \DB::beginTransaction();
+        try {
+            $product->update(['origin_id' => $originId]);
+            \DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            \Log::error($e);
+            \DB::rollback();
+            return false;
+        }
+    }
+
     /**
      * Desasigna un producto de su grupo.
      *

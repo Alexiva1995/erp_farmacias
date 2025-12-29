@@ -77,6 +77,7 @@ const emit = defineEmits([
               v-bind="props"
               icon="tabler-eye"
               variant="text"
+              color="info"
             >
             </VBtn>
           </template>

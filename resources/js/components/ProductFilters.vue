@@ -16,6 +16,7 @@ const props = defineProps({
   showAddButton: { type: Boolean, default: true },
   addButtonText: { type: String, default: "Añadir Producto" },
   isStrictSearch: Boolean,
+  flat: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -194,7 +195,7 @@ watch(
 </script>
 
 <template>
-  <VCard class="mb-6">
+  <VCard :class="{ 'mb-6': !flat, 'elevation-0': flat }">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="3" md="2">
@@ -391,7 +392,7 @@ watch(
 
         <VBtn
           v-if="props.showAddButton"
-          color="primary"
+          color="success"
           prepend-icon="tabler-plus"
           @click="emit('add-product')"
         >
@@ -401,7 +402,7 @@ watch(
       <template v-else-if="mode === 'minimal'">
         <VBtn
           v-if="props.showAddButton"
-          color="primary"
+          color="success"
           prepend-icon="tabler-plus"
           @click="emit('add-product')"
         >

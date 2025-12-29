@@ -104,7 +104,7 @@ const getAvatarColor = (index) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex gap-1">
-          <IconBtn @click="emit('view-products', item)">
+          <IconBtn @click="emit('view-products', item)" color="info">
             <VIcon icon="tabler-eye" />
             <VTooltip activator="parent" location="top">
               Ver Productos

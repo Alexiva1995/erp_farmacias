@@ -165,14 +165,14 @@ const formatDepreciation = (rate) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex gap-1">
-          <IconBtn @click="emit('edit-furniture', item)">
+          <IconBtn @click="emit('edit-furniture', item)" color="warning">
             <VIcon icon="tabler-edit" />
             <VTooltip activator="parent" location="top">
               Editar mobiliario
             </VTooltip>
           </IconBtn>
 
-          <IconBtn @click="emit('delete-furniture', item.id)">
+          <IconBtn @click="emit('delete-furniture', item.id)" color="error">
             <VIcon icon="tabler-trash" />
             <VTooltip activator="parent" location="top">
               Eliminar mobiliario

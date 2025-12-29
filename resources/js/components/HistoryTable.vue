@@ -87,7 +87,7 @@ const headers = [
       </template>
 
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('show-detailHistory', item)">
+        <IconBtn @click="emit('show-detailHistory', item)" color="info">
           <VIcon icon="tabler-eye" />
         </IconBtn>
       </template>

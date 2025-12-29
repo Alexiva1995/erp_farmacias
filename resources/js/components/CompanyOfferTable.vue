@@ -147,7 +147,7 @@ const handleDelete = (company) => {
           <VBtn
             icon
             size="small"
-            color="primary"
+            color="warning"
             variant="text"
             @click="handleEdit(item)"
           >

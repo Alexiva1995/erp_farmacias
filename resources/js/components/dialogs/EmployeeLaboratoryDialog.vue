@@ -223,7 +223,7 @@ const getLaboratoryColor = (index) => {
                   class="flex-grow-1"
                 />
                 <VBtn
-                  color="primary"
+                  color="success"
                   :disabled="
                     !formData.new_laboratory_id || !formData.employee_id
                   "
@@ -314,6 +314,7 @@ const getLaboratoryColor = (index) => {
                             <IconBtn
                               size="small"
                               @click="handleEditLaboratory(laboratory)"
+                              color="warning"
                             >
                               <VIcon icon="tabler-edit" size="20" />
                               <VTooltip activator="parent" location="top">

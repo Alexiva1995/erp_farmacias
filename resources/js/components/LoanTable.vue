@@ -197,14 +197,14 @@ const getRemainingMonths = (item) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex gap-1">
-          <IconBtn @click="emit('edit-loan', item)">
+          <IconBtn @click="emit('edit-loan', item)" color="warning">
             <VIcon icon="tabler-edit" />
             <VTooltip activator="parent" location="top">
               Editar préstamo
             </VTooltip>
           </IconBtn>
 
-          <IconBtn @click="emit('delete-loan', item.id)">
+          <IconBtn @click="emit('delete-loan', item.id)" color="error">
             <VIcon icon="tabler-trash" />
             <VTooltip activator="parent" location="top">
               Eliminar préstamo

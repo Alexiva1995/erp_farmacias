@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Requests\UpdateProductBarcodeRequest;
+use App\Http\Requests\UpdateProductLaboratoryRequest;
+use App\Http\Requests\UpdateProductOriginRequest;
 use App\Models\Product;
 use App\Services\Products\ProductActionService;
 use App\Services\Products\ProductQueryService;
@@ -48,6 +50,32 @@ class ProductController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
+    public function withoutLaboratory(Request $request)
+    {
+        $query = $this->productQueryService->getProductsWithoutLaboratoryQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+    public function withoutOrigin(Request $request)
+    {
+        $query = $this->productQueryService->getProductsWithoutOriginQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
     public function store(StoreProductRequest $request)
     {
         $product = $this->productActionService->createProduct($request->validated());
@@ -74,6 +102,24 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Producto actualizado con éxito.',
+        ], 200);
+    }
+
+    public function updateProductLaboratory(UpdateProductLaboratoryRequest $request, Product $product)
+    {
+        $this->productActionService->updateProductLaboratory($product, $request->integer('laboratory_id'));
+
+        return response()->json([
+            'message' => 'Laboratorio asignado con éxito.',
+        ], 200);
+    }
+
+    public function updateProductOrigin(UpdateProductOriginRequest $request, Product $product)
+    {
+        $this->productActionService->updateProductOrigin($product, $request->integer('origin_id'));
+
+        return response()->json([
+            'message' => 'Origen asignado con éxito.',
         ], 200);
     }
 

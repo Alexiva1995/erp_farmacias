@@ -60,7 +60,7 @@ const nextExpirationDate = (product) => {
     const expirationDate = new Date(lot.expiration_date);
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
-  if (validLots.length === 0) return "Todos expiraron";
+  if (validLots.length === 0) return product.ultima_fecha_vencimiento || "N/A";
   validLots.sort(
     (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
   );
@@ -72,24 +72,32 @@ const productHeaders = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true, width: "40%" },
   { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
+  {
+    title: "Stock",
+    key: "valid_stock",
+    visible: true,
+    sortable: true,
+    value: (item) => {
+      return item.stock_calculado;
+    },
+  },
   { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
 ];
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="900px"
+    max-width="1000px"
     persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
+    <VCard class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-6">
         <span class="text-h5 font-weight-bold">
-          {{ `Productos del grupo ${props.selectedGroup.name}` }}
+          Productos del grupo: {{ props.selectedGroup.name }}
         </span>
         <VSpacer />
         <VBtn icon variant="text" @click="closeDialog">
@@ -99,15 +107,54 @@ const productHeaders = [
 
       <VDivider />
 
-      <VCardText>
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
         <VDataTable
           :headers="productHeaders"
           :items="associatedProducts"
           :loading="isLoadingProducts"
-          density="compact"
+          density="comfortable"
           no-data-text="No hay productos asignados a este grupo."
           class="rounded-lg"
         >
+          <template #item.id="{ item }">
+            <span class="font-weight-medium">{{ item.id }}</span>
+          </template>
+
+          <template #item.name="{ item }">
+            <div class="d-flex align-center gap-x-4">
+              <VAvatar
+                v-if="item.photo_url"
+                size="38"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+              />
+              <div class="d-flex flex-column">
+                <span
+                  class="text-body-1 font-weight-medium text-high-emphasis"
+                  :class="{ 
+                    'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+                  }"
+                >
+                  {{ item.name.toUpperCase() }}
+                  <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                  <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                </span>
+                <span class="text-sm text-disabled">{{
+                  item.active_ingredient
+                }}</span>
+              </div>
+            </div>
+          </template>
+
+          <template #item["laboratory.name"]="{ item }">
+            <span>{{ item.laboratory?.name || "—" }}</span>
+          </template>
+
+          <template #item.valid_stock="{ item }">
+            <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+          </template>
+
           <template #item.next_expiration="{ item }">
             <span>{{ nextExpirationDate(item) }}</span>
           </template>
@@ -116,22 +163,15 @@ const productHeaders = [
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-6">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1 w-0 mr-4"
+          size="large"
         >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="closeDialog"
-          class="flex-grow-1 w-0"
-        >
-          Guardar
+          Cerrar
         </VBtn>
       </VCardActions>
     </VCard>

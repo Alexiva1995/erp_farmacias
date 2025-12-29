@@ -148,7 +148,7 @@ const handleView = (prescription) => {
           icon
           variant="text"
           size="small"
-          color="primary"
+          color="warning"
           @click="handleEdit(item)"
         >
           <VIcon>tabler-edit</VIcon>

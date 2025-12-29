@@ -8,12 +8,13 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   productWithError: { type: [Number, null], default: null },
+  origins: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:options", "update-product"]);
 
 const editingProductId = ref(null);
-const editingValue = ref("");
+const editingValue = ref(null);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -29,17 +30,15 @@ const headers = [
     },
   },
   { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Barcode", key: "barcode", sortable: false },
+  { title: "Origen", key: "origin", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
 const saveInlineEdit = async (product) => {
-  if (!editingValue.value.trim()) return;
-
   try {
     emit("update-product", {
       id: product.id,
-      barcode: editingValue.value,
+      origin_id: editingValue.value,
     });
   } catch (err) {
     console.error(err);
@@ -48,12 +47,12 @@ const saveInlineEdit = async (product) => {
 
 const startEdit = (product) => {
   editingProductId.value = product.id;
-  editingValue.value = product.barcode || "";
+  editingValue.value = product.origin_id || null;
 };
 
 const cancelEdit = () => {
   editingProductId.value = null;
-  editingValue.value = "";
+  editingValue.value = null;
 };
 
 // TODO: hay que modificar la funcion para que muestre la fecha de vencimiento a pesar de que los lotes ya estén todos vencidos (puede que se tenga que modificar la consulta en el backend)
@@ -135,25 +134,30 @@ const nextExpirationDate = (product) => {
         <span>{{ nextExpirationDate(item) }}</span>
       </template>
 
-      <template #item.barcode="{ item }">
+      <template #item.origin="{ item }">
         <template v-if="editingProductId === item.id">
-          <VTextField
+          <VAutocomplete
             v-model="editingValue"
+            :items="props.origins"
+            item-title="name"
+            item-value="id"
             density="compact"
             variant="outlined"
             style="width: 300px"
+            placeholder="Seleccionar origen"
+            clearable
             @keyup.enter="saveInlineEdit(item)"
             autofocus
             :error="props.productWithError === item.id"
             :error-messages="
               props.productWithError === item.id
-                ? 'Ya se encuentra registrado'
+                ? 'Error al asignar origen'
                 : ''
             "
           />
         </template>
         <template v-else>
-          {{ item.barcode || "—" }}
+          {{ item.origin?.name || "—" }}
         </template>
       </template>
 
@@ -177,3 +181,4 @@ const nextExpirationDate = (product) => {
     </VDataTableServer>
   </VCard>
 </template>
+

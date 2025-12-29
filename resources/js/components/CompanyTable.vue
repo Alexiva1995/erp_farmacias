@@ -42,10 +42,10 @@ const emit= defineEmits(["edit",'delete','verClientes',"update:options"])
         ><span class="font-weight-medium">{{ item.id }}</span></template
       >
       <template #item.acciones="{ item }">
-        <IconBtn @click="emit('edit', item.id)"
+        <IconBtn @click="emit('edit', item.id)" color="warning"
           ><VIcon icon="tabler-edit"
         /></IconBtn>
-        <IconBtn @click="emit('delete', item.id)"
+        <IconBtn @click="emit('delete', item.id)" color="error"
           ><VIcon icon="tabler-trash"
         /></IconBtn>
         <IconBtn @click="emit('verClientes', item.id)"

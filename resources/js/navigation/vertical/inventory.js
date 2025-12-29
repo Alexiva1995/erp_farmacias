@@ -19,6 +19,14 @@ export default [
         {
           title: 'Código de barras',
           to: 'inventory-barcodes',
+        },
+        {
+          title: 'Laboratorio',
+          to: 'inventory-laboratory',
+        },
+        {
+          title: 'Origen',
+          to: 'inventory-origin',
         }
         ],
       },

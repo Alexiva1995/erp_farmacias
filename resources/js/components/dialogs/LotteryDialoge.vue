@@ -108,7 +108,7 @@ const handleViewOrder = async (orderId) => {
               icon
               size="small"
               variant="text"
-              color="primary"
+              color="info"
               @click.stop="handleViewOrder(item.order_id)"
             >
               <VIcon size="20">tabler-eye</VIcon>

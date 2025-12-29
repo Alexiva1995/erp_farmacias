@@ -74,11 +74,11 @@ const getFrequencyColor = (frequency) => {
       </template>
 
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-activity', item)">
+        <IconBtn @click="emit('edit-activity', item)" color="warning">
           <VIcon icon="tabler-edit" />
           <VTooltip activator="parent" location="top">Editar</VTooltip>
         </IconBtn>
-        <IconBtn @click="emit('delete-activity', item.id)">
+        <IconBtn @click="emit('delete-activity', item.id)" color="error">
           <VIcon icon="tabler-trash" />
           <VTooltip activator="parent" location="top">Eliminar</VTooltip>
         </IconBtn>
