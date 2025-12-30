@@ -555,26 +555,9 @@ class OrderActionService
             $uniqueCurrencies = array_unique($currencies);
             $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
-            $orderId->save();
-
-            $balancePayment = collect($request->payments)->firstWhere('method', 'balance');
-            if ($balancePayment) {
-                $client = $orderId->client;
-                $client->balance -= $balancePayment['amount'];
-                $client->save();
-            }
-
-            if ($request->credit) {
-                Credit::create([
-                    'client_id' => $request->client_id,
-                    'order_id' => $orderId->id,
-                    'credit_amount' => $request->total_amount,
-                    'pending_amount' => $request->total_amount,
-                    'credit_date' => Carbon::now(),
-                    'status' => 'Active'
-                ]);
-            }
-
+            // First, update lot quantities BEFORE saving the order
+            // This way, when the order is saved and triggers handleOrderMovement,
+            // the sale movement will be created first, preventing expired movements
             $orderId->load('details.product.lots');
 
             foreach ($orderId->details as $detail) {
@@ -594,13 +577,17 @@ class OrderActionService
                     if ($lot->quantity >= $quantityToReduce) {
                         $taken = $quantityToReduce;
                         $lot->quantity -= $quantityToReduce;
-                        $lot->save();
+                        ProductLot::withoutEvents(function () use ($lot) {
+                            $lot->save();
+                        });
                         $quantityToReduce = 0;
                     } else {
                         $taken = $lot->quantity;
                         $quantityToReduce -= $lot->quantity;
                         $lot->quantity = 0;
-                        $lot->save();
+                        ProductLot::withoutEvents(function () use ($lot) {
+                            $lot->save();
+                        });
                     }
 
 
@@ -623,6 +610,29 @@ class OrderActionService
                     $detail->quantity_expiration = $quantityExpiration;
                     $detail->save();
                 }
+            }
+
+            // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
+            // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
+            // it will see the recent sale movement and skip creating expired/adjustment movements
+            $orderId->save();
+
+            $balancePayment = collect($request->payments)->firstWhere('method', 'balance');
+            if ($balancePayment) {
+                $client = $orderId->client;
+                $client->balance -= $balancePayment['amount'];
+                $client->save();
+            }
+
+            if ($request->credit) {
+                Credit::create([
+                    'client_id' => $request->client_id,
+                    'order_id' => $orderId->id,
+                    'credit_amount' => $request->total_amount,
+                    'pending_amount' => $request->total_amount,
+                    'credit_date' => Carbon::now(),
+                    'status' => 'Active'
+                ]);
             }
 
 

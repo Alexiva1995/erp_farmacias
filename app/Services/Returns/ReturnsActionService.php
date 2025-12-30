@@ -58,6 +58,28 @@ class ReturnsActionService
         }
     }
 
+    public function getProductLotsForReturn($productId)
+    {
+        $lots = ProductLot::where('product_id', $productId)
+            ->orderBy('expiration_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(function ($lot) {
+                return [
+                    'id' => $lot->id,
+                    'lot_number' => $lot->lot_number,
+                    'expiration_date' => $lot->expiration_date ? $lot->expiration_date->format('Y-m-d') : null,
+                    'quantity' => $lot->quantity,
+                    'unit_cost' => $lot->unit_cost,
+                    'is_expired' => $lot->expiration_date ? $lot->expiration_date->isPast() : false,
+                ];
+            });
+
+        return [
+            'lots' => $lots,
+        ];
+    }
+
     public function productReturn(Request $request)
     {
         DB::beginTransaction();
@@ -67,6 +89,7 @@ class ReturnsActionService
             $productData = $request->product;
             $orderDetail = collect($orderData['details'])->firstWhere('product_id', $productData['id']);
             $returnsQuantity = (int) $request->input('returns_quantity');
+            $productLotId = $request->input('product_lot_id');
 
             if ($returnsQuantity <= 0) {
                 throw new Exception('La cantidad a devolver debe ser mayor a cero.');
@@ -84,20 +107,24 @@ class ReturnsActionService
                 throw new Exception('No se encontró el cliente asociado a la orden.');
             }
 
-            $lot = ProductLot::where('product_id', $productData['id'])
-                ->where('expiration_date', '>', now())
-                ->where('quantity', '>', 0)
-                ->orderByDesc('expiration_date')
+            if (!$productLotId) {
+                throw new Exception('Debe seleccionar un lote para la devolución.');
+            }
+
+            // Validar que el lote existe y pertenece al producto
+            $lot = ProductLot::where('id', $productLotId)
+                ->where('product_id', $productData['id'])
                 ->first();
 
-            if ($lot) {
-                $lot->quantity += $returnsQuantity;
-                ProductLot::withoutEvents(function () use ($lot) {
-                    $lot->save();
-                });
-            } else {
-                throw new Exception('No se encontró lote vigente para ese producto.');
+            if (!$lot) {
+                throw new Exception('El lote seleccionado no existe o no pertenece al producto.');
             }
+
+            // Incrementar la cantidad del lote seleccionado
+            $lot->quantity += $returnsQuantity;
+            ProductLot::withoutEvents(function () use ($lot) {
+                $lot->save();
+            });
 
 
             $return = ReturnEntry::create([

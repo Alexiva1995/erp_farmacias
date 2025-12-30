@@ -8,6 +8,7 @@ use App\Models\InventoryMovement;
 use App\Models\ProductDistribution;
 use App\Models\ReturnEntry;
 use App\Services\Traceability\TraceabilityQueryService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -94,27 +95,32 @@ class TraceabilityController extends Controller
             case 'adjustment':
             case 'loss':
                 // For adjustments and losses, find related ProductCount via ProductDistribution
-                // Try to find the ProductCount approved closest to the movement date
+                // The movement is created when a ProductCount is approved and lot quantities are updated
+                // So we search for ProductCounts approved near the movement date
                 if ($movement->product_lot_id) {
+                    $movementDate = Carbon::parse($movement->movement_date);
+                    $startDate = $movementDate->copy()->subHours(2); // 2 hours before movement
+                    $endDate = $movementDate->copy()->addHours(2); // 2 hours after movement
+
                     $productDistribution = ProductDistribution::where('product_lot_id', $movement->product_lot_id)
-                        ->whereHas('productCount', function ($query) use ($movement) {
+                        ->whereHas('productCount', function ($query) use ($movement, $startDate, $endDate) {
                             $query->where('status', 'approved')
                                 ->where('product_id', $movement->product_id)
-                                ->whereDate('updated_at', '<=', $movement->movement_date)
+                                ->whereBetween('updated_at', [$startDate, $endDate])
                                 ->orderBy('updated_at', 'desc');
                         })
                         ->with(['productCount.user', 'productCount.supervisor'])
                         ->first();
 
-                    // Fallback: just get the first one if date-based search fails
+                    // Fallback: get the most recent approved ProductCount for this lot and product
                     if (!$productDistribution) {
                         $productDistribution = ProductDistribution::where('product_lot_id', $movement->product_lot_id)
                             ->whereHas('productCount', function ($query) use ($movement) {
                                 $query->where('status', 'approved')
-                                    ->where('product_id', $movement->product_id);
+                                    ->where('product_id', $movement->product_id)
+                                    ->orderBy('updated_at', 'desc');
                             })
                             ->with(['productCount.user', 'productCount.supervisor'])
-                            ->orderBy('created_at', 'desc')
                             ->first();
                     }
 

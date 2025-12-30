@@ -275,6 +275,7 @@ declare module 'vue' {
     ScrollToTop: typeof import('./resources/js/@core/components/ScrollToTop.vue')['default']
     SectionAutoOrderIa: typeof import('./resources/js/components/SectionAutoOrderIa.vue')['default']
     SectionDivider: typeof import('./resources/js/components/SectionDivider.vue')['default']
+    SelectLotForReturnDialog: typeof import('./resources/js/components/dialogs/SelectLotForReturnDialog.vue')['default']
     SellerBoxTable: typeof import('./resources/js/components/SellerBoxTable.vue')['default']
     SellerCashFilters: typeof import('./resources/js/components/SellerCashFilters.vue')['default']
     ShareProjectDialog: typeof import('./resources/js/components/dialogs/ShareProjectDialog.vue')['default']
