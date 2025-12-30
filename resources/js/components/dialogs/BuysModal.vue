@@ -69,6 +69,10 @@ const props = defineProps({
     type: Object,
     default: () => null, // Por defecto null si no hay descuento activo
   },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -147,6 +151,22 @@ const isTransferMethod = (method) =>
 function roundToTwoDecimalPlaces(num) {
   return Number(Math.round(num + "e+2") + "e-2");
 }
+
+
+//funcion de sujeto pasivo especial-esta menu(configuracion)
+const appliesSpecialTax = computed(() => {
+  return props.isSpecialTaxpayer && (props.selectedCurrency === 'USD' || props.selectedCurrency === 'COP');
+});
+
+const specialTaxAmount = computed(() => {
+  if (!appliesSpecialTax.value) return 0;
+  let tax = props.totalAmount * 0.03;
+  if (props.selectedCurrency === "COP") {
+    tax = Math.ceil(tax / 100) * 100;
+  }
+  return tax;
+});
+
 
 const getPaymentMethodLabel = (methodValue, currency) => {
   if (methodValue === "balance") {
@@ -276,6 +296,10 @@ const roundedTotalAmountToPay = computed(() => {
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
+  if (appliesSpecialTax.value) {
+    baseAmount += specialTaxAmount.value;
+  }
+
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(baseAmount);
   }
@@ -286,7 +310,6 @@ const roundedTotalAmountToPay = computed(() => {
 // ACTUALIZADO: Eliminar lógica SPE adicional
 /*const remainingAmount = computed(() => {
   let totalToPay = props.totalAmount;
-
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
 
@@ -302,6 +325,10 @@ const roundedTotalAmountToPay = computed(() => {
 const remainingAmount = computed(() => {
   // Aplicamos el descuento aquí también
   let totalWithDiscount = props.totalAmount;
+
+  if (appliesSpecialTax.value) {
+    totalWithDiscount += specialTaxAmount.value;
+  }
 
   const rawDifference = totalWithDiscount - totalPaidAmount.value;
 
@@ -1218,6 +1245,18 @@ const activeDiscountDisplay = computed(() => {
           </p>
         </div>
 
+            <div
+              v-if="appliesSpecialTax"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                Recargo Sujeto Pasivo Especial (3%):
+              </p>
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
+              </p>
+            </div>
+
         <div class="d-flex align-center flex-wrap justify-space-between">
           <p class="text-h6 font-weight-medium mt-2 mb-0">Total a pagar:</p>
           <p class="text-h6 font-weight-medium mt-2 mb-0">
@@ -1506,8 +1545,21 @@ const activeDiscountDisplay = computed(() => {
               </p>
             </div>
 
+
+            <div
+              v-if="appliesSpecialTax"
+              class="d-flex flex-wrap justify-space-between"
+            >
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                 Recargo Sujeto Pasivo Especial (3%):
+              </p>
+              <p class="text-h6 font-weight-medium mt-2 mb-0">
+                {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
+              </p>
+            </div>
+
             <div class="d-flex flex-wrap justify-space-between">
-              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
+              <p class="font-weight-bold text-h6 mt-2">Total a pagar: {{appliesSpecialTax}}</p>
               <p class="font-weight-bold text-h6 mt-2">
                 {{
                   formatCurrency(

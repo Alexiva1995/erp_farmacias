@@ -92,6 +92,10 @@ const props = defineProps({
     type: Object,
     default: () => null,
   },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -190,6 +194,11 @@ const breakdownItems = computed(() => {
 
 const formattedTotalQuotation = computed(() => {
   let amountToFormat = props.totalOrderAmount;
+
+
+  if (appliesSpecialTax.value) {
+    amountToFormat += specialTaxAmount.value;
+  }
 
   if (props.selectedDisplayCurrency === "COP") {
     amountToFormat = Math.ceil(amountToFormat / 100) * 100;
@@ -542,6 +551,19 @@ const handleIncrement = (product) => {
   }
 };
 
+
+const appliesSpecialTax = computed(() => {
+  return props.isSpecialTaxpayer && (props.selectedDisplayCurrency === 'USD' || props.selectedDisplayCurrency === 'COP');
+});
+
+const specialTaxAmount = computed(() => {
+  if (!appliesSpecialTax.value) return 0;
+  let tax = props.totalOrderAmount * 0.03;
+  if (props.selectedDisplayCurrency === "COP") {
+    tax = Math.ceil(tax / 100) * 100;
+  }
+  return tax;
+});
 </script>
 
 <template>
@@ -942,6 +964,38 @@ const handleIncrement = (product) => {
       </VCardText>
       <VDivider class="mt-auto" />
     </div>
+
+        <div v-if="appliesSpecialTax">
+      <VCardText class="py-2 bg-grey-lighten-4">
+        <VTable density="compact" lines="none">
+          <tbody>
+            <tr>
+              <td>
+                <div class="d-flex flex-column">
+                  <span
+                    class="text-subtitle-1 me-2 text-error font-weight-medium"
+                  >
+                    Incluye Recargo Sujeto Pasivo Especial (3%):
+                  </span>
+                </div>
+              </td>
+              <td><div class="d-flex align-center"></div></td>
+              <td class="text-right"></td>
+              <td class="text-right"></td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span class="text-body-1 font-weight-bold text-error">{{ formatCurrency(specialTaxAmount, props.selectedDisplayCurrency) }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
+      </VCardText>
+      <VDivider class="mt-auto" />
+    </div>
+
+
 
     <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
       <div class="d-flex flex-wrap gap-4 flex-grow-1">
