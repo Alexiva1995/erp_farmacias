@@ -222,6 +222,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
+        Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
         // Rutas de Promociones

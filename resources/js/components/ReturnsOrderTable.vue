@@ -3,6 +3,7 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import Swal from "sweetalert2";
 import { ref, watch } from "vue";
+import SelectLotForReturnDialog from "@/components/dialogs/SelectLotForReturnDialog.vue";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -12,9 +13,12 @@ const props = defineProps({
   page: { type: Number, required: true },
   isVendedor: { type: Boolean, required: true },
 });
-const emit = defineEmits(["update:options"]);
+const emit = defineEmits(["update:options", "return-product"]);
 const expanded = ref([]);
 const selectedProductsToReturn = ref({});
+
+const showLotDialog = ref(false);
+const pendingReturnData = ref(null);
 
 watch(
   () => props.orders,
@@ -48,27 +52,39 @@ const handleReturnProduct = (detailItem, order) => {
     return;
   }
 
-  Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡Desea devolver el producto!",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Continuar",
-    cancelButtonText: "Cancelar",
-  }).then(async (result) => {
-    if (result.isConfirmed) {
-      emit("return-product", {
-        product: detailItem.product,
-        order: order,
-        returns_quantity: quantity,
-      });
-    }
-  });
+  // Guardar datos pendientes y abrir diálogo de selección de lote
+  pendingReturnData.value = {
+    product: detailItem.product,
+    order: order,
+    returns_quantity: quantity,
+  };
+  showLotDialog.value = true;
 };
 
-const handleReturnSelectedProducts = (order) => {
+const handleLotSelected = (selectedLot) => {
+  if (!pendingReturnData.value) {
+    console.error("No hay datos pendientes de devolución");
+    return;
+  }
+
+  if (!selectedLot || !selectedLot.id) {
+    console.error("Lote seleccionado inválido:", selectedLot);
+    toast.error("El lote seleccionado no es válido.");
+    return;
+  }
+
+  // Emitir directamente la devolución sin confirmación adicional
+  emit("return-product", {
+    product: pendingReturnData.value.product,
+    order: pendingReturnData.value.order,
+    returns_quantity: pendingReturnData.value.returns_quantity,
+    product_lot_id: selectedLot.id,
+  });
+
+  pendingReturnData.value = null;
+};
+
+const handleReturnSelectedProducts = async (order) => {
   const selected = selectedProductsToReturn.value[order.id];
 
   if (!selected || selected.length === 0) {
@@ -110,23 +126,19 @@ const handleReturnSelectedProducts = (order) => {
     return;
   }
 
+  // Si solo hay un producto, mostrar diálogo de selección de lote
+  if (validItemsToReturn.length === 1) {
+    pendingReturnData.value = validItemsToReturn[0];
+    showLotDialog.value = true;
+    return;
+  }
+
+  // Para múltiples productos, mostrar advertencia
   Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡Desea devolver los productos seleccionados!",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Continuar",
-    cancelButtonText: "Cancelar",
-  }).then(async (result) => {
-    if (result.isConfirmed) {
-      console.log(validItemsToReturn);
-      validItemsToReturn.forEach((item) => {
-        emit("return-product", item);
-      });
-      selectedProductsToReturn.value[order.id] = [];
-    }
+    title: "Devolución múltiple",
+    text: "Para devoluciones múltiples, debe seleccionar el lote para cada producto individualmente.",
+    icon: "info",
+    confirmButtonText: "Entendido",
   });
 };
 
@@ -289,5 +301,11 @@ const orderItemHeaders = [
         </tr>
       </template>
     </VDataTableServer>
+
+    <SelectLotForReturnDialog
+      v-model="showLotDialog"
+      :product="pendingReturnData?.product || {}"
+      @select-lot="handleLotSelected"
+    />
   </VCard>
 </template>

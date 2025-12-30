@@ -76,6 +76,16 @@ class ReturnsController extends Controller
         }
     }
 
+    public function getProductLots(Request $request, $productId)
+    {
+        try {
+            $lots = $this->returnsActionService->getProductLotsForReturn($productId);
+            return response()->json($lots);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function returnsProduct(Request $request)
     {
         try {

@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from "vue";
 import ReturnsClientCard from "@/components/cards/ReturnsClientCard.vue";
 import ReturnsOrderTable from "@/components/ReturnsOrderTable.vue";
 import axios from "@/plugins/axios";
@@ -58,15 +59,16 @@ const updateTableOptions = (newOptions) => {
   fetchOrders();
 };
 
-const handleReturnProduct = async ({ product, order, returns_quantity }) => {
+const handleReturnProduct = async ({ product, order, returns_quantity, product_lot_id }) => {
   try {
     const response = await axios.post("/tpv/returns/product", {
       product: product,
       order: order,
       returns_quantity: returns_quantity,
+      product_lot_id: product_lot_id,
     });
 
-    toast.success(`Producto ${product.name} devuelto.`);
+    toast.success(`Devolución de ${product.name} procesada. Pendiente de aprobación del supervisor.`);
     handleClearSearch();
   } catch (error) {
     console.error("Error al devolver producto:", error.response?.data?.error);

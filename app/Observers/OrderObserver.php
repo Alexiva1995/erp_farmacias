@@ -11,7 +11,7 @@ class OrderObserver
      */
     public function created(Order $order): void
     {
-        if ($order->status === 'completed' || $order->status === 'paid') {
+        if ($order->status === Order::COMPLETED || $order->status === 'paid') {
             ProductObserver::handleOrderMovement($order);
         }
     }
@@ -23,8 +23,8 @@ class OrderObserver
     {
         if (
             $order->isDirty('status') &&
-            ($order->status === 'completed' || $order->status === 'paid') &&
-            ($order->getOriginal('status') !== 'completed' && $order->getOriginal('status') !== 'paid')
+            ($order->status === Order::COMPLETED || $order->status === 'paid') &&
+            ($order->getOriginal('status') !== Order::COMPLETED && $order->getOriginal('status') !== 'paid')
         ) {
 
             ProductObserver::handleOrderMovement($order);

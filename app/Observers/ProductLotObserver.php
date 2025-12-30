@@ -28,6 +28,27 @@ class ProductLotObserver
             $originalQuantity = $productLot->getOriginal('quantity') ?? 0;
             $newQuantity = $productLot->quantity ?? 0;
 
+            // Check if there's a sale movement created recently (within 2 minutes) for this product
+            // This indicates the lot quantity change is part of a sale, not an expiration
+            // The sale movement is created by ProductObserver::handleOrderMovement after lot updates
+            // We check by product_id since product_lot_id might be null in sale movements
+            $recentSaleMovement = \App\Models\InventoryMovement::where('product_id', $productLot->product_id)
+                ->where('movement_type', 'sale')
+                ->where(function ($query) use ($productLot) {
+                    $query->where('product_lot_id', $productLot->id)
+                          ->orWhereNull('product_lot_id');
+                })
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->exists();
+
+            if ($recentSaleMovement) {
+                // If there's a recent sale movement, don't create expired/adjustment movements
+                // Just update the product stock and price
+                $this->updateProductStockAndPrice($productLot->product);
+                return;
+            }
+
+
             if ($originalQuantity > 0 && $newQuantity === 0) {
                 $this->createExpiredMovement($productLot, $originalQuantity);
             } elseif ($originalQuantity !== $newQuantity) {
