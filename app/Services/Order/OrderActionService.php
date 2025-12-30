@@ -482,6 +482,9 @@ class OrderActionService
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
 
+            $generalSettings = DB::table('general_settings')->first();
+            $isFiscalActive = $generalSettings && $generalSettings->fiscal_mode === 'activa';
+
             if ($request->hasFile('prescription_image')) {
                 $path = $request->file('prescription_image')->store('recipe', 'public');
                 $orderId->url_recipe = $path;
@@ -623,11 +626,15 @@ class OrderActionService
             }
 
 
-            if ($request->generate_invoice) {
+            if ($isFiscalActive) {
+                $this->invoicing($orderId, $request->spe);
+                $ivaEjecuted = true;
+            }else if ($request->generate_invoice) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             }
 
+        if (!$ivaEjecuted) {
             foreach ($orderId->details as $detail) {
                 if ($detail->product) {
                     if (!$request->generate_invoice) {
@@ -638,6 +645,7 @@ class OrderActionService
                     }
                 }
             }
+        }
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
