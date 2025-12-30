@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     'auth-login': RouteRecordInfo<'auth-login', '/auth/login', Record<never, never>, Record<never, never>>,
     'balance-general': RouteRecordInfo<'balance-general', '/balance/general', Record<never, never>, Record<never, never>>,
     'business-intelligence-report-abc': RouteRecordInfo<'business-intelligence-report-abc', '/businessIntelligence/reportAbc', Record<never, never>, Record<never, never>>,
+    'configuration': RouteRecordInfo<'configuration', '/configuration', Record<never, never>, Record<never, never>>,
     'crm-clients': RouteRecordInfo<'crm-clients', '/crm/clients', Record<never, never>, Record<never, never>>,
     'crm-clients-pending': RouteRecordInfo<'crm-clients-pending', '/crm/clients/pending', Record<never, never>, Record<never, never>>,
     'crm-companies': RouteRecordInfo<'crm-companies', '/crm/companies', Record<never, never>, Record<never, never>>,

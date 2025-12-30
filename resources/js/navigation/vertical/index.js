@@ -8,10 +8,11 @@ import productivity from './productivity'
 import rrhh from './rrhh'
 import suppliers from './suppliers'
 import tpv from './tpv'
+import configuration from './configuration'
 
 
 
 
 
-export default [...inventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...businessIntelligence]
+export default [...inventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...businessIntelligence, ...configuration]
 
