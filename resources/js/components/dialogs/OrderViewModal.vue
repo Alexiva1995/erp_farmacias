@@ -44,6 +44,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["update:isDialogVisible"]);
@@ -187,13 +191,6 @@ const activeDiscount = computed(() => {
   if (discounts.recipe > 0)
     return { label: "Descuento Recipe", amount: discounts.recipe };
   return null;
-});
-
-
-const appliesSpecialTax = computed(() => {
-    const hasStoredAmount = parseFloat(props.orderData?.spe_surcharge_amount) > 0;
-    const hasStoredRate = parseFloat(props.orderData?.spe_surcharge_rate) > 0;
-    return hasStoredAmount || hasStoredRate;
 });
 </script>
 
@@ -360,7 +357,7 @@ const appliesSpecialTax = computed(() => {
 
 
         <div
-          v-if="appliesSpecialTax"
+          v-if="isSpecialTaxpayer"
           class="ticket-total d-flex justify-space-between align-center"
         >
           <span class="font-weight-bold text-h6"

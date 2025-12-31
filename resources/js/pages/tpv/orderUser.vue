@@ -62,6 +62,7 @@ const doctorDiscountForPrint = ref(0);
 const companyDiscountForPrint = ref(0);
 const discountTypeForPrint = ref(null);
 const expirationDiscountForPrint = ref(0);
+const speSurchargeAmount = ref(0);
 
 const isFinishingOrder = ref(false);
 
@@ -1792,7 +1793,7 @@ const closeBuysModal = () => {
       });
       console.log("Manual Expiration Total:", manualExpTotal);
       expirationDiscountForPrint.value = manualExpTotal;
-
+      speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -2034,9 +2035,8 @@ const handleBuysCompletion = async (
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
-
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
-
+      speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -2656,7 +2656,7 @@ const handleExternalSort = async (sortData) => {
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
         :order-products="itemsForTicket"
-        :total-amount="totalOrderAmount"
+        :total-amount="totalOrderAmountWithspecialTaxAmount"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"
         :change-amount="changeAmountForPrint"
@@ -2667,6 +2667,8 @@ const handleExternalSort = async (sortData) => {
         :doctor-discount-total="doctorDiscountForPrint"
         :recipe-discount-total="recipeDiscountForPrint"
         :expiration-discount-total="expirationDiscountForPrint"
+        :is-special-taxpayer="isSpecialTaxpayer"
+        :spe-surcharge-amount="speSurchargeAmount"
       />
     </div>
   </div>

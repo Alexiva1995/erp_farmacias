@@ -62,6 +62,14 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
+  speSurchargeAmount: {
+    type: String,
+    default: 0,
+  },
 });
 
 const authStore = useAuthStore();
@@ -297,6 +305,20 @@ onMounted(() => {
             }}
           </span>
         </div>
+
+
+         <div
+          v-if="isSpecialTaxpayer"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold tituloAzulPrint">
+            Recargo Sujeto Pasivo Especial (3%):
+          </span>
+          <span class="text-end font-weight-black tituloAzulPrint">
+            {{ formatCurrency(props.speSurchargeAmount, props.selectedCurrency) }}
+          </span>
+        </div>
+
         <div class="ticket-total d-flex justify-space-between align-center">
           <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
           <span class="text-end font-weight-black tituloAzulPrint">

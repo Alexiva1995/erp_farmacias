@@ -428,6 +428,13 @@ watch(
   },
   { deep: true }
 );
+
+const isSpecialTaxpayer = computed(() => {
+ if (!orderData.value) return false;
+  const amount = parseFloat(orderData.value.spe_surcharge_amount || 0);
+  const rate = parseFloat(orderData.value.spe_surcharge_rate || 0);
+  return amount > 0 || rate > 0;
+});
 </script>
 
 <template>
@@ -485,6 +492,7 @@ watch(
       :credit-amount="creditAmountForPrint"
       :credit="creditForPrint"
       @close="handleCloseViewModal"
+      :is-special-taxpayer="isSpecialTaxpayer"
     />
   </VCard>
 
