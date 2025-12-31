@@ -612,6 +612,11 @@ class OrderActionService
                 }
             }
 
+            //  Recargo Sujeto Pasivo Especial
+            $orderId->taxable_base = $request->taxable_base;
+            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate;
+            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount;
+
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
             // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
             // it will see the recent sale movement and skip creating expired/adjustment movements

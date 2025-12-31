@@ -445,6 +445,10 @@ const handleCompletePurchase = () => {
   if (currentProgress.value === 0 && !isCredit(payments.value[0].method)) {
     let totalToPayCalculated = props.totalAmount;
 
+    if (appliesSpecialTax.value) {
+      totalToPayCalculated += specialTaxAmount.value;
+    }
+
     /*if (speSwitch.value) {
       const totalIva = props.orderProducts.reduce((sum, product) => {
         return sum + getIva(product, props.selectedCurrency);
@@ -771,6 +775,10 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 const changeAmount = computed(() => {
   //let totalToPay = props.totalAmount;
   let totalToPay = props.totalAmount;
+
+  if (appliesSpecialTax.value) {
+    totalToPay += specialTaxAmount.value;
+  }
 
   // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
   // El descuento SPE ya está incluido en props.totalAmount
@@ -1559,7 +1567,7 @@ const activeDiscountDisplay = computed(() => {
             </div>
 
             <div class="d-flex flex-wrap justify-space-between">
-              <p class="font-weight-bold text-h6 mt-2">Total a pagar: {{appliesSpecialTax}}</p>
+              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
               <p class="font-weight-bold text-h6 mt-2">
                 {{
                   formatCurrency(

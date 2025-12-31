@@ -1120,7 +1120,7 @@ const totalOrderAmountSinDiscount = computed(() => {
   let discountToSubtract = 0;
   return baseTotal;
 });
-
+/*
 const myCalculatedTotal = computed(() => {
   // 1. Sumamos el subtotal de productos + IVA (que ya tiene el beneficio SPE)
   let valor = totalProductsAmount.value + totalIVAAmount.value;
@@ -1139,8 +1139,14 @@ const myCalculatedTotal = computed(() => {
   if (selectedDisplayCurrency.value === "COP") {
     return roundUpToNearestHundred(valor);
   }
+  if (appliesSpecialTax.value) {
+    valor += specialTaxAmount.value;
+  }
+
+  console.log(valor);
+
   return parseFloat(valor.toFixed(2));
-});
+});*/
 
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
@@ -1250,7 +1256,6 @@ const totalAmountUsd = computed(() => {
     let tax = finalTotalUSD * 0.03;
     finalTotalUSD += tax;
   }
-    console.log(finalTotalUSD);
 
   return finalTotalUSD;
 
@@ -1582,7 +1587,6 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const removeOrderItem = async (productIdToRemove) => {
-console.log('funcion de padre remove');
  /* Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea eliminar el producto!",
@@ -1743,7 +1747,7 @@ const closeBuysModal = () => {
     const payload = {
       order_id: orderId,
       payments: paymentsData,
-      total_amount: myCalculatedTotal.value,
+      total_amount: totalOrderAmountWithspecialTaxAmount.value,
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
@@ -1771,9 +1775,9 @@ const closeBuysModal = () => {
       toast.success("¡Compra finalizada y registrada con éxito!");
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
 
       // Manual calculation to ensure accuracy
@@ -1932,9 +1936,14 @@ const handleBuysCompletion = async (
       currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = "recipe";
     }
+
+    let taxable_base = appliesSpecialTax.value ? totalOrderAmount.value : 0.00;
+    let spe_surcharge_rate = appliesSpecialTax.value ? 3.00 : 0.00;
+    let spe_surcharge_amount = appliesSpecialTax.value ? specialTaxAmount.value : 0.00;
+
     const formData = new FormData();
     formData.append("order_id", orderId);
-    formData.append("total_amount", myCalculatedTotal.value);
+    formData.append("total_amount", totalOrderAmountWithspecialTaxAmount.value);
     formData.append("currency", selectedDisplayCurrency.value);
     formData.append("client_id", selectedClient.value?.id || "");
     formData.append("seller_id", currentUser.value?.id || "");
@@ -1945,6 +1954,9 @@ const handleBuysCompletion = async (
     formData.append("changeAmountUSD", changeAmountUSD);
     formData.append("spe", switchStates.spe ? 1 : 0);
     formData.append("payments", JSON.stringify(paymentsData));
+    formData.append("taxable_base", taxable_base);
+    formData.append("spe_surcharge_rate", spe_surcharge_rate);
+    formData.append("spe_surcharge_amount", spe_surcharge_amount);
 
     const mappedItems = orderItems.value.map((item) => {
       // 1. Determine Base Price in Current Currency
@@ -2020,7 +2032,7 @@ const handleBuysCompletion = async (
       prescriptionFile.value = null;
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
 
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
@@ -2620,7 +2632,7 @@ const handleExternalSort = async (sortData) => {
       v-model:is-dialog-visible="showBuysModal"
       :order-products="orderItems"
       :order-data="openOrderData"
-      :total-amount="myCalculatedTotal"
+      :total-amount="totalOrderAmount"
       :selected-currency="selectedDisplayCurrency"
       @modal-closed="closeBuysModal"
       @purchase-completed="handleBuysCompletion"
@@ -2644,7 +2656,7 @@ const handleExternalSort = async (sortData) => {
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
         :order-products="itemsForTicket"
-        :total-amount="myCalculatedTotal"
+        :total-amount="totalOrderAmount"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"
         :change-amount="changeAmountForPrint"
