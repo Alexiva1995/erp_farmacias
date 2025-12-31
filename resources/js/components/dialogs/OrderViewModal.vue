@@ -188,6 +188,13 @@ const activeDiscount = computed(() => {
     return { label: "Descuento Recipe", amount: discounts.recipe };
   return null;
 });
+
+
+const appliesSpecialTax = computed(() => {
+    const hasStoredAmount = parseFloat(props.orderData?.spe_surcharge_amount) > 0;
+    const hasStoredRate = parseFloat(props.orderData?.spe_surcharge_rate) > 0;
+    return hasStoredAmount || hasStoredRate;
+});
 </script>
 
 <template>
@@ -348,6 +355,19 @@ const activeDiscount = computed(() => {
           >
           <span class="text-end font-weight-bold text-h6">
             - {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}
+          </span>
+        </div>
+
+
+        <div
+          v-if="appliesSpecialTax"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold text-h6"
+            >Recargo Sujeto Pasivo Especial (3%):</span
+          >
+          <span class="text-end font-weight-bold text-h6">
+             {{props.orderData?.spe_surcharge_amount}} {{selectedCurrency}}
           </span>
         </div>
 
