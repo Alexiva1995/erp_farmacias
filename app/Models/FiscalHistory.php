@@ -23,6 +23,9 @@ class FiscalHistory extends Model
         'order_id',
         'spe',
         'taxable_amount',
+        'spe_surcharge_rate',
+        'spe_surcharge_amount',
+        'exchange_rate',
     ];
 
     public function user(): BelongsTo
