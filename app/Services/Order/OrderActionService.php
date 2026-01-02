@@ -16,6 +16,7 @@ use App\Exceptions\InsufficientStockException;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\ProductLot;
+use App\Services\Resources\ResourceService;
 
 class OrderActionService
 {
@@ -430,7 +431,12 @@ class OrderActionService
         $totalIva = 0;
         $exemptAmount = 0;
         $taxableAmount = 0;
+        $taxable_base = 0;
         $client = $order->client;
+
+        $resourceService = app(ResourceService::class);
+        $exchangeRate = $resourceService->getExchangeRate('BS');
+
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
                 $product = $detail->product;
@@ -450,7 +456,13 @@ class OrderActionService
                 }
             }
 
-            $totalAmountBs = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+            // --- CÁLCULOS Recarga Sujeto pasivo especial 3%---
+            $taxable_base = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+
+            $speRate = $order->spe_surcharge_rate ?? 0;
+            $speAmountBs = ($speRate > 0) ? ($taxable_base * ($speRate / 100)) : 0;
+
+            $totalAmountBs = $taxable_base + $speAmountBs;
 
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
@@ -463,6 +475,9 @@ class OrderActionService
                 'taxable_amount' => $taxableAmount,
                 'iva_amount' => $totalIva,
                 'total_amount' => $totalAmountBs,
+                'spe_surcharge_rate' => $speRate,
+                'spe_surcharge_amount' => $speAmountBs,
+                'exchange_rate' => $exchangeRate,
                 'invoice_date' => Carbon::now(),
                 'spe' => $spe
             ]);
