@@ -269,6 +269,10 @@ class InvoiceActionService
             }
 
             $invoice->update($updateData);
+            
+            // Crear movimientos de inventario cuando se aprueba la factura
+            // Esto asegura que los movimientos estén anclados a la factura desde la aprobación
+            \App\Observers\ProductObserver::handleInvoiceMovement($invoice->fresh());
 
             return $invoice->fresh(['details.product', 'supplier']);
         });
@@ -390,7 +394,15 @@ class InvoiceActionService
 
                 if ($detail && $detail->invoice_id === $invoice->id) {
                     $detail->update(['location' => $detailData['location']]);
-                    $this->createProductLot($detail, $detail->unit_cost, $invoice);
+                    $productLot = $this->createProductLot($detail, $detail->unit_cost, $invoice);
+                    
+                    // Actualizar el movimiento existente (creado al aprobar) con el product_lot_id
+                    \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
+                        ->where('product_id', $detail->product_id)
+                        ->whereNull('product_lot_id')
+                        ->where('movement_type', 'purchase')
+                        ->where('quantity', $detail->quantity)
+                        ->update(['product_lot_id' => $productLot->id]);
                 }
             }
 
@@ -398,6 +410,7 @@ class InvoiceActionService
                 'status' => 'ordered',
                 'ordered_by' => Auth::id()
             ]);
+            
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }

@@ -87,9 +87,14 @@ class ProductObserver
                 $product->update(['stock' => $stockAfter]);
             });
 
+            // Buscar el lote por producto, número de lote y fecha de expiración si no hay product_lot_id
+            // Nota: Cuando se aprueba la factura, los lotes aún no existen, así que product_lot_id será null
+            // Los lotes se crearán cuando se ordene la factura, y entonces se actualizará el movimiento
+            $productLotId = $detail->product_lot_id ?? null;
+
             InventoryMovement::create([
                 'product_id' => $product->id,
-                'product_lot_id' => $detail->product_lot_id ?? null,
+                'product_lot_id' => $productLotId,
                 'movement_type' => 'purchase',
                 'quantity' => $detail->quantity,
                 'invoice_id' => $invoice->id,

@@ -25,8 +25,34 @@ class TraceabilityController extends Controller
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
 
+        // For purchase movements without invoice_id, try to find invoice through product_lot
+        $items = collect($paginatedResult->items())->map(function ($item) {
+            if (($item->movement_type === 'Compra' || $item->getAttributes()['movement_type'] === 'purchase') 
+                && !$item->invoice_id 
+                && $item->product_lot_id 
+                && !$item->relationLoaded('invoice')) {
+                
+                // Load product lot
+                $item->load('productLot');
+                
+                if ($item->productLot) {
+                    // Try to find invoice through InvoiceDetail
+                    $invoiceDetail = \App\Models\InvoiceDetail::where('product_id', $item->product_id)
+                        ->where('lot_number', $item->productLot->lot_number)
+                        ->where('expiration_date', $item->productLot->expiration_date)
+                        ->with('invoice.supplier')
+                        ->first();
+                    
+                    if ($invoiceDetail && $invoiceDetail->invoice) {
+                        $item->setRelation('invoice', $invoiceDetail->invoice);
+                    }
+                }
+            }
+            return $item;
+        })->all();
+
         return response()->json([
-            'data' => $paginatedResult->items(),
+            'data' => $items,
             'total' => $paginatedResult->total(),
         ]);
     }
@@ -56,7 +82,7 @@ class TraceabilityController extends Controller
 
     public function getMovementDetails(InventoryMovement $movement)
     {
-        $movement->load(['product', 'user', 'order.seller', 'order.client', 'invoice', 'supplier']);
+        $movement->load(['product', 'user', 'order.seller', 'order.client', 'invoice.supplier', 'supplier']);
 
         $details = [
             'movement' => $movement,
@@ -88,8 +114,32 @@ class TraceabilityController extends Controller
                 break;
 
             case 'purchase':
-                // For purchases, the invoice is already loaded
-                $details['invoice'] = $movement->invoice;
+                // For purchases, load invoice with supplier relationship
+                $invoice = null;
+                
+                if ($movement->invoice_id) {
+                    // Load invoice directly if invoice_id exists
+                    $invoice = \App\Models\Invoice::with('supplier')->find($movement->invoice_id);
+                } elseif ($movement->product_lot_id) {
+                    // If no invoice_id but has product_lot_id, try to find invoice through the lot
+                    $productLot = $movement->productLot;
+                    if ($productLot) {
+                        // Try to find invoice through InvoiceDetail matching product and lot
+                        $invoiceDetail = \App\Models\InvoiceDetail::where('product_id', $movement->product_id)
+                            ->where('lot_number', $productLot->lot_number)
+                            ->where('expiration_date', $productLot->expiration_date)
+                            ->with('invoice.supplier')
+                            ->first();
+                        
+                        if ($invoiceDetail && $invoiceDetail->invoice) {
+                            $invoice = $invoiceDetail->invoice;
+                            $invoice->load('supplier');
+                        }
+                    }
+                }
+                
+                $details['invoice'] = $invoice;
+                $details['supplier'] = $invoice?->supplier ?? $movement->supplier;
                 break;
 
             case 'adjustment':

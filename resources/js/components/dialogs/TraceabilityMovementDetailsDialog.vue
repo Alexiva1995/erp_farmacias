@@ -278,18 +278,36 @@ const getStatusLabel = (status) => {
         <div v-if="movementDetails.type === 'purchase'" class="mb-6">
           <p class="text-h6 font-weight-medium mb-4">Información de Compra</p>
           <VRow>
-            <VCol cols="12">
-              <p class="text-body-2 text-medium-emphasis mb-1">Factura</p>
+            <VCol cols="12" md="6">
+              <p class="text-body-2 text-medium-emphasis mb-1">Número de Factura</p>
               <VBtn
-                v-if="movementDetails.invoice"
+                v-if="movementDetails.invoice && movementDetails.invoice.id"
                 variant="text"
                 color="primary"
                 @click="handleViewInvoice(movementDetails.invoice.id)"
               >
-                Factura #{{ movementDetails.invoice.id }}
+                {{ movementDetails.invoice.invoice_number ? movementDetails.invoice.invoice_number : movementDetails.invoice.id }}
                 <VIcon icon="tabler-external-link" class="ms-2" size="16" />
               </VBtn>
               <p v-else class="text-body-1">N/A</p>
+            </VCol>
+            <VCol cols="12" md="6">
+              <p class="text-body-2 text-medium-emphasis mb-1">Proveedor</p>
+              <p class="text-body-1 font-weight-medium">
+                {{ movementDetails.supplier?.name || movementDetails.invoice?.supplier?.name || "N/A" }}
+              </p>
+            </VCol>
+            <VCol cols="12" md="6" v-if="movementDetails.invoice?.control_number">
+              <p class="text-body-2 text-medium-emphasis mb-1">Número de Control</p>
+              <p class="text-body-1 font-weight-medium">
+                {{ movementDetails.invoice.control_number }}
+              </p>
+            </VCol>
+            <VCol cols="12" md="6" v-if="movementDetails.invoice?.total_amount">
+              <p class="text-body-2 text-medium-emphasis mb-1">Monto Total</p>
+              <p class="text-body-1 font-weight-medium">
+                {{ new Intl.NumberFormat('es-VE', { style: 'currency', currency: movementDetails.invoice.currency || 'USD' }).format(movementDetails.invoice.total_amount) }}
+              </p>
             </VCol>
           </VRow>
         </div>

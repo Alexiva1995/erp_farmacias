@@ -38,6 +38,23 @@ const fetchSales = async () => {
     const response = await axios.get("/sales/report", { params });
     sales.value = response.data.data;
     totalSales.value = response.data.total;
+    
+    // DEBUG: Verificar datos de facturas
+    const purchaseMovements = response.data.data.filter(item => item.movement_type === 'Compra' || item.movement_type === 'purchase');
+    if (purchaseMovements.length > 0) {
+      console.log('=== DEBUG TRAZABILIDAD - MOVIMIENTOS DE COMPRA ===');
+      purchaseMovements.forEach((item, index) => {
+        console.log(`Movimiento ${index + 1}:`, {
+          id: item.id,
+          invoice_id: item.invoice_id,
+          invoice: item.invoice,
+          invoice_number: item.invoice?.invoice_number,
+          tiene_invoice: !!item.invoice,
+          tiene_invoice_number: !!item.invoice?.invoice_number
+        });
+      });
+      console.log('=== FIN DEBUG ===');
+    }
   } catch (error) {
     console.error("Hubo un error al obtener el reporte de ventas:", error);
     toast.error("Error al obtener el reporte.");

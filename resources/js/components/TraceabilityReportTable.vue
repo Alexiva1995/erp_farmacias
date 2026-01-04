@@ -99,12 +99,20 @@ const headers = [
           color="primary"
           size="small"
           @click="handleReferenceClick(item)"
+          @mouseenter="() => {
+            if (item.invoice_id) {
+              console.log('DEBUG Referencia - Item completo:', item);
+              console.log('DEBUG Referencia - Invoice:', item.invoice);
+              console.log('DEBUG Referencia - invoice_number:', item.invoice?.invoice_number);
+              console.log('DEBUG Referencia - invoice_id:', item.invoice_id);
+            }
+          }"
         >
           {{
             item.order_id != null
               ? item.order_id
               : item.invoice_id != null
-              ? item.invoice_id
+              ? (item.invoice?.invoice_number ?? item.invoice_id)
               : item.id
           }}
           <VIcon icon="tabler-external-link" class="ms-1" size="16" />

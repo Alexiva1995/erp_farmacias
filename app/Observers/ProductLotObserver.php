@@ -14,7 +14,18 @@ class ProductLotObserver
      */
     public function created(ProductLot $productLot)
     {
-        $this->createPurchaseMovement($productLot);
+        // Verificar si ya existe un movimiento reciente (dentro de 2 minutos) para este producto y lote
+        // Esto evita crear movimientos duplicados cuando se ordena una factura
+        // (handleInvoiceMovement crea los movimientos con invoice_id)
+        $recentMovement = \App\Models\InventoryMovement::where('product_id', $productLot->product_id)
+            ->where('product_lot_id', $productLot->id)
+            ->where('movement_type', 'purchase')
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->exists();
+
+        if (!$recentMovement) {
+            $this->createPurchaseMovement($productLot);
+        }
 
         $this->updateProductStockAndPrice($productLot->product);
     }

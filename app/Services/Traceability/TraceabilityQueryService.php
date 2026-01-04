@@ -18,7 +18,13 @@ class TraceabilityQueryService
     public function getFilteredQuery(Request $request): Builder
     {
 
-        $query = InventoryMovement::query()->with('user', 'order', 'invoice', 'supplier', 'product');
+        $query = InventoryMovement::query()->with([
+            'user', 
+            'order', 
+            'invoice.supplier',
+            'supplier', 
+            'product'
+        ]);
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->input('q')}%";
@@ -56,7 +62,13 @@ class TraceabilityQueryService
         $hasStock = $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null;
 
 
-        $query = InventoryMovement::query()->with('user', 'order', 'invoice', 'supplier', 'product');
+        $query = InventoryMovement::query()->with([
+            'user', 
+            'order', 
+            'invoice.supplier',
+            'supplier', 
+            'product'
+        ]);
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->input('q')}%";
