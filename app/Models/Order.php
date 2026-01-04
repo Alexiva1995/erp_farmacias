@@ -24,6 +24,9 @@ class Order extends Model
         'money_returns',
         'currency',
         'total_cost',
+        'taxable_base',
+        'spe_surcharge_rate',
+        'spe_surcharge_amount',
         'order_date',
         'status',
         'has_multiple_currencies',
@@ -36,6 +39,9 @@ class Order extends Model
         'payment_methods' => 'array',
         'has_multiple_currencies' => 'boolean',
         'order_date' => 'datetime',
+        'taxable_base' => 'decimal:2',
+        'spe_surcharge_rate' => 'decimal:2',
+        'spe_surcharge_amount' => 'decimal:2',
     ];
 
     public function client()

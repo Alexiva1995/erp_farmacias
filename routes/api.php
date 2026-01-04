@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\ProductPackController;
 use App\Http\Controllers\Api\PrescriptionOfferController;
 use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
+use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
 
 /*
@@ -278,6 +279,12 @@ Route::middleware("auth:sanctum")->group(function () {
     });
     Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
     Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);
+
+
+    //ruta de configuracion
+    Route::get('/general-settings', [GeneralSettingController::class, 'index']);
+    Route::post('/general-settings', [GeneralSettingController::class, 'store']);
+
 });
 
 // Rutas de Trazabilidad

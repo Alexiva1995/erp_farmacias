@@ -16,6 +16,7 @@ use App\Exceptions\InsufficientStockException;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\ProductLot;
+use App\Services\Resources\ResourceService;
 
 class OrderActionService
 {
@@ -430,7 +431,12 @@ class OrderActionService
         $totalIva = 0;
         $exemptAmount = 0;
         $taxableAmount = 0;
+        $taxable_base = 0;
         $client = $order->client;
+
+        $resourceService = app(ResourceService::class);
+        $exchangeRate = $resourceService->getExchangeRate('BS');
+
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
                 $product = $detail->product;
@@ -450,7 +456,13 @@ class OrderActionService
                 }
             }
 
-            $totalAmountBs = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+            // --- CÁLCULOS Recarga Sujeto pasivo especial 3%---
+            $taxable_base = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+
+            $speRate = $order->spe_surcharge_rate ?? 0;
+            $speAmountBs = ($speRate > 0) ? ($taxable_base * ($speRate / 100)) : 0;
+
+            $totalAmountBs = $taxable_base + $speAmountBs;
 
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
@@ -463,6 +475,9 @@ class OrderActionService
                 'taxable_amount' => $taxableAmount,
                 'iva_amount' => $totalIva,
                 'total_amount' => $totalAmountBs,
+                'spe_surcharge_rate' => $speRate,
+                'spe_surcharge_amount' => $speAmountBs,
+                'exchange_rate' => $exchangeRate,
                 'invoice_date' => Carbon::now(),
                 'spe' => $spe
             ]);
@@ -481,6 +496,9 @@ class OrderActionService
             $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
+
+            $generalSettings = DB::table('general_settings')->first();
+            $isFiscalActive = $generalSettings && $generalSettings->fiscal_mode === 'activa';
 
             if ($request->hasFile('prescription_image')) {
                 $path = $request->file('prescription_image')->store('recipe', 'public');
@@ -609,6 +627,11 @@ class OrderActionService
                 }
             }
 
+            //  Recargo Sujeto Pasivo Especial
+            $orderId->taxable_base = $request->taxable_base;
+            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate;
+            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount;
+
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
             // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
             // it will see the recent sale movement and skip creating expired/adjustment movements
@@ -633,11 +656,15 @@ class OrderActionService
             }
 
 
-            if ($request->generate_invoice) {
+            if ($isFiscalActive) {
+                $this->invoicing($orderId, $request->spe);
+                $ivaEjecuted = true;
+            }else if ($request->generate_invoice) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             }
 
+        if (!$ivaEjecuted) {
             foreach ($orderId->details as $detail) {
                 if ($detail->product) {
                     if (!$request->generate_invoice) {
@@ -648,6 +675,7 @@ class OrderActionService
                     }
                 }
             }
+        }
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();

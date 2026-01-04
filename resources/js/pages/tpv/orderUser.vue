@@ -62,8 +62,13 @@ const doctorDiscountForPrint = ref(0);
 const companyDiscountForPrint = ref(0);
 const discountTypeForPrint = ref(null);
 const expirationDiscountForPrint = ref(0);
+const speSurchargeAmount = ref(0);
 
 const isFinishingOrder = ref(false);
+
+
+const isSpecialTaxpayer = ref(false)
+
 
 const newClientFormData = ref({
   id: null,
@@ -149,6 +154,17 @@ const currentPrescriptionDiscountPercentage = computed(() => {
 });
 
 const currentGroupId = ref(null);
+
+const fetchGeneralSettings = async () => {
+  try {
+    const { data } = await axios.get('/general-settings')
+    isSpecialTaxpayer.value = data.special_taxpayer_status === 'activa'
+  } catch (error) {
+    console.error("Error al cargar configuración", error)
+    toast.error("Error al cargar configuración");
+  }
+}
+
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -598,6 +614,7 @@ onMounted(() => {
   fetchDoctorOffers();
   fetchPrescriptionOffers();
   fetchCompanyOffers();
+  fetchGeneralSettings();
 });
 
 const formatOrderItemForFrontend = (backendItem) => {
@@ -1065,6 +1082,27 @@ const totalExpirationDiscountAmount = computed(() => {
   return total;
 });
 
+
+const appliesSpecialTax = computed(() => {
+  return isSpecialTaxpayer.value && (selectedDisplayCurrency.value === 'USD' || selectedDisplayCurrency.value === 'COP');
+});
+
+const specialTaxAmount = computed(() => {
+  if (!appliesSpecialTax.value) return 0;
+  let tax = totalOrderAmount.value * 0.03;
+  if (selectedDisplayCurrency.value === "COP") {
+    tax = Math.ceil(tax / 100) * 100;
+  }
+  return tax;
+});
+
+const totalOrderAmountWithspecialTaxAmount = computed(() => {
+   if (appliesSpecialTax.value) {
+    return totalOrderAmount.value += specialTaxAmount.value;
+  }
+  return totalOrderAmount.value
+});
+
 const totalOrderAmount = computed(() => {
   const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
   let discountToSubtract = 0;
@@ -1083,7 +1121,7 @@ const totalOrderAmountSinDiscount = computed(() => {
   let discountToSubtract = 0;
   return baseTotal;
 });
-
+/*
 const myCalculatedTotal = computed(() => {
   // 1. Sumamos el subtotal de productos + IVA (que ya tiene el beneficio SPE)
   let valor = totalProductsAmount.value + totalIVAAmount.value;
@@ -1102,8 +1140,14 @@ const myCalculatedTotal = computed(() => {
   if (selectedDisplayCurrency.value === "COP") {
     return roundUpToNearestHundred(valor);
   }
+  if (appliesSpecialTax.value) {
+    valor += specialTaxAmount.value;
+  }
+
+  console.log(valor);
+
   return parseFloat(valor.toFixed(2));
-});
+});*/
 
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
@@ -1174,7 +1218,7 @@ const totalAmountUsd = computed(() => {
   let subtotalProductosUSD = 0;
 
   orderItems.value.forEach((item) => {
-    const basePriceUsd = item.price || 0;
+    const basePriceUsd = item.original_price_usd || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
 
@@ -1183,7 +1227,6 @@ const totalAmountUsd = computed(() => {
     if (selectedClient.value?.is_spe) {
       effectiveTaxRate = taxRate * 0.25;
     }
-
     subtotalProductosUSD += basePriceUsd * quantity;
     total += basePriceUsd * quantity * (1 + effectiveTaxRate);
   });
@@ -1206,9 +1249,17 @@ const totalAmountUsd = computed(() => {
     porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
 
+
   const descuentoUSD = subtotalProductosUSD * (porcentaje / 100);
-  const finalTotalUSD = total - descuentoUSD;
+  let finalTotalUSD = total - descuentoUSD;
+  
+  if (appliesSpecialTax.value) {
+    let tax = finalTotalUSD * 0.03;
+    finalTotalUSD += tax;
+  }
+
   return finalTotalUSD;
+
 });
 
 const totalAmountCop = computed(() => {
@@ -1236,8 +1287,8 @@ const updateOrderTotalsInBackend = async () => {
 
   let total =
     selectedDisplayCurrency.value == "COP"
-      ? roundUpToNearestHundred(totalOrderAmount.value)
-      : totalOrderAmount.value.toFixed(2);
+      ? roundUpToNearestHundred(totalOrderAmountWithspecialTaxAmount.value)
+      : totalOrderAmountWithspecialTaxAmount.value.toFixed(2);
 
   try {
     const payload = {
@@ -1537,7 +1588,6 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const removeOrderItem = async (productIdToRemove) => {
-console.log('funcion de padre remove');
  /* Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea eliminar el producto!",
@@ -1698,7 +1748,7 @@ const closeBuysModal = () => {
     const payload = {
       order_id: orderId,
       payments: paymentsData,
-      total_amount: myCalculatedTotal.value,
+      total_amount: totalOrderAmountWithspecialTaxAmount.value,
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id,
       seller_id: currentUser.value?.id,
@@ -1726,9 +1776,9 @@ const closeBuysModal = () => {
       toast.success("¡Compra finalizada y registrada con éxito!");
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
 
       // Manual calculation to ensure accuracy
@@ -1743,7 +1793,7 @@ const closeBuysModal = () => {
       });
       console.log("Manual Expiration Total:", manualExpTotal);
       expirationDiscountForPrint.value = manualExpTotal;
-
+      speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -1887,9 +1937,14 @@ const handleBuysCompletion = async (
       currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = "recipe";
     }
+
+    let taxable_base = appliesSpecialTax.value ? totalOrderAmount.value : 0.00;
+    let spe_surcharge_rate = appliesSpecialTax.value ? 3.00 : 0.00;
+    let spe_surcharge_amount = appliesSpecialTax.value ? specialTaxAmount.value : 0.00;
+
     const formData = new FormData();
     formData.append("order_id", orderId);
-    formData.append("total_amount", myCalculatedTotal.value);
+    formData.append("total_amount", totalOrderAmountWithspecialTaxAmount.value);
     formData.append("currency", selectedDisplayCurrency.value);
     formData.append("client_id", selectedClient.value?.id || "");
     formData.append("seller_id", currentUser.value?.id || "");
@@ -1900,6 +1955,9 @@ const handleBuysCompletion = async (
     formData.append("changeAmountUSD", changeAmountUSD);
     formData.append("spe", switchStates.spe ? 1 : 0);
     formData.append("payments", JSON.stringify(paymentsData));
+    formData.append("taxable_base", taxable_base);
+    formData.append("spe_surcharge_rate", spe_surcharge_rate);
+    formData.append("spe_surcharge_amount", spe_surcharge_amount);
 
     const mappedItems = orderItems.value.map((item) => {
       // 1. Determine Base Price in Current Currency
@@ -1975,11 +2033,10 @@ const handleBuysCompletion = async (
       prescriptionFile.value = null;
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
-      creditAmountForPrint.value = myCalculatedTotal.value;
+      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
-
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
-
+      speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
       showBuysModal.value = false;
@@ -2500,6 +2557,7 @@ const handleExternalSort = async (sortData) => {
         @company-discount-selected="handleCompanyDiscountSelected"
         :global-discount="currentGlobalDiscountDetails"
         @add-pack="handleAddPackToOrder"
+        :is-special-taxpayer="isSpecialTaxpayer"
       />
     </div>
     <div v-else>
@@ -2574,7 +2632,7 @@ const handleExternalSort = async (sortData) => {
       v-model:is-dialog-visible="showBuysModal"
       :order-products="orderItems"
       :order-data="openOrderData"
-      :total-amount="myCalculatedTotal"
+      :total-amount="totalOrderAmount"
       :selected-currency="selectedDisplayCurrency"
       @modal-closed="closeBuysModal"
       @purchase-completed="handleBuysCompletion"
@@ -2587,6 +2645,7 @@ const handleExternalSort = async (sortData) => {
       :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
       :active-company-offers="activeCompanyOffers"
       :global-discount="currentGlobalDiscountDetails"
+      :is-special-taxpayer="isSpecialTaxpayer"
     />
 
     <div
@@ -2597,7 +2656,7 @@ const handleExternalSort = async (sortData) => {
         v-if="isPrinting && openOrderData"
         :order-data="openOrderData"
         :order-products="itemsForTicket"
-        :total-amount="myCalculatedTotal"
+        :total-amount="totalOrderAmountWithspecialTaxAmount"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"
         :change-amount="changeAmountForPrint"
@@ -2608,6 +2667,8 @@ const handleExternalSort = async (sortData) => {
         :doctor-discount-total="doctorDiscountForPrint"
         :recipe-discount-total="recipeDiscountForPrint"
         :expiration-discount-total="expirationDiscountForPrint"
+        :is-special-taxpayer="isSpecialTaxpayer"
+        :spe-surcharge-amount="speSurchargeAmount"
       />
     </div>
   </div>

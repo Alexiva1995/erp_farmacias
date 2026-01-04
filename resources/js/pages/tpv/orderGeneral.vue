@@ -80,6 +80,7 @@ const orderItems = ref([]);
 
 const viewModal = ref(false);
 
+
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Identificación", key: "identification", sortable: true },
@@ -650,6 +651,22 @@ const totalRecipeDiscountAmount = computed(() => {
     return acc;
   }, 0);
 });
+
+
+const isSpecialTaxpayer = computed(() => {
+ if (!orderData.value) return false;
+  const amount = parseFloat(orderData.value.spe_surcharge_amount || 0);
+  const rate = parseFloat(orderData.value.spe_surcharge_rate || 0);
+  return amount > 0 || rate > 0;
+});
+
+const speSurchargeAmount = computed(() => {
+  if (orderData.value && orderData.value.spe_surcharge_amount) {
+    return parseFloat(orderData.value.spe_surcharge_amount);
+  }
+  return 0.00;
+});
+
 </script>
 <template>
   <div>
@@ -774,6 +791,8 @@ const totalRecipeDiscountAmount = computed(() => {
         :selected-discount-type="selectedDiscountType"
         :doctor-discount-total="totalDoctorDiscountAmount"
         :recipe-discount-total="totalRecipeDiscountAmount"
+        :is-special-taxpayer="isSpecialTaxpayer"
+        :spe-surcharge-amount="speSurchargeAmount"
       />
     </div>
 
@@ -788,6 +807,7 @@ const totalRecipeDiscountAmount = computed(() => {
       :credit-amount="creditAmountForPrint"
       :credit="creditForPrint"
       @close="handleCloseViewModal"
+      :is-special-taxpayer="isSpecialTaxpayer"
     />
   </div>
 </template>

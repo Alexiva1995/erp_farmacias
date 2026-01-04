@@ -44,6 +44,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["update:isDialogVisible"]);
@@ -348,6 +352,19 @@ const activeDiscount = computed(() => {
           >
           <span class="text-end font-weight-bold text-h6">
             - {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}
+          </span>
+        </div>
+
+
+        <div
+          v-if="isSpecialTaxpayer"
+          class="ticket-total d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-bold text-h6"
+            >Recargo Sujeto Pasivo Especial (3%):</span
+          >
+          <span class="text-end font-weight-bold text-h6">
+             {{props.orderData?.spe_surcharge_amount}} {{selectedCurrency}}
           </span>
         </div>
 
