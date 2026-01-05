@@ -13,8 +13,10 @@ class FiscalHistorySeeder extends Seeder
         try {
             DB::beginTransaction();
 
-            $headersData = $this->loadJsonRows('data/fiscal.json');
-            $linesData = $this->loadJsonRows('data/fiscal_details.json');
+            $json = File::get(database_path('data/fiscal.json'));
+            $headersData = json_decode($json, true);
+            $json = File::get(database_path('data/fiscal_details.json'));
+            $linesData = json_decode($json, true);
 
             if (empty($headersData) && empty($linesData)) {
                 DB::rollBack();
@@ -178,19 +180,6 @@ class FiscalHistorySeeder extends Seeder
             throw $e;
         }
     }
-
-    protected function loadJsonRows(string $path): array
-    {
-        $fullPath = database_path($path);
-        if (!File::exists($fullPath))
-            throw new \Exception("File MISSING: $fullPath");
-        $json = File::get($fullPath);
-        $data = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE)
-            throw new \Exception("Invalid JSON in $path");
-        return $data['rows'] ?? $data ?? [];
-    }
-
     protected function parseDate(?string $date): ?string
     {
         if (!$date)

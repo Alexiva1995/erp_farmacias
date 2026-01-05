@@ -1427,9 +1427,9 @@
 			"id": 11063,
 			"product_id": 6885,
 			"expiration_date": "2026-03-30",
-			"quantity_available": 144,
+			"quantity_available": 143,
 			"created_at": "2024-05-05 13:22:52",
-			"updated_at": "2025-12-15 00:29:08"
+			"updated_at": "2025-12-26 22:46:45"
 		},
 		{
 			"id": 13863,
@@ -6691,9 +6691,9 @@
 			"id": 15480,
 			"product_id": 11294,
 			"expiration_date": "2026-04-30",
-			"quantity_available": 6,
+			"quantity_available": 4,
 			"created_at": "2024-07-14 21:37:45",
-			"updated_at": "2025-10-07 00:10:01"
+			"updated_at": "2025-12-30 14:00:01"
 		},
 		{
 			"id": 15484,
@@ -7395,9 +7395,9 @@
 			"id": 16530,
 			"product_id": 14303,
 			"expiration_date": "2026-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2024-08-09 23:09:05",
-			"updated_at": "2025-02-09 23:14:03"
+			"updated_at": "2025-12-31 23:30:32"
 		},
 		{
 			"id": 16531,
@@ -10563,9 +10563,9 @@
 			"id": 27443,
 			"product_id": 13222,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-04-17 00:22:51",
-			"updated_at": "2025-12-23 19:18:01"
+			"updated_at": "2026-01-03 02:10:01"
 		},
 		{
 			"id": 18326,
@@ -18819,9 +18819,9 @@
 			"id": 26610,
 			"product_id": 11316,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-03-28 12:18:07",
-			"updated_at": "2025-11-17 16:18:26"
+			"updated_at": "2025-12-29 22:36:35"
 		},
 		{
 			"id": 19430,
@@ -25075,9 +25075,9 @@
 			"id": 26029,
 			"product_id": 12255,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-03-19 18:21:38",
-			"updated_at": "2025-08-22 23:59:59"
+			"updated_at": "2025-12-28 19:23:21"
 		},
 		{
 			"id": 20249,
@@ -28075,9 +28075,9 @@
 			"id": 25753,
 			"product_id": 12255,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-03-13 01:55:28",
-			"updated_at": "2025-03-13 01:55:28"
+			"updated_at": "2025-12-28 19:23:21"
 		},
 		{
 			"id": 20640,
@@ -33355,9 +33355,9 @@
 			"id": 21319,
 			"product_id": 13005,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2024-11-14 16:19:02",
-			"updated_at": "2024-11-14 16:19:02"
+			"updated_at": "2026-01-02 01:07:20"
 		},
 		{
 			"id": 25290,
@@ -36851,9 +36851,9 @@
 			"id": 21770,
 			"product_id": 15883,
 			"expiration_date": "2034-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2024-11-27 20:42:03",
-			"updated_at": "2025-10-16 18:28:22"
+			"updated_at": "2026-01-02 01:16:39"
 		},
 		{
 			"id": 21771,
@@ -46675,9 +46675,9 @@
 			"id": 23007,
 			"product_id": 6259,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-01-04 22:52:34",
-			"updated_at": "2025-05-07 00:31:03"
+			"updated_at": "2026-01-03 18:52:34"
 		},
 		{
 			"id": 23008,
@@ -47443,9 +47443,9 @@
 			"id": 23103,
 			"product_id": 11323,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-01-05 20:16:40",
-			"updated_at": "2025-01-05 20:16:40"
+			"updated_at": "2026-01-02 20:05:10"
 		},
 		{
 			"id": 24314,
@@ -47603,9 +47603,9 @@
 			"id": 23123,
 			"product_id": 15977,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-01-05 20:18:45",
-			"updated_at": "2025-01-05 20:18:45"
+			"updated_at": "2025-12-31 00:24:35"
 		},
 		{
 			"id": 23124,
@@ -48195,9 +48195,9 @@
 			"id": 23197,
 			"product_id": 11563,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-01-05 20:21:43",
-			"updated_at": "2025-12-14 05:08:27"
+			"updated_at": "2026-01-02 13:44:48"
 		},
 		{
 			"id": 24287,
@@ -49595,9 +49595,9 @@
 			"id": 23372,
 			"product_id": 13595,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-01-14 20:43:35",
-			"updated_at": "2025-08-28 19:41:27"
+			"updated_at": "2025-12-27 15:03:20"
 		},
 		{
 			"id": 23373,
@@ -54019,9 +54019,9 @@
 			"id": 23925,
 			"product_id": 11837,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 47,
+			"quantity_available": 39,
 			"created_at": "2025-01-18 18:40:38",
-			"updated_at": "2025-12-11 00:33:47"
+			"updated_at": "2025-12-27 12:35:02"
 		},
 		{
 			"id": 23926,
@@ -54099,9 +54099,9 @@
 			"id": 23935,
 			"product_id": 11856,
 			"expiration_date": "2029-08-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-01-18 18:40:38",
-			"updated_at": "2025-03-26 00:44:26"
+			"updated_at": "2025-12-28 17:40:08"
 		},
 		{
 			"id": 23936,
@@ -55091,9 +55091,9 @@
 			"id": 24059,
 			"product_id": 15277,
 			"expiration_date": "2026-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-01-25 12:46:12",
-			"updated_at": "2025-02-05 22:32:21"
+			"updated_at": "2026-01-03 07:36:39"
 		},
 		{
 			"id": 24060,
@@ -56411,9 +56411,9 @@
 			"id": 27654,
 			"product_id": 11773,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-04-25 15:10:34",
-			"updated_at": "2025-04-25 15:10:34"
+			"updated_at": "2025-12-27 17:57:27"
 		},
 		{
 			"id": 27655,
@@ -57115,9 +57115,9 @@
 			"id": 27742,
 			"product_id": 11717,
 			"expiration_date": "2026-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-04-25 15:13:56",
-			"updated_at": "2025-04-25 15:13:56"
+			"updated_at": "2025-12-27 19:08:50"
 		},
 		{
 			"id": 27743,
@@ -62083,9 +62083,9 @@
 			"id": 28363,
 			"product_id": 12546,
 			"expiration_date": "2029-09-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-05-06 07:04:38",
-			"updated_at": "2025-10-04 01:56:12"
+			"updated_at": "2025-12-31 10:37:07"
 		},
 		{
 			"id": 28364,
@@ -62171,9 +62171,9 @@
 			"id": 28374,
 			"product_id": 10489,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-10 21:26:06",
-			"updated_at": "2025-11-08 15:56:19"
+			"updated_at": "2025-12-30 14:06:30"
 		},
 		{
 			"id": 28375,
@@ -62523,9 +62523,9 @@
 			"id": 28418,
 			"product_id": 15332,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-10 21:32:21",
-			"updated_at": "2025-10-13 02:09:51"
+			"updated_at": "2025-12-26 23:26:23"
 		},
 		{
 			"id": 28419,
@@ -64635,9 +64635,9 @@
 			"id": 28682,
 			"product_id": 12908,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-05-12 18:24:26",
-			"updated_at": "2025-12-02 01:31:51"
+			"updated_at": "2026-01-03 04:19:59"
 		},
 		{
 			"id": 28683,
@@ -65211,9 +65211,9 @@
 			"id": 28754,
 			"product_id": 13117,
 			"expiration_date": "2027-07-01",
-			"quantity_available": 5,
+			"quantity_available": 4,
 			"created_at": "2025-05-14 19:44:47",
-			"updated_at": "2025-10-11 05:29:37"
+			"updated_at": "2026-01-02 18:26:12"
 		},
 		{
 			"id": 28755,
@@ -65699,9 +65699,9 @@
 			"id": 28815,
 			"product_id": 15663,
 			"expiration_date": "2035-01-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-21 00:03:22",
-			"updated_at": "2025-05-21 00:03:22"
+			"updated_at": "2025-12-26 22:33:09"
 		},
 		{
 			"id": 28816,
@@ -66163,9 +66163,9 @@
 			"id": 28873,
 			"product_id": 14545,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-22 02:54:08",
-			"updated_at": "2025-05-22 02:54:08"
+			"updated_at": "2026-01-04 00:58:01"
 		},
 		{
 			"id": 28874,
@@ -66931,9 +66931,9 @@
 			"id": 28969,
 			"product_id": 6154,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-22 03:45:54",
-			"updated_at": "2025-05-22 03:45:54"
+			"updated_at": "2026-01-03 22:18:59"
 		},
 		{
 			"id": 28970,
@@ -67355,9 +67355,9 @@
 			"id": 29022,
 			"product_id": 11740,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-05-22 03:47:42",
-			"updated_at": "2025-05-26 17:05:22"
+			"updated_at": "2025-12-26 22:45:39"
 		},
 		{
 			"id": 29023,
@@ -69451,9 +69451,9 @@
 			"id": 29284,
 			"product_id": 16396,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-05-25 15:14:54",
-			"updated_at": "2025-12-20 17:25:57"
+			"updated_at": "2025-12-27 01:28:57"
 		},
 		{
 			"id": 29285,
@@ -69771,9 +69771,9 @@
 			"id": 29324,
 			"product_id": 12352,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 155,
+			"quantity_available": 141,
 			"created_at": "2025-05-29 16:48:42",
-			"updated_at": "2025-12-24 02:46:44"
+			"updated_at": "2026-01-04 04:21:19"
 		},
 		{
 			"id": 29325,
@@ -70411,9 +70411,9 @@
 			"id": 29404,
 			"product_id": 16291,
 			"expiration_date": "2027-01-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-05-29 16:52:56",
-			"updated_at": "2025-10-17 03:08:01"
+			"updated_at": "2025-12-28 23:16:49"
 		},
 		{
 			"id": 29405,
@@ -72491,9 +72491,9 @@
 			"id": 29664,
 			"product_id": 12200,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-06-11 03:07:03",
-			"updated_at": "2025-06-11 03:07:03"
+			"updated_at": "2025-12-30 12:34:23"
 		},
 		{
 			"id": 29665,
@@ -73451,9 +73451,9 @@
 			"id": 29784,
 			"product_id": 12251,
 			"expiration_date": "2028-01-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-06-11 13:30:58",
-			"updated_at": "2025-08-19 00:56:14"
+			"updated_at": "2026-01-02 00:31:19"
 		},
 		{
 			"id": 29785,
@@ -73547,9 +73547,9 @@
 			"id": 29796,
 			"product_id": 6493,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-06-11 13:30:58",
-			"updated_at": "2025-06-11 13:30:58"
+			"updated_at": "2026-01-02 00:05:45"
 		},
 		{
 			"id": 29797,
@@ -75195,9 +75195,9 @@
 			"id": 30002,
 			"product_id": 13158,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-06-14 01:38:09",
-			"updated_at": "2025-11-23 23:44:23"
+			"updated_at": "2025-12-28 23:21:22"
 		},
 		{
 			"id": 30003,
@@ -75763,9 +75763,9 @@
 			"id": 30073,
 			"product_id": 15511,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-06-18 23:31:15",
-			"updated_at": "2025-12-24 02:54:00"
+			"updated_at": "2026-01-02 00:05:45"
 		},
 		{
 			"id": 30074,
@@ -75891,9 +75891,9 @@
 			"id": 30089,
 			"product_id": 15788,
 			"expiration_date": "2030-03-30",
-			"quantity_available": 21,
+			"quantity_available": 20,
 			"created_at": "2025-06-18 23:32:25",
-			"updated_at": "2025-12-20 16:08:15"
+			"updated_at": "2025-12-27 21:56:38"
 		},
 		{
 			"id": 30090,
@@ -77683,9 +77683,9 @@
 			"id": 30313,
 			"product_id": 13997,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-06-22 00:52:15",
-			"updated_at": "2025-06-22 00:52:15"
+			"updated_at": "2025-12-30 19:36:38"
 		},
 		{
 			"id": 30314,
@@ -78155,9 +78155,9 @@
 			"id": 30372,
 			"product_id": 6165,
 			"expiration_date": "2026-12-31",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-06-22 02:25:21",
-			"updated_at": "2025-06-22 02:25:21"
+			"updated_at": "2025-12-30 21:20:36"
 		},
 		{
 			"id": 30373,
@@ -79115,9 +79115,9 @@
 			"id": 30492,
 			"product_id": 11172,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-06-22 17:19:26",
-			"updated_at": "2025-06-22 17:19:26"
+			"updated_at": "2025-12-26 23:58:22"
 		},
 		{
 			"id": 30493,
@@ -79731,9 +79731,9 @@
 			"id": 30569,
 			"product_id": 10722,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 13,
+			"quantity_available": 11,
 			"created_at": "2025-06-23 12:57:32",
-			"updated_at": "2025-12-23 02:00:16"
+			"updated_at": "2026-01-03 20:51:50"
 		},
 		{
 			"id": 30570,
@@ -79771,9 +79771,9 @@
 			"id": 30574,
 			"product_id": 7209,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 8,
+			"quantity_available": 7,
 			"created_at": "2025-06-23 12:57:32",
-			"updated_at": "2025-12-13 22:08:50"
+			"updated_at": "2026-01-04 15:30:50"
 		},
 		{
 			"id": 30575,
@@ -80179,9 +80179,9 @@
 			"id": 30625,
 			"product_id": 16468,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 256,
+			"quantity_available": 219,
 			"created_at": "2025-06-26 04:43:03",
-			"updated_at": "2025-12-26 02:20:57"
+			"updated_at": "2026-01-03 22:18:59"
 		},
 		{
 			"id": 30626,
@@ -82387,9 +82387,9 @@
 			"id": 30901,
 			"product_id": 12199,
 			"expiration_date": "2026-03-31",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-06-28 17:20:17",
-			"updated_at": "2025-06-28 17:20:17"
+			"updated_at": "2025-12-27 02:19:08"
 		},
 		{
 			"id": 30902,
@@ -83459,9 +83459,9 @@
 			"id": 31035,
 			"product_id": 15541,
 			"expiration_date": "2026-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-03 14:20:51",
-			"updated_at": "2025-12-01 00:57:00"
+			"updated_at": "2026-01-02 15:24:31"
 		},
 		{
 			"id": 31036,
@@ -84291,9 +84291,9 @@
 			"id": 31139,
 			"product_id": 12826,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-04 03:09:05",
-			"updated_at": "2025-07-04 03:09:05"
+			"updated_at": "2025-12-26 21:22:38"
 		},
 		{
 			"id": 31140,
@@ -84435,9 +84435,9 @@
 			"id": 31157,
 			"product_id": 11383,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-07-04 03:09:06",
-			"updated_at": "2025-09-09 18:12:32"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 31158,
@@ -84827,9 +84827,9 @@
 			"id": 31206,
 			"product_id": 16075,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-04 03:15:57",
-			"updated_at": "2025-11-15 22:24:13"
+			"updated_at": "2025-12-29 20:01:44"
 		},
 		{
 			"id": 31207,
@@ -85731,9 +85731,9 @@
 			"id": 31319,
 			"product_id": 11656,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-05 01:21:34",
-			"updated_at": "2025-09-26 21:58:34"
+			"updated_at": "2025-12-28 02:35:36"
 		},
 		{
 			"id": 31320,
@@ -85939,9 +85939,9 @@
 			"id": 31345,
 			"product_id": 13490,
 			"expiration_date": "2028-01-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-07-05 20:02:43",
-			"updated_at": "2025-07-05 20:02:43"
+			"updated_at": "2025-12-29 20:24:53"
 		},
 		{
 			"id": 31346,
@@ -86731,9 +86731,9 @@
 			"id": 31444,
 			"product_id": 14476,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-08 23:48:50",
-			"updated_at": "2025-07-08 23:48:50"
+			"updated_at": "2025-12-30 23:59:52"
 		},
 		{
 			"id": 31445,
@@ -87155,9 +87155,9 @@
 			"id": 31497,
 			"product_id": 6446,
 			"expiration_date": "2026-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-10 21:56:40",
-			"updated_at": "2025-11-25 02:09:21"
+			"updated_at": "2026-01-02 04:26:49"
 		},
 		{
 			"id": 31498,
@@ -87611,9 +87611,9 @@
 			"id": 31554,
 			"product_id": 11848,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 36,
+			"quantity_available": 35,
 			"created_at": "2025-07-11 02:14:31",
-			"updated_at": "2025-12-24 12:09:18"
+			"updated_at": "2025-12-30 02:46:06"
 		},
 		{
 			"id": 31555,
@@ -88099,9 +88099,9 @@
 			"id": 31615,
 			"product_id": 15895,
 			"expiration_date": "2029-03-30",
-			"quantity_available": 9,
+			"quantity_available": 0,
 			"created_at": "2025-07-11 02:20:33",
-			"updated_at": "2025-12-21 20:35:51"
+			"updated_at": "2025-12-29 20:56:30"
 		},
 		{
 			"id": 31616,
@@ -88787,9 +88787,9 @@
 			"id": 31701,
 			"product_id": 16526,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 35,
+			"quantity_available": 34,
 			"created_at": "2025-07-21 14:37:36",
-			"updated_at": "2025-12-21 00:50:41"
+			"updated_at": "2026-01-01 00:00:20"
 		},
 		{
 			"id": 31702,
@@ -89795,9 +89795,9 @@
 			"id": 31827,
 			"product_id": 12857,
 			"expiration_date": "2028-08-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-23 17:36:38",
-			"updated_at": "2025-07-23 17:36:38"
+			"updated_at": "2025-12-27 20:02:00"
 		},
 		{
 			"id": 31828,
@@ -90187,9 +90187,9 @@
 			"id": 31876,
 			"product_id": 6633,
 			"expiration_date": "2027-12-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-23 23:13:31",
-			"updated_at": "2025-07-23 23:13:31"
+			"updated_at": "2026-01-03 20:51:50"
 		},
 		{
 			"id": 31877,
@@ -90211,9 +90211,9 @@
 			"id": 31879,
 			"product_id": 11189,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-23 23:13:31",
-			"updated_at": "2025-07-23 23:13:31"
+			"updated_at": "2025-12-31 05:21:05"
 		},
 		{
 			"id": 31880,
@@ -90683,9 +90683,9 @@
 			"id": 31938,
 			"product_id": 14476,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-26 20:00:06",
-			"updated_at": "2025-07-26 20:00:06"
+			"updated_at": "2025-12-30 23:59:52"
 		},
 		{
 			"id": 31939,
@@ -90795,9 +90795,9 @@
 			"id": 31952,
 			"product_id": 12443,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 157,
+			"quantity_available": 110,
 			"created_at": "2025-07-28 12:44:24",
-			"updated_at": "2025-12-26 18:12:38"
+			"updated_at": "2026-01-04 16:17:11"
 		},
 		{
 			"id": 31953,
@@ -91331,9 +91331,9 @@
 			"id": 32019,
 			"product_id": 12047,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-07-30 03:29:13",
-			"updated_at": "2025-08-06 20:36:41"
+			"updated_at": "2025-12-31 20:31:49"
 		},
 		{
 			"id": 32020,
@@ -91347,9 +91347,9 @@
 			"id": 32021,
 			"product_id": 13759,
 			"expiration_date": "2026-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-30 03:29:13",
-			"updated_at": "2025-12-26 00:17:50"
+			"updated_at": "2025-12-28 23:00:20"
 		},
 		{
 			"id": 32022,
@@ -92003,9 +92003,9 @@
 			"id": 32103,
 			"product_id": 14309,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-07-30 03:58:26",
-			"updated_at": "2025-12-20 17:17:02"
+			"updated_at": "2025-12-29 23:14:50"
 		},
 		{
 			"id": 32104,
@@ -92051,9 +92051,9 @@
 			"id": 32109,
 			"product_id": 10394,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-07-31 12:22:17",
-			"updated_at": "2025-07-31 12:22:17"
+			"updated_at": "2025-12-27 23:42:48"
 		},
 		{
 			"id": 32110,
@@ -92155,9 +92155,9 @@
 			"id": 32122,
 			"product_id": 16088,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-07-31 12:22:17",
-			"updated_at": "2025-10-22 22:41:26"
+			"updated_at": "2025-12-29 20:17:57"
 		},
 		{
 			"id": 32123,
@@ -92291,9 +92291,9 @@
 			"id": 32139,
 			"product_id": 12256,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-07-31 12:25:29",
-			"updated_at": "2025-12-10 18:07:37"
+			"updated_at": "2026-01-02 20:31:11"
 		},
 		{
 			"id": 32140,
@@ -92643,9 +92643,9 @@
 			"id": 32183,
 			"product_id": 13590,
 			"expiration_date": "2027-01-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-02 03:22:16",
-			"updated_at": "2025-08-02 03:22:16"
+			"updated_at": "2025-12-31 02:41:26"
 		},
 		{
 			"id": 32184,
@@ -93083,9 +93083,9 @@
 			"id": 32238,
 			"product_id": 12232,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-08-02 21:29:49",
-			"updated_at": "2025-11-25 05:58:10"
+			"updated_at": "2026-01-02 17:31:06"
 		},
 		{
 			"id": 32239,
@@ -93179,9 +93179,9 @@
 			"id": 32250,
 			"product_id": 13665,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-08-05 00:51:32",
-			"updated_at": "2025-12-09 02:20:44"
+			"updated_at": "2025-12-30 01:52:08"
 		},
 		{
 			"id": 32251,
@@ -93731,9 +93731,9 @@
 			"id": 32319,
 			"product_id": 12307,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-06 01:03:25",
-			"updated_at": "2025-12-23 22:41:05"
+			"updated_at": "2025-12-28 03:33:55"
 		},
 		{
 			"id": 32320,
@@ -93947,9 +93947,9 @@
 			"id": 32346,
 			"product_id": 13492,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-06 19:44:35",
-			"updated_at": "2025-10-04 23:50:12"
+			"updated_at": "2025-12-29 00:03:14"
 		},
 		{
 			"id": 32347,
@@ -94051,9 +94051,9 @@
 			"id": 32359,
 			"product_id": 8334,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-08-06 19:44:36",
-			"updated_at": "2025-08-10 14:29:38"
+			"updated_at": "2026-01-03 20:17:37"
 		},
 		{
 			"id": 32360,
@@ -94179,9 +94179,9 @@
 			"id": 32375,
 			"product_id": 16100,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-07 03:02:31",
-			"updated_at": "2025-12-14 01:30:00"
+			"updated_at": "2025-12-31 00:55:56"
 		},
 		{
 			"id": 32376,
@@ -94275,9 +94275,9 @@
 			"id": 32387,
 			"product_id": 6189,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-08-07 03:03:02",
-			"updated_at": "2025-12-23 05:25:30"
+			"updated_at": "2025-12-31 06:34:52"
 		},
 		{
 			"id": 32388,
@@ -94291,9 +94291,9 @@
 			"id": 32389,
 			"product_id": 11389,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-07 03:03:02",
-			"updated_at": "2025-12-11 16:45:47"
+			"updated_at": "2025-12-28 17:41:23"
 		},
 		{
 			"id": 32390,
@@ -94395,17 +94395,17 @@
 			"id": 32402,
 			"product_id": 11841,
 			"expiration_date": "2029-12-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-08-07 03:06:54",
-			"updated_at": "2025-12-24 01:11:32"
+			"updated_at": "2025-12-27 14:35:27"
 		},
 		{
 			"id": 32403,
 			"product_id": 12113,
 			"expiration_date": "2029-11-09",
-			"quantity_available": 9,
+			"quantity_available": 7,
 			"created_at": "2025-08-07 03:06:54",
-			"updated_at": "2025-12-25 21:18:30"
+			"updated_at": "2026-01-01 01:38:37"
 		},
 		{
 			"id": 32404,
@@ -95003,9 +95003,9 @@
 			"id": 32478,
 			"product_id": 14466,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-08-09 03:47:05",
-			"updated_at": "2025-08-09 03:47:05"
+			"updated_at": "2025-12-30 22:16:47"
 		},
 		{
 			"id": 32479,
@@ -95355,9 +95355,9 @@
 			"id": 32522,
 			"product_id": 11374,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 10,
+			"quantity_available": 9,
 			"created_at": "2025-08-17 15:31:17",
-			"updated_at": "2025-12-25 19:12:08"
+			"updated_at": "2025-12-31 13:09:11"
 		},
 		{
 			"id": 32523,
@@ -95451,9 +95451,9 @@
 			"id": 32534,
 			"product_id": 12471,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 14,
+			"quantity_available": 5,
 			"created_at": "2025-08-17 16:22:19",
-			"updated_at": "2025-12-26 03:31:59"
+			"updated_at": "2026-01-03 23:02:38"
 		},
 		{
 			"id": 32535,
@@ -95467,9 +95467,9 @@
 			"id": 32536,
 			"product_id": 6080,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-17 16:22:19",
-			"updated_at": "2025-11-15 17:13:52"
+			"updated_at": "2025-12-31 22:08:35"
 		},
 		{
 			"id": 32537,
@@ -95483,9 +95483,9 @@
 			"id": 32538,
 			"product_id": 12231,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 7,
+			"quantity_available": 0,
 			"created_at": "2025-08-17 16:22:19",
-			"updated_at": "2025-12-26 03:31:59"
+			"updated_at": "2025-12-30 04:03:28"
 		},
 		{
 			"id": 32539,
@@ -95547,9 +95547,9 @@
 			"id": 32546,
 			"product_id": 14112,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 9,
+			"quantity_available": 8,
 			"created_at": "2025-08-20 14:53:35",
-			"updated_at": "2025-11-29 15:13:01"
+			"updated_at": "2026-01-03 20:26:17"
 		},
 		{
 			"id": 32547,
@@ -95603,33 +95603,33 @@
 			"id": 32553,
 			"product_id": 13479,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 18,
+			"quantity_available": 16,
 			"created_at": "2025-08-20 15:03:54",
-			"updated_at": "2025-08-20 15:03:54"
+			"updated_at": "2025-12-27 02:25:26"
 		},
 		{
 			"id": 32554,
 			"product_id": 16089,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 34,
+			"quantity_available": 32,
 			"created_at": "2025-08-20 15:03:54",
-			"updated_at": "2025-12-14 01:30:00"
+			"updated_at": "2026-01-01 17:58:53"
 		},
 		{
 			"id": 32555,
 			"product_id": 16100,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 35,
+			"quantity_available": 29,
 			"created_at": "2025-08-20 15:03:54",
-			"updated_at": "2025-08-20 15:03:54"
+			"updated_at": "2026-01-04 05:06:46"
 		},
 		{
 			"id": 32556,
 			"product_id": 15016,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 11,
+			"quantity_available": 7,
 			"created_at": "2025-08-20 15:03:54",
-			"updated_at": "2025-12-26 17:55:13"
+			"updated_at": "2026-01-03 20:26:17"
 		},
 		{
 			"id": 32557,
@@ -95819,9 +95819,9 @@
 			"id": 32580,
 			"product_id": 12589,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 8,
+			"quantity_available": 0,
 			"created_at": "2025-08-20 15:08:42",
-			"updated_at": "2025-11-18 00:31:59"
+			"updated_at": "2025-12-29 23:57:24"
 		},
 		{
 			"id": 32581,
@@ -95867,9 +95867,9 @@
 			"id": 32586,
 			"product_id": 12221,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 6,
+			"quantity_available": 0,
 			"created_at": "2025-08-20 15:12:26",
-			"updated_at": "2025-12-14 18:16:07"
+			"updated_at": "2026-01-03 19:43:58"
 		},
 		{
 			"id": 32587,
@@ -95899,9 +95899,9 @@
 			"id": 32590,
 			"product_id": 12400,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-08-20 15:12:26",
-			"updated_at": "2025-12-17 21:15:24"
+			"updated_at": "2026-01-02 20:09:22"
 		},
 		{
 			"id": 32591,
@@ -95979,9 +95979,9 @@
 			"id": 32600,
 			"product_id": 15543,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 4,
+			"quantity_available": 1,
 			"created_at": "2025-08-20 15:12:26",
-			"updated_at": "2025-12-21 22:03:05"
+			"updated_at": "2025-12-30 01:43:11"
 		},
 		{
 			"id": 32601,
@@ -96011,17 +96011,17 @@
 			"id": 32604,
 			"product_id": 6675,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-08-20 15:12:26",
-			"updated_at": "2025-12-04 18:47:25"
+			"updated_at": "2026-01-03 01:20:09"
 		},
 		{
 			"id": 32605,
 			"product_id": 11689,
 			"expiration_date": "2028-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-20 15:12:26",
-			"updated_at": "2025-12-11 20:16:22"
+			"updated_at": "2025-12-27 16:41:17"
 		},
 		{
 			"id": 32606,
@@ -96219,9 +96219,9 @@
 			"id": 32630,
 			"product_id": 10947,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-20 15:13:55",
-			"updated_at": "2025-09-16 18:45:19"
+			"updated_at": "2025-12-28 04:43:57"
 		},
 		{
 			"id": 32631,
@@ -96563,9 +96563,9 @@
 			"id": 32673,
 			"product_id": 6768,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-27 23:32:40",
-			"updated_at": "2025-08-27 23:32:40"
+			"updated_at": "2025-12-30 21:08:35"
 		},
 		{
 			"id": 32674,
@@ -96947,9 +96947,9 @@
 			"id": 32721,
 			"product_id": 16741,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-28 02:40:32",
-			"updated_at": "2025-10-22 23:50:31"
+			"updated_at": "2025-12-30 19:36:38"
 		},
 		{
 			"id": 32722,
@@ -96995,9 +96995,9 @@
 			"id": 32727,
 			"product_id": 6173,
 			"expiration_date": "2030-05-31",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-28 02:41:20",
-			"updated_at": "2025-08-28 02:41:20"
+			"updated_at": "2025-12-28 14:46:10"
 		},
 		{
 			"id": 32728,
@@ -97187,9 +97187,9 @@
 			"id": 32751,
 			"product_id": 13262,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-08-28 02:47:28",
-			"updated_at": "2025-08-28 02:47:28"
+			"updated_at": "2026-01-02 15:46:36"
 		},
 		{
 			"id": 32752,
@@ -97467,9 +97467,9 @@
 			"id": 32786,
 			"product_id": 13273,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-08-28 02:59:18",
-			"updated_at": "2025-11-26 19:30:51"
+			"updated_at": "2025-12-28 20:13:41"
 		},
 		{
 			"id": 32787,
@@ -97555,9 +97555,9 @@
 			"id": 32797,
 			"product_id": 11706,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 7,
+			"quantity_available": 4,
 			"created_at": "2025-08-28 02:59:18",
-			"updated_at": "2025-12-19 20:54:42"
+			"updated_at": "2025-12-30 03:40:07"
 		},
 		{
 			"id": 32798,
@@ -98083,9 +98083,9 @@
 			"id": 32863,
 			"product_id": 12045,
 			"expiration_date": "2026-12-31",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-08-28 03:04:00",
-			"updated_at": "2025-10-28 18:27:35"
+			"updated_at": "2025-12-28 16:00:43"
 		},
 		{
 			"id": 32864,
@@ -98563,9 +98563,9 @@
 			"id": 32923,
 			"product_id": 12289,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-08-28 03:12:10",
-			"updated_at": "2025-12-16 14:11:45"
+			"updated_at": "2025-12-31 20:08:38"
 		},
 		{
 			"id": 32924,
@@ -98947,17 +98947,17 @@
 			"id": 32971,
 			"product_id": 11840,
 			"expiration_date": "2029-12-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-08-31 00:22:29",
-			"updated_at": "2025-12-21 19:29:38"
+			"updated_at": "2025-12-31 10:37:07"
 		},
 		{
 			"id": 32972,
 			"product_id": 11842,
 			"expiration_date": "2029-12-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-08-31 00:22:30",
-			"updated_at": "2025-12-26 06:59:34"
+			"updated_at": "2025-12-30 14:43:59"
 		},
 		{
 			"id": 32973,
@@ -99059,9 +99059,9 @@
 			"id": 32985,
 			"product_id": 12332,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 49,
+			"quantity_available": 36,
 			"created_at": "2025-09-01 18:15:45",
-			"updated_at": "2025-12-26 01:43:10"
+			"updated_at": "2025-12-31 02:00:42"
 		},
 		{
 			"id": 32986,
@@ -99307,9 +99307,9 @@
 			"id": 33016,
 			"product_id": 16613,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-09-02 16:13:19",
-			"updated_at": "2025-12-24 14:08:35"
+			"updated_at": "2026-01-03 15:14:56"
 		},
 		{
 			"id": 33017,
@@ -99331,9 +99331,9 @@
 			"id": 33019,
 			"product_id": 13957,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-02 16:13:19",
-			"updated_at": "2025-10-19 13:33:05"
+			"updated_at": "2026-01-03 21:39:38"
 		},
 		{
 			"id": 33020,
@@ -99387,9 +99387,9 @@
 			"id": 33026,
 			"product_id": 13817,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-03 12:51:51",
-			"updated_at": "2025-10-30 16:40:22"
+			"updated_at": "2026-01-03 18:52:34"
 		},
 		{
 			"id": 33027,
@@ -99595,9 +99595,9 @@
 			"id": 33052,
 			"product_id": 16695,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-09-03 12:56:01",
-			"updated_at": "2025-12-26 00:58:16"
+			"updated_at": "2026-01-03 01:15:51"
 		},
 		{
 			"id": 33053,
@@ -100355,9 +100355,9 @@
 			"id": 33147,
 			"product_id": 11613,
 			"expiration_date": "2027-01-31",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-05 22:44:53",
-			"updated_at": "2025-09-05 22:44:53"
+			"updated_at": "2025-12-31 00:38:08"
 		},
 		{
 			"id": 33148,
@@ -100387,9 +100387,9 @@
 			"id": 33151,
 			"product_id": 5957,
 			"expiration_date": "2026-12-31",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-05 22:47:09",
-			"updated_at": "2025-12-17 19:47:13"
+			"updated_at": "2026-01-03 20:23:14"
 		},
 		{
 			"id": 33152,
@@ -100987,9 +100987,9 @@
 			"id": 33226,
 			"product_id": 10916,
 			"expiration_date": "2029-10-30",
-			"quantity_available": 10,
+			"quantity_available": 9,
 			"created_at": "2025-09-09 12:30:08",
-			"updated_at": "2025-09-09 12:30:08"
+			"updated_at": "2026-01-04 15:34:23"
 		},
 		{
 			"id": 33227,
@@ -101147,9 +101147,9 @@
 			"id": 33246,
 			"product_id": 12547,
 			"expiration_date": "2030-12-30",
-			"quantity_available": 11,
+			"quantity_available": 9,
 			"created_at": "2025-09-09 12:30:37",
-			"updated_at": "2025-12-19 01:04:36"
+			"updated_at": "2026-01-02 13:42:30"
 		},
 		{
 			"id": 33247,
@@ -101411,9 +101411,9 @@
 			"id": 33279,
 			"product_id": 12068,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-17 12:42:32",
-			"updated_at": "2025-09-17 12:42:32"
+			"updated_at": "2025-12-31 17:18:38"
 		},
 		{
 			"id": 33280,
@@ -101827,9 +101827,9 @@
 			"id": 33331,
 			"product_id": 11691,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-17 12:45:30",
-			"updated_at": "2025-09-17 12:45:30"
+			"updated_at": "2026-01-02 22:31:21"
 		},
 		{
 			"id": 33332,
@@ -102163,9 +102163,9 @@
 			"id": 33373,
 			"product_id": 12521,
 			"expiration_date": "2027-01-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-09-18 18:16:13",
-			"updated_at": "2025-09-18 18:16:13"
+			"updated_at": "2025-12-31 01:05:31"
 		},
 		{
 			"id": 33374,
@@ -102459,9 +102459,9 @@
 			"id": 33410,
 			"product_id": 11840,
 			"expiration_date": "2030-01-30",
-			"quantity_available": 18,
+			"quantity_available": 17,
 			"created_at": "2025-09-19 02:53:45",
-			"updated_at": "2025-09-19 02:53:45"
+			"updated_at": "2026-01-03 21:58:40"
 		},
 		{
 			"id": 33411,
@@ -102523,9 +102523,9 @@
 			"id": 33418,
 			"product_id": 16517,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-09-19 02:54:28",
-			"updated_at": "2025-12-17 22:02:03"
+			"updated_at": "2026-01-03 01:20:09"
 		},
 		{
 			"id": 33419,
@@ -102571,9 +102571,9 @@
 			"id": 33424,
 			"product_id": 12781,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-19 02:55:52",
-			"updated_at": "2025-11-29 13:56:02"
+			"updated_at": "2026-01-04 15:46:15"
 		},
 		{
 			"id": 33425,
@@ -102763,9 +102763,9 @@
 			"id": 33448,
 			"product_id": 13915,
 			"expiration_date": "2027-11-01",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-09-20 01:54:48",
-			"updated_at": "2025-09-20 01:54:48"
+			"updated_at": "2025-12-31 01:55:21"
 		},
 		{
 			"id": 33449,
@@ -103019,9 +103019,9 @@
 			"id": 33480,
 			"product_id": 16319,
 			"expiration_date": "2026-11-01",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-09-20 01:57:53",
-			"updated_at": "2025-12-02 19:42:35"
+			"updated_at": "2025-12-31 22:41:40"
 		},
 		{
 			"id": 33481,
@@ -103107,9 +103107,9 @@
 			"id": 33491,
 			"product_id": 13538,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 12,
+			"quantity_available": 9,
 			"created_at": "2025-09-20 02:01:55",
-			"updated_at": "2025-12-21 00:50:41"
+			"updated_at": "2026-01-03 16:50:09"
 		},
 		{
 			"id": 33492,
@@ -103355,9 +103355,9 @@
 			"id": 33522,
 			"product_id": 13617,
 			"expiration_date": "2030-07-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-09-20 14:54:44",
-			"updated_at": "2025-11-19 19:59:34"
+			"updated_at": "2025-12-27 02:19:08"
 		},
 		{
 			"id": 33523,
@@ -103491,9 +103491,9 @@
 			"id": 33539,
 			"product_id": 16845,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-09-20 14:56:05",
-			"updated_at": "2025-09-20 14:56:05"
+			"updated_at": "2026-01-01 17:45:42"
 		},
 		{
 			"id": 33540,
@@ -103675,9 +103675,9 @@
 			"id": 33562,
 			"product_id": 16849,
 			"expiration_date": "2025-06-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-09-21 14:02:17",
-			"updated_at": "2025-12-10 15:17:28"
+			"updated_at": "2025-12-29 02:12:50"
 		},
 		{
 			"id": 33563,
@@ -103803,9 +103803,9 @@
 			"id": 33578,
 			"product_id": 16673,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 14,
+			"quantity_available": 11,
 			"created_at": "2025-09-21 18:16:22",
-			"updated_at": "2025-11-10 16:49:19"
+			"updated_at": "2026-01-03 14:58:47"
 		},
 		{
 			"id": 33579,
@@ -103963,9 +103963,9 @@
 			"id": 33598,
 			"product_id": 16676,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 4,
+			"quantity_available": 1,
 			"created_at": "2025-09-24 14:35:29",
-			"updated_at": "2025-12-26 13:51:33"
+			"updated_at": "2026-01-04 16:17:11"
 		},
 		{
 			"id": 33599,
@@ -104595,9 +104595,9 @@
 			"id": 33677,
 			"product_id": 12041,
 			"expiration_date": "2030-03-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-09-24 21:34:40",
-			"updated_at": "2025-12-24 03:13:05"
+			"updated_at": "2026-01-01 01:02:21"
 		},
 		{
 			"id": 33678,
@@ -105115,9 +105115,9 @@
 			"id": 33742,
 			"product_id": 6612,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 18,
+			"quantity_available": 12,
 			"created_at": "2025-10-01 01:56:03",
-			"updated_at": "2025-12-25 00:26:24"
+			"updated_at": "2025-12-30 19:36:38"
 		},
 		{
 			"id": 33743,
@@ -105443,9 +105443,9 @@
 			"id": 33783,
 			"product_id": 14871,
 			"expiration_date": "2026-10-30",
-			"quantity_available": 27,
+			"quantity_available": 24,
 			"created_at": "2025-10-02 19:41:11",
-			"updated_at": "2025-12-17 16:16:06"
+			"updated_at": "2026-01-03 15:52:28"
 		},
 		{
 			"id": 33784,
@@ -105467,9 +105467,9 @@
 			"id": 33786,
 			"product_id": 13151,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-10-07 21:43:51",
-			"updated_at": "2025-12-24 21:27:24"
+			"updated_at": "2025-12-27 23:27:59"
 		},
 		{
 			"id": 33787,
@@ -105491,9 +105491,9 @@
 			"id": 33789,
 			"product_id": 16694,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-10-09 16:24:19",
-			"updated_at": "2025-10-14 14:34:04"
+			"updated_at": "2026-01-01 20:15:27"
 		},
 		{
 			"id": 33790,
@@ -105515,17 +105515,17 @@
 			"id": 33792,
 			"product_id": 15666,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-10-10 00:56:10",
-			"updated_at": "2025-12-26 18:20:56"
+			"updated_at": "2025-12-27 17:05:12"
 		},
 		{
 			"id": 33793,
 			"product_id": 12286,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 12,
+			"quantity_available": 9,
 			"created_at": "2025-10-10 00:56:58",
-			"updated_at": "2025-12-10 13:07:46"
+			"updated_at": "2026-01-03 16:24:29"
 		},
 		{
 			"id": 33794,
@@ -105547,17 +105547,17 @@
 			"id": 33796,
 			"product_id": 11746,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 21,
+			"quantity_available": 18,
 			"created_at": "2025-10-10 00:59:09",
-			"updated_at": "2025-12-23 00:33:05"
+			"updated_at": "2026-01-03 00:53:59"
 		},
 		{
 			"id": 33797,
 			"product_id": 13365,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 11,
+			"quantity_available": 3,
 			"created_at": "2025-10-10 00:59:09",
-			"updated_at": "2025-12-26 18:12:38"
+			"updated_at": "2026-01-04 00:42:54"
 		},
 		{
 			"id": 33798,
@@ -105587,17 +105587,17 @@
 			"id": 33801,
 			"product_id": 11229,
 			"expiration_date": "2027-12-31",
-			"quantity_available": 6,
+			"quantity_available": 0,
 			"created_at": "2025-10-10 22:06:28",
-			"updated_at": "2025-12-26 03:00:32"
+			"updated_at": "2026-01-02 18:13:49"
 		},
 		{
 			"id": 33802,
 			"product_id": 10732,
 			"expiration_date": "2026-10-30",
-			"quantity_available": 15,
+			"quantity_available": 11,
 			"created_at": "2025-10-10 22:06:28",
-			"updated_at": "2025-12-23 15:35:57"
+			"updated_at": "2026-01-03 18:19:40"
 		},
 		{
 			"id": 33803,
@@ -105683,9 +105683,9 @@
 			"id": 33813,
 			"product_id": 16881,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 18,
+			"quantity_available": 14,
 			"created_at": "2025-10-11 05:12:51",
-			"updated_at": "2025-12-22 17:31:49"
+			"updated_at": "2026-01-03 06:16:33"
 		},
 		{
 			"id": 33814,
@@ -105723,9 +105723,9 @@
 			"id": 33818,
 			"product_id": 13523,
 			"expiration_date": "2026-10-30",
-			"quantity_available": 29,
+			"quantity_available": 19,
 			"created_at": "2025-10-13 03:43:04",
-			"updated_at": "2025-12-26 17:15:50"
+			"updated_at": "2026-01-02 04:06:39"
 		},
 		{
 			"id": 33819,
@@ -106067,9 +106067,9 @@
 			"id": 33861,
 			"product_id": 16515,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-10-13 04:28:43",
-			"updated_at": "2025-10-13 04:28:43"
+			"updated_at": "2025-12-27 23:48:18"
 		},
 		{
 			"id": 33862,
@@ -106531,17 +106531,17 @@
 			"id": 33919,
 			"product_id": 11385,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-10-13 04:36:11",
-			"updated_at": "2025-12-22 02:45:07"
+			"updated_at": "2025-12-28 00:21:49"
 		},
 		{
 			"id": 33920,
 			"product_id": 16763,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 20,
+			"quantity_available": 19,
 			"created_at": "2025-10-13 04:36:11",
-			"updated_at": "2025-10-13 04:36:11"
+			"updated_at": "2025-12-27 20:47:09"
 		},
 		{
 			"id": 33921,
@@ -106635,9 +106635,9 @@
 			"id": 33932,
 			"product_id": 15747,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-14 11:19:46",
-			"updated_at": "2025-11-28 14:15:36"
+			"updated_at": "2025-12-27 03:18:48"
 		},
 		{
 			"id": 33933,
@@ -106667,9 +106667,9 @@
 			"id": 33936,
 			"product_id": 16528,
 			"expiration_date": "2026-04-30",
-			"quantity_available": 5,
+			"quantity_available": 4,
 			"created_at": "2025-10-14 11:19:59",
-			"updated_at": "2025-10-18 23:05:56"
+			"updated_at": "2026-01-02 00:42:13"
 		},
 		{
 			"id": 33937,
@@ -106739,9 +106739,9 @@
 			"id": 33945,
 			"product_id": 16374,
 			"expiration_date": "2026-09-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-10-14 11:20:46",
-			"updated_at": "2025-12-26 16:48:29"
+			"updated_at": "2026-01-03 22:50:46"
 		},
 		{
 			"id": 33946,
@@ -106835,9 +106835,9 @@
 			"id": 33957,
 			"product_id": 11184,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-14 11:21:44",
-			"updated_at": "2025-10-14 11:21:44"
+			"updated_at": "2026-01-01 21:49:34"
 		},
 		{
 			"id": 33958,
@@ -107235,9 +107235,9 @@
 			"id": 34007,
 			"product_id": 10545,
 			"expiration_date": "2026-03-30",
-			"quantity_available": 82,
+			"quantity_available": 81,
 			"created_at": "2025-10-15 03:22:02",
-			"updated_at": "2025-12-17 16:21:27"
+			"updated_at": "2025-12-26 22:46:45"
 		},
 		{
 			"id": 34008,
@@ -107259,9 +107259,9 @@
 			"id": 34010,
 			"product_id": 15902,
 			"expiration_date": "2029-09-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-15 03:22:02",
-			"updated_at": "2025-10-15 03:22:02"
+			"updated_at": "2026-01-02 20:30:58"
 		},
 		{
 			"id": 34011,
@@ -107315,9 +107315,9 @@
 			"id": 34017,
 			"product_id": 11383,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-15 03:22:02",
-			"updated_at": "2025-10-15 03:22:02"
+			"updated_at": "2026-01-03 18:52:34"
 		},
 		{
 			"id": 34018,
@@ -107547,9 +107547,9 @@
 			"id": 34046,
 			"product_id": 15295,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 7,
+			"quantity_available": 2,
 			"created_at": "2025-10-15 03:23:58",
-			"updated_at": "2025-12-23 14:33:51"
+			"updated_at": "2026-01-04 14:04:46"
 		},
 		{
 			"id": 34047,
@@ -107683,9 +107683,9 @@
 			"id": 34063,
 			"product_id": 13920,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-10-15 03:24:19",
-			"updated_at": "2025-12-16 18:36:00"
+			"updated_at": "2026-01-03 21:39:38"
 		},
 		{
 			"id": 34064,
@@ -107715,9 +107715,9 @@
 			"id": 34067,
 			"product_id": 15910,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-10-15 03:24:19",
-			"updated_at": "2025-12-15 15:08:46"
+			"updated_at": "2025-12-31 00:17:23"
 		},
 		{
 			"id": 34068,
@@ -107819,9 +107819,9 @@
 			"id": 34080,
 			"product_id": 16552,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-15 03:25:34",
-			"updated_at": "2025-12-24 01:49:00"
+			"updated_at": "2025-12-27 23:42:48"
 		},
 		{
 			"id": 34081,
@@ -107867,9 +107867,9 @@
 			"id": 34086,
 			"product_id": 14584,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-15 03:25:34",
-			"updated_at": "2025-12-05 23:57:24"
+			"updated_at": "2025-12-29 23:48:21"
 		},
 		{
 			"id": 34087,
@@ -107923,9 +107923,9 @@
 			"id": 34093,
 			"product_id": 14813,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-10-15 03:25:34",
-			"updated_at": "2025-12-24 15:23:40"
+			"updated_at": "2025-12-30 20:30:47"
 		},
 		{
 			"id": 34094,
@@ -108147,9 +108147,9 @@
 			"id": 34121,
 			"product_id": 12456,
 			"expiration_date": "2030-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-15 03:30:36",
-			"updated_at": "2025-12-12 01:09:29"
+			"updated_at": "2025-12-29 19:25:25"
 		},
 		{
 			"id": 34122,
@@ -108267,9 +108267,9 @@
 			"id": 34136,
 			"product_id": 13399,
 			"expiration_date": "2029-01-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-10-15 03:31:26",
-			"updated_at": "2025-12-01 02:12:42"
+			"updated_at": "2026-01-02 00:39:44"
 		},
 		{
 			"id": 34137,
@@ -108427,9 +108427,9 @@
 			"id": 34156,
 			"product_id": 6240,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-15 16:10:10",
-			"updated_at": "2025-11-11 05:12:19"
+			"updated_at": "2025-12-28 17:40:08"
 		},
 		{
 			"id": 34157,
@@ -108443,9 +108443,9 @@
 			"id": 34158,
 			"product_id": 11885,
 			"expiration_date": "2028-10-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-10-15 16:10:10",
-			"updated_at": "2025-10-15 16:10:10"
+			"updated_at": "2025-12-31 18:17:35"
 		},
 		{
 			"id": 34159,
@@ -108659,9 +108659,9 @@
 			"id": 34185,
 			"product_id": 11830,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-15 16:10:52",
-			"updated_at": "2025-10-15 16:10:52"
+			"updated_at": "2026-01-02 23:11:55"
 		},
 		{
 			"id": 34186,
@@ -108755,9 +108755,9 @@
 			"id": 34197,
 			"product_id": 12921,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 40,
+			"quantity_available": 38,
 			"created_at": "2025-10-18 22:25:07",
-			"updated_at": "2025-12-21 22:23:39"
+			"updated_at": "2025-12-29 15:27:07"
 		},
 		{
 			"id": 34198,
@@ -108771,17 +108771,17 @@
 			"id": 34199,
 			"product_id": 16920,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-18 22:25:22",
-			"updated_at": "2025-11-14 19:56:45"
+			"updated_at": "2026-01-03 12:26:50"
 		},
 		{
 			"id": 34200,
 			"product_id": 12259,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-18 22:25:22",
-			"updated_at": "2025-12-11 14:08:58"
+			"updated_at": "2026-01-02 23:18:27"
 		},
 		{
 			"id": 34201,
@@ -108795,9 +108795,9 @@
 			"id": 34202,
 			"product_id": 12404,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 9,
+			"quantity_available": 6,
 			"created_at": "2025-10-18 22:25:40",
-			"updated_at": "2025-12-24 12:09:18"
+			"updated_at": "2026-01-04 15:57:53"
 		},
 		{
 			"id": 34203,
@@ -108835,25 +108835,25 @@
 			"id": 34207,
 			"product_id": 10729,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-10-21 13:52:09",
-			"updated_at": "2025-12-26 17:41:11"
+			"updated_at": "2026-01-03 14:26:09"
 		},
 		{
 			"id": 34208,
 			"product_id": 11273,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 13,
+			"quantity_available": 9,
 			"created_at": "2025-10-21 13:52:09",
-			"updated_at": "2025-12-26 04:36:55"
+			"updated_at": "2026-01-03 23:53:22"
 		},
 		{
 			"id": 34209,
 			"product_id": 14258,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 11,
+			"quantity_available": 10,
 			"created_at": "2025-10-21 13:52:09",
-			"updated_at": "2025-12-23 03:49:56"
+			"updated_at": "2025-12-29 00:10:35"
 		},
 		{
 			"id": 34210,
@@ -109019,9 +109019,9 @@
 			"id": 34230,
 			"product_id": 16932,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-10-22 20:54:44",
-			"updated_at": "2025-12-26 00:58:16"
+			"updated_at": "2025-12-31 17:11:51"
 		},
 		{
 			"id": 34231,
@@ -109099,9 +109099,9 @@
 			"id": 34240,
 			"product_id": 12656,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-22 20:55:01",
-			"updated_at": "2025-10-25 13:41:08"
+			"updated_at": "2025-12-27 05:50:29"
 		},
 		{
 			"id": 34241,
@@ -109115,9 +109115,9 @@
 			"id": 34242,
 			"product_id": 16927,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-22 20:55:01",
-			"updated_at": "2025-10-22 20:55:01"
+			"updated_at": "2026-01-03 14:26:09"
 		},
 		{
 			"id": 34243,
@@ -109163,17 +109163,17 @@
 			"id": 34248,
 			"product_id": 16710,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 37,
+			"quantity_available": 29,
 			"created_at": "2025-10-22 21:01:57",
-			"updated_at": "2025-12-23 19:20:22"
+			"updated_at": "2026-01-03 01:53:33"
 		},
 		{
 			"id": 34249,
 			"product_id": 12589,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 10,
+			"quantity_available": 0,
 			"created_at": "2025-10-22 21:01:57",
-			"updated_at": "2025-10-22 21:01:57"
+			"updated_at": "2025-12-30 23:59:52"
 		},
 		{
 			"id": 34250,
@@ -109243,9 +109243,9 @@
 			"id": 34258,
 			"product_id": 16941,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 22,
+			"quantity_available": 21,
 			"created_at": "2025-10-24 01:20:44",
-			"updated_at": "2025-11-13 00:56:14"
+			"updated_at": "2026-01-02 01:07:20"
 		},
 		{
 			"id": 34259,
@@ -109283,9 +109283,9 @@
 			"id": 34263,
 			"product_id": 12714,
 			"expiration_date": "2027-12-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-24 23:44:14",
-			"updated_at": "2025-12-24 17:26:25"
+			"updated_at": "2025-12-28 00:28:29"
 		},
 		{
 			"id": 34264,
@@ -109299,9 +109299,9 @@
 			"id": 34265,
 			"product_id": 16951,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-10-26 16:01:35",
-			"updated_at": "2025-12-26 18:08:28"
+			"updated_at": "2025-12-28 18:22:47"
 		},
 		{
 			"id": 34266,
@@ -109347,9 +109347,9 @@
 			"id": 34271,
 			"product_id": 6449,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 77,
+			"quantity_available": 69,
 			"created_at": "2025-10-28 18:27:48",
-			"updated_at": "2025-12-26 18:16:05"
+			"updated_at": "2026-01-04 06:35:48"
 		},
 		{
 			"id": 34272,
@@ -109379,9 +109379,9 @@
 			"id": 34275,
 			"product_id": 16814,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-29 15:04:36",
-			"updated_at": "2025-10-29 15:04:36"
+			"updated_at": "2025-12-31 19:15:43"
 		},
 		{
 			"id": 34276,
@@ -109435,9 +109435,9 @@
 			"id": 34282,
 			"product_id": 16527,
 			"expiration_date": "2027-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 15:13:45",
-			"updated_at": "2025-10-29 15:13:45"
+			"updated_at": "2025-12-26 23:40:58"
 		},
 		{
 			"id": 34283,
@@ -109539,9 +109539,9 @@
 			"id": 34295,
 			"product_id": 13576,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 15:39:44",
-			"updated_at": "2025-10-29 15:39:44"
+			"updated_at": "2025-12-27 23:13:12"
 		},
 		{
 			"id": 34296,
@@ -109779,9 +109779,9 @@
 			"id": 34325,
 			"product_id": 11529,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-29 15:40:17",
-			"updated_at": "2025-12-19 16:34:58"
+			"updated_at": "2026-01-04 04:21:19"
 		},
 		{
 			"id": 34326,
@@ -109819,9 +109819,9 @@
 			"id": 34330,
 			"product_id": 12063,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 15:40:17",
-			"updated_at": "2025-12-13 21:00:35"
+			"updated_at": "2025-12-31 17:24:36"
 		},
 		{
 			"id": 34331,
@@ -109875,9 +109875,9 @@
 			"id": 34337,
 			"product_id": 10782,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-10-29 15:40:47",
-			"updated_at": "2025-10-29 15:40:47"
+			"updated_at": "2026-01-03 22:10:25"
 		},
 		{
 			"id": 34338,
@@ -109947,9 +109947,9 @@
 			"id": 34346,
 			"product_id": 12154,
 			"expiration_date": "2028-09-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-10-29 15:40:47",
-			"updated_at": "2025-12-22 14:32:41"
+			"updated_at": "2026-01-03 21:39:38"
 		},
 		{
 			"id": 34347,
@@ -110123,25 +110123,25 @@
 			"id": 34368,
 			"product_id": 14430,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:31:03",
-			"updated_at": "2025-12-14 14:56:32"
+			"updated_at": "2025-12-27 02:11:07"
 		},
 		{
 			"id": 34369,
 			"product_id": 6643,
 			"expiration_date": "2026-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:32:52",
-			"updated_at": "2025-10-29 16:32:52"
+			"updated_at": "2025-12-30 23:09:48"
 		},
 		{
 			"id": 34370,
 			"product_id": 15493,
 			"expiration_date": "2030-04-30",
-			"quantity_available": 66,
+			"quantity_available": 50,
 			"created_at": "2025-10-29 16:32:52",
-			"updated_at": "2025-12-26 20:25:47"
+			"updated_at": "2025-12-30 20:51:52"
 		},
 		{
 			"id": 34371,
@@ -110155,9 +110155,9 @@
 			"id": 34372,
 			"product_id": 12943,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:32:52",
-			"updated_at": "2025-12-03 18:22:27"
+			"updated_at": "2026-01-04 04:21:19"
 		},
 		{
 			"id": 34373,
@@ -110227,9 +110227,9 @@
 			"id": 34381,
 			"product_id": 12593,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-29 16:32:52",
-			"updated_at": "2025-10-29 16:32:52"
+			"updated_at": "2025-12-26 21:22:38"
 		},
 		{
 			"id": 34382,
@@ -110355,9 +110355,9 @@
 			"id": 34397,
 			"product_id": 12767,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 6,
+			"quantity_available": 4,
 			"created_at": "2025-10-29 16:34:07",
-			"updated_at": "2025-10-29 16:34:07"
+			"updated_at": "2025-12-30 19:26:17"
 		},
 		{
 			"id": 34398,
@@ -110403,9 +110403,9 @@
 			"id": 34403,
 			"product_id": 12847,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 5,
+			"quantity_available": 4,
 			"created_at": "2025-10-29 16:34:07",
-			"updated_at": "2025-11-22 23:53:31"
+			"updated_at": "2026-01-02 23:35:07"
 		},
 		{
 			"id": 34404,
@@ -110419,9 +110419,9 @@
 			"id": 34405,
 			"product_id": 12535,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-10-29 16:34:07",
-			"updated_at": "2025-10-29 16:34:07"
+			"updated_at": "2025-12-31 01:33:20"
 		},
 		{
 			"id": 34406,
@@ -110475,9 +110475,9 @@
 			"id": 34412,
 			"product_id": 15113,
 			"expiration_date": "2028-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:35:21",
-			"updated_at": "2025-12-18 04:11:00"
+			"updated_at": "2025-12-29 02:25:11"
 		},
 		{
 			"id": 34413,
@@ -110499,9 +110499,9 @@
 			"id": 34415,
 			"product_id": 16059,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-10-29 16:35:21",
-			"updated_at": "2025-11-16 01:50:36"
+			"updated_at": "2025-12-27 02:11:07"
 		},
 		{
 			"id": 34416,
@@ -110603,9 +110603,9 @@
 			"id": 34428,
 			"product_id": 6840,
 			"expiration_date": "2030-12-30",
-			"quantity_available": 37,
+			"quantity_available": 36,
 			"created_at": "2025-10-29 16:35:21",
-			"updated_at": "2025-12-26 04:36:55"
+			"updated_at": "2025-12-26 23:56:27"
 		},
 		{
 			"id": 34429,
@@ -110635,9 +110635,9 @@
 			"id": 34432,
 			"product_id": 16525,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:36:24",
-			"updated_at": "2025-10-29 16:36:24"
+			"updated_at": "2026-01-02 15:46:36"
 		},
 		{
 			"id": 34433,
@@ -110683,9 +110683,9 @@
 			"id": 34438,
 			"product_id": 12479,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-29 16:36:24",
-			"updated_at": "2025-12-16 15:08:13"
+			"updated_at": "2025-12-28 22:32:47"
 		},
 		{
 			"id": 34439,
@@ -110739,9 +110739,9 @@
 			"id": 34445,
 			"product_id": 16173,
 			"expiration_date": "2026-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:36:24",
-			"updated_at": "2025-12-16 01:08:34"
+			"updated_at": "2025-12-31 04:48:37"
 		},
 		{
 			"id": 34446,
@@ -110771,9 +110771,9 @@
 			"id": 34449,
 			"product_id": 14607,
 			"expiration_date": "2030-01-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:36:24",
-			"updated_at": "2025-12-19 01:38:03"
+			"updated_at": "2025-12-30 21:15:16"
 		},
 		{
 			"id": 34450,
@@ -110787,9 +110787,9 @@
 			"id": 34451,
 			"product_id": 13364,
 			"expiration_date": "2030-06-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-29 16:36:24",
-			"updated_at": "2025-11-20 01:19:06"
+			"updated_at": "2025-12-31 00:08:14"
 		},
 		{
 			"id": 34452,
@@ -110819,9 +110819,9 @@
 			"id": 34455,
 			"product_id": 16823,
 			"expiration_date": "2026-06-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-10-29 16:41:13",
-			"updated_at": "2025-10-29 16:41:13"
+			"updated_at": "2025-12-30 19:26:17"
 		},
 		{
 			"id": 34456,
@@ -110851,9 +110851,9 @@
 			"id": 34459,
 			"product_id": 7296,
 			"expiration_date": "2029-12-30",
-			"quantity_available": 76,
+			"quantity_available": 71,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-23 22:56:17"
+			"updated_at": "2026-01-03 15:52:28"
 		},
 		{
 			"id": 34460,
@@ -110875,9 +110875,9 @@
 			"id": 34462,
 			"product_id": 15439,
 			"expiration_date": "2028-03-31",
-			"quantity_available": 42,
+			"quantity_available": 25,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-26 00:48:24"
+			"updated_at": "2026-01-03 14:58:47"
 		},
 		{
 			"id": 34463,
@@ -110939,9 +110939,9 @@
 			"id": 34470,
 			"product_id": 12181,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-12 01:34:18"
+			"updated_at": "2025-12-30 01:43:11"
 		},
 		{
 			"id": 34471,
@@ -110955,25 +110955,25 @@
 			"id": 34472,
 			"product_id": 14027,
 			"expiration_date": "2030-04-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-15 16:21:14"
+			"updated_at": "2026-01-04 14:04:46"
 		},
 		{
 			"id": 34473,
 			"product_id": 12276,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-02 17:01:13"
+			"updated_at": "2026-01-01 00:16:00"
 		},
 		{
 			"id": 34474,
 			"product_id": 10921,
 			"expiration_date": "2030-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-11-15 17:13:52"
+			"updated_at": "2025-12-27 20:58:34"
 		},
 		{
 			"id": 34475,
@@ -111003,9 +111003,9 @@
 			"id": 34478,
 			"product_id": 16662,
 			"expiration_date": "2027-11-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-10-29 16:42:00",
-			"updated_at": "2025-12-02 22:47:01"
+			"updated_at": "2025-12-27 23:42:48"
 		},
 		{
 			"id": 34479,
@@ -111035,9 +111035,9 @@
 			"id": 34482,
 			"product_id": 16605,
 			"expiration_date": "2029-05-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-10-30 00:48:47",
-			"updated_at": "2025-12-11 01:30:57"
+			"updated_at": "2026-01-03 22:50:46"
 		},
 		{
 			"id": 34483,
@@ -111091,9 +111091,9 @@
 			"id": 34489,
 			"product_id": 10908,
 			"expiration_date": "2026-09-30",
-			"quantity_available": 12,
+			"quantity_available": 10,
 			"created_at": "2025-10-30 00:51:39",
-			"updated_at": "2025-12-22 22:38:12"
+			"updated_at": "2026-01-04 14:04:46"
 		},
 		{
 			"id": 34490,
@@ -111107,9 +111107,9 @@
 			"id": 34491,
 			"product_id": 12246,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 27,
+			"quantity_available": 25,
 			"created_at": "2025-10-30 00:51:39",
-			"updated_at": "2025-12-11 19:13:57"
+			"updated_at": "2026-01-02 17:31:06"
 		},
 		{
 			"id": 34492,
@@ -111275,9 +111275,9 @@
 			"id": 34512,
 			"product_id": 15604,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-30 02:56:17",
-			"updated_at": "2025-11-18 00:38:34"
+			"updated_at": "2025-12-29 22:45:00"
 		},
 		{
 			"id": 34513,
@@ -111347,9 +111347,9 @@
 			"id": 34521,
 			"product_id": 10750,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-10-30 02:56:17",
-			"updated_at": "2025-12-09 00:38:34"
+			"updated_at": "2026-01-02 13:28:01"
 		},
 		{
 			"id": 34522,
@@ -111387,9 +111387,9 @@
 			"id": 34526,
 			"product_id": 10762,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 16,
+			"quantity_available": 15,
 			"created_at": "2025-10-30 02:57:10",
-			"updated_at": "2025-12-14 21:33:37"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 34527,
@@ -111419,9 +111419,9 @@
 			"id": 34530,
 			"product_id": 11689,
 			"expiration_date": "2028-11-30",
-			"quantity_available": 10,
+			"quantity_available": 9,
 			"created_at": "2025-10-30 02:57:10",
-			"updated_at": "2025-10-30 02:57:10"
+			"updated_at": "2026-01-02 03:33:31"
 		},
 		{
 			"id": 34531,
@@ -111515,9 +111515,9 @@
 			"id": 34542,
 			"product_id": 16888,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-10-30 13:42:51",
-			"updated_at": "2025-11-01 17:11:45"
+			"updated_at": "2026-01-02 13:32:28"
 		},
 		{
 			"id": 34543,
@@ -111531,9 +111531,9 @@
 			"id": 34544,
 			"product_id": 12092,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-10-30 21:00:47",
-			"updated_at": "2025-12-17 21:49:03"
+			"updated_at": "2025-12-26 21:24:15"
 		},
 		{
 			"id": 34545,
@@ -111571,9 +111571,9 @@
 			"id": 34549,
 			"product_id": 16193,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-10-30 21:01:03",
-			"updated_at": "2025-10-30 21:01:03"
+			"updated_at": "2026-01-02 01:16:39"
 		},
 		{
 			"id": 34550,
@@ -111611,9 +111611,9 @@
 			"id": 34554,
 			"product_id": 16960,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 9,
+			"quantity_available": 2,
 			"created_at": "2025-10-31 21:47:03",
-			"updated_at": "2025-12-23 21:33:56"
+			"updated_at": "2025-12-31 17:11:51"
 		},
 		{
 			"id": 34555,
@@ -111651,9 +111651,9 @@
 			"id": 34559,
 			"product_id": 13059,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 41,
+			"quantity_available": 18,
 			"created_at": "2025-11-01 02:10:19",
-			"updated_at": "2025-12-26 02:34:50"
+			"updated_at": "2026-01-03 02:19:50"
 		},
 		{
 			"id": 34560,
@@ -111747,9 +111747,9 @@
 			"id": 34571,
 			"product_id": 13533,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 4,
+			"quantity_available": 1,
 			"created_at": "2025-11-01 02:10:19",
-			"updated_at": "2025-12-24 23:16:14"
+			"updated_at": "2025-12-30 12:34:23"
 		},
 		{
 			"id": 34572,
@@ -111819,17 +111819,17 @@
 			"id": 34580,
 			"product_id": 10823,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 9,
+			"quantity_available": 0,
 			"created_at": "2025-11-02 13:43:37",
-			"updated_at": "2025-12-26 20:25:47"
+			"updated_at": "2026-01-01 17:26:42"
 		},
 		{
 			"id": 34581,
 			"product_id": 7298,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 21,
+			"quantity_available": 20,
 			"created_at": "2025-11-02 13:43:37",
-			"updated_at": "2025-12-26 16:48:29"
+			"updated_at": "2025-12-28 00:15:12"
 		},
 		{
 			"id": 34582,
@@ -111891,9 +111891,9 @@
 			"id": 34589,
 			"product_id": 14901,
 			"expiration_date": "2028-07-07",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-02 13:43:54",
-			"updated_at": "2025-11-02 13:43:54"
+			"updated_at": "2025-12-30 23:14:18"
 		},
 		{
 			"id": 34590,
@@ -111923,17 +111923,17 @@
 			"id": 34593,
 			"product_id": 16964,
 			"expiration_date": "2030-02-28",
-			"quantity_available": 77,
+			"quantity_available": 75,
 			"created_at": "2025-11-02 13:44:15",
-			"updated_at": "2025-12-24 17:47:16"
+			"updated_at": "2025-12-30 20:31:35"
 		},
 		{
 			"id": 34594,
 			"product_id": 12549,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-11-02 13:44:15",
-			"updated_at": "2025-12-23 00:35:21"
+			"updated_at": "2025-12-28 00:15:12"
 		},
 		{
 			"id": 34595,
@@ -112123,17 +112123,17 @@
 			"id": 34618,
 			"product_id": 5972,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-04 16:53:13",
-			"updated_at": "2025-11-04 16:53:13"
+			"updated_at": "2026-01-02 19:41:21"
 		},
 		{
 			"id": 34619,
 			"product_id": 16653,
 			"expiration_date": "2026-10-30",
-			"quantity_available": 5,
+			"quantity_available": 2,
 			"created_at": "2025-11-04 16:53:20",
-			"updated_at": "2025-12-13 18:18:46"
+			"updated_at": "2026-01-04 13:35:54"
 		},
 		{
 			"id": 34620,
@@ -112195,9 +112195,9 @@
 			"id": 34627,
 			"product_id": 16341,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-04 16:59:09",
-			"updated_at": "2025-12-13 22:59:44"
+			"updated_at": "2025-12-27 16:39:10"
 		},
 		{
 			"id": 34628,
@@ -112211,9 +112211,9 @@
 			"id": 34629,
 			"product_id": 16967,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-11-04 16:59:09",
-			"updated_at": "2025-12-17 22:02:03"
+			"updated_at": "2026-01-03 22:50:46"
 		},
 		{
 			"id": 34630,
@@ -112275,9 +112275,9 @@
 			"id": 34637,
 			"product_id": 11229,
 			"expiration_date": "2027-12-31",
-			"quantity_available": 20,
+			"quantity_available": 19,
 			"created_at": "2025-11-07 02:32:52",
-			"updated_at": "2025-11-07 02:32:52"
+			"updated_at": "2026-01-04 00:41:53"
 		},
 		{
 			"id": 34638,
@@ -112307,9 +112307,9 @@
 			"id": 34641,
 			"product_id": 12714,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 20,
+			"quantity_available": 19,
 			"created_at": "2025-11-07 02:32:52",
-			"updated_at": "2025-11-07 02:32:52"
+			"updated_at": "2025-12-28 00:51:07"
 		},
 		{
 			"id": 34642,
@@ -112331,9 +112331,9 @@
 			"id": 34644,
 			"product_id": 11295,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 18,
+			"quantity_available": 17,
 			"created_at": "2025-11-07 02:32:52",
-			"updated_at": "2025-12-08 19:58:12"
+			"updated_at": "2025-12-30 03:40:07"
 		},
 		{
 			"id": 34645,
@@ -112347,9 +112347,9 @@
 			"id": 34646,
 			"product_id": 16663,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 7,
+			"quantity_available": 4,
 			"created_at": "2025-11-07 02:32:52",
-			"updated_at": "2025-12-09 17:38:41"
+			"updated_at": "2026-01-02 14:24:34"
 		},
 		{
 			"id": 34647,
@@ -112427,9 +112427,9 @@
 			"id": 34656,
 			"product_id": 16976,
 			"expiration_date": "2026-10-26",
-			"quantity_available": 86,
+			"quantity_available": 81,
 			"created_at": "2025-11-07 04:06:28",
-			"updated_at": "2025-12-23 00:35:20"
+			"updated_at": "2026-01-03 21:58:40"
 		},
 		{
 			"id": 34657,
@@ -112475,9 +112475,9 @@
 			"id": 34662,
 			"product_id": 16941,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 5,
+			"quantity_available": 0,
 			"created_at": "2025-11-13 02:13:23",
-			"updated_at": "2025-12-26 02:34:50"
+			"updated_at": "2025-12-29 06:38:08"
 		},
 		{
 			"id": 34663,
@@ -112499,25 +112499,25 @@
 			"id": 34665,
 			"product_id": 12231,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 100,
+			"quantity_available": 97,
 			"created_at": "2025-11-13 23:12:48",
-			"updated_at": "2025-11-13 23:12:48"
+			"updated_at": "2026-01-04 05:06:46"
 		},
 		{
 			"id": 34666,
 			"product_id": 16981,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 27,
+			"quantity_available": 18,
 			"created_at": "2025-11-13 23:13:52",
-			"updated_at": "2025-12-26 00:48:24"
+			"updated_at": "2026-01-04 00:12:27"
 		},
 		{
 			"id": 34667,
 			"product_id": 16982,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 29,
+			"quantity_available": 25,
 			"created_at": "2025-11-13 23:13:52",
-			"updated_at": "2025-12-26 18:08:28"
+			"updated_at": "2025-12-29 22:15:01"
 		},
 		{
 			"id": 34668,
@@ -112531,9 +112531,9 @@
 			"id": 34669,
 			"product_id": 12331,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 55,
+			"quantity_available": 50,
 			"created_at": "2025-11-14 23:22:09",
-			"updated_at": "2025-12-25 21:40:31"
+			"updated_at": "2026-01-03 16:30:00"
 		},
 		{
 			"id": 34670,
@@ -112547,9 +112547,9 @@
 			"id": 34671,
 			"product_id": 16654,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 58,
+			"quantity_available": 53,
 			"created_at": "2025-11-15 18:44:11",
-			"updated_at": "2025-12-26 12:38:21"
+			"updated_at": "2026-01-03 18:52:34"
 		},
 		{
 			"id": 34672,
@@ -112619,9 +112619,9 @@
 			"id": 34680,
 			"product_id": 12417,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 6,
+			"quantity_available": 2,
 			"created_at": "2025-11-15 18:49:06",
-			"updated_at": "2025-12-09 21:03:44"
+			"updated_at": "2026-01-03 18:13:10"
 		},
 		{
 			"id": 34681,
@@ -112643,9 +112643,9 @@
 			"id": 34683,
 			"product_id": 15874,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 7,
+			"quantity_available": 6,
 			"created_at": "2025-11-15 18:49:06",
-			"updated_at": "2025-12-08 22:39:21"
+			"updated_at": "2025-12-28 02:35:36"
 		},
 		{
 			"id": 34684,
@@ -112667,9 +112667,9 @@
 			"id": 34686,
 			"product_id": 15433,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 12,
+			"quantity_available": 8,
 			"created_at": "2025-11-15 18:49:06",
-			"updated_at": "2025-12-26 18:11:43"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 34687,
@@ -112699,9 +112699,9 @@
 			"id": 34690,
 			"product_id": 12277,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-11-15 18:51:56",
-			"updated_at": "2025-12-19 23:08:07"
+			"updated_at": "2025-12-30 14:06:30"
 		},
 		{
 			"id": 34691,
@@ -112739,9 +112739,9 @@
 			"id": 34695,
 			"product_id": 16167,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 26,
+			"quantity_available": 20,
 			"created_at": "2025-11-15 18:51:56",
-			"updated_at": "2025-12-20 18:34:55"
+			"updated_at": "2026-01-03 18:13:10"
 		},
 		{
 			"id": 34696,
@@ -112755,9 +112755,9 @@
 			"id": 34697,
 			"product_id": 15666,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 96,
+			"quantity_available": 76,
 			"created_at": "2025-11-15 18:56:07",
-			"updated_at": "2025-11-15 18:56:07"
+			"updated_at": "2026-01-03 17:34:40"
 		},
 		{
 			"id": 34698,
@@ -112779,9 +112779,9 @@
 			"id": 34700,
 			"product_id": 13212,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-11-15 18:57:45",
-			"updated_at": "2025-12-21 22:03:05"
+			"updated_at": "2025-12-31 01:37:08"
 		},
 		{
 			"id": 34701,
@@ -112819,25 +112819,25 @@
 			"id": 34705,
 			"product_id": 15629,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 21,
+			"quantity_available": 19,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-25 19:05:38"
+			"updated_at": "2025-12-27 14:59:47"
 		},
 		{
 			"id": 34706,
 			"product_id": 12177,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-23 23:18:24"
+			"updated_at": "2025-12-28 02:36:15"
 		},
 		{
 			"id": 34707,
 			"product_id": 6036,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-05 14:13:58"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 34708,
@@ -112851,25 +112851,25 @@
 			"id": 34709,
 			"product_id": 13241,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-21 19:40:54"
+			"updated_at": "2026-01-03 20:31:55"
 		},
 		{
 			"id": 34710,
 			"product_id": 12238,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 22,
+			"quantity_available": 16,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-23 03:49:56"
+			"updated_at": "2026-01-03 20:26:17"
 		},
 		{
 			"id": 34711,
 			"product_id": 12219,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 18,
+			"quantity_available": 10,
 			"created_at": "2025-11-15 19:01:30",
-			"updated_at": "2025-12-26 00:00:49"
+			"updated_at": "2026-01-01 00:58:05"
 		},
 		{
 			"id": 34712,
@@ -112915,9 +112915,9 @@
 			"id": 34717,
 			"product_id": 12409,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 46,
+			"quantity_available": 42,
 			"created_at": "2025-11-15 19:05:12",
-			"updated_at": "2025-12-18 03:31:50"
+			"updated_at": "2026-01-03 20:21:17"
 		},
 		{
 			"id": 34718,
@@ -112987,17 +112987,17 @@
 			"id": 34726,
 			"product_id": 16069,
 			"expiration_date": "2030-03-03",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-15 19:07:13",
-			"updated_at": "2025-12-22 01:34:56"
+			"updated_at": "2025-12-29 20:00:51"
 		},
 		{
 			"id": 34727,
 			"product_id": 16529,
 			"expiration_date": "2027-04-04",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-15 19:07:13",
-			"updated_at": "2025-11-15 19:07:13"
+			"updated_at": "2025-12-30 01:26:56"
 		},
 		{
 			"id": 34728,
@@ -113027,9 +113027,9 @@
 			"id": 34731,
 			"product_id": 15334,
 			"expiration_date": "2028-08-08",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-15 19:07:13",
-			"updated_at": "2025-12-19 17:24:11"
+			"updated_at": "2025-12-29 14:33:20"
 		},
 		{
 			"id": 34732,
@@ -113043,17 +113043,17 @@
 			"id": 34733,
 			"product_id": 16751,
 			"expiration_date": "2027-05-05",
-			"quantity_available": 8,
+			"quantity_available": 5,
 			"created_at": "2025-11-15 19:07:13",
-			"updated_at": "2025-12-22 19:16:27"
+			"updated_at": "2025-12-29 15:42:02"
 		},
 		{
 			"id": 34734,
 			"product_id": 16152,
 			"expiration_date": "2030-11-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-11-16 14:14:54",
-			"updated_at": "2025-12-26 00:05:51"
+			"updated_at": "2026-01-02 13:42:30"
 		},
 		{
 			"id": 34735,
@@ -113099,9 +113099,9 @@
 			"id": 34740,
 			"product_id": 14180,
 			"expiration_date": "2030-05-30",
-			"quantity_available": 15,
+			"quantity_available": 0,
 			"created_at": "2025-11-16 14:14:54",
-			"updated_at": "2025-12-26 18:04:42"
+			"updated_at": "2026-01-01 01:36:48"
 		},
 		{
 			"id": 34741,
@@ -113123,9 +113123,9 @@
 			"id": 34743,
 			"product_id": 12789,
 			"expiration_date": "2030-05-30",
-			"quantity_available": 10,
+			"quantity_available": 3,
 			"created_at": "2025-11-16 14:14:54",
-			"updated_at": "2025-12-23 00:35:21"
+			"updated_at": "2026-01-03 22:50:46"
 		},
 		{
 			"id": 34744,
@@ -113155,17 +113155,17 @@
 			"id": 34747,
 			"product_id": 16069,
 			"expiration_date": "2030-03-30",
-			"quantity_available": 11,
+			"quantity_available": 7,
 			"created_at": "2025-11-16 14:14:54",
-			"updated_at": "2025-11-16 14:14:54"
+			"updated_at": "2026-01-04 00:02:53"
 		},
 		{
 			"id": 34748,
 			"product_id": 12091,
 			"expiration_date": "2027-10-31",
-			"quantity_available": 18,
+			"quantity_available": 15,
 			"created_at": "2025-11-16 14:15:12",
-			"updated_at": "2025-12-26 21:06:05"
+			"updated_at": "2026-01-01 18:28:17"
 		},
 		{
 			"id": 34749,
@@ -113179,9 +113179,9 @@
 			"id": 34750,
 			"product_id": 12523,
 			"expiration_date": "2029-04-30",
-			"quantity_available": 10,
+			"quantity_available": 6,
 			"created_at": "2025-11-16 14:15:12",
-			"updated_at": "2025-12-24 20:33:46"
+			"updated_at": "2026-01-03 15:13:19"
 		},
 		{
 			"id": 34751,
@@ -113227,9 +113227,9 @@
 			"id": 34756,
 			"product_id": 16988,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 5,
+			"quantity_available": 4,
 			"created_at": "2025-11-16 14:15:12",
-			"updated_at": "2025-12-16 00:46:53"
+			"updated_at": "2026-01-03 21:36:32"
 		},
 		{
 			"id": 34757,
@@ -113251,9 +113251,9 @@
 			"id": 34759,
 			"product_id": 13392,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 107,
+			"quantity_available": 96,
 			"created_at": "2025-11-16 14:18:29",
-			"updated_at": "2025-12-26 18:53:03"
+			"updated_at": "2026-01-02 05:39:56"
 		},
 		{
 			"id": 34760,
@@ -113275,9 +113275,9 @@
 			"id": 34762,
 			"product_id": 15954,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 8,
+			"quantity_available": 4,
 			"created_at": "2025-11-16 14:19:41",
-			"updated_at": "2025-11-26 00:00:09"
+			"updated_at": "2025-12-31 18:15:03"
 		},
 		{
 			"id": 34763,
@@ -113291,9 +113291,9 @@
 			"id": 34764,
 			"product_id": 16610,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-11-16 14:19:41",
-			"updated_at": "2025-12-22 04:08:56"
+			"updated_at": "2026-01-04 15:57:53"
 		},
 		{
 			"id": 34765,
@@ -113307,17 +113307,17 @@
 			"id": 34766,
 			"product_id": 12301,
 			"expiration_date": "2030-06-30",
-			"quantity_available": 6,
+			"quantity_available": 3,
 			"created_at": "2025-11-16 14:19:41",
-			"updated_at": "2025-12-17 02:57:36"
+			"updated_at": "2026-01-04 14:04:46"
 		},
 		{
 			"id": 34767,
 			"product_id": 11492,
 			"expiration_date": "2028-08-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-11-16 14:19:53",
-			"updated_at": "2025-12-21 23:37:24"
+			"updated_at": "2025-12-30 16:25:06"
 		},
 		{
 			"id": 34768,
@@ -113347,17 +113347,17 @@
 			"id": 34771,
 			"product_id": 10947,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-11-16 14:19:53",
-			"updated_at": "2025-11-16 14:19:53"
+			"updated_at": "2025-12-31 23:52:15"
 		},
 		{
 			"id": 34772,
 			"product_id": 13742,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-11-16 14:19:53",
-			"updated_at": "2025-11-16 14:19:53"
+			"updated_at": "2025-12-31 22:40:39"
 		},
 		{
 			"id": 34773,
@@ -113435,9 +113435,9 @@
 			"id": 34782,
 			"product_id": 16432,
 			"expiration_date": "2030-05-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-11-19 00:42:54",
-			"updated_at": "2025-12-19 16:34:58"
+			"updated_at": "2025-12-27 16:45:58"
 		},
 		{
 			"id": 34783,
@@ -113523,9 +113523,9 @@
 			"id": 34793,
 			"product_id": 13607,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 23,
+			"quantity_available": 7,
 			"created_at": "2025-11-19 00:44:35",
-			"updated_at": "2025-12-26 19:03:49"
+			"updated_at": "2026-01-03 17:58:22"
 		},
 		{
 			"id": 34794,
@@ -113547,9 +113547,9 @@
 			"id": 34796,
 			"product_id": 12107,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-19 00:44:35",
-			"updated_at": "2025-12-18 12:13:21"
+			"updated_at": "2025-12-31 00:29:27"
 		},
 		{
 			"id": 34797,
@@ -113571,9 +113571,9 @@
 			"id": 34799,
 			"product_id": 13961,
 			"expiration_date": "2027-12-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-11-19 00:44:35",
-			"updated_at": "2025-12-22 01:00:59"
+			"updated_at": "2025-12-30 02:18:09"
 		},
 		{
 			"id": 34800,
@@ -113619,9 +113619,9 @@
 			"id": 34805,
 			"product_id": 11908,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 8,
+			"quantity_available": 2,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-24 23:06:23"
+			"updated_at": "2026-01-03 02:52:06"
 		},
 		{
 			"id": 34806,
@@ -113643,9 +113643,9 @@
 			"id": 34808,
 			"product_id": 12564,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 5,
+			"quantity_available": 3,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-26 03:29:48"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 34809,
@@ -113659,9 +113659,9 @@
 			"id": 34810,
 			"product_id": 12319,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-21 15:58:48"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 34811,
@@ -113675,9 +113675,9 @@
 			"id": 34812,
 			"product_id": 13287,
 			"expiration_date": "2027-03-30",
-			"quantity_available": 4,
+			"quantity_available": 0,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-19 22:03:41"
+			"updated_at": "2026-01-02 17:31:06"
 		},
 		{
 			"id": 34813,
@@ -113699,17 +113699,17 @@
 			"id": 34815,
 			"product_id": 16753,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 4,
+			"quantity_available": 0,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-26 16:33:46"
+			"updated_at": "2026-01-04 12:36:46"
 		},
 		{
 			"id": 34816,
 			"product_id": 16754,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 6,
+			"quantity_available": 0,
 			"created_at": "2025-11-19 00:45:56",
-			"updated_at": "2025-12-25 21:40:31"
+			"updated_at": "2025-12-30 21:23:56"
 		},
 		{
 			"id": 34817,
@@ -113803,25 +113803,25 @@
 			"id": 34828,
 			"product_id": 16940,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-23 16:34:38",
-			"updated_at": "2025-12-14 23:47:00"
+			"updated_at": "2025-12-27 01:19:07"
 		},
 		{
 			"id": 34829,
 			"product_id": 16949,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 7,
+			"quantity_available": 2,
 			"created_at": "2025-11-23 16:34:38",
-			"updated_at": "2025-12-21 00:22:00"
+			"updated_at": "2026-01-02 01:07:20"
 		},
 		{
 			"id": 34830,
 			"product_id": 16948,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 39,
+			"quantity_available": 27,
 			"created_at": "2025-11-23 16:34:38",
-			"updated_at": "2025-12-26 02:34:50"
+			"updated_at": "2026-01-03 16:04:48"
 		},
 		{
 			"id": 34831,
@@ -113835,25 +113835,25 @@
 			"id": 34832,
 			"product_id": 16942,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 28,
+			"quantity_available": 8,
 			"created_at": "2025-11-23 16:34:38",
-			"updated_at": "2025-12-26 02:34:50"
+			"updated_at": "2026-01-04 04:21:19"
 		},
 		{
 			"id": 34833,
 			"product_id": 16950,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 50,
+			"quantity_available": 45,
 			"created_at": "2025-11-23 16:34:38",
-			"updated_at": "2025-12-26 05:08:02"
+			"updated_at": "2026-01-02 20:43:49"
 		},
 		{
 			"id": 34834,
 			"product_id": 15950,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 127,
+			"quantity_available": 125,
 			"created_at": "2025-11-23 16:36:04",
-			"updated_at": "2025-12-26 19:22:04"
+			"updated_at": "2025-12-30 15:55:18"
 		},
 		{
 			"id": 34835,
@@ -113923,9 +113923,9 @@
 			"id": 34843,
 			"product_id": 11383,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-23 16:36:55",
-			"updated_at": "2025-11-23 16:36:55"
+			"updated_at": "2026-01-03 18:52:34"
 		},
 		{
 			"id": 34844,
@@ -113987,9 +113987,9 @@
 			"id": 34851,
 			"product_id": 11951,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-23 16:37:09",
-			"updated_at": "2025-12-26 14:12:30"
+			"updated_at": "2025-12-29 19:39:24"
 		},
 		{
 			"id": 34852,
@@ -114051,9 +114051,9 @@
 			"id": 34859,
 			"product_id": 16796,
 			"expiration_date": "2027-02-25",
-			"quantity_available": 20,
+			"quantity_available": 19,
 			"created_at": "2025-11-23 16:38:01",
-			"updated_at": "2025-12-16 01:08:34"
+			"updated_at": "2025-12-29 06:13:29"
 		},
 		{
 			"id": 34860,
@@ -114067,9 +114067,9 @@
 			"id": 34861,
 			"product_id": 16809,
 			"expiration_date": "2026-06-30",
-			"quantity_available": 7,
+			"quantity_available": 0,
 			"created_at": "2025-11-23 16:38:01",
-			"updated_at": "2025-12-23 16:18:59"
+			"updated_at": "2026-01-04 13:35:54"
 		},
 		{
 			"id": 34862,
@@ -114099,9 +114099,9 @@
 			"id": 34865,
 			"product_id": 16885,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-24 16:20:04",
-			"updated_at": "2025-12-03 05:04:10"
+			"updated_at": "2025-12-27 17:37:18"
 		},
 		{
 			"id": 34866,
@@ -114163,9 +114163,9 @@
 			"id": 34873,
 			"product_id": 16912,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-11-24 16:20:11",
-			"updated_at": "2025-11-24 16:20:11"
+			"updated_at": "2025-12-27 01:15:25"
 		},
 		{
 			"id": 34874,
@@ -114227,9 +114227,9 @@
 			"id": 34881,
 			"product_id": 12309,
 			"expiration_date": "2027-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-24 16:20:17",
-			"updated_at": "2025-11-25 22:01:39"
+			"updated_at": "2025-12-29 19:16:04"
 		},
 		{
 			"id": 34882,
@@ -114275,9 +114275,9 @@
 			"id": 34887,
 			"product_id": 12552,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-11-24 16:20:23",
-			"updated_at": "2025-11-24 16:20:23"
+			"updated_at": "2025-12-30 04:18:49"
 		},
 		{
 			"id": 34888,
@@ -114323,9 +114323,9 @@
 			"id": 34893,
 			"product_id": 6825,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-11-24 16:28:08",
-			"updated_at": "2025-12-14 06:32:25"
+			"updated_at": "2025-12-29 02:12:50"
 		},
 		{
 			"id": 34894,
@@ -114387,9 +114387,9 @@
 			"id": 34901,
 			"product_id": 12398,
 			"expiration_date": "2028-10-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-11-24 16:28:16",
-			"updated_at": "2025-12-10 22:57:02"
+			"updated_at": "2026-01-03 20:26:17"
 		},
 		{
 			"id": 34902,
@@ -114539,9 +114539,9 @@
 			"id": 34920,
 			"product_id": 12554,
 			"expiration_date": "2027-07-09",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-28 17:18:09",
-			"updated_at": "2025-11-28 17:18:09"
+			"updated_at": "2026-01-04 15:52:42"
 		},
 		{
 			"id": 34921,
@@ -114555,9 +114555,9 @@
 			"id": 34922,
 			"product_id": 11774,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-28 17:18:09",
-			"updated_at": "2025-11-28 23:13:16"
+			"updated_at": "2026-01-03 20:17:37"
 		},
 		{
 			"id": 34923,
@@ -114611,9 +114611,9 @@
 			"id": 34929,
 			"product_id": 12176,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-11-28 17:18:26",
-			"updated_at": "2025-11-28 17:18:26"
+			"updated_at": "2025-12-31 02:41:26"
 		},
 		{
 			"id": 34930,
@@ -114683,17 +114683,17 @@
 			"id": 34938,
 			"product_id": 13320,
 			"expiration_date": "2026-12-31",
-			"quantity_available": 83,
+			"quantity_available": 80,
 			"created_at": "2025-11-28 19:04:38",
-			"updated_at": "2025-12-26 02:39:24"
+			"updated_at": "2026-01-04 13:30:18"
 		},
 		{
 			"id": 34939,
 			"product_id": 10958,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-04 14:23:16",
-			"updated_at": "2025-12-20 18:44:51"
+			"updated_at": "2026-01-02 19:57:51"
 		},
 		{
 			"id": 34940,
@@ -114715,9 +114715,9 @@
 			"id": 34942,
 			"product_id": 11328,
 			"expiration_date": "2026-09-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-12-04 14:23:31",
-			"updated_at": "2025-12-04 14:23:31"
+			"updated_at": "2025-12-31 14:40:01"
 		},
 		{
 			"id": 34943,
@@ -114827,9 +114827,9 @@
 			"id": 34956,
 			"product_id": 16750,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-12-04 14:25:51",
-			"updated_at": "2025-12-04 14:25:51"
+			"updated_at": "2026-01-01 18:52:25"
 		},
 		{
 			"id": 34957,
@@ -114843,9 +114843,9 @@
 			"id": 34958,
 			"product_id": 16594,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-04 14:25:51",
-			"updated_at": "2025-12-20 06:20:43"
+			"updated_at": "2025-12-30 23:07:06"
 		},
 		{
 			"id": 34959,
@@ -114859,17 +114859,17 @@
 			"id": 34960,
 			"product_id": 17014,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-12-04 14:25:51",
-			"updated_at": "2025-12-04 14:25:51"
+			"updated_at": "2026-01-01 23:58:23"
 		},
 		{
 			"id": 34961,
 			"product_id": 16668,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 10,
+			"quantity_available": 9,
 			"created_at": "2025-12-09 04:44:27",
-			"updated_at": "2025-12-15 16:20:32"
+			"updated_at": "2025-12-29 15:52:10"
 		},
 		{
 			"id": 34962,
@@ -114899,17 +114899,17 @@
 			"id": 34965,
 			"product_id": 15959,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:21:44",
-			"updated_at": "2025-12-22 00:50:37"
+			"updated_at": "2026-01-01 00:16:00"
 		},
 		{
 			"id": 34966,
 			"product_id": 14907,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:21:52",
-			"updated_at": "2025-12-16 13:21:52"
+			"updated_at": "2025-12-30 19:04:05"
 		},
 		{
 			"id": 34967,
@@ -114923,9 +114923,9 @@
 			"id": 34968,
 			"product_id": 12084,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:22:03",
-			"updated_at": "2025-12-26 02:20:57"
+			"updated_at": "2025-12-31 00:08:14"
 		},
 		{
 			"id": 34969,
@@ -114971,9 +114971,9 @@
 			"id": 34974,
 			"product_id": 12466,
 			"expiration_date": "2030-05-30",
-			"quantity_available": 3,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:22:03",
-			"updated_at": "2025-12-26 00:05:45"
+			"updated_at": "2025-12-28 22:32:03"
 		},
 		{
 			"id": 34975,
@@ -115035,9 +115035,9 @@
 			"id": 34982,
 			"product_id": 17015,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:24:30",
-			"updated_at": "2025-12-16 13:24:30"
+			"updated_at": "2026-01-02 01:46:10"
 		},
 		{
 			"id": 34983,
@@ -115051,9 +115051,9 @@
 			"id": 34984,
 			"product_id": 12468,
 			"expiration_date": "2030-05-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:24:30",
-			"updated_at": "2025-12-19 04:47:34"
+			"updated_at": "2025-12-31 16:18:24"
 		},
 		{
 			"id": 34985,
@@ -115131,9 +115131,9 @@
 			"id": 34994,
 			"product_id": 6869,
 			"expiration_date": "2028-07-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 13:25:04",
-			"updated_at": "2025-12-16 13:25:04"
+			"updated_at": "2025-12-28 19:58:03"
 		},
 		{
 			"id": 34995,
@@ -115155,9 +115155,9 @@
 			"id": 34997,
 			"product_id": 10511,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:04",
-			"updated_at": "2025-12-16 13:25:04"
+			"updated_at": "2026-01-02 15:24:31"
 		},
 		{
 			"id": 34998,
@@ -115179,9 +115179,9 @@
 			"id": 35000,
 			"product_id": 16656,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 13:25:04",
-			"updated_at": "2025-12-16 13:25:04"
+			"updated_at": "2025-12-31 05:21:05"
 		},
 		{
 			"id": 35001,
@@ -115275,9 +115275,9 @@
 			"id": 35012,
 			"product_id": 11428,
 			"expiration_date": "2030-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:12",
-			"updated_at": "2025-12-16 13:25:12"
+			"updated_at": "2026-01-03 20:14:35"
 		},
 		{
 			"id": 35013,
@@ -115395,9 +115395,9 @@
 			"id": 35027,
 			"product_id": 16995,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:20",
-			"updated_at": "2025-12-16 13:25:20"
+			"updated_at": "2026-01-03 12:26:49"
 		},
 		{
 			"id": 35028,
@@ -115515,9 +115515,9 @@
 			"id": 35042,
 			"product_id": 13295,
 			"expiration_date": "2026-01-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:28",
-			"updated_at": "2025-12-16 13:25:28"
+			"updated_at": "2025-12-27 00:17:57"
 		},
 		{
 			"id": 35043,
@@ -115603,9 +115603,9 @@
 			"id": 35053,
 			"product_id": 12943,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:45",
-			"updated_at": "2025-12-16 13:25:45"
+			"updated_at": "2026-01-03 15:52:28"
 		},
 		{
 			"id": 35054,
@@ -115635,9 +115635,9 @@
 			"id": 35057,
 			"product_id": 12221,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 4,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:46",
-			"updated_at": "2025-12-24 21:13:15"
+			"updated_at": "2025-12-30 19:10:33"
 		},
 		{
 			"id": 35058,
@@ -115683,9 +115683,9 @@
 			"id": 35063,
 			"product_id": 12605,
 			"expiration_date": "2029-09-30",
-			"quantity_available": 8,
+			"quantity_available": 6,
 			"created_at": "2025-12-16 13:25:46",
-			"updated_at": "2025-12-23 16:58:51"
+			"updated_at": "2026-01-02 23:40:28"
 		},
 		{
 			"id": 35064,
@@ -115699,9 +115699,9 @@
 			"id": 35065,
 			"product_id": 14266,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 13:25:46",
-			"updated_at": "2025-12-16 13:25:46"
+			"updated_at": "2025-12-27 22:35:01"
 		},
 		{
 			"id": 35066,
@@ -115715,9 +115715,9 @@
 			"id": 35067,
 			"product_id": 15522,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 13:25:46",
-			"updated_at": "2025-12-16 23:11:14"
+			"updated_at": "2025-12-29 21:58:08"
 		},
 		{
 			"id": 35068,
@@ -115835,9 +115835,9 @@
 			"id": 35082,
 			"product_id": 11648,
 			"expiration_date": "2027-05-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:25:57",
-			"updated_at": "2025-12-16 13:25:57"
+			"updated_at": "2025-12-27 02:25:26"
 		},
 		{
 			"id": 35083,
@@ -115867,25 +115867,25 @@
 			"id": 35086,
 			"product_id": 12176,
 			"expiration_date": "2027-02-28",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-26 00:31:59"
+			"updated_at": "2025-12-30 02:44:04"
 		},
 		{
 			"id": 35087,
 			"product_id": 11791,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 5,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-24 00:20:38"
+			"updated_at": "2026-01-02 16:42:37"
 		},
 		{
 			"id": 35088,
 			"product_id": 11797,
 			"expiration_date": "2027-04-30",
-			"quantity_available": 4,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-16 19:14:45"
+			"updated_at": "2025-12-31 01:55:21"
 		},
 		{
 			"id": 35089,
@@ -115907,17 +115907,17 @@
 			"id": 35091,
 			"product_id": 11806,
 			"expiration_date": "2030-10-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-23 22:22:20"
+			"updated_at": "2025-12-26 22:34:00"
 		},
 		{
 			"id": 35092,
 			"product_id": 15139,
 			"expiration_date": "2028-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-16 13:26:12"
+			"updated_at": "2026-01-03 00:23:00"
 		},
 		{
 			"id": 35093,
@@ -115955,9 +115955,9 @@
 			"id": 35097,
 			"product_id": 11896,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-22 17:42:17"
+			"updated_at": "2025-12-29 01:24:03"
 		},
 		{
 			"id": 35098,
@@ -115971,9 +115971,9 @@
 			"id": 35099,
 			"product_id": 6829,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-16 13:26:12"
+			"updated_at": "2025-12-27 00:50:33"
 		},
 		{
 			"id": 35100,
@@ -116003,9 +116003,9 @@
 			"id": 35103,
 			"product_id": 10489,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:12",
-			"updated_at": "2025-12-16 13:26:12"
+			"updated_at": "2025-12-30 14:06:30"
 		},
 		{
 			"id": 35104,
@@ -116043,9 +116043,9 @@
 			"id": 35108,
 			"product_id": 11805,
 			"expiration_date": "2030-08-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:42",
-			"updated_at": "2025-12-26 18:51:15"
+			"updated_at": "2025-12-31 03:13:35"
 		},
 		{
 			"id": 35109,
@@ -116115,17 +116115,17 @@
 			"id": 35117,
 			"product_id": 12899,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:43",
-			"updated_at": "2025-12-16 13:26:43"
+			"updated_at": "2025-12-28 00:17:36"
 		},
 		{
 			"id": 35118,
 			"product_id": 6123,
 			"expiration_date": "2030-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:43",
-			"updated_at": "2025-12-16 18:36:00"
+			"updated_at": "2025-12-28 14:55:21"
 		},
 		{
 			"id": 35119,
@@ -116147,17 +116147,17 @@
 			"id": 35121,
 			"product_id": 11649,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 4,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 13:26:43",
-			"updated_at": "2025-12-20 01:49:38"
+			"updated_at": "2025-12-29 19:25:25"
 		},
 		{
 			"id": 35122,
 			"product_id": 13216,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:26:43",
-			"updated_at": "2025-12-16 13:26:43"
+			"updated_at": "2025-12-26 22:45:39"
 		},
 		{
 			"id": 35123,
@@ -116171,9 +116171,9 @@
 			"id": 35124,
 			"product_id": 14430,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 13:26:43",
-			"updated_at": "2025-12-16 13:26:43"
+			"updated_at": "2025-12-27 02:11:07"
 		},
 		{
 			"id": 35125,
@@ -116243,9 +116243,9 @@
 			"id": 35133,
 			"product_id": 6297,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:27:02",
-			"updated_at": "2025-12-16 13:27:02"
+			"updated_at": "2025-12-30 00:41:22"
 		},
 		{
 			"id": 35134,
@@ -116331,9 +116331,9 @@
 			"id": 35144,
 			"product_id": 13292,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:27:26",
-			"updated_at": "2025-12-24 18:24:51"
+			"updated_at": "2025-12-31 18:35:28"
 		},
 		{
 			"id": 35145,
@@ -116419,9 +116419,9 @@
 			"id": 35155,
 			"product_id": 12916,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 13:27:26",
-			"updated_at": "2025-12-16 13:27:26"
+			"updated_at": "2025-12-31 01:37:08"
 		},
 		{
 			"id": 35156,
@@ -116467,9 +116467,9 @@
 			"id": 35161,
 			"product_id": 12220,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 15,
+			"quantity_available": 9,
 			"created_at": "2025-12-16 13:27:48",
-			"updated_at": "2025-12-26 00:48:24"
+			"updated_at": "2026-01-03 22:50:46"
 		},
 		{
 			"id": 35162,
@@ -116515,9 +116515,9 @@
 			"id": 35167,
 			"product_id": 12181,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-12-16 13:27:48",
-			"updated_at": "2025-12-16 13:27:48"
+			"updated_at": "2026-01-02 17:01:05"
 		},
 		{
 			"id": 35168,
@@ -116547,17 +116547,17 @@
 			"id": 35171,
 			"product_id": 10767,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 13:27:48",
-			"updated_at": "2025-12-19 23:08:07"
+			"updated_at": "2025-12-29 16:06:47"
 		},
 		{
 			"id": 35172,
 			"product_id": 14607,
 			"expiration_date": "2030-01-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-12-16 13:27:48",
-			"updated_at": "2025-12-16 13:27:48"
+			"updated_at": "2026-01-03 03:16:13"
 		},
 		{
 			"id": 35173,
@@ -116579,9 +116579,9 @@
 			"id": 35175,
 			"product_id": 11717,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 18:50:08",
-			"updated_at": "2025-12-16 18:50:08"
+			"updated_at": "2025-12-29 21:47:02"
 		},
 		{
 			"id": 35176,
@@ -116667,9 +116667,9 @@
 			"id": 35186,
 			"product_id": 16748,
 			"expiration_date": "2027-05-01",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 18:50:08",
-			"updated_at": "2025-12-16 18:50:08"
+			"updated_at": "2025-12-27 22:35:01"
 		},
 		{
 			"id": 35187,
@@ -116699,17 +116699,17 @@
 			"id": 35190,
 			"product_id": 12094,
 			"expiration_date": "2029-08-01",
-			"quantity_available": 5,
+			"quantity_available": 4,
 			"created_at": "2025-12-16 18:50:08",
-			"updated_at": "2025-12-26 13:00:31"
+			"updated_at": "2025-12-30 01:36:53"
 		},
 		{
 			"id": 35191,
 			"product_id": 13088,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 15,
+			"quantity_available": 5,
 			"created_at": "2025-12-16 18:50:50",
-			"updated_at": "2025-12-16 18:50:50"
+			"updated_at": "2026-01-04 14:35:17"
 		},
 		{
 			"id": 35192,
@@ -116723,9 +116723,9 @@
 			"id": 35193,
 			"product_id": 13079,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-12-16 18:50:50",
-			"updated_at": "2025-12-25 17:45:46"
+			"updated_at": "2026-01-03 01:10:14"
 		},
 		{
 			"id": 35194,
@@ -116763,9 +116763,9 @@
 			"id": 35198,
 			"product_id": 13090,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 9,
+			"quantity_available": 4,
 			"created_at": "2025-12-16 18:50:50",
-			"updated_at": "2025-12-26 18:20:56"
+			"updated_at": "2026-01-02 19:24:17"
 		},
 		{
 			"id": 35199,
@@ -116787,9 +116787,9 @@
 			"id": 35201,
 			"product_id": 12690,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 13,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 18:50:50",
-			"updated_at": "2025-12-21 14:01:54"
+			"updated_at": "2026-01-04 13:35:54"
 		},
 		{
 			"id": 35202,
@@ -116803,9 +116803,9 @@
 			"id": 35203,
 			"product_id": 12107,
 			"expiration_date": "2026-12-30",
-			"quantity_available": 20,
+			"quantity_available": 18,
 			"created_at": "2025-12-16 18:50:50",
-			"updated_at": "2025-12-16 18:50:50"
+			"updated_at": "2026-01-02 13:42:30"
 		},
 		{
 			"id": 35204,
@@ -116891,9 +116891,9 @@
 			"id": 35214,
 			"product_id": 13906,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 18,
+			"quantity_available": 16,
 			"created_at": "2025-12-16 20:07:23",
-			"updated_at": "2025-12-26 01:47:23"
+			"updated_at": "2026-01-02 16:42:37"
 		},
 		{
 			"id": 35215,
@@ -116907,9 +116907,9 @@
 			"id": 35216,
 			"product_id": 16521,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 19,
+			"quantity_available": 12,
 			"created_at": "2025-12-16 20:07:23",
-			"updated_at": "2025-12-23 02:38:49"
+			"updated_at": "2026-01-03 14:43:23"
 		},
 		{
 			"id": 35217,
@@ -116971,9 +116971,9 @@
 			"id": 35224,
 			"product_id": 15911,
 			"expiration_date": "2028-02-28",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 20:07:23",
-			"updated_at": "2025-12-21 00:58:30"
+			"updated_at": "2025-12-27 00:05:49"
 		},
 		{
 			"id": 35225,
@@ -117019,9 +117019,9 @@
 			"id": 35230,
 			"product_id": 16148,
 			"expiration_date": "2026-07-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-16 20:07:41",
-			"updated_at": "2025-12-16 20:07:41"
+			"updated_at": "2025-12-27 01:15:25"
 		},
 		{
 			"id": 35231,
@@ -117043,33 +117043,33 @@
 			"id": 35233,
 			"product_id": 11940,
 			"expiration_date": "2027-01-28",
-			"quantity_available": 36,
+			"quantity_available": 24,
 			"created_at": "2025-12-16 20:15:07",
-			"updated_at": "2025-12-16 20:15:07"
+			"updated_at": "2026-01-02 05:39:56"
 		},
 		{
 			"id": 35234,
 			"product_id": 11923,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 34,
+			"quantity_available": 20,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-26 12:46:05"
+			"updated_at": "2026-01-04 07:41:49"
 		},
 		{
 			"id": 35235,
 			"product_id": 12580,
 			"expiration_date": "2027-01-31",
-			"quantity_available": 20,
+			"quantity_available": 10,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-24 16:11:58"
+			"updated_at": "2026-01-04 16:21:34"
 		},
 		{
 			"id": 35236,
 			"product_id": 11598,
 			"expiration_date": "2027-10-30",
-			"quantity_available": 18,
+			"quantity_available": 15,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-23 22:56:17"
+			"updated_at": "2026-01-04 04:21:19"
 		},
 		{
 			"id": 35237,
@@ -117083,9 +117083,9 @@
 			"id": 35238,
 			"product_id": 11302,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 9,
+			"quantity_available": 4,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-26 18:07:54"
+			"updated_at": "2026-01-03 16:57:13"
 		},
 		{
 			"id": 35239,
@@ -117131,9 +117131,9 @@
 			"id": 35244,
 			"product_id": 14387,
 			"expiration_date": "2028-04-30",
-			"quantity_available": 3,
+			"quantity_available": 1,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-16 20:15:47"
+			"updated_at": "2025-12-30 02:41:35"
 		},
 		{
 			"id": 35245,
@@ -117163,25 +117163,25 @@
 			"id": 35248,
 			"product_id": 16754,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-16 20:15:47"
+			"updated_at": "2026-01-02 21:59:39"
 		},
 		{
 			"id": 35249,
 			"product_id": 11552,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 6,
+			"quantity_available": 4,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-16 20:15:47"
+			"updated_at": "2025-12-30 15:50:48"
 		},
 		{
 			"id": 35250,
 			"product_id": 12617,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 41,
+			"quantity_available": 17,
 			"created_at": "2025-12-16 20:15:47",
-			"updated_at": "2025-12-26 17:55:13"
+			"updated_at": "2026-01-04 00:23:01"
 		},
 		{
 			"id": 35251,
@@ -117275,9 +117275,9 @@
 			"id": 35262,
 			"product_id": 11671,
 			"expiration_date": "2028-03-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-19 20:04:23",
-			"updated_at": "2025-12-19 20:04:23"
+			"updated_at": "2026-01-04 15:59:37"
 		},
 		{
 			"id": 35263,
@@ -117299,17 +117299,17 @@
 			"id": 35265,
 			"product_id": 12096,
 			"expiration_date": "2028-10-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-19 20:04:23",
-			"updated_at": "2025-12-19 20:04:23"
+			"updated_at": "2025-12-28 17:59:46"
 		},
 		{
 			"id": 35266,
 			"product_id": 6137,
 			"expiration_date": "2030-08-30",
-			"quantity_available": 2,
+			"quantity_available": 0,
 			"created_at": "2025-12-19 20:04:23",
-			"updated_at": "2025-12-24 01:29:58"
+			"updated_at": "2026-01-01 21:19:19"
 		},
 		{
 			"id": 35267,
@@ -117443,9 +117443,9 @@
 			"id": 35283,
 			"product_id": 11714,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-12-19 20:04:23",
-			"updated_at": "2025-12-26 15:48:41"
+			"updated_at": "2025-12-29 01:29:25"
 		},
 		{
 			"id": 35284,
@@ -117483,9 +117483,9 @@
 			"id": 35288,
 			"product_id": 12106,
 			"expiration_date": "2028-05-01",
-			"quantity_available": 30,
+			"quantity_available": 27,
 			"created_at": "2025-12-20 00:40:40",
-			"updated_at": "2025-12-21 00:17:05"
+			"updated_at": "2026-01-03 14:58:47"
 		},
 		{
 			"id": 35289,
@@ -117539,9 +117539,9 @@
 			"id": 35295,
 			"product_id": 13260,
 			"expiration_date": "2026-11-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-20 00:40:40",
-			"updated_at": "2025-12-20 00:40:40"
+			"updated_at": "2025-12-30 00:37:45"
 		},
 		{
 			"id": 35296,
@@ -117595,17 +117595,17 @@
 			"id": 35302,
 			"product_id": 16113,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 4,
+			"quantity_available": 0,
 			"created_at": "2025-12-20 00:41:20",
-			"updated_at": "2025-12-26 17:55:13"
+			"updated_at": "2025-12-31 00:55:56"
 		},
 		{
 			"id": 35303,
 			"product_id": 14251,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 29,
+			"quantity_available": 28,
 			"created_at": "2025-12-20 00:41:20",
-			"updated_at": "2025-12-23 12:44:15"
+			"updated_at": "2025-12-28 00:44:56"
 		},
 		{
 			"id": 35304,
@@ -117675,9 +117675,9 @@
 			"id": 35312,
 			"product_id": 12280,
 			"expiration_date": "2028-01-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-20 00:41:20",
-			"updated_at": "2025-12-20 00:41:20"
+			"updated_at": "2025-12-27 01:15:25"
 		},
 		{
 			"id": 35313,
@@ -117707,9 +117707,9 @@
 			"id": 35316,
 			"product_id": 11158,
 			"expiration_date": "2027-08-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-20 00:41:20",
-			"updated_at": "2025-12-20 00:41:20"
+			"updated_at": "2026-01-04 00:16:25"
 		},
 		{
 			"id": 35317,
@@ -117731,9 +117731,9 @@
 			"id": 35319,
 			"product_id": 15880,
 			"expiration_date": "2028-05-30",
-			"quantity_available": 15,
+			"quantity_available": 14,
 			"created_at": "2025-12-20 00:41:20",
-			"updated_at": "2025-12-20 00:41:20"
+			"updated_at": "2025-12-27 01:15:25"
 		},
 		{
 			"id": 35320,
@@ -117931,17 +117931,17 @@
 			"id": 35344,
 			"product_id": 12346,
 			"expiration_date": "2026-05-30",
-			"quantity_available": 4,
+			"quantity_available": 3,
 			"created_at": "2025-12-20 00:41:36",
-			"updated_at": "2025-12-20 00:41:36"
+			"updated_at": "2025-12-27 02:25:26"
 		},
 		{
 			"id": 35345,
 			"product_id": 11647,
 			"expiration_date": "2027-06-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-20 00:41:36",
-			"updated_at": "2025-12-26 17:55:13"
+			"updated_at": "2025-12-31 15:20:49"
 		},
 		{
 			"id": 35346,
@@ -117987,9 +117987,9 @@
 			"id": 35351,
 			"product_id": 13468,
 			"expiration_date": "2030-04-30",
-			"quantity_available": 5,
+			"quantity_available": 2,
 			"created_at": "2025-12-20 00:41:36",
-			"updated_at": "2025-12-20 00:41:36"
+			"updated_at": "2026-01-03 01:43:55"
 		},
 		{
 			"id": 35352,
@@ -118027,9 +118027,9 @@
 			"id": 35356,
 			"product_id": 11476,
 			"expiration_date": "2026-08-30",
-			"quantity_available": 5,
+			"quantity_available": 0,
 			"created_at": "2025-12-20 00:41:36",
-			"updated_at": "2025-12-25 00:43:03"
+			"updated_at": "2025-12-30 20:52:21"
 		},
 		{
 			"id": 35357,
@@ -118123,9 +118123,9 @@
 			"id": 35368,
 			"product_id": 12370,
 			"expiration_date": "2028-09-30",
-			"quantity_available": 1,
+			"quantity_available": 0,
 			"created_at": "2025-12-20 00:41:55",
-			"updated_at": "2025-12-20 00:41:55"
+			"updated_at": "2025-12-31 19:02:18"
 		},
 		{
 			"id": 35369,
@@ -118139,9 +118139,9 @@
 			"id": 35370,
 			"product_id": 6080,
 			"expiration_date": "2027-09-30",
-			"quantity_available": 2,
+			"quantity_available": 1,
 			"created_at": "2025-12-20 00:41:55",
-			"updated_at": "2025-12-20 00:41:55"
+			"updated_at": "2026-01-03 17:38:54"
 		},
 		{
 			"id": 35371,
@@ -118171,9 +118171,9 @@
 			"id": 35374,
 			"product_id": 11667,
 			"expiration_date": "2028-09-30",
-			"quantity_available": 7,
+			"quantity_available": 3,
 			"created_at": "2025-12-20 00:41:55",
-			"updated_at": "2025-12-23 21:33:56"
+			"updated_at": "2025-12-28 19:59:07"
 		},
 		{
 			"id": 35375,
@@ -118275,16 +118275,128 @@
 			"id": 35387,
 			"product_id": 11282,
 			"expiration_date": "2027-07-30",
-			"quantity_available": 6,
+			"quantity_available": 5,
 			"created_at": "2025-12-20 00:41:55",
-			"updated_at": "2025-12-20 00:41:55"
+			"updated_at": "2025-12-29 21:58:08"
 		},
 		{
 			"id": 35388,
 			"product_id": 11384,
 			"expiration_date": "2028-09-30",
-			"quantity_available": 3,
+			"quantity_available": 2,
 			"created_at": "2025-12-20 00:41:55",
-			"updated_at": "2025-12-20 00:41:55"
+			"updated_at": "2026-01-04 14:35:17"
+		},
+		{
+			"id": 35389,
+			"product_id": 12363,
+			"expiration_date": "2030-09-30",
+			"quantity_available": 78,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2026-01-03 21:39:38"
+		},
+		{
+			"id": 35390,
+			"product_id": 10823,
+			"expiration_date": "2029-08-30",
+			"quantity_available": 94,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2026-01-03 22:50:46"
+		},
+		{
+			"id": 35391,
+			"product_id": 12486,
+			"expiration_date": "2030-09-30",
+			"quantity_available": 10,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2025-12-28 16:39:19"
+		},
+		{
+			"id": 35392,
+			"product_id": 10549,
+			"expiration_date": "2030-04-20",
+			"quantity_available": 98,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2025-12-31 02:01:33"
+		},
+		{
+			"id": 35393,
+			"product_id": 12111,
+			"expiration_date": "2030-08-30",
+			"quantity_available": 88,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2026-01-03 22:50:46"
+		},
+		{
+			"id": 35394,
+			"product_id": 16181,
+			"expiration_date": "2030-02-20",
+			"quantity_available": 0,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2026-01-02 22:50:11"
+		},
+		{
+			"id": 35395,
+			"product_id": 16993,
+			"expiration_date": "2028-10-30",
+			"quantity_available": 20,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2025-12-28 16:39:19"
+		},
+		{
+			"id": 35396,
+			"product_id": 16783,
+			"expiration_date": "2030-03-30",
+			"quantity_available": 12,
+			"created_at": "2025-12-28 16:39:19",
+			"updated_at": "2025-12-28 16:39:19"
+		},
+		{
+			"id": 35397,
+			"product_id": 6852,
+			"expiration_date": "2028-12-30",
+			"quantity_available": 4,
+			"created_at": "2025-12-28 16:39:29",
+			"updated_at": "2025-12-31 10:37:07"
+		},
+		{
+			"id": 35398,
+			"product_id": 6781,
+			"expiration_date": "2028-02-28",
+			"quantity_available": 1,
+			"created_at": "2025-12-28 16:39:29",
+			"updated_at": "2025-12-28 16:39:29"
+		},
+		{
+			"id": 35399,
+			"product_id": 12589,
+			"expiration_date": "2028-07-30",
+			"quantity_available": 10,
+			"created_at": "2025-12-28 16:39:40",
+			"updated_at": "2025-12-28 16:39:40"
+		},
+		{
+			"id": 35400,
+			"product_id": 12589,
+			"expiration_date": "2028-04-30",
+			"quantity_available": 211,
+			"created_at": "2025-12-28 16:39:49",
+			"updated_at": "2026-01-04 15:31:34"
+		},
+		{
+			"id": 35401,
+			"product_id": 12578,
+			"expiration_date": "2026-08-30",
+			"quantity_available": 45,
+			"created_at": "2025-12-30 19:57:11",
+			"updated_at": "2026-01-04 04:29:56"
+		},
+		{
+			"id": 35402,
+			"product_id": 13287,
+			"expiration_date": "2027-03-30",
+			"quantity_available": 7,
+			"created_at": "2025-12-30 19:57:11",
+			"updated_at": "2026-01-04 01:14:18"
 		}
 	]

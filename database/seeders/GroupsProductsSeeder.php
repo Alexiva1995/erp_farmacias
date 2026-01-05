@@ -14,19 +14,11 @@ class GroupsProductsSeeder extends Seeder
      */
     public function run(): void
     {
-        $path = database_path('data/alternativa_product.json');
-
-        if (!File::exists($path)) {
-            $this->command->error("No se encontró el archivo en: $path");
-            return;
-        }
-        
-        $json = json_decode(File::get($path), true);
-        $rows = $json['rows'];
-        $adj = []; 
+        $data = json_decode(File::get(database_path('data/alternativa_product.json')), true);
+        $adj = [];
         $allProducts = [];
-        $this->command->info("Iniciando la carga de " . count($rows) . " registros...");
-        foreach ($rows as $row) {
+        $this->command->info("Iniciando la carga de " . count($data) . " registros...");
+        foreach ($data as $row) {
             $u = $row['product_id'];
             $v = $row['related_product_id'];
             $adj[$u][] = $v;
