@@ -31,8 +31,14 @@ const fetchData = async () => {
     counts.value = response.data.data.map((item) => ({
       id: item.id,
       discrepancy: item.discrepancy,
-      product: { name: item.product_name, sale_price: item.product_sale_price },
+      product: { 
+        name: item.product_name, 
+        sale_price: item.product_sale_price,
+        unit_cost: item.product_unit_cost,
+        laboratory: { name: item.laboratory_name }
+      },
       user: { name: item.user_name || item.user_email },
+      supervisor: { name: item.supervisor_name || item.supervisor_email || null },
     }));
   } catch (error) {
     console.error("Error al obtener datos para el cierre de caja:", error);
@@ -218,118 +224,10 @@ const formatDate = (dateString) => {
   <div>
     <VRow>
       <VCol cols="12">
-        <VCard class="position-relative">
-          <VCardTitle>Resumen del Cierre de Inventario</VCardTitle>
-          <VDivider />
-
-       <!--   <VCardText class="pb-12">
-            <VRow>
-              <VCol cols="12" md="4">
-                <div class="d-flex align-center">
-                  <VAvatar color="success" rounded variant="tonal" class="me-4">
-                    <VIcon icon="tabler-trending-up" />
-                  </VAvatar>
-                  <div>
-                    <span class="text-caption">Total Sobrantes</span>
-                    <p class="text-h6 font-weight-medium text-success mb-0">
-                      {{ formatCurrency(totals.surplus) }}
-                    </p>
-                  </div>
-                </div>
-              </VCol>
-              <VCol cols="12" md="4">
-                <div class="d-flex align-center">
-                  <VAvatar color="error" rounded variant="tonal" class="me-4">
-                    <VIcon icon="tabler-trending-down" />
-                  </VAvatar>
-                  <div>
-                    <span class="text-caption">Total Faltantes</span>
-                    <p class="text-h6 font-weight-medium text-error mb-0">
-                      - {{ formatCurrency(totals.shortage) }}
-                    </p>
-                  </div>
-                </div>
-              </VCol>
-              <VCol cols="12" md="4">
-                <div class="d-flex align-center">
-                  <VAvatar color="primary" rounded variant="tonal" class="me-4">
-                    <VIcon icon="tabler-sum" />
-                  </VAvatar>
-                  <div>
-                    <span class="text-caption">Total Cierre</span>
-                    <p
-                      class="text-h6 font-weight-bold mb-0"
-                      :class="
-                        totals.netTotal >= 0 ? 'text-primary' : 'text-warning'
-                      "
-                    >
-                      {{ formatCurrency(totals.netTotal) }}
-                    </p>
-                  </div>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>-->
-
-          <div
-            class="position-absolute"
-            style="bottom: 16px; right: 16px; z-index: 2"
-          >
-            <VChip
-              v-if="hasActiveCycle && activeCycle"
-              color="info"
-              variant="tonal"
-              size="default"
-              label
-              class="me-2"
-              style="padding: 19px 19px 19px 19px"
-            >
-              <VIcon icon="tabler-refresh-dot" start />
-              Ciclo Activo: {{ formatDate(activeCycle.start_date) }} → &nbsp+  
-              
-              <p class="text-h6 font-weight-medium text-success mb-0">
-                &nbsp{{ formatCurrency(totals.surplus) }} 
-              </p>
-              <p class="text-h6 font-weight-medium text-error mb-0">
-                  &nbsp-&nbsp{{ formatCurrency(totals.shortage) }}
-              </p>&nbsp=&nbsp
-              <p
-                      class="text-h6 font-weight-bold mb-0"
-                      :class="
-                        totals.netTotal >= 0 ? 'text-primary' : 'text-warning'
-                      "
-                    >
-                      {{ formatCurrency(totals.netTotal) }}
-                    </p>
-            </VChip>
-
-            <VBtn
-              v-else
-              color="success"
-              prepend-icon="tabler-plus"
-              :loading="isCreatingCycle"
-              @click="handleCreateCycle"
-              class="me-2"
-            >
-              Crear Nuevo Ciclo
-            </VBtn>
-            <VBtn
-              color="primary"
-              :disabled="loading || isClosing || !hasActiveCycle"
-              :loading="isClosing"
-              @click="handleCashClose"
-            >
-              <VIcon icon="tabler-lock" start />
-              Generar cierre
-            </VBtn>
-          </div>
-
-          <!-- Sección separada para el botón de cierre -->
-          <VCardActions class="justify-end pa-4 pt-0"> </VCardActions>
-
+        <VCard class="mb-6">
           <VCardText>
             <VRow>
-              <VCol cols="12" sm="3" md="2">
+              <VCol cols="12" sm="6" md="4">
                 <AppTextField
                   v-model="filters.searchQuery"
                   placeholder="Buscar por Producto, Usuario..."
@@ -337,7 +235,7 @@ const formatDate = (dateString) => {
                 />
               </VCol>
 
-              <VCol cols="12" sm="2" md="3">
+              <VCol cols="12" sm="6" md="4">
                 <AppDateTimePicker
                   v-model="filters.startDate"
                   placeholder="Desde"
@@ -349,7 +247,7 @@ const formatDate = (dateString) => {
                   }"
                 />
               </VCol>
-              <VCol cols="12" sm="2" md="3">
+              <VCol cols="12" sm="6" md="4">
                 <AppDateTimePicker
                   v-model="filters.endDate"
                   placeholder="Hasta"
@@ -363,8 +261,10 @@ const formatDate = (dateString) => {
               </VCol>
             </VRow>
           </VCardText>
+
           <VDivider />
-          <VCardActions class="pa-4 px-6">
+
+          <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
             <VBtn
               color="secondary"
               variant="outlined"
@@ -372,6 +272,56 @@ const formatDate = (dateString) => {
             >
               Limpiar Filtros
             </VBtn>
+
+            <VSpacer />
+
+            <div class="d-flex align-center gap-2">
+              <VChip
+                v-if="hasActiveCycle && activeCycle"
+                color="info"
+                variant="tonal"
+                size="default"
+                label
+              >
+                <VIcon icon="tabler-refresh-dot" start />
+                Ciclo Activo: {{ formatDate(activeCycle.start_date) }} →   
+                
+                <span class="text-h6 font-weight-medium text-success">
+                  &nbsp+&nbsp{{ formatCurrency(totals.surplus) }} 
+                </span>
+                <span class="text-h6 font-weight-medium text-error">
+                    &nbsp-&nbsp{{ formatCurrency(totals.shortage) }}
+                </span>&nbsp=&nbsp
+                <span
+                        class="text-h6 font-weight-bold"
+                        :class="
+                          totals.netTotal >= 0 ? 'text-primary' : 'text-warning'
+                        "
+                      >
+                        {{ formatCurrency(totals.netTotal) }}
+                      </span>
+              </VChip>
+
+              <VBtn
+                v-else
+                color="success"
+                prepend-icon="tabler-plus"
+                :loading="isCreatingCycle"
+                @click="handleCreateCycle"
+              >
+                Crear Nuevo Ciclo
+              </VBtn>
+
+              <VBtn
+                color="success"
+                :disabled="loading || isClosing || !hasActiveCycle"
+                :loading="isClosing"
+                prepend-icon="tabler-lock"
+                @click="handleCashClose"
+              >
+                Generar cierre
+              </VBtn>
+            </div>
           </VCardActions>
         </VCard>
       </VCol>

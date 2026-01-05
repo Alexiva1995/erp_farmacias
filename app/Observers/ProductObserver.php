@@ -67,7 +67,7 @@ class ProductObserver
                 'user_id' => $order->seller_id,
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
-                'movement_date' => $order->order_date ?? now(),
+                'movement_date' => now(),
             ]);
         }
     }
@@ -103,7 +103,7 @@ class ProductObserver
                 'user_id' => $invoice->registered_by,
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
-                'movement_date' => $invoice->received_date ?? now(),
+                'movement_date' => now(),
             ]);
         }
     }
@@ -133,7 +133,7 @@ class ProductObserver
                 'user_id' => $return->generated_by_id ?? Auth::id(),
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
-                'movement_date' => $return->received_date ?? now(),
+                'movement_date' => now(),
             ]);
         
     }

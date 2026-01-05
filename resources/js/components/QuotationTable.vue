@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, nextTick } from "vue"; 
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,17 +12,23 @@ const props = defineProps({
 });
 
 const inputQuantities = ref(new Map()); 
-const emit = defineEmits(['update:options', 'add-product']);
+const emit = defineEmits(['update:options', 'add-product', 'view-group-products', 'failures-products']);
 
 const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Stock', key: 'valid_stock_sum',sortable: true},
-  //{ title: 'Código de Barra', key: 'barcode', sortable: false },
-  { title: 'Producto', key: 'name',  sortable: true},
-  { title: 'Precio en USD', key: 'sale_price', sortable: true },
-  { title: 'Precio en Bs', key: 'price_bs', sortable: true},
-  { title: 'Precio en COP', key: 'price_cop', sortable: true },
-  { title: 'Añadir', key: 'add_action_with_quantity', sortable: false, width: '150px'},
+  { title: "id", key: "id", sortable: true },
+  { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
+  { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory_name", sortable: true },
+  { title: "USD", key: "sale_price", sortable: true, align: "end" },
+  { title: "Bs", key: "price_bs", sortable: true, align: "end" },
+  { title: "COP", key: "price_cop", sortable: true, align: "end" },
+  {
+    title: "Añadir",
+    key: "add_action_with_quantity",
+    sortable: false,
+    maxWidth: "130px",
+  },
+  { title: "Acción", key: "actions", sortable: false, maxWidth: "95px" },
 ];
 
 watch(() => props.products, (newProducts) => {
@@ -85,6 +92,14 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
   return formatCurrency(roundUpToNearestHundred(priceWithIVA), 'COP');
 };
 
+const handleViewGroupProducts = (product) => {
+  emit('view-group-products', product.group_id);
+};
+
+const handleFailures = (product) => {
+  emit('failures-products', product.id);
+};
+
 </script>
 
 <template>
@@ -97,30 +112,57 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      fixed-header height="auto"
       @update:options="options => emit('update:options', options)"
     >
-      <template #item.id="{ item }"><span class="font-weight-medium">{{ item.id }}</span></template>
-      <template #item.valid_stock_sum="{ item }"><span class="font-weight-medium d-block">{{ item.valid_stock_sum }}</span></template>
-      <template #item.barcode="{ item }"><span class="font-weight-medium">{{ item.barcode }}</span></template>
+      <template #item.id="{ item }">
+        <span class="font-weight-medium">{{ item.id }}</span>
+      </template>
+      <template #item.valid_stock_sum="{ item }">
+        <span class="font-weight-medium text-no-wrap">{{
+          item.valid_stock_sum
+        }}</span>
+      </template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.name }}</span>
-            <span class="text-sm text-disabled">{{ item.active_ingredient }}</span>
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+              <span v-if="item.iva == 1"> (G)</span>
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
+            <span class="text-sm text-disabled">{{
+              item.active_ingredient
+            }}</span>
+            <span class="text-sm text-disabled">{{ item.origin?.name }}</span>
           </div>
         </div>
       </template>
-
-      <template #item.sale_price="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.sale_price, item), 'USD')}}</span></template>
-      <template #item.price_bs="{ item }"><span class="font-weight-medium">{{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), 'BS') }}</span></template>
-      <template #item.price_cop="{ item }"><span class="font-weight-medium">{{calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}</span></template>
-
+      <template #item.laboratory_name="{ item }">
+        <span class="font-weight-medium">{{ item.laboratory?.name || 'N/A' }}</span>
+      </template>
+      <template #item.sale_price="{ item }">
+        <span class="font-weight-medium">{{
+          formatCurrency(calculatePriceWithIVA(item.sale_price, item), 'USD')
+        }}</span>
+      </template>
+      <template #item.price_bs="{ item }">
+        <span class="font-weight-medium">{{
+          formatCurrency(calculatePriceWithIVA(item.price_bs, item), 'BS')
+        }}</span>
+      </template>
+      <template #item.price_cop="{ item }">
+        <span class="font-weight-medium">{{
+          calculateAndFormatCopPriceWithIVA(item.price_cop, item)
+        }}</span>
+      </template>
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">
           <VTextField
             :model-value="inputQuantities.get(item.id) ?? 0"
-            @update:model-value="val => handleInputQuantityChange(item.id, val)"
+            @update:model-value="(val) => handleInputQuantityChange(item.id, val)"
             type="number"
             min="0"
             :max="item.valid_stock_sum"
@@ -128,33 +170,36 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 90px;min-width: 90px;"
+            style="max-width: 90px; min-width: 90px"
             class="my-2 quantity-input-field"
             :disabled="item.valid_stock_sum === 0"
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
             :disabled="
-                (inputQuantities.get(item.id) ?? 0) <= 0 || 
-                (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum || 
-                item.valid_stock_sum === 0
+              (inputQuantities.get(item.id) ?? 0) <= 0 ||
+              (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum ||
+              item.valid_stock_sum === 0
             "
           >
             <VIcon icon="tabler-plus" />
           </IconBtn>
         </div>
       </template>
+      <template #item.actions="{ item }">
+        <IconBtn
+          @click="handleViewGroupProducts(item)"
+          color="info"
+        >
+          <VIcon icon="tabler-eye" />
+        </IconBtn>
+        <IconBtn
+          @click="handleFailures(item)"
+          color="error"
+        >
+          <VIcon icon="tabler-alert-triangle" />
+        </IconBtn>
+      </template>
     </VDataTableServer>
   </VCard>
 </template>
-<style scoped>
-:deep(.v-data-table__thead .v-data-table__th:nth-child(2)),
-:deep(.v-data-table__tbody .v-data-table__td:nth-child(2)){
-  width: 50px !important;
-  min-width: 60px !important;
-  max-width: 70px !important;
-  padding-left: 8px !important;
-  padding-right: 8px !important;
-  text-align: center !important;
-}
-</style>

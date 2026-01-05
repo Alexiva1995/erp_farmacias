@@ -21,7 +21,7 @@ const headers = [
   { title: "Cant. Contada", key: "counted_quantity", align: "center" },
   { title: "Diferencia", key: "discrepancy", sortable: false, align: "center" },
   { title: "Usuario", key: "user.email" },
-  { title: "Acción", key: "actions", sortable: false },
+  { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
 const handleApproveProduct = async (product) => {
@@ -135,18 +135,14 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
-          <IconBtn @click="handleApproveProduct(item)" size="small">
-            <VIcon icon="tabler-check" /><VTooltip
-              activator="parent"
-              location="top"
-              >Aprobar</VTooltip
-            >
+        <div class="d-flex justify-center gap-2">
+          <IconBtn @click="handleApproveProduct(item)" size="small" color="success">
+            <VIcon icon="tabler-check" />
+            <VTooltip activator="parent" location="top">Aprobar</VTooltip>
           </IconBtn>
-          <IconBtn @click="handleRejectProduct(item)" size="small">
-            <VIcon icon="tabler-x" /><VTooltip activator="parent" location="top"
-              >Rechazar</VTooltip
-            >
+          <IconBtn @click="handleRejectProduct(item)" size="small" color="error">
+            <VIcon icon="tabler-x" />
+            <VTooltip activator="parent" location="top">Rechazar</VTooltip>
           </IconBtn>
         </div>
       </template>

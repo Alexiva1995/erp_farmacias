@@ -42,9 +42,9 @@ const headers = [
   { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory_name", sortable: true },
-  { title: "USD", key: "sale_price", sortable: true },
-  { title: "Bs", key: "price_bs", sortable: true },
-  { title: "COP", key: "price_cop", sortable: true },
+  { title: "USD", key: "sale_price", sortable: true, align: "end" },
+  { title: "Bs", key: "price_bs", sortable: true, align: "end" },
+  { title: "COP", key: "price_cop", sortable: true, align: "end" },
   {
     title: "Añadir",
     key: "add_action_with_quantity",
@@ -311,9 +311,14 @@ const handleAddPack = (packId) => {
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">{{
-              item.name
-            }}</span>
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+              <span v-if="item.iva == 1"> (G)</span>
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
             <span class="text-sm text-disabled">{{
               item.active_ingredient
             }}</span>

@@ -110,6 +110,9 @@ class OrderQueryService
                 'products.group_id',
                 'products.origin_id',
                 'products.sales_average',
+                'products.iva',
+                'products.is_colombian_origin',
+                'products.psychotropic',
                 'laboratories.name as laboratory_name',
                 DB::raw('NULL as pack_config'),
             DB::raw("'product' as item_type"),
@@ -142,6 +145,9 @@ class OrderQueryService
                 DB::raw('NULL as group_id'),
                 DB::raw('NULL as origin_id'),
                 DB::raw('NULL as sales_average'),
+                DB::raw('0 as iva'),
+                DB::raw('0 as is_colombian_origin'),
+                DB::raw('0 as psychotropic'),
                 DB::raw("'' as laboratory_name"),
                 DB::raw("product_packs.pack_config as pack_config"), 
             DB::raw("'pack' as item_type"),
@@ -156,36 +162,59 @@ class OrderQueryService
         // APLICAR BUSCADOR 'Q' A AMBOS LADOS
         if (!empty($filters['q'])) {
             $searchTerm = $filters['q'];
+            $searchTermLower = strtolower(trim($searchTerm));
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
+            // Detectar búsquedas especiales por "col" o "(g)"
+            $isColombianSearch = in_array($searchTermLower, ['col', '(col)', 'colombiano', 'colombianos']);
+            $isIvaSearch = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
+
+            // Si es búsqueda especial por "col" o "(g)", excluir packs
+            if ($isColombianSearch || $isIvaSearch) {
+                $packsQuery->whereRaw('1 = 0');
+            }
+
             // Filtro para PRODUCTOS
-            $productsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-                if ($isStrictSearch) {
-                    $subQuery->where('products.name', 'like', "%{$searchTerm}%")
-                        ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
-                } else {
-                    $words = explode(' ', $searchTerm);
-                    foreach ($words as $word) {
-                        $subQuery->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where('products.name', 'like', "%{$word}%")
-                                ->orWhere('products.active_ingredient', 'like', "%{$word}%")
-                                ->orWhere('laboratories.name', 'like', "%{$word}%");
-                        });
+            $productsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch, $isColombianSearch, $isIvaSearch) {
+                // Si es búsqueda por colombianos
+                if ($isColombianSearch) {
+                    $subQuery->where('products.is_colombian_origin', 1);
+                }
+                // Si es búsqueda por IVA
+                elseif ($isIvaSearch) {
+                    $subQuery->where('products.iva', 1);
+                }
+                // Búsqueda normal
+                else {
+                    if ($isStrictSearch) {
+                        $subQuery->where('products.name', 'like', "%{$searchTerm}%")
+                            ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $subQuery->where(function ($wordQuery) use ($word) {
+                                $wordQuery->where('products.name', 'like', "%{$word}%")
+                                    ->orWhere('products.active_ingredient', 'like', "%{$word}%")
+                                    ->orWhere('laboratories.name', 'like', "%{$word}%");
+                            });
+                        }
                     }
                 }
             });
 
-            // Filtro para PACKS
-            $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-                if ($isStrictSearch) {
-                    $subQuery->where('product_packs.name', 'like', "%{$searchTerm}%");
-                } else {
-                    $words = explode(' ', $searchTerm);
-                    foreach ($words as $word) {
-                        $subQuery->where('product_packs.name', 'like', "%{$word}%");
+            // Filtro para PACKS (solo si no es búsqueda especial)
+            if (!$isColombianSearch && !$isIvaSearch) {
+                $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+                    if ($isStrictSearch) {
+                        $subQuery->where('product_packs.name', 'like', "%{$searchTerm}%");
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $subQuery->where('product_packs.name', 'like', "%{$word}%");
+                        }
                     }
-                }
-            });
+                });
+            }
         }
 
         // APLICAR OTROS FILTROS (Solo a productos)

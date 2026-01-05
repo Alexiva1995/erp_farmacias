@@ -316,6 +316,55 @@ const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
 };
 
+const saveQuotation = async () => {
+  if (quotationItems.value.length === 0) {
+    throw new Error("No hay productos en la cotización para guardar.");
+  }
+
+  try {
+    const totalProductsAmountUSD = computed(() => {
+      let total = 0;
+      quotationItems.value.forEach((item) => {
+        total += (item.price || 0) * (item.selectedQuantity || 0);
+      });
+      return total;
+    });
+
+    const totalIVAAmountUSD = computed(() => {
+      let totalIVA = 0;
+      quotationItems.value.forEach((item) => {
+        totalIVA +=
+          (item.price || 0) *
+          (item.selectedQuantity || 0) *
+          (item.taxRate || 0);
+      });
+      return totalIVA;
+    });
+
+    const totalQuotationAmountUSD = computed(() => {
+      return totalProductsAmountUSD.value + totalIVAAmountUSD.value;
+    });
+
+    const payload = {
+      total_amount_usd: totalProductsAmountUSD.value,
+      total_iva_usd: totalIVAAmountUSD.value,
+      grand_total_usd: totalQuotationAmountUSD.value,
+      currency: selectedDisplayCurrency.value,
+      products: quotationItems.value.map((item) => ({
+        id: item.id,
+        quantity: item.selectedQuantity,
+        tax_rate: item.taxRate,
+      })),
+    };
+    const response = await axios.post("/tpv/quotations", payload);
+    quotationDetails.value = response.data.quotation;
+    return response.data.quotation;
+  } catch (error) {
+    console.error("Error al guardar la cotización:", error);
+    throw error;
+  }
+};
+
 const saveAndPrintQuotation = async () => {
   if (quotationItems.value.length === 0) {
     toast.error("No hay productos en la cotización para guardar e imprimir.");
@@ -499,6 +548,30 @@ const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
+
+const fetchGroupProducts = async (groupId) => {
+  if (!groupId) {
+    toast.info("Este producto no pertenece a un grupo.");
+    return;
+  }
+  toast.info("Funcionalidad de grupos próximamente disponible.");
+};
+
+const fetchFailuresProducts = async (productId) => {
+  try {
+    const response = await axios.post('/tpv/product-failure', {
+      product_id: productId,
+    });
+    toast.success("Reporte de falla guardado correctamente.");
+  } catch (error) {
+    if (error.response) {
+      console.error('Errores de validación:', error.response.data.errors);
+      toast.error("Hubo un problema al procesar su reporte de falla.");
+    } else {
+      console.error('Error de conexión:', error.message);
+    }
+  }
+};
 </script>
 
 <template>
@@ -518,10 +591,12 @@ const handleSort = (sortOptions) => {
         <QuotationProducts
           v-model:searchQuery="barcodeSearchQuery"
           :quotation-products="quotationItems"
+          :quotation-details="quotationDetails"
           :selected-display-currency="selectedDisplayCurrency"
           :total-amount-bs="totalAmountBs"
           :total-amount-usd="totalAmountUsd"
           :total-amount-cop="totalAmountCop"
+          :on-save-quotation="saveQuotation"
           @remove-quotation-product="removeQuotationItem"
           @remove="removeQuotation"
           @print-quotation="saveAndPrintQuotation"
@@ -551,6 +626,8 @@ const handleSort = (sortOptions) => {
       :page="page"
       @update:options="updateTableOptions"
       @add-product="addProductToQuotation"
+      @view-group-products="fetchGroupProducts"
+      @failures-products="fetchFailuresProducts"
     />
 
     <div

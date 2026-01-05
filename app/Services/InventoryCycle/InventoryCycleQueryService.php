@@ -387,6 +387,7 @@ class InventoryCycleQueryService
                 'id',
                 'product_id',
                 'user_id',
+                'supervisor_id',
                 'discrepancy',
                 'status',
                 'updated_at',
@@ -400,6 +401,7 @@ class InventoryCycleQueryService
                 'id',
                 'product_id',
                 'user_id',
+                'supervisor_id',
                 'discrepancy',
                 'status',
                 'updated_at',
@@ -412,7 +414,9 @@ class InventoryCycleQueryService
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
+            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->leftJoin('users', 'discrepancies.user_id', '=', 'users.id')
+            ->leftJoin('users as supervisors', 'discrepancies.supervisor_id', '=', 'supervisors.id')
             ->select([
                 'discrepancies.id',
                 'discrepancies.discrepancy',
@@ -420,8 +424,12 @@ class InventoryCycleQueryService
                 'discrepancies.updated_at as processed_date',
                 'products.name as product_name',
                 'products.sale_price as product_sale_price',
+                'products.unit_cost as product_unit_cost',
+                'laboratories.name as laboratory_name',
                 'users.username as user_name',
-                'users.email as user_email'
+                'users.email as user_email',
+                'supervisors.username as supervisor_name',
+                'supervisors.email as supervisor_email'
             ]);
 
         if ($request->filled('searchQuery')) {

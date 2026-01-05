@@ -99,12 +99,16 @@ const handleSaveCount = async (countData) => {
       ? `/inventory/count/invoice-count/${productId}`
       : `/inventory/count/${productId}`;
 
+  // Calcular system_quantity y discrepancy
+  const systemQuantity = Number(currentProduct.value.stock_calculado || currentProduct.value.stock || 0);
+  const discrepancy = countData.countedQuantity - systemQuantity;
+
   try {
     const response = await axios.post(endpoint, {
       barcode: countData.barcode,
       counted_quantity: countData.countedQuantity,
-      system_quantity: countData.system_quantity,
-      discrepancy: countData.discrepancy,
+      system_quantity: systemQuantity,
+      discrepancy: discrepancy,
     });
 
     if (response.data.success) {
@@ -177,7 +181,6 @@ const handleSort = (sortData) => {
 
     <VRow class="mt-4">
       <VCol cols="12">
-        <h5 class="text-h5 mb-2">Productos Pendientes de Conteo</h5>
         <ProductTable
           :products="products"
           :loading="productLoading"
@@ -185,13 +188,13 @@ const handleSort = (sortData) => {
           :items-per-page="productOptions.itemsPerPage"
           :page="productOptions.page"
           mode="inventory"
+          title="Productos por Contar"
           @update:options="updateProductTableOptions"
           @count-product="(product) => handleCountProduct(product, 'product')"
         />
       </VCol>
 
       <VCol cols="12">
-        <h5 class="text-h5 mb-2">Productos de Factura por Contar</h5>
         <InvoiceToCountTable
           :products="invoiceProductsToCount"
           :loading="invoiceProductsLoading"
@@ -199,6 +202,7 @@ const handleSort = (sortData) => {
           :items-per-page="invoiceProductsOptions.itemsPerPage"
           :page="invoiceProductsOptions.page"
           mode="inventory"
+          title="Productos de Factura por Contar"
           @update:options="updateInvoiceProductsTableOptions"
           @count-product="(product) => handleCountProduct(product, 'invoice')"
         />

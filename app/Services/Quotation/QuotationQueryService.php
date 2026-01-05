@@ -30,26 +30,42 @@ class QuotationQueryService
     private function applyFilters(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
+            $searchTerm = $filters['q'];
+            $searchTermLower = strtolower(trim($searchTerm));
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
-            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-                if ($isStrictSearch) {
-                    $subQuery->where(function ($subQuery) use ($searchTerm) {
-                        $subQuery->where('name', 'like', $searchTerm)
-                            ->orWhere('active_ingredient', 'like', $searchTerm)
-                            ->orWhere('barcode', 'like', $searchTerm);
-                    });
-                } else {
-                    $words = explode(' ', $searchTerm);
-                    foreach ($words as $word) {
-                        $searchWord = "%{$word}%";
-                        $subQuery->where(function ($wordQuery) use ($searchWord) {
-                            $wordQuery->where('name', 'like', $searchWord)
-                                ->orWhere('active_ingredient', 'like', $searchWord)
-                                ->orWhere('barcode', 'like', $searchWord);
-                            ;
+            // Detectar búsquedas especiales por "col" o "(g)"
+            $isColombianSearch = in_array($searchTermLower, ['col', '(col)', 'colombiano', 'colombianos']);
+            $isIvaSearch = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
+
+            $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch, $isColombianSearch, $isIvaSearch) {
+                // Si es búsqueda por colombianos
+                if ($isColombianSearch) {
+                    $subQuery->where('products.is_colombian_origin', 1);
+                }
+                // Si es búsqueda por IVA
+                elseif ($isIvaSearch) {
+                    $subQuery->where('products.iva', 1);
+                }
+                // Búsqueda normal
+                else {
+                    $searchTermLike = "%{$searchTerm}%";
+                    if ($isStrictSearch) {
+                        $subQuery->where(function ($subQuery) use ($searchTermLike) {
+                            $subQuery->where('products.name', 'like', $searchTermLike)
+                                ->orWhere('products.active_ingredient', 'like', $searchTermLike)
+                                ->orWhere('products.barcode', 'like', $searchTermLike);
                         });
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $searchWord = "%{$word}%";
+                            $subQuery->where(function ($wordQuery) use ($searchWord) {
+                                $wordQuery->where('products.name', 'like', $searchWord)
+                                    ->orWhere('products.active_ingredient', 'like', $searchWord)
+                                    ->orWhere('products.barcode', 'like', $searchWord);
+                            });
+                        }
                     }
                 }
             });

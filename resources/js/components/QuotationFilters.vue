@@ -168,23 +168,18 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
-          <VCheckbox
-            label="Búsqueda Estricta"
-            :model-value="props.isStrictSearch"
-            @update:model-value="emit('update:isStrictSearch', $event)"
-          />
         </VCol>
-        <VCol cols="12" sm="3">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.selectedLaboratory"
             label="Laboratorio"
@@ -195,7 +190,7 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.selectedOrigin"
             label="Origen"
@@ -206,7 +201,7 @@ watch(
             @update:model-value="emit('update:selectedOrigin', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -220,10 +215,39 @@ watch(
 
     <VDivider />
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
+
+      <div class="d-flex align-center gap-2">
+        <VCheckbox
+          :model-value="props.isStrictSearch"
+          @update:model-value="emit('update:isStrictSearch', $event)"
+          color="primary"
+          class="me-2"
+        >
+          <template #label>
+            <div class="d-flex align-center">
+              <VIcon icon="tabler-search" class="me-2" size="20" />
+              <span class="text-subtitle-1 font-weight-medium">
+                Búsqueda Estricta
+              </span>
+            </div>
+          </template>
+        </VCheckbox>
+        <VChip
+          v-if="props.isStrictSearch"
+          color="primary"
+          size="small"
+          class="ms-2"
+        >
+          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+          Activo
+        </VChip>
+      </div>
+
+      <VSpacer />
 
       <div class="d-flex align-center gap-2">
         <VMenu>
@@ -268,8 +292,6 @@ watch(
           {{ getSelectedSortTitle() }}
         </VChip>
       </div>
-
-      <VSpacer />
     </VCardActions>
   </VCard>
 </template>

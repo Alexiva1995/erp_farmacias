@@ -26,6 +26,8 @@ const endDate = ref(null);
 const days = ref(30);
 const stock = ref("all");
 const expProd = ref(false);
+const isStrictSearch = ref(false);
+const tipoFiltracion = ref("average");
 
 const loading = ref(false)
 
@@ -64,6 +66,8 @@ const fetchProducts = async () => {
     days: days.value,
     stock: stock.value,
     expProd: expProd.value,
+    isStrictSearch: isStrictSearch.value,
+    tipo_filtracion: tipoFiltracion.value,
   };
   loading.value = true;
   let respuesApi=await axios.post("/inventory/stock/filter",data)
@@ -88,6 +92,8 @@ const handleClearFilters = () => {
   stock.value = "all";
   days.value = 30;
   expProd.value = false;
+  isStrictSearch.value = false;
+  tipoFiltracion.value = "average";
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
@@ -115,7 +121,9 @@ watch(
       page,
       itemsPerPage,
       sortBy,
-      orderBy
+      orderBy,
+      isStrictSearch,
+      tipoFiltracion
   ],
   async () =>{
     actualizarTabla()
@@ -169,6 +177,8 @@ async function exportarPdf(){
       days: days.value,
       stock: stock.value,
       expProd: expProd.value,
+      isStrictSearch: isStrictSearch.value,
+      tipo_filtracion: tipoFiltracion.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
@@ -196,6 +206,8 @@ async function exportarExcel(formato){
         days: days.value,
         stock: stock.value,
         expProd: expProd.value,
+        isStrictSearch: isStrictSearch.value,
+        tipo_filtracion: tipoFiltracion.value,
         formato
     }
 
@@ -255,6 +267,8 @@ async function exportarExcel(formato){
       v-model:days="days"
       v-model:stock="stock"
       v-model:expProd="expProd"
+      v-model:isStrictSearch="isStrictSearch"
+      v-model:tipoFiltracion="tipoFiltracion"
       :laboratories="laboratories"
       :loading="loading"
       @clear="handleClearFilters"

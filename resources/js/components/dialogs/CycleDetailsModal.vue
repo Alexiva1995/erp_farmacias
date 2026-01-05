@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: {
@@ -23,6 +23,11 @@ const totalProducts = ref(0);
 const page = ref(1);
 const itemsPerPage = ref(15);
 const searchQuery = ref("");
+const selectedLaboratory = ref(null);
+const startDate = ref(null);
+const endDate = ref(null);
+const laboratories = ref([]);
+const isLoadingFilters = ref(false);
 
 const headers = ref([
   { title: "Producto", key: "product.name", sortable: true },
@@ -44,18 +49,17 @@ const headers = ref([
     align: "center",
     sortable: true,
   },
-  { title: "Estado", key: "status", align: "center", sortable: true },
   {
-    title: "Procesado Por",
-    key: "supervisor.email",
+    title: "Usuario Conteo",
+    key: "user.email",
     align: "center",
     sortable: false,
   },
   {
-    title: "Fecha Proceso",
-    key: "updated_at",
+    title: "Supervisor Aprobación",
+    key: "supervisor.email",
     align: "center",
-    sortable: true,
+    sortable: false,
   },
 ]);
 
@@ -63,6 +67,19 @@ const isOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
 });
+
+const fetchSelectOptions = async () => {
+  isLoadingFilters.value = true;
+  try {
+    const labResponse = await axios.get("/laboratories");
+    laboratories.value = labResponse.data;
+  } catch (error) {
+    console.error("Error al cargar opciones de los selects:", error);
+    toast.error("No se pudieron cargar los filtros.");
+  } finally {
+    isLoadingFilters.value = false;
+  }
+};
 
 const fetchCycleProducts = async () => {
   if (!props.cycleId) return;
@@ -74,6 +91,9 @@ const fetchCycleProducts = async () => {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     q: searchQuery.value,
+    laboratoryId: selectedLaboratory.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
   };
 
   Object.keys(params).forEach(
@@ -98,6 +118,13 @@ const fetchCycleProducts = async () => {
   }
 };
 
+const handleClearFilters = () => {
+  searchQuery.value = "";
+  selectedLaboratory.value = null;
+  startDate.value = null;
+  endDate.value = null;
+};
+
 const fetchCycleInfo = async () => {
   try {
     const response = await axios.get(`/inventory/cycle/${props.cycleId}`);
@@ -120,17 +147,6 @@ const formatDate = (dateString) => {
   }
 };
 
-const getStatusColor = (status) => {
-  if (status === "confirmed") return "success";
-  if (status === "rejected") return "error";
-  return "grey";
-};
-
-const getStatusText = (status) => {
-  if (status === "confirmed") return "Confirmado";
-  if (status === "rejected") return "Rechazado";
-  return "Pendiente";
-};
 
 const updateOptions = (options) => {
   page.value = options.page;
@@ -144,6 +160,9 @@ const closeModal = () => {
     cycleInfo.value = null;
     page.value = 1;
     searchQuery.value = "";
+    selectedLaboratory.value = null;
+    startDate.value = null;
+    endDate.value = null;
   }, 300);
 };
 
@@ -154,31 +173,33 @@ watch(
       products.value = [];
       cycleInfo.value = null;
       page.value = 1;
-      fetchCycleProducts();
-    }
-  }
-);
-
-watch(
-  () => props.modelValue,
-  (isOpen) => {
-    if (isOpen && props.cycleId) {
+      fetchSelectOptions();
       fetchCycleProducts();
     }
   }
 );
 
 let debounceTimer;
-watch([page, itemsPerPage, searchQuery], () => {
+watch([page, itemsPerPage, searchQuery, selectedLaboratory, startDate, endDate], () => {
   if (props.modelValue && props.cycleId) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCycleProducts(), 300);
   }
 });
 
-watch(searchQuery, () => {
+watch([searchQuery, selectedLaboratory, startDate, endDate], () => {
   page.value = 1;
 });
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen && props.cycleId) {
+      fetchSelectOptions();
+      fetchCycleProducts();
+    }
+  }
+);
 </script>
 
 <template>
@@ -205,18 +226,65 @@ watch(searchQuery, () => {
       <VDivider />
 
       <VCardText class="pa-0">
-        <!-- Filtro de búsqueda -->
-        <div class="pa-4 pb-0">
-          <VTextField
-            v-model="searchQuery"
-            placeholder="Buscar por producto, ingrediente activo..."
-            prepend-inner-icon="tabler-search"
-            clearable
-            density="compact"
-            variant="outlined"
-            hide-details
-          />
+        <!-- Filtros -->
+        <div class="pa-4">
+          <VRow>
+            <VCol cols="12" sm="6" md="3">
+              <AppTextField
+                v-model="searchQuery"
+                placeholder="Buscar por Producto, C. Activo..."
+                clearable
+                @update:model-value="searchQuery = $event"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VAutocomplete
+                v-model="selectedLaboratory"
+                :items="laboratories"
+                :loading="isLoadingFilters"
+                label="Laboratorio"
+                placeholder="Buscar un laboratorio"
+                item-title="name"
+                item-value="id"
+                clearable
+                @update:model-value="selectedLaboratory = $event"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                v-model="startDate"
+                placeholder="Desde"
+                clearable
+                :config="{
+                  altInput: true,
+                  altFormat: 'Y-m-d',
+                  dateFormat: 'Y-m-d',
+                }"
+                @update:model-value="startDate = $event"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                v-model="endDate"
+                placeholder="Hasta"
+                clearable
+                :config="{
+                  altInput: true,
+                  altFormat: 'Y-m-d',
+                  dateFormat: 'Y-m-d',
+                }"
+                @update:model-value="endDate = $event"
+              />
+            </VCol>
+          </VRow>
+          <div class="d-flex justify-end mt-3">
+            <VBtn color="secondary" variant="outlined" size="small" @click="handleClearFilters">
+              Limpiar Filtros
+            </VBtn>
+          </div>
         </div>
+
+        <VDivider />
 
         <!-- Tabla de productos -->
         <VDataTableServer
@@ -238,26 +306,10 @@ watch(searchQuery, () => {
           ]"
         >
           <template #item.product.name="{ item: count }">
-            <div class="d-flex align-center gap-x-3 py-2">
-              <VAvatar
-                v-if="count.product.photo_url"
-                size="32"
-                variant="tonal"
-                rounded
-                :image="count.product.photo_url"
-              />
-              <VAvatar
-                v-else
-                size="32"
-                variant="tonal"
-                rounded
-                color="grey-lighten-2"
-              >
-                <VIcon icon="tabler-package" size="16" />
-              </VAvatar>
+            <div class="d-flex align-center gap-x-4">
               <div class="d-flex flex-column">
                 <span
-                  class="text-body-2 font-weight-medium text-high-emphasis"
+                  class="text-body-1 font-weight-medium text-high-emphasis"
                   :class="{ 'text-primary': count.product.psychotropic == 1 }"
                 >
                   {{ count.product.name }}
@@ -266,7 +318,7 @@ watch(searchQuery, () => {
                     (COL)</span
                   >
                 </span>
-                <span class="text-xs text-disabled">
+                <span class="text-sm text-disabled">
                   {{ count.product.active_ingredient }}
                 </span>
               </div>
@@ -298,20 +350,16 @@ watch(searchQuery, () => {
             <span v-else class="text-disabled">N/A</span>
           </template>
 
-          <template #item.status="{ item: count }">
-            <VChip :color="getStatusColor(count.status)" size="small" label>
-              {{ getStatusText(count.status) }}
-            </VChip>
+          <template #item.user.email="{ item: count }">
+            <span class="text-sm">
+              {{ count.user?.email || "N/A" }}
+            </span>
           </template>
 
           <template #item.supervisor.email="{ item: count }">
             <span class="text-sm">
               {{ count.supervisor?.email || "N/A" }}
             </span>
-          </template>
-
-          <template #item.updated_at="{ item: count }">
-            <span class="text-sm">{{ formatDate(count.updated_at) }}</span>
           </template>
 
           <template #bottom>

@@ -50,7 +50,10 @@ class TraceabilityQueryService
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $query->orderBy($request->input('sortBy'), $request->input('orderBy'));
         } else {
-            $query->orderBy('movement_date', 'desc');
+            // Ordenar por created_at descendente (más reciente primero)
+            // Esto refleja la fecha real en que se creó el movimiento en la base de datos
+            $query->orderBy('created_at', 'desc')
+                  ->orderBy('id', 'desc');
         }
 
         return $query;
@@ -112,7 +115,10 @@ class TraceabilityQueryService
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $query->orderBy($request->input('sortBy'), $request->input('orderBy'));
         } else {
-            $query->orderBy('movement_date', 'desc');
+            // Ordenar por created_at descendente (más reciente primero)
+            // Esto refleja la fecha real en que se creó el movimiento en la base de datos
+            $query->orderBy('created_at', 'desc')
+                  ->orderBy('id', 'desc');
         }
 
         return $query;

@@ -148,7 +148,7 @@ const formatQuantity = (quantity) => {
       <VCardText class="pa-6 pt-0">
         <div v-if="product">
           <div class="mb-6">
-            <div class="d-flex align-center gap-3 mb-4">
+            <div class="d-flex align-center gap-3 mb-3">
               <VAvatar
                 v-if="product.product?.photo_url"
                 size="48"
@@ -165,78 +165,76 @@ const formatQuantity = (quantity) => {
                 </p>
               </div>
             </div>
+            <div class="text-body-2 text-medium-emphasis ms-2">
+              Por: <span class="font-weight-medium">{{ product.user?.email }}</span>
+            </div>
           </div>
 
           <VAlert type="info" variant="tonal" class="mb-6">
-            <div class="d-flex justify-space-between align-center">
-              <div>
-                <strong>Cantidad contada original:</strong>
-                <span
-                  class="ml-2 font-weight-medium"
-                  :class="{
-                    'text-success': product.counted_quantity > 0,
-                    'text-error': product.counted_quantity < 0,
-                    'text-warning': product.counted_quantity === 0,
-                  }"
-                >
-                  {{ formatQuantity(product.counted_quantity) }}
-                  <span class="text-body-2 text-medium-emphasis">
-                    {{
-                      product.counted_quantity > 0
-                        ? "(exceso)"
-                        : product.counted_quantity < 0
-                        ? "(faltante)"
-                        : "(sin diferencia)"
-                    }}
-                  </span>
+            <div>
+              <strong>Cantidad contada original:</strong>
+              <span
+                class="ml-2 font-weight-medium"
+                :class="{
+                  'text-success': product.counted_quantity > 0,
+                  'text-error': product.counted_quantity < 0,
+                  'text-warning': product.counted_quantity === 0,
+                }"
+              >
+                {{ formatQuantity(product.counted_quantity) }}
+                <span class="text-body-2 text-medium-emphasis">
+                  {{
+                    product.counted_quantity > 0
+                      ? "(exceso)"
+                      : product.counted_quantity < 0
+                      ? "(faltante)"
+                      : "(sin diferencia)"
+                  }}
                 </span>
-              </div>
-              <div class="text-body-2 text-medium-emphasis">
-                Por: {{ product.user?.email }}
-              </div>
+              </span>
             </div>
           </VAlert>
 
           <div class="mb-4">
-            <VTextField
+            <AppTextField
               v-model.number="correctedQuantity"
-              label="Cantidad corregida"
+              label="Cantidad Corregida"
               type="number"
-              variant="outlined"
-              :error="!isValidQuantity"
               :error-messages="
                 !isValidQuantity ? ['Ingrese una cantidad válida'] : []
               "
-              hint="Ingrese la cantidad correcta para este producto"
-              persistent-hint
-            >
-              <template #prepend-inner>
-                <VIcon icon="tabler-hash" />
-              </template>
-            </VTextField>
+              placeholder="Ingresa la cantidad corregida"
+            />
           </div>
         </div>
       </VCardText>
 
-      <VCardActions class="pa-6 pt-0">
-        <VSpacer />
-        <VBtn
-          variant="outlined"
-          color="secondary"
-          @click="handleCancel"
-          :disabled="isProcessing"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="elevated"
-          @click="handleSubmit"
-          :disabled="!canSubmit"
-          :loading="isProcessing"
-        >
-          Aplicar Corrección
-        </VBtn>
+      <VCardActions class="pa-4 px-6">
+        <VRow class="w-100">
+          <VCol cols="6">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              block
+              @click="handleCancel"
+              :disabled="isProcessing"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6">
+            <VBtn
+              color="primary"
+              variant="flat"
+              block
+              @click="handleSubmit"
+              :disabled="!canSubmit"
+              :loading="isProcessing"
+            >
+              Guardar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

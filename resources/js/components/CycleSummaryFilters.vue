@@ -167,7 +167,7 @@ watch(
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Desde"
@@ -180,7 +180,7 @@ watch(
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Hasta"
@@ -193,13 +193,13 @@ watch(
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="4">
           <VAutocomplete
             :model-value="props.cycleStatus"
             :items="cycleStatusOptions"
             :loading="props.loading"
             label="Estado del Ciclo"
-            placeholder="Ciclo"
+            placeholder="Estado del Ciclo"
             item-title="title"
             item-value="value"
             clearable

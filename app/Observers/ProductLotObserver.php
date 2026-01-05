@@ -61,7 +61,9 @@ class ProductLotObserver
 
 
             if ($originalQuantity > 0 && $newQuantity === 0) {
-                $this->createExpiredMovement($productLot, $originalQuantity);
+                // Solo crear movimiento de caducado si viene de inventory/expirations
+                // Si no, crear movimiento de pérdida o ajuste según el origen
+                $this->handleZeroQuantityMovement($productLot, $originalQuantity);
             } elseif ($originalQuantity !== $newQuantity) {
                 $this->createAdjustmentMovement($productLot, $originalQuantity, $newQuantity);
             }
@@ -123,7 +125,7 @@ class ProductLotObserver
             'user_id' => Auth::id(),
             'stock_before' => $stockBefore,
             'stock_after' => $stockAfter,
-            'movement_date' => $productLot->created_at ?? now(),
+            'movement_date' => now(),
         ]);
     }
 
@@ -178,14 +180,53 @@ class ProductLotObserver
     }
 
     /**
-     * Crear movimiento de caducidad cuando un lote pasa de tener cantidad a 0
+     * Manejar movimiento cuando un lote pasa de tener cantidad a 0
+     * Solo se registra como 'expired' (caducado) si viene de inventory/expirations
+     * Si viene de inventario cíclico, se registra como 'loss' (pérdida)
+     * Si no viene de ninguno, se registra como 'loss' (pérdida) por defecto
      */
-    protected function createExpiredMovement(ProductLot $productLot, int $expiredQuantity)
+    protected function handleZeroQuantityMovement(ProductLot $productLot, int $expiredQuantity)
     {
         $product = $productLot->product;
 
+        // Verificar si viene de inventory/expirations (ExpiredLog reciente)
+        $recentExpiredLog = \App\Models\ExpiredLog::where('lot_id', $productLot->id)
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->first();
+
+        // Verificar si viene de un inventario cíclico
+        // Buscamos un ProductCount que está siendo procesado (pending o approved) para el mismo producto
+        $recentProductCount = \App\Models\ProductCount::where('product_id', $product->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->where('updated_at', '>=', now()->subMinutes(5))
+            ->orderBy('updated_at', 'desc')
+            ->first();
+
+        // Si encontramos un ProductCount reciente, verificamos si tiene un ProductDistribution para este lote
+        $isFromInventoryCycle = false;
+        if ($recentProductCount) {
+            // Verificar si ya existe el ProductDistribution
+            $productDistribution = \App\Models\ProductDistribution::where('product_count_id', $recentProductCount->id)
+                ->where('product_lot_id', $productLot->id)
+                ->first();
+            
+            // Si existe el ProductDistribution o el ProductCount es reciente, asumimos que viene del inventario cíclico
+            if ($productDistribution || $recentProductCount->updated_at >= now()->subMinutes(2)) {
+                $isFromInventoryCycle = true;
+            }
+        }
+
+        // Solo usar 'expired' (caducado) si viene específicamente de inventory/expirations
+        // Si viene de inventario cíclico o de otro lugar, usar 'loss' (pérdida)
+        if ($recentExpiredLog) {
+            $movementType = 'expired';
+        } else {
+            // Por defecto, si no viene de expirations, es pérdida (no caducado)
+            $movementType = 'loss';
+        }
+
         $existingMovement = InventoryMovement::where('product_lot_id', $productLot->id)
-            ->where('movement_type', 'expired')
+            ->where('movement_type', $movementType)
             ->where('quantity', -$expiredQuantity)
             ->where('created_at', '>=', now()->subMinute())
             ->first();
@@ -200,7 +241,7 @@ class ProductLotObserver
         InventoryMovement::create([
             'product_id' => $product->id,
             'product_lot_id' => $productLot->id,
-            'movement_type' => 'expired',
+            'movement_type' => $movementType,
             'quantity' => -$expiredQuantity,
             'invoice_id' => null,
             'supplier_id' => null,
@@ -214,6 +255,9 @@ class ProductLotObserver
 
     /**
      * Crear movimiento de ajuste para otros cambios de cantidad
+     * Si viene de un inventario cíclico y es negativo, siempre es 'loss' (pérdida)
+     * Si la diferencia es negativa (hace falta), se registra como 'loss' (pérdida)
+     * Si la diferencia es positiva, se registra como 'adjustment' (ajuste)
      */
     protected function createAdjustmentMovement(ProductLot $productLot, int $originalQuantity, int $newQuantity)
     {
@@ -223,10 +267,26 @@ class ProductLotObserver
         $quantityDifference = $newQuantity - $originalQuantity;
         $stockAfter = $stockBefore + $quantityDifference;
 
+        // Verificar si viene de un inventario cíclico (ProductCount aprobado)
+        $recentProductDistribution = \App\Models\ProductDistribution::where('product_lot_id', $productLot->id)
+            ->whereHas('productCount', function ($query) {
+                $query->where('status', 'approved');
+            })
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->first();
+
+        // Si viene de inventario cíclico y es negativo, siempre es pérdida
+        // Si no viene de inventario cíclico: negativo = pérdida, positivo = ajuste
+        if ($recentProductDistribution && $quantityDifference < 0) {
+            $movementType = 'loss';
+        } else {
+            $movementType = $quantityDifference < 0 ? 'loss' : 'adjustment';
+        }
+
         InventoryMovement::create([
             'product_id' => $product->id,
             'product_lot_id' => $productLot->id,
-            'movement_type' => 'adjustment',
+            'movement_type' => $movementType,
             'quantity' => $quantityDifference,
             'invoice_id' => null,
             'supplier_id' => null,

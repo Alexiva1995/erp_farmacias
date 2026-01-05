@@ -13,6 +13,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   days: [String, null],
   stock: [String, null],
+  isStrictSearch: { type: Boolean, default: false },
+  tipoFiltracion: { type: String, default: "average" },
 });
 
 const emit = defineEmits([
@@ -22,6 +24,8 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "update:expProd",
+  "update:isStrictSearch",
+  "update:tipoFiltracion",
   "clear",
   "add-product",
   "sort",
@@ -45,6 +49,12 @@ const diasVencimientos = [
   { title: "30", value: 30 },
   { title: "60", value: 60 },
   { title: "90", value: 90 },
+];
+
+const tipoFiltracionOpcion = [
+  { title: "Promedio", value: "average" },
+  { title: "Ventas", value: "sales" },
+  { title: "Combinado", value: "combinado" },
 ];
 
 // const sortOptions = [
@@ -118,7 +128,7 @@ const handleClear = () => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -126,13 +136,13 @@ const handleClear = () => {
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="buscar un laboratorio"
+            placeholder="Buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
@@ -140,17 +150,18 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
-            label="Estado Stock"
+            label="Estado de Stock"
             placeholder="Stock"
             :items="stockOptions"
             clearable
             @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Desde"
@@ -164,7 +175,7 @@ const handleClear = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Hasta"
@@ -177,93 +188,85 @@ const handleClear = () => {
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
-          <VSelect
-            :model-value="props.stock"
-            label="Stock"
-            :items="stock"
-            clearable
-            @update:model-value="emit('update:stock', $event)"
-          />
-        </VCol>
       </VRow>
     </VCardText>
 
-
+    <VDivider />
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <!-- <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
+      <VSelect
+        :model-value="props.stock"
+        label="Stock"
+        :items="stock"
+        clearable
+        style="max-width: 150px;"
+        @update:model-value="emit('update:stock', $event)"
+      />
+
+      <VSelect
+        :model-value="props.days"
+        label="Días"
+        :items="diasVencimientos"
+        style="max-width: 150px;"
+        @update:model-value="emit('update:days', $event)"
+      />
+
+      <VSelect
+        :model-value="props.tipoFiltracion"
+        label="Calcular Por"
+        :items="tipoFiltracionOpcion"
+        style="max-width: 150px;"
+        @update:model-value="emit('update:tipoFiltracion', $event)"
+      />
+
+      <VCheckbox
+        :model-value="props.expProd"
+        @update:model-value="emit('update:expProd', $event)"
+        color="error"
+        class="me-2"
+      >
+        <template #label>
+          <div class="d-flex align-center">
+            <VIcon icon="tabler-calendar-time" class="me-2" size="20" />
+            <span class="text-subtitle-1 font-weight-medium">
+              ¿Próximo a Expirar?
+            </span>
+          </div>
+        </template>
+      </VCheckbox>
+
+      <VChip v-if="props.expProd" color="error" size="small" class="ms-2">
+        <VIcon icon="tabler-alert-triangle" size="14" class="me-1" />
+        Filtrando por Expiración
+      </VChip>
+
+      <div class="d-flex align-center gap-2">
+        <VCheckbox
+          :model-value="props.isStrictSearch"
+          @update:model-value="emit('update:isStrictSearch', $event)"
+          color="primary"
+          class="me-2"
+        >
+          <template #label>
+            <div class="d-flex align-center">
+              <VIcon icon="tabler-search" class="me-2" size="20" />
+              <span class="text-subtitle-1 font-weight-medium">
+                ¿Búsqueda Estricta?
+              </span>
+            </div>
           </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
+        </VCheckbox>
 
         <VChip
-          v-if="selectedSort"
+          v-if="props.isStrictSearch"
           color="primary"
-          variant="tonal"
           size="small"
-          closable
-          @click:close="clearSortFilter"
+          class="ms-2"
         >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
+          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+          Modo Estricto Activo
         </VChip>
-      </div> -->
-<div class="d-flex align-center mt-3 mb-2">
-    <VSelect
-            :model-value="props.days"
-            label="Dias"
-            :items="diasVencimientos"
-            @update:model-value="emit('update:days', $event)"
-          />
-  </div> 
-<div class="d-flex align-center mt-3 mb-2">
-    <VCheckbox
-      :model-value="props.expProd"
-      @update:model-value="emit('update:expProd', $event)"
-      color="error"  class="me-2"
-    >
-      <template #label>
-        <div class="d-flex align-center">
-          <VIcon icon="tabler-calendar-time" class="me-2" size="20" />
-          <span class="text-subtitle-1 font-weight-medium">
-            ¿Próximo a Expirar?
-          </span>
-        </div>
-      </template>
-    </VCheckbox>
-
-    <VChip v-if="props.expProd" color="error" size="small" class="ms-2">
-      <VIcon icon="tabler-alert-triangle" size="14" class="me-1" />
-      Filtrando por Expiración
-    </VChip>
-  </div>
+      </div>
 
       <VSpacer />
       <VBtn color="secondary" variant="outlined" @click="handleClear">

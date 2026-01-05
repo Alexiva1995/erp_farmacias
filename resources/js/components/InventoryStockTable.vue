@@ -38,10 +38,6 @@ const headers = [
     title: "Diferencia ",
     key: "diferencia_product",
     sortable: true,
-    value: (item) =>
-      item.diferencia_product != "" && item.diferencia_product != null
-        ? parseFloat(item.diferencia_product).toFixed(2)
-        : 0,
   },
 ];
 </script>
@@ -75,6 +71,26 @@ const headers = [
             }}</span>
           </div>
         </div>
+      </template>
+
+      <template #item.diferencia_product="{ item }">
+        <span
+          v-if="item.diferencia_product != null && item.diferencia_product != ''"
+          :class="{
+            'text-success': parseFloat(item.diferencia_product) > 0,
+            'text-error': parseFloat(item.diferencia_product) < 0,
+          }"
+          class="font-weight-medium"
+        >
+          {{
+            parseFloat(item.diferencia_product) > 0
+              ? "+"
+              : parseFloat(item.diferencia_product) < 0
+              ? "-"
+              : ""
+          }}{{ Math.ceil(Math.abs(parseFloat(item.diferencia_product))) }}
+        </span>
+        <span v-else class="text-disabled">0</span>
       </template>
     </VDataTableServer>
   </VCard>

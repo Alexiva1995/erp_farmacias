@@ -1009,7 +1009,7 @@ const specialTaxAmount = computed(() => {
         </VBtn>
         <VBtn
           v-if="!props.orderReserved"
-          color="success"
+          color="warning"
           variant="flat"
           class="flex-grow-1"
           @click="handleTReserveOrder"
@@ -1018,7 +1018,7 @@ const specialTaxAmount = computed(() => {
         </VBtn>
         <VBtn
           v-if="props.orderReserved"
-          color="success"
+          color="warning"
           variant="flat"
           class="flex-grow-1"
           @click="handleReserved"
@@ -1026,7 +1026,7 @@ const specialTaxAmount = computed(() => {
           RESERVADA
         </VBtn>
         <VBtn
-          color="primary"
+          color="success"
           variant="flat"
           class="flex-grow-1"
           @click="handleCompleteOrder"

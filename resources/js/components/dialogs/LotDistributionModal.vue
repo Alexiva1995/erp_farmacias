@@ -165,8 +165,7 @@ const closeDialog = () => {
         </VAlert>
 
         <div class="d-flex justify-end mb-4">
-          <VBtn color="primary" variant="tonal" @click="handleAddNewLot">
-            <VIcon icon="tabler-plus" start />
+          <VBtn color="success" prepend-icon="tabler-plus" @click="handleAddNewLot">
             Añadir Nuevo Lote
           </VBtn>
         </div>
@@ -266,19 +265,25 @@ const closeDialog = () => {
         </VDataTable>
       </VCardText>
 
-      <VCardActions class="pa-6 pt-2">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="closeDialog"
-          >Cancelar</VBtn
-        >
-        <VBtn
-          color="primary"
-          variant="elevated"
-          @click="handleSave"
-          :disabled="!canSave"
-        >
-          Guardar Ajuste
-        </VBtn>
+      <VCardActions class="pa-4 px-6">
+        <VRow class="w-100">
+          <VCol cols="6">
+            <VBtn color="secondary" variant="outlined" block @click="closeDialog">
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6">
+            <VBtn
+              color="primary"
+              variant="flat"
+              block
+              @click="handleSave"
+              :disabled="!canSave"
+            >
+              Guardar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

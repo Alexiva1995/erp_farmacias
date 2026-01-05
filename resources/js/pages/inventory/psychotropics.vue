@@ -6,25 +6,11 @@
 import { toast } from "@/plugins/sweetalert";
 // import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 // import Swal from 'sweetalert2';
-import PsychotropicsRecipeDialoge from "@/components/dialogs/PsychotropicsRecipeDialoge.vue";
 import OrderWithPsychotropicsTable from "@/components/OrderWithPsychotropicsTable.vue";
 import PsychotropicsFilters from '@/components/PsychotropicsFilters.vue';
 import PsychotropicsTable from "@/components/PsychotropicsTable.vue";
 import axios from "@/plugins/axios";
-import { onMounted, reactive, watch } from 'vue';
-import { useRouter } from "vue-router";
-const route= useRouter()
-
-const modal= reactive({
-  statu:false,
-  titulo:"Nuevo",
-})
-
-const modalRecipe= reactive({
-  statu:false,
-  titulo:"Nuevo",
-  data:{},
-})
+import { onMounted, ref, watch } from 'vue';
 
 const sales = ref([]);
 const totalSales = ref(0);
@@ -210,18 +196,6 @@ watch(
 )
 
 
-function verRecipe(paylod){
-  console.log(paylod)
-  if(paylod.order.url_recipe!=null){
-    modalRecipe.statu=true
-    modalRecipe.titulo=`Recipe: ${paylod.order.id}`
-    modalRecipe.data={...paylod}
-  }
-}
-
-function cerrarModalVerRecipe(paylod){
-  modalRecipe.statu=false
-}
 
 onMounted(() => {
   fetchSelectOptions();
@@ -232,12 +206,6 @@ onMounted(() => {
 
 <template>
   <div>
-    <PsychotropicsRecipeDialoge
-      :modal-formulario="modalRecipe.statu"
-      :titulo="modalRecipe.titulo"
-      :data="modalRecipe.data"
-      @modal-close="cerrarModalVerRecipe"
-    />
     <PsychotropicsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
@@ -264,7 +232,6 @@ onMounted(() => {
       :total-sales="totalSales"
       :items-per-page="itemsPerPageOrder"
       :page="pageOrder"
-      @action-ver="verRecipe"
       @update:options="updateTableOptionsProductos"
     />
   </div>

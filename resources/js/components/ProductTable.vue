@@ -10,6 +10,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   mode: { type: String, default: "products" },
+  title: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -34,15 +35,6 @@ const headers = ref([
     key: "laboratory.name",
     sortable: true,
     visible: true,
-  },
-  {
-    title: "Stock",
-    key: "valid_stock",
-    visible: true,
-    sortable: true,
-    value: (item) => {
-      return item.stock_calculado;
-    },
   },
   { title: "Exp.", key: "next_expiration", sortable: true, visible: true },
   {
@@ -118,6 +110,7 @@ const formatPrice = (price) => {
 
 <template>
   <VCard>
+    <VCardTitle v-if="props.title">{{ props.title }}</VCardTitle>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -197,12 +190,17 @@ const formatPrice = (price) => {
         </template>
 
         <template v-else-if="mode === 'inventory'">
-          <IconBtn @click="emit('count-product', item)">
-            <VIcon icon="tabler-scan" />
-            <VTooltip activator="parent" location="top"
-              >Contar producto</VTooltip
+          <div class="d-flex justify-center">
+            <IconBtn 
+              @click="emit('count-product', item)" 
+              color="purple"
             >
-          </IconBtn>
+              <VIcon icon="tabler-scan" />
+              <VTooltip activator="parent" location="top"
+                >Contar producto</VTooltip
+              >
+            </IconBtn>
+          </div>
         </template>
 
         <template v-else-if="mode === 'add-to-invoice'">

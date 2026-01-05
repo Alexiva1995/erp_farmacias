@@ -223,7 +223,7 @@ watch(
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
@@ -231,7 +231,7 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -245,7 +245,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.stockStatusFilter"
             label="Estado de Stock"
@@ -256,7 +256,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Desde"
@@ -270,7 +270,7 @@ watch(
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Hasta"

@@ -59,6 +59,14 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  quotationDetails: {
+    type: Object,
+    default: null,
+  },
+  onSaveQuotation: {
+    type: Function,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -129,6 +137,7 @@ const generateWhatsappMessage = () => {
     let rows =
       "💊 " +
       product.title +
+      (product.laboratory && product.laboratory !== "N/A" ? " (" + product.laboratory + ")" : "") +
       "\n" +
       "Cantidad: " +
       product.selectedQuantity +
@@ -145,6 +154,8 @@ const generateWhatsappMessage = () => {
     productos_array.push(rows);
   });
 
+  const quotationNumber = props.quotationDetails?.id ? `\nNúmero de Cotización: #${props.quotationDetails.id}\n` : "";
+  
   const whatsappMessage =
     "Mensaje de presupuesto\n\n" +
     "Fecha: " +
@@ -153,7 +164,7 @@ const generateWhatsappMessage = () => {
       month: "2-digit",
       year: "numeric",
     }) +
-    "\n" +
+    quotationNumber +
     "\nBuenas tardes, Estimado Cliente!\n" +
     "... le da la Bienvenida!\n" +
     "Para nosotros es un gusto servirle.\n\n" +
@@ -178,29 +189,49 @@ const generateWhatsappMessage = () => {
   return whatsappMessage;
 };
 
-const handleShareButtonClick = () => {
-  const whatsappMessage = generateWhatsappMessage();
-  if (!whatsappMessage) {
-    toast.error("No hay productos en la cotización para compartir.");
-    return;
+const handleShareButtonClick = async () => {
+  try {
+    // Guardar la cotización si no está guardada
+    if (!props.quotationDetails?.id && props.onSaveQuotation) {
+      await props.onSaveQuotation();
+    }
+
+    const whatsappMessage = generateWhatsappMessage();
+    if (!whatsappMessage) {
+      toast.error("No hay productos en la cotización para compartir.");
+      return;
+    }
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    const whatsappUrl = "https://api.whatsapp.com/send?text=" + encodedMessage;
+    window.open(whatsappUrl, "_blank");
+  } catch (error) {
+    console.error("Error al guardar/compartir la cotización:", error);
+    toast.error("Error al guardar la cotización. Inténtalo de nuevo.");
   }
-  const encodedMessage = encodeURIComponent(whatsappMessage);
-  const whatsappUrl = "https://api.whatsapp.com/send?text=" + encodedMessage;
-  window.open(whatsappUrl, "_blank");
 };
 
 const handleCopyWhatsappMessage = async () => {
-  const whatsappMessage = generateWhatsappMessage();
-  if (!whatsappMessage) {
-    toast.error("No hay productos en la cotización para copiar.");
-    return;
-  }
   try {
-    await navigator.clipboard.writeText(whatsappMessage);
-    toast.success("Mensaje copiado al portapapeles correctamente.");
-  } catch (err) {
-    console.error("Error al copiar el mensaje:", err);
-    toast.error("Error al copiar el mensaje al portapapeles.");
+    // Guardar la cotización si no está guardada
+    if (!props.quotationDetails?.id && props.onSaveQuotation) {
+      await props.onSaveQuotation();
+    }
+
+    const whatsappMessage = generateWhatsappMessage();
+    if (!whatsappMessage) {
+      toast.error("No hay productos en la cotización para copiar.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      toast.success("Mensaje copiado al portapapeles correctamente.");
+    } catch (err) {
+      console.error("Error al copiar el mensaje:", err);
+      toast.error("Error al copiar el mensaje al portapapeles.");
+    }
+  } catch (error) {
+    console.error("Error al guardar/copiar la cotización:", error);
+    toast.error("Error al guardar la cotización. Inténtalo de nuevo.");
   }
 };
 const chipColor = "primary";

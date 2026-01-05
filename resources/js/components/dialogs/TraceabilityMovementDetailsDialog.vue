@@ -110,9 +110,11 @@ const handleViewOrder = async (orderId) => {
 };
 
 const handleViewInvoice = (invoiceId) => {
-  // Navigate to invoice page - user will need to search for the invoice
-  router.push({ name: 'invoice-invoices' });
-  toast.info(`Navegando a facturas. Busca la factura #${invoiceId}`);
+  // Navigate to ordered invoices page and open the invoice directly
+  router.push({ 
+    name: 'invoice-invoice-ordered',
+    query: { invoiceId: invoiceId }
+  });
   closeDialog();
 };
 
@@ -266,10 +268,26 @@ const getStatusLabel = (status) => {
                 color="primary"
                 @click="handleViewOrder(movementDetails.order.id)"
               >
-                Orden #{{ movementDetails.order.id }}
+                {{ movementDetails.order.id }}
                 <VIcon icon="tabler-external-link" class="ms-2" size="16" />
               </VBtn>
               <p v-else class="text-body-1">N/A</p>
+            </VCol>
+            <VCol cols="12" md="6" v-if="movementDetails.order?.url_recipe">
+              <p class="text-body-2 text-medium-emphasis mb-1">Recipe</p>
+              <VBtn
+                variant="text"
+                color="info"
+                @click="() => {
+                  const newWindow = window.open(movementDetails.order.url_recipe, '_blank');
+                  if (!newWindow) {
+                    toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
+                  }
+                }"
+              >
+                Ver Recipe
+                <VIcon icon="tabler-external-link" class="ms-2" size="16" />
+              </VBtn>
             </VCol>
           </VRow>
         </div>

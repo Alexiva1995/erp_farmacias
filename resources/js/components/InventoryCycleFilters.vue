@@ -161,10 +161,10 @@ watch(
 </script>
 
 <template>
-  <VCard title="Filtros de Conteos" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, C. Activo..."
@@ -172,7 +172,7 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -185,10 +185,10 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.startDate"
-            placeholder="Fecha de Conteo Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -198,10 +198,10 @@ watch(
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="3" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.endDate"
-            placeholder="Fecha de Conteo Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,

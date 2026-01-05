@@ -8,8 +8,11 @@ defineProps({
 
 const headers = [
   { title: "Nombre de Producto", key: "product.name", sortable: true },
+  { title: "Laboratorio", key: "product.laboratory.name", sortable: true },
   { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
-  { title: "Usuario", key: "user.name", sortable: true },
+  { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
+  { title: "Usuario Conteo", key: "user.name", sortable: true },
+  { title: "Supervisor Aprobación", key: "supervisor.name", sortable: true },
   { title: "Monto", key: "amount", align: "end", sortable: true },
 ];
 
@@ -56,13 +59,21 @@ const headers = [
       </template>
 
       <template #item.product.name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{ item.product.name }}</span>
-          <span class="text-caption text-disabled"
-            >Precio unitario:
-            {{ formatCurrency(parseFloat(item.product.sale_price)) }}</span
-          >
-        </div>
+        <span class="font-weight-medium">{{ item.product.name }}</span>
+      </template>
+
+      <template #item.product.laboratory.name="{ item }">
+        <span>{{ item.product.laboratory?.name || "N/A" }}</span>
+      </template>
+
+      <template #item.product.unit_cost="{ item }">
+        <span class="font-weight-medium">
+          {{ formatCurrency(parseFloat(item.product.unit_cost || 0)) }}
+        </span>
+      </template>
+
+      <template #item.supervisor.name="{ item }">
+        <span>{{ item.supervisor?.name || "N/A" }}</span>
       </template>
     </VDataTable>
   </VCard>

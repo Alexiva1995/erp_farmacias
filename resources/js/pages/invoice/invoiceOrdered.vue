@@ -5,7 +5,9 @@ import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
+const route = useRoute();
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
 
@@ -93,6 +95,15 @@ watch(
 onMounted(() => {
   fetchSuppliers();
   fetchOrderedInvoices();
+  
+  // Si hay un invoiceId en la query, abrir esa factura directamente
+  if (route.query.invoiceId) {
+    const invoiceId = parseInt(route.query.invoiceId);
+    if (invoiceId) {
+      selectedInvoiceId.value = invoiceId;
+      currentView.value = "detail";
+    }
+  }
 });
 
 const updateTableOptions = (options) => {

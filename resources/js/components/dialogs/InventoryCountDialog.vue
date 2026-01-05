@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import Swal from "sweetalert2";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -18,30 +19,9 @@ const countedQuantity = ref("");
 const isScanning = ref(false);
 const barcodeError = ref("");
 
-const systemStock = computed(() => Number(props.product?.stock) || 0);
-
-const discrepancy = computed(() => {
-  const counted = Number(countedQuantity.value) || 0;
-  return counted - systemStock.value;
-});
-
-const discrepancyText = computed(() => {
-  const diff = discrepancy.value;
-  if (diff === 0) return "Sin discrepancia";
-  if (diff > 0) return `Sobrante: +${diff}`;
-  return `Faltante: ${diff}`;
-});
-
-const discrepancyColor = computed(() => {
-  const diff = discrepancy.value;
-  if (diff === 0) return "success";
-  if (diff > 0) return "info";
-  return "error";
-});
-
 const canSave = computed(() => {
   const isQuantityValid =
-    countedQuantity.value !== "" && !isNaN(Number(countedQuantity.value));
+    countedQuantity.value !== "" && !isNaN(Number(countedQuantity.value)) && Number(countedQuantity.value) >= 0;
   return (
     barcodeInput.value.trim() !== "" && isQuantityValid && !barcodeError.value
   );
@@ -98,14 +78,26 @@ const handleBarcodeEnter = () => {
   }
 };
 
-const handleSave = () => {
+const handleSave = async () => {
   if (!canSave.value) return;
+
+  const quantity = Number(countedQuantity.value);
+
+  const result = await Swal.fire({
+    title: "Confirmar Conteo",
+    text: `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (!result.isConfirmed) return;
 
   const countData = {
     barcode: barcodeInput.value.trim(),
-    countedQuantity: Number(countedQuantity.value),
-    system_quantity: systemStock.value,
-    discrepancy: discrepancy.value,
+    countedQuantity: quantity,
   };
 
   emit("save", countData);
@@ -123,7 +115,7 @@ const startScanning = () => {
 </script>
 
 <template>
-  <VDialog v-model="isVisible" max-width="600" persistent>
+  <VDialog v-model="isVisible" max-width="500" persistent>
     <VCard>
       <VCardTitle class="d-flex align-center gap-2 pa-6 pb-4">
         <VIcon icon="tabler-scan" />
@@ -134,139 +126,86 @@ const startScanning = () => {
 
       <VCardText class="pa-6">
         <div class="mb-6">
-          <div class="d-flex align-center gap-4 mb-4">
-            <VAvatar
-              v-if="product.photo_url"
-              size="48"
-              variant="tonal"
-              rounded
-              :image="product.photo_url"
-            />
-            <VAvatar v-else size="48" variant="tonal" color="primary" rounded>
-              <VIcon icon="tabler-pill" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-h6 font-weight-medium">{{ product.name }}</span>
-              <span class="text-body-2 text-disabled">{{
-                product.active_ingredient
-              }}</span>
-              <span
-                v-if="product.laboratory"
-                class="text-body-2 text-medium-emphasis"
-              >
-                {{ product.laboratory.name }}
-              </span>
-            </div>
+          <div class="d-flex flex-column gap-2">
+            <span class="text-h6 font-weight-medium">{{ product.name }}</span>
+            <span class="text-body-2 text-disabled">{{
+              product.active_ingredient
+            }}</span>
+            <span
+              v-if="product.laboratory"
+              class="text-body-2 text-medium-emphasis"
+            >
+              {{ product.laboratory.name }}
+            </span>
           </div>
-
-          <VAlert type="info" variant="tonal" class="mb-4">
-            <template #prepend>
-              <VIcon icon="tabler-package" />
-            </template>
-            <div class="d-flex justify-space-between align-center">
-              <span>Stock actual en sistema:</span>
-              <span class="font-weight-bold">{{ systemStock }} unidades</span>
-            </div>
-          </VAlert>
         </div>
 
         <VForm @submit.prevent="handleSave">
           <div class="mb-4">
-            <label class="text-body-1 font-weight-medium mb-2 d-block">
-              Código de Barras *
-            </label>
-            <div class="d-flex gap-2">
-              <VTextField
-                id="barcode-input"
-                v-model="barcodeInput"
-                placeholder="Escanea o ingresa el código de barras"
-                variant="outlined"
-                :error-messages="barcodeError"
-                @keyup.enter="handleBarcodeEnter"
-              >
-                <template #prepend-inner>
-                  <VIcon icon="tabler-barcode" />
-                </template>
-              </VTextField>
-              <VBtn
-                color="primary"
-                variant="tonal"
-                :loading="isScanning"
-                @click="startScanning"
-              >
-                <VIcon icon="tabler-camera" />
-              </VBtn>
-            </div>
-            <div v-if="product.barcode" class="text-caption text-disabled mt-1">
-              Código esperado: {{ product.barcode }}
-            </div>
+            <AppTextField
+              id="barcode-input"
+              v-model="barcodeInput"
+              label="Código de Barras"
+              placeholder="Escanea o ingresa el código de barras"
+              :error-messages="barcodeError"
+              @keyup.enter="handleBarcodeEnter"
+            >
+              <template #append-inner>
+                <VBtn
+                  icon
+                  variant="text"
+                  size="small"
+                  color="primary"
+                  :loading="isScanning"
+                  @click="startScanning"
+                >
+                  <VIcon icon="tabler-camera" />
+                </VBtn>
+              </template>
+            </AppTextField>
           </div>
 
           <div class="mb-4">
-            <label class="text-body-1 font-weight-medium mb-2 d-block">
-              Cantidad Contada *
-            </label>
-            <VTextField
+            <AppTextField
               id="quantity-input"
               v-model="countedQuantity"
+              label="Cantidad Contada"
               type="number"
               min="0"
               placeholder="Ingresa la cantidad contada"
-              variant="outlined"
               :disabled="!barcodeInput.trim() || !!barcodeError"
-            >
-              <template #prepend-inner>
-                <VIcon icon="tabler-hash" />
-              </template>
-            </VTextField>
-          </div>
-
-          <div v-if="countedQuantity !== ''" class="mb-4">
-            <VAlert :type="discrepancyColor" variant="tonal">
-              <template #prepend>
-                <VIcon
-                  :icon="
-                    discrepancy === 0
-                      ? 'tabler-check'
-                      : discrepancy > 0
-                      ? 'tabler-plus'
-                      : 'tabler-minus'
-                  "
-                />
-              </template>
-              <div class="d-flex justify-space-between align-center">
-                <span>{{ discrepancyText }}</span>
-                <span v-if="discrepancy !== 0" class="font-weight-bold">
-                  {{ Math.abs(discrepancy) }} unidades
-                </span>
-              </div>
-            </VAlert>
+            />
           </div>
         </VForm>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="d-flex pa-6 pt-4 ga-4">
-        <VBtn class="flex-grow-1" variant="outlined" @click="handleCancel">
-          Cancelar
-        </VBtn>
-        <VBtn
-          class="flex-grow-1"
-          color="primary"
-          :disabled="!canSave"
-          @click="handleSave"
-        >
-          <VIcon icon="tabler-check" start />
-          Guardar Conteo
-        </VBtn>
+      <VCardActions class="pa-4 px-6">
+        <VRow class="w-100">
+          <VCol cols="6">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              block
+              @click="handleCancel"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6">
+            <VBtn
+              color="primary"
+              variant="flat"
+              block
+              :disabled="!canSave"
+              @click="handleSave"
+            >
+              Guardar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
-
-<style scoped>
-:deep(.v-field--focused) {
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.2);
-}
-</style>

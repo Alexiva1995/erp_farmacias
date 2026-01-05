@@ -27,29 +27,29 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "view-cycle-details"]);
 
 const headers = ref([
-  { title: "ID Ciclo", key: "cycle_id", sortable: true, align: "center" },
-  { title: "Fecha Inicio", key: "start_date", sortable: true, align: "center" },
-  { title: "Fecha Fin", key: "end_date", sortable: true, align: "center" },
+  { title: "#", key: "cycle_id", sortable: true, align: "center" },
+  { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center" },
+  { title: "Fec. Fin", key: "end_date", sortable: true, align: "center" },
   { title: "Estado", key: "cycle_status", sortable: true, align: "center" },
   {
-    title: "Total Productos",
+    title: "Tot. Productos",
     key: "total_products",
     sortable: true,
     align: "center",
   },
   {
-    title: "Total Sobrante",
+    title: "Tot. Sobrante",
     key: "total_surplus",
     sortable: true,
     align: "center",
   },
   {
-    title: "Total Faltante",
+    title: "Tot. Faltante",
     key: "total_shortage",
     sortable: true,
     align: "center",
   },
-  { title: "Total Cierre", key: "net_total", sortable: true, align: "center" },
+  { title: "Total", key: "net_total", sortable: true, align: "center" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ]);
 
@@ -177,7 +177,7 @@ const viewCycleDetails = (cycleId) => {
       </template>
 
       <template #item.actions="{ item: cycle }">
-        <div class="d-flex gap-2">
+        <div class="d-flex justify-center">
           <VTooltip text="Ver Detalles del Ciclo">
             <template #activator="{ props: tooltipProps }">
               <VBtn

@@ -342,14 +342,14 @@ watch(
       <VSpacer />
 
       <VBtn
-        color="primary"
+        v-if="props.isAdmin"
+        color="success"
         prepend-icon="tabler-plus"
-        @click="emit('add-lot')"
         :loading="props.addLotLoading"
         :disabled="props.addLotLoading"
-        v-if="props.isAdmin"
+        @click="emit('add-lot')"
       >
-        Agregar Lote
+        Añadir Lote
       </VBtn>
     </VCardActions>
   </VCard>

@@ -82,7 +82,9 @@ class TraceabilityController extends Controller
 
     public function getMovementDetails(InventoryMovement $movement)
     {
-        $movement->load(['product', 'user', 'order.seller', 'order.client', 'invoice.supplier', 'supplier']);
+        $movement->load(['product', 'user', 'order.seller', 'order.client', 'order' => function($query) {
+            $query->select('id', 'url_recipe', 'seller_id', 'client_id');
+        }, 'invoice.supplier', 'supplier']);
 
         $details = [
             'movement' => $movement,

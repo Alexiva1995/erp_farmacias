@@ -25,26 +25,29 @@ const handleRealizarPedido = () => {
 };
 </script>
 <template>
-  <VCard title="No hay orden en proceso" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12">
+        <VCol cols="12" md="9">
           <AppTextField
             placeholder="Ingrese identificación"
             clearable
-            class="flex-grow-1"
             :model-value="identificationInput"
             @update:model-value="updateIdentification"
+            @keyup.enter="handleRealizarPedido"
           />
+        </VCol>
+        <VCol cols="12" md="3">
+          <VBtn
+            color="success"
+            prepend-icon="tabler-plus"
+            block
+            @click="handleRealizarPedido"
+          >
+            Realizar pedido
+          </VBtn>
         </VCol>
       </VRow>
     </VCardText>
-    <VDivider />
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VSpacer />
-      <VBtn color="primary" prepend-icon="tabler-plus" @click="handleRealizarPedido">
-        Realizar pedido
-      </VBtn>
-    </VCardActions>
   </VCard>
 </template>

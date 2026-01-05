@@ -74,7 +74,7 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.actions="{ item }">
-        <IconBtn @click="emit('edit-lot', item)">
+        <IconBtn @click="emit('edit-lot', item)" color="warning">
           <VIcon icon="tabler-edit" />
         </IconBtn>
       </template>

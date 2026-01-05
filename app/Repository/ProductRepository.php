@@ -108,8 +108,40 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 3';
         }
 
-        // calcular diferencia_product con promedio_calculado
-        $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
+        // calcular diferencia_product según tipo_filtracion
+        $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
+        
+        // Asegurar que previousDate y dateToday estén definidos para sales y combinado
+        if (($tipoFiltracion == "sales" || $tipoFiltracion == "combinado") && 
+            (!isset($filtros["previousDate"]) || !isset($filtros["dateToday"]))) {
+            // Si no están definidos, usar valores por defecto basados en days o 30 días
+            $days = $filtros["days"] ?? 30;
+            $timeZone = new \DateTimeZone(config("app.timezone"));
+            $dateToday = new \DateTime("now", $timeZone);
+            $previousDate = new \DateTime("now", $timeZone);
+            $previousDate->modify("-" . $days . " days");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d");
+        }
+        
+        // Subconsulta para total_sold_completed (reutilizable)
+        $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
+                AND orders.status = "Completed")';
+        
+        if ($tipoFiltracion == "sales") {
+            // Diferencia usando ventas: stock - total_sold_completed
+            $columnas[] = DB::raw('stock - (' . $subqueryTotalSold . ') AS diferencia_product');
+        } elseif ($tipoFiltracion == "combinado") {
+            // Diferencia usando combinado: stock - ((total_sold_completed + promedio_calculado) / 2)
+            $columnas[] = DB::raw('stock - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2) AS diferencia_product');
+        } else {
+            // Diferencia usando promedio (default): stock - promedio_calculado
+            $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
+        }
 
         // calcular demanda_ajustada con promedio_calculado
         $columnas[] = DB::raw('COALESCE(
@@ -126,9 +158,32 @@ class ProductRepository
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
-                $consulta->where(function ($query) use ($filtros) {
-                    $query->where("name", "like", "%" . $filtros["q"] . "%")
-                        ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+                $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+                $searchTerm = $filtros["q"];
+                
+                $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                    if ($isStrictSearch) {
+                        // Búsqueda estricta: busca el término completo en los campos
+                        $query->where("name", "like", "%" . $searchTerm . "%")
+                            ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
+                            ->orWhere("barcode", "like", $searchTerm)
+                            ->orWhere("id", "like", "%" . $searchTerm . "%");
+                    } else {
+                        // Búsqueda por palabras: divide el término en palabras y busca cada una
+                        $words = explode(' ', trim($searchTerm));
+                        foreach ($words as $word) {
+                            $word = trim($word);
+                            if (empty($word)) continue;
+                            $query->where(function ($wordQuery) use ($word) {
+                                $wordQuery->where("name", "like", "%" . $word . "%")
+                                    ->orWhere("active_ingredient", "like", "%" . $word . "%")
+                                    ->orWhere("id", "like", "%" . $word . "%")
+                                    ->orWhereHas("laboratory", function ($labQuery) use ($word) {
+                                        $labQuery->where("name", "like", "%" . $word . "%");
+                                    });
+                            });
+                        }
+                    }
                 });
             }
         }

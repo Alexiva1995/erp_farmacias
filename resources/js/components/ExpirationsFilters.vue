@@ -78,7 +78,7 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="4">
           <AppTextField
             v-model="searchQueryModel"
             placeholder="Buscar por Producto, Lote..."
@@ -92,17 +92,17 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
             :items="props.laboratories"
             :loading="props.loading"
             label="Laboratorio"
-            placeholder="Selecciona un laboratorio"
+            placeholder="Buscar un laboratorio"
             item-title="name"
             item-value="id"
             clearable
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             v-model="startDateModel"
-            placeholder="Vencimiento Desde"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -112,10 +112,10 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             v-model="endDateModel"
-            placeholder="Vencimiento Hasta"
+            placeholder="Hasta"
             clearable
             :config="{
               altInput: true,

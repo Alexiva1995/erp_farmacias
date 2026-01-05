@@ -27,7 +27,7 @@ const headers = [
     align: "center",
   },
   { title: "Usuario", key: "user.email" },
-  { title: "Accion", key: "actions", sortable: false },
+  { title: "Accion", key: "actions", sortable: false, align: "center" },
 ];
 
 const emitProductClick = (product) => {
@@ -171,13 +171,13 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
-          <IconBtn @click="handleApproveProduct(item)" size="small">
+        <div class="d-flex justify-center gap-2">
+          <IconBtn @click="handleApproveProduct(item)" size="small" color="success">
             <VIcon icon="tabler-check" />
             <VTooltip activator="parent" location="top"> Aprobar </VTooltip>
           </IconBtn>
 
-          <IconBtn @click="handleRejectProduct(item)" size="small">
+          <IconBtn @click="handleRejectProduct(item)" size="small" color="error">
             <VIcon icon="tabler-x" />
             <VTooltip activator="parent" location="top"> Rechazar </VTooltip>
           </IconBtn>

@@ -69,6 +69,16 @@ class InventoryStockController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
+        if ($request->filled("isStrictSearch")) {
+            $filtros["isStrictSearch"] = filter_var($request->isStrictSearch, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($request->filled("tipo_filtracion")) {
+            $filtros["tipo_filtracion"] = $request->tipo_filtracion;
+        } else {
+            $filtros["tipo_filtracion"] = "average"; // Valor por defecto
+        }
+
         // dd($filtros);
 
         $respuestaConsulta = $this->product->filtrarStock($filtros);
@@ -123,6 +133,16 @@ class InventoryStockController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
+        if ($request->filled("isStrictSearch")) {
+            $filtros["isStrictSearch"] = filter_var($request->isStrictSearch, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($request->filled("tipo_filtracion")) {
+            $filtros["tipo_filtracion"] = $request->tipo_filtracion;
+        } else {
+            $filtros["tipo_filtracion"] = "average"; // Valor por defecto
+        }
+
         // dd($filtros);
 
         $respuestaConsulta = $this->product->filtrarStockWithoutPaginate($filtros);
@@ -173,6 +193,16 @@ class InventoryStockController extends Controller
             $previousDate->modify("-" . $filtros["days"] . " days");
             $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
+        }
+
+        if ($request->filled("isStrictSearch")) {
+            $filtros["isStrictSearch"] = filter_var($request->isStrictSearch, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($request->filled("tipo_filtracion")) {
+            $filtros["tipo_filtracion"] = $request->tipo_filtracion;
+        } else {
+            $filtros["tipo_filtracion"] = "average"; // Valor por defecto
         }
 
         $excel = $this->product->exportExcel($filtros);

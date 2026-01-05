@@ -6,19 +6,19 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   mode: { type: String, default: "inventory" },
+  title: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:options", "count-product"]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Stock", key: "stock", sortable: true },
-  { title: "Exp.", key: "next_expiration", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "ID", key: "id", sortable: true, width: "80px" },
+  { title: "Producto", key: "name", sortable: true, width: "30%" },
+  { title: "Laboratorio", key: "laboratory.name", sortable: true, width: "15%" },
+  { title: "Expiración", key: "next_expiration", sortable: true, width: "120px" },
+  { title: "Costo", key: "unit_cost", sortable: true, align: "end", width: "120px" },
+  { title: "P. Venta", key: "sale_price", sortable: true, align: "end", width: "120px" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
 ];
 
 const nextExpirationDate = (product) => {
@@ -61,6 +61,7 @@ const formatPrice = (price) => {
 
 <template>
   <VCard>
+    <VCardTitle v-if="props.title">{{ props.title }}</VCardTitle>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -129,12 +130,17 @@ const formatPrice = (price) => {
 
       <template #item.actions="{ item }">
         <template v-if="mode === 'inventory'">
-          <IconBtn @click="emit('count-product', item)">
-            <VIcon icon="tabler-scan" />
-            <VTooltip activator="parent" location="top"
-              >Contar producto de factura</VTooltip
+          <div class="d-flex justify-center">
+            <IconBtn 
+              @click="emit('count-product', item)" 
+              color="purple"
             >
-          </IconBtn>
+              <VIcon icon="tabler-scan" />
+              <VTooltip activator="parent" location="top"
+                >Contar producto de factura</VTooltip
+              >
+            </IconBtn>
+          </div>
         </template>
       </template>
     </VDataTableServer>
