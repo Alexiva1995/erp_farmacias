@@ -628,9 +628,8 @@ const handleCompletePurchase = () => {
     } else {
       currentProgress.value = 100;
     }
-  } else {
-    // Cuando currentProgress === 100, ejecutar la lógica de completar la compra
-    emit(
+
+     emit(
       "purchase-completed",
       props.orderData.id,
       payments.value,
@@ -642,6 +641,21 @@ const handleCompletePurchase = () => {
         spe: props.orderData?.client?.is_spe || false,
       }
     );
+
+  } else {
+    // Cuando currentProgress === 100, ejecutar la lógica de completar la compra
+   /* emit(
+      "purchase-completed",
+      props.orderData.id,
+      payments.value,
+      hasCreditPayment.value,
+      changeAmountInCOP.value,
+      changeAmountInUSD.value,
+      {
+        invoice_switch: invoiceSwitch.value,
+        spe: props.orderData?.client?.is_spe || false,
+      }
+    );*/
     // NO cerrar el modal aquí, solo mostrar el ticket
   }
 };
@@ -678,7 +692,8 @@ const logoSrc = computed(() => {
 const handlePrintTicket = async () => {
   // La orden ya fue completada cuando se hizo clic en "Continuar"
   // Aquí solo imprimimos el ticket
-  await nextTick();
+   emit("printTicke-completed");
+/*await nextTick();
   const printContents = document.getElementById("orderPrint");
   if (printContents) {
     const printWindow = window.open("", "", "height=600,width=800");
@@ -720,7 +735,7 @@ const handlePrintTicket = async () => {
       "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
     );
     window.print();
-  }
+  }*/
 };
 
 // Función para cancelar después de ver el ticket

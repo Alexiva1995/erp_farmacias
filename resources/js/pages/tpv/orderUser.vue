@@ -112,10 +112,13 @@ const currentUser = computed(() => authStore.user);
 
 const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
+const orderData = ref(null);
 
 const reservedOrderData = ref(null);
 
 const orderItems = ref([]);
+const itemsToPrint = ref([]);
+const TotalToPrint = ref(0);
 
 const showBuysModal = ref(false);
 
@@ -2017,7 +2020,6 @@ const handleBuysCompletion = async (
     if (selectedDiscountType.value === "Recipe" && prescriptionFile.value) {
       formData.append("prescription_image", prescriptionFile.value);
     }
-
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
@@ -2039,16 +2041,16 @@ const handleBuysCompletion = async (
       speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
-      showBuysModal.value = false;
-      isPrinting.value = true;
+     // showBuysModal.value = false;
+    //  isPrinting.value = true;
       recipeDiscountForPrint.value = totalRecipeDiscountAmount.value;
       doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
       companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
       discountTypeForPrint.value = selectedDiscountType.value;
 
-      await nextTick();
-      const printContents = document.getElementById("orderPrint");
-      if (printContents) {
+     // await nextTick();
+    //  const printContents = document.getElementById("orderPrint");
+     /* if (printContents) {
         const printWindow = window.open("", "", "height=600,width=800");
         printWindow.document.write(
           "<html><head><title>Farmacia Barrio Sucre</title>"
@@ -2088,7 +2090,11 @@ const handleBuysCompletion = async (
           "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
         );
         window.print();
-      }
+      }*/
+
+      const orderCompletada = response.data.data.orderCompletada;
+      orderData.value = orderCompletada;
+     itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value))
       if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
@@ -2109,13 +2115,68 @@ const handleBuysCompletion = async (
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
     toast.error("Hubo un problema al procesar su compra.");
-    isPrinting.value = false;
+   // isPrinting.value = false;
   } finally {
-    setTimeout(() => {
+   /* setTimeout(() => {
       isFinishingOrder.value = false;
       resetFormSelectors();
       isPrinting.value = false;
+    }, 500);*/
+  }
+};
+
+const printTickeCompletion = async () => {
+  if (!orderData.value) {
+    console.error("No hay datos de orden para imprimir");
+    return;
+  }
+
+  console.log(orderData.value);
+  TotalToPrint.value = parseFloat(orderData.value.total_amount);
+  const speAmount = orderData.value.spe_surcharge_amount || 0;
+  speSurchargeAmount.value = speAmount.toString();
+  paymentsForPrint.value = paymentsForPrint.value.filter(p => {
+    const name = (p.method || "").toString().toUpperCase();
+    return name !== 'N/A' && name !== '' && name !== 'UNDEFINED';
+  });
+
+  isPrinting.value = true;
+  await nextTick();
+  await new Promise(resolve => setTimeout(resolve, 600)); 
+  const printContents = document.getElementById("orderPrint");
+
+  if (printContents && printContents.innerHTML.trim() !== "") {
+    const printWindow = window.open("", "", "height=600,width=800");
+    printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+
+    // Copiar estilos (el bloque try/catch que ya tienes)
+    Array.from(document.styleSheets).forEach(sheet => {
+      try {
+        if (sheet.cssRules) {
+          const css = Array.from(sheet.cssRules).map(r => r.cssText).join("");
+          printWindow.document.write(`<style>${css}</style>`);
+        } else if (sheet.href) {
+          printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+        }
+      } catch (e) {
+        if (sheet.href) printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+      }
+    });
+
+    printWindow.document.write("</head><body>");
+    printWindow.document.write(printContents.innerHTML);
+    printWindow.document.write("</body></html>");
+    
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+      isPrinting.value = false;
     }, 500);
+  } else {
+    alert("Error: El ticket está vacío. Intente de nuevo.");
+    isPrinting.value = false;
   }
 };
 
@@ -2485,25 +2546,40 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
 */
 const itemsForTicket = computed(() => {
   const globalDiscount = currentGlobalDiscountDetails.value;
-  return orderItems.value.map(item => {
+  
+  // Si no hay nada que imprimir, retornamos array vacío
+  if (!itemsToPrint.value || itemsToPrint.value.length === 0) return [];
+
+  return itemsToPrint.value.map(item => {
+    // Si el item ya tiene descuento por vencimiento, lo dejamos igual
     if (item.discount_type === 'expiration') {
       return { ...item };
     }
+
+    // Normalizamos la cantidad (Laravel usa 'quantity', el carrito local 'selectedQuantity')
+    const qty = item.selectedQuantity || item.quantity || 1;
+    
     if (globalDiscount && globalDiscount.percentage > 0) {
       const factor = 1 - (globalDiscount.percentage / 100);
       
       return {
         ...item,
-        price: (item.price_before_discount * factor) * item.selectedQuantity,
-        price_bs: (item.original_price_bs * factor) * item.selectedQuantity,
-        price_cop: (item.original_price_cop * factor) * item.selectedQuantity,
-        price_before_discount: item.price_before_discount * item.selectedQuantity
+        // Usamos el precio base y lo multiplicamos por el factor y la cantidad
+        price: (item.price_before_discount * factor) * qty,
+        price_bs: (item.original_price_bs * factor) * qty,
+        price_cop: (item.original_price_cop * factor) * qty,
+        price_before_discount: item.price_before_discount * qty,
+        selectedQuantity: qty // Aseguramos que el ticket vea la cantidad
       };
     }
-    return { ...item };
+
+    // Si no hay descuento global, devolvemos el item con su cantidad normalizada
+    return { 
+      ...item, 
+      selectedQuantity: qty 
+    };
   });
 });
-
 const handleExternalSort = async (sortData) => {
   sortBy.value = sortData.key;
   orderBy.value = sortData.order;
@@ -2646,17 +2722,18 @@ const handleExternalSort = async (sortData) => {
       :active-company-offers="activeCompanyOffers"
       :global-discount="currentGlobalDiscountDetails"
       :is-special-taxpayer="isSpecialTaxpayer"
+      @printTicke-completed="printTickeCompletion"
     />
 
-    <div
-      id="orderPrint"
-      :class="{ 'd-none': !isPrinting, 'print-container': true }"
-    >
+   <div
+  id="orderPrint"
+  :style="isPrinting ? 'position: fixed; left: 0; top: 0; z-index: 9999; background: white; width: 80mm;' : 'position: absolute; left: -9999px;'"
+>
       <OrderTicket
-        v-if="isPrinting && openOrderData"
-        :order-data="openOrderData"
+        v-if="orderData"
+        :order-data="orderData"
         :order-products="itemsForTicket"
-        :total-amount="totalOrderAmountWithspecialTaxAmount"
+        :total-amount="TotalToPrint"
         :selected-currency="selectedDisplayCurrency"
         :payments="paymentsForPrint"
         :change-amount="changeAmountForPrint"
