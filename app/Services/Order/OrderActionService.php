@@ -581,7 +581,7 @@ class OrderActionService
 
                 $quantityExpiration = 0;
                 $lots = $detail->product->lots->sortBy('expiration_date');
-
+                   
 
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
@@ -589,6 +589,7 @@ class OrderActionService
                     }
 
                     $taken = 0;
+                   //  dd($lot->quantity >= $quantityToReduce);
                     if ($lot->quantity >= $quantityToReduce) {
                         $taken = $quantityToReduce;
                         $lot->quantity -= $quantityToReduce;
@@ -773,10 +774,11 @@ class OrderActionService
                 $newPendingOrder = $reservedOrder;
             }
 
-
+            $orderId->load(['seller', 'client', 'details.product']);
             DB::commit();
             return [
                 'order' => $newPendingOrder,
+                'orderCompletada' => $orderId,
             ];
         } catch (\Throwable $e) {
             DB::rollBack();
