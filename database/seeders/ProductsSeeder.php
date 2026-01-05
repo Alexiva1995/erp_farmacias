@@ -19,6 +19,11 @@ class ProductsSeeder extends Seeder
         $data = [];
 
         $categoryIds = DB::table('categories')->pluck('id')->toArray();
+
+        if (empty($categoryIds)) {
+            $this->call(CategoriesSeeder::class);
+            $categoryIds = DB::table('categories')->pluck('id')->toArray();
+        }
         $laboratories = DB::table('laboratories')->pluck('id')->flip();
         $origins = DB::table('origins')->pluck('id')->flip();
 
