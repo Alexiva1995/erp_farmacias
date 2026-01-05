@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Employee;
 use App\Models\User;
 use Carbon\Carbon;
@@ -15,10 +16,15 @@ class UsersLegacyImportSeeder extends Seeder
      */
     public function run(): void
     {
+        Schema::disableForeignKeyConstraints();
+        DB::table('users')->truncate();
+        DB::table('employees')->truncate();
+
         // Read SQL file content
         $sqlPath = database_path('seeders/sql/users.sql');
         if (!file_exists($sqlPath)) {
             $this->command->error("Archivo SQL no encontrado: {$sqlPath}");
+            Schema::enableForeignKeyConstraints();
             return;
         }
 
@@ -30,6 +36,7 @@ class UsersLegacyImportSeeder extends Seeder
 
         if (empty($matches[1])) {
             $this->command->error("No se pudo detectar la estructura de columnas en el INSERT.");
+            Schema::enableForeignKeyConstraints();
             return;
         }
 
@@ -46,6 +53,7 @@ class UsersLegacyImportSeeder extends Seeder
 
         if (empty($valuesBlock[1])) {
             $this->command->error("No se encontraron valores para insertar.");
+            Schema::enableForeignKeyConstraints();
             return;
         }
 
@@ -55,6 +63,14 @@ class UsersLegacyImportSeeder extends Seeder
         preg_match_all('/\((.*?)\)(?:,|$)/s', $valuesBlock[1], $rows);
 
         $totalUsers = 0;
+
+        // Ensure roles exist to prevent FK errors
+        if (DB::table('roles')->count() === 0) {
+            DB::table('roles')->insert([
+                ['id' => 1, 'name' => 'admin', 'created_at' => now(), 'updated_at' => now()],
+                ['id' => 2, 'name' => 'employee', 'created_at' => now(), 'updated_at' => now()],
+            ]);
+        }
 
         foreach ($rows[1] as $rowString) {
             // Split by comma, respecting quoted strings
@@ -101,7 +117,7 @@ class UsersLegacyImportSeeder extends Seeder
             $user = User::updateOrCreate(
                 ['email' => $email],
                 [
-                    // 'id' => $userId, // Avoid forcing ID to prevent PRIMARY Key collisions
+                    'id' => $userId, // Force ID from legacy DB as requested
                     'username' => $username,
                     'role_id' => $roleId,
                     'password_hash' => $userData['password'],
