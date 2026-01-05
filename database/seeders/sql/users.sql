@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.2
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: localhost:3306
--- Tiempo de generación: 26-12-2025 a las 10:05:34
--- Versión del servidor: 8.0.44
--- Versión de PHP: 8.3.23
+-- Tiempo de generación: 05-01-2026 a las 20:37:58
+-- Versión del servidor: 8.0.30
+-- Versión de PHP: 8.3.8
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `farmaciabs_pron`
+-- Base de datos: `farmaciabs`
 --
 
 -- --------------------------------------------------------

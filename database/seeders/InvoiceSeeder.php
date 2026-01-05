@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Supplier;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
@@ -13,15 +15,19 @@ class InvoiceSeeder extends Seeder
         try {
             DB::beginTransaction();
 
-            $invoices = $this->loadJsonRows('data/invoices.json');
-            $details = $this->loadJsonRows('data/invoice_details.json');
+            $json = File::get(database_path('data/invoices.json'));
+            $invoices = json_decode($json, true);
+            $json = File::get(database_path('data/invoice_details.json'));
+            $details = json_decode($json, true);
             $data = [];
+
+            $suppliers = Supplier::query()->pluck('id')->flip();
 
             foreach ($invoices as $invoice) {
                 $data[] = [
                     "id" => $invoice['id'],
                     "invoice_number" => $invoice['number'],
-                    "supplier_id" => $invoice['supplier_id'],
+                    "supplier_id" => $suppliers->has($invoice['supplier_id']) ? $invoice['supplier_id'] : null,
                     "status_payment" => $invoice['was_paid'],
                     "exp_date" => $this->parseDate($invoice['expiration_date']),
                     "created_at" => $this->parseDateTime($invoice['created_at']),
@@ -51,15 +57,15 @@ class InvoiceSeeder extends Seeder
             foreach ($details as $detail) {
                 $data[] = [
                     "id" => $detail['id'],
-                    "invoice_id" => $invoices->contains($detail['invoice_id']) ? $detail['invoice_id'] : null,
-                    "product_id" => $products->contains($detail['product_id']) ? $detail['product_id'] : null,
-                    "lot_number" => $detail['p_lot'],
+                    "invoice_id" => $invoices->has($detail['invoice_id']) ? $detail['invoice_id'] : null,
+                    "product_id" => $products->has($detail['product_id']) ? $detail['product_id'] : null,
+                    "lot_number" => $detail['p_lot'] ?? null,
                     "created_at" => $this->parseDateTime($detail['created_at']),
                     "updated_at" => $this->parseDateTime($detail['updated_at']),
-                    "expiration_date" => $this->parseDate($detail['p_expiration_date']),
-                    "quantity" => $detail['p_units'],
-                    "unit_cost" => $detail['p_cost'],
-                    "total_cost" => $detail['p_units'] * $detail['p_cost'],
+                    "expiration_date" => !array_key_exists('expiration_date', $detail) ? null : $this->parseDate($detail['expiration_date']),
+                    "quantity" => $detail['quantity'],
+                    "unit_cost" => !array_key_exists('p_cost', $detail) ? 0 : $detail['p_cost'],
+                    "total_cost" => !array_key_exists('p_cost', $detail) ? 0 : $detail['quantity'] * $detail['p_cost'],
                     "location" => null,
                     "tax_enabled" => $detail["p_has_tax"] ?? false,
                 ];
@@ -77,18 +83,6 @@ class InvoiceSeeder extends Seeder
             $this->command->error('FATAL ERROR: ' . $e->getMessage());
             throw $e;
         }
-    }
-
-    protected function loadJsonRows(string $path): array
-    {
-        $fullPath = database_path($path);
-        if (!File::exists($fullPath))
-            throw new \Exception("File MISSING: $fullPath");
-        $json = File::get($fullPath);
-        $data = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE)
-            throw new \Exception("Invalid JSON in $path");
-        return $data['rows'] ?? $data ?? [];
     }
 
     protected function parseDate(?string $date): ?string

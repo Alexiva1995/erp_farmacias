@@ -4911,7 +4911,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2023-08-28 13:00:09",
-			"updated_at": "2025-12-17 00:15:44"
+			"updated_at": "2026-01-03 01:44:42"
 		},
 		{
 			"id": 385,
@@ -7867,7 +7867,7 @@
 		{
 			"id": 614,
 			"nombre": "FRANCIS",
-			"apellido": null,
+			"apellido": "CONTRERAS",
 			"cedula": 11301994,
 			"correo": null,
 			"identity_type": "V",
@@ -7875,7 +7875,7 @@
 			"direccion": "LOS CEDROS",
 			"balance": null,
 			"created_at": "2023-09-02 00:47:13",
-			"updated_at": "2023-09-02 00:47:13"
+			"updated_at": "2026-01-02 13:26:57"
 		},
 		{
 			"id": 615,
@@ -14679,7 +14679,7 @@
 		{
 			"id": 1138,
 			"nombre": "LUIS",
-			"apellido": null,
+			"apellido": "pacheco",
 			"cedula": 19084994,
 			"correo": null,
 			"identity_type": "V",
@@ -14687,7 +14687,7 @@
 			"direccion": "BARRIOC SUCRE",
 			"balance": null,
 			"created_at": "2023-09-12 22:27:45",
-			"updated_at": "2023-09-12 22:27:45"
+			"updated_at": "2026-01-04 14:38:50"
 		},
 		{
 			"id": 1139,
@@ -15550,15 +15550,15 @@
 		{
 			"id": 1206,
 			"nombre": "WILIAM",
-			"apellido": null,
+			"apellido": "RODRÍGUEZ",
 			"cedula": 12847104,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "CARRETERA-PANAMERICA",
 			"balance": null,
 			"created_at": "2023-09-14 15:01:12",
-			"updated_at": "2023-09-14 15:01:12"
+			"updated_at": "2025-12-31 01:04:35"
 		},
 		{
 			"id": 1207,
@@ -17045,7 +17045,7 @@
 		{
 			"id": 1321,
 			"nombre": "NORELYS",
-			"apellido": null,
+			"apellido": "VERAS",
 			"cedula": 30060131,
 			"correo": null,
 			"identity_type": "V",
@@ -17053,7 +17053,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2023-09-17 15:54:03",
-			"updated_at": "2023-09-17 15:54:03"
+			"updated_at": "2026-01-02 20:30:13"
 		},
 		{
 			"id": 1322,
@@ -17851,15 +17851,15 @@
 		{
 			"id": 1383,
 			"nombre": "GABIEL",
-			"apellido": null,
+			"apellido": "LOPEZ",
 			"cedula": 17084996,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 424000000455,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2023-09-18 23:44:24",
-			"updated_at": "2023-09-18 23:44:24"
+			"updated_at": "2025-12-31 18:34:45"
 		},
 		{
 			"id": 1384,
@@ -19250,7 +19250,7 @@
 			"direccion": "JUAN GALIASI",
 			"balance": null,
 			"created_at": "2023-09-22 12:39:59",
-			"updated_at": "2025-07-25 17:43:47"
+			"updated_at": "2026-01-02 18:56:57"
 		},
 		{
 			"id": 1492,
@@ -22414,7 +22414,7 @@
 		{
 			"id": 1736,
 			"nombre": "ALEXANDRA",
-			"apellido": null,
+			"apellido": "QUINTERO",
 			"cedula": 15184114,
 			"correo": null,
 			"identity_type": "V",
@@ -22422,7 +22422,7 @@
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2023-09-28 21:33:36",
-			"updated_at": "2023-09-28 21:33:36"
+			"updated_at": "2025-12-30 00:00:36"
 		},
 		{
 			"id": 1737,
@@ -22466,15 +22466,15 @@
 		{
 			"id": 1740,
 			"nombre": "DIOCEMEL",
-			"apellido": null,
+			"apellido": "SANGUINEO",
 			"cedula": 26404584,
 			"correo": null,
 			"identity_type": "V",
 			"telefono": 0,
-			"direccion": "BARRIOC SUCRE",
+			"direccion": "BARRIO SUCRE",
 			"balance": null,
 			"created_at": "2023-09-28 22:10:45",
-			"updated_at": "2023-09-28 22:10:45"
+			"updated_at": "2025-12-30 20:40:02"
 		},
 		{
 			"id": 1741,
@@ -25638,7 +25638,7 @@
 		{
 			"id": 1988,
 			"nombre": "ÉSTER",
-			"apellido": null,
+			"apellido": "GARCIA",
 			"cedula": 16721769,
 			"correo": null,
 			"identity_type": "V",
@@ -25646,7 +25646,7 @@
 			"direccion": "LAS MINAS",
 			"balance": null,
 			"created_at": "2023-10-05 21:52:42",
-			"updated_at": "2023-10-05 21:52:42"
+			"updated_at": "2025-12-27 16:38:23"
 		},
 		{
 			"id": 1989,
@@ -28554,11 +28554,11 @@
 			"cedula": 9351041,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 425263050,
+			"telefono": 4252630504,
 			"direccion": "CASIGUA",
 			"balance": null,
 			"created_at": "2023-10-13 15:35:32",
-			"updated_at": "2025-11-11 18:59:05"
+			"updated_at": "2025-12-27 13:34:15"
 		},
 		{
 			"id": 2213,
@@ -33658,16 +33658,16 @@
 		},
 		{
 			"id": 2610,
-			"nombre": "JULIA",
-			"apellido": null,
+			"nombre": "TULIA",
+			"apellido": "GALVIS",
 			"cedula": 22636657,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4245255888,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2023-10-27 20:43:10",
-			"updated_at": "2023-10-27 20:43:10"
+			"updated_at": "2026-01-02 16:40:35"
 		},
 		{
 			"id": 2611,
@@ -37767,7 +37767,7 @@
 		{
 			"id": 2929,
 			"nombre": "YULEIDY",
-			"apellido": null,
+			"apellido": "GALAVIS",
 			"cedula": 24151145,
 			"correo": null,
 			"identity_type": "V",
@@ -37775,7 +37775,7 @@
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2023-11-11 01:28:57",
-			"updated_at": "2023-11-11 01:28:57"
+			"updated_at": "2025-12-29 02:17:45"
 		},
 		{
 			"id": 2930,
@@ -38863,11 +38863,11 @@
 			"cedula": 19865449,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "BALASTREA",
 			"balance": null,
 			"created_at": "2023-11-15 12:40:51",
-			"updated_at": "2025-12-15 16:08:25"
+			"updated_at": "2025-12-30 16:50:04"
 		},
 		{
 			"id": 3016,
@@ -40496,16 +40496,16 @@
 		},
 		{
 			"id": 3142,
-			"nombre": "JOHN ROCHA",
-			"apellido": null,
+			"nombre": "JOHN",
+			"apellido": "ROCHA",
 			"cedula": 25169335,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LA ESMERALDA",
 			"balance": null,
 			"created_at": "2023-11-22 02:19:37",
-			"updated_at": "2023-11-22 02:19:37"
+			"updated_at": "2026-01-03 15:14:12"
 		},
 		{
 			"id": 3143,
@@ -41082,15 +41082,15 @@
 		{
 			"id": 3187,
 			"nombre": "CRISTIAN",
-			"apellido": null,
+			"apellido": "OROSCA",
 			"cedula": 15854376,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4252630504,
 			"direccion": "ARRECOSTON",
 			"balance": null,
 			"created_at": "2023-11-24 14:55:26",
-			"updated_at": "2023-11-24 14:55:26"
+			"updated_at": "2025-12-28 19:22:09"
 		},
 		{
 			"id": 3188,
@@ -45129,11 +45129,11 @@
 			"cedula": 25023729,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LOS CEDROS",
 			"balance": null,
 			"created_at": "2023-12-08 12:05:34",
-			"updated_at": "2025-06-20 13:55:42"
+			"updated_at": "2025-12-27 21:25:23"
 		},
 		{
 			"id": 3501,
@@ -47902,7 +47902,7 @@
 			"direccion": "EL PARAISO",
 			"balance": null,
 			"created_at": "2023-12-19 02:49:15",
-			"updated_at": "2025-12-03 21:17:19"
+			"updated_at": "2025-12-30 19:03:47"
 		},
 		{
 			"id": 4032,
@@ -48977,11 +48977,11 @@
 			"cedula": 9194233,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "HUGO CHAVEZ",
 			"balance": null,
 			"created_at": "2023-12-24 20:28:03",
-			"updated_at": "2025-06-07 18:40:50"
+			"updated_at": "2025-12-31 14:39:21"
 		},
 		{
 			"id": 3804,
@@ -50702,7 +50702,7 @@
 		{
 			"id": 3939,
 			"nombre": "MILEIDA",
-			"apellido": null,
+			"apellido": "URDANETA",
 			"cedula": 9355962,
 			"correo": null,
 			"identity_type": "V",
@@ -50710,7 +50710,7 @@
 			"direccion": "GUAYABO",
 			"balance": null,
 			"created_at": "2023-12-30 18:19:19",
-			"updated_at": "2023-12-30 18:19:19"
+			"updated_at": "2025-12-26 17:12:38"
 		},
 		{
 			"id": 3940,
@@ -51599,15 +51599,15 @@
 		{
 			"id": 4009,
 			"nombre": "NEIVER",
-			"apellido": null,
+			"apellido": "MENDEZ",
 			"cedula": 26638215,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4242255555888,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-01-02 13:14:14",
-			"updated_at": "2024-01-02 13:14:14"
+			"updated_at": "2025-12-31 13:56:14"
 		},
 		{
 			"id": 4010,
@@ -55438,11 +55438,11 @@
 			"cedula": 24782332,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4245255888,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-01-15 00:11:24",
-			"updated_at": "2025-12-09 00:02:21"
+			"updated_at": "2026-01-03 18:19:16"
 		},
 		{
 			"id": 4317,
@@ -56911,7 +56911,7 @@
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2024-01-20 14:23:23",
-			"updated_at": "2025-10-10 18:09:46"
+			"updated_at": "2025-12-28 23:19:03"
 		},
 		{
 			"id": 4433,
@@ -61336,15 +61336,15 @@
 		{
 			"id": 4779,
 			"nombre": "JESUS",
-			"apellido": null,
+			"apellido": "VARELA",
 			"cedula": 14790271,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 121730442,
 			"direccion": "LAS MESAS",
 			"balance": null,
 			"created_at": "2024-02-04 20:57:49",
-			"updated_at": "2024-02-04 20:57:49"
+			"updated_at": "2025-12-28 14:54:08"
 		},
 		{
 			"id": 4780,
@@ -61400,16 +61400,16 @@
 		},
 		{
 			"id": 4784,
-			"nombre": "CARLOS",
-			"apellido": null,
+			"nombre": "carina",
+			"apellido": "GARCIA",
 			"cedula": 17084975,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2024-02-04 22:10:42",
-			"updated_at": "2024-02-04 22:10:42"
+			"updated_at": "2026-01-01 17:57:25"
 		},
 		{
 			"id": 4785,
@@ -61648,7 +61648,7 @@
 		{
 			"id": 4803,
 			"nombre": "MICKLEY",
-			"apellido": null,
+			"apellido": ".",
 			"cedula": 13940666,
 			"correo": null,
 			"identity_type": "V",
@@ -61656,7 +61656,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-02-05 15:35:43",
-			"updated_at": "2024-02-05 15:35:43"
+			"updated_at": "2025-12-31 23:59:09"
 		},
 		{
 			"id": 4804,
@@ -61674,7 +61674,7 @@
 		{
 			"id": 4805,
 			"nombre": "LEIDY",
-			"apellido": null,
+			"apellido": "RAMIREZ",
 			"cedula": 27087745,
 			"correo": null,
 			"identity_type": "V",
@@ -61682,7 +61682,7 @@
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2024-02-05 16:13:00",
-			"updated_at": "2024-02-05 16:13:00"
+			"updated_at": "2025-12-30 20:51:51"
 		},
 		{
 			"id": 4807,
@@ -63632,7 +63632,7 @@
 			"direccion": "LA GRITA",
 			"balance": null,
 			"created_at": "2024-02-13 16:16:16",
-			"updated_at": "2025-11-27 13:49:13"
+			"updated_at": "2025-12-26 23:44:56"
 		},
 		{
 			"id": 4963,
@@ -65604,11 +65604,11 @@
 			"cedula": 20367676,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-02-21 23:28:01",
-			"updated_at": "2025-06-08 00:18:32"
+			"updated_at": "2025-12-31 17:17:04"
 		},
 		{
 			"id": 5125,
@@ -66393,7 +66393,7 @@
 		{
 			"id": 5186,
 			"nombre": "ANGEL",
-			"apellido": null,
+			"apellido": "MILLAN",
 			"cedula": 12847186,
 			"correo": null,
 			"identity_type": "V",
@@ -66401,7 +66401,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-02-25 18:50:19",
-			"updated_at": "2024-02-25 18:50:19"
+			"updated_at": "2025-12-28 23:03:40"
 		},
 		{
 			"id": 5187,
@@ -67095,15 +67095,15 @@
 		{
 			"id": 5242,
 			"nombre": "JOSE",
-			"apellido": null,
+			"apellido": "MORENO",
 			"cedula": 15685516,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2024-02-27 21:27:59",
-			"updated_at": "2024-02-27 21:27:59"
+			"updated_at": "2025-12-30 00:40:40"
 		},
 		{
 			"id": 5243,
@@ -70713,11 +70713,11 @@
 			"cedula": 5445128,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-03-15 16:04:23",
-			"updated_at": "2025-10-11 00:01:37"
+			"updated_at": "2026-01-01 23:21:17"
 		},
 		{
 			"id": 5541,
@@ -70765,11 +70765,11 @@
 			"cedula": 28131834,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "AV AEROPUERTO",
 			"balance": null,
 			"created_at": "2024-03-15 18:57:14",
-			"updated_at": "2025-12-16 22:21:20"
+			"updated_at": "2025-12-31 15:56:04"
 		},
 		{
 			"id": 5545,
@@ -73517,15 +73517,15 @@
 		{
 			"id": 5766,
 			"nombre": "OMAIRA",
-			"apellido": null,
+			"apellido": "HERNANDEZ",
 			"cedula": 11301916,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-03-25 16:08:00",
-			"updated_at": "2024-03-25 16:08:00"
+			"updated_at": "2025-12-29 17:01:44"
 		},
 		{
 			"id": 5767,
@@ -75532,15 +75532,15 @@
 		{
 			"id": 5925,
 			"nombre": "YENNIFER",
-			"apellido": null,
+			"apellido": "parra",
 			"cedula": 18379817,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LAS DELICIAS",
 			"balance": null,
 			"created_at": "2024-04-01 00:15:33",
-			"updated_at": "2024-04-01 00:15:33"
+			"updated_at": "2026-01-04 00:11:24"
 		},
 		{
 			"id": 5926,
@@ -77065,8 +77065,8 @@
 		},
 		{
 			"id": 6047,
-			"nombre": "JOU",
-			"apellido": null,
+			"nombre": "JON",
+			"apellido": "CARRILLO",
 			"cedula": 13490927,
 			"correo": null,
 			"identity_type": "V",
@@ -77074,7 +77074,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-04-06 14:27:36",
-			"updated_at": "2024-04-06 14:27:36"
+			"updated_at": "2026-01-01 00:56:42"
 		},
 		{
 			"id": 6048,
@@ -84099,7 +84099,7 @@
 		{
 			"id": 6608,
 			"nombre": "DAYLIS",
-			"apellido": null,
+			"apellido": "rosales",
 			"cedula": 10851503,
 			"correo": null,
 			"identity_type": "V",
@@ -84107,7 +84107,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-04-29 23:56:06",
-			"updated_at": "2024-04-29 23:56:06"
+			"updated_at": "2025-12-31 20:00:18"
 		},
 		{
 			"id": 6609,
@@ -85074,15 +85074,15 @@
 		{
 			"id": 6686,
 			"nombre": "GABRIEL",
-			"apellido": null,
+			"apellido": "CHACON",
 			"cedula": 17887502,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 42222222222,
 			"direccion": "LA FRI",
 			"balance": null,
 			"created_at": "2024-05-05 17:57:17",
-			"updated_at": "2024-05-05 17:57:17"
+			"updated_at": "2025-12-31 13:41:39"
 		},
 		{
 			"id": 6687,
@@ -87674,7 +87674,7 @@
 		{
 			"id": 6893,
 			"nombre": "ERWIN",
-			"apellido": null,
+			"apellido": "MARTINEZ",
 			"cedula": 16467091,
 			"correo": null,
 			"identity_type": "V",
@@ -87682,7 +87682,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-05-17 01:35:15",
-			"updated_at": "2024-05-17 01:35:15"
+			"updated_at": "2025-12-28 03:29:56"
 		},
 		{
 			"id": 6894,
@@ -88068,11 +88068,11 @@
 			"cedula": 19035618,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 425263050,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-05-18 21:34:03",
-			"updated_at": "2025-10-12 21:21:53"
+			"updated_at": "2026-01-02 15:52:18"
 		},
 		{
 			"id": 6924,
@@ -91002,7 +91002,7 @@
 		{
 			"id": 7162,
 			"nombre": "JEIFER",
-			"apellido": null,
+			"apellido": "SANCHEZ",
 			"cedula": 29674379,
 			"correo": null,
 			"identity_type": "V",
@@ -91010,7 +91010,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-05-29 22:02:48",
-			"updated_at": "2024-05-29 22:02:48"
+			"updated_at": "2026-01-03 02:09:34"
 		},
 		{
 			"id": 7163,
@@ -91340,7 +91340,7 @@
 		{
 			"id": 7189,
 			"nombre": "YENNY",
-			"apellido": null,
+			"apellido": "CAICEDO",
 			"cedula": 12847893,
 			"correo": null,
 			"identity_type": "V",
@@ -91348,7 +91348,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-05-30 20:32:08",
-			"updated_at": "2024-05-30 20:32:08"
+			"updated_at": "2025-12-29 22:44:33"
 		},
 		{
 			"id": 7190,
@@ -96813,7 +96813,7 @@
 		{
 			"id": 7641,
 			"nombre": "MARYELI",
-			"apellido": null,
+			"apellido": "GUERRERO",
 			"cedula": 30214410,
 			"correo": null,
 			"identity_type": "V",
@@ -96821,7 +96821,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-06-30 20:17:29",
-			"updated_at": "2024-06-30 20:17:29"
+			"updated_at": "2025-12-30 23:08:56"
 		},
 		{
 			"id": 7642,
@@ -103508,15 +103508,15 @@
 		{
 			"id": 8176,
 			"nombre": "ARG NIS",
-			"apellido": null,
+			"apellido": "NIS",
 			"cedula": 15184495,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-08-10 22:01:29",
-			"updated_at": "2024-08-10 22:01:29"
+			"updated_at": "2025-12-31 02:46:27"
 		},
 		{
 			"id": 8177,
@@ -103885,15 +103885,15 @@
 		{
 			"id": 8206,
 			"nombre": "YEFERSON",
-			"apellido": "I",
+			"apellido": "GONZALEZ",
 			"cedula": 18721465,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247041611,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-08-13 00:05:04",
-			"updated_at": "2025-10-03 00:59:51"
+			"updated_at": "2025-12-28 20:15:57"
 		},
 		{
 			"id": 8207,
@@ -108851,15 +108851,15 @@
 		{
 			"id": 8593,
 			"nombre": "CRISTOBAL",
-			"apellido": null,
+			"apellido": "sambrano",
 			"cedula": 9354872,
 			"correo": "zambrano@gmail.com",
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247303889,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-10-20 23:27:59",
-			"updated_at": "2024-10-20 23:27:59"
+			"updated_at": "2026-01-01 17:33:05"
 		},
 		{
 			"id": 8594,
@@ -109293,7 +109293,7 @@
 		{
 			"id": 8627,
 			"nombre": "PEDRO",
-			"apellido": null,
+			"apellido": ".",
 			"cedula": 30551225,
 			"correo": "pe@gmail.com",
 			"identity_type": "V",
@@ -109301,7 +109301,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2024-10-23 18:14:18",
-			"updated_at": "2024-10-23 18:14:18"
+			"updated_at": "2026-01-04 14:33:41"
 		},
 		{
 			"id": 8628,
@@ -116516,7 +116516,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-01-13 15:35:10",
-			"updated_at": "2025-10-16 19:42:16"
+			"updated_at": "2025-12-28 11:55:47"
 		},
 		{
 			"id": 9198,
@@ -121023,11 +121023,11 @@
 			"cedula": 9353511,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "caño",
 			"balance": null,
 			"created_at": "2025-02-15 20:52:05",
-			"updated_at": "2025-12-01 20:27:16"
+			"updated_at": "2025-12-29 20:21:59"
 		},
 		{
 			"id": 9557,
@@ -122388,11 +122388,11 @@
 			"cedula": 33541817,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4245255888,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-02-26 23:30:54",
-			"updated_at": "2025-12-22 05:20:51"
+			"updated_at": "2026-01-03 17:43:09"
 		},
 		{
 			"id": 9667,
@@ -122457,7 +122457,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-02-27 20:01:38",
-			"updated_at": "2025-09-04 23:15:37"
+			"updated_at": "2026-01-04 15:44:40"
 		},
 		{
 			"id": 9672,
@@ -123567,15 +123567,15 @@
 		{
 			"id": 9761,
 			"nombre": "ESMERALDA",
-			"apellido": null,
+			"apellido": "PEÑA",
 			"cedula": 13940101,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-03-06 23:40:46",
-			"updated_at": "2025-03-06 23:40:46"
+			"updated_at": "2025-12-31 00:17:49"
 		},
 		{
 			"id": 9762,
@@ -123705,7 +123705,7 @@
 			"direccion": "LAS AMERICAS",
 			"balance": null,
 			"created_at": "2025-03-07 22:10:02",
-			"updated_at": "2025-12-06 00:44:01"
+			"updated_at": "2025-12-30 00:20:55"
 		},
 		{
 			"id": 9773,
@@ -125859,11 +125859,11 @@
 			"cedula": 16106982,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 424552525258,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-03-17 23:27:09",
-			"updated_at": "2025-12-07 04:31:56"
+			"updated_at": "2025-12-31 17:53:22"
 		},
 		{
 			"id": 9944,
@@ -126600,11 +126600,11 @@
 			"cedula": 9353010,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-03-21 00:03:14",
-			"updated_at": "2025-10-03 00:34:30"
+			"updated_at": "2026-01-03 18:34:58"
 		},
 		{
 			"id": 10004,
@@ -126920,16 +126920,16 @@
 		},
 		{
 			"id": 10028,
-			"nombre": "MERY MENDOZA",
-			"apellido": null,
+			"nombre": "MERY",
+			"apellido": "MENDOZA",
 			"cedula": 12847999,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 42455555555555,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-03-22 18:47:00",
-			"updated_at": "2025-03-22 18:47:00"
+			"updated_at": "2026-01-02 16:03:42"
 		},
 		{
 			"id": 10029,
@@ -128827,7 +128827,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-03-30 13:27:11",
-			"updated_at": "2025-11-15 02:23:52"
+			"updated_at": "2025-12-26 22:33:37"
 		},
 		{
 			"id": 10178,
@@ -133264,8 +133264,8 @@
 		},
 		{
 			"id": 10526,
-			"nombre": "JORGE VEGA",
-			"apellido": null,
+			"nombre": "JORGE",
+			"apellido": "VEGA",
 			"cedula": 17500984,
 			"correo": null,
 			"identity_type": "V",
@@ -133273,7 +133273,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-17 22:58:02",
-			"updated_at": "2025-04-17 22:58:02"
+			"updated_at": "2025-12-28 11:54:45"
 		},
 		{
 			"id": 10527,
@@ -133282,11 +133282,11 @@
 			"cedula": 26507352,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247041611,
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-17 23:53:43",
-			"updated_at": "2025-06-17 07:30:26"
+			"updated_at": "2025-12-28 21:14:32"
 		},
 		{
 			"id": 10528,
@@ -134369,8 +134369,8 @@
 		},
 		{
 			"id": 10617,
-			"nombre": "CELIS DE MARTINEZ",
-			"apellido": null,
+			"nombre": "CELIS",
+			"apellido": "DE MARTINEZ",
 			"cedula": 5729355,
 			"correo": null,
 			"identity_type": "V",
@@ -134378,7 +134378,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-23 20:50:22",
-			"updated_at": "2025-04-23 20:50:22"
+			"updated_at": "2025-12-26 18:07:17"
 		},
 		{
 			"id": 10618,
@@ -134768,7 +134768,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-25 01:36:25",
-			"updated_at": "2025-11-19 17:44:02"
+			"updated_at": "2025-12-30 18:27:50"
 		},
 		{
 			"id": 10649,
@@ -134825,7 +134825,7 @@
 		{
 			"id": 10653,
 			"nombre": "EYERBELT PULIDO",
-			"apellido": null,
+			"apellido": "P",
 			"cedula": 17084693,
 			"correo": null,
 			"identity_type": "V",
@@ -134833,7 +134833,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-25 15:11:41",
-			"updated_at": "2025-04-25 15:11:41"
+			"updated_at": "2025-12-26 22:45:58"
 		},
 		{
 			"id": 10654,
@@ -134863,8 +134863,8 @@
 		},
 		{
 			"id": 10656,
-			"nombre": "HAYDE MARTINEZ",
-			"apellido": null,
+			"nombre": "HAYDE",
+			"apellido": "MARTINEZ",
 			"cedula": 9192318,
 			"correo": null,
 			"identity_type": "V",
@@ -134872,7 +134872,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-04-25 16:47:52",
-			"updated_at": "2025-04-25 16:47:52"
+			"updated_at": "2025-12-29 00:14:24"
 		},
 		{
 			"id": 10657,
@@ -142646,7 +142646,7 @@
 			"direccion": "19 DE ABRIL",
 			"balance": null,
 			"created_at": "2025-05-28 01:38:44",
-			"updated_at": "2025-11-28 03:05:42"
+			"updated_at": "2025-12-28 20:25:39"
 		},
 		{
 			"id": 11276,
@@ -148262,7 +148262,7 @@
 			"direccion": "6 DE NOVIEMBRE",
 			"balance": null,
 			"created_at": "2025-06-19 23:46:35",
-			"updated_at": "2025-06-19 23:46:35"
+			"updated_at": "2025-12-30 02:42:00"
 		},
 		{
 			"id": 11718,
@@ -149718,7 +149718,7 @@
 			"direccion": "LAS AMERICAS",
 			"balance": null,
 			"created_at": "2025-06-25 14:18:58",
-			"updated_at": "2025-06-25 14:18:58"
+			"updated_at": "2025-12-26 22:16:36"
 		},
 		{
 			"id": 11833,
@@ -153332,7 +153332,7 @@
 			"direccion": "CAÑO HONDO",
 			"balance": null,
 			"created_at": "2025-07-11 00:03:24",
-			"updated_at": "2025-12-03 20:54:22"
+			"updated_at": "2025-12-29 22:41:40"
 		},
 		{
 			"id": 12126,
@@ -156348,7 +156348,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-07-27 21:47:31",
-			"updated_at": "2025-07-27 21:47:31"
+			"updated_at": "2025-12-27 00:14:11"
 		},
 		{
 			"id": 12367,
@@ -158047,11 +158047,11 @@
 			"cedula": 9358403,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4247737979,
 			"direccion": "AMARICAS VEREDA 1",
 			"balance": null,
 			"created_at": "2025-08-03 23:50:12",
-			"updated_at": "2025-08-03 23:50:12"
+			"updated_at": "2025-12-29 20:17:26"
 		},
 		{
 			"id": 12506,
@@ -169006,11 +169006,11 @@
 			"cedula": 30481643,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "barrio sucre",
 			"balance": null,
 			"created_at": "2025-10-02 19:58:17",
-			"updated_at": "2025-12-01 01:40:56"
+			"updated_at": "2026-01-02 21:37:49"
 		},
 		{
 			"id": 13408,
@@ -170323,7 +170323,7 @@
 			"direccion": "la fria",
 			"balance": null,
 			"created_at": "2025-10-10 21:22:04",
-			"updated_at": "2025-11-03 01:25:48"
+			"updated_at": "2025-12-29 03:39:28"
 		},
 		{
 			"id": 13509,
@@ -171437,11 +171437,11 @@
 			"cedula": 20888380,
 			"correo": null,
 			"identity_type": "V",
-			"telefono": 0,
+			"telefono": 4246795731,
 			"direccion": "la fria",
 			"balance": null,
 			"created_at": "2025-10-17 22:21:24",
-			"updated_at": "2025-10-17 22:21:24"
+			"updated_at": "2025-12-31 18:17:07"
 		},
 		{
 			"id": 13595,
@@ -171454,7 +171454,7 @@
 			"direccion": "barrio sucre",
 			"balance": null,
 			"created_at": "2025-10-17 22:28:37",
-			"updated_at": "2025-10-17 22:28:37"
+			"updated_at": "2025-12-26 19:17:24"
 		},
 		{
 			"id": 13596,
@@ -172468,7 +172468,7 @@
 			"direccion": "LA FRIA",
 			"balance": null,
 			"created_at": "2025-10-23 04:24:40",
-			"updated_at": "2025-10-23 04:24:40"
+			"updated_at": "2025-12-29 23:47:28"
 		},
 		{
 			"id": 13674,
@@ -180034,7 +180034,7 @@
 			"direccion": "la fria",
 			"balance": null,
 			"created_at": "2025-12-09 02:12:30",
-			"updated_at": "2025-12-09 06:45:25"
+			"updated_at": "2025-12-30 02:40:57"
 		},
 		{
 			"id": 14256,
@@ -182362,5 +182362,1266 @@
 			"balance": null,
 			"created_at": "2025-12-26 13:00:06",
 			"updated_at": "2025-12-26 13:00:06"
+		},
+		{
+			"id": 14435,
+			"nombre": "WULMARY",
+			"apellido": "MONCADA",
+			"cedula": 33542223,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 15:38:04",
+			"updated_at": "2025-12-26 15:38:04"
+		},
+		{
+			"id": 14436,
+			"nombre": "BENEDICTO",
+			"apellido": "SANCHEZ",
+			"cedula": 22683152,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42458552555,
+			"direccion": "RIO GRITAS",
+			"balance": null,
+			"created_at": "2025-12-26 15:46:28",
+			"updated_at": "2025-12-26 15:46:28"
+		},
+		{
+			"id": 14437,
+			"nombre": "SAYRELIS",
+			"apellido": "PONSE",
+			"cedula": 31382170,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42124208177,
+			"direccion": "CALLE 1",
+			"balance": null,
+			"created_at": "2025-12-26 16:44:08",
+			"updated_at": "2025-12-26 16:44:08"
+		},
+		{
+			"id": 14438,
+			"nombre": "DAYKELIS",
+			"apellido": "CONTRERA",
+			"cedula": 37368126,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42428521152525,
+			"direccion": "AMERICA",
+			"balance": null,
+			"created_at": "2025-12-26 16:49:25",
+			"updated_at": "2025-12-26 16:49:25"
+		},
+		{
+			"id": 14439,
+			"nombre": "JOSE LUIS",
+			"apellido": "GRANADO",
+			"cedula": 16721772,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 40422222222,
+			"direccion": "PIPAS",
+			"balance": null,
+			"created_at": "2025-12-26 17:09:39",
+			"updated_at": "2025-12-26 17:09:39"
+		},
+		{
+			"id": 14440,
+			"nombre": "IVON",
+			"apellido": "VARELA",
+			"cedula": 9149671,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 17:23:05",
+			"updated_at": "2025-12-26 17:23:05"
+		},
+		{
+			"id": 14441,
+			"nombre": "LAURA",
+			"apellido": "SHIAS",
+			"cedula": 19578050,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 17:38:12",
+			"updated_at": "2025-12-26 17:38:12"
+		},
+		{
+			"id": 14442,
+			"nombre": "REINA",
+			"apellido": "SANCHEZ",
+			"cedula": 16281713,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42425255255222,
+			"direccion": "19 DE ABRIL",
+			"balance": null,
+			"created_at": "2025-12-26 18:02:47",
+			"updated_at": "2025-12-26 18:02:47"
+		},
+		{
+			"id": 14443,
+			"nombre": "YOANA",
+			"apellido": "DIAS",
+			"cedula": 19035185,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42452522555225,
+			"direccion": "DELIAZ",
+			"balance": null,
+			"created_at": "2025-12-26 18:06:53",
+			"updated_at": "2025-12-26 18:06:53"
+		},
+		{
+			"id": 14444,
+			"nombre": "ZULAY",
+			"apellido": "URREA",
+			"cedula": 9191150,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 18:10:33",
+			"updated_at": "2025-12-26 18:10:33"
+		},
+		{
+			"id": 14445,
+			"nombre": "ROSSY",
+			"apellido": "GUERRERO",
+			"cedula": 14807545,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4142993463,
+			"direccion": "SAN ANTONIO",
+			"balance": null,
+			"created_at": "2025-12-26 19:23:25",
+			"updated_at": "2025-12-26 19:23:25"
+		},
+		{
+			"id": 14446,
+			"nombre": "maria",
+			"apellido": "gomes",
+			"cedula": 20288776,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2025-12-26 20:47:52",
+			"updated_at": "2025-12-26 20:47:52"
+		},
+		{
+			"id": 14447,
+			"nombre": "riquilda",
+			"apellido": "ramirez",
+			"cedula": 9358495,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247303889,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2025-12-26 21:23:41",
+			"updated_at": "2025-12-28 00:25:01"
+		},
+		{
+			"id": 14448,
+			"nombre": "JORGE",
+			"apellido": "LOPEZ",
+			"cedula": 31228530,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 21:46:48",
+			"updated_at": "2025-12-26 21:46:48"
+		},
+		{
+			"id": 14449,
+			"nombre": "YORMAN",
+			"apellido": "DUARTE",
+			"cedula": 30162927,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 22:30:23",
+			"updated_at": "2025-12-26 22:30:23"
+		},
+		{
+			"id": 14450,
+			"nombre": "EUGENIA",
+			"apellido": "SILVA",
+			"cedula": 10852685,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 22:38:49",
+			"updated_at": "2025-12-26 22:38:49"
+		},
+		{
+			"id": 14451,
+			"nombre": "LEDIS",
+			"apellido": "MIRANDA",
+			"cedula": 23136279,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 23:09:04",
+			"updated_at": "2025-12-26 23:09:04"
+		},
+		{
+			"id": 14452,
+			"nombre": "LUIS",
+			"apellido": "CASTAÑEDA",
+			"cedula": 14651760,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 23:09:18",
+			"updated_at": "2025-12-26 23:09:18"
+		},
+		{
+			"id": 14453,
+			"nombre": "REIBER",
+			"apellido": "VELAZQUEZ",
+			"cedula": 28077017,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "DELICIAS",
+			"balance": null,
+			"created_at": "2025-12-26 23:26:15",
+			"updated_at": "2025-12-26 23:26:15"
+		},
+		{
+			"id": 14454,
+			"nombre": "YASENIA",
+			"apellido": "HERNANDEZ",
+			"cedula": 17684789,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-26 23:55:58",
+			"updated_at": "2025-12-26 23:55:58"
+		},
+		{
+			"id": 14455,
+			"nombre": "JAVIER",
+			"apellido": ".",
+			"cedula": 93650053,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 00:05:32",
+			"updated_at": "2025-12-27 00:05:32"
+		},
+		{
+			"id": 14456,
+			"nombre": "ENNA",
+			"apellido": "GUILLIN",
+			"cedula": 84568198,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 00:09:23",
+			"updated_at": "2025-12-27 00:09:23"
+		},
+		{
+			"id": 14457,
+			"nombre": "MARIANA",
+			"apellido": "ALMA",
+			"cedula": 20818041,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 00:25:56",
+			"updated_at": "2025-12-27 00:25:56"
+		},
+		{
+			"id": 14458,
+			"nombre": "ANGELICA",
+			"apellido": "SILVA",
+			"cedula": 14473731,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 01:10:47",
+			"updated_at": "2025-12-27 01:10:47"
+		},
+		{
+			"id": 14459,
+			"nombre": "VICTOR",
+			"apellido": "GARCIA",
+			"cedula": 29507816,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 01:28:39",
+			"updated_at": "2025-12-27 01:28:39"
+		},
+		{
+			"id": 14460,
+			"nombre": ".",
+			"apellido": ",",
+			"cedula": 13490369,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 02:18:12",
+			"updated_at": "2025-12-27 02:18:12"
+		},
+		{
+			"id": 14461,
+			"nombre": "DON CAMARON LF",
+			"apellido": "CA",
+			"cedula": 504645168,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4243228374,
+			"direccion": "CALLE 2",
+			"balance": null,
+			"created_at": "2025-12-27 02:29:58",
+			"updated_at": "2025-12-27 02:29:58"
+		},
+		{
+			"id": 14462,
+			"nombre": "JOSE",
+			"apellido": "MARTINES",
+			"cedula": 26534717,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LAS AMERICAS",
+			"balance": null,
+			"created_at": "2025-12-27 14:42:47",
+			"updated_at": "2025-12-27 14:42:47"
+		},
+		{
+			"id": 14463,
+			"nombre": "LUIS",
+			"apellido": "FLORES",
+			"cedula": 7119141,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247041611,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 14:58:23",
+			"updated_at": "2026-01-03 16:23:11"
+		},
+		{
+			"id": 14464,
+			"nombre": "ANGELO",
+			"apellido": "GUITIERRE",
+			"cedula": 30896980,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42425252552552,
+			"direccion": "ZONA INDUSTRIA",
+			"balance": null,
+			"created_at": "2025-12-27 15:01:15",
+			"updated_at": "2025-12-27 15:01:15"
+		},
+		{
+			"id": 14465,
+			"nombre": "LEONARDO",
+			"apellido": "FUENTES",
+			"cedula": 18306693,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 424252525588,
+			"direccion": "PIPAS",
+			"balance": null,
+			"created_at": "2025-12-27 15:58:34",
+			"updated_at": "2025-12-27 15:58:34"
+		},
+		{
+			"id": 14466,
+			"nombre": "MIREIDA",
+			"apellido": "PEÑAS",
+			"cedula": 24786915,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4121717536,
+			"direccion": "MORUSCA",
+			"balance": null,
+			"created_at": "2025-12-27 16:14:47",
+			"updated_at": "2025-12-27 16:14:47"
+		},
+		{
+			"id": 14467,
+			"nombre": "ANDREI",
+			"apellido": "RIVERA",
+			"cedula": 18089157,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 424552525252,
+			"direccion": "PITUFOS",
+			"balance": null,
+			"created_at": "2025-12-27 16:44:52",
+			"updated_at": "2025-12-27 16:44:52"
+		},
+		{
+			"id": 14468,
+			"nombre": "ZENAYDA",
+			"apellido": "DURAN",
+			"cedula": 11302862,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "PREFUNDACION",
+			"balance": null,
+			"created_at": "2025-12-27 17:36:26",
+			"updated_at": "2025-12-27 17:36:26"
+		},
+		{
+			"id": 14469,
+			"nombre": "MARTINA",
+			"apellido": "MELO",
+			"cedula": 24551045,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4167022874,
+			"direccion": "LA ESMERALDA",
+			"balance": null,
+			"created_at": "2025-12-27 20:01:32",
+			"updated_at": "2025-12-27 20:01:32"
+		},
+		{
+			"id": 14470,
+			"nombre": "FREDI",
+			"apellido": "PORTILLA",
+			"cedula": 18720897,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 21:49:06",
+			"updated_at": "2025-12-27 21:49:06"
+		},
+		{
+			"id": 14471,
+			"nombre": "ROBERTO",
+			"apellido": "CARBAJA",
+			"cedula": 19339752,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-27 23:29:32",
+			"updated_at": "2025-12-27 23:29:32"
+		},
+		{
+			"id": 14472,
+			"nombre": "ROD",
+			"apellido": "PARRA",
+			"cedula": 23465514,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-28 17:10:19",
+			"updated_at": "2025-12-28 17:10:19"
+		},
+		{
+			"id": 14473,
+			"nombre": "BRAYAN",
+			"apellido": "SILVARAN",
+			"cedula": 27091993,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-28 19:56:22",
+			"updated_at": "2025-12-28 19:56:22"
+		},
+		{
+			"id": 14474,
+			"nombre": "JEISON",
+			"apellido": "CACERES",
+			"cedula": 1134974120,
+			"correo": null,
+			"identity_type": "E",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-28 20:09:17",
+			"updated_at": "2025-12-28 20:09:17"
+		},
+		{
+			"id": 14475,
+			"nombre": "GRABIEL",
+			"apellido": "VARGAW",
+			"cedula": 20880228,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-28 20:45:49",
+			"updated_at": "2025-12-28 20:45:49"
+		},
+		{
+			"id": 14476,
+			"nombre": "KELY",
+			"apellido": "SAMBRANO",
+			"cedula": 26854129,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "ÑLA FRIA",
+			"balance": null,
+			"created_at": "2025-12-28 21:15:56",
+			"updated_at": "2025-12-28 21:15:56"
+		},
+		{
+			"id": 14477,
+			"nombre": "PAUSELINO",
+			"apellido": "SANCHEZ",
+			"cedula": 18498896,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "BARRIO SUCRE",
+			"balance": null,
+			"created_at": "2025-12-29 01:16:53",
+			"updated_at": "2025-12-29 01:16:53"
+		},
+		{
+			"id": 14478,
+			"nombre": "ZANDRA",
+			"apellido": "SANABIA",
+			"cedula": 27983351,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 03:58:40",
+			"updated_at": "2025-12-29 03:58:40"
+		},
+		{
+			"id": 14479,
+			"nombre": "LUIS",
+			"apellido": "CONTRERA",
+			"cedula": 9126512,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42425252555255,
+			"direccion": "MESA",
+			"balance": null,
+			"created_at": "2025-12-29 13:05:01",
+			"updated_at": "2025-12-29 13:05:01"
+		},
+		{
+			"id": 14480,
+			"nombre": "RENSON",
+			"apellido": "SÁNCHEZ",
+			"cedula": 19244854,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42452525158,
+			"direccion": "SANTA EDUVIGE",
+			"balance": null,
+			"created_at": "2025-12-29 15:22:20",
+			"updated_at": "2025-12-29 15:22:20"
+		},
+		{
+			"id": 14481,
+			"nombre": "ALEXANDER",
+			"apellido": "MENDOZA",
+			"cedula": 34912262,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247895644,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 18:15:34",
+			"updated_at": "2025-12-29 19:06:30"
+		},
+		{
+			"id": 14482,
+			"nombre": "ATANAEL",
+			"apellido": "PEREZ",
+			"cedula": 22682363,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4242425252525,
+			"direccion": "DELICIA",
+			"balance": null,
+			"created_at": "2025-12-29 19:23:54",
+			"updated_at": "2025-12-29 19:23:54"
+		},
+		{
+			"id": 14483,
+			"nombre": "JOSE",
+			"apellido": "GERRERO",
+			"cedula": 9350269,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 19:45:17",
+			"updated_at": "2025-12-29 19:45:17"
+		},
+		{
+			"id": 14484,
+			"nombre": "YESENIA",
+			"apellido": "MARTINEZ",
+			"cedula": 15016912,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 20:22:14",
+			"updated_at": "2025-12-29 20:22:14"
+		},
+		{
+			"id": 14485,
+			"nombre": "YASMIN",
+			"apellido": "GONZLES",
+			"cedula": 18255390,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 22:13:19",
+			"updated_at": "2025-12-29 22:13:19"
+		},
+		{
+			"id": 14486,
+			"nombre": "JOSE",
+			"apellido": "ABENDAÑO",
+			"cedula": 9194561,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 22:40:53",
+			"updated_at": "2025-12-29 22:40:53"
+		},
+		{
+			"id": 14487,
+			"nombre": "ADEILI",
+			"apellido": ".",
+			"cedula": 26607276,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-29 22:54:01",
+			"updated_at": "2025-12-29 22:54:01"
+		},
+		{
+			"id": 14488,
+			"nombre": "YUSNEY",
+			"apellido": "ORTEGA",
+			"cedula": 18530482,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 00:19:40",
+			"updated_at": "2025-12-30 00:19:40"
+		},
+		{
+			"id": 14489,
+			"nombre": "YEIGLEN",
+			"apellido": ".",
+			"cedula": 32309150,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 00:29:20",
+			"updated_at": "2025-12-30 00:29:20"
+		},
+		{
+			"id": 14490,
+			"nombre": "GERSON",
+			"apellido": "GUERRA",
+			"cedula": 17886275,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "BARRIO SUCRE",
+			"balance": null,
+			"created_at": "2025-12-30 01:51:29",
+			"updated_at": "2025-12-30 01:51:29"
+		},
+		{
+			"id": 14491,
+			"nombre": "BETANIA",
+			"apellido": "VARELA",
+			"cedula": 30551287,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 04:12:22",
+			"updated_at": "2025-12-30 04:12:22"
+		},
+		{
+			"id": 14492,
+			"nombre": "HELLEN",
+			"apellido": "FERNANDE",
+			"cedula": 9192125,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 424255225255,
+			"direccion": "DELICIAS",
+			"balance": null,
+			"created_at": "2025-12-30 18:44:57",
+			"updated_at": "2025-12-30 18:44:57"
+		},
+		{
+			"id": 14493,
+			"nombre": "YORGELIS",
+			"apellido": "RAMIRES",
+			"cedula": 32037047,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 19:10:17",
+			"updated_at": "2025-12-30 19:10:17"
+		},
+		{
+			"id": 14494,
+			"nombre": "ANDERSON",
+			"apellido": "MENDEZ",
+			"cedula": 15685506,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 19:54:46",
+			"updated_at": "2025-12-30 19:54:46"
+		},
+		{
+			"id": 14495,
+			"nombre": "ANIBAL",
+			"apellido": "CORREDOR",
+			"cedula": 12846695,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 21:07:52",
+			"updated_at": "2025-12-30 21:07:52"
+		},
+		{
+			"id": 14496,
+			"nombre": "JUAN",
+			"apellido": "VILLAMIZAR",
+			"cedula": 28190946,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "3 ISLAS",
+			"balance": null,
+			"created_at": "2025-12-30 21:20:04",
+			"updated_at": "2025-12-30 21:20:04"
+		},
+		{
+			"id": 14497,
+			"nombre": "ROSA",
+			"apellido": "ROJAS",
+			"cedula": 8638283,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 21:20:56",
+			"updated_at": "2025-12-30 21:22:01"
+		},
+		{
+			"id": 14498,
+			"nombre": "ELIZABET",
+			"apellido": "BELTRAN",
+			"cedula": 13490982,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 23:14:01",
+			"updated_at": "2025-12-30 23:14:01"
+		},
+		{
+			"id": 14499,
+			"nombre": "YESICA",
+			"apellido": "AGUIRRE",
+			"cedula": 20366435,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-30 23:18:48",
+			"updated_at": "2025-12-30 23:18:48"
+		},
+		{
+			"id": 14500,
+			"nombre": "JEFESOR",
+			"apellido": "GERARDO",
+			"cedula": 17893926,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-31 00:52:11",
+			"updated_at": "2025-12-31 00:52:11"
+		},
+		{
+			"id": 14501,
+			"nombre": "amalia",
+			"apellido": "vivas",
+			"cedula": 15684395,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2025-12-31 01:51:27",
+			"updated_at": "2025-12-31 01:51:27"
+		},
+		{
+			"id": 14502,
+			"nombre": "ELITA",
+			"apellido": "SEPILGURA",
+			"cedula": 15386261,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 424242522020222,
+			"direccion": "ZONA INDUSTRIA",
+			"balance": null,
+			"created_at": "2025-12-31 17:28:43",
+			"updated_at": "2025-12-31 17:28:43"
+		},
+		{
+			"id": 14503,
+			"nombre": "maria",
+			"apellido": "idango",
+			"cedula": 36676183,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2025-12-31 19:14:04",
+			"updated_at": "2025-12-31 19:14:04"
+		},
+		{
+			"id": 14504,
+			"nombre": "VICENTE",
+			"apellido": "MARTINEZ",
+			"cedula": 13171217,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4241882908,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-31 22:07:25",
+			"updated_at": "2025-12-31 22:07:25"
+		},
+		{
+			"id": 14505,
+			"nombre": "ROQUE",
+			"apellido": "MENDEZ",
+			"cedula": 13140450,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2025-12-31 23:50:19",
+			"updated_at": "2025-12-31 23:50:19"
+		},
+		{
+			"id": 14506,
+			"nombre": "NELSON",
+			"apellido": "ESTEVEN",
+			"cedula": 17497568,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247303889,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2026-01-01 00:59:12",
+			"updated_at": "2026-01-01 23:01:52"
+		},
+		{
+			"id": 14507,
+			"nombre": "MARIA",
+			"apellido": ".",
+			"cedula": 31316282,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2026-01-01 01:03:44",
+			"updated_at": "2026-01-01 01:03:44"
+		},
+		{
+			"id": 14508,
+			"nombre": "DENIS",
+			"apellido": "PERNIA",
+			"cedula": 24820825,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4246795731,
+			"direccion": "OVELISCO",
+			"balance": null,
+			"created_at": "2026-01-01 01:36:02",
+			"updated_at": "2026-01-02 00:04:59"
+		},
+		{
+			"id": 14509,
+			"nombre": "suares",
+			"apellido": "jererime",
+			"cedula": 20716950,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-01 17:40:34",
+			"updated_at": "2026-01-01 17:40:34"
+		},
+		{
+			"id": 14510,
+			"nombre": "leydi",
+			"apellido": "ezpinosa",
+			"cedula": 33396412,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-01 18:51:15",
+			"updated_at": "2026-01-01 18:51:15"
+		},
+		{
+			"id": 14511,
+			"nombre": "aleydy",
+			"apellido": "dia",
+			"cedula": 33703269,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-01 23:56:49",
+			"updated_at": "2026-01-01 23:56:49"
+		},
+		{
+			"id": 14512,
+			"nombre": "luis",
+			"apellido": "vera",
+			"cedula": 15685169,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 04:06:10",
+			"updated_at": "2026-01-02 04:06:10"
+		},
+		{
+			"id": 14513,
+			"nombre": "justiniano",
+			"apellido": "fontanilla",
+			"cedula": 13009095,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 13:13:46",
+			"updated_at": "2026-01-02 13:13:46"
+		},
+		{
+			"id": 14514,
+			"nombre": "jesus",
+			"apellido": "meren",
+			"cedula": 17678794,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 13:31:25",
+			"updated_at": "2026-01-02 13:31:25"
+		},
+		{
+			"id": 14515,
+			"nombre": "wilmer",
+			"apellido": "santa ana",
+			"cedula": 29644251,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247188945,
+			"direccion": "barrio 24 de julio",
+			"balance": null,
+			"created_at": "2026-01-02 15:45:29",
+			"updated_at": "2026-01-02 15:45:29"
+		},
+		{
+			"id": 14516,
+			"nombre": "alberto",
+			"apellido": "o",
+			"cedula": 14255568,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la esmeralda",
+			"balance": null,
+			"created_at": "2026-01-02 17:03:38",
+			"updated_at": "2026-01-02 17:03:38"
+		},
+		{
+			"id": 14517,
+			"nombre": "rafael",
+			"apellido": "rincon",
+			"cedula": 25703172,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 19:38:01",
+			"updated_at": "2026-01-02 19:38:01"
+		},
+		{
+			"id": 14518,
+			"nombre": "ANGEL",
+			"apellido": "RODRIGUES",
+			"cedula": 13939147,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4160794050,
+			"direccion": "MESAS",
+			"balance": null,
+			"created_at": "2026-01-02 19:39:09",
+			"updated_at": "2026-01-02 19:39:09"
+		},
+		{
+			"id": 14519,
+			"nombre": "jon",
+			"apellido": "david",
+			"cedula": 27087799,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 20:18:10",
+			"updated_at": "2026-01-02 20:18:10"
+		},
+		{
+			"id": 14520,
+			"nombre": "José",
+			"apellido": "rama",
+			"cedula": 12491358,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 21:55:16",
+			"updated_at": "2026-01-02 21:55:16"
+		},
+		{
+			"id": 14521,
+			"nombre": "pedro",
+			"apellido": "megia",
+			"cedula": 9350077,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-02 23:33:52",
+			"updated_at": "2026-01-02 23:33:52"
+		},
+		{
+			"id": 14522,
+			"nombre": "YELINA",
+			"apellido": "CACERES",
+			"cedula": 17496900,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2026-01-03 01:09:17",
+			"updated_at": "2026-01-03 01:09:17"
+		},
+		{
+			"id": 14523,
+			"nombre": "MATILDE",
+			"apellido": "CONTRERAS",
+			"cedula": 10822129,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2026-01-03 01:39:48",
+			"updated_at": "2026-01-03 01:39:48"
+		},
+		{
+			"id": 14524,
+			"nombre": "wenderlin",
+			"apellido": "salsedo",
+			"cedula": 28630005,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-03 02:51:35",
+			"updated_at": "2026-01-03 02:51:35"
+		},
+		{
+			"id": 14525,
+			"nombre": "yomaira",
+			"apellido": "pañares",
+			"cedula": 60395226,
+			"correo": null,
+			"identity_type": "E",
+			"telefono": 42414555655555,
+			"direccion": "pipas",
+			"balance": null,
+			"created_at": "2026-01-03 16:56:50",
+			"updated_at": "2026-01-03 16:56:50"
+		},
+		{
+			"id": 14526,
+			"nombre": "maria",
+			"apellido": "ferndez",
+			"cedula": 26065625,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 424252525252525255,
+			"direccion": "delica",
+			"balance": null,
+			"created_at": "2026-01-03 18:11:24",
+			"updated_at": "2026-01-03 18:11:24"
+		},
+		{
+			"id": 14527,
+			"nombre": "fran",
+			"apellido": "riera",
+			"cedula": 25367871,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 42425252525225255,
+			"direccion": "1 de mai",
+			"balance": null,
+			"created_at": "2026-01-03 20:20:12",
+			"updated_at": "2026-01-03 20:20:12"
+		},
+		{
+			"id": 14528,
+			"nombre": "ALEX",
+			"apellido": "MARTINEZ",
+			"cedula": 34914464,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4247041611,
+			"direccion": "LA FRIA",
+			"balance": null,
+			"created_at": "2026-01-03 21:25:46",
+			"updated_at": "2026-01-03 22:05:10"
+		},
+		{
+			"id": 14529,
+			"nombre": "leiiner",
+			"apellido": "orozco",
+			"cedula": 24782086,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 4242525252525252,
+			"direccion": "pipas",
+			"balance": null,
+			"created_at": "2026-01-03 22:05:19",
+			"updated_at": "2026-01-03 22:05:19"
+		},
+		{
+			"id": 14530,
+			"nombre": "jose",
+			"apellido": "martines",
+			"cedula": 13173636,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-04 00:16:08",
+			"updated_at": "2026-01-04 00:16:08"
+		},
+		{
+			"id": 14531,
+			"nombre": "jose",
+			"apellido": "jaimes",
+			"cedula": 14808845,
+			"correo": null,
+			"identity_type": "V",
+			"telefono": 0,
+			"direccion": "la fria",
+			"balance": null,
+			"created_at": "2026-01-04 15:55:45",
+			"updated_at": "2026-01-04 15:55:45"
 		}
 	]

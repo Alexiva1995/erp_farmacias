@@ -20,12 +20,15 @@ class CashClosingSeeder extends Seeder
     {
         $json = File::get(database_path('data/cash_closing.json'));
         $data = json_decode($json, true);
+
         $cashClosingData = [];
+
+        $suppliers = User::query()->pluck('id')->flip();
 
         foreach ($data as $row) {
             $cashClosingData[] = [
                 "status" => 'closed',
-                "seller_id" => 1,
+                "seller_id" => $suppliers->has($row['user_id']) ? $row['user_id'] : null,
                 "total_usd" => $row['amount_usd'] ?? 0,
                 "total_bs" => $row['amount_bs'] ?? 0,
                 "total_cop" => $row['amount_cop'] ?? 0,
