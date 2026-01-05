@@ -6,7 +6,7 @@ import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
 import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 import { themeConfig } from "@themeConfig";
 
-import axios from "axios";
+import axios from "@/plugins/axios";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 
@@ -51,7 +51,7 @@ const handleLogin = async () => {
       password: form.value.password,
     };
 
-    const response = await axios.post("/api/login", formData);
+    const response = await axios.post("/login", formData);
     const data = response.data;
 
     if (data.two_factor) {
@@ -64,6 +64,29 @@ const handleLogin = async () => {
       errors.value.general = "Respuesta inesperada del servidor.";
     }
   } catch (error) {
+    // Manejar errores de validación (422)
+    if (error.response?.status === 422) {
+      const validationErrors = error.response.data?.errors || error.response.data;
+      if (validationErrors.login) {
+        errors.value.login = Array.isArray(validationErrors.login) 
+          ? validationErrors.login[0] 
+          : validationErrors.login;
+      }
+      if (validationErrors.password) {
+        errors.value.password = Array.isArray(validationErrors.password) 
+          ? validationErrors.password[0] 
+          : validationErrors.password;
+      }
+      if (!errors.value.login && !errors.value.password && validationErrors.message) {
+        errors.value.general = validationErrors.message;
+      }
+    } else if (error.response?.status === 429) {
+      // Error de rate limiting
+      errors.value.general = error.response.data?.message || "Demasiados intentos. Por favor, espera unos minutos.";
+    } else {
+      // Otros errores
+      errors.value.general = error.response?.data?.message || "Error al iniciar sesión. Por favor, intenta de nuevo.";
+    }
   } finally {
     isLoading.value = false;
   }

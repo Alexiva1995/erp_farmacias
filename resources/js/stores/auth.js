@@ -28,7 +28,10 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error) {
       user.value = null;
       updateAbility(null);
-      console.error('No se pudo obtener el usuario.', error)
+      // Solo mostrar error si no es un 401 (no autenticado), que es esperado
+      if (error.response?.status !== 401) {
+        console.error('No se pudo obtener el usuario.', error)
+      }
     } finally {
         isLoaded.value = true;
     }
