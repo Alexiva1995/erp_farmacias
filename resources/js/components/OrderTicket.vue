@@ -335,6 +335,7 @@ onMounted(() => {
               class="font-weight-bold my-1 tituloAzulPrint"
             >
               <span>
+                {{ getPaymentMethodLabel(payment.method, payment.currency) }}:
                 {{ formatCurrency(payment.amount || 0, payment.currency) }}
               </span>
             </p>

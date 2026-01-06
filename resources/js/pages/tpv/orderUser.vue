@@ -2027,7 +2027,6 @@ const handleBuysCompletion = async (
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
       prescriptionFile.value = null;
-      paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
@@ -2041,7 +2040,12 @@ const handleBuysCompletion = async (
       discountTypeForPrint.value = selectedDiscountType.value;
       const orderCompletada = response.data.data.orderCompletada;
       orderData.value = orderCompletada;
-     itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value))
+      itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value))
+      TotalToPrint.value = parseFloat(orderData.value.total_amount);
+      paymentsForPrint.value = orderData.value.payment_methods.filter(p => {
+        const name = (p.method || "").toString().toUpperCase();
+        return name !== 'N/A' && name !== '' && name !== 'UNDEFINED' && name !== 'NULL';
+      });
 
       if (response.data.data.order) {
         hasOpenOrder.value = true;
@@ -2051,19 +2055,17 @@ const handleBuysCompletion = async (
         orderItems.value = openOrderData.value.details.map((item) =>
           formatOrderItemForFrontend(item)
         );
-      } else {
-        hasOpenOrder.value = false;
+      } 
+    }
+  } catch (error) {
+    console.error("Error al finalizar la compra:", error);
+    toast.error("Hubo un problema al procesar su compra.");
+      hasOpenOrder.value = false;
         openOrderData.value = null;
         selectedClient.value = null;
         orderItems.value = [];
         reservedOrderData.value = null;
         clientIdentification.value = "";
-      }
-    }
-  } catch (error) {
-    console.error("Error al finalizar la compra:", error);
-    toast.error("Hubo un problema al procesar su compra.");
-
   }
 };
 
@@ -2072,13 +2074,7 @@ const printTickeCompletion = async () => {
     console.error("No hay datos de orden para imprimir");
     return;
   }
-
-  TotalToPrint.value = parseFloat(orderData.value.total_amount);
   speSurchargeAmountPrint.value = parseFloat(orderData.value.spe_surcharge_amount || 0);
-  paymentsForPrint.value = paymentsForPrint.value.filter(p => {
-    const name = (p.method || "").toString().toUpperCase();
-    return name !== 'N/A' && name !== '' && name !== 'UNDEFINED';
-  });
   isSpecialTaxpayer.value = parseFloat(orderData.value.spe_surcharge_amount) > 0;
   isPrinting.value = true;
   await nextTick();
