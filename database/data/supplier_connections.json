@@ -603,12 +603,12 @@
                 "target": "barcode_match"
             },
             "14": {
-                "file_field": "desc_articulo",
+                "file_field": "ProductName",
                 "type": "string",
                 "target": "name"
             },
             "28": {
-                "file_field": "fecha_Expire_ned",
+                "file_field": "ExpirationDate",
                 "type": "date",
                 "target": "expiration"
             },
@@ -623,7 +623,7 @@
                 "target": "quantity"
             },
             "12": {
-                "file_field": "cod_articulo",
+                "file_field": "ProductCode",
                 "type": "string",
                 "target": "cod_supplier"
             }
