@@ -88,7 +88,16 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             ->keyBy('barcode');
 
         $processedChunk = $rows
-            ->filter(fn($row) => !empty(array_filter((array) $row)))
+            ->filter(function ($row) {
+                $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
+                $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));
+
+                return !empty(array_filter((array) $row))
+                    && $name !== ''
+                    && $name !== 'DESCRIPCIÓN'
+                    && $cod !== 'LISTADO GENERAL'
+                    && $cod !== 'CODIGO';
+            })
             ->map(function ($row) use ($now, $currency, $toNumber, $products) {
                 $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
                 $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));

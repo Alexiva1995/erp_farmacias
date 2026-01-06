@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            UserSeeder::class,
             GroupsLaboratoriesSeeder::class,
             OriginsSeeder::class,
             CategoriesSeeder::class,
@@ -35,6 +36,7 @@ class DatabaseSeeder extends Seeder
             UsersLegacyImportSeeder::class,
             FiscalHistorySeeder::class,
             InvoiceSeeder::class,
+            AddLaboratoryRelationshipOnProducts::class
         ]);
     }
 }
