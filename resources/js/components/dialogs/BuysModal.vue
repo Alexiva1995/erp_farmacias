@@ -691,51 +691,52 @@ const logoSrc = computed(() => {
 // Función para manejar la impresión del ticket (solo imprime, no completa la orden)
 const handlePrintTicket = async () => {
   // La orden ya fue completada cuando se hizo clic en "Continuar"
-  // Aquí solo imprimimos el ticket
-   emit("printTicke-completed");
-/*await nextTick();
+  // Aquí solo imprimimos el ticket desde el componente padre
+  await nextTick();
   const printContents = document.getElementById("orderPrint");
   if (printContents) {
     const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>"
-    );
-    const styleSheets = document.styleSheets;
-    for (let i = 0; i < styleSheets.length; i++) {
-      const sheet = styleSheets[i];
-      try {
-        if (sheet.cssRules) {
-          let cssText = "";
-          for (let j = 0; j < sheet.cssRules.length; j++) {
-            cssText += sheet.cssRules[j].cssText;
+    if (printWindow) {
+      printWindow.document.write(
+        "<html><head><title>Farmacia Barrio Sucre</title>"
+      );
+      const styleSheets = document.styleSheets;
+      for (let i = 0; i < styleSheets.length; i++) {
+        const sheet = styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            let cssText = "";
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              cssText += sheet.cssRules[j].cssText;
+            }
+            printWindow.document.write("<style>" + cssText + "</style>");
+          } else if (sheet.href) {
+            printWindow.document.write(
+              '<link rel="stylesheet" href="' + sheet.href + '">'
+            );
           }
-          printWindow.document.write(`<style>${cssText}</style>`);
-        } else if (sheet.href) {
-          printWindow.document.write(
-            `<link rel="stylesheet" href="${sheet.href}">`
+        } catch (e) {
+          console.warn(
+            "No se pudo acceder a la hoja de estilo:",
+            sheet.href || sheet,
+            e
           );
         }
-      } catch (e) {
-        console.warn(
-          "No se pudo acceder a la hoja de estilo:",
-          sheet.href || sheet,
-          e
-        );
       }
+      printWindow.document.write("</head><body>");
+      printWindow.document.write(printContents.innerHTML);
+      printWindow.document.write("</body></html>");
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
     }
-    printWindow.document.write("</head><body>");
-    printWindow.document.write(printContents.innerHTML);
-    printWindow.document.write("</body></html>");
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
   } else {
     console.warn(
       "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
     );
     window.print();
-  }*/
+  }
 };
 
 // Función para cancelar después de ver el ticket

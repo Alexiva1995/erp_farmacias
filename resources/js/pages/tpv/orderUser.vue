@@ -12,7 +12,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, ref, watch, computed, reactive, nextTick } from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -1812,10 +1812,10 @@ const closeBuysModal = () => {
               for (let j = 0; j < sheet.cssRules.length; j++) {
                 cssText += sheet.cssRules[j].cssText;
               }
-              printWindow.document.write(`<style>${cssText}</style>`);
+              printWindow.document.write("<style>" + cssText + "</style>");
             } else if (sheet.href) {
               printWindow.document.write(
-                `<link rel="stylesheet" href="${sheet.href}">`
+                '<link rel="stylesheet" href="' + sheet.href + '">'
               );
             }
           } catch (e) {
@@ -2094,12 +2094,12 @@ const printTickeCompletion = async () => {
       try {
         if (sheet.cssRules) {
           const css = Array.from(sheet.cssRules).map(r => r.cssText).join("");
-          printWindow.document.write(`<style>${css}</style>`);
+          printWindow.document.write("<style>" + css + "</style>");
         } else if (sheet.href) {
-          printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+          printWindow.document.write('<link rel="stylesheet" href="' + sheet.href + '">');
         }
       } catch (e) {
-        if (sheet.href) printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
+        if (sheet.href) printWindow.document.write('<link rel="stylesheet" href="' + sheet.href + '">');
       }
     });
 
