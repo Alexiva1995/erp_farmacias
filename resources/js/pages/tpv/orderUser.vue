@@ -119,6 +119,7 @@ const reservedOrderData = ref(null);
 const orderItems = ref([]);
 const itemsToPrint = ref([]);
 const TotalToPrint = ref(0);
+const speSurchargeAmountPrint = ref(0);
 
 const showBuysModal = ref(false);
 
@@ -266,8 +267,22 @@ const fetchPrescriptionOffers = async () => {
   }
 };
 
-const fetchCompanyOffers = async () => {
+const fetchCompanyOffers = async (companyId = null) => {
   try {
+
+  const params = {
+      is_active: true,
+      per_page: 100,
+      sort_by: "id",
+      order_by: "desc", // Cambiado de sort_order a order_by para tu Laravel
+    };
+
+    if (companyId) {
+      params.search = companyId; 
+    }
+
+const response = await axios.get("/tpv/promotions/company-offer", { params });
+/*
     const response = await axios.get("/tpv/promotions/company-offer", {
       params: {
         is_active: true,
@@ -275,7 +290,7 @@ const fetchCompanyOffers = async () => {
         sort_by: "id",
         sort_order: "desc",
       },
-    });
+    });*/
 
     if (response.data && response.data.data) {
       activeCompanyOffers.value = response.data.data.map((offer) => {
@@ -367,13 +382,32 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
-
-watch(() => selectedClient.value, (newCliente) => {
+/*
+watch(() => selectedClient.value, async (newCliente) => {
   if (newCliente?.company_id) {
+    await fetchCompanyOffers(newCliente.company_id)
     selectedCompany.value = newCliente.company_id;
     selectedDiscountType.value = "Empresa";
+  }else {
+    selectedCompany.value = null;
+    await fetchCompanyOffers(); 
+  }
+}, { immediate: true });*/
+
+watch(() => selectedClient.value, async (newCliente, oldCliente) => {
+  if (!newCliente) return;
+  if (newCliente?.id === oldCliente?.id) return;
+  console.log("Cliente detectado en el Watch:", newCliente);
+  if (newCliente.company_id) {
+    await fetchCompanyOffers(newCliente.company_id);
+    selectedDiscountType.value = "Empresa";
+    selectedCompany.value = newCliente.company_id;
+  } else {
+    selectedCompany.value = null;
+    await fetchCompanyOffers(); 
   }
 }, { immediate: true });
+
 
 const currentGlobalDiscountDetails = computed(() => {
   if (selectedDiscountType.value === "Empresa" && selectedCompany.value) {
@@ -616,7 +650,7 @@ onMounted(() => {
   consultAllcomapanies();
   fetchDoctorOffers();
   fetchPrescriptionOffers();
-  fetchCompanyOffers();
+//  fetchCompanyOffers();
   fetchGeneralSettings();
 });
 
@@ -710,7 +744,7 @@ onMounted(async () => {
   consultAllcomapanies();
   fetchDoctorOffers();
   fetchPrescriptionOffers();
-  fetchCompanyOffers();
+  //fetchCompanyOffers();
 });
 
 
@@ -1147,7 +1181,7 @@ const myCalculatedTotal = computed(() => {
     valor += specialTaxAmount.value;
   }
 
-  console.log(valor);
+  
 
   return parseFloat(valor.toFixed(2));
 });*/
@@ -2131,15 +2165,14 @@ const printTickeCompletion = async () => {
     return;
   }
 
-  console.log(orderData.value);
+
   TotalToPrint.value = parseFloat(orderData.value.total_amount);
-  const speAmount = orderData.value.spe_surcharge_amount || 0;
-  speSurchargeAmount.value = speAmount.toString();
+  speSurchargeAmountPrint.value = parseFloat(orderData.value.spe_surcharge_amount || 0);
   paymentsForPrint.value = paymentsForPrint.value.filter(p => {
     const name = (p.method || "").toString().toUpperCase();
     return name !== 'N/A' && name !== '' && name !== 'UNDEFINED';
   });
-
+  isSpecialTaxpayer.value = parseFloat(orderData.value.spe_surcharge_amount) > 0;
   isPrinting.value = true;
   await nextTick();
   await new Promise(resolve => setTimeout(resolve, 600)); 
@@ -2246,7 +2279,7 @@ const addReserverOrder = async () => {
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-    console.log("dentro de add reserver");
+
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
         formatOrderItemForFrontend(item)
@@ -2294,7 +2327,7 @@ const updatePacksOptions = (options) => {
 };
 /*
 const handleViewPackDetails = (pack) => {
-  console.log(pack);
+
   selectedPack.value = pack;
   showPackDetailsModal.value = true;
 };*/
@@ -2364,7 +2397,7 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
 
 const handleAddPackToOrder = async ({ pack, quantity }) => {
 
-  console.log(pack);
+
 
  // if (!pack || !pack.pack_config) return;
 
@@ -2392,14 +2425,14 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
       (item) => item.pack_id === pack.id
     );
 
-   console.log(itemsInOrderBelongingToPack.length);
+
 
 if (itemsInOrderBelongingToPack.length > 0) {
       // CASO: EL PACK YA EXISTE EN LA ORDEN
       // Iteramos sobre los productos que ya están en el carrito
-         console.log(itemsInOrderBelongingToPack);
+
       for (const item of itemsInOrderBelongingToPack) {
-        console.log(item);
+
         // Buscamos en la configuración cuánto debe aumentar este producto específico
         const unitsPerPack = productsConfig[item.product_id]?.quantity || productsConfig[item.product_id] || 1;
         const totalToAdd = unitsPerPack * quantity;
@@ -2446,7 +2479,7 @@ if (itemsInOrderBelongingToPack.length > 0) {
       );
 
       if (existingItem) {
-        console.log(idNumeric)
+   
         await updateOrderItemQuantity({
           productId: idNumeric,
           quantity: existingItem.selectedQuantity + amountToAdd,
@@ -2745,7 +2778,7 @@ const handleExternalSort = async (sortData) => {
         :recipe-discount-total="recipeDiscountForPrint"
         :expiration-discount-total="expirationDiscountForPrint"
         :is-special-taxpayer="isSpecialTaxpayer"
-        :spe-surcharge-amount="speSurchargeAmount"
+        :spe-surcharge-amount="speSurchargeAmountPrint"
       />
     </div>
   </div>

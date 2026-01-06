@@ -67,7 +67,7 @@ const props = defineProps({
     default: false,
   },
   speSurchargeAmount: {
-    type: String,
+   type: [Number, String],
     default: 0,
   },
 });
@@ -144,7 +144,7 @@ const showChangeAmount = computed(() => {
 const activeDiscountDisplay = computed(() => {
   const type = props.selectedDiscountType?.toLowerCase();
   const currency = props.selectedCurrency;
-
+console.log(type);
   const config = {
     empresa: {
       label: "Descuento Empresa",
@@ -315,7 +315,7 @@ onMounted(() => {
             Recargo Sujeto Pasivo Especial (3%):
           </span>
           <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(props.speSurchargeAmount, props.selectedCurrency) }}
+            {{ formatCurrency(speSurchargeAmount, selectedCurrency) }}
           </span>
         </div>
 
