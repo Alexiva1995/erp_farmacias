@@ -268,8 +268,10 @@ class SupplierConnectionService
         $barcodes = [];
 
         // ignora la primera fila si contiene encabezados en vez de registros
+        $headerMap = [];
+        $headerLine = '';
         if ($has_header) {
-            array_shift($lines);
+            $headerLine = array_shift($lines);
         }
 
         $usdCurrency = ExchangeRate::orderByDesc('created_at')
@@ -291,6 +293,17 @@ class SupplierConnectionService
         }
 
         $structure_for_parsing = json_decode($connection->parse_using);
+
+        if ($has_header && !empty($headerLine)) {
+            if (!empty($structure_for_parsing)) {
+                $headerLine = $this->parseFixedWidth($headerLine, $structure_for_parsing);
+            }
+            // Remove BOM if present
+            $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
+            $headers = explode(';', $headerLine);
+            $headerMap = array_flip(array_map('trim', $headers));
+        }
+
         $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
@@ -304,7 +317,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing) {
+        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
@@ -325,9 +338,16 @@ class SupplierConnectionService
             $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
+
+
             $quantity = 0;
             foreach ($table_structure as $index => $meta) {
-                $raw = $cols[$index] ?? "";
+                // Use header mapping if available and file_field matches
+                $idx = $index;
+                if (!empty($headerMap) && isset($meta['file_field']) && isset($headerMap[$meta['file_field']])) {
+                    $idx = $headerMap[$meta['file_field']];
+                }
+                $raw = $cols[$idx] ?? "";
                 $value = trim($raw);
 
                 switch ($meta["type"]) {
