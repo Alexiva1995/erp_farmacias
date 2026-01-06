@@ -141,11 +141,6 @@ const selectedCompanyId = ref(null);
 const selectedCompany = ref(null); 
 const selectedDoctor = ref(null);
 
-
-const handleCompanySelected = (id) => {
-  selectedCompany.value = id;
-};
-
 const handleDoctorSelected = (id) => {
   selectedDoctor.value = id;
 };
@@ -282,15 +277,6 @@ const fetchCompanyOffers = async (companyId = null) => {
     }
 
 const response = await axios.get("/tpv/promotions/company-offer", { params });
-/*
-    const response = await axios.get("/tpv/promotions/company-offer", {
-      params: {
-        is_active: true,
-        per_page: 100,
-        sort_by: "id",
-        sort_order: "desc",
-      },
-    });*/
 
     if (response.data && response.data.data) {
       activeCompanyOffers.value = response.data.data.map((offer) => {
@@ -382,22 +368,10 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
-/*
-watch(() => selectedClient.value, async (newCliente) => {
-  if (newCliente?.company_id) {
-    await fetchCompanyOffers(newCliente.company_id)
-    selectedCompany.value = newCliente.company_id;
-    selectedDiscountType.value = "Empresa";
-  }else {
-    selectedCompany.value = null;
-    await fetchCompanyOffers(); 
-  }
-}, { immediate: true });*/
-
 watch(() => selectedClient.value, async (newCliente, oldCliente) => {
   if (!newCliente) return;
   if (newCliente?.id === oldCliente?.id) return;
-  console.log("Cliente detectado en el Watch:", newCliente);
+
   if (newCliente.company_id) {
     await fetchCompanyOffers(newCliente.company_id);
     selectedDiscountType.value = "Empresa";
@@ -451,26 +425,38 @@ const currentGlobalDiscountDetails = computed(() => {
   return null;
 });
 
-const handleCompanyDiscountSelected = (companyId) => {
+const handleCompanyDiscountSelected = async (companyId) => {
   selectedCompanyId.value = companyId;
+  if (companyId) {
+    await fetchCompanyOffers(companyId); 
+  }
   validateAndApplyCompanyDiscount();
 };
 
 const validateAndApplyCompanyDiscount = () => {
+
+  if (activeCompanyOffers.value.length === 0) {
+    console.warn("Validación abortada: No hay ofertas cargadas aún.");
+    return;
+  }
+
   if (!selectedCompanyId.value) {
     if (selectedDiscountType.value === "Empresa") {
       removeDiscount();
     }
     return;
   }
+
   const offer = activeCompanyOffers.value.find(
     (o) => o.value === selectedCompanyId.value
   );
 
   if (!offer) {
+    console.warn('No se encontró oferta para el ID:', selectedCompanyId.value);
     selectedCompanyId.value = null;
     return;
   }
+
   const porcentaje = parseFloat(offer.current_discount || 0);
   if (porcentaje > 0) {
     toast.success(
@@ -1134,10 +1120,11 @@ const specialTaxAmount = computed(() => {
 });
 
 const totalOrderAmountWithspecialTaxAmount = computed(() => {
+  const base = totalOrderAmount.value || 0;
    if (appliesSpecialTax.value) {
-    return totalOrderAmount.value += specialTaxAmount.value;
+    return base + specialTaxAmount.value;
   }
-  return totalOrderAmount.value
+  return base;
 });
 
 const totalOrderAmount = computed(() => {
@@ -1158,33 +1145,7 @@ const totalOrderAmountSinDiscount = computed(() => {
   let discountToSubtract = 0;
   return baseTotal;
 });
-/*
-const myCalculatedTotal = computed(() => {
-  // 1. Sumamos el subtotal de productos + IVA (que ya tiene el beneficio SPE)
-  let valor = totalProductsAmount.value + totalIVAAmount.value;
-  let descuentoTotal = 0;
 
-  // 2. Restamos el descuento
-  if (selectedDiscountType.value === "Empresa") {
-    descuentoTotal = totalCompanyDiscountAmount.value || 0;
-  } else if (selectedDiscountType.value === "Medico") {
-    descuentoTotal = totalDoctorDiscountAmount.value || 0;
-  } else if (selectedDiscountType.value === "Recipe") {
-    descuentoTotal = totalRecipeDiscountAmount.value || 0;
-  }
-
-  valor = valor - descuentoTotal;
-  if (selectedDisplayCurrency.value === "COP") {
-    return roundUpToNearestHundred(valor);
-  }
-  if (appliesSpecialTax.value) {
-    valor += specialTaxAmount.value;
-  }
-
-  
-
-  return parseFloat(valor.toFixed(2));
-});*/
 
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
@@ -1597,7 +1558,6 @@ const addProductToOrder = async ({
     }
   }
 };
-
 
 
 watch(
@@ -2075,60 +2035,14 @@ const handleBuysCompletion = async (
       speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
       await fetchProducts();
-     // showBuysModal.value = false;
-    //  isPrinting.value = true;
       recipeDiscountForPrint.value = totalRecipeDiscountAmount.value;
       doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
       companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
       discountTypeForPrint.value = selectedDiscountType.value;
-
-     // await nextTick();
-    //  const printContents = document.getElementById("orderPrint");
-     /* if (printContents) {
-        const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write(
-          "<html><head><title>Farmacia Barrio Sucre</title>"
-        );
-        const styleSheets = document.styleSheets;
-        for (let i = 0; i < styleSheets.length; i++) {
-          const sheet = styleSheets[i];
-          try {
-            if (sheet.cssRules) {
-              let cssText = "";
-              for (let j = 0; j < sheet.cssRules.length; j++) {
-                cssText += sheet.cssRules[j].cssText;
-              }
-              printWindow.document.write(`<style>${cssText}</style>`);
-            } else if (sheet.href) {
-              printWindow.document.write(
-                `<link rel="stylesheet" href="${sheet.href}">`
-              );
-            }
-          } catch (e) {
-            console.warn(
-              "No se pudo acceder a la hoja de estilo:",
-              sheet.href || sheet,
-              e
-            );
-          }
-        }
-        printWindow.document.write("</head><body>");
-        printWindow.document.write(printContents.innerHTML);
-        printWindow.document.write("</body></html>");
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      } else {
-        console.warn(
-          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-        );
-        window.print();
-      }*/
-
       const orderCompletada = response.data.data.orderCompletada;
       orderData.value = orderCompletada;
      itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value))
+
       if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
@@ -2149,13 +2063,7 @@ const handleBuysCompletion = async (
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
     toast.error("Hubo un problema al procesar su compra.");
-   // isPrinting.value = false;
-  } finally {
-   /* setTimeout(() => {
-      isFinishingOrder.value = false;
-      resetFormSelectors();
-      isPrinting.value = false;
-    }, 500);*/
+
   }
 };
 
@@ -2164,7 +2072,6 @@ const printTickeCompletion = async () => {
     console.error("No hay datos de orden para imprimir");
     return;
   }
-
 
   TotalToPrint.value = parseFloat(orderData.value.total_amount);
   speSurchargeAmountPrint.value = parseFloat(orderData.value.spe_surcharge_amount || 0);
@@ -2325,12 +2232,6 @@ const updatePacksOptions = (options) => {
   packsItemsPerPage.value = options.itemsPerPage;
   fetchPacks();
 };
-/*
-const handleViewPackDetails = (pack) => {
-
-  selectedPack.value = pack;
-  showPackDetailsModal.value = true;
-};*/
 
 const handleViewPackDetails = async (item) => {
   try {
@@ -2418,7 +2319,6 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
 
   const productsToAdd = JSON.parse(pack.pack_config);
   loading.value = true;
-  console.log(orderItems);
 
   try {
   const itemsInOrderBelongingToPack = orderItems.value.filter(
