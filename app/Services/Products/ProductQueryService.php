@@ -107,17 +107,16 @@ class ProductQueryService
         $hasStock = $filters['hasStock'] ?? null;
 
         if ($hasStock === false) {
-            $query->whereDoesntHave('lots', function ($lotQuery) {
-                $lotQuery->where('expiration_date', '>=', now()->startOfDay())
-                    ->where('quantity', '>', 0);
-            });
-        } elseif ($hasStock === true || !empty($filters['startDate']) || !empty($filters['endDate'])) {
-            $query->whereHas('lots', function ($lotQuery) use ($filters, $hasStock) {
-                $lotQuery->where('quantity', '>', 0);
+            // Sin stock: verificar que la suma de lotes válidos sea 0 o que no existan lotes válidos
+            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) <= 0');
+        } elseif ($hasStock === true) {
+            // Con stock: verificar que la suma de lotes válidos sea mayor que 0
+            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) > 0');
+        }
 
-                if ($hasStock === true) {
-                    $lotQuery->where('expiration_date', '>=', now()->startOfDay());
-                }
+        // Filtros de fecha para lotes (independientes del filtro de stock)
+        if (!empty($filters['startDate']) || !empty($filters['endDate'])) {
+            $query->whereHas('lots', function ($lotQuery) use ($filters) {
                 if (!empty($filters['startDate'])) {
                     $lotQuery->where('expiration_date', '>=', $filters['startDate']);
                 }
@@ -220,6 +219,10 @@ class ProductQueryService
             'groupId' => $request->groupId,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_barcodes' => true
         ];
 
@@ -240,10 +243,10 @@ class ProductQueryService
             'groupId' => $request->groupId,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
-            'hasStock' => $request->hasStock,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'isStrictSearch' => $request->isStrictSearch,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_laboratory' => true
         ];
 
@@ -264,10 +267,10 @@ class ProductQueryService
             'groupId' => $request->groupId,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
-            'hasStock' => $request->hasStock,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'isStrictSearch' => $request->isStrictSearch,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_origin' => true
         ];
 

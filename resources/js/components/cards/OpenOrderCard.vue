@@ -207,7 +207,6 @@ const formattedTotalQuotation = computed(() => {
     parseFloat(amountToFormat.toFixed(2)),
     props.selectedDisplayCurrency
   );
-  // return formatCurrency(amountToFormat, props.selectedDisplayCurrency);
 });
 
 const selectCurrency = (currency) => {
@@ -232,8 +231,6 @@ const getDiscountFactor = (product) => {
     props.globalDiscount.percentage > 0 &&
     product.discount_type !== "expiration"
   ) {
-    console.log("hola");
-    console.log(props.globalDiscount.percentage);
     return 1 - props.globalDiscount.percentage / 100;
   }
   return 1;
@@ -292,7 +289,6 @@ const getProductPrice = (product, currency) => {
 
   // Apply visual discount
   if (activeDiscountDisplay.value != null) {
-    console.log("dentro del if");
     basePrice = basePrice * getDiscountFactor(product);
   }
 

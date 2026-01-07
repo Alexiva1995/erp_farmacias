@@ -2201,12 +2201,12 @@ const getAvailableMethodsForCurrency = (currency) => {
             </div>
             <div class="d-flex flex-wrap justify-space-between">
               <span class="font-weight-bold text-h6 mt-4">
-                Orden N° {{ props.orderData.id }}
+                Orden N° {{ props.orderData?.id }}
               </span>
               <div class="text-end">
                 <span class="d-block font-weight-bold text-h6 mt-4">
-                  {{ formatDateTime(props.orderData.created_at, "date") }}
-                  {{ formatDateTime(props.orderData.created_at, "time") }}
+                  {{ formatDateTime(props.orderData?.created_at, "date") }}
+                  {{ formatDateTime(props.orderData?.created_at, "time") }}
                 </span>
               </div>
             </div>
@@ -2214,23 +2214,23 @@ const getAvailableMethodsForCurrency = (currency) => {
             <div class="d-flex flex-wrap justify-space-between">
               <span class="font-weight-bold text-h6"> Cajero </span>
               <span class="font-weight-bold text-h6">
-                {{ props.orderData.seller?.username || "N/A" }}
+                {{ props.orderData?.seller?.username || "N/A" }}
               </span>
             </div>
 
             <div class="d-flex flex-wrap justify-space-between">
               <span class="font-weight-bold text-h6"> Cedula </span>
               <span class="font-weight-bold text-h6">
-                {{ props.orderData.client?.identification_type || "N/A" }}
-                {{ props.orderData.client?.identification || "N/A" }}
+                {{ props.orderData?.client?.identification_type || "N/A" }}
+                {{ props.orderData?.client?.identification || "N/A" }}
               </span>
             </div>
 
             <div class="d-flex flex-wrap justify-space-between">
               <span class="font-weight-bold text-h6"> Cliente </span>
               <span class="font-weight-bold text-h6">
-                {{ props.orderData.client.name }}
-                {{ props.orderData.client.last_name }}
+                {{ props.orderData?.client?.name }}
+                {{ props.orderData?.client?.last_name }}
                 <span
                   v-if="props.orderData?.client?.is_spe"
                   class="text-success"
