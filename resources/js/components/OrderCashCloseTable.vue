@@ -86,6 +86,38 @@ const handleCancelled = (orderId) => {
     }
   });
 }
+
+const normalizeMethods = (data) => {
+  if (!data) {
+    return [];
+  }
+  if (Array.isArray(data)) {
+    return data;
+  }
+  if (typeof data === 'object' && data.legacy && typeof data.legacy === 'string') {
+    try {
+      const cleanedString = data.legacy.replace(/\\"/g, '"');
+      const parsedArray = JSON.parse(cleanedString);
+      if (Array.isArray(parsedArray)) return parsedArray;
+    } catch (e) {
+      console.error("Error normalizando pagos legacy:", e);
+      return [];
+    }
+  }
+  return [];
+};
+
+const hasCreditPayment = (rawData) => {
+  const methods = normalizeMethods(rawData);
+  if (methods.length === 0) return false;
+  return methods.some(p => {
+     if (!p) return false; // Protección contra elementos nulos
+     const isCreditNew = p.method === 'credit';
+     const isCreditOld = p.metodoPago === 'credit';
+
+     return isCreditNew || isCreditOld;
+  });
+};
 </script>
 <template>
   <VCard>
@@ -101,10 +133,10 @@ const handleCancelled = (orderId) => {
       :expanded="expandedRows"
     >
      <template v-slot:item.identification="{ item }">
-      {{ item.client.identification_type }} {{ item.client.identification }}
+      {{ item.client?.identification_type }} {{ item.client?.identification }}
     </template>
     <template v-slot:item.client_full_name="{ item }">
-      {{ item.client.name }} {{ item.client.last_name }}
+      {{ item.client?.name }} {{ item.client?.last_name }}
     </template>
 
 
@@ -121,7 +153,7 @@ const handleCancelled = (orderId) => {
       </template>
 
     <template v-slot:item.currency="{ item }">
-        <span v-if="item.payment_methods?.some(p => p.method === 'credit')">
+        <span v-if="hasCreditPayment(item.payment_methods)">
           {{ item.currency }}*
         </span>
         <span v-else>
