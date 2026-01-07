@@ -138,10 +138,10 @@
     {
         "supplier_id": "15",
         "type": "ftp",
-        "host": "195.35.33.28",
+        "host": "ftp1.vitalclinicdrogueria.com",
         "port": null,
-        "username": "u639259455.u863948713",
-        "password": "eyJpdiI6InlSTzlVOFlqWGtpU2JsaG5nbkZ0aFE9PSIsInZhbHVlIjoiVVRwVThZR3U3Vzd4K0huMGp4Nmx3dz09IiwibWFjIjoiZTcwZmI0MTY1MjBhNjM3NmNiYWNlNGRiODk2NzJhMjZkMTljZDQzNWZhYmJkZjBmNjU3OGFiNWVkMmZiOWYyMyIsInRhZyI6IiJ9",
+        "username": "ftp1@vitalcliniconline.com",
+        "password": "eyJpdiI6IlFyUjlpTEJHQlFQRnA2NHpZd0E4Wnc9PSIsInZhbHVlIjoiWW0xeWtqNlYrQ1dTMWZ0UHpLMk1ZQT09IiwibWFjIjoiYzI5MDYzOWZhMTAwNDlhMzUwNWE4Mjg4Y2IzYjc2OWZhYzAyMWUyYzc3YjYwNDY5YmE1M2U3ZjNlODZjYTRkYyIsInRhZyI6IiJ9",
         "path": "Existencia/inventario.txt",
         "pasv": true,
         "has_header": false,
