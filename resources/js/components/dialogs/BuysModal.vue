@@ -466,6 +466,26 @@ const closeModal = () => {
 };
 
 const handleCompletePurchase = () => {
+
+  const baseCurrency = props.selectedCurrency;
+  const missingRates = [];
+
+  payments.value.forEach(p => {
+    if (p.amount > 0 && p.currency && p.currency !== baseCurrency) {
+      const rate = exchangeRates.value?.[p.currency]?.[baseCurrency];
+      if (!rate || rate === 0) {
+        missingRates.push(`${p.currency} a ${baseCurrency}`);
+      }
+    }
+  });
+
+  if (missingRates.length > 0) {
+    const uniqueMissing = [...new Set(missingRates)]; // Eliminar duplicados
+    toast.error(`No se puede finalizar. Faltan tasas de cambio para convertir: ${uniqueMissing.join(', ')}.`);
+    fetchExchangeRates();
+    return;
+  }
+
   // Validar referencias antes de continuar
   if (hasMissingReferences()) {
     toast.error("Por favor complete todas las referencias de pago antes de continuar.");
@@ -628,11 +648,12 @@ const handleCompletePurchase = () => {
     } else {
       currentProgress.value = 100;
     }
-
+    const validPayments = payments.value.filter(p => p.amount > 0 && p.method !== null);
      emit(
       "purchase-completed",
       props.orderData.id,
-      payments.value,
+      validPayments,
+     // payments.value,
       hasCreditPayment.value,
       changeAmountInCOP.value,
       changeAmountInUSD.value,
@@ -754,6 +775,20 @@ watch(
       fetchExchangeRates();
       // Establecer la pestaña inicial a la moneda del pedido
       selectedCurrencyTab.value = props.selectedCurrency;
+      payments.value = [{
+         method: null,
+        amount: null,
+        reference: null,
+        currency: props.selectedCurrency,
+        debounceTimeout: null,
+        inputAmount: null,
+        _isEditing: false,
+        _isInputActive: false,
+        _isReferenceActive: false,
+        _referenceError: false,
+        _amountConfirmed: false,
+        _amountError: false,
+      }];
     }
   }
 );

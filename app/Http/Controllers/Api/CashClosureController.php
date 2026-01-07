@@ -139,9 +139,10 @@ class CashClosureController extends Controller
     }
     public function getSellerCashTable(Request $request)
     {
+       
         $query = $this->cashClosureQueryService->getFilteredQuerySellerCash($request);
         $perPage = $request->input('itemsPerPage', 10);
-
+        
         if ($perPage < 1) {
             $items = $query->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);

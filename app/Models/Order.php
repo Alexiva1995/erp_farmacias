@@ -88,4 +88,23 @@ class Order extends Model
     {
         return $this->hasMany(PsychotropicControl::class);
     }
+
+
+    /**
+ * Accesor para limpiar pagos corruptos en tiempo de ejecución
+ */
+public function getPaymentMethodsAttribute($value)
+{
+    $data = is_array($value) ? $value : json_decode($value, true);
+
+    if (empty($data) || !is_array($data)) {
+        return [];
+    }
+    return array_values(array_filter($data, function ($payment) {
+        return is_array($payment) && 
+               isset($payment['amount']) && 
+               !is_null($payment['amount']) &&
+               $payment['amount'] > 0;
+    }));
+}
 }
