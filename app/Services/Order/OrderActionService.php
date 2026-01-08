@@ -896,6 +896,7 @@ class OrderActionService
                                 $montoDesc = $amount - $order->usd_conversion;
                                 $cashClosing->usd_cash -= $montoDesc;
                                 $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
+                                 $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
                                 $cashClosing->usd_cash -= $amount;
                             }
@@ -922,12 +923,14 @@ class OrderActionService
                             $cashClosing->bs_card -= $amount;
                             break;
                         case 'cash_cop':
-                            if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                            /*if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                Log::info("dentro de conversion.", $order->usd_conversion);
                                 $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
+                                Log::info("dentro del else conversion.", $order->money_returns);*/
                                 $montoDescCOP = $amount - $order->money_returns;
                                 $cashClosing->cop_cash -= $montoDescCOP;
-                            }
+                           // }
                             break;
                         case 'bank_transfer':
                             $cashClosing->cop_transfer -= $amount;
