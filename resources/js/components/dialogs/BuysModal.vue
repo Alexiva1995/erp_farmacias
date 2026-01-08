@@ -1043,7 +1043,6 @@ const changeAmountInCOP = computed(() => {
   }
 
   const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
-  console.log(rate);
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     console.log(roundUpToNearestHundred(vueltoConvertido));

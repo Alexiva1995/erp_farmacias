@@ -381,6 +381,7 @@ const cancelarOrder = async (orderId) => {
     await axios.patch(`/tpv/orders/${orderId}/cancelled`);
     toast.success("Orden cancelada exitosamente.");
     fetchOrder();
+    fetchCashClosure();
   } catch (error) {
     console.error(
       "Error al cancelar la orden:",

@@ -76,8 +76,6 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
 const getItemPriceByCurrency = (item, currency) => {
-  console.log('Hola ticket');
-  console.log(item);
   const taxRate = item.taxRate || 0;
   let basePrice = 0;
   if (currency === "BS") {
@@ -144,7 +142,7 @@ const showChangeAmount = computed(() => {
 const activeDiscountDisplay = computed(() => {
   const type = props.selectedDiscountType?.toLowerCase();
   const currency = props.selectedCurrency;
-console.log(type);
+
   const config = {
     empresa: {
       label: "Descuento Empresa",
