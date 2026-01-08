@@ -493,6 +493,7 @@ class OrderActionService
 
         DB::beginTransaction();
         try {
+
             $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
