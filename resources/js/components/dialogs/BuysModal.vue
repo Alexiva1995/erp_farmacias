@@ -80,6 +80,7 @@ const emit = defineEmits([
   "purchase-completed",
   "modal-closed",
   "printTicke-completed",
+  "finish-and-reload",
 ]);
 
 const dialogVisible = computed({
@@ -714,6 +715,7 @@ const handlePrintTicket = async () => {
 // Función para cancelar después de ver el ticket
 const handleCancelAfterTicket = () => {
   dialogVisible.value = false;
+  emit("finish-and-reload");
   resetProgress();
 };
 
