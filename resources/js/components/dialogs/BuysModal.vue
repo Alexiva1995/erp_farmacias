@@ -79,6 +79,7 @@ const emit = defineEmits([
   "update:isDialogVisible",
   "purchase-completed",
   "modal-closed",
+  "printTicke-completed",
 ]);
 
 const dialogVisible = computed({
@@ -98,6 +99,8 @@ const selectedCurrencyTab = ref(props.selectedCurrency); // Pestaña de moneda s
 // ELIMINAR: const speSwitch = ref(false); - Ya no se usa
 
 const ratesLoaded = ref(false);
+
+const issubmitting = ref(false);
 
 const payments = ref([
   {
@@ -469,6 +472,7 @@ const handleCompletePurchase = () => {
 
   const baseCurrency = props.selectedCurrency;
   const missingRates = [];
+  if (issubmitting.value) return;
 
   payments.value.forEach(p => {
     if (p.amount > 0 && p.currency && p.currency !== baseCurrency) {
@@ -496,7 +500,6 @@ const handleCompletePurchase = () => {
     if (p.method === "balance") {
       return;
     }
-
     if (
       isTransferMethod(p.method) &&
       (p.amount === null || Number(p.amount) === 0)
@@ -642,18 +645,21 @@ const handleCompletePurchase = () => {
   }
 
   if (currentProgress.value < 100) {
+    try {
+    issubmitting.value = true;
+
     currentStageIndex.value++;
     if (currentStageIndex.value < progressStages.length) {
       currentProgress.value = progressStages[currentStageIndex.value];
-    } else {
+    }else{
       currentProgress.value = 100;
     }
+
     const validPayments = payments.value.filter(p => p.amount > 0 && p.method !== null);
      emit(
       "purchase-completed",
       props.orderData.id,
       validPayments,
-     // payments.value,
       hasCreditPayment.value,
       changeAmountInCOP.value,
       changeAmountInUSD.value,
@@ -662,22 +668,11 @@ const handleCompletePurchase = () => {
         spe: props.orderData?.client?.is_spe || false,
       }
     );
-
-  } else {
-    // Cuando currentProgress === 100, ejecutar la lógica de completar la compra
-   /* emit(
-      "purchase-completed",
-      props.orderData.id,
-      payments.value,
-      hasCreditPayment.value,
-      changeAmountInCOP.value,
-      changeAmountInUSD.value,
-      {
-        invoice_switch: invoiceSwitch.value,
-        spe: props.orderData?.client?.is_spe || false,
-      }
-    );*/
-    // NO cerrar el modal aquí, solo mostrar el ticket
+    } catch (error) {
+      console.error("Error al completar la compra:", error);
+      toast.error("Hubo un problema al procesar el pago. Intente de nuevo.");
+      issubmitting.value = false; 
+    }
   }
 };
 
@@ -713,51 +708,7 @@ const logoSrc = computed(() => {
 const handlePrintTicket = async () => {
   // La orden ya fue completada cuando se hizo clic en "Continuar"
   // Aquí solo imprimimos el ticket desde el componente padre
-  await nextTick();
-  const printContents = document.getElementById("orderPrint");
-  if (printContents) {
-    const printWindow = window.open("", "", "height=600,width=800");
-    if (printWindow) {
-      printWindow.document.write(
-        "<html><head><title>Farmacia Barrio Sucre</title>"
-      );
-      const styleSheets = document.styleSheets;
-      for (let i = 0; i < styleSheets.length; i++) {
-        const sheet = styleSheets[i];
-        try {
-          if (sheet.cssRules) {
-            let cssText = "";
-            for (let j = 0; j < sheet.cssRules.length; j++) {
-              cssText += sheet.cssRules[j].cssText;
-            }
-            printWindow.document.write("<style>" + cssText + "</style>");
-          } else if (sheet.href) {
-            printWindow.document.write(
-              '<link rel="stylesheet" href="' + sheet.href + '">'
-            );
-          }
-        } catch (e) {
-          console.warn(
-            "No se pudo acceder a la hoja de estilo:",
-            sheet.href || sheet,
-            e
-          );
-        }
-      }
-      printWindow.document.write("</head><body>");
-      printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    }
-  } else {
-    console.warn(
-      "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-    );
-    window.print();
-  }
+  emit("printTicke-completed");
 };
 
 // Función para cancelar después de ver el ticket
@@ -770,6 +721,7 @@ watch(
   () => props.isDialogVisible,
   (newVal) => {
     if (newVal) {
+      issubmitting.value = false;
       resetProgress();
       ratesLoaded.value = false;
       fetchExchangeRates();
@@ -2075,8 +2027,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                   :style="remainingAmount <= 0 && !hasMissingReferences() ? 'background-color: #28C76F; color: white;' : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'"
                   variant="flat"
                   @click="handleCompletePurchase"
+                  :loading="issubmitting"
                   block
-                  :disabled="currentProgress === 0 && (remainingAmount > 0.01 || hasMissingReferences())"
+                  :disabled="issubmitting || currentProgress === 0 && (remainingAmount > 0.01 || hasMissingReferences())"
                 >
                   {{ continueButtonText }}
                 </VBtn>
