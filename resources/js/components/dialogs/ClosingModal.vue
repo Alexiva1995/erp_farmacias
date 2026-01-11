@@ -52,7 +52,8 @@ const globalTotals = computed(() => {
     total_usd_binance: 0,
     total_usd_paypal: 0,
     total_usd_conversion: 0,
-    total_bs_card: 0,
+    total_bs_card_debito: 0,
+    total_bs_card_credito: 0,
     total_bs_transfer: 0,
     total_bs_mobile: 0,
     total_cop_transfer: 0,
@@ -73,6 +74,8 @@ const globalTotals = computed(() => {
     total_usd_paypal_delivery: 0,
     total_bs_cash_delivery: 0,
     total_bs_card_delivery: 0,
+    total_bs_card_debito_delivery: 0,
+    total_bs_card_credito_delivery: 0,
     total_bs_transfer_delivery: 0,
     total_bs_mobile_delivery: 0,
     total_cop_cash_delivery: 0,
@@ -92,7 +95,8 @@ const globalTotals = computed(() => {
     acc.total_usd_conversion += parseFloat(closing.usd_conversion) || 0;
 
     acc.total_bs_cash += parseFloat(closing.bs_cash) || 0;
-    acc.total_bs_card += parseFloat(closing.bs_card) || 0;
+    acc.total_bs_card_debito += parseFloat(closing.bs_card_debito) || 0;
+    acc.total_bs_card_credito += parseFloat(closing.bs_card_credit) || 0;
     acc.total_bs_transfer += parseFloat(closing.bs_transfer) || 0;
     acc.total_bs_mobile += parseFloat(closing.bs_mobile) || 0;
 
@@ -134,9 +138,12 @@ const globalTotals = computed(() => {
     acc.total_bs_cash_delivery +=
       (parseFloat(closing.bs_cash) || 0) +
       (parseFloat(closing.bs_cash_payment_credit) || 0);
-    acc.total_bs_card_delivery +=
-      (parseFloat(closing.bs_card) || 0) +
+    acc.total_bs_card_delivery += 
       (parseFloat(closing.bs_card_payment_credit) || 0);
+    acc.total_bs_card_debito_delivery +=
+      (parseFloat(closing.bs_card_debito) || 0);
+    acc.total_bs_card_credito_delivery +=
+       (parseFloat(closing.bs_card_credit) || 0);
     acc.total_bs_transfer_delivery +=
       (parseFloat(closing.bs_transfer) || 0) +
       (parseFloat(closing.bs_transfer_payment_credit) || 0);
@@ -181,7 +188,8 @@ const bsPayments = computed(() => {
   const totals = globalTotals.value;
   const paymentsList = [
     { label: "Efectivo", amount: totals.total_bs_cash, currency: "BS" },
-    { label: "Tarjeta", amount: totals.total_bs_card, currency: "BS" },
+    { label: "T. Débito", amount: totals.total_bs_card_debito, currency: "BS" },
+    { label: "T. Crédito", amount: totals.total_bs_card_credito, currency: "BS" },
     {
       label: "Transferencia",
       amount: totals.total_bs_transfer,
@@ -341,6 +349,8 @@ const delivery = computed(() => {
       currency: "BS",
     },
     { label: "Tarjeta", amount: totals.total_bs_card_delivery, currency: "BS" },
+    { label: "Tarjeta Débito", amount: totals.total_bs_card_debito_delivery, currency: "BS" },
+    { label: "Tarjeta Crédito", amount: totals.total_bs_card_credito_delivery, currency: "BS" },
     {
       label: "Transferencia",
       amount: totals.total_bs_transfer_delivery,

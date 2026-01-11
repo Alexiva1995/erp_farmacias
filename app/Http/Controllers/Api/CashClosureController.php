@@ -113,6 +113,7 @@ class CashClosureController extends Controller
             $items = $query->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
+        
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
