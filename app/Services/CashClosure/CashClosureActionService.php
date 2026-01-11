@@ -37,7 +37,8 @@ class CashClosureActionService
         $metrics = [
             'bs_mobile' => ['currency' => 'BS', 'type' => 'MOBILE'],
             'bs_transfer' => ['currency' => 'BS', 'type' => 'TRANSFER'],
-            'bs_card' => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_card_debito' => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_card_credit' => ['currency' => 'BS', 'type' => 'CARD'],
             'bs_cash' => ['currency' => 'BS', 'type' => 'CASH'],
             'cop_delivered' => ['currency' => 'COP', 'type' => 'CASH'],
             'cop_transfer' => ['currency' => 'COP', 'type' => 'TRANSFER'],
@@ -186,7 +187,7 @@ class CashClosureActionService
                 'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
                 'total_cop' => $cashClosings->sum('total_cop'),
                 'total_bs' => $cashClosings->sum('total_bs'),
-                'bs_card' => $cashClosings->sum('bs_card'),
+                'bs_card'     => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
                 'bs_mobile' => $cashClosings->sum('bs_mobile'),
                 'usd_delivered' => $cashClosings->sum('usd_delivered'),
                 'cop_delivered' => $cashClosings->sum('cop_delivered'),

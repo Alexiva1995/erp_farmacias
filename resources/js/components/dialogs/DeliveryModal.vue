@@ -148,7 +148,8 @@ const groupedCardTotals = computed(() => {
   return closings.reduce((acc, closing) => {
     const sellerId = closing.seller_id;
     const sellerName = closing.seller?.username || `Vendedor ${sellerId}`;
-    const bsCardAmount = parseFloat(closing.bs_card) || 0;
+    const bsCarDebitoAmount = parseFloat(closing.bs_card_debito) || 0;
+    const bsCarCreditoAmount = parseFloat(closing.bs_card_credit) || 0;
     const bsTransferAmount = parseFloat(closing.bs_transfer) || 0;
     const bsMobileAmount = parseFloat(closing.bs_mobile) || 0;
     const copTransferAmount = parseFloat(closing.cop_transfer) || 0;
@@ -178,7 +179,8 @@ const groupedCardTotals = computed(() => {
       acc[sellerId] = {
         seller_id: sellerId,
         seller_name: sellerName,
-         total_bs_card: 0,
+         total_bs_card_debito: 0,
+         total_bs_card_credito: 0,
          total_bs_transfer: 0,
          total_bs_mobile: 0,
          total_cop_transfer: 0,
@@ -201,7 +203,8 @@ const groupedCardTotals = computed(() => {
          total_cop_cash_paymentCredit: 0,
       };
     }
-     acc[sellerId].total_bs_card += bsCardAmount;
+     acc[sellerId].total_bs_card_debito += bsCarDebitoAmount;
+     acc[sellerId].total_bs_card_credito += bsCarCreditoAmount;
      acc[sellerId].total_bs_transfer += bsTransferAmount;
      acc[sellerId].total_bs_mobile += bsMobileAmount;
      acc[sellerId].total_cop_transfer += copTransferAmount;
@@ -328,9 +331,13 @@ const getDividerWidth = (name) => {
                                     }"
                                 >
                                     <tbody>
-                                        <tr v-if="cashGroups.total_bs_card > 0">
-                                            <td style="text-align: left"><span>Tarjeta (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card }}</span></td>
+                                        <tr v-if="cashGroups.total_bs_card_debito > 0">
+                                            <td style="text-align: left"><span>Tarjeta Débito (Bs)</span></td>
+                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card_debito }}</span></td>
+                                        </tr>
+                                         <tr v-if="cashGroups.total_bs_card_credito > 0">
+                                            <td style="text-align: left"><span>Tarjeta Crédito (Bs)</span></td>
+                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card_credito }}</span></td>
                                         </tr>
                                         <tr v-if="cashGroups.total_bs_transfer > 0">
                                             <td style="text-align: left"><span>Trasnferencia (Bs)</span></td>

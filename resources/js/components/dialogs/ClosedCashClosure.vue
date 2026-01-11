@@ -153,9 +153,17 @@ const completeClosure = () => {
           </VCol>
           <VCol cols="12" sm="6" md="3">
             <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Tarjeta:</span>
+              <span class="text-caption text-medium-emphasis">T. Debito:</span>
               <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_card }}
+                {{ props.cashClosureData.bs_card_debito }}
+              </span>
+            </div>
+          </VCol>
+           <VCol cols="12" sm="6" md="3">
+            <div class="d-flex flex-column">
+              <span class="text-caption text-medium-emphasis">T. Crédito:</span>
+              <span class="text-body-1 font-weight-medium text-high-emphasis">
+                {{ props.cashClosureData.bs_card_credit }}
               </span>
             </div>
           </VCol>
