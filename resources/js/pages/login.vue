@@ -1,6 +1,5 @@
 <script setup>
 import TwoFactorAuthModal from "@/components/TwoFactorAuthModal.vue";
-import AuthProvider from "@/views/pages/authentication/AuthProvider.vue";
 import authV1BottomShape from "@images/svg/auth-v1-bottom-shape.svg?raw";
 import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
 import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
@@ -20,7 +19,6 @@ definePage({
 const form = ref({
   login: "",
   password: "",
-  remember: false,
 });
 
 const isPasswordVisible = ref(false);
@@ -127,15 +125,6 @@ const on2FAVerified = () => {
         </VCardItem>
 
         <VCardText>
-          <h4 class="text-h4 mb-1">
-            ¡Bienvenido a
-            <span class="text-capitalize">{{ themeConfig.app.title }}</span
-            >! 👋🏻
-          </h4>
-          <p class="mb-0">Por favor, inicia sesión en tu cuenta.</p>
-        </VCardText>
-
-        <VCardText>
           <VAlert
             v-if="errors.general"
             type="error"
@@ -172,16 +161,8 @@ const on2FAVerified = () => {
                   @click:append-inner="isPasswordVisible = !isPasswordVisible"
                 />
 
-                <div
-                  class="d-flex align-center justify-space-between flex-wrap my-6"
-                >
-                  <VCheckbox v-model="form.remember" label="Recordarme" />
-                  <RouterLink class="text-primary" :to="{ name: 'login' }">
-                    ¿Olvidaste tu contraseña?
-                  </RouterLink>
-                </div>
-
                 <VBtn
+                  class="mt-6"
                   block
                   type="submit"
                   :loading="isLoading"
@@ -189,26 +170,6 @@ const on2FAVerified = () => {
                 >
                   Ingresar
                 </VBtn>
-              </VCol>
-
-              <VCol cols="12" class="text-body-1 text-center">
-                <span class="d-inline-block">
-                  ¿Nuevo en nuestra plataforma?
-                </span>
-                <RouterLink
-                  class="text-primary ms-1 d-inline-block text-body-1"
-                  :to="{ name: 'login' }"
-                >
-                  Crea una cuenta
-                </RouterLink>
-              </VCol>
-              <VCol cols="12" class="d-flex align-center">
-                <VDivider />
-                <span class="mx-4 text-high-emphasis">o</span>
-                <VDivider />
-              </VCol>
-              <VCol cols="12" class="text-center">
-                <AuthProvider />
               </VCol>
             </VRow>
           </VForm>
