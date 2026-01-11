@@ -113,8 +113,8 @@ const currentUser = computed(() => authStore.user);
 const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
 const orderData = ref(null);
-
 const reservedOrderData = ref(null);
+const pendingOpenOrder = ref(null);   // Orden que será abierta tras imprimir.
 
 const orderItems = ref([]);
 const itemsToPrint = ref([]);
@@ -2046,8 +2046,8 @@ const handleBuysCompletion = async (
         const name = (p.method || "").toString().toUpperCase();
         return name !== 'N/A' && name !== '' && name !== 'UNDEFINED' && name !== 'NULL';
       });
-
-      if (response.data.data.order) {
+      pendingOpenOrder.value = response.data.data.order
+     /* if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
         selectedClient.value = openOrderData.value.client;
@@ -2055,7 +2055,7 @@ const handleBuysCompletion = async (
         orderItems.value = openOrderData.value.details.map((item) =>
           formatOrderItemForFrontend(item)
         );
-      } 
+      } */
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
@@ -2109,6 +2109,7 @@ const printTickeCompletion = async () => {
       printWindow.print();
       printWindow.close();
       isPrinting.value = false;
+      finalizeAndCheckPending();
     }, 500);
   } else {
     alert("Error: El ticket está vacío. Intente de nuevo.");
@@ -2177,6 +2178,11 @@ const addReserverOrder = async () => {
       `/tpv/order/${reservedOrderData.value.id}/reserveAdd`
     );
     const { pending_order, reserved_order } = response.data.data;
+
+    console.log(pending_order.currency.toUpperCase());
+    if (pending_order.currency) {
+      selectedDisplayCurrency.value = pending_order.currency.toUpperCase();
+    }
 
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
@@ -2523,6 +2529,35 @@ const handleExternalSort = async (sortData) => {
     console.error("Error al guardar preferencia:", error);
   }
 };
+
+const finalizeAndCheckPending = () => {
+  showBuysModal.value = false;
+  console.log("Revisando órdenes pendientes...", pendingOpenOrder.value);
+  if (pendingOpenOrder.value) {
+    hasOpenOrder.value = true;
+    openOrderData.value = pendingOpenOrder.value;
+    selectedClient.value = pendingOpenOrder.value.client;
+    reservedOrderData.value = null;
+    if (pendingOpenOrder.value.currency) {
+      selectedDisplayCurrency.value = pendingOpenOrder.value.currency.toUpperCase();
+    }
+    orderItems.value = pendingOpenOrder.value.details.map((item) => {
+      return formatOrderItemForFrontend(item, selectedDisplayCurrency.value);
+    });
+    pendingOpenOrder.value = null;
+    reservedOrderData.value = null;
+    toast.info("Orden reservada cargada automáticamente.");
+  } else {
+    hasOpenOrder.value = false;
+    openOrderData.value = null;
+    selectedDisplayCurrency.value = 'COP';
+    orderItems.value = [];
+    selectedClient.value = null;
+    clientIdentification.value = "";
+    reservedOrderData.value = null;
+  }
+};
+
 </script>
 <template>
   <div>
@@ -2652,6 +2687,7 @@ const handleExternalSort = async (sortData) => {
       :global-discount="currentGlobalDiscountDetails"
       :is-special-taxpayer="isSpecialTaxpayer"
       @printTicke-completed="printTickeCompletion"
+      @finish-and-reload="finalizeAndCheckPending"
     />
 
    <div

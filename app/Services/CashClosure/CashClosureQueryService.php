@@ -261,7 +261,15 @@ class CashClosureQueryService
 
     private function getBaseQuerySellerCash(): Builder
     {
-        return CashClosing::query()->with('orders.details.product', 'seller');
+        //return CashClosing::query()->with('orders.details.product', 'seller');
+        return CashClosing::query()->with([
+        'orders' => function ($query) {
+            // Filtramos las órdenes para que solo traiga las completadas
+            $query->where('status', 'Completed'); 
+        },
+        'orders.details.product', 
+        'seller'
+        ]);
     }
 
     private function applyFilters(Builder $query, array $filters): Builder

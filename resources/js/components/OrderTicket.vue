@@ -107,6 +107,8 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       { label: "Pago Móvil", value: "mobile_payment" },
       { label: "Transferencia", value: "bank_transfer_bs" },
       { label: "Tarjeta", value: "card" },
+      { label: "T. Débito", value: "debit_card" },
+      { label: "T. Crédito", value: "credit_card" },
     ],
     USD: [
       { label: "Efectivo", value: "cash_usd" },

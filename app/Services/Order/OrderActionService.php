@@ -716,8 +716,11 @@ class OrderActionService
                         case 'bank_transfer_bs':
                             $current_cash->bs_transfer += $amount;
                             break;
-                        case 'card':
-                            $current_cash->bs_card += $amount;
+                        case 'debit_card':
+                            $current_cash->bs_card_debito += $amount;
+                            break;
+                        case 'credit_card':
+                            $current_cash->bs_card_credit += $amount;
                             break;
                         case 'cash_cop':
                             $current_cash->cop_cash += $amount;
@@ -743,7 +746,7 @@ class OrderActionService
                 }
             }
 
-            $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card;
+            $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card_debito + $current_cash->bs_card_credit;
             $total_cop = ($current_cash->cop_cash + $current_cash->cop_transfer) - $current_cash->cop_conversion;
             $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance + $current_cash->usd_conversion;
 
@@ -919,8 +922,11 @@ class OrderActionService
                         case 'bank_transfer_bs':
                             $cashClosing->bs_transfer -= $amount;
                             break;
-                        case 'card':
-                            $cashClosing->bs_card -= $amount;
+                        case 'debit_card':
+                            $cashClosing->bs_card_debito -= $amount;
+                            break;
+                        case 'credit_card':
+                            $cashClosing->bs_card_credit -= $amount;
                             break;
                         case 'cash_cop':
                             /*if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
@@ -941,7 +947,7 @@ class OrderActionService
                     }
                 }
 
-                $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card;
+                $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card_debito + $cashClosing->bs_card_credit;
                 $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
                 $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
 
