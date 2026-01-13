@@ -21,7 +21,7 @@ const handleClear = () => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."

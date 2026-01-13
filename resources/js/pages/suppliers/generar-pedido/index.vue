@@ -288,7 +288,7 @@ function formatiarData(data){
       let orderSupplier={
         "supplier_id":productSupplier.supplier.id,
         "total_items":supplier[productSupplier.supplier.id].length,
-        "total_quantity":productSupplier.reponer,
+        "total_quantity":parseInt(productSupplier.reponer) || 0,
         "total_amount":productSupplier.reponer * productSupplier.precio_final_supplier,
         "details":[detalleProductoOrder],
       }
@@ -303,7 +303,7 @@ function formatiarData(data){
       }
 
       orderSupplier.total_items=supplier[productSupplier.supplier.id].length
-      orderSupplier.total_quantity=orderSupplier.total_quantity+productSupplier.reponer
+      orderSupplier.total_quantity=(parseInt(orderSupplier.total_quantity) || 0) + (parseInt(productSupplier.reponer) || 0)
       orderSupplier.total_amount=orderSupplier.total_amount+(productSupplier.reponer * productSupplier.precio_final_supplier)
       let detalleProductoOrder={
         "product_suppliers_id":productSupplier.productSupplier.id,
@@ -338,7 +338,16 @@ async function realizarCompra(){
   module.loadingApp=true
 
   let productosSinPorveedor= await consultarProductosSinProveedor()
-  pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+  
+  // Generar PDF
+  if (productosSinPorveedor.length > 0) {
+    pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+    
+    // Abrir nueva pestaña con la vista de productos sin proveedor
+    const productosEncoded = encodeURIComponent(JSON.stringify(productosSinPorveedor))
+    const url = `${window.location.origin}/suppliers/products-without-supplier?productos=${productosEncoded}`
+    window.open(url, '_blank')
+  }
 
   module.loadingApp=false
   router.push("/suppliers/purchase-orders/list")

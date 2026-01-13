@@ -64,6 +64,13 @@ async function assignGroup() {
   }
 }
 
+function removeGroup() {
+  formData.value.group_id = null;
+  formData.value.group = null;
+  groupInput.value = null;
+  toast.success("Producto removido del grupo.");
+}
+
 const imagePreviewUrl = computed(() => {
   if (imageFile.value) {
     return URL.createObjectURL(imageFile.value);
@@ -128,6 +135,8 @@ watch(
 );
 
 const lotHeaders = [
+  { title: "Nombre", key: "lot_number", sortable: false },
+  { title: "Ubicación", key: "location", sortable: false },
   { title: "Stock", key: "quantity", sortable: false },
   { title: "Exp.", key: "expiration_date", sortable: false },
 ];
@@ -189,7 +198,7 @@ const submitForm = () => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-6">
+      <VCardTitle class="d-flex align-center pa-4 pb-3">
         <span class="text-h5 font-weight-bold">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
@@ -212,13 +221,119 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
-          <div class="mb-6">
-            <p class="text-h6 font-weight-medium mb-1">Datos Generales</p>
-            <p class="text-body-2 text-medium-emphasis">Información básica del producto</p>
-          </div>
-          <VRow class="mb-6">
+          <VRow dense class="mb-2">
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.name"
+                label="Nombre"
+                variant="outlined"
+                density="compact"
+                :error-messages="formErrors.name"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.active_ingredient"
+                label="Principio Activo"
+                variant="outlined"
+                density="compact"
+                :error-messages="formErrors.active_ingredient"
+              />
+            </VCol>
+          </VRow>
+          <VRow dense class="mb-2">
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="formData.laboratory_id"
+                label="Laboratorio"
+                :items="props.laboratories"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+                :error-messages="formErrors.laboratory_id"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="formData.origin_id"
+                label="Origen"
+                :items="props.origins"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+                :error-messages="formErrors.origin_id"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="formData.category_id"
+                label="Categoría"
+                :items="props.categories"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+                :error-messages="formErrors.category_id"
+              />
+            </VCol>
+          </VRow>
+          <VRow dense class="mb-2">
+            <VCol cols="12" md="4">
+              <VTextField
+                v-model="formData.barcode"
+                label="Código de Barra"
+                variant="outlined"
+                density="compact"
+                :error-messages="formErrors.barcode"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VTextField
+                v-model="formData.unit_cost"
+                label="Costo de Compra"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                :readonly="!authStore.isAdmin"
+                :error-messages="formErrors.unit_cost"
+              />
+            </VCol>
+            <VCol cols="12" md="4" class="d-flex align-center gap-2">
+              <VCheckbox
+                v-model="formData.iva"
+                label="IVA"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+              <VCheckbox
+                v-model="formData.psychotropic"
+                label="Psicotrópico"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+              <VCheckbox
+                v-model="formData.is_colombian_origin"
+                label="Colombia"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+            </VCol>
+          </VRow>
+          <VRow dense class="mb-3">
             <VCol cols="12" md="8">
               <VFileInput
                 v-model="imageFile"
@@ -228,7 +343,7 @@ const submitForm = () => {
                 prepend-icon="tabler-camera"
                 clearable
                 :error-messages="formErrors.photo_url"
-                density="comfortable"
+                density="compact"
               />
             </VCol>
             <VCol
@@ -239,158 +354,58 @@ const submitForm = () => {
             >
               <VImg
                 :src="imagePreviewUrl"
-                :width="180"
+                :width="120"
                 aspect-ratio="1"
                 class="border rounded"
               />
             </VCol>
           </VRow>
-          <VRow class="mb-4">
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model="formData.name"
-                label="Nombre"
-                variant="outlined"
-                density="comfortable"
-                :error-messages="formErrors.name"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model="formData.active_ingredient"
-                label="Principio Activo"
-                variant="outlined"
-                density="comfortable"
-                :error-messages="formErrors.active_ingredient"
-              />
-            </VCol>
-          </VRow>
-          <VRow class="mb-4">
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="formData.laboratory_id"
-                label="Laboratorio"
-                :items="props.laboratories"
-                item-title="name"
-                item-value="id"
-                variant="outlined"
-                density="comfortable"
-                clearable
-                :error-messages="formErrors.laboratory_id"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model="formData.unit_cost"
-                label="Costo de Compra"
-                type="number"
-                prefix="$"
-                variant="outlined"
-                density="comfortable"
-                :readonly="!authStore.isAdmin"
-                :error-messages="formErrors.unit_cost"
-              />
-            </VCol>
-          </VRow>
-          <VRow class="mb-4">
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="formData.origin_id"
-                label="Origen"
-                :items="props.origins"
-                item-title="name"
-                item-value="id"
-                variant="outlined"
-                density="comfortable"
-                clearable
-                :error-messages="formErrors.origin_id"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="formData.category_id"
-                label="Categoría"
-                :items="props.categories"
-                item-title="name"
-                item-value="id"
-                variant="outlined"
-                density="comfortable"
-                clearable
-                :error-messages="formErrors.category_id"
-              />
-            </VCol>
-          </VRow>
-          <VRow class="mb-6">
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model="formData.barcode"
-                label="Código de Barra"
-                variant="outlined"
-                density="comfortable"
-                :error-messages="formErrors.barcode"
-              />
-            </VCol>
-            <VCol
-              cols="12"
-              md="6"
-              class="d-flex align-center flex-wrap gap-4"
-            >
-              <VCheckbox
-                v-model="formData.iva"
-                label="IVA"
-                :true-value="1"
-                :false-value="0"
-                density="comfortable"
-              />
-              <VCheckbox
-                v-model="formData.psychotropic"
-                label="Psicotrópico"
-                :true-value="1"
-                :false-value="0"
-                density="comfortable"
-              />
-              <VCheckbox
-                v-model="formData.is_colombian_origin"
-                label="Colombia"
-                :true-value="1"
-                :false-value="0"
-                density="comfortable"
-              />
-            </VCol>
-          </VRow>
 
           <template v-if="!isNewProduct">
-            <VDivider class="my-8" />
-            <div class="mb-4">
+            <VDivider class="my-3" />
+            <div class="mb-2">
               <p class="text-h6 font-weight-medium mb-1">Grupo de Productos</p>
-              <p class="text-body-2 text-medium-emphasis">Asignar y gestionar grupos de productos relacionados</p>
             </div>
-            <VSheet variant="tonal" rounded="lg" class="pa-6">
+            <VSheet color="grey-100" rounded="lg" class="pa-3">
 
               <div
                 v-if="assignedGroupName"
-                class="d-flex align-center gap-4 mb-6"
+                class="d-flex align-center gap-2 mb-3"
               >
-                <span class="font-weight-medium">Grupo Asignado:</span>
-                <VChip color="primary" label size="small">{{ assignedGroupName }}</VChip>
+                <span class="text-body-2 font-weight-medium">Grupo Asignado:</span>
+                <VChip 
+                  color="primary" 
+                  label 
+                  size="small"
+                  closable
+                  @click:close="removeGroup"
+                >
+                  {{ assignedGroupName }}
+                </VChip>
                 <VSpacer />
               </div>
 
-              <VRow class="mb-4">
+              <VRow v-if="!assignedGroupName" dense class="mb-2">
                 <VCol cols="12" md="9">
                   <VTextField
                     v-model="groupInput"
                     label="Nombre o ID del Grupo a Asignar"
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
                   />
                 </VCol>
                 <VCol cols="12" md="3" class="d-flex align-end">
-                  <VBtn color="primary" @click="assignGroup" block size="large"
-                    >Asignar</VBtn
+                  <VBtn 
+                    color="primary" 
+                    @click="assignGroup" 
+                    block 
+                    variant="flat"
+                    style="height: 40px;"
                   >
+                    Asignar
+                  </VBtn>
                 </VCol>
               </VRow>
 
@@ -398,7 +413,7 @@ const submitForm = () => {
                 v-if="productsInGroup.length > 0"
                 :headers="groupProductsHeaders"
                 :items="productsInGroup"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 no-data-text="Ningún otro producto en este grupo."
               >
@@ -412,20 +427,25 @@ const submitForm = () => {
           <template
             v-if="!isNewProduct && formData.lots && formData.lots.length > 0"
           >
-            <VDivider class="my-8" />
+            <VDivider class="my-3" />
 
-            <div class="mb-4">
+            <div class="mb-2">
               <p class="text-h6 font-weight-medium mb-1">Lotes del Producto</p>
-              <p class="text-body-2 text-medium-emphasis">Inventario de lotes y fechas de expiración</p>
             </div>
 
             <VDataTable
               :headers="lotHeaders"
               :items="formData.lots || []"
-              density="comfortable"
+              density="compact"
               class="rounded-lg"
               no-data-text="Este producto no tiene lotes registrados."
             >
+              <template #item.lot_number="{ item }">
+                <span>{{ item.lot_number || "N/A" }}</span>
+              </template>
+              <template #item.location="{ item }">
+                <span>{{ item.location || "N/A" }}</span>
+              </template>
               <template #item.quantity="{ item }">
                 <span>{{ Number(item.quantity) || 0 }}</span>
               </template>
@@ -439,15 +459,12 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VDivider />
-
-      <VCardActions class="pa-6">
+      <VCardActions class="pa-3">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          size="large"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1 mr-2"
         >
           Cancelar
         </VBtn>
@@ -455,8 +472,7 @@ const submitForm = () => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          size="large"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
         >
           Guardar
         </VBtn>

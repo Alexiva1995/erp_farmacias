@@ -64,7 +64,7 @@ export default function pdfProductsWithoutSuppliersGenerator(data) {
             product.name || 'N/A',
             product.laboratory?.name || 'N/A',
             { 
-                content: product.total_group_sales?.toString() || '0', 
+                content: (product.total_sold_completed ?? 0).toString(), 
                 styles: { halign: 'center' } 
             },
             { 

@@ -30,6 +30,7 @@ const emit = defineEmits([
   "clear",
   "add-lot",
   "sort",
+  "clean-zero-quantity",
 ]);
 
 const stockOptions = [
@@ -311,7 +312,7 @@ watch(
         </VChip>
       </div>
 
-      <div class="d-flex align-center mt-3 mb-2">
+      <div class="d-flex align-center">
         <VCheckbox
           :model-value="props.isStrictSearch"
           @update:model-value="emit('update:isStrictSearch', $event)"
@@ -340,6 +341,14 @@ watch(
       </div>
 
       <VSpacer />
+
+      <VBtn
+        v-if="props.isAdmin"
+        color="error"
+        variant="outlined"
+        icon="tabler-trash"
+        @click="emit('clean-zero-quantity')"
+      />
 
       <VBtn
         v-if="props.isAdmin"

@@ -313,6 +313,11 @@ class ProductRepository
 
         // calcular promedio en vace a los dias => promedio_calculado
         $promedio_calculado = "";
+        if ($filtros["lapso_de_tiempo"] == "7 days") {
+            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 4';
+        }
+
         if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -395,7 +400,8 @@ class ProductRepository
                 $consulta->having("solicitar", ">", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                // Incluir productos con fallas O productos con ventas 0 y stock 0
+                $consulta->havingRaw("(solicitar < 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
             }
         }
 
@@ -518,6 +524,11 @@ class ProductRepository
 
         // calcular promedio en vace a los dias => promedio_calculado
         $promedio_calculado = "";
+        if ($filtros["lapso_de_tiempo"] == "7 days") {
+            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 4';
+        }
+
         if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -596,7 +607,8 @@ class ProductRepository
                 $consulta->having("solicitar", ">", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                // Incluir productos con fallas O productos con ventas 0 y stock 0
+                $consulta->havingRaw("(solicitar < 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
             }
         }
 

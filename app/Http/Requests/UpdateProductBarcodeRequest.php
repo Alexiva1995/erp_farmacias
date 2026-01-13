@@ -2,7 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\JsonResponse;
 
 class UpdateProductBarcodeRequest extends FormRequest
 {
@@ -26,5 +30,38 @@ class UpdateProductBarcodeRequest extends FormRequest
         return [
             'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
         ];
+    }
+
+    /**
+     * Handle a failed validation attempt.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        $errors = $validator->errors();
+
+        // Si hay un error de barcode único, buscar el producto que ya tiene ese código
+        if ($errors->has('barcode')) {
+            $barcode = $this->input('barcode');
+            $productId = $this->route('product')->id ?? null;
+
+            if ($barcode) {
+                $existingProduct = Product::where('barcode', $barcode)
+                    ->where('id', '!=', $productId)
+                    ->first();
+
+                if ($existingProduct) {
+                    // Reemplazar el mensaje de error con uno personalizado que incluye el ID
+                    $errors->forget('barcode');
+                    $errors->add('barcode', "Ya se encuentra registrado. ID: {$existingProduct->id}");
+                }
+            }
+        }
+
+        throw new HttpResponseException(
+            response()->json([
+                'message' => 'Error de validación',
+                'errors' => $errors
+            ], 422)
+        );
     }
 }

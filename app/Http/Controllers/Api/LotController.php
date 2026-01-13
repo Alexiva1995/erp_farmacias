@@ -115,9 +115,16 @@ class LotController extends Controller
     public function productsWithInconsistentStock(Request $request)
     {
         $query = $this->lotQueryService->getProductsWithInconsistentStockQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
 
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => ['data' => $items, 'total' => $items->count()]]);
+        }
+        
+        $paginatedResult = $query->paginate($perPage);
         return response()->json([
-            'data' => $query->paginate(10),
+            'data' => ['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()],
         ]);
     }
 
@@ -200,6 +207,23 @@ class LotController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al obtener información de stock.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function deleteLotsWithZeroQuantity()
+    {
+        try {
+            $deletedCount = $this->lotActionService->deleteLotsWithZeroQuantity();
+
+            return response()->json([
+                'message' => "Se eliminaron {$deletedCount} lotes con cantidad 0.",
+                'deleted_count' => $deletedCount,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar los lotes.',
                 'error' => $e->getMessage(),
             ], 500);
         }

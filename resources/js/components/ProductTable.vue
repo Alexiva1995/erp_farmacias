@@ -38,6 +38,13 @@ const headers = ref([
   },
   { title: "Exp.", key: "next_expiration", sortable: true, visible: true },
   {
+    title: "STOCK",
+    key: "stock_calculado",
+    sortable: true,
+    align: "end",
+    visible: true,
+  },
+  {
     title: "Costo",
     key: "unit_cost",
     sortable: true,
@@ -152,8 +159,10 @@ const formatPrice = (price) => {
         </div>
       </template>
 
-      <template #item.stock="{ item }">
-        <span class="font-weight-medium">{{ item.stock }}</span>
+      <template #item.stock_calculado="{ item }">
+        <div class="text-end">
+          <span class="font-weight-medium">{{ item.stock_calculado ?? 0 }}</span>
+        </div>
       </template>
 
       <template #item.next_expiration="{ item }">

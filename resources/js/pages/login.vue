@@ -108,8 +108,8 @@ const on2FAVerified = () => {
 
       <VCard
         class="auth-card"
-        max-width="460"
-        :class="$vuetify.display.smAndUp ? 'pa-6' : 'pa-0'"
+        max-width="600"
+        :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-4'"
       >
         <VCardItem class="justify-center">
           <VCardTitle>

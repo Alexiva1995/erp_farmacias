@@ -58,21 +58,22 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
-  if (!authStore.user) {
+  // Solo intentar obtener el usuario si no está cargado aún
+  if (!authStore.isLoaded && !authStore.user) {
     await authStore.fetchUser()
   }
   
   const isAuthenticated = authStore.isAuthenticated
   const requiresAuth = to.meta.requiresAuth
-
+  
   if (requiresAuth && !isAuthenticated) {
     return next({ path: '/login' })
   }
-
+  
   if (to.path === '/login' && isAuthenticated) {
     return next({ path: '/invoice/invoices' })
   }
-
+  
   return next()
 })
 

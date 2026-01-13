@@ -51,6 +51,14 @@ class AutoOrdersRepository
 
     public function create(array $datos): ?AutoOrder
     {
+        // Asegurar que total_quantity sea un entero
+        if (isset($datos['total_quantity'])) {
+            $datos['total_quantity'] = (int) $datos['total_quantity'];
+        }
+        // Asegurar que total_items sea un entero
+        if (isset($datos['total_items'])) {
+            $datos['total_items'] = (int) $datos['total_items'];
+        }
         $record = AutoOrder::create($datos);
         return $record;
     }

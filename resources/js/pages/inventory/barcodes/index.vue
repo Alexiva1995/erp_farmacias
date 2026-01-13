@@ -15,6 +15,7 @@ const sortBy = ref();
 const orderBy = ref();
 
 const productWithError = ref(null);
+const errorMessage = ref("");
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
@@ -33,6 +34,7 @@ const isLoadingFilters = ref(false);
 const handleUpdateProduct = async ({ id, barcode }) => {
   if (productWithError.value === id) {
     productWithError.value = null;
+    errorMessage.value = "";
   }
 
   try {
@@ -42,8 +44,15 @@ const handleUpdateProduct = async ({ id, barcode }) => {
   } catch (err) {
     toast.error("Error al actualizar");
 
-    if (err.response.status === 422) {
+    if (err.response?.status === 422) {
       productWithError.value = id;
+      // Extraer el mensaje de error del servidor
+      const errors = err.response.data?.errors;
+      if (errors?.barcode && errors.barcode[0]) {
+        errorMessage.value = errors.barcode[0];
+      } else {
+        errorMessage.value = "Ya se encuentra registrado";
+      }
     }
   }
 };
@@ -196,6 +205,7 @@ const handleSort = (sortOptions) => {
       :items-per-page="itemsPerPage"
       :page="page"
       :product-with-error="productWithError"
+      :error-message="errorMessage"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
     />

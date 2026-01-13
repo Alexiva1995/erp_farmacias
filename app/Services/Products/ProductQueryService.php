@@ -44,25 +44,36 @@ class ProductQueryService
         }
 
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
+            $searchTerm = $filters['q'];
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
 
                 if ($isStrictSearch) {
-                    $subQuery->where('name', 'like', "%{$searchTerm}%")
-                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
-                        ->orWhere('barcode', 'like', $searchTerm)
-                        ->orWhere('id', 'like', $searchTerm);
+                    // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
+                    // Esto evita que "loratadina" coincida con "desloratadina"
+                    // Usamos una expresión que busca la palabra completa delimitada por espacios o al inicio/final
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    // Buscar palabra completa: al inicio del string, al final, o con espacios/caracteres no alfanuméricos alrededor
+                    // Usamos una expresión que funciona en MySQL 5.7+ y 8.0+
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $subQuery->whereRaw("name REGEXP ?", [$pattern])
+                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere('barcode', '=', $searchTerm)
+                        ->orWhere('id', '=', $searchTerm);
                 } else {
-                    $words = explode(' ', $searchTerm);
+                    // Búsqueda normal: permite coincidencias parciales
+                    $searchPattern = "%{$searchTerm}%";
+                    $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
-                        $subQuery->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where('name', 'like', "%{$word}%")
-                                ->orWhere('active_ingredient', 'like', "%{$word}%")
-                                ->orWhere('id', 'like', "%{$word}%")
-                                ->orWhereHas('laboratory', function ($labQuery) use ($word) {
-                                    $labQuery->where('name', 'like', "%{$word}%");
+                        $wordPattern = "%{$word}%";
+                        $subQuery->where(function ($wordQuery) use ($wordPattern, $searchTerm) {
+                            $wordQuery->where('name', 'like', $wordPattern)
+                                ->orWhere('active_ingredient', 'like', $wordPattern)
+                                ->orWhere('barcode', 'like', $wordPattern)
+                                ->orWhere('id', 'like', $wordPattern)
+                                ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                    $labQuery->where('name', 'like', $wordPattern);
                                 });
                         });
                     }

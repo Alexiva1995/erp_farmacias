@@ -83,6 +83,11 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["paginate"]->each(function ($items) use ($filtros) {
             $items = $this->product->calcularAOProduct($items);
 
+            // Verificar si el producto tiene ventas 0 y stock 0
+            $ventasCero = ($items->total_sold_completed ?? 0) == 0;
+            $stockCero = ($items->lote_quantity ?? 0) == 0;
+            $esProductoSinVentasNiStock = $ventasCero && $stockCero;
+
             if ($filtros["tipo_filtracion"] == "combinado") {
                 $filtrosVentas = $filtros;
                 $filtrosVentas["id"] = $items->id;
@@ -112,6 +117,11 @@ class SuppliersIaOrderAssistantController extends Controller
                 $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
             } else {
                 $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+            }
+
+            // Si el producto tiene ventas 0 y stock 0, asegurar que solicitar sea al menos 1
+            if ($esProductoSinVentasNiStock && $items->solicitar < 1) {
+                $items->solicitar = 1;
             }
         });
 
@@ -171,6 +181,15 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($filtrosFallas["tipo_filtracion"] == "combinado") {
             foreach ($productosFallas as $producto) {
                 $producto->solicitar = (($producto->promedio_calculado + $producto->total_sold_completed) / 2 - $producto->lote_quantity - $producto->totalQuantityInAutoOrder) * -1;
+            }
+        }
+
+        // Asegurar que productos con ventas 0 y stock 0 tengan solicitar al menos 1
+        foreach ($productosFallas as $producto) {
+            $ventasCero = ($producto->total_sold_completed ?? 0) == 0;
+            $stockCero = ($producto->lote_quantity ?? 0) == 0;
+            if ($ventasCero && $stockCero && $producto->solicitar < 1) {
+                $producto->solicitar = 1;
             }
         }
 

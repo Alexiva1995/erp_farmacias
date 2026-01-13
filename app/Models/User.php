@@ -49,6 +49,17 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Get the password for authentication.
+     * Sanctum necesita este método para validar la sesión cuando el campo se llama diferente a "password"
+     *
+     * @return string
+     */
+    public function getAuthPassword()
+    {
+        return $this->password_hash;
+    }
+
     public function cashClosings()
     {
         return $this->hasMany(CashClosing::class, 'seller_id');

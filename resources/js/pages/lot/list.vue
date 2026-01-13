@@ -1,6 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 import ProductLotDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
@@ -226,6 +227,48 @@ const handleSaveLot = (lotData) => {
     handleCreateLot(lotData);
   }
 };
+
+const handleCleanZeroQuantity = async () => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "Se eliminarán todos los lotes que tienen cantidad 0. Esta acción no se puede deshacer.",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Eliminar",
+    reverseButtons: true,
+    confirmButtonColor: "#d33",
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const response = await axios.delete("/product-lots/clean-zero-quantity");
+      toast.success(response.data.message || "Lotes eliminados con éxito.");
+      fetchProductLots();
+    } catch (error) {
+      console.error("Error al eliminar lotes:", error);
+      const errorMessage =
+        error.response?.data?.message || "No se pudieron eliminar los lotes.";
+      toast.error(errorMessage);
+    }
+  }
+};
 </script>
 
 <template>
@@ -247,6 +290,7 @@ const handleSaveLot = (lotData) => {
       @clear="handleClearFilters"
       @add-lot="handleAddLot"
       @sort="handleSort"
+      @clean-zero-quantity="handleCleanZeroQuantity"
     />
 
     <ProductLotsTable

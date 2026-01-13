@@ -44,6 +44,40 @@ class LotActionService
         $productLot->update(['quantity' => 0]);
     }
 
+    /**
+     * Elimina lotes con cantidad 0, pero solo si el producto tiene más de un lote.
+     * Si un producto tiene múltiples lotes en 0, solo se elimina uno.
+     *
+     * @return int Número de lotes eliminados
+     */
+    public function deleteLotsWithZeroQuantity(): int
+    {
+        $deletedCount = 0;
+        
+        // Obtener todos los productos que tienen lotes con cantidad 0
+        $productsWithZeroLots = ProductLot::where('quantity', '<=', 0)
+            ->with('product')
+            ->get()
+            ->groupBy('product_id');
+        
+        foreach ($productsWithZeroLots as $productId => $zeroLots) {
+            // Contar el total de lotes del producto (incluyendo los que tienen cantidad > 0)
+            $totalLots = ProductLot::where('product_id', $productId)->count();
+            
+            // Solo eliminar si el producto tiene más de un lote
+            if ($totalLots > 1) {
+                // Si hay múltiples lotes en 0, solo eliminar uno
+                $lotToDelete = $zeroLots->first();
+                if ($lotToDelete) {
+                    $lotToDelete->delete();
+                    $deletedCount++;
+                }
+            }
+        }
+        
+        return $deletedCount;
+    }
+
     public function batchUpdateLots(array $data)
     {
         $productId = $data['product_id'];

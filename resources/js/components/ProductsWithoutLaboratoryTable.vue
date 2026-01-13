@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,10 +13,12 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update-product"]);
+const emit = defineEmits(["update:options", "update-product", "laboratory-created"]);
 
 const editingProductId = ref(null);
 const editingValue = ref(null);
+const searchInput = ref("");
+const currentEditingProduct = ref(null);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -33,6 +37,23 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
+const createLaboratory = async (name) => {
+  try {
+    const response = await axios.post("/laboratories", { name });
+    toast.success("Laboratorio creado con éxito");
+    emit("laboratory-created", response.data.laboratory);
+    return response.data.laboratory;
+  } catch (err) {
+    if (err.response?.status === 422) {
+      const errorMessage = err.response.data?.errors?.name?.[0] || err.response.data?.message || "Error al crear el laboratorio";
+      toast.error(errorMessage);
+    } else {
+      toast.error("Error al crear el laboratorio");
+    }
+    throw err;
+  }
+};
+
 const saveInlineEdit = async (product) => {
   try {
     emit("update-product", {
@@ -47,11 +68,48 @@ const saveInlineEdit = async (product) => {
 const startEdit = (product) => {
   editingProductId.value = product.id;
   editingValue.value = product.laboratory_id || null;
+  currentEditingProduct.value = product;
+  searchInput.value = "";
 };
 
 const cancelEdit = () => {
   editingProductId.value = null;
   editingValue.value = null;
+  currentEditingProduct.value = null;
+  searchInput.value = "";
+};
+
+const handleLaboratorySearch = (search) => {
+  searchInput.value = search;
+};
+
+const handleCreateLaboratoryOnEnter = async (event) => {
+  if (!searchInput.value || !searchInput.value.trim()) return;
+  
+  const labName = searchInput.value.trim();
+  
+  // Verificar si ya existe un laboratorio con ese nombre (case-insensitive)
+  const exists = props.laboratories.some(
+    (lab) => lab.name.toLowerCase() === labName.toLowerCase()
+  );
+  
+  if (exists) {
+    toast.error("Ya existe un laboratorio con ese nombre");
+    return;
+  }
+  
+  try {
+    const newLab = await createLaboratory(labName);
+    // Asignar el nuevo laboratorio al producto
+    editingValue.value = newLab.id;
+    // Guardar automáticamente
+    if (currentEditingProduct.value) {
+      await saveInlineEdit(currentEditingProduct.value);
+    }
+  } catch (err) {
+    // El error ya se maneja en createLaboratory
+    console.error(err);
+  }
 };
 
 // TODO: hay que modificar la funcion para que muestre la fecha de vencimiento a pesar de que los lotes ya estén todos vencidos (puede que se tenga que modificar la consulta en el backend)
@@ -131,15 +189,25 @@ const nextExpirationDate = (product) => {
             density="compact"
             variant="outlined"
             style="width: 300px"
-            placeholder="Seleccionar laboratorio"
+            placeholder="Buscar o crear laboratorio"
             clearable
-            @keyup.enter="saveInlineEdit(item)"
+            @keydown.enter.prevent="
+              searchInput && searchInput.trim() && !editingValue
+                ? handleCreateLaboratoryOnEnter()
+                : saveInlineEdit(item)
+            "
             autofocus
             :error="props.productWithError === item.id"
             :error-messages="
               props.productWithError === item.id
                 ? 'Error al asignar laboratorio'
                 : ''
+            "
+            @update:search="handleLaboratorySearch"
+            :no-data-text="
+              searchInput && searchInput.trim()
+                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                : 'No hay laboratorios disponibles.'
             "
           />
         </template>

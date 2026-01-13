@@ -19,46 +19,49 @@ class LotQueryService
 
         if ($request->has('productId') && !empty($request->productId)) {
             $query->where('product_id', $request->productId);
-        } else {
-            $query->where('quantity', '>', 0);
         }
+        // Removido el filtro de cantidad > 0 para mostrar todos los lotes
 
         if ($request->has('search') && !empty($request->search)) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $q->where('lot_number', 'like', "%{$searchTerm}%")
-                        ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
-                            $productQuery->where('name', 'like', "%{$searchTerm}%")
-                                ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
-                                ->orWhere('barcode', 'like', $searchTerm)
-                                ->orWhere('id', $searchTerm);
+                    // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
+                    // Esto evita que "loratadina" coincida con "desloratadina"
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    // Buscar palabra completa: al inicio del string, al final, o con espacios/caracteres no alfanuméricos alrededor
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    
+                    $q->whereRaw("lot_number REGEXP ?", [$pattern])
+                        ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
+                            $productQuery->whereRaw("name REGEXP ?", [$pattern])
+                                ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                                ->orWhere('barcode', '=', $searchTerm)
+                                ->orWhere('id', '=', $searchTerm);
                         });
-                }else{
-                    $words = explode(' ', $searchTerm);
+                } else {
+                    // Búsqueda normal: permite coincidencias parciales
+                    $words = explode(' ', trim($searchTerm));
                     $q->where(function ($wordClauses) use ($words) {
                         foreach ($words as $word) {
                             $word = trim($word);
                             if (empty($word)) continue;
-                            $wordClauses->where(function ($fieldClauses) use ($word) {
-                                $fieldClauses->orWhere('lot_number', 'like', "%{$word}%")
-                                    ->orWhereHas('product', function ($productQuery) use ($word) {
-                                        $productQuery->where('name', 'like', "%{$word}%")
-                                            ->orWhere('active_ingredient', 'like', "%{$word}%")
-                                            ->orWhereHas('laboratory', function ($labQuery) use ($word) {
-                                                $labQuery->where('name', 'like', "%{$word}%");
+                            $wordPattern = "%{$word}%";
+                            $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
+                                $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
+                                    ->orWhereHas('product', function ($productQuery) use ($wordPattern, $searchTerm) {
+                                        $productQuery->where('name', 'like', $wordPattern)
+                                            ->orWhere('active_ingredient', 'like', $wordPattern)
+                                            ->orWhere('barcode', 'like', $wordPattern)
+                                            ->orWhere('id', 'like', $wordPattern)
+                                            ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                                $labQuery->where('name', 'like', $wordPattern);
                                             });
                                     });
                             });
                         }
                     });
                 }
-
-                /*$q->where('lot_number', 'like', "%{$searchTerm}%")
-                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
-                        $productQuery->where('name', 'like', "%{$searchTerm}%")
-                            ->orWhere('active_ingredient', 'like', "%{$searchTerm}%");
-                    });*/
             });
         }
 
@@ -107,15 +110,17 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory', 'product.origin'])
-            ->whereHas('product', function ($productQuery) {
-                $productQuery->whereRaw('
-                    stock != (
-                        SELECT COALESCE(SUM(quantity), 0) 
-                        FROM product_lots 
-                        WHERE product_id = products.id
-                    )
-                ');
+            ->with(['product.laboratory', 'product.origin', 'supplier'])
+            ->where(function ($q) {
+                // Mostrar lotes que les falte ubicación o nombre (lot_number)
+                $q->where(function ($locationQuery) {
+                    $locationQuery->whereNull('product_lots.location')
+                        ->orWhere('product_lots.location', '');
+                })
+                ->orWhere(function ($lotNumberQuery) {
+                    $lotNumberQuery->whereNull('product_lots.lot_number')
+                        ->orWhere('product_lots.lot_number', '');
+                });
             });
 
         $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
@@ -135,27 +140,34 @@ class LotQueryService
         
         $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
             if ($isStrictSearch) {
-                $q->where('lot_number', 'like', "%{$searchTerm}%")
-                    ->orWhereHas('product', function ($productQuery) use ($searchTerm) {
-                        $productQuery->where('name', 'like', "%{$searchTerm}%")
-                            ->orWhere('active_ingredient', 'like', "%{$searchTerm}%") 
-                            ->orWhere('barcode', 'like', $searchTerm)
-                            ->orWhere('id', $searchTerm);
+                // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
+                $escapedTerm = preg_quote($searchTerm, '/');
+                $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                
+                $q->whereRaw("lot_number REGEXP ?", [$pattern])
+                    ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
+                        $productQuery->whereRaw("name REGEXP ?", [$pattern])
+                            ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                            ->orWhere('barcode', '=', $searchTerm)
+                            ->orWhere('id', '=', $searchTerm);
                     });
             } else {
-
-                $words = explode(' ', $searchTerm);
+                // Búsqueda normal: permite coincidencias parciales
+                $words = explode(' ', trim($searchTerm));
                 $q->where(function ($wordClauses) use ($words) {
                     foreach ($words as $word) {
                         $word = trim($word);
                         if (empty($word)) continue;
-                        $wordClauses->where(function ($fieldClauses) use ($word) {
-                            $fieldClauses->orWhere('lot_number', 'like', "%{$word}%")
-                                ->orWhereHas('product', function ($productQuery) use ($word) {
-                                    $productQuery->where('name', 'like', "%{$word}%")
-                                        ->orWhere('active_ingredient', 'like', "%{$word}%")
-                                        ->orWhereHas('laboratory', function ($labQuery) use ($word) {
-                                            $labQuery->where('name', 'like', "%{$word}%");
+                        $wordPattern = "%{$word}%";
+                        $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
+                            $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
+                                ->orWhereHas('product', function ($productQuery) use ($wordPattern, $searchTerm) {
+                                    $productQuery->where('name', 'like', $wordPattern)
+                                        ->orWhere('active_ingredient', 'like', $wordPattern)
+                                        ->orWhere('barcode', 'like', $wordPattern)
+                                        ->orWhere('id', 'like', $wordPattern)
+                                        ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                            $labQuery->where('name', 'like', $wordPattern);
                                         });
                                 });
                         });

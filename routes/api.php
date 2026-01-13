@@ -123,7 +123,9 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
     Route::get("/laboratories", [ResourceController::class, "getLaboratories"]);
+    Route::post("/laboratories", [ResourceController::class, "storeLaboratory"]);
     Route::get("/origins", [ResourceController::class, "getOrigins"]);
+    Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
@@ -148,11 +150,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/donations/month/{month}/data", [DonationController::class, "getMonthlyDonationData"]);
 
     // Rutas de Lotes de Productos
-    Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
+    // Rutas específicas deben ir ANTES del resource para evitar conflictos
+    Route::delete('/product-lots/clean-zero-quantity', [LotController::class, 'deleteLotsWithZeroQuantity']);
+    Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
     Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
     Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
     Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
-    Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+    Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
     Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
     Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);
 

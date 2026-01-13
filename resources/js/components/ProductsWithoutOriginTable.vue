@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,10 +13,12 @@ const props = defineProps({
   origins: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update-product"]);
+const emit = defineEmits(["update:options", "update-product", "origin-created"]);
 
 const editingProductId = ref(null);
 const editingValue = ref(null);
+const searchInput = ref("");
+const currentEditingProduct = ref(null);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -34,6 +38,23 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
+const createOrigin = async (name) => {
+  try {
+    const response = await axios.post("/origins", { name });
+    toast.success("Origen creado con éxito");
+    emit("origin-created", response.data.origin);
+    return response.data.origin;
+  } catch (err) {
+    if (err.response?.status === 422) {
+      const errorMessage = err.response.data?.errors?.name?.[0] || err.response.data?.message || "Error al crear el origen";
+      toast.error(errorMessage);
+    } else {
+      toast.error("Error al crear el origen");
+    }
+    throw err;
+  }
+};
+
 const saveInlineEdit = async (product) => {
   try {
     emit("update-product", {
@@ -48,11 +69,48 @@ const saveInlineEdit = async (product) => {
 const startEdit = (product) => {
   editingProductId.value = product.id;
   editingValue.value = product.origin_id || null;
+  currentEditingProduct.value = product;
+  searchInput.value = "";
 };
 
 const cancelEdit = () => {
   editingProductId.value = null;
   editingValue.value = null;
+  currentEditingProduct.value = null;
+  searchInput.value = "";
+};
+
+const handleOriginSearch = (search) => {
+  searchInput.value = search;
+};
+
+const handleCreateOriginOnEnter = async (event) => {
+  if (!searchInput.value || !searchInput.value.trim()) return;
+  
+  const originName = searchInput.value.trim();
+  
+  // Verificar si ya existe un origen con ese nombre (case-insensitive)
+  const exists = props.origins.some(
+    (origin) => origin.name.toLowerCase() === originName.toLowerCase()
+  );
+  
+  if (exists) {
+    toast.error("Ya existe un origen con ese nombre");
+    return;
+  }
+  
+  try {
+    const newOrigin = await createOrigin(originName);
+    // Asignar el nuevo origen al producto
+    editingValue.value = newOrigin.id;
+    // Guardar automáticamente
+    if (currentEditingProduct.value) {
+      await saveInlineEdit(currentEditingProduct.value);
+    }
+  } catch (err) {
+    // El error ya se maneja en createOrigin
+    console.error(err);
+  }
 };
 
 // TODO: hay que modificar la funcion para que muestre la fecha de vencimiento a pesar de que los lotes ya estén todos vencidos (puede que se tenga que modificar la consulta en el backend)
@@ -144,15 +202,25 @@ const nextExpirationDate = (product) => {
             density="compact"
             variant="outlined"
             style="width: 300px"
-            placeholder="Seleccionar origen"
+            placeholder="Buscar o crear origen"
             clearable
-            @keyup.enter="saveInlineEdit(item)"
+            @keydown.enter.prevent="
+              searchInput && searchInput.trim() && !editingValue
+                ? handleCreateOriginOnEnter()
+                : saveInlineEdit(item)
+            "
             autofocus
             :error="props.productWithError === item.id"
             :error-messages="
               props.productWithError === item.id
                 ? 'Error al asignar origen'
                 : ''
+            "
+            @update:search="handleOriginSearch"
+            :no-data-text="
+              searchInput && searchInput.trim()
+                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                : 'No hay orígenes disponibles.'
             "
           />
         </template>

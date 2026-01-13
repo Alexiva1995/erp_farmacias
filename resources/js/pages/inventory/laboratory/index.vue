@@ -163,6 +163,13 @@ const handleSort = (sortOptions) => {
     orderBy.value = sortOptions.order;
   }
 };
+
+const handleLaboratoryCreated = (newLaboratory) => {
+  // Agregar el nuevo laboratorio a la lista
+  laboratories.value.push(newLaboratory);
+  // Ordenar la lista por nombre
+  laboratories.value.sort((a, b) => a.name.localeCompare(b.name));
+};
 </script>
 
 <template>
@@ -194,6 +201,7 @@ const handleSort = (sortOptions) => {
       :laboratories="laboratories"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
+      @laboratory-created="handleLaboratoryCreated"
     />
   </div>
 </template>

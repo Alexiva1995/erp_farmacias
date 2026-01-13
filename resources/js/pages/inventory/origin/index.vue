@@ -164,6 +164,13 @@ const handleSort = (sortOptions) => {
     orderBy.value = sortOptions.order;
   }
 };
+
+const handleOriginCreated = (newOrigin) => {
+  // Agregar el nuevo origen a la lista
+  origins.value.push(newOrigin);
+  // Ordenar la lista por nombre
+  origins.value.sort((a, b) => a.name.localeCompare(b.name));
+};
 </script>
 
 <template>
@@ -194,6 +201,7 @@ const handleSort = (sortOptions) => {
       :origins="origins"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
+      @origin-created="handleOriginCreated"
     />
   </div>
 </template>

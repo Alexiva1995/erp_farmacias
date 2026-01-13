@@ -40,6 +40,7 @@ const tipoFiltracionOpcion = [
 ];
 
 const lapsoDeTiempoOpciones = [
+  { title: "7 Dias", value: "7 days" },
   { title: "15 Dias", value: "15 days" },
   { title: "1 Mes", value: "1 month" },
   { title: "3 Meses", value: "3 month" },

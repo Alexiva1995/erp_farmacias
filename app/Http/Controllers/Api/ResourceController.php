@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreLaboratoryRequest;
+use App\Http\Requests\StoreOriginRequest;
+use App\Models\Laboratory;
+use App\Models\Origin;
 use App\Services\Resources\ResourceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,6 +20,36 @@ class ResourceController extends Controller
     {
         $laboratories = $this->resourceService->getLaboratories();
         return response()->json($laboratories);
+    }
+
+    public function storeLaboratory(StoreLaboratoryRequest $request)
+    {
+        $laboratory = Laboratory::create([
+            'name' => $request->validated()['name'],
+        ]);
+
+        // Limpiar la caché de laboratorios para que se actualice la lista
+        \Cache::forget('resources.laboratories');
+
+        return response()->json([
+            'message' => 'Laboratorio creado con éxito.',
+            'laboratory' => $laboratory,
+        ], 201);
+    }
+
+    public function storeOrigin(StoreOriginRequest $request)
+    {
+        $origin = Origin::create([
+            'name' => $request->validated()['name'],
+        ]);
+
+        // Limpiar la caché de orígenes para que se actualice la lista
+        \Cache::forget('resources.origins');
+
+        return response()->json([
+            'message' => 'Origen creado con éxito.',
+            'origin' => $origin,
+        ], 201);
     }
 
     public function getOrigins()

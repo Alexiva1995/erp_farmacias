@@ -8,6 +8,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   productWithError: { type: [Number, null], default: null },
+  errorMessage: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:options", "update-product"]);
@@ -147,7 +148,7 @@ const nextExpirationDate = (product) => {
             :error="props.productWithError === item.id"
             :error-messages="
               props.productWithError === item.id
-                ? 'Ya se encuentra registrado'
+                ? props.errorMessage || 'Ya se encuentra registrado'
                 : ''
             "
           />

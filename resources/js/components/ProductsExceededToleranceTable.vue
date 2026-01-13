@@ -79,7 +79,7 @@ const productosTable = computed(() => {
           </td>
 
           <td>
-            {{ item.product.total_group_sales }}
+            {{ item.product.total_sold_completed ?? 0 }}
           </td>
           <td>
             {{ item.product.promedio_calculado }}
