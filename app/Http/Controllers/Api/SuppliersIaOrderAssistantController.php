@@ -116,12 +116,26 @@ class SuppliersIaOrderAssistantController extends Controller
 
                 $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
             } else {
-                $items->solicitar = $items->solicitar + $items->totalQuantityInAutoOrder;
+                // AO ya está incluido en el cálculo SQL, pero verificamos que esté correcto
+                // Si el cálculo SQL no incluyó AO correctamente, lo ajustamos
+                $solicitarCalculado = $items->solicitar;
+                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
+                // Recalcular para asegurar que AO esté incluido
+                $stock = $items->lote_quantity ?? 0;
+                $ventas = $items->total_sold_completed ?? 0;
+                $items->solicitar = $stock - $ventas - $aoActual;
             }
 
-            // Si el producto tiene ventas 0 y stock 0, asegurar que solicitar sea al menos 1
-            if ($esProductoSinVentasNiStock && $items->solicitar < 1) {
-                $items->solicitar = 1;
+            // Si el producto tiene ventas 0 y stock 0, debe ser negativo (falla)
+            // NO forzar a 1, debe calcularse como negativo
+            if ($esProductoSinVentasNiStock) {
+                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
+                // Si tiene AO, el cálculo ya lo incluye. Si no tiene AO, debe ser negativo
+                $items->solicitar = 0 - $aoActual;
+                // Si no hay AO, debe ser negativo (falla)
+                if ($aoActual == 0) {
+                    $items->solicitar = -1; // Falla: necesita al menos 1
+                }
             }
         });
 
@@ -184,12 +198,20 @@ class SuppliersIaOrderAssistantController extends Controller
             }
         }
 
-        // Asegurar que productos con ventas 0 y stock 0 tengan solicitar al menos 1
+        // Para productos con ventas 0 y stock 0, deben ser negativos (fallas)
+        // NO forzar a 1, deben calcularse como negativos
         foreach ($productosFallas as $producto) {
             $ventasCero = ($producto->total_sold_completed ?? 0) == 0;
             $stockCero = ($producto->lote_quantity ?? 0) == 0;
-            if ($ventasCero && $stockCero && $producto->solicitar < 1) {
-                $producto->solicitar = 1;
+            $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
+            
+            if ($ventasCero && $stockCero) {
+                // Si tiene AO, el cálculo ya lo incluye. Si no tiene AO, debe ser negativo
+                $producto->solicitar = 0 - $aoActual;
+                // Si no hay AO, debe ser negativo (falla)
+                if ($aoActual == 0) {
+                    $producto->solicitar = -1; // Falla: necesita al menos 1
+                }
             }
         }
 

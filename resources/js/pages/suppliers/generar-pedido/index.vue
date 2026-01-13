@@ -251,9 +251,22 @@ const LISTA_PORVEEDORES_TOTAL= computed(() => {
 
 
 async function confirmarCompra(){
+  // Validar que haya productos en el detalle
+  if (!module.detalleOrder || module.detalleOrder.length === 0) {
+    toast.warning("No hay productos para generar la compra. Agrega productos al detalle primero.");
+    return;
+  }
+
+  // Validar que todos los productos tengan cantidad mayor a 0
+  const productosSinCantidad = module.detalleOrder.filter(item => !item.reponer || item.reponer <= 0);
+  if (productosSinCantidad.length > 0) {
+    toast.warning(`Hay ${productosSinCantidad.length} producto(s) sin cantidad asignada. Por favor, asigna una cantidad mayor a 0.`);
+    return;
+  }
+
   const result = await Swal.fire({
     title: '¿Estás seguro?',
-    text: "Esta compra no se podra revertir",
+    text: `Se generarán ${module.detalleOrder.length} producto(s) en la compra. Esta acción no se podrá revertir.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Confirmar',
@@ -320,37 +333,60 @@ function formatiarData(data){
 }
 
 async function realizarCompra(){
-  module.loadingApp=true
-  let orders=formatiarData([...module.detalleOrder])
-  const DATA={
-    orders
-  }
-  console.log("datos enviar => ",orders)
-
-  let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
-  if(response.status!=200){
-     module.loadingApp=false
-    toast.error("Error al generar al compra")
-    return
-  }
-  module.loadingApp=false
-  toast.success("Compra realizada con exito")
-  module.loadingApp=true
-
-  let productosSinPorveedor= await consultarProductosSinProveedor()
-  
-  // Generar PDF
-  if (productosSinPorveedor.length > 0) {
-    pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+  try {
+    module.loadingApp=true
     
-    // Abrir nueva pestaña con la vista de productos sin proveedor
-    const productosEncoded = encodeURIComponent(JSON.stringify(productosSinPorveedor))
-    const url = `${window.location.origin}/suppliers/products-without-supplier?productos=${productosEncoded}`
-    window.open(url, '_blank')
-  }
+    // Validación adicional
+    if (!module.detalleOrder || module.detalleOrder.length === 0) {
+      toast.error("No hay productos para generar la compra")
+      module.loadingApp=false
+      return
+    }
 
-  module.loadingApp=false
-  router.push("/suppliers/purchase-orders/list")
+    let orders=formatiarData([...module.detalleOrder])
+    
+    if (!orders || orders.length === 0) {
+      toast.error("Error al formatear los datos de la compra")
+      module.loadingApp=false
+      return
+    }
+
+    const DATA={
+      orders
+    }
+    console.log("datos enviar => ",orders)
+
+    let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
+    
+    if(response.status!=200){
+      module.loadingApp=false
+      toast.error("Error al generar la compra")
+      return
+    }
+    
+    module.loadingApp=false
+    toast.success("Compra realizada con éxito")
+    module.loadingApp=true
+
+    let productosSinPorveedor= await consultarProductosSinProveedor()
+    
+    // Generar PDF
+    if (productosSinPorveedor.length > 0) {
+      pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
+      
+      // Abrir nueva pestaña con la vista de productos sin proveedor
+      const productosEncoded = encodeURIComponent(JSON.stringify(productosSinPorveedor))
+      const url = `${window.location.origin}/suppliers/products-without-supplier?productos=${productosEncoded}`
+      window.open(url, '_blank')
+    }
+
+    module.loadingApp=false
+    router.push("/suppliers/purchase-orders/list")
+  } catch (error) {
+    console.error("Error al realizar compra:", error)
+    module.loadingApp=false
+    toast.error(error.response?.data?.message || "Error al generar la compra. Por favor, intenta nuevamente.")
+  }
 }
 
 async function consultarProductosSinProveedor(){
@@ -528,6 +564,7 @@ function eliminarItemOrden(payload){
             color="primary"
             variant="flat"
             class="w-100"
+            :disabled="!module.detalleOrder || module.detalleOrder.length === 0"
             @click="confirmarCompra"
           >
             Generar

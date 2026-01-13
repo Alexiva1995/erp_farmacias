@@ -519,7 +519,13 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND aod.status = 0
             ) AS totalQuantityInAutoOrder'),
-            DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            )) AS solicitar'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
