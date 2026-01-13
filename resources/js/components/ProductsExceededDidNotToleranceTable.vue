@@ -86,7 +86,7 @@ const productosTable = computed(() => {
           </td>
           <td>
             <VIcon icon="tabler-currency-dollar" size="small" />
-            {{ parseFloat(item.product.unit_cost).toFixed(2) }}
+            {{ item.product.unit_cost ? parseFloat(item.product.unit_cost).toFixed(2) : '0.00' }}
           </td>
           <td>
             <VIcon icon="tabler-currency-dollar" size="small" />
