@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { defineEmits, defineProps, computed } from "vue";
+import { computed, defineEmits, defineProps } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -35,11 +35,11 @@ const packProducts = computed(() => {
       name: p.product_name,
       quantity: p.quantity || 1,
       active_ingredient: p.product_info?.active_ingredient || "",
-      laboratory: p.product_info?.laboratory?.name || "",
+      laboratory: p.product_info?.laboratory || "",
       photo_url: p.product_info?.photo_url || null,
-      sale_price: p.product_info?.sale_price || 0,
+      sale_price: p.sale_price || 0,
       discount_percentage: p.discount_percentage || 0,
-      unit_price: p.unit_price || p.product_info?.sale_price || 0,
+      unit_price: p.sale_price || 0,
     }));
   }
 
@@ -60,14 +60,16 @@ const packProducts = computed(() => {
 
   // Si tiene pack_config (JSON)
   if (props.pack.pack_config) {
-    const config = typeof props.pack.pack_config === 'string' 
-      ? JSON.parse(props.pack.pack_config) 
-      : props.pack.pack_config;
-    
+    const config =
+      typeof props.pack.pack_config === "string"
+        ? JSON.parse(props.pack.pack_config)
+        : props.pack.pack_config;
+
     return Object.entries(config).map(([productId, config]) => {
-      const quantity = typeof config === 'object' ? (config.quantity || 1) : config;
-      const unitPrice = typeof config === 'object' ? (config.sale_price || 0) : 0;
-      
+      const quantity =
+        typeof config === "object" ? config.quantity || 1 : config;
+      const unitPrice = typeof config === "object" ? config.sale_price || 0 : 0;
+
       return {
         id: parseInt(productId),
         name: `Producto ID: ${productId}`,
@@ -101,15 +103,12 @@ const calculatePriceWithDiscount = (item) => {
 </script>
 
 <template>
-  <VDialog
-    v-model="dialogVisible"
-    max-width="900px"
-    persistent
-    scrollable
-  >
+  <VDialog v-model="dialogVisible" max-width="900px" persistent scrollable>
     <VCard v-if="props.pack">
       <!-- Header moderno -->
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+      <VCardTitle
+        class="d-flex align-center justify-space-between pa-5 bg-primary"
+      >
         <div class="d-flex align-center gap-3">
           <VIcon icon="tabler-package" size="28" color="white" />
           <div class="d-flex flex-column">
@@ -121,11 +120,11 @@ const calculatePriceWithDiscount = (item) => {
             </span>
           </div>
         </div>
-        <VBtn 
-          icon 
-          variant="text" 
-          color="white" 
-          size="small" 
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
           @click="handleClose"
         >
           <VIcon>tabler-x</VIcon>
@@ -138,11 +137,19 @@ const calculatePriceWithDiscount = (item) => {
           <VCol cols="12" md="3">
             <VCard variant="tonal" color="primary" class="pa-4">
               <div class="d-flex align-center gap-3">
-                <VIcon icon="tabler-currency-dollar" size="32" color="primary" />
+                <VIcon
+                  icon="tabler-currency-dollar"
+                  size="32"
+                  color="primary"
+                />
                 <div>
-                  <span class="text-caption text-disabled d-block">Precio Total</span>
+                  <span class="text-caption text-disabled d-block"
+                    >Precio Total</span
+                  >
                   <span class="text-h6 font-weight-bold text-primary">
-                    {{ formatCurrency(parseFloat(props.pack.total_price || 0)) }}
+                    {{
+                      formatCurrency(parseFloat(props.pack.total_price || 0))
+                    }}
                   </span>
                 </div>
               </div>
@@ -153,7 +160,9 @@ const calculatePriceWithDiscount = (item) => {
               <div class="d-flex align-center gap-3">
                 <VIcon icon="tabler-box" size="32" color="success" />
                 <div>
-                  <span class="text-caption text-disabled d-block">Total Productos</span>
+                  <span class="text-caption text-disabled d-block"
+                    >Total Productos</span
+                  >
                   <span class="text-h6 font-weight-bold text-success">
                     {{ totalProducts }}
                   </span>
@@ -162,35 +171,39 @@ const calculatePriceWithDiscount = (item) => {
             </VCard>
           </VCol>
           <VCol cols="12" md="3">
-            <VCard variant="tonal" :color="props.pack.is_active ? 'success' : 'error'" class="pa-4">
+            <VCard
+              variant="tonal"
+              :color="props.pack.is_active ? 'success' : 'error'"
+              class="pa-4"
+            >
               <div class="d-flex align-center gap-3">
-                <VIcon 
-                  :icon="props.pack.is_active ? 'tabler-check' : 'tabler-x'" 
-                  size="32" 
-                  :color="props.pack.is_active ? 'success' : 'error'" 
+                <VIcon
+                  :icon="props.pack.is_active ? 'tabler-check' : 'tabler-x'"
+                  size="32"
+                  :color="props.pack.is_active ? 'success' : 'error'"
                 />
                 <div>
                   <span class="text-caption text-disabled d-block">Estado</span>
-                  <span 
+                  <span
                     class="text-h6 font-weight-bold"
-                    :class="props.pack.is_active ? 'text-success' : 'text-error'"
+                    :class="
+                      props.pack.is_active ? 'text-success' : 'text-error'
+                    "
                   >
-                    {{ props.pack.is_active ? 'Activo' : 'Inactivo' }}
+                    {{ props.pack.is_active ? "Activo" : "Inactivo" }}
                   </span>
                 </div>
               </div>
             </VCard>
           </VCol>
-          <VCol
-            v-if="props.pack.max_quantity"
-            cols="12"
-            md="3"
-          >
+          <VCol v-if="props.pack.max_quantity" cols="12" md="3">
             <VCard variant="tonal" color="info" class="pa-4">
               <div class="d-flex align-center gap-3">
                 <VIcon icon="tabler-shopping-cart" size="32" color="info" />
                 <div>
-                  <span class="text-caption text-disabled d-block">Ventas Máxima</span>
+                  <span class="text-caption text-disabled d-block"
+                    >Ventas Máxima</span
+                  >
                   <span class="text-h6 font-weight-bold text-info">
                     {{ props.pack.max_quantity }} unidades
                   </span>
@@ -213,12 +226,32 @@ const calculatePriceWithDiscount = (item) => {
 
           <VDataTable
             :headers="[
-              { title: 'Cantidad', key: 'quantity', align: 'center', width: '100px' },
+              {
+                title: 'Cantidad',
+                key: 'quantity',
+                align: 'center',
+                width: '100px',
+              },
               { title: 'Producto', key: 'name', sortable: false },
               { title: 'Laboratorio', key: 'laboratory', sortable: false },
-              { title: 'Precio Unit.', key: 'unit_price', align: 'end', sortable: false },
-              { title: 'Precio con Desc.', key: 'price_with_discount', align: 'end', sortable: false },
-              { title: 'Subtotal', key: 'subtotal', align: 'end', sortable: false },
+              {
+                title: 'Precio Unit.',
+                key: 'unit_price',
+                align: 'end',
+                sortable: false,
+              },
+              {
+                title: 'Precio con Desc.',
+                key: 'price_with_discount',
+                align: 'end',
+                sortable: false,
+              },
+              {
+                title: 'Subtotal',
+                key: 'subtotal',
+                align: 'end',
+                sortable: false,
+              },
             ]"
             :items="packProducts"
             density="comfortable"
@@ -236,8 +269,8 @@ const calculatePriceWithDiscount = (item) => {
                 <span class="text-body-1 font-weight-medium">
                   {{ item.name }}
                 </span>
-                <span 
-                  v-if="item.active_ingredient" 
+                <span
+                  v-if="item.active_ingredient"
                   class="text-caption text-disabled"
                 >
                   {{ item.active_ingredient }}
@@ -266,7 +299,7 @@ const calculatePriceWithDiscount = (item) => {
                 <span class="text-body-2 font-weight-medium">
                   {{ formatCurrency(calculatePriceWithDiscount(item)) }}
                 </span>
-                <span 
+                <span
                   v-if="item.discount_percentage > 0"
                   class="text-caption text-disabled text-decoration-line-through"
                 >
@@ -277,7 +310,11 @@ const calculatePriceWithDiscount = (item) => {
 
             <template #item.subtotal="{ item }">
               <span class="text-body-1 font-weight-medium text-success">
-                {{ formatCurrency(calculatePriceWithDiscount(item) * item.quantity) }}
+                {{
+                  formatCurrency(
+                    calculatePriceWithDiscount(item) * item.quantity
+                  )
+                }}
               </span>
             </template>
           </VDataTable>
@@ -290,9 +327,15 @@ const calculatePriceWithDiscount = (item) => {
               <div class="d-flex align-center gap-2">
                 <VIcon icon="tabler-calendar" size="20" color="primary" />
                 <div>
-                  <span class="text-caption text-disabled d-block">Fecha Máxima de Venta</span>
+                  <span class="text-caption text-disabled d-block"
+                    >Fecha Máxima de Venta</span
+                  >
                   <span class="text-body-1 font-weight-medium">
-                    {{ new Date(props.pack.max_sale_date).toLocaleDateString('es-ES') }}
+                    {{
+                      new Date(props.pack.max_sale_date).toLocaleDateString(
+                        "es-ES"
+                      )
+                    }}
                   </span>
                 </div>
               </div>
@@ -304,9 +347,9 @@ const calculatePriceWithDiscount = (item) => {
       <VDivider />
 
       <VCardActions class="pa-4 px-5">
-        <VBtn 
-          color="primary" 
-          variant="flat" 
+        <VBtn
+          color="primary"
+          variant="flat"
           prepend-icon="tabler-check"
           block
           class="w-100"
