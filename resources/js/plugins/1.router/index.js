@@ -56,25 +56,47 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore()
-  
-  // Solo intentar obtener el usuario si no está cargado aún
-  if (!authStore.isLoaded && !authStore.user) {
-    await authStore.fetchUser()
+  console.log('[ROUTER] Iniciando navegación a:', to.path, to.name)
+  try {
+    const authStore = useAuthStore()
+    console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
+    
+    // Solo intentar obtener el usuario si no está cargado aún
+    // Agregar timeout más corto para evitar bloqueos en Firefox
+    if (!authStore.isLoaded && !authStore.user) {
+      console.log('[ROUTER] Intentando obtener usuario...')
+      try {
+        const fetchPromise = authStore.fetchUser()
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000))
+        await Promise.race([fetchPromise, timeoutPromise])
+        console.log('[ROUTER] Usuario obtenido o timeout alcanzado')
+      } catch (fetchError) {
+        console.warn('[ROUTER] Error al obtener usuario:', fetchError)
+        // Continuar aunque falle para no bloquear la navegación
+      }
+    }
+    
+    const isAuthenticated = authStore.isAuthenticated
+    const requiresAuth = to.meta?.requiresAuth
+    console.log('[ROUTER] Verificación:', { isAuthenticated, requiresAuth })
+    
+    if (requiresAuth && !isAuthenticated) {
+      console.log('[ROUTER] Redirigiendo a login')
+      return next({ path: '/login' })
+    }
+    
+    if (to.path === '/login' && isAuthenticated) {
+      console.log('[ROUTER] Redirigiendo a invoices')
+      return next({ path: '/invoice/invoices' })
+    }
+    
+    console.log('[ROUTER] Permitiendo navegación')
+    return next()
+  } catch (error) {
+    console.error('[ROUTER] Error en router guard:', error)
+    // En caso de error, permitir la navegación para evitar bloqueos
+    return next()
   }
-  
-  const isAuthenticated = authStore.isAuthenticated
-  const requiresAuth = to.meta.requiresAuth
-  
-  if (requiresAuth && !isAuthenticated) {
-    return next({ path: '/login' })
-  }
-  
-  if (to.path === '/login' && isAuthenticated) {
-    return next({ path: '/invoice/invoices' })
-  }
-  
-  return next()
 })
 
 export { router };
