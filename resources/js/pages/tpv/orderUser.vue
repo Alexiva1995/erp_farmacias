@@ -667,25 +667,39 @@ const formatOrderItemForFrontend = (backendItem) => {
       ? 1 - backendItem.discount_percentage / 100
       : 1;
 
+  // Precio original del producto
+  const originalPrice = parseFloat(product.sale_price) || 0;
+  const originalPriceBs = parseFloat(product.price_bs) || 0;
+  const originalPriceCop = parseFloat(product.price_cop) || 0;
+
+  // Precio con descuento (unit_cost del pack o precio normal)
+  const discountedPrice = parseFloat(backendItem.unit_cost) || (originalPrice * discountFactor);
+  const discountedPriceBs = backendItem.unit_cost 
+    ? (originalPriceBs * (discountedPrice / originalPrice))
+    : (originalPriceBs * discountFactor);
+  const discountedPriceCop = backendItem.unit_cost
+    ? (originalPriceCop * (discountedPrice / originalPrice))
+    : (originalPriceCop * discountFactor);
+
+  // Determinar si hay descuento de pack (precio personalizado diferente al original)
+  const hasPackDiscount = backendItem.pack_id && backendItem.unit_cost && 
+    Math.abs(parseFloat(backendItem.unit_cost) - originalPrice) > 0.01;
+
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
     title: product.name,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
-    price:
-      parseFloat(backendItem.unit_cost) ||
-      (parseFloat(product.sale_price) || 0) * discountFactor,
-    price_before_discount:
-      parseFloat(backendItem.unit_cost) ||
-      (parseFloat(product.sale_price) || 0),
-    price_bs: (parseFloat(product.price_bs) || 0) * discountFactor,
-    price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
+    price: discountedPrice,
+    price_before_discount: hasPackDiscount ? originalPrice : discountedPrice,
+    price_bs: discountedPriceBs,
+    price_cop: discountedPriceCop,
     unitCost: parseFloat(product.unit_cost) || 0,
-    basePrice: parseFloat(product.sale_price) || 0, // Store original base price
-    original_price_usd: parseFloat(product.sale_price) || 0,
-    original_price_bs: parseFloat(product.price_bs) || 0,
-    original_price_cop: parseFloat(product.price_cop) || 0,
+    basePrice: originalPrice, // Store original base price
+    original_price_usd: originalPrice,
+    original_price_bs: originalPriceBs,
+    original_price_cop: originalPriceCop,
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
@@ -696,6 +710,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     discount_type: backendItem.discount_type || null,
     discount_source_id: backendItem.discount_source_id || null,
     original_pack_config: backendItem.pack_config || (backendItem.product?.pack_config) || null,
+    has_pack_discount: hasPackDiscount, // Flag para indicar si tiene descuento de pack
   };
 };
 

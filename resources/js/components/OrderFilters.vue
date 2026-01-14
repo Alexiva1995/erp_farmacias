@@ -86,11 +86,12 @@ const handleBack = () => {
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="3">
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
+          <VSelect
+            :model-value="props.stockStatusFilter"
+            label="Estado de Stock"
+            :items="stockOptions"
             clearable
-            @update:model-value="emit('update:searchQuery', $event)"
+            @update:model-value="emit('update:stockStatusFilter', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
@@ -116,12 +117,11 @@ const handleBack = () => {
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
+          <AppTextField
+            :model-value="props.searchQuery"
+            placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
             clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
+            @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
       </VRow>

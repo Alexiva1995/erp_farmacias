@@ -260,12 +260,25 @@ const getProductPriceSinIva = (product, currency) => {
 const getProductPriceSinDescuento = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  
+  // Si tiene descuento de pack, usar el precio original
+  if (product.has_pack_discount && product.pack_id) {
+    if (currency === "BS") {
+      basePrice = product.original_price_bs || 0;
+    } else if (currency === "COP") {
+      basePrice = product.original_price_cop || 0;
+    } else {
+      basePrice = product.original_price_usd || 0;
+    }
   } else {
-    basePrice = product.price || 0;
+    // Precio normal sin descuento
+    if (currency === "BS") {
+      basePrice = product.price_bs || 0;
+    } else if (currency === "COP") {
+      basePrice = product.price_cop || 0;
+    } else {
+      basePrice = product.price || 0;
+    }
   }
 
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
@@ -709,12 +722,13 @@ const specialTaxAmount = computed(() => {
                 </template>
               </AppTextField>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol cols="12" sm="6" class="d-flex justify-end">
               <AppTextField
                 :model-value="props.searchQuery"
                 placeholder="Código de Barra"
                 clearable
                 class="py-1"
+                style="max-width: 240px"
                 @update:model-value="emit('update:searchQuery', $event)"
               />
             </VCol>
@@ -861,8 +875,9 @@ const specialTaxAmount = computed(() => {
                   >Total</span
                 >
                 <div class="d-flex align-center gap-1">
+                  <!-- Mostrar precio original tachado si hay descuento global o descuento de pack -->
                   <span
-                    v-if="activeDiscountDisplay"
+                    v-if="activeDiscountDisplay || (product.has_pack_discount && product.pack_id)"
                     class="text-caption text-disabled text-decoration-line-through me-1 text-error"
                   >
                     {{

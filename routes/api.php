@@ -99,12 +99,14 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/products/pending', [ProductController::class, 'pending']);
     Route::get('/products/without-laboratory', [ProductController::class, 'withoutLaboratory']);
     Route::get('/products/without-origin', [ProductController::class, 'withoutOrigin']);
+    Route::get('/products/without-group', [ProductController::class, 'withoutGroup']);
     Route::get('/productsAll', [ProductController::class, 'getProducts']);
     Route::get('/products/autocomplete', [ProductController::class, 'forAutocomplete']);
     Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
     Route::patch('/products/pending/{product}', [ProductController::class, 'updateProductBarcode']);
     Route::patch('/products/without-laboratory/{product}', [ProductController::class, 'updateProductLaboratory']);
     Route::patch('/products/without-origin/{product}', [ProductController::class, 'updateProductOrigin']);
+    Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);
