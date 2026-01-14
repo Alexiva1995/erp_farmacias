@@ -12,8 +12,7 @@ import { onMounted, reactive, ref } from "vue";
 const filters = reactive({
   searchQuery: "",
   selectedLaboratory: null,
-  startDate: null,
-  endDate: null,
+  discrepancyFilter: null,
   sortBy: undefined,
   orderBy: undefined,
 });
@@ -75,8 +74,7 @@ onMounted(() => {
 const handleClearFilters = () => {
   filters.searchQuery = "";
   filters.selectedLaboratory = null;
-  filters.startDate = null;
-  filters.endDate = null;
+  filters.discrepancyFilter = null;
   filters.sortBy = undefined;
   filters.orderBy = undefined;
 };
@@ -96,8 +94,7 @@ const handleExport = async (format) => {
     <InventoryCycleFilters
       v-model:searchQuery="filters.searchQuery"
       v-model:selectedLaboratory="filters.selectedLaboratory"
-      v-model:startDate="filters.startDate"
-      v-model:endDate="filters.endDate"
+      v-model:discrepancyFilter="filters.discrepancyFilter"
       :laboratories="laboratories"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
@@ -134,32 +131,28 @@ const handleExport = async (format) => {
     </VRow>
 
     <InventoryCorrectionModal
-      v-if="showProductCorrectionModal"
       v-model="showProductCorrectionModal"
       :product="productForCorrection"
       @correction-processed="handleProductCorrection"
     />
     <LotDistributionModal
-      v-if="showProductLotModal"
       v-model="showProductLotModal"
-      :product-name="productForLotDistribution.name"
-      :lots="productForLotDistribution.lots"
-      :target-quantity="productTargetQuantity"
+      :product-name="productForLotDistribution?.name || 'Producto'"
+      :lots="productForLotDistribution?.lots || []"
+      :target-quantity="productTargetQuantity || 0"
       @save="handleProductLots"
     />
 
     <InventoryCorrectionModal
-      v-if="showInvoiceCorrectionModal"
       v-model="showInvoiceCorrectionModal"
       :product="invoiceForCorrection"
       @correction-processed="handleInvoiceCorrection"
     />
     <LotDistributionModal
-      v-if="showInvoiceLotModal"
       v-model="showInvoiceLotModal"
-      :product-name="invoiceForLotDistribution.name"
-      :lots="invoiceForLotDistribution.lots"
-      :target-quantity="invoiceTargetQuantity"
+      :product-name="invoiceForLotDistribution?.name || 'Producto'"
+      :lots="invoiceForLotDistribution?.lots || []"
+      :target-quantity="invoiceTargetQuantity || 0"
       @save="handleInvoiceLots"
     />
   </div>

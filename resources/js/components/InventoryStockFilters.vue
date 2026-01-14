@@ -15,6 +15,7 @@ const props = defineProps({
   stock: [String, null],
   isStrictSearch: { type: Boolean, default: false },
   tipoFiltracion: { type: String, default: "average" },
+  isColombian: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -26,6 +27,7 @@ const emit = defineEmits([
   "update:expProd",
   "update:isStrictSearch",
   "update:tipoFiltracion",
+  "update:isColombian",
   "clear",
   "add-product",
   "sort",
@@ -45,6 +47,7 @@ const stock = [
 ];
 
 const diasVencimientos = [
+  { title: "7", value: 7 },
   { title: "15", value: 15 },
   { title: "30", value: 30 },
   { title: "60", value: 60 },
@@ -238,6 +241,27 @@ const handleClear = () => {
       <VChip v-if="props.expProd" color="error" size="small" class="ms-2">
         <VIcon icon="tabler-alert-triangle" size="14" class="me-1" />
         Filtrando por Expiración
+      </VChip>
+
+      <VCheckbox
+        :model-value="props.isColombian"
+        @update:model-value="emit('update:isColombian', $event)"
+        color="info"
+        class="me-2"
+      >
+        <template #label>
+          <div class="d-flex align-center">
+            <VIcon icon="tabler-flag" class="me-2" size="20" />
+            <span class="text-subtitle-1 font-weight-medium">
+              COLOMBIANO
+            </span>
+          </div>
+        </template>
+      </VCheckbox>
+
+      <VChip v-if="props.isColombian" color="info" size="small" class="ms-2">
+        <VIcon icon="tabler-flag" size="14" class="me-1" />
+        Solo Productos Colombianos
       </VChip>
 
       <div class="d-flex align-center gap-2">

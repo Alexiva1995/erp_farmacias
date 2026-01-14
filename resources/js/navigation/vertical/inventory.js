@@ -36,16 +36,7 @@ export default [
       },
        {
         title: 'Lotes',
-        children: [
-        {
-          title: 'Listado de lotes',
-          to: 'lot-list',
-        },
-        {
-          title: 'Productos sin lote',
-          to: 'lot-products',
-        }
-        ],
+        to: 'lot-list',
       },
       {
         title: 'Caducidad',
@@ -85,14 +76,14 @@ export default [
           to: 'cyclics-cyclic',
           action: 'manage',
           subject: 'supervisor',
+        },
+        {
+          title: 'Inventarios Users',
+          to: 'cyclics-users',
+          action: 'manage',
+          subject: 'user',
         }
         ]
-      },
-      {
-        title: 'Inventarios Ciclicos',
-        to: 'cyclics-users',
-        action: 'manage',
-        subject: 'user',
       },
     ],
   }, 

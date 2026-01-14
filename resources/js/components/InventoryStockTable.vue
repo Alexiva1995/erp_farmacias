@@ -11,7 +11,7 @@ const emit = defineEmits(["update:options"]);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
+  { title: "Producto", key: "name", sortable: true, width: "300px" },
   { title: "Laboratorio", key: "laboratory.name", sortable: false },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Ventas", key: "total_sold_completed", sortable: true },
@@ -35,6 +35,11 @@ const headers = [
         : 0,
   },
   {
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
+  },
+  {
     title: "Diferencia ",
     key: "diferencia_product",
     sortable: true,
@@ -55,18 +60,19 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column">
+        <div class="d-flex align-start gap-x-4" style="max-width: 300px; width: 100%;">
+          <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
+              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; white-space: normal;"
             >
               {{ item.name.toUpperCase() }}
 
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
 
-            <span class="text-sm text-disabled">{{
+            <span class="text-sm text-disabled" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">{{
               item.active_ingredient
             }}</span>
           </div>
@@ -95,3 +101,27 @@ const headers = [
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.v-data-table td:nth-child(2)) {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 300px !important;
+  width: 300px !important;
+  vertical-align: top !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+:deep(.v-data-table th:nth-child(2)) {
+  max-width: 300px !important;
+  width: 300px !important;
+  white-space: normal !important;
+}
+
+:deep(.v-data-table__wrapper) {
+  overflow-x: auto;
+}
+</style>

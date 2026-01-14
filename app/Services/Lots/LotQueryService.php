@@ -93,16 +93,30 @@ class LotQueryService
             $query->whereDate('expiration_date', '<=', $request->endDate);
         }
 
-        if ($request->has('sortBy') && $request->has('orderBy') && $request->sortBy !== 'id') {
-            $this->applySorting($query, $request->sortBy, $request->orderBy);
+        // Aplicar ordenamiento
+        $sortBy = $request->input('sortBy', 'id');
+        $orderBy = $request->input('orderBy', 'desc');
+        
+        if ($request->has('sortBy') && $request->has('orderBy')) {
+            $this->applySorting($query, $sortBy, $orderBy);
         } else {
-            //$query->join('products', 'product_lots.product_id', '=', 'products.id')
-                //->orderBy('products.name', 'asc');
-            if (!in_array($request->sortBy, ['product.name', 'laboratory.name', 'origin.name'])) {
+            // Ordenamiento por defecto: por nombre de producto
+            // Verificar si ya hay un join con products para evitar duplicados
+            $hasProductsJoin = $this->hasJoin($query, 'products');
+            
+            if (!$hasProductsJoin) {
                 $query->join('products', 'product_lots.product_id', '=', 'products.id');
             }
             $query->orderBy('products.name', 'asc');
         }
+        
+        // Usar distinct para evitar duplicados cuando hay joins
+        // Verificar si hay joins después de aplicar el ordenamiento
+        $hasJoins = !empty($query->getQuery()->joins);
+        if ($hasJoins) {
+            $query->distinct();
+        }
+        
         return $query;
     }
 
@@ -220,31 +234,57 @@ class LotQueryService
     }
 
     /**
+     * Verifica si ya existe un join con una tabla específica
+     */
+    private function hasJoin($query, $tableName)
+    {
+        $joins = $query->getQuery()->joins ?? [];
+        foreach ($joins as $join) {
+            if (isset($join->table) && $join->table === $tableName) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Aplica el ordenamiento a la consulta
      */
     private function applySorting($query, $sortBy, $orderBy)
     {
         switch ($sortBy) {
             case 'product.name':
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->orderBy('products.name', $orderBy);
+                if (!$this->hasJoin($query, 'products')) {
+                    $query->join('products', 'product_lots.product_id', '=', 'products.id');
+                }
+                $query->orderBy('products.name', $orderBy);
                 break;
 
             case 'supplier.name':
-                $query->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
-                    ->orderBy('suppliers.name', $orderBy);
+                if (!$this->hasJoin($query, 'suppliers')) {
+                    $query->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id');
+                }
+                $query->orderBy('suppliers.name', $orderBy);
                 break;
 
             case 'laboratory.name':
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-                    ->orderBy('laboratories.name', $orderBy);
+                if (!$this->hasJoin($query, 'products')) {
+                    $query->join('products', 'product_lots.product_id', '=', 'products.id');
+                }
+                if (!$this->hasJoin($query, 'laboratories')) {
+                    $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id');
+                }
+                $query->orderBy('laboratories.name', $orderBy);
                 break;
             
             case 'origin.name':
-                $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                    ->join('origins', 'products.origin_id', '=', 'origins.id')
-                    ->orderBy('origins.name', $orderBy);
+                if (!$this->hasJoin($query, 'products')) {
+                    $query->join('products', 'product_lots.product_id', '=', 'products.id');
+                }
+                if (!$this->hasJoin($query, 'origins')) {
+                    $query->join('origins', 'products.origin_id', '=', 'origins.id');
+                }
+                $query->orderBy('origins.name', $orderBy);
                 break;
 
             case 'quantity':

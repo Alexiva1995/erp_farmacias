@@ -84,10 +84,22 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
         $promedio_calculado = "";
+        if ($filtros["days"] == 7) {
+            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 4';
+        }
+        
         if ($filtros["days"] == 15) {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -214,6 +226,12 @@ class ProductRepository
             }
             if ($filtros["stock"] == "fallas") {
                 $consulta->having("diferencia_product", "<", 0);
+            }
+        }
+
+        if (array_key_exists("isColombian", $filtros)) {
+            if ($filtros["isColombian"] == true) {
+                $consulta->where("is_colombian_origin", "=", 1);
             }
         }
 
@@ -912,6 +930,13 @@ class ProductRepository
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0
+            ) AS totalQuantityInAutoOrder'),
             DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(

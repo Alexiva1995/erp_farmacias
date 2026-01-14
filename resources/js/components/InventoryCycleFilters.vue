@@ -5,8 +5,7 @@ import { computed, onMounted, ref, watch } from "vue";
 const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
-  startDate: [String, null],
-  endDate: [String, null],
+  discrepancyFilter: [String, null],
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 });
@@ -14,8 +13,7 @@ const props = defineProps({
 const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
-  "update:startDate",
-  "update:endDate",
+  "update:discrepancyFilter",
   "clear",
   "sort",
 ]);
@@ -163,12 +161,13 @@ watch(
 <template>
   <VCard class="mb-6">
     <VCardText>
-      <VRow>
+      <VRow class="align-center">
         <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, C. Activo..."
             clearable
+            prepend-inner-icon="tabler-search"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
@@ -182,34 +181,36 @@ watch(
             item-title="name"
             item-value="id"
             clearable
+            prepend-inner-icon="tabler-building"
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.startDate"
-            placeholder="Desde"
+          <VSelect
+            :model-value="props.discrepancyFilter"
+            :items="[
+              { title: 'Con Discrepancia', value: 'with_discrepancy' },
+              { title: 'Sobrantes', value: 'surplus' },
+              { title: 'Faltantes', value: 'shortage' },
+              { title: 'Sin Discrepancia', value: 'exact' }
+            ]"
+            label="Filtrar por Discrepancia"
+            placeholder="Todas"
             clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:startDate', $event)"
+            prepend-inner-icon="tabler-filter"
+            @update:model-value="emit('update:discrepancyFilter', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.endDate"
-            placeholder="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:endDate', $event)"
-          />
+          <VBtn 
+            color="secondary" 
+            variant="outlined" 
+            block
+            prepend-icon="tabler-x"
+            @click="emit('clear')"
+          >
+            Limpiar Filtros
+          </VBtn>
         </VCol>
       </VRow>
     </VCardText>
@@ -217,10 +218,6 @@ watch(
     <VDivider />
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
-
       <div class="d-flex align-center gap-2">
         <VMenu>
           <template #activator="{ props: menuProps }">

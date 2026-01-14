@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class ExpirationQueryService
 {
     /**
-     * Prepara la consulta base para los lotes que están por expirar.
+     * Prepara la consulta base para los lotes que están por expirar o ya vencieron.
      */
     private function getBaseQuery(): Builder
     {
@@ -24,7 +24,8 @@ class ExpirationQueryService
             'product' => fn($query) => $query->with(['laboratory', 'origin', 'category'])
         ])
             ->where('quantity', '>', 0)
-            ->whereBetween('expiration_date', [$today, $expirationCutoffDate]);
+            // Incluir lotes que ya vencieron (antes de hoy) y los que están por vencer (hasta 6 meses)
+            ->where('expiration_date', '<=', $expirationCutoffDate);
     }
 
     /**

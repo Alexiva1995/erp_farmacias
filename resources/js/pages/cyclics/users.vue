@@ -104,12 +104,20 @@ const handleSaveCount = async (countData) => {
   const discrepancy = countData.countedQuantity - systemQuantity;
 
   try {
-    const response = await axios.post(endpoint, {
-      barcode: countData.barcode,
+    const payload = {
       counted_quantity: countData.countedQuantity,
       system_quantity: systemQuantity,
       discrepancy: discrepancy,
-    });
+    };
+
+    // Solo incluir barcode si no se permite sin código de barras
+    if (!countData.allowWithoutBarcode) {
+      payload.barcode = countData.barcode;
+    } else {
+      payload.allow_without_barcode = true;
+    }
+
+    const response = await axios.post(endpoint, payload);
 
     if (response.data.success) {
       toast.success(response.data.message || "Conteo registrado exitosamente");

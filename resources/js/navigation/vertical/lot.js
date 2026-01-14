@@ -8,15 +8,6 @@ export default [
         size: 'sm',
       },
     },
-    children: [
-      {
-        title: 'Listado de lotes',
-        to: 'lot-list',
-      },
-      {
-        title: 'Productos sin lote',
-        to: 'lot-products',
-      }
-    ],
+    to: 'lot-list',
   },
 ]

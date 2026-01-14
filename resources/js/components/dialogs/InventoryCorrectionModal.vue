@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  product: { type: Object, required: true },
+  product: { type: Object, default: null },
 });
 
 const emit = defineEmits(["update:modelValue", "correction-processed"]);
@@ -207,6 +207,10 @@ const formatQuantity = (quantity) => {
             />
           </div>
         </div>
+        <div v-else class="text-center py-8">
+          <VProgressCircular indeterminate color="primary" />
+          <p class="text-body-2 text-medium-emphasis mt-4">Cargando información del producto...</p>
+        </div>
       </VCardText>
 
       <VCardActions class="pa-4 px-6">
@@ -217,7 +221,7 @@ const formatQuantity = (quantity) => {
               variant="outlined"
               block
               @click="handleCancel"
-              :disabled="isProcessing"
+              :disabled="isProcessing || !product"
             >
               Cancelar
             </VBtn>
@@ -228,7 +232,7 @@ const formatQuantity = (quantity) => {
               variant="flat"
               block
               @click="handleSubmit"
-              :disabled="!canSubmit"
+              :disabled="!canSubmit || !product"
               :loading="isProcessing"
             >
               Guardar

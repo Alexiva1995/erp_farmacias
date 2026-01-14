@@ -81,11 +81,20 @@ const fetchProductLots = async () => {
 
   try {
     const response = await axios.get("/product-lots", { params });
-    productLots.value = response.data?.data.data || [];
-    totalProductLots.value = response.data?.data.total || 0;
+    // La respuesta tiene estructura: { data: { data: [...], total: ... } }
+    if (response.data?.data) {
+      productLots.value = response.data.data.data || response.data.data || [];
+      totalProductLots.value = response.data.data.total || 0;
+    } else {
+      productLots.value = [];
+      totalProductLots.value = 0;
+    }
   } catch (error) {
     console.error("Error al obtener los lotes:", error);
-    toast.error("No se pudieron cargar los lotes.");
+    const errorMessage = error.response?.data?.message || error.message || "No se pudieron cargar los lotes.";
+    toast.error(errorMessage);
+    productLots.value = [];
+    totalProductLots.value = 0;
   } finally {
     loading.value = false;
   }

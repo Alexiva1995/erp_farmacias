@@ -12,7 +12,7 @@ const emit = defineEmits(["update:options", "edit-lot"]);
 const headers = [
   { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product.name", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true },
+  { title: "LOTE", key: "lot_number", sortable: true },
   { title: "Ubicacion", key: "location", sortable: true },
   { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Unds", key: "quantity", sortable: true },
@@ -50,16 +50,17 @@ const formatDate = (dateString) => {
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{
               item.product.name
             }}</span>
-            <span class="text-sm text-disabled">{{ item.lot_number }} <span class="text-sm text-disabled" v-if=' item.lot_number && item.product.laboratory?.name'>-</span> {{ item.product.laboratory?.name }}</span>   
+            <span class="text-sm text-disabled" v-if="item.product.laboratory?.name">{{
+              item.product.laboratory.name
+            }}</span>   
           </div>
         </div>
       </template>
 
-      <template #item.supplier.name="{ item }">
-        <span v-if="item.supplier" class="text-body-1 text-high-emphasis">{{
-          item.supplier.name
+      <template #item.lot_number="{ item }">
+        <span class="text-body-1 font-weight-medium text-high-emphasis">{{
+          item.lot_number || "N/A"
         }}</span>
-        <span v-else class="text-disabled">N/A</span>
       </template>
 
       <template #item.unit_cost="{ item }">

@@ -1,6 +1,6 @@
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
-import { reactive, ref, watch } from 'vue';
+import { reactive, ref, watch, nextTick } from 'vue';
 
 export function useCyclicTable(endpointPrefix, filters) {
   const items = ref([]);
@@ -97,6 +97,7 @@ export function useCyclicTable(endpointPrefix, filters) {
       itemForLotDistribution.value = item.product;
       targetQuantityForDistribution.value = item.counted_quantity;
       pendingAction.value = { type: "approve" };
+      await nextTick();
       showLotDistributionModal.value = true;
     } else {
       await callProcessApi(item.id, { action: "approve" });
@@ -104,7 +105,10 @@ export function useCyclicTable(endpointPrefix, filters) {
   };
 
   const handleRejectItem = async (item) => {
+    // Primero establecer el item, luego abrir el modal
     selectedItemForCorrection.value = item;
+    // Usar nextTick para asegurar que el componente se actualice
+    await nextTick();
     showCorrectionModal.value = true;
   };
 
@@ -122,6 +126,7 @@ export function useCyclicTable(endpointPrefix, filters) {
       targetQuantityForDistribution.value = correctionData.correctedQuantity;
       pendingAction.value = { type: "reject", data: payload };
       showCorrectionModal.value = false;
+      await nextTick();
       showLotDistributionModal.value = true;
     } else {
       await callProcessApi(item.id, payload);
