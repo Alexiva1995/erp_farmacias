@@ -28,49 +28,49 @@ const idSearchQuery = computed({
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard :class="{ 'mb-6': true, 'elevation-0': false }">
     <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="4">
+      <VRow class="align-center">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             v-model="idSearchQuery"
             placeholder="Buscar por ID"
             clearable
             :disabled="props.loading"
+            density="compact"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="3" md="2">
           <AppTextField
             v-model="searchQuery"
             placeholder="Buscar por Nombre"
             clearable
             :disabled="props.loading"
+            density="compact"
           />
+        </VCol>
+        <VCol cols="12" sm="auto" md="auto" class="d-flex align-center gap-2">
+          <VBtn 
+            color="secondary" 
+            variant="outlined" 
+            size="small"
+            @click="emit('clear')"
+            :disabled="props.loading"
+          >
+            Limpiar Filtros
+          </VBtn>
+          <VBtn
+            v-if="props.showAddButton"
+            color="primary"
+            prepend-icon="tabler-plus"
+            size="small"
+            @click="emit('add-pack')"
+            :disabled="props.loading"
+          >
+            Añadir Pack
+          </VBtn>
         </VCol>
       </VRow>
     </VCardText>
-    
-    <VDivider />
-    
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn 
-        color="secondary" 
-        variant="outlined" 
-        @click="emit('clear')"
-        :disabled="props.loading"
-      >
-        Limpiar Filtros
-      </VBtn>
-      <VSpacer />
-      <VBtn
-        v-if="props.showAddButton"
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-pack')"
-        :disabled="props.loading"
-      >
-        Añadir Pack
-      </VBtn>
-    </VCardActions>
   </VCard>
 </template>

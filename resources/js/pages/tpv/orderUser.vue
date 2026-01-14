@@ -12,6 +12,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { onMounted, ref, watch, computed, reactive, nextTick } from "vue";
 
 const activeTab = ref("products");
@@ -369,18 +370,32 @@ const handleDoctorDiscountSelected = (offerId) => {
 };
 
 watch(() => selectedClient.value, async (newCliente, oldCliente) => {
-  if (!newCliente) return;
-  if (newCliente?.id === oldCliente?.id) return;
-
-  if (newCliente.company_id) {
-    await fetchCompanyOffers(newCliente.company_id);
-    selectedDiscountType.value = "Empresa";
-    selectedCompany.value = newCliente.company_id;
-  } else {
-    selectedCompany.value = null;
-    await fetchCompanyOffers(); 
+  console.log('[ORDER_USER] Watcher selectedClient ejecutado:', { newCliente, oldCliente })
+  if (!newCliente) {
+    console.log('[ORDER_USER] No hay cliente, saliendo del watcher')
+    return;
   }
-}, { immediate: true });
+  if (newCliente?.id === oldCliente?.id) {
+    console.log('[ORDER_USER] Mismo cliente, saliendo del watcher')
+    return;
+  }
+
+  try {
+    if (newCliente.company_id) {
+      console.log('[ORDER_USER] Cliente tiene company_id:', newCliente.company_id)
+      await fetchCompanyOffers(newCliente.company_id);
+      selectedDiscountType.value = "Empresa";
+      selectedCompany.value = newCliente.company_id;
+      console.log('[ORDER_USER] Ofertas de empresa cargadas desde watcher')
+    } else {
+      console.log('[ORDER_USER] Cliente no tiene company_id, cargando ofertas generales')
+      selectedCompany.value = null;
+      await fetchCompanyOffers(); 
+    }
+  } catch (error) {
+    console.error("[ORDER_USER] Error en watcher de selectedClient:", error);
+  }
+}, { immediate: false });
 
 
 const currentGlobalDiscountDetails = computed(() => {
@@ -592,6 +607,9 @@ watch(selectedDiscountType, (newValue) => {
 
 // Watch orderItems for quantity changes (mapped to string key) to re-validate company discount
 // This avoids infinite loop since applying discount (changing prices) won't change the key
+// Watcher para validar descuento de empresa cuando cambian las cantidades
+// Usamos un debounce para evitar bucles infinitos
+let discountValidationTimer;
 watch(
   () =>
     orderItems.value
@@ -599,7 +617,10 @@ watch(
       .join("|"),
   (newVal) => {
     if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
-      validateAndApplyCompanyDiscount();
+      clearTimeout(discountValidationTimer);
+      discountValidationTimer = setTimeout(() => {
+        validateAndApplyCompanyDiscount();
+      }, 300);
     }
   }
 );
@@ -620,25 +641,21 @@ watch(
   ],
   () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
+    debounceTimer = setTimeout(() => {
+      try {
+        fetchProducts();
+      } catch (error) {
+        console.error("Error en watcher de productos:", error);
+      }
+    }, 300);
   },
-  { deep: true }
+  { deep: false }
 );
 
 const consultAllcomapanies = async () => {
   const companiesResponse = await axios.get("/crm/companies");
   companies.value = companiesResponse.data.data;
 };
-
-onMounted(() => {
-  fetchSelectOptions();
-  fetchProducts();
-  consultAllcomapanies();
-  fetchDoctorOffers();
-  fetchPrescriptionOffers();
-//  fetchCompanyOffers();
-  fetchGeneralSettings();
-});
 
 const formatOrderItemForFrontend = (backendItem) => {
   const product = backendItem.product;
@@ -650,25 +667,39 @@ const formatOrderItemForFrontend = (backendItem) => {
       ? 1 - backendItem.discount_percentage / 100
       : 1;
 
+  // Precio original del producto
+  const originalPrice = parseFloat(product.sale_price) || 0;
+  const originalPriceBs = parseFloat(product.price_bs) || 0;
+  const originalPriceCop = parseFloat(product.price_cop) || 0;
+
+  // Precio con descuento (unit_cost del pack o precio normal)
+  const discountedPrice = parseFloat(backendItem.unit_cost) || (originalPrice * discountFactor);
+  const discountedPriceBs = backendItem.unit_cost 
+    ? (originalPriceBs * (discountedPrice / originalPrice))
+    : (originalPriceBs * discountFactor);
+  const discountedPriceCop = backendItem.unit_cost
+    ? (originalPriceCop * (discountedPrice / originalPrice))
+    : (originalPriceCop * discountFactor);
+
+  // Determinar si hay descuento de pack (precio personalizado diferente al original)
+  const hasPackDiscount = backendItem.pack_id && backendItem.unit_cost && 
+    Math.abs(parseFloat(backendItem.unit_cost) - originalPrice) > 0.01;
+
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
     title: product.name,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
-    price:
-      parseFloat(backendItem.unit_cost) ||
-      (parseFloat(product.sale_price) || 0) * discountFactor,
-    price_before_discount:
-      parseFloat(backendItem.unit_cost) ||
-      (parseFloat(product.sale_price) || 0),
-    price_bs: (parseFloat(product.price_bs) || 0) * discountFactor,
-    price_cop: (parseFloat(product.price_cop) || 0) * discountFactor,
+    price: discountedPrice,
+    price_before_discount: hasPackDiscount ? originalPrice : discountedPrice,
+    price_bs: discountedPriceBs,
+    price_cop: discountedPriceCop,
     unitCost: parseFloat(product.unit_cost) || 0,
-    basePrice: parseFloat(product.sale_price) || 0, // Store original base price
-    original_price_usd: parseFloat(product.sale_price) || 0,
-    original_price_bs: parseFloat(product.price_bs) || 0,
-    original_price_cop: parseFloat(product.price_cop) || 0,
+    basePrice: originalPrice, // Store original base price
+    original_price_usd: originalPrice,
+    original_price_bs: originalPriceBs,
+    original_price_cop: originalPriceCop,
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
@@ -679,12 +710,16 @@ const formatOrderItemForFrontend = (backendItem) => {
     discount_type: backendItem.discount_type || null,
     discount_source_id: backendItem.discount_source_id || null,
     original_pack_config: backendItem.pack_config || (backendItem.product?.pack_config) || null,
+    has_pack_discount: hasPackDiscount, // Flag para indicar si tiene descuento de pack
   };
 };
 
 const fetchOpenOrder = async () => {
+  console.log('[ORDER_USER] fetchOpenOrder iniciado')
   try {
+    console.log('[ORDER_USER] Haciendo petición a /tpv/order/seller/my-open-order')
     const response = await axios.get("/tpv/order/seller/my-open-order");
+    console.log('[ORDER_USER] Respuesta recibida:', response.data)
     if (
       response.data.data &&
       response.data.data.order &&
@@ -724,27 +759,110 @@ const fetchOpenOrder = async () => {
 };
 
 onMounted(async () => {
-  await fetchOpenOrder();
-  fetchSelectOptions();
-  fetchProducts();
-  consultAllcomapanies();
-  fetchDoctorOffers();
-  fetchPrescriptionOffers();
-  //fetchCompanyOffers();
-});
-
-
-onMounted(async () => {
+  console.log('[ORDER_USER] onMounted iniciado')
   try {
-    const { data } = await axios.get('/user/config');
-    if (data.config && data.config.sort_products_orders) {
-      const [key, order] = data.config.sort_products_orders.split('|');
-      sortBy.value = key;
-      orderBy.value = order;
-      tableOptions.value.sortBy = [{ key, order }];
+    // Primero cargar la configuración del usuario
+    console.log('[ORDER_USER] Cargando configuración del usuario...')
+    try {
+      const configResponse = await axios.get('/user/config');
+      console.log('[ORDER_USER] Configuración cargada:', configResponse.data)
+      if (configResponse.data.config && configResponse.data.config.sort_products_orders) {
+        const [key, order] = configResponse.data.config.sort_products_orders.split('|');
+        sortBy.value = key;
+        orderBy.value = order;
+        tableOptions.value.sortBy = [{ key, order }];
+        console.log('[ORDER_USER] Ordenamiento configurado:', { key, order })
+      }
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar configuración", error);
     }
+
+    // Luego cargar la orden abierta de forma asíncrona sin bloquear
+    // Usar nextTick para asegurar que el componente esté completamente montado
+    console.log('[ORDER_USER] Preparando carga de orden abierta...')
+    nextTick(async () => {
+      console.log('[ORDER_USER] nextTick ejecutado, cargando orden abierta...')
+      try {
+        await fetchOpenOrder();
+        console.log('[ORDER_USER] Orden abierta cargada, selectedClient:', selectedClient.value)
+        // Después de cargar la orden, cargar ofertas de empresa si hay cliente con company_id
+        await nextTick(); // Esperar a que selectedClient se actualice
+        console.log('[ORDER_USER] Verificando company_id:', selectedClient.value?.company_id)
+        if (selectedClient.value?.company_id) {
+          try {
+            console.log('[ORDER_USER] Cargando ofertas de empresa para:', selectedClient.value.company_id)
+            await fetchCompanyOffers(selectedClient.value.company_id);
+            selectedDiscountType.value = "Empresa";
+            selectedCompany.value = selectedClient.value.company_id;
+            console.log('[ORDER_USER] Ofertas de empresa cargadas')
+          } catch (error) {
+            console.error("[ORDER_USER] Error al cargar ofertas de empresa:", error);
+          }
+        } else {
+          // Cargar ofertas generales si no hay company_id
+          try {
+            console.log('[ORDER_USER] Cargando ofertas generales...')
+            await fetchCompanyOffers();
+            console.log('[ORDER_USER] Ofertas generales cargadas')
+          } catch (error) {
+            console.error("[ORDER_USER] Error al cargar ofertas generales:", error);
+          }
+        }
+      } catch (error) {
+        console.error("[ORDER_USER] Error al cargar orden abierta", error);
+        // Asegurar que isLoadingInitialOrder se establezca en false incluso si hay error
+        isLoadingInitialOrder.value = false;
+      }
+    });
+    
+    // Finalmente cargar los datos iniciales (sin await para no bloquear)
+    console.log('[ORDER_USER] Cargando datos iniciales...')
+    try {
+      console.log('[ORDER_USER] Cargando opciones de filtros...')
+      fetchSelectOptions();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar opciones de filtros", error);
+    }
+    
+    try {
+      console.log('[ORDER_USER] Cargando productos...')
+      fetchProducts();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar productos", error);
+    }
+    
+    try {
+      console.log('[ORDER_USER] Cargando compañías...')
+      consultAllcomapanies();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar compañías", error);
+    }
+    
+    try {
+      console.log('[ORDER_USER] Cargando ofertas de médicos...')
+      fetchDoctorOffers();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar ofertas de médicos", error);
+    }
+    
+    try {
+      console.log('[ORDER_USER] Cargando ofertas de recetas...')
+      fetchPrescriptionOffers();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar ofertas de recetas", error);
+    }
+    
+    try {
+      console.log('[ORDER_USER] Cargando configuración general...')
+      fetchGeneralSettings();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar configuración general", error);
+    }
+    
+    console.log('[ORDER_USER] onMounted completado')
   } catch (error) {
-    console.error("Error al cargar configuración");
+    console.error("[ORDER_USER] Error crítico en onMounted:", error);
+    toast.error("Error al cargar algunos datos. Por favor, recarga la página.");
   }
 });
 
@@ -1089,12 +1207,7 @@ const totalExpirationDiscountAmount = computed(() => {
       } else if (selectedDisplayCurrency.value === "COP") {
         originalPrice = item.original_price_cop || 0;
         // For COP, we typically round up price before calculating total
-        if (typeof roundUpToNearestHundred === "function") {
-          originalPrice = roundUpToNearestHundred(originalPrice);
-        } else {
-          // Quick inline round up if function not in scope here (it is imported usually)
-          originalPrice = Math.ceil(originalPrice / 100) * 100;
-        }
+        originalPrice = roundUpToNearestHundred(originalPrice);
       }
 
       const quantity = item.selectedQuantity || 0;
@@ -1560,13 +1673,22 @@ const addProductToOrder = async ({
 };
 
 
+// Watcher para actualizar totales en backend con debounce para evitar múltiples llamadas
+let updateTotalsTimer;
 watch(
   [totalOrderAmount, selectedDisplayCurrency],
   async (newValue, oldValue) => {
     if (!isFinishingOrder.value) {
       if (newValue[0] !== oldValue[0] || newValue[1] !== oldValue[1]) {
         if (hasOpenOrder.value && openOrderData.value?.id) {
-          await updateOrderTotalsInBackend();
+          clearTimeout(updateTotalsTimer);
+          updateTotalsTimer = setTimeout(async () => {
+            try {
+              await updateOrderTotalsInBackend();
+            } catch (error) {
+              console.error("Error al actualizar totales:", error);
+            }
+          }, 500);
         }
       }
     }
@@ -2336,7 +2458,10 @@ if (itemsInOrderBelongingToPack.length > 0) {
       for (const item of itemsInOrderBelongingToPack) {
 
         // Buscamos en la configuración cuánto debe aumentar este producto específico
-        const unitsPerPack = productsConfig[item.product_id]?.quantity || productsConfig[item.product_id] || 1;
+        const productConfig = productsToAdd[item.product_id];
+        const unitsPerPack = typeof productConfig === "object" && productConfig !== null
+          ? (productConfig.quantity || 1)
+          : (productConfig || 1);
         const totalToAdd = unitsPerPack * quantity;
 
         // Llamamos a actualizar con la cantidad acumulada
@@ -2568,18 +2693,18 @@ const finalizeAndCheckPending = () => {
     <div v-else-if="hasOpenOrder">
       <OpenOrderCard
         v-model:searchQuery="barcodeSearchQuery"
-        :order-products="orderItems"
-        :order="openOrderData"
-        :order-reserved="reservedOrderData"
-        :total-products-amount="totalProductsAmount"
-        :total-iva-amount="totalIVAAmount"
-        :total-order-amount="totalOrderAmount"
-        :company-discount-total="totalCompanyDiscountAmount"
-        :doctor-discount-total="totalDoctorDiscountAmount"
-        :recipe-discount-total="totalRecipeDiscountAmount"
-        :expiration-discount-total="totalExpirationDiscountAmount"
-        :cliente="selectedClient"
-        :selected-display-currency="selectedDisplayCurrency"
+        :order-products="orderItems || []"
+        :order="openOrderData || null"
+        :order-reserved="reservedOrderData || null"
+        :total-products-amount="totalProductsAmount || 0"
+        :total-iva-amount="totalIVAAmount || 0"
+        :total-order-amount="totalOrderAmount || 0"
+        :company-discount-total="totalCompanyDiscountAmount || 0"
+        :doctor-discount-total="totalDoctorDiscountAmount || 0"
+        :recipe-discount-total="totalRecipeDiscountAmount || 0"
+        :expiration-discount-total="totalExpirationDiscountAmount || 0"
+        :cliente="selectedClient || null"
+        :selected-display-currency="selectedDisplayCurrency || 'USD'"
         @currency-changed="handleCurrencyChanged"
         @update-quantity="updateOrderItemQuantity"
         @remove-item="removeOrderItem"
@@ -2589,15 +2714,15 @@ const finalizeAndCheckPending = () => {
         @add-quotation-products="handleAddQuotationProducts"
         @add-reserved-order="addReserverOrder"
         v-model:selected-discount-type="selectedDiscountType"
-        :active-doctor-offers="activeDoctorOffers"
-        :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
-        :active-company-offers="activeCompanyOffers"
+        :active-doctor-offers="activeDoctorOffers || []"
+        :prescription-discount-percentage="currentPrescriptionDiscountPercentage || 0"
+        :active-company-offers="activeCompanyOffers || []"
         @doctor-discount-selected="handleDoctorDiscountSelected"
         @prescription-file-selected="handlePrescriptionFileSelected"
         @company-discount-selected="handleCompanyDiscountSelected"
-        :global-discount="currentGlobalDiscountDetails"
+        :global-discount="currentGlobalDiscountDetails || null"
         @add-pack="handleAddPackToOrder"
-        :is-special-taxpayer="isSpecialTaxpayer"
+        :is-special-taxpayer="isSpecialTaxpayer || false"
       />
     </div>
     <div v-else>
@@ -2613,9 +2738,9 @@ const finalizeAndCheckPending = () => {
           v-model:selectedOrigin="selectedOrigin"
           v-model:stockStatusFilter="stockStatusFilter"
           v-model:isStrictSearch="isStrictSearch"
-          :laboratories="laboratories"
-          :origins="origins"
-          :loading="isLoadingFilters"
+          :laboratories="laboratories || []"
+          :origins="origins || []"
+          :loading="isLoadingFilters || false"
           @clear="handleClearFilters"
           @sort="handleExternalSort"
           @back="handleBackFromGroupView"
@@ -2623,15 +2748,15 @@ const finalizeAndCheckPending = () => {
         </OrderFilters>
 
         <OrderProductsTable
-          :products="products"
+          :products="products || []"
           :loading="loading"
-          :total-product="totalProduct"
+          :total-product="totalProduct || 0"
           v-model:items-per-page="itemsPerPage"
-          v-model:page="page""
-          :discount-min-products="discountMinProducts"
-          :discount-max-products="discountMaxProducts"
-          :current-discount="discount"
-          :order-items="orderItems"
+          v-model:page="page"
+          :discount-min-products="discountMinProducts || 0"
+          :discount-max-products="discountMaxProducts || 0"
+          :current-discount="discount || 0"
+          :order-items="orderItems || []"
           :options="tableOptions"
           @update:options="updateTableOptions"
           @add-product="addProductToOrder"
@@ -2654,15 +2779,15 @@ const finalizeAndCheckPending = () => {
 
     <PackDetailsModal
       v-model:isDialogVisible="showPackDetailsModal"
-      :pack="selectedPack"
+      :pack="selectedPack || null"
     />
 
     <RegisterClientModal
-      :companies="companies"
-      :modalFormulario="showRegisterClientModal"
+      :companies="companies || []"
+      :modalFormulario="showRegisterClientModal || false"
       titulo="Registrar Nuevo Cliente"
-      :formData="newClientFormData"
-      :formError="newClientFormErrors"
+      :formData="newClientFormData || {}"
+      :formError="newClientFormErrors || {}"
       @modalClose="handleCloseRegisterModal"
       @save="handleSaveNewClient"
       @clearErrorForm="clearFormErrors"
@@ -2670,47 +2795,47 @@ const finalizeAndCheckPending = () => {
 
     <BuysModal
       v-model:is-dialog-visible="showBuysModal"
-      :order-products="orderItems"
-      :order-data="openOrderData"
-      :total-amount="totalOrderAmount"
-      :selected-currency="selectedDisplayCurrency"
+      :order-products="orderItems || []"
+      :order-data="openOrderData || null"
+      :total-amount="totalOrderAmount || 0"
+      :selected-currency="selectedDisplayCurrency || 'USD'"
       @modal-closed="closeBuysModal"
       @purchase-completed="handleBuysCompletion"
-      :company-discount-total="totalCompanyDiscountAmount"
-      :selected-discount-type="selectedDiscountType"
-      :doctor-discount-total="totalDoctorDiscountAmount"
-      :recipe-discount-total="totalRecipeDiscountAmount"
-      :expiration-discount-total="totalExpirationDiscountAmount"
-      :active-doctor-offers="activeDoctorOffers"
-      :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
-      :active-company-offers="activeCompanyOffers"
-      :global-discount="currentGlobalDiscountDetails"
-      :is-special-taxpayer="isSpecialTaxpayer"
+      :company-discount-total="totalCompanyDiscountAmount || 0"
+      :selected-discount-type="selectedDiscountType || null"
+      :doctor-discount-total="totalDoctorDiscountAmount || 0"
+      :recipe-discount-total="totalRecipeDiscountAmount || 0"
+      :expiration-discount-total="totalExpirationDiscountAmount || 0"
+      :active-doctor-offers="activeDoctorOffers || []"
+      :prescription-discount-percentage="currentPrescriptionDiscountPercentage || 0"
+      :active-company-offers="activeCompanyOffers || []"
+      :global-discount="currentGlobalDiscountDetails || null"
+      :is-special-taxpayer="isSpecialTaxpayer || false"
       @printTicke-completed="printTickeCompletion"
       @finish-and-reload="finalizeAndCheckPending"
     />
 
    <div
   id="orderPrint"
-  :style="isPrinting ? 'position: fixed; left: 0; top: 0; z-index: 9999; background: white; width: 80mm;' : 'position: absolute; left: -9999px;'"
+  :style="isPrinting ? { position: 'fixed', left: '0', top: '0', zIndex: 9999, background: 'white', width: '80mm' } : { position: 'absolute', left: '-9999px' }"
 >
       <OrderTicket
         v-if="orderData"
         :order-data="orderData"
-        :order-products="itemsForTicket"
-        :total-amount="TotalToPrint"
-        :selected-currency="selectedDisplayCurrency"
-        :payments="paymentsForPrint"
-        :change-amount="changeAmountForPrint"
-        :credit-amount="creditAmountForPrint"
-        :credit="creditForPrint"
-        :company-discount-total="companyDiscountForPrint"
-        :selected-discount-type="discountTypeForPrint"
-        :doctor-discount-total="doctorDiscountForPrint"
-        :recipe-discount-total="recipeDiscountForPrint"
-        :expiration-discount-total="expirationDiscountForPrint"
-        :is-special-taxpayer="isSpecialTaxpayer"
-        :spe-surcharge-amount="speSurchargeAmountPrint"
+        :order-products="itemsForTicket || []"
+        :total-amount="TotalToPrint || 0"
+        :selected-currency="selectedDisplayCurrency || 'USD'"
+        :payments="paymentsForPrint || []"
+        :change-amount="changeAmountForPrint || 0"
+        :credit-amount="creditAmountForPrint || 0"
+        :credit="creditForPrint || false"
+        :company-discount-total="companyDiscountForPrint || 0"
+        :selected-discount-type="discountTypeForPrint || null"
+        :doctor-discount-total="doctorDiscountForPrint || 0"
+        :recipe-discount-total="recipeDiscountForPrint || 0"
+        :expiration-discount-total="expirationDiscountForPrint || 0"
+        :is-special-taxpayer="isSpecialTaxpayer || false"
+        :spe-surcharge-amount="speSurchargeAmountPrint || 0"
       />
     </div>
   </div>

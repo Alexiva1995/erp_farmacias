@@ -208,6 +208,20 @@ watch(configStore.isVerticalNavMini(isVerticalNavHovered), val => {
 
 <style lang="scss">
 .layout-vertical-nav {
+  .nav-group-label {
+    display: flex;
+    align-items: center;
+    padding-inline: 1.25rem;
+  }
+
+  .nav-group-children .nav-link a {
+    padding-inline-start: 3rem;
+  }
+}
+</style>
+
+<style lang="scss">
+.layout-vertical-nav {
   .nav-group {
     &-label {
       display: flex;

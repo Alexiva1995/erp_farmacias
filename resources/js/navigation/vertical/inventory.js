@@ -27,6 +27,10 @@ export default [
         {
           title: 'Origen',
           to: 'inventory-origin',
+        },
+        {
+          title: 'Sin Grupo',
+          to: 'inventory-products-without-group',
         }
         ],
       },
