@@ -2,6 +2,7 @@
 import navItems from '@/navigation/vertical'
 import { themeConfig } from '@themeConfig'
 import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue'
 
 // Components
 import Footer from '@/layouts/components/Footer.vue'
@@ -14,11 +15,43 @@ import { VerticalNavLayout } from '@layouts'
 
 const authStore = useAuthStore()
 
+// Procesar el menú dinámicamente según el rol del usuario
+const processedNavItems = computed(() => {
+  const isUser = authStore.user?.role_id === 3
+  
+  if (!isUser) {
+    return navItems
+  }
+  
+  // Para usuarios tipo "usuario", modificar el menú de Inventario Ciclicos
+  return navItems.map(item => {
+    if (item.title === 'Inventario') {
+      return {
+        ...item,
+        children: item.children.map(child => {
+          if (child.title === 'Inventario Ciclicos') {
+            // Convertir el item con children en un item directo que apunta a closing
+            return {
+              title: 'Inventario Ciclicos',
+              to: 'cyclics-closing',
+              action: 'manage',
+              subject: 'closing-cyclics',
+              icon: child.icon || item.icon
+            }
+          }
+          return child
+        })
+      }
+    }
+    return item
+  })
+})
+
 </script>
 
 <template>
 <template v-if="authStore.isLoaded">
-  <VerticalNavLayout :nav-items="navItems">
+  <VerticalNavLayout :nav-items="processedNavItems">
     <!-- 👉 navbar -->
     <template #navbar="{ toggleVerticalOverlayNavActive }">
       <div class="d-flex h-100 align-center">
