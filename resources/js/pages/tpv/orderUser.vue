@@ -2155,6 +2155,7 @@ const handleBuysCompletion = async (
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
       speSurchargeAmount.value = specialTaxAmount.value;
       clientIdentification.value = "";
+      selectedClient.value = null;
       await fetchProducts();
       recipeDiscountForPrint.value = totalRecipeDiscountAmount.value;
       doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
