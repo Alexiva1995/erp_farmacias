@@ -79,6 +79,10 @@ class InventoryStockController extends Controller
             $filtros["tipo_filtracion"] = "average"; // Valor por defecto
         }
 
+        if ($request->filled("isColombian")) {
+            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+        }
+
         // dd($filtros);
 
         $respuestaConsulta = $this->product->filtrarStock($filtros);
@@ -143,6 +147,10 @@ class InventoryStockController extends Controller
             $filtros["tipo_filtracion"] = "average"; // Valor por defecto
         }
 
+        if ($request->filled("isColombian")) {
+            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+        }
+
         // dd($filtros);
 
         $respuestaConsulta = $this->product->filtrarStockWithoutPaginate($filtros);
@@ -203,6 +211,10 @@ class InventoryStockController extends Controller
             $filtros["tipo_filtracion"] = $request->tipo_filtracion;
         } else {
             $filtros["tipo_filtracion"] = "average"; // Valor por defecto
+        }
+
+        if ($request->filled("isColombian")) {
+            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 
         $excel = $this->product->exportExcel($filtros);

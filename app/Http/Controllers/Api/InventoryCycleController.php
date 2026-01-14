@@ -53,20 +53,35 @@ class InventoryCycleController extends Controller
 
     public function storeProductCount(Request $request, $productId)
     {
-        $request->validate([
-            'barcode' => 'required|string',
+        $allowWithoutBarcode = $request->boolean('allow_without_barcode');
+        
+        $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity' => 'required|numeric|min:0',
             'discrepancy' => 'required|numeric'
-        ]);
+        ];
+
+        // Solo requerir barcode si no se permite sin código de barras
+        if (!$allowWithoutBarcode) {
+            $validationRules['barcode'] = 'required|string';
+        }
+
+        $request->validate($validationRules);
 
         try {
-            $result = $this->inventoryCycleActionService->createProductCount($productId, [
-                'barcode' => $request->input('barcode'),
+            $data = [
                 'counted_quantity' => $request->input('counted_quantity'),
                 'system_quantity' => $request->input('system_quantity'),
-                'discrepancy' => $request->input('discrepancy')
-            ]);
+                'discrepancy' => $request->input('discrepancy'),
+                'allow_without_barcode' => $allowWithoutBarcode,
+            ];
+
+            // Solo incluir barcode si no se permite sin código de barras
+            if (!$allowWithoutBarcode) {
+                $data['barcode'] = $request->input('barcode');
+            }
+
+            $result = $this->inventoryCycleActionService->createProductCount($productId, $data);
 
             if ($result['success']) {
                 return response()->json([
@@ -226,15 +241,26 @@ class InventoryCycleController extends Controller
 
     public function storeInvoiceCount(Request $request, $productId)
     {
-        $request->validate([
-            'barcode' => 'required|string',
+        $allowWithoutBarcode = $request->boolean('allow_without_barcode');
+        
+        $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity' => 'required|numeric|min:0',
             'discrepancy' => 'required|numeric'
-        ]);
+        ];
+
+        // Solo requerir barcode si no se permite sin código de barras
+        if (!$allowWithoutBarcode) {
+            $validationRules['barcode'] = 'required|string';
+        }
+
+        $request->validate($validationRules);
 
         try {
-            $result = $this->inventoryCycleActionService->createInvoiceCount($productId, $request->all());
+            $data = $request->all();
+            $data['allow_without_barcode'] = $allowWithoutBarcode;
+            
+            $result = $this->inventoryCycleActionService->createInvoiceCount($productId, $data);
 
             if ($result['success']) {
                 return response()->json([

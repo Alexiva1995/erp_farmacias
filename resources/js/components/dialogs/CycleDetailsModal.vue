@@ -24,13 +24,12 @@ const page = ref(1);
 const itemsPerPage = ref(15);
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
+const discrepancyFilter = ref(null);
 const laboratories = ref([]);
 const isLoadingFilters = ref(false);
 
 const headers = ref([
-  { title: "Producto", key: "product.name", sortable: true },
+  { title: "Producto", key: "product.name", sortable: true, width: "300px" },
   {
     title: "Stock Sistema",
     key: "system_quantity",
@@ -92,8 +91,7 @@ const fetchCycleProducts = async () => {
     itemsPerPage: itemsPerPage.value,
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
+    discrepancyFilter: discrepancyFilter.value,
   };
 
   Object.keys(params).forEach(
@@ -121,8 +119,7 @@ const fetchCycleProducts = async () => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
-  startDate.value = null;
-  endDate.value = null;
+  discrepancyFilter.value = null;
 };
 
 const fetchCycleInfo = async () => {
@@ -154,15 +151,14 @@ const updateOptions = (options) => {
 };
 
 const closeModal = () => {
-  isOpen.value = false;
+    isOpen.value = false;
   setTimeout(() => {
     products.value = [];
     cycleInfo.value = null;
     page.value = 1;
     searchQuery.value = "";
     selectedLaboratory.value = null;
-    startDate.value = null;
-    endDate.value = null;
+    discrepancyFilter.value = null;
   }, 300);
 };
 
@@ -180,14 +176,14 @@ watch(
 );
 
 let debounceTimer;
-watch([page, itemsPerPage, searchQuery, selectedLaboratory, startDate, endDate], () => {
+watch([page, itemsPerPage, searchQuery, selectedLaboratory, discrepancyFilter], () => {
   if (props.modelValue && props.cycleId) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCycleProducts(), 300);
   }
 });
 
-watch([searchQuery, selectedLaboratory, startDate, endDate], () => {
+watch([searchQuery, selectedLaboratory, discrepancyFilter], () => {
   page.value = 1;
 });
 
@@ -205,35 +201,39 @@ watch(
 <template>
   <VDialog v-model="isOpen" max-width="1400px" scrollable persistent>
     <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between">
-        <div>
-          <h3>Detalles del Ciclo #{{ cycleId }}</h3>
-          <div v-if="cycleInfo" class="text-sm text-medium-emphasis mt-1">
-            {{ formatDate(cycleInfo.start_date) }} -
-            {{ formatDate(cycleInfo.end_date) }}
+      <VCardTitle class="d-flex align-center justify-space-between pa-6 bg-primary">
+        <div class="d-flex flex-column">
+          <h3 class="text-h4 text-white mb-2">Detalles del Ciclo #{{ cycleId }}</h3>
+          <div v-if="cycleInfo" class="d-flex align-center gap-2">
             <VChip
               :color="cycleInfo.status === 'active' ? 'success' : 'info'"
-              size="x-small"
-              class="ms-2"
+              size="small"
+              class="text-white"
             >
+              <VIcon :icon="cycleInfo.status === 'active' ? 'tabler-circle-check' : 'tabler-circle-check-filled'" size="16" class="me-1" />
               {{ cycleInfo.status === "active" ? "Activo" : "Cerrado" }}
             </VChip>
+            <span class="text-white text-sm">
+              <VIcon icon="tabler-calendar" size="16" class="me-1" />
+              {{ formatDate(cycleInfo.start_date) }} - {{ formatDate(cycleInfo.end_date) }}
+            </span>
           </div>
         </div>
-        <VBtn icon="tabler-x" variant="text" size="small" @click="closeModal" />
+        <VBtn icon="tabler-x" variant="text" size="small" color="white" @click="closeModal" />
       </VCardTitle>
 
       <VDivider />
 
       <VCardText class="pa-0">
         <!-- Filtros -->
-        <div class="pa-4">
-          <VRow>
+        <div class="pa-4 bg-surface">
+          <VRow class="align-center">
             <VCol cols="12" sm="6" md="3">
               <AppTextField
                 v-model="searchQuery"
-                placeholder="Buscar por Producto, C. Activo..."
+                placeholder="Buscar por Producto..."
                 clearable
+                prepend-inner-icon="tabler-search"
                 @update:model-value="searchQuery = $event"
               />
             </VCol>
@@ -247,49 +247,46 @@ watch(
                 item-title="name"
                 item-value="id"
                 clearable
+                prepend-inner-icon="tabler-building"
                 @update:model-value="selectedLaboratory = $event"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <AppDateTimePicker
-                v-model="startDate"
-                placeholder="Desde"
+            <VCol cols="12" sm="6" md="2">
+              <VSelect
+                v-model="discrepancyFilter"
+                :items="[
+                  { title: 'Con Discrepancia', value: 'with_discrepancy' },
+                  { title: 'Sobrantes', value: 'surplus' },
+                  { title: 'Faltantes', value: 'shortage' },
+                  { title: 'Sin Discrepancia', value: 'exact' }
+                ]"
+                label="Filtrar por Discrepancia"
+                placeholder="Todas"
                 clearable
-                :config="{
-                  altInput: true,
-                  altFormat: 'Y-m-d',
-                  dateFormat: 'Y-m-d',
-                }"
-                @update:model-value="startDate = $event"
+                prepend-inner-icon="tabler-filter"
+                @update:model-value="discrepancyFilter = $event"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <AppDateTimePicker
-                v-model="endDate"
-                placeholder="Hasta"
-                clearable
-                :config="{
-                  altInput: true,
-                  altFormat: 'Y-m-d',
-                  dateFormat: 'Y-m-d',
-                }"
-                @update:model-value="endDate = $event"
-              />
+            <VCol cols="12" sm="6" md="2">
+              <VBtn 
+                color="secondary" 
+                variant="outlined" 
+                block
+                prepend-icon="tabler-x"
+                @click="handleClearFilters"
+              >
+                Limpiar Filtros
+              </VBtn>
             </VCol>
           </VRow>
-          <div class="d-flex justify-end mt-3">
-            <VBtn color="secondary" variant="outlined" size="small" @click="handleClearFilters">
-              Limpiar Filtros
-            </VBtn>
-          </div>
         </div>
 
         <VDivider />
 
         <!-- Tabla de productos -->
         <VDataTableServer
-          v-model:page="page"
-          v-model:items-per-page="itemsPerPage"
+          :page="page"
+          :items-per-page="itemsPerPage"
           :headers="headers"
           :items="products"
           :items-length="totalProducts"
@@ -298,6 +295,7 @@ watch(
           @update:options="updateOptions"
           item-value="id"
           hover
+          density="compact"
           :items-per-page-options="[
             { value: 10, title: '10' },
             { value: 15, title: '15' },
@@ -306,27 +304,37 @@ watch(
           ]"
         >
           <template #item.product.name="{ item: count }">
-            <div class="d-flex align-center gap-x-4">
-              <div class="d-flex flex-column">
+            <div class="d-flex align-start gap-x-3" style="max-width: 300px; width: 100%;">
+              <VAvatar
+                v-if="count.product?.photo_url"
+                size="32"
+                variant="tonal"
+                rounded
+                :image="count.product.photo_url"
+                style="flex-shrink: 0;"
+              />
+              <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
                 <span
-                  class="text-body-1 font-weight-medium text-high-emphasis"
-                  :class="{ 'text-primary': count.product.psychotropic == 1 }"
+                  class="text-sm font-weight-medium text-high-emphasis"
+                  :class="{ 
+                    'text-primary': count.product.psychotropic == 1,
+                    'text-warning font-weight-bold': count.product.psychotropic == 1 || count.product.psychotropic === true
+                  }"
+                  style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;"
                 >
-                  {{ count.product.name }}
+                  {{ count.product.name?.toUpperCase() || 'N/A' }}
                   <span v-if="count.product.iva == 1"> (G)</span>
-                  <span v-if="count.product.is_colombian_origin == 1">
-                    (COL)</span
-                  >
+                  <span v-if="count.product.is_colombian_origin == 1"> (COL)</span>
                 </span>
-                <span class="text-sm text-disabled">
-                  {{ count.product.active_ingredient }}
+                <span class="text-xs text-disabled" v-if="count.product.laboratory?.name" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.2; white-space: normal;">
+                  {{ count.product.laboratory.name }}
                 </span>
               </div>
             </div>
           </template>
 
           <template #item.final_quantity="{ item: count }">
-            <span class="font-weight-medium">
+            <span class="text-sm font-weight-medium">
               {{ count.final_quantity ?? count.counted_quantity }}
             </span>
           </template>
@@ -339,7 +347,7 @@ watch(
                 'text-error': count.discrepancy < 0,
                 'text-medium-emphasis': count.discrepancy === 0,
               }"
-              class="font-weight-bold"
+              class="text-sm font-weight-bold"
             >
               {{
                 count.discrepancy > 0
@@ -347,29 +355,21 @@ watch(
                   : count.discrepancy
               }}
             </span>
-            <span v-else class="text-disabled">N/A</span>
+            <span v-else class="text-xs text-disabled">N/A</span>
           </template>
 
           <template #item.user.email="{ item: count }">
-            <span class="text-sm">
+            <span class="text-xs">
               {{ count.user?.email || "N/A" }}
             </span>
           </template>
 
           <template #item.supervisor.email="{ item: count }">
-            <span class="text-sm">
+            <span class="text-xs">
               {{ count.supervisor?.email || "N/A" }}
             </span>
           </template>
 
-          <template #bottom>
-            <VDivider />
-            <div class="d-flex align-center justify-space-between pa-3">
-              <div class="text-sm text-disabled">
-                Mostrando {{ products.length }} de {{ totalProducts }} productos
-              </div>
-            </div>
-          </template>
         </VDataTableServer>
       </VCardText>
 
@@ -384,3 +384,52 @@ watch(
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+:deep(.v-data-table) {
+  font-size: 0.875rem;
+}
+
+:deep(.v-data-table td) {
+  padding: 8px 16px !important;
+  height: auto !important;
+}
+
+:deep(.v-data-table th) {
+  padding: 10px 16px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+}
+
+:deep(.v-data-table td:nth-child(1)) {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 300px !important;
+  width: 300px !important;
+  vertical-align: top !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  overflow: hidden !important;
+}
+
+:deep(.v-data-table th:nth-child(1)) {
+  max-width: 300px !important;
+  width: 300px !important;
+  white-space: normal !important;
+}
+
+:deep(.v-data-table__wrapper) {
+  overflow-x: auto;
+}
+
+:deep(.v-avatar) {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+:deep(.v-chip) {
+  height: 20px !important;
+  font-size: 0.75rem !important;
+}
+</style>

@@ -18,10 +18,18 @@ const barcodeInput = ref("");
 const countedQuantity = ref("");
 const isScanning = ref(false);
 const barcodeError = ref("");
+const allowWithoutBarcode = ref(false);
 
 const canSave = computed(() => {
   const isQuantityValid =
     countedQuantity.value !== "" && !isNaN(Number(countedQuantity.value)) && Number(countedQuantity.value) >= 0;
+  
+  // Si se permite sin código de barras, solo necesita cantidad válida
+  if (allowWithoutBarcode.value) {
+    return isQuantityValid;
+  }
+  
+  // Si no, requiere código de barras válido
   return (
     barcodeInput.value.trim() !== "" && isQuantityValid && !barcodeError.value
   );
@@ -32,6 +40,7 @@ const resetForm = () => {
   countedQuantity.value = "";
   barcodeError.value = "";
   isScanning.value = false;
+  allowWithoutBarcode.value = false;
 };
 
 const handleCancel = () => {
@@ -60,10 +69,30 @@ watch(barcodeInput, (newBarcode) => {
     return;
   }
 
+  // Si se permite sin código de barras, no validar
+  if (allowWithoutBarcode.value) {
+    barcodeError.value = "";
+    return;
+  }
+
   if (props.product.barcode && newBarcode.trim() !== props.product.barcode) {
     barcodeError.value = "El código de barras no coincide con este producto";
   } else {
     barcodeError.value = "";
+  }
+});
+
+watch(allowWithoutBarcode, (newValue) => {
+  if (newValue) {
+    barcodeError.value = "";
+    barcodeInput.value = "";
+    // Enfocar el campo de cantidad cuando se activa el checkbox
+    nextTick(() => {
+      const quantityInput = document.querySelector("#quantity-input");
+      if (quantityInput) {
+        quantityInput.focus();
+      }
+    });
   }
 });
 
@@ -96,8 +125,9 @@ const handleSave = async () => {
   if (!result.isConfirmed) return;
 
   const countData = {
-    barcode: barcodeInput.value.trim(),
+    barcode: allowWithoutBarcode.value ? null : barcodeInput.value.trim(),
     countedQuantity: quantity,
+    allowWithoutBarcode: allowWithoutBarcode.value,
   };
 
   emit("save", countData);
@@ -117,9 +147,13 @@ const startScanning = () => {
 <template>
   <VDialog v-model="isVisible" max-width="500" persistent>
     <VCard>
-      <VCardTitle class="d-flex align-center gap-2 pa-6 pb-4">
-        <VIcon icon="tabler-scan" />
-        Conteo de Inventario
+      <VCardTitle class="d-flex align-center gap-2 pa-6 pb-4 bg-primary">
+        <VIcon icon="tabler-scan" size="24" color="white" />
+        <span class="text-h6 text-white">Conteo de Inventario</span>
+        <VSpacer />
+        <VBtn icon variant="text" color="white" size="small" @click="handleCancel">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
@@ -142,12 +176,34 @@ const startScanning = () => {
 
         <VForm @submit.prevent="handleSave">
           <div class="mb-4">
+            <VCard variant="tonal" color="info" class="pa-3 mb-4">
+              <VCheckbox
+                v-model="allowWithoutBarcode"
+                color="primary"
+                hide-details
+              >
+                <template #label>
+                  <div class="d-flex align-center gap-2">
+                    <VIcon icon="tabler-barcode-off" size="20" color="primary" />
+                    <span class="text-body-2 font-weight-medium">
+                      Permitir conteo sin código de barras
+                    </span>
+                  </div>
+                </template>
+              </VCheckbox>
+              <div v-if="allowWithoutBarcode" class="text-caption text-medium-emphasis mt-2 ms-8">
+                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+                Los productos sin código de barras podrán ser contados directamente
+              </div>
+            </VCard>
+            
             <AppTextField
               id="barcode-input"
               v-model="barcodeInput"
               label="Código de Barras"
               placeholder="Escanea o ingresa el código de barras"
               :error-messages="barcodeError"
+              :disabled="allowWithoutBarcode"
               @keyup.enter="handleBarcodeEnter"
             >
               <template #append-inner>
@@ -157,6 +213,7 @@ const startScanning = () => {
                   size="small"
                   color="primary"
                   :loading="isScanning"
+                  :disabled="allowWithoutBarcode"
                   @click="startScanning"
                 >
                   <VIcon icon="tabler-camera" />
@@ -173,7 +230,7 @@ const startScanning = () => {
               type="number"
               min="0"
               placeholder="Ingresa la cantidad contada"
-              :disabled="!barcodeInput.trim() || !!barcodeError"
+              :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
             />
           </div>
         </VForm>

@@ -22,12 +22,12 @@ const handleReferenceClick = (item) => {
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
+  { title: "Producto", key: "product.name", sortable: true, width: "300px" },
   { title: "Stock A", key: "stock_before", sortable: true },
   { title: "Cantidad", key: "quantity", sortable: false },
   { title: "Stock F", key: "stock_after", sortable: true },
   { title: "Fecha", key: "movement_date", sortable: true },
   { title: "Tipo", key: "movement_type", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true },
   { title: "Operador", key: "user.email", sortable: true },
   { title: "Referencia", key: "reference", sortable: true },
 ];
@@ -47,6 +47,38 @@ const headers = [
     >
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.product_id }}</span>
+      </template>
+
+      <template #item.product.name="{ item }">
+        <div class="d-flex align-start gap-x-4" style="max-width: 300px; width: 100%;">
+          <VAvatar
+            v-if="item.product?.photo_url"
+            size="38"
+            variant="tonal"
+            rounded
+            :image="item.product.photo_url"
+            style="flex-shrink: 0;"
+          />
+          <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 
+                'text-warning font-weight-bold': item.product?.psychotropic == 1 || item.product?.psychotropic === true
+              }"
+              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; white-space: normal;"
+            >
+              {{ item.product?.name?.toUpperCase() || 'N/A' }}
+              <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
+              <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
+            </span>
+            <span class="text-sm text-disabled" v-if="item.product?.active_ingredient" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">{{
+              item.product.active_ingredient
+            }}</span>
+            <span class="text-sm text-disabled" v-if="item.product?.laboratory?.name" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">{{
+              item.product.laboratory.name
+            }}</span>
+          </div>
+        </div>
       </template>
 
       <template #item.movement_date="{ item }">
@@ -126,3 +158,27 @@ const headers = [
     :movement-id="selectedMovementId"
   />
 </template>
+
+<style scoped>
+:deep(.v-data-table td:nth-child(2)) {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 300px !important;
+  width: 300px !important;
+  vertical-align: top !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+:deep(.v-data-table th:nth-child(2)) {
+  max-width: 300px !important;
+  width: 300px !important;
+  white-space: normal !important;
+}
+
+:deep(.v-data-table__wrapper) {
+  overflow-x: auto;
+}
+</style>

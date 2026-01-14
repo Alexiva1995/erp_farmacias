@@ -150,6 +150,8 @@ class ProductQueryService
         }*/
 
         $sortBy = $sortBy ?? 'name';
+        // Validar que orderBy sea 'asc' o 'desc' para seguridad
+        $orderBy = in_array(strtolower($orderBy), ['asc', 'desc']) ? strtolower($orderBy) : 'asc';
 
         switch ($sortBy) {
             case 'laboratory.name':
@@ -158,6 +160,11 @@ class ProductQueryService
 
             case 'valid_stock':
                 $subQuery = DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0)');
+                return $query->orderBy($subQuery, $orderBy);
+
+            case 'stock_calculado':
+                // Ordenar por stock calculado como número
+                $subQuery = DB::raw('CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) AS UNSIGNED)');
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'next_expiration':
@@ -176,8 +183,12 @@ class ProductQueryService
             case 'created_at':
                 return $query->orderBy('created_at', $orderBy);
                 break;
+            case 'unit_cost':
+                // Ordenar por costo unitario como número decimal
+                return $query->orderByRaw("CAST(products.unit_cost AS DECIMAL(10,2)) " . strtoupper($orderBy));
             case 'sale_price':
-                return $query->orderBy("products.{$sortBy}", $orderBy);
+                // Ordenar por precio de venta como número decimal
+                return $query->orderByRaw("CAST(products.sale_price AS DECIMAL(10,2)) " . strtoupper($orderBy));
             default:
                 return $query->orderBy('products.name', $orderBy);
         }

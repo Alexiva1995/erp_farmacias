@@ -100,7 +100,7 @@ const viewCycleDetails = (cycleId) => {
 
 <template>
   <VCard class="mt-4">
-    <VCardTitle>Resumen de Ciclos de Inventario</VCardTitle>
+    <VCardTitle class="py-3">Resumen de Ciclos de Inventario</VCardTitle>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -112,33 +112,35 @@ const viewCycleDetails = (cycleId) => {
       @update:options="updateOptions"
       item-value="cycle_id"
       hover
+      density="compact"
     >
       <template #item.cycle_id="{ item: cycle }">
-        <VChip color="primary" variant="tonal" size="small" label>
+        <VChip color="primary" variant="tonal" size="x-small" label class="text-xs">
           #{{ cycle.cycle_id }}
         </VChip>
       </template>
 
       <template #item.start_date="{ item: cycle }">
-        <span>{{ formatDate(cycle.start_date) }}</span>
+        <span class="text-sm">{{ formatDate(cycle.start_date) }}</span>
       </template>
 
       <template #item.end_date="{ item: cycle }">
-        <span>{{ formatDate(cycle.end_date) }}</span>
+        <span class="text-sm">{{ formatDate(cycle.end_date) }}</span>
       </template>
 
       <template #item.cycle_status="{ item: cycle }">
         <VChip
           :color="getCycleStatusColor(cycle.cycle_status)"
-          size="small"
+          size="x-small"
           label
+          class="text-xs"
         >
           {{ getCycleStatusText(cycle.cycle_status) }}
         </VChip>
       </template>
 
       <template #item.total_products="{ item: cycle }">
-        <span class="font-weight-medium">
+        <span class="text-sm font-weight-medium">
           {{ cycle.total_products || 0 }}
         </span>
       </template>
@@ -146,26 +148,26 @@ const viewCycleDetails = (cycleId) => {
       <template #item.total_surplus="{ item: cycle }">
         <span
           v-if="cycle.total_surplus > 0"
-          class="text-success font-weight-bold"
+          class="text-sm text-success font-weight-medium"
         >
           {{ formatCurrency(cycle.total_surplus) }}
         </span>
-        <span v-else class="text-disabled">{{ formatCurrency(0) }}</span>
+        <span v-else class="text-sm text-disabled">{{ formatCurrency(0) }}</span>
       </template>
 
       <template #item.total_shortage="{ item: cycle }">
         <span
           v-if="cycle.total_shortage > 0"
-          class="text-error font-weight-bold"
+          class="text-sm text-error font-weight-medium"
         >
           {{ formatCurrency(cycle.total_shortage) }}
         </span>
-        <span v-else class="text-disabled">{{ formatCurrency(0) }}</span>
+        <span v-else class="text-sm text-disabled">{{ formatCurrency(0) }}</span>
       </template>
 
       <template #item.net_total="{ item: cycle }">
         <span
-          class="font-weight-bold"
+          class="text-sm font-weight-medium"
           :class="{
             'text-success': cycle.net_total > 0,
             'text-error': cycle.net_total < 0,
@@ -177,26 +179,19 @@ const viewCycleDetails = (cycleId) => {
       </template>
 
       <template #item.actions="{ item: cycle }">
-        <div class="d-flex justify-center">
-          <VTooltip text="Ver Detalles del Ciclo">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                icon="tabler-eye"
-                size="small"
-                variant="text"
-                color="info"
-                @click="viewCycleDetails(cycle.cycle_id)"
-              />
-            </template>
-          </VTooltip>
-        </div>
+        <VBtn
+          icon="tabler-eye"
+          size="x-small"
+          variant="text"
+          color="info"
+          @click="viewCycleDetails(cycle.cycle_id)"
+        />
       </template>
 
       <template #bottom>
         <VDivider />
-        <div class="d-flex align-center justify-space-between pa-4">
-          <div class="text-sm text-disabled">
+        <div class="d-flex align-center justify-space-between pa-2">
+          <div class="text-xs text-disabled">
             Mostrando {{ props.cycles.length }} de
             {{ props.totalCycles }} ciclos
           </div>
@@ -205,3 +200,29 @@ const viewCycleDetails = (cycleId) => {
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.v-data-table) {
+  font-size: 0.875rem;
+}
+
+:deep(.v-data-table td) {
+  padding: 8px 16px !important;
+  height: auto !important;
+}
+
+:deep(.v-data-table th) {
+  padding: 10px 16px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+}
+
+:deep(.v-data-table__wrapper) {
+  overflow-x: auto;
+}
+
+:deep(.v-chip) {
+  height: 20px !important;
+  font-size: 0.7rem !important;
+}
+</style>

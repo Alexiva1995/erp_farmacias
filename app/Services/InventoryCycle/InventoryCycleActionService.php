@@ -31,13 +31,17 @@ class InventoryCycleActionService
                 }
 
                 $systemStock = $data['system_quantity'];
+                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
 
-                if ($product->barcode && $product->barcode !== $data['barcode']) {
-                    return [
-                        'success' => false,
-                        'message' => 'El código de barras no coincide con el producto seleccionado.',
-                        'data' => null
-                    ];
+                // Solo validar código de barras si no se permite sin código de barras
+                if (!$allowWithoutBarcode) {
+                    if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
+                        return [
+                            'success' => false,
+                            'message' => 'El código de barras no coincide con el producto seleccionado.',
+                            'data' => null
+                        ];
+                    }
                 }
 
                 $expectedDiscrepancy = $data['counted_quantity'] - $systemStock;
@@ -53,24 +57,34 @@ class InventoryCycleActionService
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
+                // Si no hay discrepancia, aprobar automáticamente sin supervisor
+                $finalDiscrepancy = $data['discrepancy'];
+                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+
                 $productCount = ProductCount::create([
                     'product_id' => $product->id,
                     'user_id' => Auth::id(),
                     'cycle_id' => $activeCycle->id,
-                    'barcode_scanned' => $data['barcode'],
+                    'barcode_scanned' => $allowWithoutBarcode ? null : ($data['barcode'] ?? null),
                     'system_quantity' => $systemStock,
                     'counted_quantity' => $data['counted_quantity'],
-                    'discrepancy' => $data['discrepancy'],
-                    'status' => 'pending',
+                    'discrepancy' => $finalDiscrepancy,
+                    'status' => $status,
+                    'supervisor_id' => $supervisorId,
                     'product_lot_id' => null,
                     'count_date' => now(),
                 ]);
 
                 $productCount->load(['product', 'user', 'cycle']);
 
+                $message = $status === 'approved' 
+                    ? "Conteo registrado y aprobado automáticamente (sin discrepancia)."
+                    : "Conteo registrado exitosamente.";
+
                 return [
                     'success' => true,
-                    'message' => "Conteo registrado exitosamente.",
+                    'message' => $message,
                     'data' => $productCount
                 ];
 
@@ -166,7 +180,24 @@ class InventoryCycleActionService
                 $lotToUpdate = ProductLot::find($lotData['id']);
 
                 if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
-                    $lotToUpdate->update(['quantity' => $lotData['quantity']]);
+                    $updateData = ['quantity' => $lotData['quantity']];
+                    
+                    // Actualizar lot_number si se proporciona
+                    if (isset($lotData['lot_number'])) {
+                        $updateData['lot_number'] = $lotData['lot_number'];
+                    }
+                    
+                    // Actualizar expiration_date si se proporciona
+                    if (isset($lotData['expiration_date'])) {
+                        $updateData['expiration_date'] = $lotData['expiration_date'];
+                    }
+                    
+                    // Actualizar location si se proporciona
+                    if (isset($lotData['location'])) {
+                        $updateData['location'] = $lotData['location'];
+                    }
+                    
+                    $lotToUpdate->update($updateData);
 
                     ProductDistribution::create([
                         'product_count_id' => $productCount->id,
@@ -349,8 +380,13 @@ class InventoryCycleActionService
                     return ['success' => false, 'message' => 'No existe un ciclo de inventario activo.', 'data' => null];
                 }
 
-                if ($product->barcode && $product->barcode !== $data['barcode']) {
-                    return ['success' => false, 'message' => 'El código de barras no coincide con el producto.', 'data' => null];
+                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
+
+                // Solo validar código de barras si no se permite sin código de barras
+                if (!$allowWithoutBarcode) {
+                    if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
+                        return ['success' => false, 'message' => 'El código de barras no coincide con el producto.', 'data' => null];
+                    }
                 }
 
                 $expectedDiscrepancy = $data['counted_quantity'] - $data['system_quantity'];
@@ -358,20 +394,30 @@ class InventoryCycleActionService
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
+                // Si no hay discrepancia, aprobar automáticamente sin supervisor
+                $finalDiscrepancy = $data['discrepancy'];
+                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+
                 $invoiceCount = InvoiceCount::create([
                     'product_id' => $product->id,
                     'user_id' => Auth::id(),
                     'cycle_id' => $activeCycle->id,
                     'system_quantity' => $data['system_quantity'],
                     'counted_quantity' => $data['counted_quantity'],
-                    'discrepancy' => $data['discrepancy'],
-                    'status' => 'pending',
+                    'discrepancy' => $finalDiscrepancy,
+                    'status' => $status,
+                    'supervisor_id' => $supervisorId,
                     'type' => 'invoice',
                 ]);
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
 
-                return ['success' => true, 'message' => "Conteo de factura registrado.", 'data' => $invoiceCount];
+                $message = $status === 'approved' 
+                    ? "Conteo de factura registrado y aprobado automáticamente (sin discrepancia)."
+                    : "Conteo de factura registrado.";
+
+                return ['success' => true, 'message' => $message, 'data' => $invoiceCount];
 
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return ['success' => false, 'message' => 'Producto no encontrado.', 'data' => null];
@@ -414,7 +460,24 @@ class InventoryCycleActionService
             foreach ($data['updated_lots'] as $lotData) {
                 $lotToUpdate = ProductLot::find($lotData['id']);
                 if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
-                    $lotToUpdate->update(['quantity' => $lotData['quantity']]);
+                    $updateData = ['quantity' => $lotData['quantity']];
+                    
+                    // Actualizar lot_number si se proporciona
+                    if (isset($lotData['lot_number'])) {
+                        $updateData['lot_number'] = $lotData['lot_number'];
+                    }
+                    
+                    // Actualizar expiration_date si se proporciona
+                    if (isset($lotData['expiration_date'])) {
+                        $updateData['expiration_date'] = $lotData['expiration_date'];
+                    }
+                    
+                    // Actualizar location si se proporciona
+                    if (isset($lotData['location'])) {
+                        $updateData['location'] = $lotData['location'];
+                    }
+                    
+                    $lotToUpdate->update($updateData);
                     InvoiceCountDistribution::create([
                         'invoice_count_id' => $invoiceCount->id,
                         'product_lot_id' => $lotToUpdate->id,
@@ -433,6 +496,7 @@ class InventoryCycleActionService
                     'product_id' => $product->id,
                     'lot_number' => $lotData['lot_number'],
                     'expiration_date' => $lotData['expiration_date'],
+                    'location' => $lotData['location'] ?? null,
                     'quantity' => $lotData['quantity'],
                     'unit_cost' => $newLotUnitCost,
                     'supplier_id' => null,

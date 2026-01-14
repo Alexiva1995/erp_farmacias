@@ -42,19 +42,19 @@ const headers = ref([
     key: "stock_calculado",
     sortable: true,
     align: "end",
-    visible: true,
+    visible: props.mode !== "inventory",
   },
   {
     title: "Costo",
     key: "unit_cost",
     sortable: true,
-    visible: authStore.isAdmin,
+    visible: props.mode !== "inventory" && authStore.isAdmin,
   },
   {
     title: "Precio Venta",
     key: "sale_price",
     sortable: true,
-    visible: authStore.isAdmin,
+    visible: props.mode !== "inventory" && authStore.isAdmin,
   },
   {
     title: "Acciones",

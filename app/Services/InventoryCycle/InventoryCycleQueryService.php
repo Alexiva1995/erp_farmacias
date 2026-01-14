@@ -62,8 +62,35 @@ class InventoryCycleQueryService
                 : 'created_at';
             $query->where($dateColumn, '<=', $filters['endDate']);
         }
+
+        if (!empty($filters['discrepancyFilter'])) {
+            // Detectar el nombre de la tabla del modelo base
+            $model = $query->getModel();
+            $tableName = $model->getTable();
+            $discrepancyColumn = "{$tableName}.discrepancy";
+            
+            switch ($filters['discrepancyFilter']) {
+                case 'with_discrepancy':
+                    $query->where($discrepancyColumn, '!=', 0);
+                    break;
+                case 'surplus':
+                    $query->where($discrepancyColumn, '>', 0);
+                    break;
+                case 'shortage':
+                    $query->where($discrepancyColumn, '<', 0);
+                    break;
+                case 'exact':
+                    $query->where($discrepancyColumn, '=', 0);
+                    break;
+            }
+        }
+
         if (!empty($filters['cycleId'])) {
-            $query->where('product_counts.cycle_id', $filters['cycleId']);
+            // Detectar el nombre de la tabla del modelo base
+            $model = $query->getModel();
+            $tableName = $model->getTable();
+            $cycleIdColumn = "{$tableName}.cycle_id";
+            $query->where($cycleIdColumn, $filters['cycleId']);
         }
 
         if (!empty($filters['status'])) {
@@ -230,6 +257,7 @@ class InventoryCycleQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'cycleId' => $request->cycleId,
+            'discrepancyFilter' => $request->discrepancyFilter,
             'is_history' => $isHistoryView,
         ];
 
@@ -369,6 +397,7 @@ class InventoryCycleQueryService
             'laboratoryId' => $request->laboratoryId,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'discrepancyFilter' => $request->discrepancyFilter,
             'status' => 'pending',
         ];
 
@@ -417,6 +446,7 @@ class InventoryCycleQueryService
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->leftJoin('users', 'discrepancies.user_id', '=', 'users.id')
             ->leftJoin('users as supervisors', 'discrepancies.supervisor_id', '=', 'supervisors.id')
+            ->where('discrepancies.discrepancy', '!=', 0)
             ->select([
                 'discrepancies.id',
                 'discrepancies.discrepancy',

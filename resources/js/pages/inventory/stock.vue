@@ -28,6 +28,7 @@ const stock = ref("all");
 const expProd = ref(false);
 const isStrictSearch = ref(false);
 const tipoFiltracion = ref("average");
+const isColombian = ref(false);
 
 const loading = ref(false)
 
@@ -68,6 +69,7 @@ const fetchProducts = async () => {
     expProd: expProd.value,
     isStrictSearch: isStrictSearch.value,
     tipo_filtracion: tipoFiltracion.value,
+    isColombian: isColombian.value,
   };
   loading.value = true;
   let respuesApi=await axios.post("/inventory/stock/filter",data)
@@ -94,6 +96,7 @@ const handleClearFilters = () => {
   expProd.value = false;
   isStrictSearch.value = false;
   tipoFiltracion.value = "average";
+  isColombian.value = false;
   // sortBy.value = undefined;
   // orderBy.value = undefined;
 };
@@ -123,7 +126,8 @@ watch(
       sortBy,
       orderBy,
       isStrictSearch,
-      tipoFiltracion
+      tipoFiltracion,
+      isColombian
   ],
   async () =>{
     actualizarTabla()
@@ -179,6 +183,7 @@ async function exportarPdf(){
       expProd: expProd.value,
       isStrictSearch: isStrictSearch.value,
       tipo_filtracion: tipoFiltracion.value,
+      isColombian: isColombian.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
@@ -208,6 +213,7 @@ async function exportarExcel(formato){
         expProd: expProd.value,
         isStrictSearch: isStrictSearch.value,
         tipo_filtracion: tipoFiltracion.value,
+        isColombian: isColombian.value,
         formato
     }
 
@@ -269,6 +275,7 @@ async function exportarExcel(formato){
       v-model:expProd="expProd"
       v-model:isStrictSearch="isStrictSearch"
       v-model:tipoFiltracion="tipoFiltracion"
+      v-model:isColombian="isColombian"
       :laboratories="laboratories"
       :loading="loading"
       @clear="handleClearFilters"

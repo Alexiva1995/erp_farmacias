@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -11,15 +13,25 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "count-product"]);
 
-const headers = [
-  { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Producto", key: "name", sortable: true, width: "30%" },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true, width: "15%" },
-  { title: "Expiración", key: "next_expiration", sortable: true, width: "120px" },
-  { title: "Costo", key: "unit_cost", sortable: true, align: "end", width: "120px" },
-  { title: "P. Venta", key: "sale_price", sortable: true, align: "end", width: "120px" },
-  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
-];
+const headers = computed(() => {
+  const baseHeaders = [
+    { title: "ID", key: "id", sortable: true, width: "80px" },
+    { title: "Producto", key: "name", sortable: true, width: "30%" },
+    { title: "Laboratorio", key: "laboratory.name", sortable: true, width: "15%" },
+    { title: "Expiración", key: "next_expiration", sortable: true, width: "120px" },
+    { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
+  ];
+  
+  // Solo agregar costo y precio de venta si no está en modo inventory
+  if (props.mode !== "inventory") {
+    baseHeaders.splice(4, 0, 
+      { title: "Costo", key: "unit_cost", sortable: true, align: "end", width: "120px" },
+      { title: "P. Venta", key: "sale_price", sortable: true, align: "end", width: "120px" }
+    );
+  }
+  
+  return baseHeaders;
+});
 
 const nextExpirationDate = (product) => {
   if (
