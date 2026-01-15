@@ -1612,10 +1612,31 @@ const addProductToOrder = async ({
       return;
     }
 
-    const priceInSelectedCurrency =
-      customPrice !== null
-        ? parseFloat(customPrice)
-        : getItemPriceByCurrency(productDetails, selectedDisplayCurrency.value);
+    // Si hay customPrice (viene del pack en USD), convertirlo a la moneda seleccionada
+    let priceInSelectedCurrency;
+    if (customPrice !== null) {
+      const customPriceUSD = parseFloat(customPrice);
+      // Convertir el precio USD a la moneda seleccionada
+      if (selectedDisplayCurrency.value === "USD") {
+        priceInSelectedCurrency = customPriceUSD;
+      } else if (selectedDisplayCurrency.value === "BS") {
+        // Calcular la tasa de conversión basada en los precios del producto
+        const rate = (productDetails.sale_price > 0) 
+          ? (productDetails.price_bs / productDetails.sale_price) 
+          : 1;
+        priceInSelectedCurrency = customPriceUSD * rate;
+      } else if (selectedDisplayCurrency.value === "COP") {
+        // Calcular la tasa de conversión basada en los precios del producto
+        const rate = (productDetails.sale_price > 0) 
+          ? (productDetails.price_cop / productDetails.sale_price) 
+          : 1;
+        priceInSelectedCurrency = customPriceUSD * rate;
+      } else {
+        priceInSelectedCurrency = customPriceUSD;
+      }
+    } else {
+      priceInSelectedCurrency = getItemPriceByCurrency(productDetails, selectedDisplayCurrency.value);
+    }
 
     const payload = {
       product_id: productDetails.id,
