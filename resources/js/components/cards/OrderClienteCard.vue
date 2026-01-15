@@ -11,8 +11,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'verify-client']);
 const identificationInput = ref(props.modelValue);
 
-watch(() => props.modelValue, (newValue) => {
-  identificationInput.value = newValue;
+watch(() => props.modelValue, (newVal) => {
+  identificationInput.value = newVal;
+}, { immediate: true });
+
+watch(identificationInput, (newVal) => {
+  emit('update:modelValue', newVal);
 });
 
 const updateIdentification = (value) => {
@@ -32,8 +36,7 @@ const handleRealizarPedido = () => {
           <AppTextField
             placeholder="Ingrese identificación"
             clearable
-            :model-value="identificationInput"
-            @update:model-value="updateIdentification"
+            v-model="identificationInput"
             @keyup.enter="handleRealizarPedido"
           />
         </VCol>

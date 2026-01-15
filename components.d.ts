@@ -235,6 +235,7 @@ declare module 'vue' {
     ProductsLotsFilters: typeof import('./resources/js/components/ProductsLotsFilters.vue')['default']
     ProductsLotsTable: typeof import('./resources/js/components/ProductsLotsTable.vue')['default']
     ProductsStablePriceTable: typeof import('./resources/js/components/ProductsStablePriceTable.vue')['default']
+    ProductsWithoutGroupTable: typeof import('./resources/js/components/ProductsWithoutGroupTable.vue')['default']
     ProductsWithoutLaboratoryTable: typeof import('./resources/js/components/ProductsWithoutLaboratoryTable.vue')['default']
     ProductsWithoutOriginTable: typeof import('./resources/js/components/ProductsWithoutOriginTable.vue')['default']
     ProductTable: typeof import('./resources/js/components/ProductTable.vue')['default']
