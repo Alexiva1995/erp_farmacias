@@ -36,6 +36,15 @@ const {
   updateTableOptions: updateInvoiceProductsTableOptions,
 } = useDataTable("/inventory/count/invoice-details-to-count", filters);
 
+const {
+  items: invoiceProductsToCount,
+  totalItems: totalInvoiceProductsToCount,
+  loading: invoiceProductsLoading,
+  options: invoiceProductsOptions,
+  fetchData: fetchInvoiceProductsToCount,
+  updateTableOptions: updateInvoiceProductsTableOptions,
+} = useDataTable("/inventory/count/sales-details-to-count", filters);
+
 const laboratories = ref([]);
 const origins = ref([]);
 const isLoadingFilters = ref(false);
@@ -215,6 +224,21 @@ const handleSort = (sortData) => {
           @count-product="(product) => handleCountProduct(product, 'invoice')"
         />
       </VCol>
+
+      <VCol cols="12">
+        <InvoiceToCountTable
+          :products="invoiceProductsToCount"
+          :loading="invoiceProductsLoading"
+          :total-product="totalInvoiceProductsToCount"
+          :items-per-page="invoiceProductsOptions.itemsPerPage"
+          :page="invoiceProductsOptions.page"
+          mode="inventory"
+          title="Productos de Venta por Contar"
+          @update:options="updateInvoiceProductsTableOptions"
+          @count-product="(product) => handleCountProduct(product, 'invoice')"
+        />
+      </VCol>
+
     </VRow>
 
     <InventoryCountDialog
