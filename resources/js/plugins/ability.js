@@ -10,6 +10,7 @@ export const buildAbilityForRules = (user) => {
     if (user.role_id === 1) {
       can('manage', 'admin'); 
       can('manage', 'cyclic-history');
+      can('manage', 'pending-cyclics');
       can('manage', 'closing-cyclics');
       can('manage', 'supervisor');
       can('manage', 'user');
@@ -28,6 +29,7 @@ export const buildAbilityForRules = (user) => {
     if (user.role_id === 2) {
       can('manage', 'supervisor'); 
       can('manage', 'cyclic-history');
+      can('manage', 'pending-cyclics');
       can('manage', 'closing-cyclics');
       can('manage', 'suppliers-list');
       can('manage', 'suppliers-purchase-orders-list');
@@ -45,8 +47,7 @@ export const buildAbilityForRules = (user) => {
 
     if (user.role_id === 3) {
       can('manage', 'user'); 
-      can('manage', 'closing-cyclics');
-      can('manage', 'productividad');
+       can('manage', 'pending-cycli-user');
       can('manage', 'productividad');
       can('manage', 'comparadorAssistence');
       can('manage', 'gastos-expenses');
