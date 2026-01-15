@@ -194,6 +194,7 @@ class InvoiceActionService
                         'lot_number' => $detail['lot_number'] ?? null,
                         'expiration_date' => $detail['expiration_date'] ?? null,
                         'auto_order_details_id' => $autoOrderDetailId,
+                        'supplier_discount_percentage' => $discountPercentage,
                     ]);
                 } else {
                     $invoice->details()->create([
@@ -206,6 +207,7 @@ class InvoiceActionService
                         'location' => $detail['location'],
                         'tax_enabled' => $taxEnabled,
                         'auto_order_details_id' => $autoOrderDetailId,
+                        'supplier_discount_percentage' => $discountPercentage,
                     ]);
 
                     if ($autoOrderDetailId) {
