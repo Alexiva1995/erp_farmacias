@@ -43,6 +43,10 @@ class ProductQueryService
             $query->whereNull('origin_id');
         }
 
+        if (!empty($filters['null_group'])) {
+            $query->whereNull('group_id');
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = $filters['q'];
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -294,6 +298,30 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_origin' => true
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getProductsWithoutGroupQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            'null_group' => true
         ];
 
         $this->applyFilters($query, $filters);

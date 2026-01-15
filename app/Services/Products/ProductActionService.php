@@ -113,6 +113,20 @@ class ProductActionService
         }
     }
 
+    public function updateProductGroup(Product $product, ?int $groupId): bool
+    {
+        \DB::beginTransaction();
+        try {
+            $product->update(['group_id' => $groupId]);
+            \DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            \Log::error($e);
+            \DB::rollback();
+            return false;
+        }
+    }
+
     /**
      * Desasigna un producto de su grupo.
      *

@@ -182,31 +182,60 @@ const handleDeletePack = async (pack) => {
 // Guardar un pack
 const handlePackSaved = async (packData) => {
   try {
+    console.log("Guardando pack con datos:", packData);
+    
+    // Validar que packData tenga los datos necesarios
+    if (!packData.name || !packData.name.trim()) {
+      toast.error("El nombre del pack es requerido");
+      return;
+    }
+    
+    if (!packData.pack_config || Object.keys(packData.pack_config).length === 0) {
+      toast.error("Debe agregar al menos un producto al pack");
+      return;
+    }
+    
+    if (!packData.total_price || packData.total_price <= 0) {
+      toast.error("El precio total del pack debe ser mayor a 0");
+      return;
+    }
+    
     let response;
     if (packData.id) {
+      console.log("Actualizando pack:", packData.id);
       response = await updatePack(packData.id, packData);
     } else {
+      console.log("Creando nuevo pack");
       response = await createPack(packData);
     }
 
-    if (response.success) {
+    console.log("Respuesta del servidor:", response);
+
+    if (response && response.success) {
       toast.success(
         `Pack ${packData.id ? "actualizado" : "creado"} exitosamente`
       );
-      fetchPacks();
+      await fetchPacks();
       closePackModal();
     } else {
-      if (response.errors) {
+      const errorMessage = response?.message || "Error al guardar el pack";
+      if (response?.errors) {
         const errorMessages = Object.values(response.errors).flat().join(", ");
-        toast.error(`Error: ${errorMessages}`, "error");
+        toast.error(`Error: ${errorMessages}`);
       } else {
-        toast.error(response.message, "error");
+        toast.error(errorMessage);
       }
-      throw new Error(response.message);
     }
   } catch (error) {
     console.error("Error saving pack:", error);
-    throw error;
+    const errorMessage = error.response?.data?.message || error.message || "Error al guardar el pack";
+    
+    if (error.response?.data?.errors) {
+      const errorMessages = Object.values(error.response.data.errors).flat().join(", ");
+      toast.error(`Error: ${errorMessages}`);
+    } else {
+      toast.error(errorMessage);
+    }
   }
 };
 

@@ -31,6 +31,7 @@ const laboratories = ref([]);
 const origins = ref([]);
 const suppliers = ref([]);
 const categories = ref([]);
+const groups = ref([]);
 
 const isEditDialogVisible = ref(false);
 const currentProduct = ref({});
@@ -42,15 +43,18 @@ const isLoadingFilters = ref(false);
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse, categoryResponse] = await Promise.all([
+    const [labResponse, originResponse, categoryResponse, groupsResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/categories"),
+      axios.get("/groups/consult-all"),
     ]);
     console.log("laboratories response:", labResponse);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
+    // El endpoint consultAll devuelve los datos en data.data según ApiResponse::success
+    groups.value = groupsResponse.data?.data || groupsResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");

@@ -76,6 +76,19 @@ class ProductController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
+    public function withoutGroup(Request $request)
+    {
+        $query = $this->productQueryService->getProductsWithoutGroupQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
     public function store(StoreProductRequest $request)
     {
         $product = $this->productActionService->createProduct($request->validated());
@@ -120,6 +133,19 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Origen asignado con éxito.',
+        ], 200);
+    }
+
+    public function updateProductGroup(Request $request, Product $product)
+    {
+        $request->validate([
+            'group_id' => 'nullable|integer|exists:groups_products,id'
+        ]);
+
+        $this->productActionService->updateProductGroup($product, $request->integer('group_id'));
+
+        return response()->json([
+            'message' => 'Grupo asignado con éxito.',
         ], 200);
     }
 
