@@ -86,7 +86,7 @@ export default [
           title: 'Pendientes',
           to: 'cyclics-cyclic',
           action: 'manage',
-          subject: 'supervisor',
+          subject: 'pending-cyclics',
         },
         {
           title: 'Inventarios Users',
@@ -96,6 +96,12 @@ export default [
         }
         ]
       },
+      {
+          title: 'Inventario  Ciclicos',
+          to: 'cyclics-cyclic',
+          action: 'manage',
+          subject: 'pending-cycli-user',
+        },
     ],
   }, 
 ]
