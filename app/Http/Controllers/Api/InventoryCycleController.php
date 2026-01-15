@@ -403,4 +403,19 @@ class InventoryCycleController extends Controller
             return response()->json(['message' => 'Error al obtener información del ciclo'], 500);
         }
     }
+
+     public function getSaleDetailsToCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getSalesDetailsToCountQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+    
 }

@@ -578,4 +578,33 @@ class InventoryCycleQueryService
 
         return $query;
     }
+
+
+      public function getSalesDetailsToCountQuery(Request $request): Builder
+    {
+        $query = Product::query()->with(['lots', 'laboratory', 'origin']);
+
+        $query->whereHas('orderDetails.order.cashClosing.dailyClosure', function ($subQuery) {
+            $subQuery->where('status', 'completed'); 
+        });
+
+        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        if ($activeCycleId) {
+            $query->whereDoesntHave('salesCounts', function (Builder $subQuery) use ($activeCycleId) {
+                $subQuery->where('cycle_id', $activeCycleId);
+            });
+        }
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        $query = $this->applyFiltersToProducts($query, $filters);
+        $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
 }
