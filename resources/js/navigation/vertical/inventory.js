@@ -98,9 +98,9 @@ export default [
       },
       {
           title: 'Inventario  Ciclicos',
-          to: 'cyclics-cyclic',
+          to: 'cyclics-users',
           action: 'manage',
-          subject: 'pending-cycli-user',
+          subject: 'cycli-user',
         },
     ],
   }, 
