@@ -675,10 +675,11 @@ const formatOrderItemForFrontend = (backendItem) => {
   // Precio con descuento (unit_cost del pack o precio normal)
   const discountedPrice = parseFloat(backendItem.unit_cost) || (originalPrice * discountFactor);
   const discountedPriceBs = backendItem.unit_cost 
-    ? (originalPriceBs * (discountedPrice / originalPrice))
+    ? (originalPriceBs * (discountedPrice / originalPriceBs))
     : (originalPriceBs * discountFactor);
+
   const discountedPriceCop = backendItem.unit_cost
-    ? (originalPriceCop * (discountedPrice / originalPrice))
+    ? (originalPriceCop * (discountedPrice / originalPriceCop))
     : (originalPriceCop * discountFactor);
 
   // Determinar si hay descuento de pack (precio personalizado diferente al original)
