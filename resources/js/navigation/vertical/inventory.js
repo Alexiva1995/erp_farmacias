@@ -62,6 +62,13 @@ export default [
       },
        {
         title: 'Inventario Ciclicos',
+        icon: {
+        is: 'font-awesome-icon', 
+        props: {
+          icon: ['fas', 'boxes-stacked'],
+          size: 'sm',
+        },
+      },
         children: [
                   {
           title: 'Historial',
@@ -79,7 +86,7 @@ export default [
           title: 'Pendientes',
           to: 'cyclics-cyclic',
           action: 'manage',
-          subject: 'supervisor',
+          subject: 'pending-cyclics',
         },
         {
           title: 'Inventarios Users',
@@ -89,6 +96,12 @@ export default [
         }
         ]
       },
+      {
+          title: 'Inventario  Ciclicos',
+          to: 'cyclics-cyclic',
+          action: 'manage',
+          subject: 'pending-cycli-user',
+        },
     ],
   }, 
 ]
