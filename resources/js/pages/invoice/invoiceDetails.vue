@@ -206,9 +206,19 @@ const editableDetailsTotal = computed(() => {
 
 const isTotalMismatch = computed(() => {
   if (!invoice.value) return false;
-  return (
-    Math.abs(editableDetailsTotal.value - invoice.value.total_amount) > 0.01
-  );
+  
+  // Calcular la tolerancia de ±1 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD";
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const hasValidRate = rate && rate > 0;
+  
+  // Tolerancia de 1 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 1 : (hasValidRate ? 1 * rate : 1);
+  
+  const difference = Math.abs(editableDetailsTotal.value - invoice.value.total_amount);
+  
+  // Permitir diferencia de hasta 1 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency;
 });
 
 const totalWithDiscount = computed(() => {
