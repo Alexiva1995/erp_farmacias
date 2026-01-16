@@ -181,10 +181,9 @@ class InvoiceActionService
                 }*/
                 $totalCostInInvoiceCurrency = $taxEnabled ? $totalAfterDiscount * 1.16 : $totalAfterDiscount;
                 $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
-
+                
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
                     $refundAmount = $totalCostInInvoiceCurrency;
-
                     InvoiceReturn::create([
                         'invoice_id' => $invoice->id,
                         'product_id' => $productId,
@@ -215,7 +214,7 @@ class InvoiceActionService
                     }
                 }
             }
-
+ 
             if (!empty($autoOrderDetailsToUpdate) && !empty($invoice->autoOrder)) {
                 DB::table('auto_order_details')
                     ->whereIn('id', array_values($autoOrderDetailsToUpdate))
