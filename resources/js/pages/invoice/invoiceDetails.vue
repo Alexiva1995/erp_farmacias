@@ -146,15 +146,26 @@ const processedInvoiceDetails = computed(() => {
   return invoiceDetails.value.map((detail) => {
     const quantity = Number(detail.quantity) || 0;
     const unitCost = Number(detail.unit_cost) || 0;
-    const discountAmount = unitCost * (discountPercentage / 100);
-    const discountedUnitCost = unitCost - discountAmount;
-    const baseTotal = quantity * discountedUnitCost;
 
+    let finalTotal = 0;
     let taxAmount = 0;
-    if (detail.tax_enabled) {
-      taxAmount = baseTotal * 0.16;
+
+
+    if (discountPercentage > 0) {
+      const discountAmount = unitCost * (discountPercentage / 100);
+      const discountedUnitCost = unitCost - discountAmount;
+      const baseTotal = quantity * discountedUnitCost;
+
+      if (detail.tax_enabled) {
+        taxAmount = baseTotal * 0.16;
+      }
+      finalTotal = baseTotal + taxAmount;
+    } else {
+      finalTotal = parseFloat(detail.total_cost) || 0;
+      if (detail.tax_enabled) {
+        taxAmount = finalTotal - (finalTotal / 1.16);
+      }
     }
-    const finalTotal = baseTotal + taxAmount;
 
     const rate = parseFloat(invoice.value.exchange_rate) || 1;
     const isUsd = invoice.value.currency === "USD";
@@ -178,6 +189,7 @@ const processedInvoiceDetails = computed(() => {
         : detail.product?.name || "Sin nombre",
       tax_amount: taxAmount,
       total_cost: finalTotal,
+      total_cost:  detail.total_cost || 0,
       unit_cost_usd: unitCostUsd,
       total_cost_usd: totalCostUsd,
     };
@@ -187,7 +199,8 @@ const processedInvoiceDetails = computed(() => {
 const editableDetailsTotal = computed(() => {
   if (!processedInvoiceDetails.value) return 0;
   return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
-    return accumulator + (currentDetail.total_cost || 0);
+    const cost = Number(currentDetail.total_cost) || 0;
+    return accumulator + cost;
   }, 0);
 });
 
