@@ -238,7 +238,9 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generarOrden(Request $request): JsonResponse
     {
-        $listAutoOrders = $this->autoOrder->createMultiple($request->orders);
+        $withoutSupplierIds = $request->input('without_supplier_ids', []);
+        $listAutoOrders = $this->autoOrder->createMultiple($request->orders, $withoutSupplierIds);
+        
 
         return ApiResponse::success($listAutoOrders, "ok", 200);
     }

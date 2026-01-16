@@ -10,6 +10,8 @@ use App\Repository\AutoOrdersRepository;
 use DateTime;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\Product;
 
 class AutoOrderServices implements AutoOrder
 {
@@ -33,14 +35,31 @@ class AutoOrderServices implements AutoOrder
         return $autoOrder;
     }
 
-    public function createMultiple(array $orders): array
+    public function createMultiple(array $orders, array $withoutSupplierIds = []): array
     {
-        $listAutoOrders = [];
+        /*$listAutoOrders = [];
 
         foreach ($orders as $key => $order) {
             $listAutoOrders[] = $this->create($order);
         }
 
+        return $listAutoOrders;*/
+        return DB::transaction(function () use ($orders, $withoutSupplierIds) {
+        
+        $listAutoOrders = [];
+
+        // 1. Crear las órdenes normales
+        foreach ($orders as $order) {
+            $listAutoOrders[] = $this->create($order);
+        }
+
+        // 2. MARCAR SOLO LOS QUE NO TIENEN PROVEEDOR
+        if (!empty($withoutSupplierIds)) {
+            Product::whereIn('id', $withoutSupplierIds)
+                ->update(['is_ordered' => true]);
+        }
+
         return $listAutoOrders;
+        });
     }
 }

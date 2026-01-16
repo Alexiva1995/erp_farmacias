@@ -46,6 +46,7 @@ class Product extends Model
         'photo_url',
         'sales_average',
         'cycle_id',
+        'is_ordered',
         'is_deleted',
         'stock',
     ];
@@ -62,6 +63,7 @@ class Product extends Model
         'psychotropic' => 'boolean',
         'is_deleted' => 'boolean',
         'sale_price' => 'float',
+        'is_ordered' => 'boolean',
     ];
 
 

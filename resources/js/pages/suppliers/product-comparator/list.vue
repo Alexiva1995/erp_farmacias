@@ -6,6 +6,7 @@ import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProduct
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
+import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -56,6 +57,15 @@ const enableUsdAmountCol = ref(true);
 const enableDiscountCol = ref(true);
 
 const isDeleteDialogVisible = ref(false);
+
+//Variables de productos sin proveedor
+const listProductsWithoutSupplier = ref([]);
+const totalProductsWithoutSupplier = ref(0);
+const loadingProductsWithoutSupplier = ref(false);
+const pageProductsWithoutSupplier = ref(1);
+const itemsPerPageProductsWithoutSupplier = ref(10);
+const sortByProductsWithoutSupplier = ref();
+const orderByProductsWithoutSupplier = ref();
 
 const handleShowDiscountDialog = (supplier) => {
   supplierForDiscount.value = supplier;
@@ -282,6 +292,15 @@ const fetchStatuses = async () => {
   }
 };
 
+const fetchProductsWithoutSupplier = async () => {
+
+ try {
+  } catch (error) {
+    console.error("Hubo un error al obtener los productos:", error);
+    toast.error("Error al obtener los productos.");
+  }
+};
+
 const startPolling = () => {
   stopPolling();
   pollingInterval.value = setInterval(fetchStatuses, 5000);
@@ -316,6 +335,7 @@ onMounted(() => {
   fetchOptions();
   fetchSupplierConnections();
   fetchProducts();
+  fetchProductsWithoutSupplier();
 });
 
 let supplierDebounceTimer;
@@ -358,6 +378,24 @@ watch(
     deep: true,
   }
 );
+
+let debounceTimerProductsWithoutSupplier;
+watch(
+  [
+    pageProductsWithoutSupplier,
+    itemsPerPageProductsWithoutSupplier,
+    sortByProductsWithoutSupplier,
+    orderByProductsWithoutSupplier,
+  ],
+  () => {
+    clearTimeout(debounceTimerProductsWithoutSupplier);
+    debounceTimerProductsWithoutSupplier = setTimeout(() => {
+      fetchProductsWithoutSupplier();
+    }, 300);
+  },
+  { deep: true }
+);
+
 
 const handleSearchSupplier = (supplier) => {
   searchedSupplier.value = supplier;
@@ -496,8 +534,8 @@ const handleDeleteSupplierProducts = async (supplier) => {
     <VCard class="mb-6">
       <VCardText>
         <VTabs v-model="tab">
-          <VTab value="suppliers"> Proveedores </VTab>
-          <VTab value="products"> Productos </VTab>
+          <VTab value="suppliers"> Proveedores</VTab>
+          <VTab value="products"> Productos</VTab>
         </VTabs>
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
@@ -543,6 +581,15 @@ const handleDeleteSupplierProducts = async (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
+
+        <ProductsWithoutSupplierComparatorTable
+          :products="listProductsWithoutSupplier"
+          :loading="loadingProductsWithoutSupplier"
+          :total-products="totalProductsWithoutSupplier"
+          :items-per-page="itemsPerPageProductsWithoutSupplier"
+          :page="pageProductsWithoutSupplier"
+        />
+
         <ProductComparisionProductsTable
           :products="products"
           :loading="loadingProducts"
