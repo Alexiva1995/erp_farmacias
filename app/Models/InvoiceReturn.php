@@ -10,6 +10,7 @@ class InvoiceReturn extends Model
     protected $fillable = [
         'invoice_id',
         'product_id',
+        'supplier_discount_percentage',
         'quantity',
         'amount_refunded',
         'return_date',
