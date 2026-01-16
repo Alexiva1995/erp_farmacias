@@ -436,4 +436,24 @@ class SuppliersIaOrderAssistantController extends Controller
         })->values()->all();
     }
 
+
+    public function getProductosMarcados(Request $request)
+{
+    try {
+        $perPage = $request->query('perPage', 10);
+        $sortBy = $request->query('sortBy', 'id');
+        $order = $request->query('order', 'desc');
+        $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
+            (int) $perPage, 
+            $sortBy, 
+            $order
+        );
+       
+        return response()->json($productos);
+        
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Error al obtener productos'], 500);
+    }
+}
+
 }

@@ -293,11 +293,29 @@ const fetchStatuses = async () => {
 };
 
 const fetchProductsWithoutSupplier = async () => {
+  try {
+    loadingProductsWithoutSupplier.value = true;
 
- try {
+    const params = {
+      page: pageProductsWithoutSupplier.value,
+      perPage: itemsPerPageProductsWithoutSupplier.value,
+      sortBy: sortByProductsWithoutSupplier.value,
+      order: orderByProductsWithoutSupplier.value,
+      is_ordered: true 
+    };
+
+    // Usamos GET o POST según como tengas definido tu endpoint en Laravel
+    const { data } = await axios.get("/suppliers-ia-order-assistant/products-without-supplier", { params });
+
+    // Asignamos los resultados a las variables reactivas que usa tu tabla
+    listProductsWithoutSupplier.value = data.data;
+    totalProductsWithoutSupplier.value = data.total;
+
   } catch (error) {
-    console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
+    console.error("Hubo un error al obtener los productos sin proveedor:", error);
+    toast.error("Error al obtener la lista de productos marcados.");
+  } finally {
+    loadingProductsWithoutSupplier.value = false;
   }
 };
 
@@ -508,6 +526,15 @@ const handleDeleteSupplierProducts = async (supplier) => {
     toast.error("No se pudieron borrar los productos del proveedor.");
   }
 };
+
+const updateProductsWithoutSupplierOptions = (options) => {
+  pageProductsWithoutSupplier.value = options.page;
+  itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByProductsWithoutSupplier.value = options.sortBy[0].key;
+    orderByProductsWithoutSupplier.value = options.sortBy[0].order;
+  }
+};
 </script>
 
 <template>
@@ -588,6 +615,7 @@ const handleDeleteSupplierProducts = async (supplier) => {
           :total-products="totalProductsWithoutSupplier"
           :items-per-page="itemsPerPageProductsWithoutSupplier"
           :page="pageProductsWithoutSupplier"
+          @update:options="updateProductsWithoutSupplierOptions"
         />
 
         <ProductComparisionProductsTable

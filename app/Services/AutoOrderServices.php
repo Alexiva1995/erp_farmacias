@@ -62,4 +62,13 @@ class AutoOrderServices implements AutoOrder
         return $listAutoOrders;
         });
     }
+
+
+    public function getMarkedProductsWithoutSupplier(int $perPage = 10, string $sortBy = 'id', string $order = 'desc')
+    {
+        return Product::where('is_ordered', true)
+            ->orderBy($sortBy, $order)
+            ->with('laboratory:id,name')
+            ->paginate($perPage);
+    }
 }
