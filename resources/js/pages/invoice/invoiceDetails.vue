@@ -251,7 +251,19 @@ const isTaxAmountMismatch = computed(() => {
   if (!invoice.value) return false;
   const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0;
   if (invoiceTaxAmount === 0) return false;
-  return Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount) > 0.01;
+  
+  // Calcular la tolerancia de ±0.25 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD";
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const hasValidRate = rate && rate > 0;
+  
+  // Tolerancia de 0.25 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 0.25 : (hasValidRate ? 0.25 * rate : 0.25);
+  
+  const difference = Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount);
+  
+  // Permitir diferencia de hasta 0.25 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency;
 });
 const getCostComparisonClass = (item) => {
   if (!isApprovalMode.value) {
