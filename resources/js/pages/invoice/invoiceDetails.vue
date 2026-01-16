@@ -130,6 +130,7 @@ const processedInvoiceDetails = computed(() => {
   if (!invoice.value || !invoiceDetails.value) return [];
 
   let discountPercentage = 0;
+
   if (isEditableMode.value && selectedSupplierDiscountId.value) {
     const discount = props.supplierDiscounts.find(
       (d) => d.id === selectedSupplierDiscountId.value
@@ -142,19 +143,48 @@ const processedInvoiceDetails = computed(() => {
     );
     if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
   }
+ 
 
   return invoiceDetails.value.map((detail) => {
     const quantity = Number(detail.quantity) || 0;
     const unitCost = Number(detail.unit_cost) || 0;
-    const discountAmount = unitCost * (discountPercentage / 100);
-    const discountedUnitCost = unitCost - discountAmount;
-    const baseTotal = quantity * discountedUnitCost;
 
+    let finalTotal = 0;
     let taxAmount = 0;
-    if (detail.tax_enabled) {
-      taxAmount = baseTotal * 0.16;
+
+    if (discountPercentage > 0) {
+    console.log('dentro de if');
+      const discountAmount = unitCost * (discountPercentage / 100);
+      const discountedUnitCost = unitCost - discountAmount;
+      const baseTotal = quantity * discountedUnitCost;
+
+      if (detail.tax_enabled) {
+        taxAmount = baseTotal * 0.16;
+      }
+      finalTotal = baseTotal + taxAmount;
+      
+    } else {
+        if (isEditMode.value) {
+        const baseTotal = quantity * unitCost;
+
+        if (detail.tax_enabled) {
+            taxAmount = baseTotal * 0.16;
+            finalTotal = baseTotal + taxAmount;
+        } else {
+            taxAmount = 0;
+            finalTotal = baseTotal;
+        }
+    } else {
+        finalTotal = parseFloat(detail.total_cost) || 0;
+
+        if (detail.tax_enabled) {
+            taxAmount = finalTotal - (finalTotal / 1.16);
+        } else {
+            taxAmount = 0;
+        }
     }
-    const finalTotal = baseTotal + taxAmount;
+
+    }
 
     const rate = parseFloat(invoice.value.exchange_rate) || 1;
     const isUsd = invoice.value.currency === "USD";
@@ -187,15 +217,26 @@ const processedInvoiceDetails = computed(() => {
 const editableDetailsTotal = computed(() => {
   if (!processedInvoiceDetails.value) return 0;
   return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
-    return accumulator + (currentDetail.total_cost || 0);
+    const cost = Number(currentDetail.total_cost) || 0;
+    return accumulator + cost;
   }, 0);
 });
 
 const isTotalMismatch = computed(() => {
   if (!invoice.value) return false;
-  return (
-    Math.abs(editableDetailsTotal.value - invoice.value.total_amount) > 0.01
-  );
+  
+  // Calcular la tolerancia de ±1 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD";
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const hasValidRate = rate && rate > 0;
+  
+  // Tolerancia de 1 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 1 : (hasValidRate ? 1 * rate : 1);
+  
+  const difference = Math.abs(editableDetailsTotal.value - invoice.value.total_amount);
+  
+  // Permitir diferencia de hasta 1 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency;
 });
 
 const totalWithDiscount = computed(() => {
@@ -228,7 +269,19 @@ const isTaxAmountMismatch = computed(() => {
   if (!invoice.value) return false;
   const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0;
   if (invoiceTaxAmount === 0) return false;
-  return Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount) > 0.01;
+
+  // Calcular la tolerancia de ±0.5 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD";
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const hasValidRate = rate && rate > 0;
+
+  // Tolerancia de 0.5 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 0.5 : (hasValidRate ? 0.5 * rate : 0.5);
+
+  const difference = Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount);
+
+  // Permitir diferencia de hasta 0.5 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency;
 });
 const getCostComparisonClass = (item) => {
   if (!isApprovalMode.value) {

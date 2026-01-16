@@ -40,7 +40,7 @@ const options = ref({
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
-  { title: "Producto", key: "name", sortable: true },
+  { title: "Producto", key: "name", sortable: true, maxWidth: "300px" },
   { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true, align: "end" },
   { title: "Bs", key: "price_bs", sortable: true, align: "end" },
@@ -285,6 +285,34 @@ const handleAddPack = (packId) => {
   // Reset input
   inputQuantities.value.set(packId, 1);
 };
+
+// Función para determinar el estilo de la fila según stock y expiración
+const getRowClass = (item) => {
+  const classes = [];
+  
+  // Stock en 0: fondo rojo, letras blancas
+  if (item.valid_stock_sum === 0) {
+    classes.push('row-zero-stock');
+    return classes.join(' '); // Retornar inmediatamente si stock es 0
+  }
+  
+  // Verificar si está vencido o tiene menos de 6 meses por vencer
+  if (item.next_expiration) {
+    const expirationDate = new Date(item.next_expiration);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(today.getMonth() + 6);
+    sixMonthsFromNow.setHours(23, 59, 59, 999);
+    
+    // Si está vencido (antes de hoy) o tiene menos de 6 meses por vencer
+    if (expirationDate < today || expirationDate <= sixMonthsFromNow) {
+      classes.push('row-zero-stock'); // Fondo rojo para productos vencidos o próximos a vencer
+    }
+  }
+  
+  return classes.join(' ');
+};
 </script>
 
 <template>
@@ -298,7 +326,8 @@ const handleAddPack = (packId) => {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-     @update:options="handleUpdateOptions" >
+      :row-props="(item) => ({ class: getRowClass(item) })"
+      @update:options="handleUpdateOptions" >
 
       <template #item.id="{ item }">
         <span class="font-weight-medium">{{ item.id }}</span>
@@ -309,20 +338,29 @@ const handleAddPack = (packId) => {
         }}</span>
       </template>
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column">
+        <div class="d-flex align-center gap-x-4" style="max-width: 300px;">
+          <div class="d-flex flex-column" style="min-width: 0; width: 100%;">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
+              class="text-body-1 font-weight-medium text-high-emphasis text-truncate"
               :class="{ 'text-primary': item.psychotropic == 1 }"
+              style="word-wrap: break-word; overflow-wrap: break-word;"
             >
               {{ item.name }}
               <span v-if="item.iva == 1"> (G)</span>
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
-            <span class="text-sm text-disabled">{{ item.origin?.name }}</span>
+            <span 
+              class="text-sm text-disabled text-truncate"
+              style="word-wrap: break-word; overflow-wrap: break-word;"
+            >
+              {{ item.active_ingredient }}
+            </span>
+            <span 
+              class="text-sm text-disabled text-truncate"
+              style="word-wrap: break-word; overflow-wrap: break-word;"
+            >
+              {{ item.origin?.name }}
+            </span>
           </div>
         </div>
       </template>
@@ -487,3 +525,43 @@ const handleAddPack = (packId) => {
     </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.row-zero-stock) {
+  background-color: rgb(var(--v-theme-error)) !important;
+  color: white !important;
+}
+
+:deep(.row-zero-stock td),
+:deep(.row-zero-stock th) {
+  color: white !important;
+}
+
+:deep(.row-zero-stock .text-disabled) {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+:deep(.row-expiring) {
+  background-color: rgb(var(--v-theme-warning)) !important;
+}
+
+:deep(.row-expiring td),
+:deep(.row-expiring th) {
+  color: rgb(var(--v-theme-on-warning)) !important;
+}
+
+:deep(.row-expiring .text-disabled) {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Si una fila tiene ambas clases (stock 0 y expirando), el rojo tiene prioridad */
+:deep(.row-zero-stock.row-expiring) {
+  background-color: rgb(var(--v-theme-error)) !important;
+  color: white !important;
+}
+
+:deep(.row-zero-stock.row-expiring td),
+:deep(.row-zero-stock.row-expiring th) {
+  color: white !important;
+}
+</style>

@@ -412,6 +412,10 @@ class OrderQueryService
 
     private function applySortingProduct($query, ?string $sortBy, string $orderBy)
     {
+        // Siempre ordenar primero por item_type para que los packs aparezcan primero
+        // Usamos CASE para que 'pack' = 0 y 'product' = 1, así los packs van primero
+        $query->orderByRaw("CASE WHEN item_type = 'pack' THEN 0 ELSE 1 END ASC");
+        
         // Si no hay orden especificado, ordenamos por el nombre normalizado
         if (empty($sortBy)) {
             return $query->orderBy('name', 'asc');

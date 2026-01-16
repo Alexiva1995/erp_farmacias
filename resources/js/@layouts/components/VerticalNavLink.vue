@@ -69,6 +69,26 @@ const hideTitleAndBadge = configStore.isVerticalNavMini()
   .nav-link a {
     display: flex;
     align-items: center;
+    padding-inline: 1.25rem;
+  }
+
+  .nav-item-icon {
+    inline-size: 22px;
+    block-size: 22px;
+    min-inline-size: 22px;
+    min-block-size: 22px;
+    margin-inline-end: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nav-item-title {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 }
 </style>
