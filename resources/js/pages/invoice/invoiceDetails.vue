@@ -130,6 +130,7 @@ const processedInvoiceDetails = computed(() => {
   if (!invoice.value || !invoiceDetails.value) return [];
 
   let discountPercentage = 0;
+
   if (isEditableMode.value && selectedSupplierDiscountId.value) {
     const discount = props.supplierDiscounts.find(
       (d) => d.id === selectedSupplierDiscountId.value
@@ -142,6 +143,7 @@ const processedInvoiceDetails = computed(() => {
     );
     if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
   }
+ 
 
   return invoiceDetails.value.map((detail) => {
     const quantity = Number(detail.quantity) || 0;
@@ -150,8 +152,8 @@ const processedInvoiceDetails = computed(() => {
     let finalTotal = 0;
     let taxAmount = 0;
 
-
     if (discountPercentage > 0) {
+    console.log('dentro de if');
       const discountAmount = unitCost * (discountPercentage / 100);
       const discountedUnitCost = unitCost - discountAmount;
       const baseTotal = quantity * discountedUnitCost;
@@ -160,11 +162,28 @@ const processedInvoiceDetails = computed(() => {
         taxAmount = baseTotal * 0.16;
       }
       finalTotal = baseTotal + taxAmount;
+      
     } else {
-      finalTotal = parseFloat(detail.total_cost) || 0;
-      if (detail.tax_enabled) {
-        taxAmount = finalTotal - (finalTotal / 1.16);
-      }
+        if (isEditMode.value) {
+        const baseTotal = quantity * unitCost;
+
+        if (detail.tax_enabled) {
+            taxAmount = baseTotal * 0.16;
+            finalTotal = baseTotal + taxAmount;
+        } else {
+            taxAmount = 0;
+            finalTotal = baseTotal;
+        }
+    } else {
+        finalTotal = parseFloat(detail.total_cost) || 0;
+
+        if (detail.tax_enabled) {
+            taxAmount = finalTotal - (finalTotal / 1.16);
+        } else {
+            taxAmount = 0;
+        }
+    }
+
     }
 
     const rate = parseFloat(invoice.value.exchange_rate) || 1;
@@ -189,7 +208,6 @@ const processedInvoiceDetails = computed(() => {
         : detail.product?.name || "Sin nombre",
       tax_amount: taxAmount,
       total_cost: finalTotal,
-      total_cost:  detail.total_cost || 0,
       unit_cost_usd: unitCostUsd,
       total_cost_usd: totalCostUsd,
     };
