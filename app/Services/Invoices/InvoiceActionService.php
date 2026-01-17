@@ -413,7 +413,14 @@ class InvoiceActionService
 
                 if ($detail && $detail->invoice_id === $invoice->id) {
                     $detail->update(['location' => $detailData['location']]);
-                    $productLot = $this->createProductLot($detail, $detail->unit_cost, $invoice);
+                    
+                    // Convertir unit_cost a USD antes de crear el lote
+                    $unitCostInInvoiceCurrency = $detail->unit_cost;
+                    $unitCostInUSD = $invoice->currency === 'USD' 
+                        ? $unitCostInInvoiceCurrency 
+                        : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
+                    
+                    $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
                     
                     // Actualizar el movimiento existente (creado al aprobar) con el product_lot_id
                     \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
