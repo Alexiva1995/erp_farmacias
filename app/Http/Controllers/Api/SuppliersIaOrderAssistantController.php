@@ -238,7 +238,9 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generarOrden(Request $request): JsonResponse
     {
-        $listAutoOrders = $this->autoOrder->createMultiple($request->orders);
+        $withoutSupplierIds = $request->input('without_supplier_ids', []);
+        $listAutoOrders = $this->autoOrder->createMultiple($request->orders, $withoutSupplierIds);
+        
 
         return ApiResponse::success($listAutoOrders, "ok", 200);
     }
@@ -433,5 +435,25 @@ class SuppliersIaOrderAssistantController extends Controller
 
         })->values()->all();
     }
+
+
+    public function getProductosMarcados(Request $request)
+{
+    try {
+        $perPage = $request->query('perPage', 10);
+        $sortBy = $request->query('sortBy', 'id');
+        $order = $request->query('order', 'desc');
+        $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
+            (int) $perPage, 
+            $sortBy, 
+            $order
+        );
+       
+        return response()->json($productos);
+        
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Error al obtener productos'], 500);
+    }
+}
 
 }
