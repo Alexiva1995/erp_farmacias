@@ -497,7 +497,8 @@ class SupplierQueryService
         $product = ProductSupplier::find($productId);
         $mainProduct = Product::find($mainProductId);
 
-        if (empty($mainProduct->barcode) && !empty($product->barcode_match)) {
+        $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
+        if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
             $mainProduct->update([
                 'barcode' => $product->barcode_match
             ]);
@@ -512,7 +513,7 @@ class SupplierQueryService
         $subtotal = $unitCost * $quantity;
 
         $detailPayload = [
-        "product_id" => $mainProduct->id,
+        "product_id" => $mainProduct ? $mainProduct->id : null,
         "product_suppliers_id" => $productId,
         "quantity" => $quantity,
         "unit_cost" => $unitCost,
@@ -570,7 +571,9 @@ class SupplierQueryService
             ]);
         }*/
 
-        $mainProduct->update(['is_ordered' => false]);
+        if ($mainProduct) {
+            $mainProduct->update(['is_ordered' => false]);
+        }
         $product->decrement("quantity", $quantity);
 
         return true;

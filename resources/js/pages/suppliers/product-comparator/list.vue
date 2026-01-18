@@ -484,15 +484,12 @@ const handleClearProductsFilters = () => {
 
 const handleAddItemToAutoOrder = async (product) => {
 
-if (!selectedProductFromTop.value) {
-    toast.error("Primero debes seleccionar un producto de la lista superior.");
-    return;
-  }
-
   quantityErrors[product.id] = null;
+  const mainProductId = selectedProductFromTop.value?.id ?? null;
+
   const form = new FormData();
   form.append("productId", product.id);
-  form.append("main_product_id", selectedProductFromTop.value.id);
+  form.append("main_product_id", mainProductId);
   form.append("quantity", product.quantity);
   form.append("discount", enableDiscounts.value);
 
