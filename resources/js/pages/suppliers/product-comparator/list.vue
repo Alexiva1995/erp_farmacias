@@ -67,6 +67,14 @@ const itemsPerPageProductsWithoutSupplier = ref(10);
 const sortByProductsWithoutSupplier = ref();
 const orderByProductsWithoutSupplier = ref();
 
+// Variable para rastrear la selección
+const selectedProductFromTop = ref(null);
+
+const handleSelectProductFromTop = (product) => {
+  selectedProductFromTop.value = product;
+  toast.success(`Seleccionado: ${product.name}. Ahora busque el proveedor equivalente abajo.`);
+};
+
 const handleShowDiscountDialog = (supplier) => {
   supplierForDiscount.value = supplier;
   isApplyDiscountDialogActive.value = true;
@@ -475,9 +483,16 @@ const handleClearProductsFilters = () => {
 };
 
 const handleAddItemToAutoOrder = async (product) => {
+
+if (!selectedProductFromTop.value) {
+    toast.error("Primero debes seleccionar un producto de la lista superior.");
+    return;
+  }
+
   quantityErrors[product.id] = null;
   const form = new FormData();
   form.append("productId", product.id);
+  form.append("main_product_id", selectedProductFromTop.value.id);
   form.append("quantity", product.quantity);
   form.append("discount", enableDiscounts.value);
 
@@ -486,6 +501,10 @@ const handleAddItemToAutoOrder = async (product) => {
     toast.success(
       `Se añadieron ${product.quantity} productos al pedido del día`
     );
+    selectedProductFromTop.value = null;
+    fetchProductsWithoutSupplier();
+    fetchProducts();
+    
   } catch (error) {
     if (error.response?.status === 422) {
       quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
@@ -609,15 +628,18 @@ const updateProductsWithoutSupplierOptions = (options) => {
 
       <VTabsWindowItem value="products">
 
+       <div class='mb-6'>
         <ProductsWithoutSupplierComparatorTable
+          v-model="selectedProductFromTop"
           :products="listProductsWithoutSupplier"
           :loading="loadingProductsWithoutSupplier"
           :total-products="totalProductsWithoutSupplier"
           :items-per-page="itemsPerPageProductsWithoutSupplier"
           :page="pageProductsWithoutSupplier"
           @update:options="updateProductsWithoutSupplierOptions"
+          @select-product="handleSelectProductFromTop"
         />
-
+        </div>
         <ProductComparisionProductsTable
           :products="products"
           :loading="loadingProducts"
