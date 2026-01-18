@@ -24,6 +24,7 @@ const headers = [
     align: 'center',
     value: item => `$${parseFloat(item.unit_cost || 0).toFixed(2)}`
   },
+  { title: "Stock", key: "lote_quantity", sortable: true },
   { 
     title: "Precio Venta", 
     key: "sale_price", 
