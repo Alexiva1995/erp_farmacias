@@ -612,4 +612,36 @@ class InventoryCycleQueryService
 
         return $query;
     }
+
+
+        private function getSaleCountBaseQuery(): Builder
+    {
+        return SaleCount::query()->select('sales_counts.*')->with([
+            'product' => function ($query) {
+                $query->with(['lots', 'laboratory']);
+            },
+            'user',
+            'supervisor',
+            'cycle',
+        ]);
+    }
+
+     public function getSaleCountFilteredQuery(Request $request): Builder
+    {
+        $query = $this->getSaleCountBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'discrepancyFilter' => $request->discrepancyFilter,
+            'status' => 'pending',
+        ];
+
+        $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+
+        return $query;
+    }
 }

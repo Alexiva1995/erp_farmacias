@@ -473,4 +473,12 @@ class InventoryCycleController extends Controller
         }
     }
     
+    public function getSaleCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getSaleCountFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
 }

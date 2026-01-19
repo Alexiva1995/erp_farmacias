@@ -274,6 +274,7 @@ declare module 'vue' {
     ReturnsSupervisorTable: typeof import('./resources/js/components/ReturnsSupervisorTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SaleCyclicTable: typeof import('./resources/js/components/SaleCyclicTable.vue')['default']
     SalesToCountTable: typeof import('./resources/js/components/SalesToCountTable.vue')['default']
     ScrollToTop: typeof import('./resources/js/@core/components/ScrollToTop.vue')['default']
     SectionAutoOrderIa: typeof import('./resources/js/components/SectionAutoOrderIa.vue')['default']
