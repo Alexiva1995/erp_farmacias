@@ -6,6 +6,7 @@ import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProduct
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
+import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -56,6 +57,15 @@ const enableUsdAmountCol = ref(true);
 const enableDiscountCol = ref(true);
 
 const isDeleteDialogVisible = ref(false);
+
+//Variables de productos sin proveedor
+const listProductsWithoutSupplier = ref([]);
+const totalProductsWithoutSupplier = ref(0);
+const loadingProductsWithoutSupplier = ref(false);
+const pageProductsWithoutSupplier = ref(1);
+const itemsPerPageProductsWithoutSupplier = ref(10);
+const sortByProductsWithoutSupplier = ref();
+const orderByProductsWithoutSupplier = ref();
 
 const handleShowDiscountDialog = (supplier) => {
   supplierForDiscount.value = supplier;
@@ -282,6 +292,33 @@ const fetchStatuses = async () => {
   }
 };
 
+const fetchProductsWithoutSupplier = async () => {
+  try {
+    loadingProductsWithoutSupplier.value = true;
+
+    const params = {
+      page: pageProductsWithoutSupplier.value,
+      perPage: itemsPerPageProductsWithoutSupplier.value,
+      sortBy: sortByProductsWithoutSupplier.value,
+      order: orderByProductsWithoutSupplier.value,
+      is_ordered: true 
+    };
+
+    // Usamos GET o POST según como tengas definido tu endpoint en Laravel
+    const { data } = await axios.get("/suppliers-ia-order-assistant/products-without-supplier", { params });
+
+    // Asignamos los resultados a las variables reactivas que usa tu tabla
+    listProductsWithoutSupplier.value = data.data;
+    totalProductsWithoutSupplier.value = data.total;
+
+  } catch (error) {
+    console.error("Hubo un error al obtener los productos sin proveedor:", error);
+    toast.error("Error al obtener la lista de productos marcados.");
+  } finally {
+    loadingProductsWithoutSupplier.value = false;
+  }
+};
+
 const startPolling = () => {
   stopPolling();
   pollingInterval.value = setInterval(fetchStatuses, 5000);
@@ -316,6 +353,7 @@ onMounted(() => {
   fetchOptions();
   fetchSupplierConnections();
   fetchProducts();
+  fetchProductsWithoutSupplier();
 });
 
 let supplierDebounceTimer;
@@ -358,6 +396,24 @@ watch(
     deep: true,
   }
 );
+
+let debounceTimerProductsWithoutSupplier;
+watch(
+  [
+    pageProductsWithoutSupplier,
+    itemsPerPageProductsWithoutSupplier,
+    sortByProductsWithoutSupplier,
+    orderByProductsWithoutSupplier,
+  ],
+  () => {
+    clearTimeout(debounceTimerProductsWithoutSupplier);
+    debounceTimerProductsWithoutSupplier = setTimeout(() => {
+      fetchProductsWithoutSupplier();
+    }, 300);
+  },
+  { deep: true }
+);
+
 
 const handleSearchSupplier = (supplier) => {
   searchedSupplier.value = supplier;
@@ -470,6 +526,15 @@ const handleDeleteSupplierProducts = async (supplier) => {
     toast.error("No se pudieron borrar los productos del proveedor.");
   }
 };
+
+const updateProductsWithoutSupplierOptions = (options) => {
+  pageProductsWithoutSupplier.value = options.page;
+  itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByProductsWithoutSupplier.value = options.sortBy[0].key;
+    orderByProductsWithoutSupplier.value = options.sortBy[0].order;
+  }
+};
 </script>
 
 <template>
@@ -496,8 +561,8 @@ const handleDeleteSupplierProducts = async (supplier) => {
     <VCard class="mb-6">
       <VCardText>
         <VTabs v-model="tab">
-          <VTab value="suppliers"> Proveedores </VTab>
-          <VTab value="products"> Productos </VTab>
+          <VTab value="suppliers"> Proveedores</VTab>
+          <VTab value="products"> Productos</VTab>
         </VTabs>
         <ProductsComparisionProductsFilter
           v-if="tab === 'products'"
@@ -543,6 +608,16 @@ const handleDeleteSupplierProducts = async (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
+
+        <ProductsWithoutSupplierComparatorTable
+          :products="listProductsWithoutSupplier"
+          :loading="loadingProductsWithoutSupplier"
+          :total-products="totalProductsWithoutSupplier"
+          :items-per-page="itemsPerPageProductsWithoutSupplier"
+          :page="pageProductsWithoutSupplier"
+          @update:options="updateProductsWithoutSupplierOptions"
+        />
+
         <ProductComparisionProductsTable
           :products="products"
           :loading="loadingProducts"

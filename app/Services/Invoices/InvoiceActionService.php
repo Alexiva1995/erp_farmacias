@@ -106,6 +106,18 @@ class InvoiceActionService
         return DB::transaction(function () use ($invoice, $data) {
             $invoice->update($data['invoice']);
 
+            $generalDiscountId = $data['invoice']['supplier_discount_id'] ?? null;
+            $discountPercentage = 0;
+
+            if ($generalDiscountId) {
+                $discountRecord = DB::table('supplier_discounts')
+                    ->where('id', $generalDiscountId)
+                     ->first();
+                if ($discountRecord) {
+                    $discountPercentage = (float) $discountRecord->discount_percentage;
+                }
+            }
+
             $productIds = collect($data['details'])
                 ->pluck('product.id')
                 ->filter()
@@ -158,15 +170,20 @@ class InvoiceActionService
                 $autoOrderDetail = $autoOrderDetailMapping[$productId] ?? null;
                 $autoOrderDetailId = $autoOrderDetail ? $autoOrderDetail->id : null;
 
-                $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
-                if ($taxEnabled) {
-                    $totalCostInInvoiceCurrency = $totalCostInInvoiceCurrency * 1.16;
-                }
-                $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
+               // $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
 
+                $subtotal = $quantity * $unitCostInInvoiceCurrency;
+                $discountAmount = $subtotal * ($discountPercentage / 100);
+                $totalAfterDiscount = $subtotal - $discountAmount;
+
+                /*if ($taxEnabled) {
+                    $totalCostInInvoiceCurrency = $totalAfterDiscount * 1.16;
+                }*/
+                $totalCostInInvoiceCurrency = $taxEnabled ? $totalAfterDiscount * 1.16 : $totalAfterDiscount;
+                $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
+                
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
                     $refundAmount = $totalCostInInvoiceCurrency;
-
                     InvoiceReturn::create([
                         'invoice_id' => $invoice->id,
                         'product_id' => $productId,
@@ -176,6 +193,7 @@ class InvoiceActionService
                         'lot_number' => $detail['lot_number'] ?? null,
                         'expiration_date' => $detail['expiration_date'] ?? null,
                         'auto_order_details_id' => $autoOrderDetailId,
+                        'supplier_discount_percentage' => $discountPercentage,
                     ]);
                 } else {
                     $invoice->details()->create([
@@ -188,6 +206,7 @@ class InvoiceActionService
                         'location' => $detail['location'],
                         'tax_enabled' => $taxEnabled,
                         'auto_order_details_id' => $autoOrderDetailId,
+                        'supplier_discount_percentage' => $discountPercentage,
                     ]);
 
                     if ($autoOrderDetailId) {
@@ -195,7 +214,7 @@ class InvoiceActionService
                     }
                 }
             }
-
+ 
             if (!empty($autoOrderDetailsToUpdate) && !empty($invoice->autoOrder)) {
                 DB::table('auto_order_details')
                     ->whereIn('id', array_values($autoOrderDetailsToUpdate))
@@ -394,7 +413,14 @@ class InvoiceActionService
 
                 if ($detail && $detail->invoice_id === $invoice->id) {
                     $detail->update(['location' => $detailData['location']]);
-                    $productLot = $this->createProductLot($detail, $detail->unit_cost, $invoice);
+                    
+                    // Convertir unit_cost a USD antes de crear el lote
+                    $unitCostInInvoiceCurrency = $detail->unit_cost;
+                    $unitCostInUSD = $invoice->currency === 'USD' 
+                        ? $unitCostInInvoiceCurrency 
+                        : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
+                    
+                    $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
                     
                     // Actualizar el movimiento existente (creado al aprobar) con el product_lot_id
                     \App\Models\InventoryMovement::where('invoice_id', $invoice->id)

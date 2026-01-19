@@ -343,6 +343,7 @@ async function realizarCompra(){
       return
     }
 
+    const idsEnCompra = module.detalleOrder.map(item => item.product.id);
     let orders=formatiarData([...module.detalleOrder])
     
     if (!orders || orders.length === 0) {
@@ -351,9 +352,16 @@ async function realizarCompra(){
       return
     }
 
-    const DATA={
-      orders
-    }
+    const without_supplier_ids = module.productosSinReponer
+      .filter(p => !idsEnCompra.includes(p.id))
+      .map(p => p.id);
+
+    console.log(without_supplier_ids);
+
+    const DATA = {
+      orders,
+      without_supplier_ids // Enviamos los IDs para marcarlos en la base de datos
+    };
     console.log("datos enviar => ",orders)
 
     let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)

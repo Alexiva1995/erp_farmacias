@@ -10,6 +10,7 @@ class InvoiceDetail extends Model
     protected $fillable = [
         'invoice_id',
         'product_id',
+        'supplier_discount_percentage',
         'auto_order_id',
         'lot_number',
         'expiration_date',

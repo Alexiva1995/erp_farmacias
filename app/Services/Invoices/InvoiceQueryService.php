@@ -14,6 +14,8 @@ class InvoiceQueryService
 {
     public function getInvoicesQuery(Request $request): Builder
     {
+        // IMPORTANTE: Las facturas se muestran a TODOS los usuarios sin filtrar por usuario
+        // No se aplica ningún filtro por uploaded_by, registered_by, ordered_by, etc.
         $query = Invoice::query()->with('supplier');
 
         if ($request->filled('status')) {

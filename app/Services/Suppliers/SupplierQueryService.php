@@ -185,8 +185,68 @@ class SupplierQueryService
                 })->values()->toArray();
 
             DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices) {
-                $supplier->productSuppliers()->delete();
-                foreach (array_chunk($uniqueProducts, 500) as $chunk) {
+                // Identificar product_suppliers que están en auto_orders (NO borrarlos)
+                // Mapear por product_id para facilitar la búsqueda
+                $productSuppliersInAutoOrdersCollection = DB::table('product_suppliers')
+                    ->join('auto_order_details', 'product_suppliers.id', '=', 'auto_order_details.product_suppliers_id')
+                    ->where('product_suppliers.supplier_id', $supplier->id)
+                    ->select('product_suppliers.id', 'product_suppliers.product_id')
+                    ->distinct()
+                    ->get();
+
+                $productSuppliersInAutoOrders = $productSuppliersInAutoOrdersCollection->keyBy('product_id');
+                
+                // Obtener los IDs de product_suppliers que están en auto_orders (para no borrarlos)
+                $existingProductSupplierIds = $productSuppliersInAutoOrdersCollection->pluck('id')->toArray();
+
+                // Mapear productos del FTP por product_id
+                $ftpProductsMap = collect($uniqueProducts)
+                    ->keyBy(fn($row) => $row['product_id'] ?? null)
+                    ->filter()
+                    ->toArray();
+
+                // Obtener todos los product_suppliers existentes para actualizar los que están en auto_orders
+                $existingProductSuppliers = DB::table('product_suppliers')
+                    ->where('supplier_id', $supplier->id)
+                    ->whereIn('id', $existingProductSupplierIds)
+                    ->get()
+                    ->keyBy('product_id');
+
+                // Actualizar los product_suppliers que están en auto_orders
+                foreach ($productSuppliersInAutoOrders as $productId => $productSupplierData) {
+                    if (isset($ftpProductsMap[$productId]) && isset($existingProductSuppliers[$productId])) {
+                        $ftpProduct = $ftpProductsMap[$productId];
+                        $existingProductSupplier = $existingProductSuppliers[$productId];
+                        
+                        ProductSupplier::where('id', $productSupplierData->id)->update([
+                                'barcode_match' => $ftpProduct['barcode_match'] ?? $existingProductSupplier->barcode_match,
+                                'name' => $ftpProduct['name'] ?? $existingProductSupplier->name,
+                                'laboratory' => $ftpProduct['laboratory'] ?? $existingProductSupplier->laboratory,
+                                'expiration' => $ftpProduct['expiration'] ?? $existingProductSupplier->expiration,
+                                'unit_cost' => $ftpProduct['unit_cost'] ?? $existingProductSupplier->unit_cost,
+                                'unit_cost_usd' => $ftpProduct['unit_cost_usd'] ?? $existingProductSupplier->unit_cost_usd,
+                                'connection_date' => now()->toDateString(),
+                                'cod_supplier' => $ftpProduct['cod_supplier'] ?? $existingProductSupplier->cod_supplier,
+                                'quantity' => $ftpProduct['quantity'] ?? $existingProductSupplier->quantity,
+                                'active_ingredient' => $ftpProduct['active_ingredient'] ?? $existingProductSupplier->active_ingredient,
+                            ]);
+                            // Eliminar del mapa para no procesarlo como nuevo
+                            unset($ftpProductsMap[$productId]);
+                        }
+                    }
+                }
+
+                // Eliminar solo los product_suppliers que NO están en auto_orders
+                $productSuppliersToDelete = DB::table('product_suppliers')
+                    ->where('supplier_id', $supplier->id)
+                    ->whereNotIn('id', $existingProductSupplierIds)
+                    ->pluck('id');
+                
+                ProductSupplier::whereIn('id', $productSuppliersToDelete)->delete();
+
+                // Crear los productos nuevos del FTP (los que no están en auto_orders)
+                $newProducts = array_values($ftpProductsMap);
+                foreach (array_chunk($newProducts, 500) as $chunk) {
                     $supplier->productSuppliers()->createMany($chunk);
                 }
 

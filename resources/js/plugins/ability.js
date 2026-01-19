@@ -47,7 +47,7 @@ export const buildAbilityForRules = (user) => {
 
     if (user.role_id === 3) {
       can('manage', 'user'); 
-       can('manage', 'pending-cycli-user');
+       can('manage', 'cycli-user');
       can('manage', 'productividad');
       can('manage', 'comparadorAssistence');
       can('manage', 'gastos-expenses');

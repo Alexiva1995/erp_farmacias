@@ -1,12 +1,12 @@
 <script setup>
-import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue";
-import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
-import ProductFilters from "@/components/ProductFilters.vue";
-import ProductTable from "@/components/ProductTable.vue";
-import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
-import { computed, onMounted, ref, watch } from "vue";
+import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue"
+import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue"
+import ProductFilters from "@/components/ProductFilters.vue"
+import ProductTable from "@/components/ProductTable.vue"
+import axios from "@/plugins/axios"
+import { toast } from "@/plugins/sweetalert"
+import Swal from "sweetalert2"
+import { computed, onMounted, ref, watch } from "vue"
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
@@ -14,60 +14,57 @@ const props = defineProps({
   supplierDiscounts: { type: Array, default: () => [] },
   paymentRules: { type: [Array, Object], default: () => [] },
   isSaving: { type: Boolean, default: false },
-});
+})
+
 const emit = defineEmits([
   "back-to-list",
   "confirm-approval",
   "reject-invoice",
-]);
+])
 
-const invoice = ref(null);
-const invoiceDetails = ref([]);
-const formData = ref({});
-const loading = ref(true);
-const loadingDetails = ref(true);
+const invoice = ref(null)
+const invoiceDetails = ref([])
+const formData = ref({})
+const loading = ref(true)
+const loadingDetails = ref(true)
 
-const isEditableMode = computed(() => props.mode === "editable");
-const isLocationMode = computed(() => props.mode === "location");
-const isReadOnly = computed(() => props.mode === "read-only");
-const isApprovalMode = computed(() => props.mode === "approval");
+const isEditableMode = computed(() => props.mode === "editable")
+const isLocationMode = computed(() => props.mode === "location")
+const isReadOnly = computed(() => props.mode === "read-only")
+const isApprovalMode = computed(() => props.mode === "approval")
 
-const isEditMode = ref(false);
-const selectedSupplierDiscountId = ref(null);
-const selectedPaymentRuleId = ref(null);
-const editingDetailId = ref(null);
-const editedDetailData = ref({});
+const isEditMode = ref(false)
+const selectedSupplierDiscountId = ref(null)
+const selectedPaymentRuleId = ref(null)
+const editingDetailId = ref(null)
+const editedDetailData = ref({})
 
-const products = ref([]);
-const totalProducts = ref(0);
-const loadingProducts = ref(false);
-const productSearchQuery = ref("");
-const productPage = ref(1);
-const productItemsPerPage = ref(10);
-const productSortBy = ref();
-const productOrderBy = ref();
-const laboratories = ref([]);
-const origins = ref([]);
-const categories = ref([]);
-const isLoadingFilters = ref(false);
-const isEditDialogVisible = ref(false);
-const isBarcodeModalVisible = ref(false);
-const isProductSearchVisible = ref(false);
-const searchingBarcode = ref(false);
-const currentProduct = ref({});
-const productFormErrors = ref({});
-const barcodeModalRef = ref(null);
+const products = ref([])
+const totalProducts = ref(0)
+const loadingProducts = ref(false)
+const productSearchQuery = ref("")
+const productPage = ref(1)
+const productItemsPerPage = ref(10)
+const productSortBy = ref()
+const productOrderBy = ref()
+const laboratories = ref([])
+const origins = ref([])
+const categories = ref([])
+const isLoadingFilters = ref(false)
+const isEditDialogVisible = ref(false)
+const isBarcodeModalVisible = ref(false)
+const isProductSearchVisible = ref(false)
+const searchingBarcode = ref(false)
+const currentProduct = ref({})
+const productFormErrors = ref({})
+const barcodeModalRef = ref(null)
+
 const locations = [
   "E-001",
   "E-002",
   "E-003",
   "E-004",
   "E-005",
-  "E-006",
-  "E-007",
-  "E-008",
-  "E-009",
-  "E-010",
   "G-001",
   "G-002",
   "G-003",
@@ -78,6 +75,20 @@ const locations = [
   "G-008",
   "G-009",
   "G-010",
+  "G-011",
+  "G-012",
+  "G-013",
+  "G-014",
+  "G-015",
+  "G-016",
+  "G-017",
+  "G-018",
+  "G-019",
+  "G-020",
+  "G-021",
+  "G-022",
+  "G-023",
+  "G-024",
   "I-001",
   "I-002",
   "I-003",
@@ -88,88 +99,112 @@ const locations = [
   "I-008",
   "I-009",
   "I-010",
+  "I-011",
+  "I-012",
+  "I-013",
+  "I-014",
+  "I-015",
   "N-001",
-  "N-002",
-  "P-001",
-  "P-002",
-  "P-003",
-  "P-004",
-  "P-005",
-  "P-006",
-  "P-007",
-  "P-008",
-  "P-009",
-  "P-010",
   "D-001",
-  "D-002",
-  "D-003",
-  "D-004",
-  "D-005",
-  "D-006",
-  "D-007",
-  "D-008",
-  "D-009",
-  "D-010",
-].sort();
+  "M-001",
+  "M-002",
+  "M-003",
+  "M-004",
+  "M-005",
+
+].sort()
 
 const formattedPaymentRules = computed(() => {
-  const rules = props.paymentRules.payment_rules;
+  const rules = props.paymentRules.payment_rules
 
   if (!rules || !Array.isArray(rules)) {
-    return [];
+    return []
   }
-  return rules.map((rule) => ({
+  
+  return rules.map(rule => ({
     ...rule,
     displayText: `${rule.discount_percentage}% - ${
       rule.name || rule.days + " Días"
     }`,
-  }));
-});
+  }))
+})
 
 const processedInvoiceDetails = computed(() => {
-  if (!invoice.value || !invoiceDetails.value) return [];
+  if (!invoice.value || !invoiceDetails.value) return []
 
-  let discountPercentage = 0;
+  let discountPercentage = 0
+
   if (isEditableMode.value && selectedSupplierDiscountId.value) {
     const discount = props.supplierDiscounts.find(
-      (d) => d.id === selectedSupplierDiscountId.value
-    );
+      d => d.id === selectedSupplierDiscountId.value,
+    )
+
     if (discount)
-      discountPercentage = Number(discount.discount_percentage) || 0;
+      discountPercentage = Number(discount.discount_percentage) || 0
   } else if (isApprovalMode.value && selectedPaymentRuleId.value) {
     const rule = props.paymentRules.find(
-      (r) => r.id === selectedPaymentRuleId.value
-    );
-    if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
+      r => r.id === selectedPaymentRuleId.value,
+    )
+
+    if (rule) discountPercentage = Number(rule.discount_percentage) || 0
   }
+ 
 
-  return invoiceDetails.value.map((detail) => {
-    const quantity = Number(detail.quantity) || 0;
-    const unitCost = Number(detail.unit_cost) || 0;
-    const discountAmount = unitCost * (discountPercentage / 100);
-    const discountedUnitCost = unitCost - discountAmount;
-    const baseTotal = quantity * discountedUnitCost;
+  return invoiceDetails.value.map(detail => {
+    const quantity = Number(detail.quantity) || 0
+    const unitCost = Number(detail.unit_cost) || 0
 
-    let taxAmount = 0;
-    if (detail.tax_enabled) {
-      taxAmount = baseTotal * 0.16;
+    let finalTotal = 0
+    let taxAmount = 0
+
+    if (discountPercentage > 0) {
+      const discountAmount = unitCost * (discountPercentage / 100)
+      const discountedUnitCost = unitCost - discountAmount
+      const baseTotal = quantity * discountedUnitCost
+
+      if (detail.tax_enabled) {
+        taxAmount = baseTotal * 0.16
+      }
+      finalTotal = baseTotal + taxAmount
+      
+    } else {
+      if (isEditMode.value) {
+        const baseTotal = quantity * unitCost
+
+        if (detail.tax_enabled) {
+          taxAmount = baseTotal * 0.16
+          finalTotal = baseTotal + taxAmount
+        } else {
+          taxAmount = 0
+          finalTotal = baseTotal
+        }
+      } else {
+        finalTotal = parseFloat(detail.total_cost) || 0
+
+        if (detail.tax_enabled) {
+          taxAmount = finalTotal - (finalTotal / 1.16)
+        } else {
+          taxAmount = 0
+        }
+      }
+
     }
-    const finalTotal = baseTotal + taxAmount;
 
-    const rate = parseFloat(invoice.value.exchange_rate) || 1;
-    const isUsd = invoice.value.currency === "USD";
-    const hasValidRate = rate && rate > 0;
+    const rate = parseFloat(invoice.value.exchange_rate) || 1
+    const isUsd = invoice.value.currency === "USD"
+    const hasValidRate = rate && rate > 0
 
     const unitCostUsd = isUsd
       ? unitCost
       : hasValidRate
-      ? unitCost / rate
-      : unitCost;
+        ? unitCost / rate
+        : unitCost
+
     const totalCostUsd = isUsd
       ? finalTotal
       : hasValidRate
-      ? finalTotal / rate
-      : finalTotal;
+        ? finalTotal / rate
+        : finalTotal
 
     return {
       ...detail,
@@ -180,236 +215,274 @@ const processedInvoiceDetails = computed(() => {
       total_cost: finalTotal,
       unit_cost_usd: unitCostUsd,
       total_cost_usd: totalCostUsd,
-    };
-  });
-});
+    }
+  })
+})
 
 const editableDetailsTotal = computed(() => {
-  if (!processedInvoiceDetails.value) return 0;
+  if (!processedInvoiceDetails.value) return 0
+  
   return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
-    return accumulator + (currentDetail.total_cost || 0);
-  }, 0);
-});
+    const cost = Number(currentDetail.total_cost) || 0
+    
+    return accumulator + cost
+  }, 0)
+})
 
 const isTotalMismatch = computed(() => {
-  if (!invoice.value) return false;
-  return (
-    Math.abs(editableDetailsTotal.value - invoice.value.total_amount) > 0.01
-  );
-});
+  if (!invoice.value) return false
+  
+  // Calcular la tolerancia de ±1 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD"
+  const rate = parseFloat(invoice.value.exchange_rate) || 1
+  const hasValidRate = rate && rate > 0
+  
+  // Tolerancia de 1 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 1 : (hasValidRate ? 1 * rate : 1)
+  
+  const difference = Math.abs(editableDetailsTotal.value - invoice.value.total_amount)
+  
+  // Permitir diferencia de hasta 1 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency
+})
 
 const totalWithDiscount = computed(() => {
   if (!invoice.value || !selectedPaymentRuleId.value) {
-    return invoice.value?.total_amount || 0;
+    return invoice.value?.total_amount || 0
   }
+
   const rule = props.paymentRules.find(
-    (r) => r.id === selectedPaymentRuleId.value
-  );
+    r => r.id === selectedPaymentRuleId.value,
+  )
+
   if (!rule) {
-    return invoice.value.total_amount;
+    return invoice.value.total_amount
   }
-  const discountPercentage = Number(rule.discount_percentage) || 0;
+  const discountPercentage = Number(rule.discount_percentage) || 0
+
   const discountAmount =
-    invoice.value.total_amount * (discountPercentage / 100);
-  return invoice.value.total_amount - discountAmount;
-});
+    invoice.value.total_amount * (discountPercentage / 100)
+
+  
+  return invoice.value.total_amount - discountAmount
+})
 
 const editableDetailsTaxAmount = computed(() => {
-  if (!processedInvoiceDetails.value) return 0;
+  if (!processedInvoiceDetails.value) return 0
+  
   return processedInvoiceDetails.value.reduce((accumulator, currentDetail) => {
     if (currentDetail.tax_enabled) {
-      return accumulator + (currentDetail.tax_amount || 0);
+      return accumulator + (currentDetail.tax_amount || 0)
     }
-    return accumulator;
-  }, 0);
-});
+    
+    return accumulator
+  }, 0)
+})
 
 const isTaxAmountMismatch = computed(() => {
-  if (!invoice.value) return false;
-  const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0;
-  if (invoiceTaxAmount === 0) return false;
-  return Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount) > 0.01;
-});
-const getCostComparisonClass = (item) => {
+  if (!invoice.value) return false
+  const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0
+  if (invoiceTaxAmount === 0) return false
+
+  // Calcular la tolerancia de ±0.5 USD en la moneda de la factura
+  const isUsd = invoice.value.currency === "USD"
+  const rate = parseFloat(invoice.value.exchange_rate) || 1
+  const hasValidRate = rate && rate > 0
+
+  // Tolerancia de 0.5 USD convertida a la moneda de la factura
+  const toleranceInCurrency = isUsd ? 0.5 : (hasValidRate ? 0.5 * rate : 0.5)
+
+  const difference = Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount)
+
+  // Permitir diferencia de hasta 0.5 USD (convertido a la moneda de la factura)
+  return difference > toleranceInCurrency
+})
+
+const getCostComparisonClass = item => {
   if (!isApprovalMode.value) {
-    return "";
+    return ""
   }
 
   if (!item.product || typeof item.product.unit_cost === "undefined") {
-    return "";
+    return ""
   }
 
-  const systemCostUSD = Number(item.product.unit_cost);
+  const systemCostUSD = Number(item.product.unit_cost)
 
   if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
-    return "cost-new-product";
+    return "cost-new-product"
   }
 
-  const invoiceCostInLocalCurrency = Number(item.unit_cost);
-  const rate = parseFloat(invoice.value.exchange_rate) || 1;
-  const isUsd = invoice.value.currency === "USD";
-  const hasValidRate = rate && rate > 0;
+  const invoiceCostInLocalCurrency = Number(item.unit_cost)
+  const rate = parseFloat(invoice.value.exchange_rate) || 1
+  const isUsd = invoice.value.currency === "USD"
+  const hasValidRate = rate && rate > 0
 
-  let invoiceCostUSD;
+  let invoiceCostUSD
   if (isUsd) {
-    invoiceCostUSD = invoiceCostInLocalCurrency;
+    invoiceCostUSD = invoiceCostInLocalCurrency
   } else if (hasValidRate) {
-    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
+    invoiceCostUSD = invoiceCostInLocalCurrency / rate
   } else {
-    return "";
+    return ""
   }
 
   if (isNaN(invoiceCostUSD)) {
-    return "";
+    return ""
   }
 
-  const tolerance = 0.001;
+  const tolerance = 0.001
 
   if (invoiceCostUSD > systemCostUSD + tolerance) {
-    return "cost-higher";
+    return "cost-higher"
   } else if (invoiceCostUSD < systemCostUSD - tolerance) {
-    return "cost-lower";
+    return "cost-lower"
   }
 
-  return "";
-};
-const getCostTooltipText = (item) => {
+  return ""
+}
+
+const getCostTooltipText = item => {
   if (
     !isApprovalMode.value ||
     !item.product ||
     typeof item.product.unit_cost === "undefined"
   ) {
-    return "";
+    return ""
   }
 
-  const systemCostUSD = Number(item.product.unit_cost);
+  const systemCostUSD = Number(item.product.unit_cost)
 
   if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
-    return "Producto Nuevo - Sin costo registrado en el sistema";
+    return "Producto Nuevo - Sin costo registrado en el sistema"
   }
 
-  const invoiceCostInLocalCurrency = Number(item.unit_cost);
-  const rate = parseFloat(invoice.value.exchange_rate) || 1;
-  const isUsd = invoice.value.currency === "USD";
-  const hasValidRate = rate && rate > 0;
+  const invoiceCostInLocalCurrency = Number(item.unit_cost)
+  const rate = parseFloat(invoice.value.exchange_rate) || 1
+  const isUsd = invoice.value.currency === "USD"
+  const hasValidRate = rate && rate > 0
 
-  let invoiceCostUSD;
+  let invoiceCostUSD
   if (isUsd) {
-    invoiceCostUSD = invoiceCostInLocalCurrency;
+    invoiceCostUSD = invoiceCostInLocalCurrency
   } else if (hasValidRate) {
-    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
+    invoiceCostUSD = invoiceCostInLocalCurrency / rate
   } else {
     return `Costo en Sistema: ${formatCurrency(
       systemCostUSD,
-      "USD"
-    )} (No se puede comparar - tasa inválida)`;
+      "USD",
+    )} (No se puede comparar - tasa inválida)`
   }
 
   return `Costo en Sistema: ${formatCurrency(
     systemCostUSD,
-    "USD"
-  )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`;
-};
+    "USD",
+  )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`
+}
 
 onMounted(async () => {
-  await fetchInvoiceData(props.invoiceId);
+  await fetchInvoiceData(props.invoiceId)
   if (invoice.value) {
-    await fetchInvoiceDetails(props.invoiceId);
+    await fetchInvoiceDetails(props.invoiceId)
   }
-});
+})
 
-watch(isEditMode, (newVal) => {
+watch(isEditMode, newVal => {
   if (isEditableMode.value && !newVal) {
-    cancelEditingDetail();
-    isProductSearchVisible.value = false;
+    cancelEditingDetail()
+    isProductSearchVisible.value = false
     selectedSupplierDiscountId.value =
-      invoice.value?.supplier_discount_id || null;
+      invoice.value?.supplier_discount_id || null
   }
-});
+})
 
 const watchProps = () => {
   if (props.mode === "approval") {
-    selectedPaymentRuleId.value = null;
+    selectedPaymentRuleId.value = null
   }
-};
-watch(() => props.mode, watchProps, { immediate: true });
+}
 
-const toggleReturnItem = (itemToToggle) => {
-  const index = invoiceDetails.value.findIndex((d) => d.id === itemToToggle.id);
+watch(() => props.mode, watchProps, { immediate: true })
+
+const toggleReturnItem = itemToToggle => {
+  const index = invoiceDetails.value.findIndex(d => d.id === itemToToggle.id)
   if (index !== -1) {
-    const item = invoiceDetails.value[index];
+    const item = invoiceDetails.value[index]
 
     if (item.is_return && isNearExpiration(item)) {
-      item.manual_return_override = true;
+      item.manual_return_override = true
     }
 
-    item.is_return = !item.is_return;
+    item.is_return = !item.is_return
     if (item.is_return) {
-      item.location = "N/A";
-      item.manual_return_override = false;
-      startEditingDetail(item);
+      item.location = "N/A"
+      item.manual_return_override = false
+      startEditingDetail(item)
     } else {
-      item.location = "Por Asignar";
-      startEditingDetail(item);
+      item.location = "Por Asignar"
+      startEditingDetail(item)
     }
   }
-};
-const isItemReturned = (item) => {
-  return !!item.is_return;
-};
+}
 
-const fetchInvoiceData = async (id) => {
-  loading.value = true;
+const isItemReturned = item => {
+  return !!item.is_return
+}
+
+const fetchInvoiceData = async id => {
+  loading.value = true
   try {
-    const response = await axios.get(`/invoices/${id}`);
-    invoice.value = response.data.data;
+    const response = await axios.get(`/invoices/${id}`)
+
+    invoice.value = response.data.data
     if (isEditableMode.value) {
-      formData.value = JSON.parse(JSON.stringify(invoice.value));
+      formData.value = JSON.parse(JSON.stringify(invoice.value))
       selectedSupplierDiscountId.value =
-        invoice.value.supplier_discount_id || null;
+        invoice.value.supplier_discount_id || null
     }
   } catch (error) {
-    console.error("Error al cargar la factura:", error);
-    toast.error("No se pudo cargar la información de la factura.");
-    emit("back-to-list");
+    console.error("Error al cargar la factura:", error)
+    toast.error("No se pudo cargar la información de la factura.")
+    emit("back-to-list")
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const fetchInvoiceDetails = async (id) => {
-  loadingDetails.value = true;
+const fetchInvoiceDetails = async id => {
+  loadingDetails.value = true
   try {
-    const response = await axios.get(`/invoices/${id}/details`);
-    const combinedDetailsFromApi = response.data.data ?? [];
+    const response = await axios.get(`/invoices/${id}/details`)
+    const combinedDetailsFromApi = response.data.data ?? []
 
-    invoiceDetails.value = combinedDetailsFromApi.map((detail) => {
+    invoiceDetails.value = combinedDetailsFromApi.map(detail => {
       return {
         ...detail,
         tax_enabled: !!detail.tax_enabled,
         is_return: !!detail.is_return,
         manual_return_override: !!detail.manual_return_override || false,
-      };
-    });
+      }
+    })
   } catch (error) {
-    console.error("Error al cargar los detalles de la factura:", error);
-    toast.error("No se pudieron cargar los productos de la factura.");
-    invoiceDetails.value = [];
+    console.error("Error al cargar los detalles de la factura:", error)
+    toast.error("No se pudieron cargar los productos de la factura.")
+    invoiceDetails.value = []
   } finally {
-    loadingDetails.value = false;
+    loadingDetails.value = false
   }
-};
+}
 
 const handleSaveProgress = async () => {
-  loading.value = true;
+  loading.value = true
+
   const payload = {
     invoice: {
       ...formData.value,
       supplier_discount_id: selectedSupplierDiscountId.value,
     },
     details: invoiceDetails.value
-      .filter((d) => d.product && d.product.id)
-      .map((d) => ({
+      .filter(d => d.product && d.product.id)
+      .map(d => ({
         product: { id: d.product.id },
         quantity: d.quantity,
         unit_cost: d.unit_cost,
@@ -419,33 +492,37 @@ const handleSaveProgress = async () => {
         tax_enabled: d.tax_enabled,
         is_return: !!d.is_return,
       })),
-  };
+  }
+
   try {
     const response = await axios.put(
       `/invoices/${props.invoiceId}/save-details`,
-      payload
-    );
-    toast.success(response.data.message || "Progreso guardado.");
-    invoice.value = response.data.invoice;
-    await fetchInvoiceDetails(props.invoiceId);
+      payload,
+    )
 
-    isEditMode.value = false;
-    return true;
+    toast.success(response.data.message || "Progreso guardado.")
+    invoice.value = response.data.invoice
+    await fetchInvoiceDetails(props.invoiceId)
+
+    isEditMode.value = false
+    
+    return true
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo guardar el progreso."
-    );
-    return false;
+      error.response?.data?.message || "No se pudo guardar el progreso.",
+    )
+    
+    return false
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const handleConfirmApproval = () => {
   emit("confirm-approval", {
     paymentRuleId: selectedPaymentRuleId.value,
-  });
-};
+  })
+}
 
 const handleReject = async () => {
   const result = await Swal.fire({
@@ -458,56 +535,61 @@ const handleReject = async () => {
     confirmButtonText: "Sí, rechazar",
     cancelButtonText: "Cancelar",
     reverseButtons: true,
-  });
+  })
+
   if (result.isConfirmed) {
-    emit("reject-invoice");
+    emit("reject-invoice")
   }
-};
+}
 
 const fetchProductSelectOptions = async () => {
-  isLoadingFilters.value = true;
+  isLoadingFilters.value = true
   try {
     const [labResponse, originResponse, categoryResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/categories"),
-    ]);
-    laboratories.value = labResponse.data.data ?? labResponse.data ?? [];
-    origins.value = originResponse.data.data ?? originResponse.data ?? [];
-    categories.value = categoryResponse.data ?? [];
+    ])
+
+    laboratories.value = labResponse.data.data ?? labResponse.data ?? []
+    origins.value = originResponse.data.data ?? originResponse.data ?? []
+    categories.value = categoryResponse.data ?? []
   } catch (error) {
-    console.error("Error al cargar opciones de filtros de productos:", error);
-    toast.error("No se pudieron cargar los filtros de productos.");
+    console.error("Error al cargar opciones de filtros de productos:", error)
+    toast.error("No se pudieron cargar los filtros de productos.")
   } finally {
-    isLoadingFilters.value = false;
+    isLoadingFilters.value = false
   }
-};
+}
 
 const fetchProducts = async () => {
-  loadingProducts.value = true;
+  loadingProducts.value = true
+
   const params = {
     q: productSearchQuery.value,
     page: productPage.value,
     itemsPerPage: productItemsPerPage.value,
     sortBy: productSortBy.value,
     orderBy: productOrderBy.value,
-  };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
-  try {
-    const response = await axios.get("/products", { params });
-    products.value = response.data.data ?? response.data ?? [];
-    totalProducts.value = response.data.total ?? 0;
-  } catch (error) {
-    console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
-  } finally {
-    loadingProducts.value = false;
   }
-};
 
-let productDebounceTimer;
+  Object.keys(params).forEach(
+    key => (params[key] === null || params[key] === "") && delete params[key],
+  )
+  try {
+    const response = await axios.get("/products", { params })
+
+    products.value = response.data.data ?? response.data ?? []
+    totalProducts.value = response.data.total ?? 0
+  } catch (error) {
+    console.error("Hubo un error al obtener los productos:", error)
+    toast.error("Error al obtener los productos.")
+  } finally {
+    loadingProducts.value = false
+  }
+}
+
+let productDebounceTimer
 watch(
   [
     productPage,
@@ -517,39 +599,40 @@ watch(
     productSearchQuery,
   ],
   () => {
-    clearTimeout(productDebounceTimer);
-    productDebounceTimer = setTimeout(() => fetchProducts(), 300);
+    clearTimeout(productDebounceTimer)
+    productDebounceTimer = setTimeout(() => fetchProducts(), 300)
   },
-  { deep: true }
-);
+  { deep: true },
+)
 
 watch([productSearchQuery], () => {
-  if (productPage.value !== 1) productPage.value = 1;
-});
+  if (productPage.value !== 1) productPage.value = 1
+})
 
-const updateProductTableOptions = (options) => {
-  productPage.value = options.page;
-  productItemsPerPage.value = options.itemsPerPage;
-  productSortBy.value = options.sortBy[0]?.key;
-  productOrderBy.value = options.sortBy[0]?.order;
-};
+const updateProductTableOptions = options => {
+  productPage.value = options.page
+  productItemsPerPage.value = options.itemsPerPage
+  productSortBy.value = options.sortBy[0]?.key
+  productOrderBy.value = options.sortBy[0]?.order
+}
 
-const toggleEditMode = (enable) => {
-  if (isReadOnly.value || isLocationMode.value) return;
-  isEditMode.value = enable;
+const toggleEditMode = enable => {
+  if (isReadOnly.value || isLocationMode.value) return
+  isEditMode.value = enable
   if (!enable) {
-    formData.value = JSON.parse(JSON.stringify(invoice.value));
-    fetchInvoiceDetails(props.invoiceId);
+    formData.value = JSON.parse(JSON.stringify(invoice.value))
+    fetchInvoiceDetails(props.invoiceId)
   }
-};
+}
 
-const addProductToInvoice = (product) => {
+const addProductToInvoice = product => {
   const existingDetail = invoiceDetails.value.find(
-    (detail) => detail.product.id === product.id
-  );
+    detail => detail.product.id === product.id,
+  )
+
   if (existingDetail) {
-    existingDetail.quantity += 1;
-    startEditingDetail(existingDetail);
+    existingDetail.quantity += 1
+    startEditingDetail(existingDetail)
   } else {
     const newDetail = {
       id: -Math.floor(Math.random() * 1000),
@@ -567,265 +650,289 @@ const addProductToInvoice = (product) => {
       tax_enabled: invoiceHasIva.value ? !!product.iva : false,
       is_return: false,
       manual_return_override: false,
-    };
-    invoiceDetails.value.push(newDetail);
-    startEditingDetail(newDetail);
-  }
-};
+    }
 
-const toggleTax = (detailToToggle) => {
+    invoiceDetails.value.push(newDetail)
+    startEditingDetail(newDetail)
+  }
+}
+
+const toggleTax = detailToToggle => {
   if (!invoiceHasIva.value) {
     toast.warning(
-      "Esta factura no permite productos con IVA según su configuración fiscal."
-    );
-    return;
+      "Esta factura no permite productos con IVA según su configuración fiscal.",
+    )
+    
+    return
   }
 
   const index = invoiceDetails.value.findIndex(
-    (d) => d.id === detailToToggle.id
-  );
+    d => d.id === detailToToggle.id,
+  )
+
   if (index !== -1) {
     invoiceDetails.value[index].tax_enabled =
-      !invoiceDetails.value[index].tax_enabled;
+      !invoiceDetails.value[index].tax_enabled
   }
-};
+}
 
 const handleAddProduct = () => {
-  isBarcodeModalVisible.value = true;
-};
+  isBarcodeModalVisible.value = true
+}
 
-const handleSearchBarcode = async (barcode) => {
-  searchingBarcode.value = true;
+const handleSearchBarcode = async barcode => {
+  searchingBarcode.value = true
   try {
     const response = await axios.get(`/products/search-by-barcode`, {
       params: { barcode },
-    });
+    })
+
     if (response.data.data) {
-      barcodeModalRef.value?.handleProductFound(response.data.data);
+      barcodeModalRef.value?.handleProductFound(response.data.data)
     } else {
-      barcodeModalRef.value?.handleProductNotFound();
+      barcodeModalRef.value?.handleProductNotFound()
     }
   } catch (error) {
-    console.error("Error al buscar producto por código de barras:", error);
-    barcodeModalRef.value?.handleProductNotFound();
+    console.error("Error al buscar producto por código de barras:", error)
+    barcodeModalRef.value?.handleProductNotFound()
   } finally {
-    searchingBarcode.value = false;
+    searchingBarcode.value = false
   }
-};
+}
 
-const formatDate = (dateString) => {
-  if (!dateString) return "";
+const formatDate = dateString => {
+  if (!dateString) return ""
+  
   return new Date(dateString).toLocaleDateString("es-VE", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
-};
+  })
+}
 
 const handleShowProductSearch = () => {
-  isProductSearchVisible.value = true;
-  if (laboratories.value.length === 0) fetchProductSelectOptions();
-  fetchProducts();
-};
+  isProductSearchVisible.value = true
+  if (laboratories.value.length === 0) fetchProductSelectOptions()
+  fetchProducts()
+}
 
 const handleAddNewProduct = () => {
-  currentProduct.value = {};
-  productFormErrors.value = {};
-  isEditDialogVisible.value = true;
-};
+  currentProduct.value = {}
+  productFormErrors.value = {}
+  isEditDialogVisible.value = true
+}
 
-const handleSaveProduct = async (productFormData) => {
-  const url = "/products";
+const handleSaveProduct = async productFormData => {
+  const url = "/products"
   try {
     await axios.post(url, productFormData, {
       headers: { "Content-Type": "multipart/form-data" },
-    });
-    toast.success("Producto creado con éxito");
-    isEditDialogVisible.value = false;
+    })
+    toast.success("Producto creado con éxito")
+    isEditDialogVisible.value = false
     if (isProductSearchVisible.value) {
-      await fetchProducts();
+      await fetchProducts()
     }
   } catch (error) {
     if (error.response && error.response.status === 422) {
-      productFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
+      productFormErrors.value = error.response.data.errors
+      toast.error("Por favor, corrige los errores en el formulario.")
     } else {
-      console.error("Error al guardar el producto:", error);
-      toast.error("Hubo un error al guardar el producto.");
+      console.error("Error al guardar el producto:", error)
+      toast.error("Hubo un error al guardar el producto.")
     }
   }
-};
+}
 
-const removeProductFromInvoice = (detailId) => {
+const removeProductFromInvoice = detailId => {
   invoiceDetails.value = invoiceDetails.value.filter(
-    (detail) => detail.id !== detailId
-  );
-};
+    detail => detail.id !== detailId,
+  )
+}
 
-const startEditingDetail = (detail) => {
-  editedDetailData.value = { ...detail };
-  editingDetailId.value = detail.id;
-};
+const startEditingDetail = detail => {
+  editedDetailData.value = { ...detail }
+  editingDetailId.value = detail.id
+}
 
 const saveEditingDetail = () => {
   if (
     !editedDetailData.value.quantity ||
     editedDetailData.value.quantity <= 0
   ) {
-    toast.error("La cantidad debe ser mayor a 0");
-    return;
+    toast.error("La cantidad debe ser mayor a 0")
+    
+    return
   }
   if (
     editedDetailData.value.unit_cost === null ||
     editedDetailData.value.unit_cost < 0
   ) {
-    toast.error("El costo por unidad debe ser 0 o mayor");
-    return;
+    toast.error("El costo por unidad debe ser 0 o mayor")
+    
+    return
   }
 
   if (!editedDetailData.value.lot_number?.trim()) {
     const itemType = editedDetailData.value.is_return
       ? "devolución"
-      : "producto";
-    toast.error(`El número de lote es obligatorio para este ${itemType}`);
-    return;
+      : "producto"
+
+    toast.error(`El número de lote es obligatorio para este ${itemType}`)
+    
+    return
   }
   if (!editedDetailData.value.expiration_date) {
     const itemType = editedDetailData.value.is_return
       ? "devolución"
-      : "producto";
-    toast.error(`La fecha de vencimiento es obligatoria para este ${itemType}`);
-    return;
+      : "producto"
+
+    toast.error(`La fecha de vencimiento es obligatoria para este ${itemType}`)
+    
+    return
   }
 
   const originalDetail = invoiceDetails.value.find(
-    (d) => d.id === editingDetailId.value
-  );
+    d => d.id === editingDetailId.value,
+  )
+
   const isFirstTimeSettingDate =
-    !originalDetail?.expiration_date && editedDetailData.value.expiration_date;
+    !originalDetail?.expiration_date && editedDetailData.value.expiration_date
 
   if (isFirstTimeSettingDate) {
-    checkAndMarkAsReturn(editedDetailData.value, true);
+    checkAndMarkAsReturn(editedDetailData.value, true)
   }
 
   const detailIndex = invoiceDetails.value.findIndex(
-    (d) => d.id === editingDetailId.value
-  );
+    d => d.id === editingDetailId.value,
+  )
+
   if (detailIndex !== -1) {
-    invoiceDetails.value[detailIndex] = { ...editedDetailData.value };
+    invoiceDetails.value[detailIndex] = { ...editedDetailData.value }
+
     const itemType = editedDetailData.value.is_return
       ? "devolución"
-      : "producto";
+      : "producto"
+
     toast.success(
       `${
         itemType.charAt(0).toUpperCase() + itemType.slice(1)
-      } actualizado correctamente`
-    );
+      } actualizado correctamente`,
+    )
   }
-  cancelEditingDetail();
-};
+  cancelEditingDetail()
+}
 
 const cancelEditingDetail = () => {
-  editingDetailId.value = null;
-  editedDetailData.value = {};
-};
+  editingDetailId.value = null
+  editedDetailData.value = {}
+}
 
 const updateLocation = (id, newLocation) => {
-  const index = invoiceDetails.value.findIndex((d) => d.id === id);
+  const index = invoiceDetails.value.findIndex(d => d.id === id)
   if (index !== -1) {
-    invoiceDetails.value[index].location = newLocation;
+    invoiceDetails.value[index].location = newLocation
   }
-};
+}
 
 const handleSaveLocations = async () => {
   const hasEmptyLocation = invoiceDetails.value.some(
-    (d) =>
+    d =>
       !d.is_return &&
       (!d.location ||
         d.location.trim() === "" ||
         d.location.trim() === "Por Asignar" ||
-        d.location.trim() === "N/A")
-  );
+        d.location.trim() === "N/A"),
+  )
 
   if (hasEmptyLocation) {
     toast.error(
-      "Por favor, asigne una localización a todos los productos que no son devolución."
-    );
-    return;
+      "Por favor, asigne una localización a todos los productos que no son devolución.",
+    )
+    
+    return
   }
 
-  loading.value = true;
+  loading.value = true
 
   const payload = {
     details: invoiceDetails.value
-      .filter((d) => !d.is_return)
-      .map((d) => ({
+      .filter(d => !d.is_return)
+      .map(d => ({
         id: d.id,
         location: d.location,
       })),
-  };
+  }
 
   try {
     const response = await axios.put(
       `/invoices/${props.invoiceId}/locations`,
-      payload
-    );
-    toast.success(response.data.message || "Ubicaciones guardadas con éxito.");
-    emit("back-to-list");
+      payload,
+    )
+
+    toast.success(response.data.message || "Ubicaciones guardadas con éxito.")
+    emit("back-to-list")
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudieron guardar las ubicaciones."
-    );
+      error.response?.data?.message || "No se pudieron guardar las ubicaciones.",
+    )
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const formatNumber = (value) => {
-  if (typeof value !== "number") return value;
+const formatNumber = value => {
+  if (typeof value !== "number") return value
+  
   return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
-};
+  }).format(value)
+}
 
 const formatCurrency = (value, currency = null) => {
-  if (typeof value !== "number") return value;
-  const targetCurrency = currency || invoice.value?.currency;
-  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
-  const mappedCurrency = currencyMap[targetCurrency] || "VES";
+  if (typeof value !== "number") return value
+  const targetCurrency = currency || invoice.value?.currency
+  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" }
+  const mappedCurrency = currencyMap[targetCurrency] || "VES"
+  
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: mappedCurrency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
-};
+  }).format(value)
+}
 
 const getCurrencySymbol = () => {
-  if (!invoice.value?.currency) return "Bs.";
-  const symbolMap = { BS: "Bs.", Bs: "Bs.", USD: "$", COP: "COP$" };
-  return symbolMap[invoice.value.currency] || "Bs.";
-};
-const isNearExpiration = (item) => {
-  if (!item.expiration_date) return false;
+  if (!invoice.value?.currency) return "Bs."
+  const symbolMap = { BS: "Bs.", Bs: "Bs.", USD: "$", COP: "COP$" }
+  
+  return symbolMap[invoice.value.currency] || "Bs."
+}
 
-  const expirationDate = new Date(item.expiration_date);
-  const today = new Date();
-  const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(today.getMonth() + 6);
+const isNearExpiration = item => {
+  if (!item.expiration_date) return false
 
-  return expirationDate <= sixMonthsFromNow;
-};
+  const expirationDate = new Date(item.expiration_date)
+  const today = new Date()
+  const sixMonthsFromNow = new Date()
+
+  sixMonthsFromNow.setMonth(today.getMonth() + 6)
+
+  return expirationDate <= sixMonthsFromNow
+}
+
 const checkAndMarkAsReturn = (item, forceCheck = false) => {
-  if (!item.expiration_date) return false;
+  if (!item.expiration_date) return false
 
-  const expirationDate = new Date(item.expiration_date);
-  const today = new Date();
-  const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(today.getMonth() + 6);
+  const expirationDate = new Date(item.expiration_date)
+  const today = new Date()
+  const sixMonthsFromNow = new Date()
 
-  const isNearExp = expirationDate <= sixMonthsFromNow;
+  sixMonthsFromNow.setMonth(today.getMonth() + 6)
+
+  const isNearExp = expirationDate <= sixMonthsFromNow
 
   if (
     isNearExp &&
@@ -833,82 +940,89 @@ const checkAndMarkAsReturn = (item, forceCheck = false) => {
     !item.manual_return_override &&
     forceCheck
   ) {
-    item.is_return = true;
-    item.location = "N/A";
+    item.is_return = true
+    item.location = "N/A"
 
     toast.info(
       `Producto "${
         item.product?.name || "Desconocido"
       }" marcado automáticamente como devolución por proximidad a vencimiento (${
         item.expiration_date
-      })`
-    );
+      })`,
+    )
 
-    return true;
+    return true
   }
 
-  return isNearExp;
-};
+  return isNearExp
+}
+
 const invoiceHasIva = computed(() => {
-  if (!invoice.value) return false;
-  const taxableBase = parseFloat(invoice.value.taxable_base) || 0;
-  const taxAmount = parseFloat(invoice.value.tax_amount) || 0;
-  return taxableBase > 0 || taxAmount > 0;
-});
+  if (!invoice.value) return false
+  const taxableBase = parseFloat(invoice.value.taxable_base) || 0
+  const taxAmount = parseFloat(invoice.value.tax_amount) || 0
+  
+  return taxableBase > 0 || taxAmount > 0
+})
 
 const handleFinalizeInvoice = async () => {
   if (isTotalMismatch.value) {
     toast.error(
       `El total de productos (${formatCurrency(
         editableDetailsTotal.value,
-        invoice.value.currency
+        invoice.value.currency,
       )}) debe ser exactamente igual al total de la factura (${formatCurrency(
         invoice.value.total_amount,
-        invoice.value.currency
-      )}).`
-    );
-    return;
+        invoice.value.currency,
+      )}).`,
+    )
+    
+    return
   }
 
   if (isTaxAmountMismatch.value) {
     toast.error(
       `El monto de IVA de los productos (${formatCurrency(
         editableDetailsTaxAmount.value,
-        invoice.value.currency
+        invoice.value.currency,
       )}) debe ser igual al IVA de la factura (${formatCurrency(
         invoice.value.tax_amount,
-        invoice.value.currency
-      )}).`
-    );
-    return;
+        invoice.value.currency,
+      )}).`,
+    )
+    
+    return
   }
-  const saveSuccessful = await handleSaveProgress();
+  const saveSuccessful = await handleSaveProgress()
   if (!saveSuccessful) {
-    return;
+    return
   }
-  loading.value = true;
+  loading.value = true
 
   try {
-    const response = await axios.put(`/invoices/${props.invoiceId}/finalize`);
-    toast.success(response.data.message || "Factura finalizada con éxito.");
-    emit("back-to-list");
+    const response = await axios.put(`/invoices/${props.invoiceId}/finalize`)
+
+    toast.success(response.data.message || "Factura finalizada con éxito.")
+    emit("back-to-list")
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo finalizar la factura."
-    );
+      error.response?.data?.message || "No se pudo finalizar la factura.",
+    )
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
+
 const formattedSupplierDiscounts = computed(() => {
   if (!props.supplierDiscounts || !Array.isArray(props.supplierDiscounts)) {
-    return [];
+    return []
   }
-  return props.supplierDiscounts.map((discount) => ({
+  
+  return props.supplierDiscounts.map(discount => ({
     ...discount,
     displayText: `${discount.name} - ${discount.discount_percentage}%`,
-  }));
-});
+  }))
+})
 
 const detailsHeaders = computed(() => {
   const headers = [
@@ -974,23 +1088,33 @@ const detailsHeaders = computed(() => {
       align: "center",
       width: "5%",
     },
-  ];
+  ]
 
   if (isLocationMode.value) {
     return headers.filter(
-      (h) =>
-        !["tax_amount", "total_cost", "actions", "unit_cost"].includes(h.key)
-    );
+      h =>
+        !["tax_amount", "total_cost", "actions", "unit_cost"].includes(h.key),
+    )
   }
 
-  return headers;
-});
+  return headers
+})
 </script>
+
 <template>
   <div>
-    <div v-if="loading" class="text-center pa-10">
-      <VProgressCircular indeterminate color="primary" size="64" />
-      <p class="mt-4 text-h6">Cargando datos de la factura...</p>
+    <div
+      v-if="loading"
+      class="text-center pa-10"
+    >
+      <VProgressCircular
+        indeterminate
+        color="primary"
+        size="64"
+      />
+      <p class="mt-4 text-h6">
+        Cargando datos de la factura...
+      </p>
     </div>
 
     <div v-else-if="invoice">
@@ -1001,7 +1125,9 @@ const detailsHeaders = computed(() => {
         density="compact"
         class="mb-4"
       >
-        <template #prepend><VIcon icon="tabler-info-circle" /></template>
+        <template #prepend>
+          <VIcon icon="tabler-info-circle" />
+        </template>
         <div>
           <strong>Factura en {{ invoice.currency }}</strong>
           <div class="text-caption mt-1">
@@ -1017,7 +1143,9 @@ const detailsHeaders = computed(() => {
         density="compact"
         class="mb-4"
       >
-        <template #prepend><VIcon icon="tabler-info-circle" /></template>
+        <template #prepend>
+          <VIcon icon="tabler-info-circle" />
+        </template>
         <div>
           <strong>Factura sin IVA</strong>
           <div class="text-caption mt-1">
@@ -1029,7 +1157,11 @@ const detailsHeaders = computed(() => {
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
           <VCardText class="header-section">
-            <VRow align="center" justify="space-between" class="mb-4">
+            <VRow
+              align="center"
+              justify="space-between"
+              class="mb-4"
+            >
               <VCol cols="auto">
                 <VBtn
                   icon="tabler-arrow-left"
@@ -1040,17 +1172,26 @@ const detailsHeaders = computed(() => {
               <VCol cols="auto">
                 <VBtn
                   v-if="isEditableMode && !isEditMode"
-                  @click="toggleEditMode(true)"
                   color="primary"
                   variant="tonal"
+                  @click="toggleEditMode(true)"
                 >
-                  <VIcon icon="tabler-edit" class="me-2" />
+                  <VIcon
+                    icon="tabler-edit"
+                    class="me-2"
+                  />
                   Editar
                 </VBtn>
               </VCol>
             </VRow>
-            <VRow align="start" justify="space-between">
-              <VCol cols="12" md="auto">
+            <VRow
+              align="start"
+              justify="space-between"
+            >
+              <VCol
+                cols="12"
+                md="auto"
+              >
                 <div>
                   <h1
                     class="font-weight-bold text-primary text-h4"
@@ -1059,20 +1200,20 @@ const detailsHeaders = computed(() => {
                     {{ invoice.supplier.name }}
                   </h1>
                   <div class="d-flex align-center mt-2">
-                    <span class="text-subtitle-1 font-weight-medium me-2"
-                      >N° DE CONTROL</span
-                    >
+                    <span class="text-subtitle-1 font-weight-medium me-2">N° DE CONTROL</span>
                     <span class="text-h4 font-weight-bold text-error">{{
                       invoice.control_number
                     }}</span>
                   </div>
                 </div>
               </VCol>
-              <VCol cols="12" md="auto" class="text-md-end">
+              <VCol
+                cols="12"
+                md="auto"
+                class="text-md-end"
+              >
                 <div class="d-flex align-center justify-md-end">
-                  <span class="text-subtitle-1 font-weight-medium me-2"
-                    >FACTURA N°</span
-                  >
+                  <span class="text-subtitle-1 font-weight-medium me-2">FACTURA N°</span>
                   <span class="text-h4 font-weight-bold text-error">{{
                     invoice.invoice_number
                   }}</span>
@@ -1119,9 +1260,13 @@ const detailsHeaders = computed(() => {
           <VCardText class="products-section">
             <div class="d-flex align-center mb-4">
               <span class="text-h6 font-weight-medium">Productos</span>
-              <VChip color="primary" variant="outlined" class="ms-2"
-                >{{ invoiceDetails.length }} productos</VChip
+              <VChip
+                color="primary"
+                variant="outlined"
+                class="ms-2"
               >
+                {{ invoiceDetails.length }} productos
+              </VChip>
               <VSpacer />
               <div class="d-flex align-center ga-4">
                 <div class="text-right d-flex align-center">
@@ -1140,9 +1285,7 @@ const detailsHeaders = computed(() => {
                       />
                     </template>
                   </VTooltip>
-                  <span class="text-body-1 me-2 text-error font-weight-medium"
-                    >Total Cargado</span
-                  >
+                  <span class="text-body-1 me-2 text-error font-weight-medium">Total Cargado</span>
                   <VChip
                     :color="
                       (isTotalMismatch || isTaxAmountMismatch) && isEditMode
@@ -1161,7 +1304,10 @@ const detailsHeaders = computed(() => {
                   size="small"
                   @click="handleAddProduct"
                 >
-                  <VIcon icon="tabler-plus" class="me-2" />
+                  <VIcon
+                    icon="tabler-plus"
+                    class="me-2"
+                  />
                   Agregar Producto
                 </VBtn>
               </div>
@@ -1183,8 +1329,11 @@ const detailsHeaders = computed(() => {
                       item.product?.laboratory?.name
                     }}</span>
                   </span>
-                  <span class="text-sm text-disabled"></span>
-                  <VTooltip v-if="isNearExpiration(item)" location="top">
+                  <span class="text-sm text-disabled" />
+                  <VTooltip
+                    v-if="isNearExpiration(item)"
+                    location="top"
+                  >
                     <template #activator="{ props }">
                       <VIcon
                         v-bind="props"
@@ -1194,10 +1343,8 @@ const detailsHeaders = computed(() => {
                         class="ms-2"
                       />
                     </template>
-                    <span
-                      >Producto próximo a vencer (menos de 6 meses). Considere
-                      marcarlo como devolución.</span
-                    >
+                    <span>Producto próximo a vencer (menos de 6 meses). Considere
+                      marcarlo como devolución.</span>
                   </VTooltip>
                 </div>
               </template>
@@ -1253,8 +1400,6 @@ const detailsHeaders = computed(() => {
                 <VAutocomplete
                   v-if="isLocationMode && !isItemReturned(item)"
                   :model-value="item.location"
-                  @update:model-value="updateLocation(item.id, $event)"
-                  @focus="updateLocation(item.id, null)"
                   :items="locations"
                   density="compact"
                   hide-details
@@ -1263,15 +1408,16 @@ const detailsHeaders = computed(() => {
                   placeholder="Ej: A-01-B"
                   :return-object="false"
                   auto-select-first
+                  @update:model-value="updateLocation(item.id, $event)"
+                  @focus="updateLocation(item.id, null)"
                 />
                 <span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.location || "-" }}</span
-                >
+                >{{ item.location || "-" }}</span>
               </template>
-              <template #item.quantity="{ item }"
-                ><VTextField
+              <template #item.quantity="{ item }">
+                <VTextField
                   v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.quantity"
                   type="number"
@@ -1283,9 +1429,8 @@ const detailsHeaders = computed(() => {
                 /><span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.quantity }}</span
-                ></template
-              >
+                >{{ item.quantity }}</span>
+              </template>
 
               <template #item.unit_cost="{ item }">
                 <VTextField
@@ -1303,8 +1448,8 @@ const detailsHeaders = computed(() => {
                 <VTooltip
                   v-else-if="
                     isApprovalMode &&
-                    item.product &&
-                    typeof item.product.unit_cost !== 'undefined'
+                      item.product &&
+                      typeof item.product.unit_cost !== 'undefined'
                   "
                   location="top"
                 >
@@ -1323,8 +1468,7 @@ const detailsHeaders = computed(() => {
                       <span
                         v-if="invoice.currency !== 'USD'"
                         class="text-caption text-medium-emphasis"
-                        >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
-                      >
+                      >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span>
                     </div>
                   </template>
                   <span>{{ getCostTooltipText(item) }}</span>
@@ -1340,8 +1484,7 @@ const detailsHeaders = computed(() => {
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
-                  >
+                  >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span>
                 </div>
               </template>
 
@@ -1350,12 +1493,9 @@ const detailsHeaders = computed(() => {
                   class="d-flex flex-column align-end"
                   :class="{ 'returned-item': isItemReturned(item) }"
                 >
-                  <span
-                    :class="{ 'font-weight-medium': item.tax_amount > 0 }"
-                    >{{
-                      formatCurrency(item.tax_amount, invoice.currency)
-                    }}</span
-                  >
+                  <span :class="{ 'font-weight-medium': item.tax_amount > 0 }">{{
+                    formatCurrency(item.tax_amount, invoice.currency)
+                  }}</span>
                 </div>
               </template>
 
@@ -1370,55 +1510,74 @@ const detailsHeaders = computed(() => {
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.total_cost_usd, "USD") }}</span
-                  >
+                  >{{ formatCurrency(item.total_cost_usd, "USD") }}</span>
                 </div>
               </template>
 
               <template #item.actions="{ item }">
                 <div v-if="isEditableMode && isEditMode">
-                  <div v-if="item.id === editingDetailId" class="d-flex">
-                    <IconBtn @click="saveEditingDetail"
-                      ><VIcon icon="tabler-check" color="success" size="22"
-                    /></IconBtn>
-                    <IconBtn @click="cancelEditingDetail"
-                      ><VIcon icon="tabler-x" color="error" size="22"
-                    /></IconBtn>
+                  <div
+                    v-if="item.id === editingDetailId"
+                    class="d-flex"
+                  >
+                    <IconBtn @click="saveEditingDetail">
+                      <VIcon
+                        icon="tabler-check"
+                        color="success"
+                        size="22"
+                      />
+                    </IconBtn>
+                    <IconBtn @click="cancelEditingDetail">
+                      <VIcon
+                        icon="tabler-x"
+                        color="error"
+                        size="22"
+                      />
+                    </IconBtn>
                   </div>
-                  <div v-else class="d-flex align-center">
-                    <VTooltip text="Marcar para Devolución"
-                      ><template #activator="{ props }"
-                        ><IconBtn v-bind="props" @click="toggleReturnItem(item)"
-                          ><VIcon
+                  <div
+                    v-else
+                    class="d-flex align-center"
+                  >
+                    <VTooltip text="Marcar para Devolución">
+                      <template #activator="{ props }">
+                        <IconBtn
+                          v-bind="props"
+                          @click="toggleReturnItem(item)"
+                        >
+                          <VIcon
                             :color="
                               isItemReturned(item) ? 'warning' : 'default'
                             "
                             icon="tabler-arrow-back-up"
-                            size="20" /></IconBtn></template
-                    ></VTooltip>
+                            size="20"
+                          />
+                        </IconBtn>
+                      </template>
+                    </VTooltip>
                     <VTooltip
                       :text="
                         !invoiceHasIva
                           ? 'Factura sin IVA - No se puede agregar IVA a productos'
                           : item.tax_enabled
-                          ? 'Quitar IVA'
-                          : 'Agregar IVA'
+                            ? 'Quitar IVA'
+                            : 'Agregar IVA'
                       "
                     >
                       <template #activator="{ props }">
                         <IconBtn
                           v-bind="props"
-                          @click="toggleTax(item)"
                           :disabled="!invoiceHasIva"
                           :class="{ 'disabled-button': !invoiceHasIva }"
+                          @click="toggleTax(item)"
                         >
                           <VIcon
                             :color="
                               !invoiceHasIva
                                 ? 'disabled'
                                 : item.tax_enabled
-                                ? 'success'
-                                : 'default'
+                                  ? 'success'
+                                  : 'default'
                             "
                             icon="tabler-receipt-tax"
                             size="20"
@@ -1426,16 +1585,22 @@ const detailsHeaders = computed(() => {
                         </IconBtn>
                       </template>
                     </VTooltip>
-                    <IconBtn @click="removeProductFromInvoice(item.id)"
-                      ><VIcon icon="tabler-trash" size="20"
-                    /></IconBtn>
-                    <IconBtn @click="startEditingDetail(item)"
-                      ><VIcon icon="tabler-edit" size="20"
-                    /></IconBtn>
+                    <IconBtn @click="removeProductFromInvoice(item.id)">
+                      <VIcon
+                        icon="tabler-trash"
+                        size="20"
+                      />
+                    </IconBtn>
+                    <IconBtn @click="startEditingDetail(item)">
+                      <VIcon
+                        icon="tabler-edit"
+                        size="20"
+                      />
+                    </IconBtn>
                   </div>
                 </div>
               </template>
-              <template #bottom></template>
+              <template #bottom />
             </VDataTable>
           </VCardText>
           <VDivider />
@@ -1443,17 +1608,13 @@ const detailsHeaders = computed(() => {
           <VCardText class="totals-section">
             <div class="totals-list">
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Monto Total Excento de IVA:</span
-                >
+                <span class="text-subtitle-2 text-disabled">Monto Total Excento de IVA:</span>
                 <span class="text-h6 ms-2">{{
                   formatCurrency(invoice.exempt_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Base Imponible segun Alicuota 16 %:</span
-                >
+                <span class="text-subtitle-2 text-disabled">Base Imponible segun Alicuota 16 %:</span>
                 <span class="text-h6 ms-2">{{
                   formatCurrency(invoice.taxable_base)
                 }}</span>
@@ -1474,9 +1635,7 @@ const detailsHeaders = computed(() => {
                       />
                     </template>
                   </VTooltip>
-                  <span class="text-subtitle-2 text-disabled"
-                    >Impuesto segun Alicuota 16 %:</span
-                  >
+                  <span class="text-subtitle-2 text-disabled">Impuesto segun Alicuota 16 %:</span>
                 </div>
                 <div class="d-flex flex-column align-end">
                   <span class="text-h6">{{
@@ -1495,34 +1654,27 @@ const detailsHeaders = computed(() => {
                 </div>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Base Imponible segun Alicuota 16 %:</span
-                ><span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Base Imponible segun Alicuota 16 %:</span><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.taxable_base)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Impuesto segun Alicuota 16 %:</span
-                ><span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Impuesto segun Alicuota 16 %:</span><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.tax_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Total Factura:</span
-                ><span class="text-h6 ms-2 font-weight-bold">{{
+                <span class="text-subtitle-2 text-disabled">Total Factura:</span><span class="text-h6 ms-2 font-weight-bold">{{
                   formatCurrency(invoice.total_amount)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span
-                ><span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span><span class="text-h6 ms-2">{{
                   formatNumber(invoice.exchange_rate)
                 }}</span>
               </div>
               <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Total USD:</span
-                ><span class="text-h6 ms-2">{{
+                <span class="text-subtitle-2 text-disabled">Total USD:</span><span class="text-h6 ms-2">{{
                   formatCurrency(invoice.total_usd, "USD")
                 }}</span>
               </div>
@@ -1543,7 +1695,10 @@ const detailsHeaders = computed(() => {
                   hide-details
                 />
               </div>
-              <div v-if="isApprovalMode" class="total-item-row mt-4">
+              <div
+                v-if="isApprovalMode"
+                class="total-item-row mt-4"
+              >
                 <VSelect
                   v-model="selectedPaymentRuleId"
                   :items="formattedPaymentRules"
@@ -1560,9 +1715,7 @@ const detailsHeaders = computed(() => {
                 v-if="isApprovalMode && selectedPaymentRuleId"
                 class="total-item-row mt-3 text-success"
               >
-                <span class="text-subtitle-1 font-weight-medium"
-                  >Total con Descuento:</span
-                >
+                <span class="text-subtitle-1 font-weight-medium">Total con Descuento:</span>
                 <span class="text-h5 ms-2 font-weight-bold">{{
                   formatCurrency(totalWithDiscount, invoice.currency)
                 }}</span>
@@ -1572,42 +1725,58 @@ const detailsHeaders = computed(() => {
           <VDivider />
 
           <VCardActions class="pa-6">
-            <div v-if="isLocationMode" class="d-flex w-100">
+            <div
+              v-if="isLocationMode"
+              class="d-flex w-100"
+            >
               <VBtn
                 :loading="loading"
-                @click="handleSaveLocations"
                 size="large"
                 color="primary"
                 variant="flat"
                 class="w-100"
-                ><VIcon icon="tabler-device-floppy" class="me-2" />Guardar
-                Ubicaciones</VBtn
+                @click="handleSaveLocations"
               >
+                <VIcon
+                  icon="tabler-device-floppy"
+                  class="me-2"
+                />Guardar
+                Ubicaciones
+              </VBtn>
             </div>
-            <div v-else-if="isApprovalMode" class="d-flex ga-3 w-100">
+            <div
+              v-else-if="isApprovalMode"
+              class="d-flex ga-3 w-100"
+            >
               <VBtn
                 :loading="props.isSaving"
-                @click="handleReject"
                 size="large"
                 color="error"
                 variant="outlined"
                 class="flex-1-1"
+                @click="handleReject"
               >
                 Rechazar Factura
               </VBtn>
               <VBtn
                 :loading="props.isSaving"
-                @click="handleConfirmApproval"
                 size="large"
                 color="success"
                 variant="flat"
                 class="flex-1-1"
+                @click="handleConfirmApproval"
               >
-                <VIcon icon="tabler-check" class="me-2" />
+                <VIcon
+                  icon="tabler-check"
+                  class="me-2"
+                />
                 Confirmar Aprobación
               </VBtn>
             </div>
-            <div v-else-if="isEditableMode" class="d-flex ga-3 w-100">
+            <div
+              v-else-if="isEditableMode"
+              class="d-flex ga-3 w-100"
+            >
               <VBtn
                 v-if="isEditMode"
                 color="error"
@@ -1615,31 +1784,37 @@ const detailsHeaders = computed(() => {
                 size="large"
                 class="flex-1-1"
                 @click="toggleEditMode(false)"
-                >Cancelar</VBtn
               >
+                Cancelar
+              </VBtn>
               <VBtn
                 :loading="loading"
-                @click="
-                  isEditMode ? handleSaveProgress() : handleFinalizeInvoice()
-                "
                 size="large"
                 :color="isEditMode ? 'info' : 'primary'"
                 variant="flat"
                 :class="isEditMode ? 'flex-1-1' : 'w-100'"
-                >{{
-                  isEditMode ? "Guardar Progreso" : "Finalizar Factura"
-                }}</VBtn
+                @click="
+                  isEditMode ? handleSaveProgress() : handleFinalizeInvoice()
+                "
               >
+                {{
+                  isEditMode ? "Guardar Progreso" : "Finalizar Factura"
+                }}
+              </VBtn>
             </div>
-            <div v-else class="d-flex w-100">
+            <div
+              v-else
+              class="d-flex w-100"
+            >
               <VBtn
-                @click="emit('back-to-list')"
                 size="large"
                 color="primary"
                 variant="tonal"
                 class="w-100"
-                >Volver a la Lista</VBtn
+                @click="emit('back-to-list')"
               >
+                Volver a la Lista
+              </VBtn>
             </div>
           </VCardActions>
         </VForm>
@@ -1651,16 +1826,22 @@ const detailsHeaders = computed(() => {
           class="product-search-section mt-6"
         >
           <div class="d-flex align-center justify-space-between mb-4">
-            <h4 class="text-h4">Buscar Productos en Catálogo</h4>
+            <h4 class="text-h4">
+              Buscar Productos en Catálogo
+            </h4>
             <VBtn
               variant="text"
               color="error"
               @click="isProductSearchVisible = false"
-              ><VIcon icon="tabler-x" class="me-2" />Cerrar Búsqueda</VBtn
             >
+              <VIcon
+                icon="tabler-x"
+                class="me-2"
+              />Cerrar Búsqueda
+            </VBtn>
           </div>
           <ProductFilters
-            v-model:searchQuery="productSearchQuery"
+            v-model:search-query="productSearchQuery"
             :laboratories="laboratories"
             :origins="origins"
             :loading="isLoadingFilters"

@@ -470,6 +470,7 @@ Route::prefix("supplier-laboratories")->group(function () {
 // Asistente IA
 Route::prefix("suppliers-ia-order-assistant")->group(function () {
     Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
+    Route::get("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "getProductosMarcados"]);
     Route::prefix("generate-order")->group(function () {
         Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
         Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
