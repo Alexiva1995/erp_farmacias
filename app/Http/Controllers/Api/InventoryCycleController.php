@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
+use App\Models\SaleCount;
 use App\Services\InventoryCycle\InventoryCycleQueryService;
 use App\Services\InventoryCycle\InventoryCycleActionService;
 use Exception;
@@ -480,5 +481,41 @@ class InventoryCycleController extends Controller
 
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+
+     public function processSaleCountAction(Request $request, $countId)
+    {
+        $request->validate([
+            'action' => 'required|in:approve,reject',
+            'corrected_quantity' => 'nullable|numeric',
+            'updated_lots' => 'nullable|array',
+            'updated_lots.*.id' => 'required_with:updated_lots|integer|exists:product_lots,id',
+            'updated_lots.*.quantity' => 'required_with:updated_lots|integer|min:0',
+            'new_lots' => 'nullable|array',
+            'new_lots.*.lot_number' => 'required_with:new_lots|string|max:255',
+            'new_lots.*.expiration_date' => 'required_with:new_lots|date',
+            'new_lots.*.quantity' => 'required_with:new_lots|integer|min:0',
+        ]);
+
+        try {
+            $saleCount = SaleCount::findOrFail($countId);
+            $action = $request->input('action');
+            $data = $request->only(['corrected_quantity', 'updated_lots', 'new_lots']);
+
+            $result = $this->inventoryCycleActionService->processSaleCountAction($saleCount, $action, $data);
+
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => $result['message'], 'data' => $result['data']], 200);
+            } else {
+                return response()->json(['success' => false, 'message' => $result['message']], 400);
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Registro de conteo de punto de venta no encontrado.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Error en processSaleCountAction', ['countId' => $countId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error interno del servidor.'], 500);
+        }
     }
 }

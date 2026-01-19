@@ -155,8 +155,8 @@ const handleExport = async (format) => {
           :items-per-page="saleOptions.itemsPerPage"
           :page="saleOptions.page"
           @update:options="updateSaleOptions"
-          @approve-product="handleApproveInvoice"
-          @reject-product="handleRejectInvoice"
+          @approve-product="handleApproveSale"
+          @reject-product="handleRejectSale"
         />
       </VCol>
     </VRow>
@@ -185,6 +185,19 @@ const handleExport = async (format) => {
       :lots="invoiceForLotDistribution?.lots || []"
       :target-quantity="invoiceTargetQuantity || 0"
       @save="handleInvoiceLots"
+    />
+
+    <InventoryCorrectionModal
+      v-model="showSaleCorrectionModal"
+      :product="saleForCorrection"
+      @correction-processed="handleSaleCorrection"
+    />
+    <LotDistributionModal
+      v-model="showSaleLotModal"
+      :product-name="saleForLotDistribution?.name || 'Producto'"
+      :lots="saleForLotDistribution?.lots || []"
+      :target-quantity="saleTargetQuantity || 0"
+      @save="handleSaleLots"
     />
   </div>
 </template>

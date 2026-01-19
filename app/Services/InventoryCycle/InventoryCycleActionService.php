@@ -10,6 +10,7 @@ use App\Models\ProductCount;
 use App\Models\ProductDistribution;
 use App\Models\ProductLot;
 use App\Models\SaleCount;
+use App\Models\SaleCountDistribution;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -634,6 +635,105 @@ class InventoryCycleActionService
             } catch (\Exception $e) {
                 Log::error('Error al registrar conteo de punto de venta', ['error' => $e->getMessage()]);
                 return ['success' => false, 'message' => 'Error interno: ' . $e->getMessage(), 'data' => null];
+            }
+        });
+    }
+
+        private function approveOrCorrectSaleCount(SaleCount $saleCount, array $data): array
+    {
+        $isCorrection = isset($data['corrected_quantity']);
+        $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $saleCount->counted_quantity;
+        $finalDiscrepancy = $finalQuantity - $saleCount->system_quantity;
+        $product = $saleCount->product;
+
+        if (!empty($data['updated_lots'])) {
+            foreach ($data['updated_lots'] as $lotData) {
+                $lotToUpdate = ProductLot::find($lotData['id']);
+                if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
+                    $updateData = ['quantity' => $lotData['quantity']];
+                    
+                    // Actualizar lot_number si se proporciona
+                    if (isset($lotData['lot_number'])) {
+                        $updateData['lot_number'] = $lotData['lot_number'];
+                    }
+                    
+                    // Actualizar expiration_date si se proporciona
+                    if (isset($lotData['expiration_date'])) {
+                        $updateData['expiration_date'] = $lotData['expiration_date'];
+                    }
+                    
+                    // Actualizar location si se proporciona
+                    if (isset($lotData['location'])) {
+                        $updateData['location'] = $lotData['location'];
+                    }
+                    
+                    $lotToUpdate->update($updateData);
+                    SaleCountDistribution::create([
+                        'sale_count_id' => $saleCount->id,
+                        'product_lot_id' => $lotToUpdate->id,
+                        'quantity' => $lotData['quantity'],
+                    ]);
+                }
+            }
+        }
+
+        if (!empty($data['new_lots'])) {
+            $existingLotsWithCost = ProductLot::where('product_id', $product->id)->where('unit_cost', '>', 0)->get();
+            $newLotUnitCost = $existingLotsWithCost->isNotEmpty() ? round($existingLotsWithCost->avg('unit_cost'), 2) : ($product->unit_price ?? 0);
+
+            foreach ($data['new_lots'] as $lotData) {
+                $newLot = ProductLot::create([
+                    'product_id' => $product->id,
+                    'lot_number' => $lotData['lot_number'],
+                    'expiration_date' => $lotData['expiration_date'],
+                    'location' => $lotData['location'] ?? null,
+                    'quantity' => $lotData['quantity'],
+                    'unit_cost' => $newLotUnitCost,
+                    'supplier_id' => null,
+                ]);
+                SaleCountDistribution::create([
+                    'sale_count_id' => $saleCount->id,
+                    'product_lot_id' => $newLot->id,
+                    'quantity' => $newLot->quantity,
+                ]);
+            }
+        }
+
+        $saleCount->counted_quantity = $finalQuantity;
+        $saleCount->discrepancy = $finalDiscrepancy;
+        $saleCount->status = 'approved';
+        $saleCount->supervisor_id = Auth::id();
+        $saleCount->save();
+
+        $saleCount->load(['product', 'user', 'distributions.productLot']);
+        return ['success' => true, 'message' => "Ajuste de punto de venta para '{$product->name}' aplicado.", 'data' => $saleCount];
+    }
+
+
+        private function rejectSaleCount(SaleCount $saleCount): array
+    {
+        $saleCount->update(['status' => 'rejected', 'supervisor_id' => Auth::id()]);
+        $saleCount->load(['product', 'user']);
+        return ['success' => true, 'message' => "Conteo de punto de venta para '{$saleCount->product->name}' rechazado.", 'data' => $saleCount];
+    }
+
+        public function processSaleCountAction(SaleCount $saleCount, string $action, array $data = []): array
+    {
+        if ($saleCount->status !== 'pending') {
+            return ['success' => false, 'message' => "Este conteo de punto de venta ya fue procesado. Estado actual: {$saleCount->status}", 'data' => null];
+        }
+
+        return DB::transaction(function () use ($saleCount, $action, $data) {
+            try {
+                if ($action === 'approve' || ($action === 'reject' && isset($data['corrected_quantity']))) {
+                    return $this->approveOrCorrectSaleCount($saleCount, $data);
+                } elseif ($action === 'reject') {
+                    return $this->rejectSaleCount($saleCount);
+                }
+                return ['success' => false, 'message' => 'Acción no válida.', 'data' => null];
+            } catch (\Exception $e) {
+                Log::error('Error procesando acción de conteo de punto de venta', ['sale_count_id' => $saleCount->id, 'error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Error al procesar la acción: ' . $e->getMessage(), 'data' => null];
             }
         });
     }

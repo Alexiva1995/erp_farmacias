@@ -440,7 +440,21 @@ class InventoryCycleQueryService
             ->where('status', '!=', 'pending')
             ->where('cycle_id', $activeCycleId);
 
-        $unionQuery = $productCounts->unionAll($invoiceCounts);
+        $saleCounts = SaleCount::query()
+            ->select([
+                'id',
+                'product_id',
+                'user_id',
+                'supervisor_id',
+                'discrepancy',
+                'status',
+                'updated_at',
+                DB::raw("'sale_count' as source_type")
+            ])
+            ->where('status', '!=', 'pending')
+            ->where('cycle_id', $activeCycleId);
+
+        $unionQuery = $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
