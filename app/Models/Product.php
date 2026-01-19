@@ -226,10 +226,9 @@ class Product extends Model
     }
 
 
-    public function salesCounts()
+    public function saleCounts()
     {
-    // Asumiendo que usas el modelo InventoryCount
-        return $this->hasMany(InventoryCount::class, 'product_id');
+        return $this->hasMany(SaleCount::class);
     }
 
     /**
