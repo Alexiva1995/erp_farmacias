@@ -274,6 +274,7 @@ declare module 'vue' {
     ReturnsSupervisorTable: typeof import('./resources/js/components/ReturnsSupervisorTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SalesToCountTable: typeof import('./resources/js/components/SalesToCountTable.vue')['default']
     ScrollToTop: typeof import('./resources/js/@core/components/ScrollToTop.vue')['default']
     SectionAutoOrderIa: typeof import('./resources/js/components/SectionAutoOrderIa.vue')['default']
     SectionDivider: typeof import('./resources/js/components/SectionDivider.vue')['default']
@@ -320,5 +321,6 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

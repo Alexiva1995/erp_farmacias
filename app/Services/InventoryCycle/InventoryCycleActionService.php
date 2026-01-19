@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCount;
 use App\Models\ProductDistribution;
 use App\Models\ProductLot;
+use App\Models\SaleCount;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -576,5 +577,64 @@ class InventoryCycleActionService
         Log::info("Nuevo ciclo de inventario creado.", ['cycle_id' => $newCycle->id, 'created_by' => Auth::id()]);
 
         return ['success' => true, 'message' => 'Nuevo ciclo de inventario creado y activado.'];
+    }
+
+     public function createSaleCount(int $productId, array $data): array
+    {
+        return DB::transaction(function () use ($productId, $data) {
+            try {
+                $product = Product::findOrFail($productId);
+                $activeCycle = $this->getActiveCycle();
+
+                if (!$activeCycle) {
+                    return ['success' => false, 'message' => 'No existe un ciclo de inventario activo.', 'data' => null];
+                }
+
+                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
+
+                // Solo validar código de barras si no se permite sin código de barras
+                if (!$allowWithoutBarcode) {
+                    if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
+                        return ['success' => false, 'message' => 'El código de barras no coincide con el producto.', 'data' => null];
+                    }
+                }
+
+                $expectedDiscrepancy = $data['counted_quantity'] - $data['system_quantity'];
+                if ((int) $expectedDiscrepancy !== (int) $data['discrepancy']) {
+                    $data['discrepancy'] = $expectedDiscrepancy;
+                }
+
+                // Si no hay discrepancia, aprobar automáticamente sin supervisor
+                $finalDiscrepancy = $data['discrepancy'];
+                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+
+                $SaleCount = SaleCount::create([
+                    'product_id' => $product->id,
+                    'user_id' => Auth::id(),
+                    'cycle_id' => $activeCycle->id,
+                    'system_quantity' => $data['system_quantity'],
+                    'counted_quantity' => $data['counted_quantity'],
+                    'discrepancy' => $finalDiscrepancy,
+                    'status' => $status,
+                    'supervisor_id' => $supervisorId,
+                    'type' => 'sale',
+                ]);
+
+                $SaleCount->load(['product', 'user', 'cycle']);
+
+                $message = $status === 'approved' 
+                    ? "Conteo de punto de venta registrado y aprobado automáticamente (sin discrepancia)."
+                    : "Conteo de punto de venta registrado.";
+
+                return ['success' => true, 'message' => $message, 'data' => $SaleCount];
+
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                return ['success' => false, 'message' => 'Producto no encontrado.', 'data' => null];
+            } catch (\Exception $e) {
+                Log::error('Error al registrar conteo de punto de venta', ['error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Error interno: ' . $e->getMessage(), 'data' => null];
+            }
+        });
     }
 }

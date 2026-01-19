@@ -6,6 +6,7 @@ use App\Models\InventoryCycle;
 use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
+use App\Models\SaleCount;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -584,13 +585,17 @@ class InventoryCycleQueryService
     {
         $query = Product::query()->with(['lots', 'laboratory', 'origin']);
 
-        $query->whereHas('orderDetails.order.cashClosing.dailyClosure', function ($subQuery) {
-            $subQuery->where('status', 'completed'); 
+        $query->whereHas('orderDetails.order', function ($subQuery) {
+            $subQuery->where('status', 'completed');
+            $subQuery->whereHas('cashClosing', function ($cashQuery) {
+                $cashQuery->where('status', 'closed'); 
+                $cashQuery->has('dailyClosure'); 
+            });
         });
 
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
         if ($activeCycleId) {
-            $query->whereDoesntHave('salesCounts', function (Builder $subQuery) use ($activeCycleId) {
+            $query->whereDoesntHave('saleCounts', function (Builder $subQuery) use ($activeCycleId) {
                 $subQuery->where('cycle_id', $activeCycleId);
             });
         }

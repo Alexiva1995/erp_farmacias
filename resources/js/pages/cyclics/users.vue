@@ -1,6 +1,7 @@
 <script setup>
 import InventoryCountDialog from "@/components/dialogs/InventoryCountDialog.vue";
 import InvoiceToCountTable from "@/components/InvoiceToCountTable.vue";
+import SalesToCountTable from "@/components/SalesToCountTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import { useDataTable } from "@/composables/useDataTable";
@@ -235,14 +236,14 @@ const handleSort = (sortData) => {
       </VCol>
 
       <VCol cols="12">
-        <InvoiceToCountTable
+        <SalesToCountTable
           :products="salesProductsToCount"
           :loading="salesProductsLoading"
           :total-product="totalSalesProductsToCount"
           :items-per-page="salesProductsOptions.itemsPerPage"
           :page="salesProductsOptions.page"
           mode="inventory"
-          title="Productos de Venta por Contar"
+          title="Productos de Punto de Venta por Contar"
           @update:options="updateSalesProductsTableOptions"
           @count-product="(product) => handleCountProduct(product, 'sales')"
         />

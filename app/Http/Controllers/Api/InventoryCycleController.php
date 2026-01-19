@@ -417,5 +417,60 @@ class InventoryCycleController extends Controller
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
+
+     public function storeSaleCount(Request $request, $productId)
+    {
+        $allowWithoutBarcode = $request->boolean('allow_without_barcode');
+        
+        $validationRules = [
+            'counted_quantity' => 'required|numeric|min:0',
+            'system_quantity' => 'required|numeric|min:0',
+            'discrepancy' => 'required|numeric'
+        ];
+
+        // Solo requerir barcode si no se permite sin código de barras
+        if (!$allowWithoutBarcode) {
+            $validationRules['barcode'] = 'required|string';
+        }
+
+        $request->validate($validationRules);
+
+        try {
+            $data = $request->all();
+            $data['allow_without_barcode'] = $allowWithoutBarcode;
+            
+            $result = $this->inventoryCycleActionService->createSaleCount($productId, $data);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'data' => $result['data']
+                ], 201);
+            } else {
+                $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], $statusCode);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de validación incorrectos.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error en controlador al registrar conteo de venta', [
+                'product_id' => $productId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor.'
+            ], 500);
+        }
+    }
     
 }
