@@ -6,6 +6,7 @@ use App\Models\InventoryCycle;
 use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
+use App\Models\SaleCount;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -439,7 +440,21 @@ class InventoryCycleQueryService
             ->where('status', '!=', 'pending')
             ->where('cycle_id', $activeCycleId);
 
-        $unionQuery = $productCounts->unionAll($invoiceCounts);
+        $saleCounts = SaleCount::query()
+            ->select([
+                'id',
+                'product_id',
+                'user_id',
+                'supervisor_id',
+                'discrepancy',
+                'status',
+                'updated_at',
+                DB::raw("'sale_count' as source_type")
+            ])
+            ->where('status', '!=', 'pending')
+            ->where('cycle_id', $activeCycleId);
+
+        $unionQuery = $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
@@ -575,6 +590,71 @@ class InventoryCycleQueryService
         } else {
             $query->orderBy('ic.start_date', 'desc');
         }
+
+        return $query;
+    }
+
+
+      public function getSalesDetailsToCountQuery(Request $request): Builder
+    {
+        $query = Product::query()->with(['lots', 'laboratory', 'origin']);
+
+        $query->whereHas('orderDetails.order', function ($subQuery) {
+            $subQuery->where('status', 'completed');
+            $subQuery->whereHas('cashClosing', function ($cashQuery) {
+                $cashQuery->where('status', 'closed'); 
+                $cashQuery->has('dailyClosure'); 
+            });
+        });
+
+        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        if ($activeCycleId) {
+            $query->whereDoesntHave('saleCounts', function (Builder $subQuery) use ($activeCycleId) {
+                $subQuery->where('cycle_id', $activeCycleId);
+            });
+        }
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        $query = $this->applyFiltersToProducts($query, $filters);
+        $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+
+        private function getSaleCountBaseQuery(): Builder
+    {
+        return SaleCount::query()->select('sales_counts.*')->with([
+            'product' => function ($query) {
+                $query->with(['lots', 'laboratory']);
+            },
+            'user',
+            'supervisor',
+            'cycle',
+        ]);
+    }
+
+     public function getSaleCountFilteredQuery(Request $request): Builder
+    {
+        $query = $this->getSaleCountBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'discrepancyFilter' => $request->discrepancyFilter,
+            'status' => 'pending',
+        ];
+
+        $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
 
         return $query;
     }

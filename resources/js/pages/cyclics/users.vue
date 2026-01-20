@@ -1,6 +1,7 @@
 <script setup>
 import InventoryCountDialog from "@/components/dialogs/InventoryCountDialog.vue";
 import InvoiceToCountTable from "@/components/InvoiceToCountTable.vue";
+import SalesToCountTable from "@/components/SalesToCountTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import { useDataTable } from "@/composables/useDataTable";
@@ -35,6 +36,15 @@ const {
   fetchData: fetchInvoiceProductsToCount,
   updateTableOptions: updateInvoiceProductsTableOptions,
 } = useDataTable("/inventory/count/invoice-details-to-count", filters);
+
+const {
+  items: salesProductsToCount,
+  totalItems: totalSalesProductsToCount,
+  loading: salesProductsLoading,
+  options: salesProductsOptions,
+  fetchData: fetchSalesProductsToCount,
+  updateTableOptions: updateSalesProductsTableOptions,
+} = useDataTable("/inventory/count/sales-details-to-count", filters);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -77,6 +87,7 @@ onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
   fetchInvoiceProductsToCount();
+  fetchSalesProductsToCount();
 });
 
 const handleCountProduct = (product, type) => {
@@ -97,7 +108,9 @@ const handleSaveCount = async (countData) => {
   const endpoint =
     countType.value === "invoice"
       ? `/inventory/count/invoice-count/${productId}`
-      : `/inventory/count/${productId}`;
+      : countType.value === "sales"
+        ? `/inventory/count/sales-count/${productId}`
+        : `/inventory/count/${productId}`;
 
   // Calcular system_quantity y discrepancy
   const systemQuantity = Number(currentProduct.value.stock_calculado || currentProduct.value.stock || 0);
@@ -125,6 +138,8 @@ const handleSaveCount = async (countData) => {
 
       if (countType.value === "invoice") {
         await fetchInvoiceProductsToCount();
+      }else if (countType.value === "sales") {
+        await fetchSalesProductsToCount();
       } else {
         await fetchProducts();
       }
@@ -157,14 +172,18 @@ const handleClearFilters = () => {
   productOptions.orderBy = undefined;
   invoiceProductsOptions.sortBy = undefined;
   invoiceProductsOptions.orderBy = undefined;
+  salesProductsOptions.sortBy = undefined;
+  salesProductsOptions.orderBy = undefined;
 };
 
 
 const handleSort = (sortData) => {
   productOptions.sortBy = sortData.key;
- productOptions.orderBy = sortData.order; 
+  productOptions.orderBy = sortData.order; 
   invoiceProductsOptions.sortBy = sortData.key;
   invoiceProductsOptions.orderBy = sortData.order;
+  salesProductsOptions.sortBy = sortData.key;
+  salesProductsOptions.orderBy = sortData.order;
 };
 
 </script>
@@ -215,6 +234,21 @@ const handleSort = (sortData) => {
           @count-product="(product) => handleCountProduct(product, 'invoice')"
         />
       </VCol>
+
+      <VCol cols="12">
+        <SalesToCountTable
+          :products="salesProductsToCount"
+          :loading="salesProductsLoading"
+          :total-product="totalSalesProductsToCount"
+          :items-per-page="salesProductsOptions.itemsPerPage"
+          :page="salesProductsOptions.page"
+          mode="inventory"
+          title="Productos de Punto de Venta por Contar"
+          @update:options="updateSalesProductsTableOptions"
+          @count-product="(product) => handleCountProduct(product, 'sales')"
+        />
+      </VCol>
+
     </VRow>
 
     <InventoryCountDialog

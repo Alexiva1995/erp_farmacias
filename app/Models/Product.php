@@ -225,6 +225,12 @@ class Product extends Model
         return $this->hasMany(InvoiceCount::class);
     }
 
+
+    public function saleCounts()
+    {
+        return $this->hasMany(SaleCount::class);
+    }
+
     /**
      * Un producto puede estar asignado a muchos empleados.
      * Un empleado puede tener asignados muchos productos.

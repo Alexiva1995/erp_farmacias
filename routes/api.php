@@ -175,9 +175,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/cycle/{cycleId}', [InventoryCycleController::class, 'getCycleInfo']);
         Route::prefix('count')->group(function () {
             Route::get('/invoices/count', [InventoryCycleController::class, 'getInvoiceCount']);
+            Route::get('/sale/count', [InventoryCycleController::class, 'getSaleCount']);
             Route::post('/invoices/{countId}/process', [InventoryCycleController::class, 'processInvoiceCountAction']);
+            Route::post('/sale/{countId}/process', [InventoryCycleController::class, 'processSaleCountAction']);
             Route::post('/invoice-count/{productId}', [InventoryCycleController::class, 'storeInvoiceCount']);
+            Route::post('/sales-count/{productId}', [InventoryCycleController::class, 'storeSaleCount']);
             Route::get('/invoice-details-to-count', [InventoryCycleController::class, 'getInvoiceDetailsToCount']);
+            Route::get('/sales-details-to-count', [InventoryCycleController::class, 'getSaleDetailsToCount']);
             Route::get('/', [InventoryCycleController::class, 'getProductCount']);
             Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
             Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);

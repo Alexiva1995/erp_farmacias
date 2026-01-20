@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
+use App\Models\SaleCount;
 use App\Services\InventoryCycle\InventoryCycleQueryService;
 use App\Services\InventoryCycle\InventoryCycleActionService;
 use Exception;
@@ -401,6 +402,120 @@ class InventoryCycleController extends Controller
             return response()->json(['data' => $cycle]);
         } catch (Exception $e) {
             return response()->json(['message' => 'Error al obtener información del ciclo'], 500);
+        }
+    }
+
+     public function getSaleDetailsToCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getSalesDetailsToCountQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+     public function storeSaleCount(Request $request, $productId)
+    {
+        $allowWithoutBarcode = $request->boolean('allow_without_barcode');
+        
+        $validationRules = [
+            'counted_quantity' => 'required|numeric|min:0',
+            'system_quantity' => 'required|numeric|min:0',
+            'discrepancy' => 'required|numeric'
+        ];
+
+        // Solo requerir barcode si no se permite sin código de barras
+        if (!$allowWithoutBarcode) {
+            $validationRules['barcode'] = 'required|string';
+        }
+
+        $request->validate($validationRules);
+
+        try {
+            $data = $request->all();
+            $data['allow_without_barcode'] = $allowWithoutBarcode;
+            
+            $result = $this->inventoryCycleActionService->createSaleCount($productId, $data);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'data' => $result['data']
+                ], 201);
+            } else {
+                $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], $statusCode);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de validación incorrectos.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error en controlador al registrar conteo de venta', [
+                'product_id' => $productId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor.'
+            ], 500);
+        }
+    }
+    
+    public function getSaleCount(Request $request)
+    {
+        $query = $this->inventoryCycleQueryService->getSaleCountFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+    }
+
+
+     public function processSaleCountAction(Request $request, $countId)
+    {
+        $request->validate([
+            'action' => 'required|in:approve,reject',
+            'corrected_quantity' => 'nullable|numeric',
+            'updated_lots' => 'nullable|array',
+            'updated_lots.*.id' => 'required_with:updated_lots|integer|exists:product_lots,id',
+            'updated_lots.*.quantity' => 'required_with:updated_lots|integer|min:0',
+            'new_lots' => 'nullable|array',
+            'new_lots.*.lot_number' => 'required_with:new_lots|string|max:255',
+            'new_lots.*.expiration_date' => 'required_with:new_lots|date',
+            'new_lots.*.quantity' => 'required_with:new_lots|integer|min:0',
+        ]);
+
+        try {
+            $saleCount = SaleCount::findOrFail($countId);
+            $action = $request->input('action');
+            $data = $request->only(['corrected_quantity', 'updated_lots', 'new_lots']);
+
+            $result = $this->inventoryCycleActionService->processSaleCountAction($saleCount, $action, $data);
+
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => $result['message'], 'data' => $result['data']], 200);
+            } else {
+                return response()->json(['success' => false, 'message' => $result['message']], 400);
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Registro de conteo de punto de venta no encontrado.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Error en processSaleCountAction', ['countId' => $countId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error interno del servidor.'], 500);
         }
     }
 }

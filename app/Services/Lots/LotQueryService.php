@@ -42,7 +42,7 @@ class LotQueryService
                 } else {
                     // Búsqueda normal: permite coincidencias parciales
                     $words = explode(' ', trim($searchTerm));
-                    $q->where(function ($wordClauses) use ($words) {
+                    $q->where(function ($wordClauses) use ($words, $searchTerm) {
                         foreach ($words as $word) {
                             $word = trim($word);
                             if (empty($word)) continue;

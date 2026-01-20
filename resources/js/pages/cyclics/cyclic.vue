@@ -4,6 +4,7 @@ import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue"
 import InventoryCycleFilters from "@/components/InventoryCycleFilters.vue";
 import InvoiceCyclicTable from "@/components/InvoiceCyclicTable.vue";
 import ProductCyclicTable from "@/components/ProductCyclicTable.vue";
+import SaleCyclicTable from "@/components/SaleCyclicTable.vue";
 import { useCyclicTable } from "@/composables/useCyclicTable";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -50,6 +51,23 @@ const {
   handleCorrectionProcessed: handleInvoiceCorrection,
   handleLotsDistributed: handleInvoiceLots,
 } = useCyclicTable("inventory/count/invoices", filters);
+
+const {
+  items: saleCounts,
+  totalItems: totalSaleCount,
+  loading: saleLoading,
+  options: saleOptions,
+  updateTableOptions: updateSaleOptions,
+  showCorrectionModal: showSaleCorrectionModal,
+  selectedItemForCorrection: saleForCorrection,
+  showLotDistributionModal: showSaleLotModal,
+  itemForLotDistribution: saleForLotDistribution,
+  targetQuantityForDistribution: saleTargetQuantity,
+  handleApproveItem: handleApproveSale,
+  handleRejectItem: handleRejectSale,
+  handleCorrectionProcessed: handleSaleCorrection,
+  handleLotsDistributed: handleSaleLots,
+} = useCyclicTable("inventory/count/sale", filters);
 
 const laboratories = ref([]);
 const isLoadingFilters = ref(false);
@@ -128,6 +146,19 @@ const handleExport = async (format) => {
           @reject-product="handleRejectInvoice"
         />
       </VCol>
+
+      <VCol cols="12">
+        <SaleCyclicTable
+          :products="saleCounts"
+          :loading="saleLoading"
+          :total-product="totalSaleCount"
+          :items-per-page="saleOptions.itemsPerPage"
+          :page="saleOptions.page"
+          @update:options="updateSaleOptions"
+          @approve-product="handleApproveSale"
+          @reject-product="handleRejectSale"
+        />
+      </VCol>
     </VRow>
 
     <InventoryCorrectionModal
@@ -154,6 +185,19 @@ const handleExport = async (format) => {
       :lots="invoiceForLotDistribution?.lots || []"
       :target-quantity="invoiceTargetQuantity || 0"
       @save="handleInvoiceLots"
+    />
+
+    <InventoryCorrectionModal
+      v-model="showSaleCorrectionModal"
+      :product="saleForCorrection"
+      @correction-processed="handleSaleCorrection"
+    />
+    <LotDistributionModal
+      v-model="showSaleLotModal"
+      :product-name="saleForLotDistribution?.name || 'Producto'"
+      :lots="saleForLotDistribution?.lots || []"
+      :target-quantity="saleTargetQuantity || 0"
+      @save="handleSaleLots"
     />
   </div>
 </template>
