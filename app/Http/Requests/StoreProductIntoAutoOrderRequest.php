@@ -14,6 +14,7 @@ class StoreProductIntoAutoOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            "productId" => "required|exists:product_suppliers,id",
             "quantity" => [
                 "required",
                 "integer",
@@ -36,6 +37,7 @@ class StoreProductIntoAutoOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
+            "productId.required" => "El producto del proveedor es obligatorio.",
             "quantity.required" => "Debe indicar la cantidad a solicitar",
             "quantity.integer" => "Debe indicar un dígito",
             "quantity.min" => "La cantidad mínima es 1",

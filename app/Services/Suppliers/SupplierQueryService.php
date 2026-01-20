@@ -232,7 +232,7 @@ class SupplierQueryService
                             ]);
                             // Eliminar del mapa para no procesarlo como nuevo
                             unset($ftpProductsMap[$productId]);
-                        }
+                        //}
                     }
                 }
 
@@ -491,19 +491,58 @@ class SupplierQueryService
     public function addProductToOrder(StoreProductIntoautoOrderRequest $request)
     {
         $productId = $request->productId;
+        $mainProductId = $request->main_product_id;
         $quantity = $request->quantity;
         $discount = $request->boolean("discount");
         $product = ProductSupplier::find($productId);
+        $mainProduct = Product::find($mainProductId);
 
-        $order = AutoOrder::orderByDesc("created_at")
+        $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
+        if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
+            $mainProduct->update([
+                'barcode' => $product->barcode_match
+            ]);
+        }
+
+        $order = AutoOrder::where('supplier_id', $product->supplier_id)
             ->whereDate("created_at", now()->today())
+            ->orderByDesc("created_at")
             ->first();
 
         $unitCost = $discount ? $product->unit_cost_usd_with_discount : $product->unit_cost_usd;
         $subtotal = $unitCost * $quantity;
 
-        if (isset($order)) {
+        $detailPayload = [
+        "product_id" => $mainProduct ? $mainProduct->id : null,
+        "product_suppliers_id" => $productId,
+        "quantity" => $quantity,
+        "unit_cost" => $unitCost,
+        "subtotal" => $subtotal
+    ];
+
+
+    if (isset($order)) {
+        $order->details()->create($detailPayload);
+
+        $order->increment("total_items", 1);
+        $order->increment("total_quantity", $quantity);
+        $order->increment("total_amount", $subtotal);
+    } else {
+        $payload = [
+            "supplier_id" => $product->supplier_id,
+            "order_date" => now()->today(),
+            "total_items" => 1,
+            "total_quantity" => $quantity,
+            "total_amount" => $subtotal,
+        ];
+        $order = AutoOrder::create($payload);
+        $order->details()->create($detailPayload);
+    }
+    
+
+      /*  if (isset($order)) {
             $order->details()->create([
+                "product_id" => $mainProduct->id,
                 "product_suppliers_id" => $productId,
                 "quantity" => $quantity,
                 "unit_cost" => $unitCost,
@@ -524,13 +563,17 @@ class SupplierQueryService
             $order = AutoOrder::create($payload);
 
             $order->details()->create([
+                "product_id" => $mainProduct->id,
                 "product_suppliers_id" => $productId,
                 "quantity" => $quantity,
                 "unit_cost" => $unitCost,
                 "subtotal" => $subtotal
             ]);
-        }
+        }*/
 
+        if ($mainProduct) {
+            $mainProduct->update(['is_ordered' => false]);
+        }
         $product->decrement("quantity", $quantity);
 
         return true;

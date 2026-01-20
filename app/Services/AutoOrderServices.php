@@ -66,9 +66,16 @@ class AutoOrderServices implements AutoOrder
 
     public function getMarkedProductsWithoutSupplier(int $perPage = 10, string $sortBy = 'id', string $order = 'desc')
     {
-        return Product::where('is_ordered', true)
-            ->orderBy($sortBy, $order)
-            ->with('laboratory:id,name')
-            ->paginate($perPage);
+        return Product::select([
+            'products.*', 
+            // Subconsulta para sumar la cantidad total en todos los lotes del producto
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) 
+                      FROM product_lots 
+                      WHERE product_id = products.id) AS lote_quantity')
+        ])
+        ->where('is_ordered', true)
+        ->with('laboratory:id,name')
+        ->orderBy($sortBy, $order)
+        ->paginate($perPage);
     }
 }
