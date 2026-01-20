@@ -455,12 +455,13 @@ const fetchInvoiceDetails = async id => {
     const response = await axios.get(`/invoices/${id}/details`)
     const combinedDetailsFromApi = response.data.data ?? []
 
-    invoiceDetails.value = combinedDetailsFromApi.map(detail => {
+    invoiceDetails.value = combinedDetailsFromApi.map((detail, index) => {
       return {
         ...detail,
         tax_enabled: !!detail.tax_enabled,
         is_return: !!detail.is_return,
         manual_return_override: !!detail.manual_return_override || false,
+        display_order: detail.display_order ?? index,
       }
     })
   } catch (error) {
@@ -482,7 +483,7 @@ const handleSaveProgress = async () => {
     },
     details: invoiceDetails.value
       .filter(d => d.product && d.product.id)
-      .map(d => ({
+      .map((d, index) => ({
         product: { id: d.product.id },
         quantity: d.quantity,
         unit_cost: d.unit_cost,
@@ -491,6 +492,7 @@ const handleSaveProgress = async () => {
         location: d.location,
         tax_enabled: d.tax_enabled,
         is_return: !!d.is_return,
+        display_order: d.display_order ?? index,
       })),
   }
 
@@ -650,6 +652,7 @@ const addProductToInvoice = product => {
       tax_enabled: invoiceHasIva.value ? !!product.iva : false,
       is_return: false,
       manual_return_override: false,
+      display_order: invoiceDetails.value.length,
     }
 
     invoiceDetails.value.push(newDetail)
@@ -964,6 +967,80 @@ const invoiceHasIva = computed(() => {
   
   return taxableBase > 0 || taxAmount > 0
 })
+
+const moveItemUp = item => {
+  if (!isEditableMode.value || !isEditMode.value) return
+  
+  const index = invoiceDetails.value.findIndex(d => d.id === item.id)
+  if (index > 0) {
+    const temp = invoiceDetails.value[index]
+
+    invoiceDetails.value[index] = invoiceDetails.value[index - 1]
+    invoiceDetails.value[index - 1] = temp
+    
+    // Actualizar display_order
+    invoiceDetails.value.forEach((detail, idx) => {
+      detail.display_order = idx
+    })
+  }
+}
+
+const moveItemDown = item => {
+  if (!isEditableMode.value || !isEditMode.value) return
+  
+  const index = invoiceDetails.value.findIndex(d => d.id === item.id)
+  if (index < invoiceDetails.value.length - 1) {
+    const temp = invoiceDetails.value[index]
+
+    invoiceDetails.value[index] = invoiceDetails.value[index + 1]
+    invoiceDetails.value[index + 1] = temp
+    
+    // Actualizar display_order
+    invoiceDetails.value.forEach((detail, idx) => {
+      detail.display_order = idx
+    })
+  }
+}
+
+const draggedItem = ref(null)
+const draggedOverItem = ref(null)
+
+const handleDragStart = item => {
+  if (!isEditableMode.value || !isEditMode.value) return
+  draggedItem.value = item
+}
+
+const handleDragOver = (event, item) => {
+  if (!isEditableMode.value || !isEditMode.value) return
+  event.preventDefault()
+  draggedOverItem.value = item
+}
+
+const handleDrop = item => {
+  if (!isEditableMode.value || !isEditMode.value || !draggedItem.value) return
+  
+  const draggedIndex = invoiceDetails.value.findIndex(d => d.id === draggedItem.value.id)
+  const dropIndex = invoiceDetails.value.findIndex(d => d.id === item.id)
+  
+  if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== dropIndex) {
+    const [removed] = invoiceDetails.value.splice(draggedIndex, 1)
+
+    invoiceDetails.value.splice(dropIndex, 0, removed)
+    
+    // Actualizar display_order
+    invoiceDetails.value.forEach((detail, idx) => {
+      detail.display_order = idx
+    })
+  }
+  
+  draggedItem.value = null
+  draggedOverItem.value = null
+}
+
+const handleDragEnd = () => {
+  draggedItem.value = null
+  draggedOverItem.value = null
+}
 
 const handleFinalizeInvoice = async () => {
   if (isTotalMismatch.value) {
@@ -1320,9 +1397,18 @@ const detailsHeaders = computed(() => {
               :hide-default-footer="true"
               :items-per-page="-1"
               class="invoice-products-table"
+              :item-class="(item) => isEditableMode && isEditMode ? 'draggable-row' : ''"
             >
               <template #item.product_name_with_tax="{ item }">
-                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
+                <div
+                  :class="{
+                    'near-expiration-row': isNearExpiration(item),
+                    'draggable-row': isEditableMode && isEditMode,
+                    'drag-over': draggedOverItem?.id === item.id
+                  }"
+                  @dragover="handleDragOver($event, item)"
+                  @drop="handleDrop(item)"
+                >
                   <span :class="{ 'returned-item': isItemReturned(item) }">
                     {{ item.product_name_with_tax }}
                     <span class="text-sm text-disabled">{{
@@ -1537,8 +1623,56 @@ const detailsHeaders = computed(() => {
                   </div>
                   <div
                     v-else
-                    class="d-flex align-center"
+                    class="d-flex align-center ga-1"
                   >
+                    <div class="d-flex flex-column ga-0">
+                      <VTooltip text="Mover arriba">
+                        <template #activator="{ props }">
+                          <IconBtn
+                            v-bind="props"
+                            :disabled="invoiceDetails.findIndex(d => d.id === item.id) === 0"
+                            size="small"
+                            @click="moveItemUp(item)"
+                          >
+                            <VIcon
+                              icon="tabler-arrow-up"
+                              size="16"
+                            />
+                          </IconBtn>
+                        </template>
+                      </VTooltip>
+                      <VTooltip text="Mover abajo">
+                        <template #activator="{ props }">
+                          <IconBtn
+                            v-bind="props"
+                            :disabled="invoiceDetails.findIndex(d => d.id === item.id) === invoiceDetails.length - 1"
+                            size="small"
+                            @click="moveItemDown(item)"
+                          >
+                            <VIcon
+                              icon="tabler-arrow-down"
+                              size="16"
+                            />
+                          </IconBtn>
+                        </template>
+                      </VTooltip>
+                    </div>
+                    <VTooltip text="Arrastrar para reordenar">
+                      <template #activator="{ props }">
+                        <IconBtn
+                          v-bind="props"
+                          class="drag-handle"
+                          draggable="true"
+                          @dragstart="handleDragStart(item)"
+                          @dragend="handleDragEnd"
+                        >
+                          <VIcon
+                            icon="tabler-grip-vertical"
+                            size="18"
+                          />
+                        </IconBtn>
+                      </template>
+                    </VTooltip>
                     <VTooltip text="Marcar para Devolución">
                       <template #activator="{ props }">
                         <IconBtn
@@ -1981,5 +2115,27 @@ const detailsHeaders = computed(() => {
   .text-caption {
     color: rgba(var(--v-theme-warning), 0.8) !important;
   }
+}
+
+.draggable-row {
+  cursor: move;
+  transition: background-color 0.2s ease;
+}
+
+.draggable-row:hover {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.drag-over {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+  border-top: 2px solid rgb(var(--v-theme-primary));
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 </style>

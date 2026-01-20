@@ -157,7 +157,7 @@ class InvoiceActionService
                 throw new Exception("La tasa de cambio para la moneda {$currency} debe ser mayor a 0.");
             }
 
-            foreach ($data['details'] as $detail) {
+            foreach ($data['details'] as $index => $detail) {
                 if ($detail['quantity'] <= 0) {
                     continue;
                 }
@@ -166,6 +166,7 @@ class InvoiceActionService
                 $quantity = (int) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
+                $displayOrder = isset($detail['display_order']) ? (int) $detail['display_order'] : $index;
 
                 $autoOrderDetail = $autoOrderDetailMapping[$productId] ?? null;
                 $autoOrderDetailId = $autoOrderDetail ? $autoOrderDetail->id : null;
@@ -207,6 +208,7 @@ class InvoiceActionService
                         'tax_enabled' => $taxEnabled,
                         'auto_order_details_id' => $autoOrderDetailId,
                         'supplier_discount_percentage' => $discountPercentage,
+                        'display_order' => $displayOrder,
                     ]);
 
                     if ($autoOrderDetailId) {

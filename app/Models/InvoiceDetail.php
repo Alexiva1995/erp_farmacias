@@ -19,7 +19,8 @@ class InvoiceDetail extends Model
         'total_cost',
         'location',
         'tax_enabled',
-        'auto_order_details_id'
+        'auto_order_details_id',
+        'display_order'
     ];
 
     public const FILLABLEDETAILS = [

@@ -175,6 +175,8 @@ const formattedDateAndFullTime = computed(() => {
   font-size: var(--thermal-font-size) !important;
   line-height: var(--thermal-line-height) !important;
   box-sizing: border-box !important;
+  font-weight: 900 !important;
+  color: #000 !important;
 }
 
 .thermal-print * {
@@ -184,6 +186,10 @@ const formattedDateAndFullTime = computed(() => {
   overflow-wrap: break-word !important;
   margin: 0 !important;
   padding: 0 !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-header {
@@ -200,21 +206,31 @@ const formattedDateAndFullTime = computed(() => {
 
 .thermal-rif {
   font-size: 8px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin: 1mm 0 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-company-name {
   font-size: 8px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin: 1mm 0 !important;
   line-height: 1.1 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-address {
   font-size: 7px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin: 0.5mm 0 !important;
   line-height: 1.1 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-quotation-header {
@@ -227,19 +243,30 @@ const formattedDateAndFullTime = computed(() => {
 
 .thermal-quotation-number {
   font-size: 9px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-date {
   font-size: 8px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   text-align: right !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-cashier {
   display: flex !important;
   justify-content: space-between !important;
   font-size: 8px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin-bottom: 1mm !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-items {
@@ -256,32 +283,49 @@ const formattedDateAndFullTime = computed(() => {
 .thermal-item-qty {
   flex: 0 0 8mm !important;
   font-size: 8px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-details {
   flex: 1 !important;
   padding: 0 1mm !important;
   font-size: 7px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   line-height: 1.1 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-price {
   flex: 0 0 15mm !important;
   text-align: right !important;
   font-size: 8px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-name {
   display: block !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin-bottom: 0.5mm !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-laboratory {
   display: block !important;
   font-size: 6px !important;
-  color: #666 !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .thermal-total {
@@ -295,20 +339,30 @@ const formattedDateAndFullTime = computed(() => {
 
 .thermal-total-label {
   font-size: 9px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.15px #000 !important;
+  text-stroke: 0.15px #000 !important;
 }
 
 .thermal-total-amount {
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   text-align: right !important;
+  -webkit-text-stroke: 0.15px #000 !important;
+  text-stroke: 0.15px #000 !important;
 }
 
 .thermal-footer {
   text-align: center !important;
   font-size: 7px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
   margin-top: 3mm !important;
   padding-top: 2mm !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .text-center {
@@ -320,7 +374,10 @@ const formattedDateAndFullTime = computed(() => {
 }
 
 .font-bold {
-  font-weight: bold !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  -webkit-text-stroke: 0.1px #000 !important;
+  text-stroke: 0.1px #000 !important;
 }
 
 .mt-1 {

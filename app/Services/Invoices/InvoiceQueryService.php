@@ -72,10 +72,14 @@ class InvoiceQueryService
             'supplier.autoOrders.details.productSupplier.product.laboratory'
         ]);
 
-        $normalDetails = $invoice->details->map(function ($detail) {
-            $detail->is_return = false;
-            return $detail;
-        });
+        $normalDetails = $invoice->details()
+            ->orderBy('display_order', 'asc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(function ($detail) {
+                $detail->is_return = false;
+                return $detail;
+            });
 
         $returnDetails = $invoice->returns->map(function ($returnItem) {
             $unitCostUSD = ($returnItem->quantity > 0)
