@@ -104,6 +104,7 @@ const locations = [
   "I-013",
   "I-014",
   "I-015",
+  "I-016",
   "N-001",
   "D-001",
   "M-001",
@@ -1124,7 +1125,7 @@ const detailsHeaders = computed(() => {
       title: "Descripción",
       key: "product_name_with_tax",
       sortable: false,
-      width: "25%",
+      width: isEditMode.value ? "40%" : "30%",
     },
     {
       title: "N° Lote",
@@ -1140,13 +1141,7 @@ const detailsHeaders = computed(() => {
       sortable: false,
       width: "10%",
     },
-    {
-      title: "Localización",
-      key: "location",
-      align: "center",
-      sortable: false,
-      width: "10%",
-    },
+    // Location added conditionally below
     {
       title: "Unidades",
       key: "quantity",
@@ -1166,14 +1161,14 @@ const detailsHeaders = computed(() => {
       key: "tax_amount",
       align: "end",
       sortable: false,
-      width: "10%",
+      width: "8%",
     },
     {
       title: "Costo Total",
       key: "total_cost",
       align: "end",
       sortable: false,
-      width: "12%",
+      width: "9%",
     },
     {
       title: "Acciones",
@@ -1183,6 +1178,17 @@ const detailsHeaders = computed(() => {
       width: "5%",
     },
   ];
+
+  if (!isEditMode.value) {
+    // Insert Location after Expiration Date (index 2 + 1 = 3)
+    headers.splice(3, 0, {
+      title: "Localización",
+      key: "location",
+      align: "center",
+      sortable: false,
+      width: "10%",
+    });
+  }
 
   if (isLocationMode.value) {
     return headers.filter(
@@ -1455,6 +1461,7 @@ const detailsHeaders = computed(() => {
                     v-model="editedDetailData.expiration_date"
                     density="compact"
                     class="editable-cell"
+                    :config="{ allowInput: true }"
                     :placeholder="
                       item.is_return
                         ? 'F. Venc. (Devolución)'
@@ -1650,8 +1657,13 @@ const detailsHeaders = computed(() => {
                         <IconBtn
                           v-bind="props"
                           class="drag-handle"
+                          :class="{
+                            'drag-over': draggedOverItem?.id === item.id,
+                          }"
                           draggable="true"
                           @dragstart="handleDragStart(item)"
+                          @dragover.prevent="handleDragOver($event, item)"
+                          @drop="handleDrop(item)"
                           @dragend="handleDragEnd"
                         >
                           <VIcon icon="tabler-grip-vertical" size="18" />
