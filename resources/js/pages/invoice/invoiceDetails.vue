@@ -141,9 +141,11 @@ const processedInvoiceDetails = computed(() => {
     if (discount)
       discountPercentage = Number(discount.discount_percentage) || 0;
   } else if (isApprovalMode.value && selectedPaymentRuleId.value) {
-    const rule = props.paymentRules.find(
-      (r) => r.id === selectedPaymentRuleId.value,
-    );
+    const rules = Array.isArray(props.paymentRules)
+      ? props.paymentRules
+      : props.paymentRules?.payment_rules || [];
+
+    const rule = rules.find((r) => r.id === selectedPaymentRuleId.value);
 
     if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
   }
@@ -249,9 +251,11 @@ const totalWithDiscount = computed(() => {
     return invoice.value?.total_amount || 0;
   }
 
-  const rule = props.paymentRules.find(
-    (r) => r.id === selectedPaymentRuleId.value,
-  );
+  const rules = Array.isArray(props.paymentRules)
+    ? props.paymentRules
+    : props.paymentRules?.payment_rules || [];
+
+  const rule = rules.find((r) => r.id === selectedPaymentRuleId.value);
 
   if (!rule) {
     return invoice.value.total_amount;
