@@ -247,7 +247,7 @@ const hasAnyReference = computed(() => {
 </script>
 <template>
   <div style="width: 100%">
-    <VCard variant="outlined" class="pa-2 text-start">
+    <VCard variant="outlined" class="pa-2 text-start ticket-bold">
       <TicketHeader :logoSrc="logoSrc" />
 
       <table style="width: 100%; margin: 5px 0">

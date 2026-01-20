@@ -86,7 +86,7 @@ const formattedDateAndFullTime = computed(() => {
 
 <template>
   <div id="orderInvoicePrintArea">
-    <div class="thermal-print">
+    <div class="thermal-print ticket-bold">
       <div class="thermal-header">
         <img
           :src="logoSrc"

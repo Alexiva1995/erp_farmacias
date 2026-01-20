@@ -236,4 +236,11 @@
   .text-success {
     color: #28a745 !important;
   }
+
+  /* For POS tickets that must be fully bold/black */
+  .ticket-bold,
+  .ticket-bold * {
+    font-weight: bold !important;
+    color: #000 !important;
+  }
 }

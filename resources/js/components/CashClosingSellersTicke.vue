@@ -37,7 +37,7 @@ const groupedCashDataSellers = computed(() => {
 </script>
 
 <template>
-  <VCard variant="outlined" class="pa-2 text-start">
+  <VCard variant="outlined" class="pa-2 text-start ticket-bold">
     <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
 
     <div
