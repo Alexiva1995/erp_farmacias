@@ -73,6 +73,7 @@ class InvoiceQueryService
         ]);
 
         $normalDetails = $invoice->details()
+            ->with('product.laboratory')
             ->orderBy('display_order', 'asc')
             ->orderBy('id', 'asc')
             ->get()
@@ -100,6 +101,10 @@ class InvoiceQueryService
                 'is_return' => true,
             ];
         });
+
+
+        // LOGIC REMOVED: Auto-hydration from AutoOrder is now handled at creation time.
+        // This ensures that if a user deletes all products, they stay deleted.
 
         if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
             $autoOrderDetails = collect();

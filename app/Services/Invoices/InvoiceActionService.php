@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceActionService
 {
@@ -99,6 +100,8 @@ class InvoiceActionService
     }
     public function saveInvoiceDetails(Invoice $invoice, array $data): Invoice
     {
+        Log::info('Starts saveInvoiceDetails', ['invoice_id' => $invoice->id, 'details_count' => count($data['details'])]);
+
         if ($invoice->status !== 'pending') {
             throw new Exception("Solo se puede guardar el progreso en facturas con estado 'pendiente'.");
         }
@@ -112,7 +115,7 @@ class InvoiceActionService
             if ($generalDiscountId) {
                 $discountRecord = DB::table('supplier_discounts')
                     ->where('id', $generalDiscountId)
-                     ->first();
+                    ->first();
                 if ($discountRecord) {
                     $discountPercentage = (float) $discountRecord->discount_percentage;
                 }
@@ -171,7 +174,7 @@ class InvoiceActionService
                 $autoOrderDetail = $autoOrderDetailMapping[$productId] ?? null;
                 $autoOrderDetailId = $autoOrderDetail ? $autoOrderDetail->id : null;
 
-               // $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
+                // $totalCostInInvoiceCurrency = $quantity * $unitCostInInvoiceCurrency;
 
                 $subtotal = $quantity * $unitCostInInvoiceCurrency;
                 $discountAmount = $subtotal * ($discountPercentage / 100);
@@ -182,7 +185,7 @@ class InvoiceActionService
                 }*/
                 $totalCostInInvoiceCurrency = $taxEnabled ? $totalAfterDiscount * 1.16 : $totalAfterDiscount;
                 $totalCostInInvoiceCurrency = round($totalCostInInvoiceCurrency, 2);
-                
+
                 if (isset($detail['is_return']) && $detail['is_return'] === true) {
                     $refundAmount = $totalCostInInvoiceCurrency;
                     InvoiceReturn::create([
@@ -211,12 +214,14 @@ class InvoiceActionService
                         'display_order' => $displayOrder,
                     ]);
 
+                    Log::info('Detail created', ['product_id' => $productId, 'auto_order_detail_id' => $autoOrderDetailId]);
+
                     if ($autoOrderDetailId) {
                         $autoOrderDetailsToUpdate[$autoOrderDetailId] = $autoOrderDetailId;
                     }
                 }
             }
- 
+
             if (!empty($autoOrderDetailsToUpdate) && !empty($invoice->autoOrder)) {
                 DB::table('auto_order_details')
                     ->whereIn('id', array_values($autoOrderDetailsToUpdate))
@@ -290,7 +295,7 @@ class InvoiceActionService
             }
 
             $invoice->update($updateData);
-            
+
             // Crear movimientos de inventario cuando se aprueba la factura
             // Esto asegura que los movimientos estén anclados a la factura desde la aprobación
             \App\Observers\ProductObserver::handleInvoiceMovement($invoice->fresh());
@@ -415,15 +420,15 @@ class InvoiceActionService
 
                 if ($detail && $detail->invoice_id === $invoice->id) {
                     $detail->update(['location' => $detailData['location']]);
-                    
+
                     // Convertir unit_cost a USD antes de crear el lote
                     $unitCostInInvoiceCurrency = $detail->unit_cost;
-                    $unitCostInUSD = $invoice->currency === 'USD' 
-                        ? $unitCostInInvoiceCurrency 
+                    $unitCostInUSD = $invoice->currency === 'USD'
+                        ? $unitCostInInvoiceCurrency
                         : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
-                    
+
                     $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
-                    
+
                     // Actualizar el movimiento existente (creado al aprobar) con el product_lot_id
                     \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
                         ->where('product_id', $detail->product_id)
@@ -438,7 +443,7 @@ class InvoiceActionService
                 'status' => 'ordered',
                 'ordered_by' => Auth::id()
             ]);
-            
+
             return $invoice->fresh(['details.product', 'supplier']);
         });
     }
