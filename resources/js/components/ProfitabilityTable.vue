@@ -252,14 +252,13 @@ const calculateSalePriceWithIva = (product) => {
           {{
             item.profitability?.is_locked == "1"
               ? (
-                  parseFloat(item.sale_price) +
-                  parseFloat(item.sale_price) *
-                    (parseInt(item.profitability.profitability_percentage) /
-                      100)
+                  parseFloat(item.unit_cost) *
+                  (1 +
+                    parseInt(item.profitability.profitability_percentage) / 100)
                 ).toFixed(2)
               : (
-                  parseFloat(item.sale_price) +
-                  parseFloat(item.sale_price) * (parseInt(profitability) / 100)
+                  parseFloat(item.unit_cost) *
+                  (1 + parseInt(profitability) / 100)
                 ).toFixed(2)
           }}
         </span>
