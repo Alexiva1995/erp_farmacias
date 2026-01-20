@@ -5,6 +5,8 @@ namespace App\Services\Products;
 use App\Models\Product;
 use App\Models\ProfitabilitySetting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductActionService
 {
@@ -40,7 +42,8 @@ class ProductActionService
         if ($newPath) {
             $validatedData['photo_url'] = $newPath;
         }
-        $validatedData['sale_price'] = $validatedData['unit_cost'] + ((ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage / 100) * $validatedData['unit_cost']);
+        $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+        $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
         $product = Product::create($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
@@ -63,7 +66,13 @@ class ProductActionService
         } else {
             unset($validatedData['photo_url']);
         }
-        $validatedData['sale_price'] = $validatedData['unit_cost'] + ((ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage / 100) * $validatedData['unit_cost']);
+        if ($product->profitability && $product->profitability->is_locked) {
+            $percentage = $product->profitability->profitability_percentage;
+        } else {
+            $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+        }
+
+        $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
         $product->update($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);

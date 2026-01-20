@@ -84,7 +84,7 @@ const fetchProducts = async () => {
   };
   console.log(lockedValue.value);
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -127,7 +127,7 @@ const editProductProfitability = (
   profitability_id = null,
   percentage = 0,
   id_product,
-  is_locked = 1
+  is_locked = 1,
 ) => {
   editDialog.value = true;
   productProfitability.value = {
@@ -169,7 +169,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -184,7 +184,7 @@ watch(
   ],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 const handleSort = (sortOptions) => {
