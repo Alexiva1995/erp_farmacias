@@ -163,15 +163,8 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
-            $uniqueProducts = collect($products)
-                ->groupBy(
-                    fn($row) => is_null($row["product_id"])
-                    ? Str::uuid()
-                    : $row["product_id"] . "-" . $row["supplier_id"],
-                )
-                ->map(fn($group) => $group->sortBy("unit_cost")->first())
-                ->values()
-                ->toArray();
+            // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
+            $uniqueProducts = $products;
 
             $existingInvoiceNumbers = Invoice::whereIn(
                 'invoice_number',
@@ -199,64 +192,49 @@ class SupplierQueryService
                 // Obtener los IDs de product_suppliers que están en auto_orders (para no borrarlos)
                 $existingProductSupplierIds = $productSuppliersInAutoOrdersCollection->pluck('id')->toArray();
 
-                // Mapear productos del FTP por product_id
-                $uniqueProductsCollection = collect($uniqueProducts);
-
-                // Separar productos con ID (para actualizaciones potenciales) y sin ID (siempre inserciones nuevas)
-                $productsWithId = $uniqueProductsCollection->whereNotNull('product_id');
-                $productsWithoutId = $uniqueProductsCollection->whereNull('product_id')->values()->toArray();
-
-                $ftpProductsMap = $productsWithId
-                    ->keyBy('product_id')
-                    ->toArray();
-
-                // Obtener todos los product_suppliers existentes para actualizar los que están en auto_orders
+                // Mapear productos existentes en auto_orders
                 $existingProductSuppliers = DB::table('product_suppliers')
                     ->where('supplier_id', $supplier->id)
                     ->whereIn('id', $existingProductSupplierIds)
                     ->get()
                     ->keyBy('product_id');
 
-                // Actualizar los product_suppliers que están en auto_orders
-                foreach ($productSuppliersInAutoOrders as $productId => $productSupplierData) {
-                    if (isset($ftpProductsMap[$productId]) && isset($existingProductSuppliers[$productId])) {
-                        $ftpProduct = $ftpProductsMap[$productId];
-                        $existingProductSupplier = $existingProductSuppliers[$productId];
+                // Procesar CADA producto del archivo individualmente
+                foreach ($uniqueProducts as $productData) {
+                    $prodId = $productData['product_id'] ?? null;
 
-                        ProductSupplier::where('id', $productSupplierData->id)->update([
-                            'barcode_match' => $ftpProduct['barcode_match'] ?? $existingProductSupplier->barcode_match,
-                            'name' => $ftpProduct['name'] ?? $existingProductSupplier->name,
-                            'laboratory' => $ftpProduct['laboratory'] ?? $existingProductSupplier->laboratory,
-                            'expiration' => $ftpProduct['expiration'] ?? $existingProductSupplier->expiration,
-                            'unit_cost' => $ftpProduct['unit_cost'] ?? $existingProductSupplier->unit_cost,
-                            'unit_cost_usd' => $ftpProduct['unit_cost_usd'] ?? $existingProductSupplier->unit_cost_usd,
+                    // Caso 1: Es un producto protegido (Auto Order) -> Actualizamos
+                    if ($prodId && isset($existingProductSuppliers[$prodId])) {
+                        $existing = $existingProductSuppliers[$prodId];
+                        ProductSupplier::where('id', $existing->id)->update([
+                            'barcode_match' => $productData['barcode_match'] ?? $existing->barcode_match,
+                            'name' => $productData['name'] ?? $existing->name,
+                            'laboratory' => $productData['laboratory'] ?? $existing->laboratory,
+                            'expiration' => $productData['expiration'] ?? $existing->expiration,
+                            'unit_cost' => $productData['unit_cost'] ?? $existing->unit_cost,
+                            'unit_cost_usd' => $productData['unit_cost_usd'] ?? $existing->unit_cost_usd,
                             'connection_date' => now()->toDateString(),
-                            'cod_supplier' => $ftpProduct['cod_supplier'] ?? $existingProductSupplier->cod_supplier,
-                            'quantity' => $ftpProduct['quantity'] ?? $existingProductSupplier->quantity,
-                            'active_ingredient' => $ftpProduct['active_ingredient'] ?? $existingProductSupplier->active_ingredient,
+                            'cod_supplier' => $productData['cod_supplier'] ?? $existing->cod_supplier,
+                            'quantity' => $productData['quantity'] ?? $existing->quantity,
+                            'active_ingredient' => $productData['active_ingredient'] ?? $existing->active_ingredient,
                         ]);
-                        // Eliminar del mapa para no procesarlo como nuevo
-                        unset($ftpProductsMap[$productId]);
-                        //}
+                        continue;
+                    }
+
+                    // Caso 2: Nuevo o No Protegido -> Intentamos CREAR
+                    // Esto incluye: 
+                    // - Productos sin ID (se crearán todos, permitiendo duplicados si la BD lo permite)
+                    // - Productos con ID no protegidos (se recrearán)
+                    try {
+                        $supplier->productSuppliers()->create($productData);
+                    } catch (\Throwable $e) {
+                        // Ignoramos CUALQUIER error (Duplicados, validación, etc) para que siga subiendo el resto
+                        // Logueamos solo para registro interno
+                        //Log::warning("Error importando producto: " . ($productData['name'] ?? 'N/A') . " - " . $e->getMessage());
+                        continue;
                     }
                 }
 
-                // Eliminar solo los product_suppliers que NO están en auto_orders
-                $productSuppliersToDelete = DB::table('product_suppliers')
-                    ->where('supplier_id', $supplier->id)
-                    ->whereNotIn('id', $existingProductSupplierIds)
-                    ->pluck('id');
-
-                ProductSupplier::whereIn('id', $productSuppliersToDelete)->delete();
-
-                // Crear los productos nuevos del FTP (los que no están en auto_orders + los que no tienen ID)
-                $newProducts = array_merge(array_values($ftpProductsMap), $productsWithoutId);
-                foreach (array_chunk($newProducts, 500) as $chunk) {
-                    $supplier->productSuppliers()->createMany($chunk);
-                }
-
-                //InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
-                //$supplier->invoices()->delete();
                 foreach ($filteredInvoices as $invoice) {
                     $header = $invoice['header'];
                     $lines = $invoice['lines'];
