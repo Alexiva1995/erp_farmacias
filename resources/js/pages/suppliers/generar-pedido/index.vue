@@ -385,7 +385,7 @@ async function realizarCompra(){
       // Abrir nueva pestaña con la vista de productos sin proveedor
       const productosEncoded = encodeURIComponent(JSON.stringify(productosSinPorveedor))
       const url = `${window.location.origin}/suppliers/products-without-supplier?productos=${productosEncoded}`
-      window.open(url, '_blank')
+      //window.open(url, '_blank');
     }
 
     module.loadingApp=false
