@@ -617,6 +617,10 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("is_ordered", $filtros)) {
+            $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
+        }
+
         if (array_key_exists("hasStock", $filtros)) {
             if ($filtros["hasStock"] == true) {
                 $consulta->having("lote_quantity", ">", 0);
@@ -625,7 +629,7 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
 
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("solicitar", ">", 0);
@@ -654,7 +658,6 @@ class ProductRepository
 
     public function filtrarProductforIaOrderAssistantTypeSalesWithoutPaginate($filtros): Collection
     {
-
         $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
 
         return $consulta->get();
@@ -662,7 +665,6 @@ class ProductRepository
 
     public function filtrarProductforIaOrderAssistantTypeSalesWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
-
         $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
 
         return $consulta->paginate($perPage);
@@ -670,7 +672,6 @@ class ProductRepository
 
     public function filtrarProductforIaOrderAssistantTypeSalesToArray($filtros): array
     {
-
         $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
 
         return $consulta->get()->toArray();
@@ -819,6 +820,10 @@ class ProductRepository
             } else if ($filtros["is_colombia"] == false) {
                 $consulta->where("is_colombian_origin", "=", 0);
             }
+        }
+
+        if (array_key_exists("is_ordered", $filtros)) {
+            $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
         }
 
         if (array_key_exists("product", $filtros)) {
@@ -989,6 +994,10 @@ class ProductRepository
             } else if ($filtros["is_colombia"] == false) {
                 $consulta->where("is_colombian_origin", "=", 0);
             }
+        } 
+
+        if (array_key_exists("is_ordered", $filtros)) {
+            $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
         }
 
         if (array_key_exists("product", $filtros)) {
@@ -1059,7 +1068,6 @@ class ProductRepository
 
     public function filtrarIndividualProductForAssistantReportTypeSalesToArray($filtros): array
     {
-
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
 
         return $consulta->get()->toArray();
