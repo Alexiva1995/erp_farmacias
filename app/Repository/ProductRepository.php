@@ -486,6 +486,7 @@ class ProductRepository
             "unit_cost",
             "psychotropic",
             "is_colombian_origin",
+            "is_ordered",
             "active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
@@ -696,6 +697,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            "is_ordered",
             "sales_average",
             "sale_price",
             "unit_cost",
@@ -886,6 +888,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            "is_ordered",
             "sales_average",
             "sale_price",
             "unit_cost",

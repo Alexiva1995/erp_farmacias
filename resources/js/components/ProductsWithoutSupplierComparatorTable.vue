@@ -12,7 +12,7 @@ const props = defineProps({
   modelValue: { type: Object, default: null }
 });
 
-const emit = defineEmits(['update:options','select-product', 'update:modelValue']);
+const emit = defineEmits(['update:options','select-product', 'update:modelValue', 'delete',]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
@@ -53,6 +53,7 @@ const headers = [
         ? parseFloat(item.solicitar).toFixed(2)
         : 0,
   },
+  { title: "Acción", key: "actions", sortable: false },
 ];
 
 const onRowClick = (event, { item }) => {
@@ -98,6 +99,14 @@ const onRowClick = (event, { item }) => {
         <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
           >{{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}</span
         >
+      </template>
+      
+      <template #item.actions="{ item }">
+        <div class="d-flex gap-2">
+             <IconBtn @click="emit('delete', item)">
+              <VIcon icon="tabler-trash" />
+            </IconBtn>
+        </div>
       </template>
     </VDataTableServer>
   </VCard>

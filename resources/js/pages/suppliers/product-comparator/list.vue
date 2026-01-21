@@ -580,6 +580,22 @@ const handleDeleteSupplierProducts = async (supplier) => {
   }
 };
 
+
+const handleToggleOrder = async (product) => {
+  try {
+    const { data } = await axios.patch(`/suppliers/${product.id}/toggle-order`);
+
+    if (data.status === "success") {
+      toast.success(data.message || "Estado actualizado correctamente");
+      fetchProductsWithoutSupplier();
+    }
+
+  } catch (error) {
+    toast.error("No se pudieron borrar el productos de la lista.");
+  }
+};
+
+
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;
   itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
@@ -705,6 +721,7 @@ const updateProductsWithoutSupplierOptions = (options) => {
             :page="pageProductsWithoutSupplier"
             @update:options="updateProductsWithoutSupplierOptions"
             @select-product="handleSelectProductFromTop"
+            @delete="handleToggleOrder"
           />
         
       </VTabsWindowItem>
