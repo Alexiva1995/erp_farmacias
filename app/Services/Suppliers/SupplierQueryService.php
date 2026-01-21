@@ -184,20 +184,29 @@ class SupplierQueryService
 
                 // Procesar CADA producto del archivo individualmente
                 // SIEMPRE crear nuevos registros, NUNCA actualizar ni eliminar existentes
+                // Usar insertOrIgnore para evitar errores de restricción única
                 foreach ($uniqueProducts as $productData) {
-                    try {
-                        // Asegurar que supplier_id esté presente
-                        if (!isset($productData['supplier_id'])) {
-                            $productData['supplier_id'] = $supplier->id;
-                        }
-                        
-                        // Crear NUEVO registro siempre, ignorando duplicados o errores de validación
-                        $supplier->productSuppliers()->create($productData);
-                    } catch (\Throwable $e) {
-                        // Ignorar CUALQUIER error (duplicados, restricción única, validación, etc)
-                        // para que continúe procesando el resto de productos
-                        continue;
+                    // Asegurar que supplier_id esté presente
+                    if (!isset($productData['supplier_id'])) {
+                        $productData['supplier_id'] = $supplier->id;
                     }
+                    
+                    // Asegurar que connection_date esté presente
+                    if (!isset($productData['connection_date'])) {
+                        $productData['connection_date'] = now()->toDateString();
+                    }
+                    
+                    // Asegurar que created_at y updated_at estén presentes
+                    if (!isset($productData['created_at'])) {
+                        $productData['created_at'] = now();
+                    }
+                    if (!isset($productData['updated_at'])) {
+                        $productData['updated_at'] = now();
+                    }
+                    
+                    // Usar insertOrIgnore para insertar ignorando restricción única
+                    // Esto permite insertar todos los productos sin errores de duplicados
+                    DB::table('product_suppliers')->insertOrIgnore($productData);
                 }
 
                 foreach ($filteredInvoices as $invoice) {
