@@ -1,8 +1,9 @@
 <script setup>
+import axiosInstance from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -87,6 +88,8 @@ const emit = defineEmits([
   "search-client",
   "clean-post-save",
 ]);
+
+const lastNumber = ref(null);
 
 const removeQuotationProduct = (productId) => {
   emit("remove-quotation-product", productId);
@@ -270,12 +273,30 @@ const handleCopyWhatsappMessage = async () => {
   }
 };
 const chipColor = "primary";
+
+const fetchLastQuotationNumber = async () => {
+  try {
+    const { data } = await axiosInstance.get("/tpv/quotations/last-number");
+
+    lastNumber.value = data.quotation_id + 1;
+  } catch (error) {
+    lastNumber.value = 1;
+    console.error(error);
+  }
+};
+
+onMounted(() => {
+  fetchLastQuotationNumber();
+});
 </script>
 
 <template>
   <VCard min-height="280" class="d-flex flex-column">
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
+        <VCol cols="12">
+          <h3>Cotización #{{ lastNumber }}</h3>
+        </VCol>
         <VCol cols="12" sm="12" md="12">
           <div class="d-flex align-center gap-4 flex-wrap">
             <AppTextField

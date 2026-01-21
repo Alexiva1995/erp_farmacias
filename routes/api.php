@@ -208,6 +208,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/quotation/{product}", [QuotationController::class, "show"]);
         Route::post("/quotations", [QuotationController::class, "store"]);
         Route::get("/quotations/{quotationId}/products", [QuotationController::class, "showProducts"]);
+        Route::get("/quotations/last-number", [QuotationController::class, "getLastNumber"]);
         Route::get("/order", [OrderController::class, "index"]);
         Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
         Route::post('/orders', [OrderController::class, 'store']);

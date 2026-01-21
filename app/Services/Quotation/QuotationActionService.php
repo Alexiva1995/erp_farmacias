@@ -72,4 +72,10 @@ class QuotationActionService
         $quotation = Quotation::with('products')->find($quotationId);
         return $quotation;
     }
+
+    public function getLastNumber(): ?Quotation
+    {
+        $quotation = Quotation::latest('id')->first();
+        return $quotation;
+    }
 }
