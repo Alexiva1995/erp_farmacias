@@ -251,8 +251,25 @@ class SupplierQueryService
 
                 // Crear los productos nuevos del FTP (los que no están en auto_orders + los que no tienen ID)
                 $newProducts = array_merge(array_values($ftpProductsMap), $productsWithoutId);
-                foreach (array_chunk($newProducts, 500) as $chunk) {
-                    $supplier->productSuppliers()->createMany($chunk);
+
+                foreach ($newProducts as $productData) {
+                    try {
+                        ProductSupplier::updateOrCreate(
+                            [
+                                'supplier_id' => $supplier->id,
+                                'cod_supplier' => $productData['cod_supplier'] ?? null,
+                                'product_id' => $productData['product_id'] ?? null,
+                            ],
+                            $productData
+                        );
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Si el error es de duplicado (23000), lo logueamos y seguimos con el siguiente
+                        if ($e->getCode() == 23000) {
+                            Log::warning("Producto duplicado ignorado en el servidor: " . ($productData['cod_supplier'] ?? 'Sin código'));
+                            continue;
+                        }
+                        throw $e;
+                    }
                 }
 
                 //InvoiceDetail::whereIn("invoice_id", $supplier->invoices()->pluck("id"))->delete();
