@@ -178,59 +178,24 @@ class SupplierQueryService
                 })->values()->toArray();
 
             DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices) {
-                // Identificar product_suppliers que están en auto_orders (NO borrarlos)
-                // Mapear por product_id para facilitar la búsqueda
-                $productSuppliersInAutoOrdersCollection = DB::table('product_suppliers')
-                    ->join('auto_order_details', 'product_suppliers.id', '=', 'auto_order_details.product_suppliers_id')
-                    ->where('product_suppliers.supplier_id', $supplier->id)
-                    ->select('product_suppliers.id', 'product_suppliers.product_id')
-                    ->distinct()
-                    ->get();
-
-                $productSuppliersInAutoOrders = $productSuppliersInAutoOrdersCollection->keyBy('product_id');
-
-                // Obtener los IDs de product_suppliers que están en auto_orders (para no borrarlos)
-                $existingProductSupplierIds = $productSuppliersInAutoOrdersCollection->pluck('id')->toArray();
-
-                // Mapear productos existentes en auto_orders
-                $existingProductSuppliers = DB::table('product_suppliers')
-                    ->where('supplier_id', $supplier->id)
-                    ->whereIn('id', $existingProductSupplierIds)
-                    ->get()
-                    ->keyBy('product_id');
+                // NO eliminar ningún producto existente
+                // NO actualizar ningún producto existente
+                // SOLO crear nuevos registros con todos los productos del archivo
 
                 // Procesar CADA producto del archivo individualmente
+                // SIEMPRE crear nuevos registros, NUNCA actualizar ni eliminar existentes
                 foreach ($uniqueProducts as $productData) {
-                    $prodId = $productData['product_id'] ?? null;
-
-                    // Caso 1: Es un producto protegido (Auto Order) -> Actualizamos
-                    if ($prodId && isset($existingProductSuppliers[$prodId])) {
-                        $existing = $existingProductSuppliers[$prodId];
-                        ProductSupplier::where('id', $existing->id)->update([
-                            'barcode_match' => $productData['barcode_match'] ?? $existing->barcode_match,
-                            'name' => $productData['name'] ?? $existing->name,
-                            'laboratory' => $productData['laboratory'] ?? $existing->laboratory,
-                            'expiration' => $productData['expiration'] ?? $existing->expiration,
-                            'unit_cost' => $productData['unit_cost'] ?? $existing->unit_cost,
-                            'unit_cost_usd' => $productData['unit_cost_usd'] ?? $existing->unit_cost_usd,
-                            'connection_date' => now()->toDateString(),
-                            'cod_supplier' => $productData['cod_supplier'] ?? $existing->cod_supplier,
-                            'quantity' => $productData['quantity'] ?? $existing->quantity,
-                            'active_ingredient' => $productData['active_ingredient'] ?? $existing->active_ingredient,
-                        ]);
-                        continue;
-                    }
-
-                    // Caso 2: Nuevo o No Protegido -> Intentamos CREAR
-                    // Esto incluye: 
-                    // - Productos sin ID (se crearán todos, permitiendo duplicados si la BD lo permite)
-                    // - Productos con ID no protegidos (se recrearán)
                     try {
+                        // Asegurar que supplier_id esté presente
+                        if (!isset($productData['supplier_id'])) {
+                            $productData['supplier_id'] = $supplier->id;
+                        }
+                        
+                        // Crear NUEVO registro siempre, ignorando duplicados o errores de validación
                         $supplier->productSuppliers()->create($productData);
                     } catch (\Throwable $e) {
-                        // Ignoramos CUALQUIER error (Duplicados, validación, etc) para que siga subiendo el resto
-                        // Logueamos solo para registro interno
-                        //Log::warning("Error importando producto: " . ($productData['name'] ?? 'N/A') . " - " . $e->getMessage());
+                        // Ignorar CUALQUIER error (duplicados, restricción única, validación, etc)
+                        // para que continúe procesando el resto de productos
                         continue;
                     }
                 }
