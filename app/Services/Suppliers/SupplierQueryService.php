@@ -177,14 +177,24 @@ class SupplierQueryService
                     return $number && !in_array($number, $existingInvoiceNumbers);
                 })->values()->toArray();
 
-            DB::transaction(function () use ($supplier, $uniqueProducts, $filteredInvoices) {
-                // NO eliminar ningún producto existente
-                // NO actualizar ningún producto existente
-                // SOLO crear nuevos registros con todos los productos del archivo
+            // Procesar productos FUERA de la transacción para evitar rollback si uno falla
+            // NO eliminar ningún producto existente
+            // NO actualizar ningún producto existente
+            // SOLO crear nuevos registros con todos los productos del archivo
 
-                // Procesar CADA producto del archivo individualmente
-                // SIEMPRE crear nuevos registros, NUNCA actualizar ni eliminar existentes
-                foreach ($uniqueProducts as $productData) {
+            // Procesar CADA producto del archivo individualmente
+            // SIEMPRE crear nuevos registros, NUNCA actualizar ni eliminar existentes
+            $totalProductos = count($uniqueProducts);
+            $insertados = 0;
+            $errores = 0;
+            
+            \Log::info("🔵 Iniciando inserción de productos", [
+                'supplier_id' => $supplier->id,
+                'total_productos' => $totalProductos
+            ]);
+            
+            foreach ($uniqueProducts as $index => $productData) {
+                try {
                     // Asegurar campos obligatorios
                     if (!isset($productData['supplier_id'])) {
                         $productData['supplier_id'] = $supplier->id;
@@ -205,11 +215,45 @@ class SupplierQueryService
                         $productData['updated_at'] = now();
                     }
                     
-                    // Crear nuevo registro directamente
-                    // Sin restricción única, podemos insertar todos los productos sin problemas
-                    DB::table('product_suppliers')->insert($productData);
+                    // Crear nuevo registro directamente - CADA UNO EN SU PROPIA TRANSACCIÓN
+                    // para que si uno falla, no afecte a los demás
+                    DB::transaction(function() use ($productData) {
+                        DB::table('product_suppliers')->insert($productData);
+                    });
+                    
+                    $insertados++;
+                    
+                    // Log cada 50 productos insertados
+                    if ($insertados % 50 == 0) {
+                        \Log::info("✅ Insertados {$insertados}/{$totalProductos} productos", [
+                            'supplier_id' => $supplier->id
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    $errores++;
+                    \Log::error("❌ Error insertando producto #{$index}", [
+                        'supplier_id' => $supplier->id,
+                        'error' => $e->getMessage(),
+                        'product_data' => [
+                            'product_id' => $productData['product_id'] ?? 'NULL',
+                            'name' => $productData['name'] ?? 'NULL',
+                            'barcode_match' => $productData['barcode_match'] ?? 'NULL',
+                        ]
+                    ]);
+                    // Continuar con el siguiente producto aunque falle uno
+                    continue;
                 }
+            }
+            
+            \Log::info("🟢 Finalizada inserción de productos", [
+                'supplier_id' => $supplier->id,
+                'total_productos' => $totalProductos,
+                'insertados' => $insertados,
+                'errores' => $errores
+            ]);
 
+            // Procesar facturas en su propia transacción
+            DB::transaction(function () use ($supplier, $filteredInvoices) {
                 foreach ($filteredInvoices as $invoice) {
                     $header = $invoice['header'];
                     $lines = $invoice['lines'];
