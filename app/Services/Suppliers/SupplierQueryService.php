@@ -184,29 +184,55 @@ class SupplierQueryService
 
                 // Procesar CADA producto del archivo individualmente
                 // SIEMPRE crear nuevos registros, NUNCA actualizar ni eliminar existentes
-                // Usar insertOrIgnore para evitar errores de restricción única
+                // Usar INSERT IGNORE directo en SQL para evitar la restricción única compuesta
                 foreach ($uniqueProducts as $productData) {
-                    // Asegurar que supplier_id esté presente
-                    if (!isset($productData['supplier_id'])) {
-                        $productData['supplier_id'] = $supplier->id;
-                    }
+                    // Asegurar campos obligatorios
+                    $supplierId = $productData['supplier_id'] ?? $supplier->id;
+                    $unitCost = $productData['unit_cost'] ?? 0;
+                    $unitCostUsd = $productData['unit_cost_usd'] ?? 0;
+                    $connectionDate = $productData['connection_date'] ?? now()->toDateString();
                     
-                    // Asegurar que connection_date esté presente
-                    if (!isset($productData['connection_date'])) {
-                        $productData['connection_date'] = now()->toDateString();
-                    }
+                    // Preparar valores para INSERT IGNORE
+                    $productId = $productData['product_id'] ?? null;
+                    $barcodeMatch = $productData['barcode_match'] ?? null;
+                    $name = $productData['name'] ?? null;
+                    $laboratory = $productData['laboratory'] ?? null;
+                    $expiration = $productData['expiration'] ?? null;
+                    $codSupplier = $productData['cod_supplier'] ?? null;
+                    $quantity = $productData['quantity'] ?? null;
+                    $unitCostWithDiscount = $productData['unit_cost_with_discount'] ?? null;
+                    $unitCostUsdWithDiscount = $productData['unit_cost_usd_with_discount'] ?? null;
+                    $activeIngredient = $productData['active_ingredient'] ?? null;
+                    $createdAt = $productData['created_at'] ?? now();
+                    $updatedAt = $productData['updated_at'] ?? now();
                     
-                    // Asegurar que created_at y updated_at estén presentes
-                    if (!isset($productData['created_at'])) {
-                        $productData['created_at'] = now();
-                    }
-                    if (!isset($productData['updated_at'])) {
-                        $productData['updated_at'] = now();
-                    }
+                    // Usar INSERT IGNORE directamente en SQL para evitar la restricción única
+                    // Esto permite insertar todos los productos, ignorando duplicados
+                    $sql = "INSERT IGNORE INTO product_suppliers (
+                        product_id, supplier_id, barcode_match, name, laboratory, expiration,
+                        unit_cost, unit_cost_usd, connection_date, cod_supplier, quantity,
+                        unit_cost_with_discount, unit_cost_usd_with_discount, active_ingredient,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     
-                    // Usar insertOrIgnore para insertar ignorando restricción única
-                    // Esto permite insertar todos los productos sin errores de duplicados
-                    DB::table('product_suppliers')->insertOrIgnore($productData);
+                    DB::statement($sql, [
+                        $productId,
+                        $supplierId,
+                        $barcodeMatch,
+                        $name,
+                        $laboratory,
+                        $expiration,
+                        $unitCost,
+                        $unitCostUsd,
+                        $connectionDate,
+                        $codSupplier,
+                        $quantity,
+                        $unitCostWithDiscount,
+                        $unitCostUsdWithDiscount,
+                        $activeIngredient,
+                        $createdAt,
+                        $updatedAt,
+                    ]);
                 }
 
                 foreach ($filteredInvoices as $invoice) {
