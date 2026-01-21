@@ -374,9 +374,17 @@ class SupplierController extends Controller
 
         $results = $this->supplierQueryService->addProductToOrder($request);
 
-        return $results
+        /*return $results
             ? ApiResponse::success()
-            : ApiResponse::error();
+            : ApiResponse::error();*/
+      if ($results['success']) {
+        return ApiResponse::success(
+            'Producto añadido al pedido correctamente', 
+            ['warning' => $results['warning']]
+        );
+    }
+
+    return ApiResponse::error('No se pudo procesar la solicitud');
     }
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)

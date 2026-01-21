@@ -532,10 +532,12 @@ const handleAddItemToAutoOrder = async (product) => {
   form.append("discount", enableDiscounts.value);
 
   try {
-    await axios.post("/suppliers/add-product-to-order", form);
-    toast.success(
-      `Se añadieron ${product.quantity} productos al pedido del día`,
-    );
+    const response = await axios.post("/suppliers/add-product-to-order", form);
+    const { data, message } = response.data;
+    toast.success(data || `Se añadieron ${product.quantity} productos.`);
+    if (message && message.warning) {
+        toast.warning(message.warning, { timeout: 8000 });
+    }
     selectedProductFromTop.value = null;
     fetchProductsWithoutSupplier();
     fetchProducts();
@@ -543,9 +545,7 @@ const handleAddItemToAutoOrder = async (product) => {
     if (error.response?.status === 422) {
       quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
     }
-
     console.error("Hubo un error al enviar la petición:", error);
-
     if (error.response?.status === 400) {
       toast.error(error.response.data.message);
     } else {
