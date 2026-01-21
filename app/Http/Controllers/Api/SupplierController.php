@@ -125,15 +125,20 @@ class SupplierController extends Controller
         
         $userId = auth()->id() ?? 1;
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 👤 User ID: {$userId}\n";
-        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job FTP (ASÍNCRONO)\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job FTP (SÍNCRONO para ver logs inmediatos)\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
+        // Ejecutar SÍNCRONO para ver todos los logs de inmediato
+        ProcessSupplierConnectionJob::dispatchSync($supplier, $userId);
+        
+        // Para producción, cambiar de vuelta a asíncrono:
+        // ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP encolado\n";
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP completado\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] ========== 🏁 FIN CONEXIÓN FTP ==========\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        return response()->json(["status" => "queued"]);
+        return response()->json(["status" => "completed"]);
     }
     public function dispatchUpdateAllJob()
     {
