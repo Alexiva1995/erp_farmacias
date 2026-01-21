@@ -120,7 +120,26 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 unset($invoice);
             }
 
+            // Log ANTES de llamar a storeSupplierConnectionData
+            Log::error("🚨 [JOB] ANTES de llamar storeSupplierConnectionData", [
+                'supplier_id' => $this->supplier->id,
+                'products_count' => count($results["products"] ?? []),
+                'invoices_count' => count($results["invoices"] ?? []),
+            ]);
+            
+            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Products: " . count($results["products"] ?? []) . "\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            
             $queryService->storeSupplierConnectionData($this->supplier, $results);
+            
+            // Log DESPUÉS de llamar a storeSupplierConnectionData
+            Log::error("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
+                'supplier_id' => $this->supplier->id,
+            ]);
+            
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
 
             if (!in_array($this->supplier->id, [2]))
                 $queryService->addDiscountsToProducts($this->supplier);

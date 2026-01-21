@@ -159,7 +159,11 @@ class SupplierQueryService
 
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
-        // Log INMEDIATAMENTE al inicio para verificar que se ejecuta
+        // Logs DIRECTO a archivo para asegurar que se escriban SIEMPRE
+        $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . "\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        error_log($logMessage);
         \Log::error("🚨 [FORZADO] storeSupplierConnectionData INICIADO", [
             'supplier_id' => $supplier->id,
             'supplier_name' => $supplier->name,
@@ -173,6 +177,11 @@ class SupplierQueryService
 
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
+            
+            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Productos después de asignación - Total: " . count($uniqueProducts) . "\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            error_log($logMessage);
             
             \Log::error("🚨 [FORZADO] Productos después de asignación", [
                 'supplier_id' => $supplier->id,
@@ -202,12 +211,23 @@ class SupplierQueryService
             $insertados = 0;
             $errores = 0;
             
+            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Iniciando inserción de productos - Total: {$totalProductos}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            error_log($logMessage);
+            
             \Log::error("🚨 [FORZADO] Iniciando inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos
             ]);
             
             foreach ($uniqueProducts as $index => $productData) {
+                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                $productId = $productData['product_id'] ?? 'NULL';
+                $productName = substr($productData['name'] ?? 'NULL', 0, 50);
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Procesando producto #{$index} - product_id: {$productId}, name: {$productName}\n";
+                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                
                 \Log::error("🚨 [FORZADO] Procesando producto #{$index}", [
                     'supplier_id' => $supplier->id,
                     'product_id' => $productData['product_id'] ?? 'NULL',
@@ -237,8 +257,12 @@ class SupplierQueryService
                     
                     // Crear nuevo registro directamente - CADA UNO EN SU PROPIA TRANSACCIÓN
                     // para que si uno falla, no afecte a los demás
-                    DB::transaction(function() use ($productData, $supplier, $index) {
+                    DB::transaction(function() use ($productData, $supplier, $index, $logFile) {
                         DB::table('product_suppliers')->insert($productData);
+                        
+                        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Insertado producto #{$index} exitosamente - product_id: " . ($productData['product_id'] ?? 'NULL') . "\n";
+                        file_put_contents($logFile, $logMessage, FILE_APPEND);
+                        
                         \Log::error("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
                             'supplier_id' => $supplier->id,
                             'product_id' => $productData['product_id'] ?? 'NULL',
@@ -248,6 +272,12 @@ class SupplierQueryService
                     $insertados++;
                 } catch (\Throwable $e) {
                     $errores++;
+                    
+                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ ERROR insertando producto #{$index} - Error: " . $e->getMessage() . " - Code: " . $e->getCode() . "\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    error_log($logMessage);
+                    
                     \Log::error("🚨 [FORZADO] ERROR insertando producto #{$index}", [
                         'supplier_id' => $supplier->id,
                         'error' => $e->getMessage(),
@@ -262,6 +292,11 @@ class SupplierQueryService
                     continue;
                 }
             }
+            
+            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🟢 Finalizada inserción - Total: {$totalProductos}, Insertados: {$insertados}, Errores: {$errores}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            error_log($logMessage);
             
             \Log::error("🚨 [FORZADO] Finalizada inserción de productos", [
                 'supplier_id' => $supplier->id,
