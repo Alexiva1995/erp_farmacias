@@ -115,8 +115,23 @@ class SupplierController extends Controller
      */
     public function connectionServiceSupplier(Supplier $supplier, Request $request)
     {
+        // Log INMEDIATAMENTE al recibir la solicitud FTP
+        $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ========== 🚀 INICIO CONEXIÓN FTP ==========\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📡 [CONTROLLER] connectionServiceSupplier() llamado - Supplier ID: {$supplier->id}, Name: {$supplier->name}\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        error_log($logMessage);
+        \Log::error("🚀 [INICIO] Conexión FTP iniciada", ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name]);
+        
         $userId = auth()->id() ?? 1;
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] 👤 User ID: {$userId}\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job FTP (ASÍNCRONO)\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        
         ProcessSupplierConnectionJob::dispatch($supplier, $userId);
+
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP encolado\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
 
         return response()->json(["status" => "queued"]);
     }
@@ -361,20 +376,48 @@ class SupplierController extends Controller
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
+        // Log INMEDIATAMENTE al recibir la solicitud
+        $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ========== 🚀 INICIO IMPORTACIÓN ==========\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📋 [CONTROLLER] importData() llamado - Supplier ID: {$supplier->id}, Name: {$supplier->name}\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        error_log($logMessage);
+        \Log::error("🚀 [INICIO] Importación iniciada", ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name]);
+        
         $userId = auth()->id() ?? 1;
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] 👤 User ID: {$userId}\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        
         $validated = $request->validated();
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Validación pasada - Columnas mapeadas: " . json_encode($validated) . "\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
 
         unset($validated["file"]);
 
         try {
             $path = $request->file("file")->store("temp", ["disk" => "local"]);
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 📁 Archivo guardado en: {$path}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
         } catch (\Exception $e) {
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ Error guardando archivo: " . $e->getMessage() . "\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            error_log($logMessage);
             return response()->json(['error' => 'Failed to store file'], 500);
         }
 
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId, $path, $validated);
+        // Log ANTES de dispatch
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job (SÍNCRONO) - Path: {$path}\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        \Log::error("🔄 [CONTROLLER] Despachando Job", ['supplier_id' => $supplier->id, 'path' => $path]);
 
-        return response()->json(["status" => "queued"]);
+        // Ejecutar de forma SÍNCRONA para ver errores inmediatos
+        ProcessSupplierConnectionJob::dispatchSync($supplier, $userId, $path, $validated);
+
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job completado\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] ========== 🏁 FIN IMPORTACIÓN ==========\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+
+        return response()->json(["status" => "completed"]);
     }
 
     public function deleteProducts(Supplier $supplier)

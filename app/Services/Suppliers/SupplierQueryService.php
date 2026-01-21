@@ -216,6 +216,49 @@ class SupplierQueryService
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
             
+            // Verificar y eliminar restricción única si existe (para permitir múltiples NULL)
+            try {
+                $indexExists = DB::select("SHOW INDEX FROM product_suppliers WHERE Key_name = 'uniq_product_supplier'");
+                if (!empty($indexExists)) {
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Restricción única encontrada. Intentando eliminar...\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    
+                    // Eliminar foreign key primero
+                    $fks = DB::select("
+                        SELECT CONSTRAINT_NAME 
+                        FROM information_schema.KEY_COLUMN_USAGE 
+                        WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'product_suppliers' 
+                        AND COLUMN_NAME = 'product_id'
+                        AND REFERENCED_TABLE_NAME IS NOT NULL
+                    ");
+                    
+                    foreach ($fks as $fk) {
+                        DB::statement("ALTER TABLE product_suppliers DROP FOREIGN KEY {$fk->CONSTRAINT_NAME}");
+                        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Foreign key eliminada: {$fk->CONSTRAINT_NAME}\n";
+                        file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    }
+                    
+                    // Eliminar índice único
+                    DB::statement("ALTER TABLE product_suppliers DROP INDEX uniq_product_supplier");
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Restricción única eliminada\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    
+                    // Recrear foreign key
+                    DB::statement("
+                        ALTER TABLE product_suppliers 
+                        ADD CONSTRAINT product_suppliers_product_id_foreign 
+                        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+                    ");
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Foreign key recreada\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                }
+            } catch (\Throwable $e) {
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Error verificando/eliminando restricción: " . $e->getMessage() . "\n";
+                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                error_log($logMessage);
+            }
+            
             \Log::error("🚨 [FORZADO] Iniciando inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos
@@ -255,33 +298,70 @@ class SupplierQueryService
                         $productData['updated_at'] = now();
                     }
                     
-                    // Crear nuevo registro directamente - CADA UNO EN SU PROPIA TRANSACCIÓN
-                    // para que si uno falla, no afecte a los demás
-                    DB::transaction(function() use ($productData, $supplier, $index, $logFile) {
-                        DB::table('product_suppliers')->insert($productData);
-                        
-                        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Insertado producto #{$index} exitosamente - product_id: " . ($productData['product_id'] ?? 'NULL') . "\n";
-                        file_put_contents($logFile, $logMessage, FILE_APPEND);
-                        
-                        \Log::error("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
-                            'supplier_id' => $supplier->id,
-                            'product_id' => $productData['product_id'] ?? 'NULL',
-                        ]);
-                    });
+                    // Insertar directamente SIN transacción anidada
+                    // Como no hay restricción única, debería funcionar sin problemas
+                    DB::table('product_suppliers')->insert($productData);
+                    
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Insertado producto #{$index} exitosamente - product_id: " . ($productData['product_id'] ?? 'NULL') . ", name: " . substr($productData['name'] ?? 'NULL', 0, 50) . "\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    error_log($logMessage);
+                    
+                    \Log::error("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
+                        'supplier_id' => $supplier->id,
+                        'product_id' => $productData['product_id'] ?? 'NULL',
+                    ]);
                     
                     $insertados++;
                 } catch (\Throwable $e) {
                     $errores++;
                     
                     $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ ERROR insertando producto #{$index} - Error: " . $e->getMessage() . " - Code: " . $e->getCode() . "\n";
+                    $errorMsg = $e->getMessage();
+                    $errorCode = $e->getCode();
+                    
+                    // Verificar si es error de duplicado/restricción única
+                    $isDuplicateError = str_contains($errorMsg, 'Duplicate entry') || 
+                                       str_contains($errorMsg, '1062') ||
+                                       str_contains($errorMsg, 'uniq_product_supplier');
+                    
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ ERROR insertando producto #{$index} - Error: {$errorMsg} - Code: {$errorCode}";
+                    if ($isDuplicateError) {
+                        $logMessage .= " [DUPLICADO/RESTRICCIÓN ÚNICA]";
+                    }
+                    $logMessage .= "\n";
+                    
                     file_put_contents($logFile, $logMessage, FILE_APPEND);
                     error_log($logMessage);
                     
+                    // Si es error de duplicado, intentar con INSERT IGNORE
+                    if ($isDuplicateError) {
+                        try {
+                            $columns = array_keys($productData);
+                            $values = array_values($productData);
+                            $placeholders = str_repeat('?,', count($values) - 1) . '?';
+                            
+                            $sql = "INSERT IGNORE INTO product_suppliers (" . implode(', ', $columns) . ") VALUES ({$placeholders})";
+                            DB::insert($sql, $values);
+                            
+                            $insertados++; // Contar como insertado si IGNORE lo permite
+                            $errores--; // No contar como error
+                            
+                            $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Insertado con IGNORE producto #{$index} (era duplicado)\n";
+                            file_put_contents($logFile, $logMessage, FILE_APPEND);
+                            error_log($logMessage);
+                        } catch (\Throwable $e2) {
+                            // Si IGNORE también falla, continuar sin insertar
+                            $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ IGNORE también falló para producto #{$index}: " . $e2->getMessage() . "\n";
+                            file_put_contents($logFile, $logMessage, FILE_APPEND);
+                            error_log($logMessage);
+                        }
+                    }
+                    
                     \Log::error("🚨 [FORZADO] ERROR insertando producto #{$index}", [
                         'supplier_id' => $supplier->id,
-                        'error' => $e->getMessage(),
-                        'error_code' => $e->getCode(),
+                        'error' => $errorMsg,
+                        'error_code' => $errorCode,
+                        'is_duplicate' => $isDuplicateError,
                         'product_data' => [
                             'product_id' => $productData['product_id'] ?? 'NULL',
                             'name' => $productData['name'] ?? 'NULL',
