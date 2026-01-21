@@ -123,7 +123,14 @@ class SuppliersIaOrderAssistantController extends Controller
                 // Recalcular para asegurar que AO esté incluido
                 $stock = $items->lote_quantity ?? 0;
                 $ventas = $items->total_sold_completed ?? 0;
-                $items->solicitar = $stock - $ventas - $aoActual;
+                $stock = $items->lote_quantity ?? 0;
+                $ventas = $items->total_sold_completed ?? 0;
+
+                if (($filtros['stock'] ?? '') === 'fallas') {
+                    $items->solicitar = $stock - $ventas;
+                } else {
+                    $items->solicitar = $stock - $ventas - $aoActual;
+                }
             }
 
             // Si el producto tiene ventas 0 y stock 0, debe ser negativo (falla)
@@ -131,10 +138,19 @@ class SuppliersIaOrderAssistantController extends Controller
             if ($esProductoSinVentasNiStock) {
                 $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                 // Si tiene AO, el cálculo ya lo incluye. Si no tiene AO, debe ser negativo
-                $items->solicitar = 0 - $aoActual;
-                // Si no hay AO, debe ser negativo (falla)
-                if ($aoActual == 0) {
-                    $items->solicitar = -1; // Falla: necesita al menos 1
+                if ($esProductoSinVentasNiStock) {
+                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
+
+                    if (($filtros['stock'] ?? '') === 'fallas') {
+                        $items->solicitar = 0;
+                    } else {
+                        $items->solicitar = 0 - $aoActual;
+                    }
+
+                    // Si no hay AO, debe ser negativo (falla)
+                    if ($aoActual == 0) {
+                        $items->solicitar = -1; // Falla: necesita al menos 1
+                    }
                 }
             }
         });
@@ -204,10 +220,16 @@ class SuppliersIaOrderAssistantController extends Controller
             $ventasCero = ($producto->total_sold_completed ?? 0) == 0;
             $stockCero = ($producto->lote_quantity ?? 0) == 0;
             $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
-            
+
             if ($ventasCero && $stockCero) {
-                // Si tiene AO, el cálculo ya lo incluye. Si no tiene AO, debe ser negativo
-                $producto->solicitar = 0 - $aoActual;
+                $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
+
+                if (($filtrosFallas['stock'] ?? '') === 'fallas') {
+                    $producto->solicitar = 0;
+                } else {
+                    $producto->solicitar = 0 - $aoActual;
+                }
+
                 // Si no hay AO, debe ser negativo (falla)
                 if ($aoActual == 0) {
                     $producto->solicitar = -1; // Falla: necesita al menos 1
@@ -240,7 +262,7 @@ class SuppliersIaOrderAssistantController extends Controller
     {
         $withoutSupplierIds = $request->input('without_supplier_ids', []);
         $listAutoOrders = $this->autoOrder->createMultiple($request->orders, $withoutSupplierIds);
-        
+
 
         return ApiResponse::success($listAutoOrders, "ok", 200);
     }
@@ -438,22 +460,22 @@ class SuppliersIaOrderAssistantController extends Controller
 
 
     public function getProductosMarcados(Request $request)
-{
-    try {
-        $perPage = $request->query('perPage', 10);
-        $sortBy = $request->query('sortBy', 'id');
-        $order = $request->query('order', 'desc');
-        $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
-            (int) $perPage, 
-            $sortBy, 
-            $order
-        );
-       
-        return response()->json($productos);
-        
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Error al obtener productos'], 500);
+    {
+        try {
+            $perPage = $request->query('perPage', 10);
+            $sortBy = $request->query('sortBy', 'id');
+            $order = $request->query('order', 'desc');
+            $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
+                (int) $perPage,
+                $sortBy,
+                $order
+            );
+
+            return response()->json($productos);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al obtener productos'], 500);
+        }
     }
-}
 
 }
