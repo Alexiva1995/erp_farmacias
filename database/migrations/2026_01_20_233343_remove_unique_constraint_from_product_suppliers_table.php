@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -17,23 +18,29 @@ return new class extends Migration
         // Luego eliminar el índice único
         // Y finalmente recrear las foreign keys sin el índice único
         
-        Schema::table('product_suppliers', function (Blueprint $table) {
-            // Eliminar la foreign key de product_id primero
-            $table->dropForeign(['product_id']);
-        });
+        // Obtener el nombre real de la foreign key
+        $foreignKeys = DB::select("
+            SELECT CONSTRAINT_NAME 
+            FROM information_schema.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'product_suppliers' 
+            AND COLUMN_NAME = 'product_id'
+            AND REFERENCED_TABLE_NAME IS NOT NULL
+        ");
         
-        Schema::table('product_suppliers', function (Blueprint $table) {
-            // Ahora sí podemos eliminar el índice único
-            $table->dropUnique('uniq_product_supplier');
-        });
+        foreach ($foreignKeys as $fk) {
+            DB::statement("ALTER TABLE product_suppliers DROP FOREIGN KEY {$fk->CONSTRAINT_NAME}");
+        }
         
-        Schema::table('product_suppliers', function (Blueprint $table) {
-            // Recrear la foreign key de product_id sin el índice único
-            $table->foreign('product_id')
-                ->references('id')
-                ->on('products')
-                ->onDelete('cascade');
-        });
+        // Eliminar el índice único
+        DB::statement("ALTER TABLE product_suppliers DROP INDEX uniq_product_supplier");
+        
+        // Recrear la foreign key sin el índice único
+        DB::statement("
+            ALTER TABLE product_suppliers 
+            ADD CONSTRAINT product_suppliers_product_id_foreign 
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        ");
     }
 
     /**

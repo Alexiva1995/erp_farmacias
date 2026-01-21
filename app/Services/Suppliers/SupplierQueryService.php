@@ -159,12 +159,26 @@ class SupplierQueryService
 
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
+        // Log INMEDIATAMENTE al inicio para verificar que se ejecuta
+        \Log::error("🚨 [FORZADO] storeSupplierConnectionData INICIADO", [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'products_count' => count($data["products"] ?? []),
+            'invoices_count' => count($data["invoices"] ?? []),
+        ]);
+        
         try {
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
+            
+            \Log::error("🚨 [FORZADO] Productos después de asignación", [
+                'supplier_id' => $supplier->id,
+                'total_productos' => count($uniqueProducts),
+                'primeros_3_productos' => array_slice($uniqueProducts, 0, 3),
+            ]);
 
             $existingInvoiceNumbers = Invoice::whereIn(
                 'invoice_number',
@@ -188,12 +202,18 @@ class SupplierQueryService
             $insertados = 0;
             $errores = 0;
             
-            \Log::info("🔵 Iniciando inserción de productos", [
+            \Log::error("🚨 [FORZADO] Iniciando inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos
             ]);
             
             foreach ($uniqueProducts as $index => $productData) {
+                \Log::error("🚨 [FORZADO] Procesando producto #{$index}", [
+                    'supplier_id' => $supplier->id,
+                    'product_id' => $productData['product_id'] ?? 'NULL',
+                    'name' => $productData['name'] ?? 'NULL',
+                ]);
+                
                 try {
                     // Asegurar campos obligatorios
                     if (!isset($productData['supplier_id'])) {
@@ -217,23 +237,21 @@ class SupplierQueryService
                     
                     // Crear nuevo registro directamente - CADA UNO EN SU PROPIA TRANSACCIÓN
                     // para que si uno falla, no afecte a los demás
-                    DB::transaction(function() use ($productData) {
+                    DB::transaction(function() use ($productData, $supplier, $index) {
                         DB::table('product_suppliers')->insert($productData);
+                        \Log::error("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
+                            'supplier_id' => $supplier->id,
+                            'product_id' => $productData['product_id'] ?? 'NULL',
+                        ]);
                     });
                     
                     $insertados++;
-                    
-                    // Log cada 50 productos insertados
-                    if ($insertados % 50 == 0) {
-                        \Log::info("✅ Insertados {$insertados}/{$totalProductos} productos", [
-                            'supplier_id' => $supplier->id
-                        ]);
-                    }
                 } catch (\Throwable $e) {
                     $errores++;
-                    \Log::error("❌ Error insertando producto #{$index}", [
+                    \Log::error("🚨 [FORZADO] ERROR insertando producto #{$index}", [
                         'supplier_id' => $supplier->id,
                         'error' => $e->getMessage(),
+                        'error_code' => $e->getCode(),
                         'product_data' => [
                             'product_id' => $productData['product_id'] ?? 'NULL',
                             'name' => $productData['name'] ?? 'NULL',
@@ -245,7 +263,7 @@ class SupplierQueryService
                 }
             }
             
-            \Log::info("🟢 Finalizada inserción de productos", [
+            \Log::error("🚨 [FORZADO] Finalizada inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos,
                 'insertados' => $insertados,
