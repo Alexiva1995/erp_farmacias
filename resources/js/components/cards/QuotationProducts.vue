@@ -235,6 +235,7 @@ const handleSaveQuotation = async () => {
     toast.success("Se guardó la cotización exitosamente");
 
     emit("clean-post-save");
+    fetchLastQuotationNumber();
   } catch (error) {
     const noProductsError =
       "Error: No hay productos en la cotización para guardar.";

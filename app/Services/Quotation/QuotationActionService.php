@@ -41,7 +41,7 @@ class QuotationActionService
                 'vat' => $validatedData['total_iva_usd'],
                 'total' => $validatedData['grand_total_usd'],
                 'created_by' => \Auth::id(),
-                'client_id' => $validatedData['client_id']
+                'client_id' => empty($validatedData['client_id']) ? null : $validatedData['client_id']
             ]);
 
             foreach ($validatedData['products'] as $itemData) {
