@@ -634,9 +634,13 @@ class SupplierQueryService
 
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
         if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
-            $mainProduct->update([
-                'barcode' => $product->barcode_match
-            ]);
+            $barcodeExists = Product::where('barcode', $product->barcode_match)->exists();
+            if (!$barcodeExists) {
+                // 2. Solo si no existe en ningún otro lado, lo asignamos
+                $mainProduct->update([
+                    'barcode' => $product->barcode_match
+                ]);
+            }
         }
 
         $order = AutoOrder::where('supplier_id', $product->supplier_id)
