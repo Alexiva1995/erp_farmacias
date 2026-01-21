@@ -1,6 +1,5 @@
 <script setup>
 import OrderFilters from "@/components/OrderFilters.vue";
-import OrderPacksTable from "@/components/OrderPacksTable.vue";
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
@@ -11,9 +10,8 @@ import PackDetailsModal from "@/components/dialogs/PackDetailsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import Swal from "sweetalert2";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { onMounted, ref, watch, computed, reactive, nextTick } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -67,9 +65,7 @@ const speSurchargeAmount = ref(0);
 
 const isFinishingOrder = ref(false);
 
-
-const isSpecialTaxpayer = ref(false)
-
+const isSpecialTaxpayer = ref(false);
 
 const newClientFormData = ref({
   id: null,
@@ -99,7 +95,6 @@ const newClientFormErrors = reactive({
   is_spe: "",
 });
 
-
 const tableOptions = ref({
   page: 1,
   itemsPerPage: 10,
@@ -115,7 +110,7 @@ const hasOpenOrder = ref(false);
 const openOrderData = ref(null);
 const orderData = ref(null);
 const reservedOrderData = ref(null);
-const pendingOpenOrder = ref(null);   // Orden que será abierta tras imprimir.
+const pendingOpenOrder = ref(null); // Orden que será abierta tras imprimir.
 
 const orderItems = ref([]);
 const itemsToPrint = ref([]);
@@ -139,7 +134,7 @@ const prescriptionFile = ref(null);
 const activeCompanyOffers = ref([]);
 const selectedCompanyId = ref(null);
 
-const selectedCompany = ref(null); 
+const selectedCompany = ref(null);
 const selectedDoctor = ref(null);
 
 const handleDoctorSelected = (id) => {
@@ -157,14 +152,13 @@ const currentGroupId = ref(null);
 
 const fetchGeneralSettings = async () => {
   try {
-    const { data } = await axios.get('/general-settings')
-    isSpecialTaxpayer.value = data.special_taxpayer_status === 'activa'
+    const { data } = await axios.get("/general-settings");
+    isSpecialTaxpayer.value = data.special_taxpayer_status === "activa";
   } catch (error) {
-    console.error("Error al cargar configuración", error)
+    console.error("Error al cargar configuración", error);
     toast.error("Error al cargar configuración");
   }
-}
-
+};
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -185,7 +179,7 @@ const fetchProducts = async () => {
     isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -265,8 +259,7 @@ const fetchPrescriptionOffers = async () => {
 
 const fetchCompanyOffers = async (companyId = null) => {
   try {
-
-  const params = {
+    const params = {
       is_active: true,
       per_page: 100,
       sort_by: "id",
@@ -274,10 +267,12 @@ const fetchCompanyOffers = async (companyId = null) => {
     };
 
     if (companyId) {
-      params.search = companyId; 
+      params.search = companyId;
     }
 
-const response = await axios.get("/tpv/promotions/company-offer", { params });
+    const response = await axios.get("/tpv/promotions/company-offer", {
+      params,
+    });
 
     if (response.data && response.data.data) {
       activeCompanyOffers.value = response.data.data.map((offer) => {
@@ -286,7 +281,7 @@ const response = await axios.get("/tpv/promotions/company-offer", { params });
         let discountText = "";
         if (scales.length > 0) {
           const percentages = scales.map((s) =>
-            parseFloat(s.discount_percentage)
+            parseFloat(s.discount_percentage),
           );
           const minP = Math.min(...percentages);
           const maxP = Math.max(...percentages);
@@ -353,7 +348,7 @@ const handlePrescriptionFileSelected = (file) => {
   if (file && activePrescriptionOffers.value.length > 0) {
     const offer = activePrescriptionOffers.value[0];
     toast.success(
-      `Descuento de receta del ${offer.discount_percentage}% detectado.`
+      `Descuento de receta del ${offer.discount_percentage}% detectado.`,
     );
   }
 };
@@ -369,42 +364,52 @@ const handleDoctorDiscountSelected = (offerId) => {
   }
 };
 
-watch(() => selectedClient.value, async (newCliente, oldCliente) => {
-  console.log('[ORDER_USER] Watcher selectedClient ejecutado:', { newCliente, oldCliente })
-  if (!newCliente) {
-    console.log('[ORDER_USER] No hay cliente, saliendo del watcher')
-    return;
-  }
-  if (newCliente?.id === oldCliente?.id) {
-    console.log('[ORDER_USER] Mismo cliente, saliendo del watcher')
-    return;
-  }
-
-  try {
-    if (newCliente.company_id) {
-      console.log('[ORDER_USER] Cliente tiene company_id:', newCliente.company_id)
-      await fetchCompanyOffers(newCliente.company_id);
-      selectedDiscountType.value = "Empresa";
-      selectedCompany.value = newCliente.company_id;
-      console.log('[ORDER_USER] Ofertas de empresa cargadas desde watcher')
-    } else {
-      console.log('[ORDER_USER] Cliente no tiene company_id, cargando ofertas generales')
-      selectedCompany.value = null;
-      await fetchCompanyOffers(); 
+watch(
+  () => selectedClient.value,
+  async (newCliente, oldCliente) => {
+    console.log("[ORDER_USER] Watcher selectedClient ejecutado:", {
+      newCliente,
+      oldCliente,
+    });
+    if (!newCliente) {
+      console.log("[ORDER_USER] No hay cliente, saliendo del watcher");
+      return;
     }
-  } catch (error) {
-    console.error("[ORDER_USER] Error en watcher de selectedClient:", error);
-  }
-}, { immediate: false });
+    if (newCliente?.id === oldCliente?.id) {
+      console.log("[ORDER_USER] Mismo cliente, saliendo del watcher");
+      return;
+    }
 
+    try {
+      if (newCliente.company_id) {
+        console.log(
+          "[ORDER_USER] Cliente tiene company_id:",
+          newCliente.company_id,
+        );
+        await fetchCompanyOffers(newCliente.company_id);
+        selectedDiscountType.value = "Empresa";
+        selectedCompany.value = newCliente.company_id;
+        console.log("[ORDER_USER] Ofertas de empresa cargadas desde watcher");
+      } else {
+        console.log(
+          "[ORDER_USER] Cliente no tiene company_id, cargando ofertas generales",
+        );
+        selectedCompany.value = null;
+        await fetchCompanyOffers();
+      }
+    } catch (error) {
+      console.error("[ORDER_USER] Error en watcher de selectedClient:", error);
+    }
+  },
+  { immediate: false },
+);
 
 const currentGlobalDiscountDetails = computed(() => {
   if (selectedDiscountType.value === "Empresa" && selectedCompany.value) {
     const offer = activeCompanyOffers.value.find(
-      (o) => o.value === selectedCompany.value
+      (o) => o.value === selectedCompany.value,
     );
     if (offer && offer.current_discount > 0) {
-
       return {
         type: "Empresa",
         percentage: parseFloat(offer.current_discount),
@@ -415,7 +420,7 @@ const currentGlobalDiscountDetails = computed(() => {
 
   if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
     const offer = activeDoctorOffers.value.find(
-      (o) => o.value === selectedDoctorOffer.value.value
+      (o) => o.value === selectedDoctorOffer.value.value,
     );
 
     if (offer && offer.percentage > 0) {
@@ -443,13 +448,12 @@ const currentGlobalDiscountDetails = computed(() => {
 const handleCompanyDiscountSelected = async (companyId) => {
   selectedCompanyId.value = companyId;
   if (companyId) {
-    await fetchCompanyOffers(companyId); 
+    await fetchCompanyOffers(companyId);
   }
   validateAndApplyCompanyDiscount();
 };
 
 const validateAndApplyCompanyDiscount = () => {
-
   if (activeCompanyOffers.value.length === 0) {
     console.warn("Validación abortada: No hay ofertas cargadas aún.");
     return;
@@ -463,11 +467,11 @@ const validateAndApplyCompanyDiscount = () => {
   }
 
   const offer = activeCompanyOffers.value.find(
-    (o) => o.value === selectedCompanyId.value
+    (o) => o.value === selectedCompanyId.value,
   );
 
   if (!offer) {
-    console.warn('No se encontró oferta para el ID:', selectedCompanyId.value);
+    console.warn("No se encontró oferta para el ID:", selectedCompanyId.value);
     selectedCompanyId.value = null;
     return;
   }
@@ -475,12 +479,12 @@ const validateAndApplyCompanyDiscount = () => {
   const porcentaje = parseFloat(offer.current_discount || 0);
   if (porcentaje > 0) {
     toast.success(
-      `Descuento de empresa ${porcentaje}% habilitado para esta orden.`
+      `Descuento de empresa ${porcentaje}% habilitado para esta orden.`,
     );
   } else {
     selectedCompanyId.value = null;
     toast.info(
-      `Esta empresa no cuenta con un descuento activo para el periodo actual.`
+      `Esta empresa no cuenta con un descuento activo para el periodo actual.`,
     );
   }
 };
@@ -529,8 +533,8 @@ const validateAndApplyCompanyDiscount = () => {
 
 const applyDiscount = (percentage, source) => {
   orderItems.value = orderItems.value.map((item) => {
-    // Exclude expiration items from global discounts
-    if (item.discount_type === "expiration") {
+    // Exclude expiration or pack items from global discounts
+    if (item.discount_type === "expiration" || item.pack_id) {
       return item;
     }
 
@@ -557,8 +561,8 @@ const applyDiscount = (percentage, source) => {
 
 const removeDiscount = () => {
   orderItems.value = orderItems.value.map((item) => {
-    // Exclude expiration items from global discount removal
-    if (item.discount_type === "expiration") {
+    // Exclude expiration or pack items from global discount removal
+    if (item.discount_type === "expiration" || item.pack_id) {
       return item;
     }
 
@@ -622,7 +626,7 @@ watch(
         validateAndApplyCompanyDiscount();
       }, 300);
     }
-  }
+  },
 );
 
 let debounceTimer;
@@ -649,7 +653,7 @@ watch(
       }
     }, 300);
   },
-  { deep: false }
+  { deep: false },
 );
 
 const consultAllcomapanies = async () => {
@@ -673,17 +677,20 @@ const formatOrderItemForFrontend = (backendItem) => {
   const originalPriceCop = parseFloat(product.price_cop) || 0;
 
   // Precio con descuento (unit_cost del pack o precio normal)
-  const discountedPrice = parseFloat(backendItem.unit_cost) || (originalPrice * discountFactor);
-  const discountedPriceBs = backendItem.unit_cost 
-    ? (originalPriceBs * (discountedPrice / originalPriceBs))
-    : (originalPriceBs * discountFactor);
+  const discountedPrice =
+    parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
+  const discountedPriceBs = backendItem.unit_cost
+    ? originalPriceBs * (discountedPrice / originalPriceBs)
+    : originalPriceBs * discountFactor;
 
   const discountedPriceCop = backendItem.unit_cost
-    ? (originalPriceCop * (discountedPrice / originalPriceCop))
-    : (originalPriceCop * discountFactor);
+    ? originalPriceCop * (discountedPrice / originalPriceCop)
+    : originalPriceCop * discountFactor;
 
   // Determinar si hay descuento de pack (precio personalizado diferente al original)
-  const hasPackDiscount = backendItem.pack_id && backendItem.unit_cost && 
+  const hasPackDiscount =
+    backendItem.pack_id &&
+    backendItem.unit_cost &&
     Math.abs(parseFloat(backendItem.unit_cost) - originalPrice) > 0.01;
 
   return {
@@ -710,17 +717,20 @@ const formatOrderItemForFrontend = (backendItem) => {
     discount_percentage: parseFloat(backendItem.discount_percentage) || 0,
     discount_type: backendItem.discount_type || null,
     discount_source_id: backendItem.discount_source_id || null,
-    original_pack_config: backendItem.pack_config || (backendItem.product?.pack_config) || null,
+    original_pack_config:
+      backendItem.pack_config || backendItem.product?.pack_config || null,
     has_pack_discount: hasPackDiscount, // Flag para indicar si tiene descuento de pack
   };
 };
 
 const fetchOpenOrder = async () => {
-  console.log('[ORDER_USER] fetchOpenOrder iniciado')
+  console.log("[ORDER_USER] fetchOpenOrder iniciado");
   try {
-    console.log('[ORDER_USER] Haciendo petición a /tpv/order/seller/my-open-order')
+    console.log(
+      "[ORDER_USER] Haciendo petición a /tpv/order/seller/my-open-order",
+    );
     const response = await axios.get("/tpv/order/seller/my-open-order");
-    console.log('[ORDER_USER] Respuesta recibida:', response.data)
+    console.log("[ORDER_USER] Respuesta recibida:", response.data);
     if (
       response.data.data &&
       response.data.data.order &&
@@ -736,7 +746,7 @@ const fetchOpenOrder = async () => {
       }
       if (openOrderData.value.details) {
         orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item)
+          formatOrderItemForFrontend(item),
         );
       } else {
         orderItems.value = [];
@@ -760,19 +770,23 @@ const fetchOpenOrder = async () => {
 };
 
 onMounted(async () => {
-  console.log('[ORDER_USER] onMounted iniciado')
+  console.log("[ORDER_USER] onMounted iniciado");
   try {
     // Primero cargar la configuración del usuario
-    console.log('[ORDER_USER] Cargando configuración del usuario...')
+    console.log("[ORDER_USER] Cargando configuración del usuario...");
     try {
-      const configResponse = await axios.get('/user/config');
-      console.log('[ORDER_USER] Configuración cargada:', configResponse.data)
-      if (configResponse.data.config && configResponse.data.config.sort_products_orders) {
-        const [key, order] = configResponse.data.config.sort_products_orders.split('|');
+      const configResponse = await axios.get("/user/config");
+      console.log("[ORDER_USER] Configuración cargada:", configResponse.data);
+      if (
+        configResponse.data.config &&
+        configResponse.data.config.sort_products_orders
+      ) {
+        const [key, order] =
+          configResponse.data.config.sort_products_orders.split("|");
         sortBy.value = key;
         orderBy.value = order;
         tableOptions.value.sortBy = [{ key, order }];
-        console.log('[ORDER_USER] Ordenamiento configurado:', { key, order })
+        console.log("[ORDER_USER] Ordenamiento configurado:", { key, order });
       }
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar configuración", error);
@@ -780,33 +794,48 @@ onMounted(async () => {
 
     // Luego cargar la orden abierta de forma asíncrona sin bloquear
     // Usar nextTick para asegurar que el componente esté completamente montado
-    console.log('[ORDER_USER] Preparando carga de orden abierta...')
+    console.log("[ORDER_USER] Preparando carga de orden abierta...");
     nextTick(async () => {
-      console.log('[ORDER_USER] nextTick ejecutado, cargando orden abierta...')
+      console.log("[ORDER_USER] nextTick ejecutado, cargando orden abierta...");
       try {
         await fetchOpenOrder();
-        console.log('[ORDER_USER] Orden abierta cargada, selectedClient:', selectedClient.value)
+        console.log(
+          "[ORDER_USER] Orden abierta cargada, selectedClient:",
+          selectedClient.value,
+        );
         // Después de cargar la orden, cargar ofertas de empresa si hay cliente con company_id
         await nextTick(); // Esperar a que selectedClient se actualice
-        console.log('[ORDER_USER] Verificando company_id:', selectedClient.value?.company_id)
+        console.log(
+          "[ORDER_USER] Verificando company_id:",
+          selectedClient.value?.company_id,
+        );
         if (selectedClient.value?.company_id) {
           try {
-            console.log('[ORDER_USER] Cargando ofertas de empresa para:', selectedClient.value.company_id)
+            console.log(
+              "[ORDER_USER] Cargando ofertas de empresa para:",
+              selectedClient.value.company_id,
+            );
             await fetchCompanyOffers(selectedClient.value.company_id);
             selectedDiscountType.value = "Empresa";
             selectedCompany.value = selectedClient.value.company_id;
-            console.log('[ORDER_USER] Ofertas de empresa cargadas')
+            console.log("[ORDER_USER] Ofertas de empresa cargadas");
           } catch (error) {
-            console.error("[ORDER_USER] Error al cargar ofertas de empresa:", error);
+            console.error(
+              "[ORDER_USER] Error al cargar ofertas de empresa:",
+              error,
+            );
           }
         } else {
           // Cargar ofertas generales si no hay company_id
           try {
-            console.log('[ORDER_USER] Cargando ofertas generales...')
+            console.log("[ORDER_USER] Cargando ofertas generales...");
             await fetchCompanyOffers();
-            console.log('[ORDER_USER] Ofertas generales cargadas')
+            console.log("[ORDER_USER] Ofertas generales cargadas");
           } catch (error) {
-            console.error("[ORDER_USER] Error al cargar ofertas generales:", error);
+            console.error(
+              "[ORDER_USER] Error al cargar ofertas generales:",
+              error,
+            );
           }
         }
       } catch (error) {
@@ -815,58 +844,60 @@ onMounted(async () => {
         isLoadingInitialOrder.value = false;
       }
     });
-    
+
     // Finalmente cargar los datos iniciales (sin await para no bloquear)
-    console.log('[ORDER_USER] Cargando datos iniciales...')
+    console.log("[ORDER_USER] Cargando datos iniciales...");
     try {
-      console.log('[ORDER_USER] Cargando opciones de filtros...')
+      console.log("[ORDER_USER] Cargando opciones de filtros...");
       fetchSelectOptions();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar opciones de filtros", error);
     }
-    
+
     try {
-      console.log('[ORDER_USER] Cargando productos...')
+      console.log("[ORDER_USER] Cargando productos...");
       fetchProducts();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar productos", error);
     }
-    
+
     try {
-      console.log('[ORDER_USER] Cargando compañías...')
+      console.log("[ORDER_USER] Cargando compañías...");
       consultAllcomapanies();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar compañías", error);
     }
-    
+
     try {
-      console.log('[ORDER_USER] Cargando ofertas de médicos...')
+      console.log("[ORDER_USER] Cargando ofertas de médicos...");
       fetchDoctorOffers();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar ofertas de médicos", error);
     }
-    
+
     try {
-      console.log('[ORDER_USER] Cargando ofertas de recetas...')
+      console.log("[ORDER_USER] Cargando ofertas de recetas...");
       fetchPrescriptionOffers();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar ofertas de recetas", error);
     }
-    
+
     try {
-      console.log('[ORDER_USER] Cargando configuración general...')
+      console.log("[ORDER_USER] Cargando configuración general...");
       fetchGeneralSettings();
     } catch (error) {
-      console.error("[ORDER_USER] Error al cargar configuración general", error);
+      console.error(
+        "[ORDER_USER] Error al cargar configuración general",
+        error,
+      );
     }
-    
-    console.log('[ORDER_USER] onMounted completado')
+
+    console.log("[ORDER_USER] onMounted completado");
   } catch (error) {
     console.error("[ORDER_USER] Error crítico en onMounted:", error);
     toast.error("Error al cargar algunos datos. Por favor, recarga la página.");
   }
 });
-
 
 const totalOrderCost = computed(() => {
   let totalCost = 0;
@@ -881,7 +912,7 @@ const totalOrderCost = computed(() => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  
+
   // Si la tabla cambia el orden por clic en columna
   if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0].key;
@@ -905,7 +936,7 @@ watch(
   [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 watch(barcodeSearchQuery, (newValueBar) => {
@@ -930,10 +961,10 @@ const addProductToOrderByBarcode = async (barcode) => {
   } catch (error) {
     console.error(
       "Error al agregar producto por código de barras:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     toast.error(
-      "Producto no encontrado o error al agregar por código de barras."
+      "Producto no encontrado o error al agregar por código de barras.",
     );
   }
 };
@@ -979,7 +1010,7 @@ const verifyClient = async (identification) => {
 
       selectedClient.value = clientData;
       toast.success(
-        `Cliente ${clientData.name} ${clientData.last_name} encontrado.`
+        `Cliente ${clientData.name} ${clientData.last_name} encontrado.`,
       );
 
       if (responseData.found_open_order) {
@@ -1165,7 +1196,7 @@ const totalEligibleAmount = computed(() => {
 const totalCompanyDiscountAmount = computed(() => {
   if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
     const offer = activeCompanyOffers.value.find(
-      (o) => o.value === selectedCompanyId.value
+      (o) => o.value === selectedCompanyId.value,
     );
     const porcentaje = parseFloat(offer?.current_discount || 0);
     if (porcentaje > 0) {
@@ -1188,7 +1219,7 @@ const totalDoctorDiscountAmount = computed(() => {
 const totalRecipeDiscountAmount = computed(() => {
   if (selectedDiscountType.value === "Recipe") {
     const porcentaje = parseFloat(
-      currentPrescriptionDiscountPercentage.value || 0
+      currentPrescriptionDiscountPercentage.value || 0,
     );
     if (porcentaje > 0) {
       return totalEligibleAmount.value * (porcentaje / 100);
@@ -1219,9 +1250,12 @@ const totalExpirationDiscountAmount = computed(() => {
   return total;
 });
 
-
 const appliesSpecialTax = computed(() => {
-  return isSpecialTaxpayer.value && (selectedDisplayCurrency.value === 'USD' || selectedDisplayCurrency.value === 'COP');
+  return (
+    isSpecialTaxpayer.value &&
+    (selectedDisplayCurrency.value === "USD" ||
+      selectedDisplayCurrency.value === "COP")
+  );
 });
 
 const specialTaxAmount = computed(() => {
@@ -1235,7 +1269,7 @@ const specialTaxAmount = computed(() => {
 
 const totalOrderAmountWithspecialTaxAmount = computed(() => {
   const base = totalOrderAmount.value || 0;
-   if (appliesSpecialTax.value) {
+  if (appliesSpecialTax.value) {
     return base + specialTaxAmount.value;
   }
   return base;
@@ -1259,7 +1293,6 @@ const totalOrderAmountSinDiscount = computed(() => {
   let discountToSubtract = 0;
   return baseTotal;
 });
-
 
 const totalSPESavings = computed(() => {
   if (!selectedClient.value?.is_spe) return 0;
@@ -1349,7 +1382,7 @@ const totalAmountUsd = computed(() => {
 
   if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
     const offer = activeCompanyOffers.value.find(
-      (o) => o.value === selectedCompanyId.value
+      (o) => o.value === selectedCompanyId.value,
     );
     porcentaje = parseFloat(offer?.current_discount || 0);
   } else if (
@@ -1361,17 +1394,15 @@ const totalAmountUsd = computed(() => {
     porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
 
-
   const descuentoUSD = subtotalProductosUSD * (porcentaje / 100);
   let finalTotalUSD = total - descuentoUSD;
-  
+
   if (appliesSpecialTax.value) {
     let tax = finalTotalUSD * 0.03;
     finalTotalUSD += tax;
   }
 
   return finalTotalUSD;
-
 });
 
 const totalAmountCop = computed(() => {
@@ -1504,7 +1535,6 @@ const updateOrderItemQuantity = async ({
   }
 };*/
 
-
 const updateOrderItemQuantity = async ({
   productId,
   quantity,
@@ -1520,12 +1550,14 @@ const updateOrderItemQuantity = async ({
   try {
     // 1. Buscamos el ítem específico usando el orderDetailId
     let currentItem = orderItems.value.find(
-      (item) => item.order_detail_id === orderDetailId
+      (item) => item.order_detail_id === orderDetailId,
     );
 
     // Fallback por seguridad
     if (!currentItem) {
-      currentItem = orderItems.value.find((item) => item.product_id === productId);
+      currentItem = orderItems.value.find(
+        (item) => item.product_id === productId,
+      );
     }
 
     if (!currentItem) {
@@ -1543,7 +1575,7 @@ const updateOrderItemQuantity = async ({
           (item) =>
             item.product_id === productId &&
             !item.pack_id &&
-            item.order_detail_id !== orderDetailId
+            item.order_detail_id !== orderDetailId,
         )
         .reduce((sum, item) => sum + item.selectedQuantity, 0);
 
@@ -1555,17 +1587,15 @@ const updateOrderItemQuantity = async ({
       product_id: productId,
       quantity: computedTotalQuantity,
       price_usd_unit: currentItem.basePrice || currentItem.price,
-      price_at_product: currentItem.basePrice || currentItem.orderPrice || currentItem.price,
+      price_at_product:
+        currentItem.basePrice || currentItem.orderPrice || currentItem.price,
       currency_at_order: selectedDisplayCurrency.value,
       // --- CAMBIO CRUCIAL ---
       // Enviamos el pack_id si el ítem lo tiene para que el backend mantenga la relación
-      pack_id: currentItem.pack_id || null, 
+      pack_id: currentItem.pack_id || null,
     };
 
-    await axios.post(
-      `/tpv/orders/${openOrderData.value.id}/items`,
-      payload
-    );
+    await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload);
     await fetchOpenOrder();
     toast.success("Cantidad actualizada.");
   } catch (error) {
@@ -1598,7 +1628,7 @@ const addProductToOrder = async ({
     const availableQuantity = productDetails.lots_sum_quantity;
 
     const currentItemInOrder = orderItems.value.find(
-      (item) => item.product_id === productId
+      (item) => item.product_id === productId,
     );
     const currentQuantityInOrder = currentItemInOrder
       ? currentItemInOrder.selectedQuantity
@@ -1607,7 +1637,7 @@ const addProductToOrder = async ({
 
     if (quantity > availableQuantity) {
       toast.error(
-        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`
+        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`,
       );
       return;
     }
@@ -1621,21 +1651,26 @@ const addProductToOrder = async ({
         priceInSelectedCurrency = customPriceUSD;
       } else if (selectedDisplayCurrency.value === "BS") {
         // Calcular la tasa de conversión basada en los precios del producto
-        const rate = (productDetails.sale_price > 0) 
-          ? (productDetails.price_bs / productDetails.sale_price) 
-          : 1;
+        const rate =
+          productDetails.sale_price > 0
+            ? productDetails.price_bs / productDetails.sale_price
+            : 1;
         priceInSelectedCurrency = customPriceUSD * rate;
       } else if (selectedDisplayCurrency.value === "COP") {
         // Calcular la tasa de conversión basada en los precios del producto
-        const rate = (productDetails.sale_price > 0) 
-          ? (productDetails.price_cop / productDetails.sale_price) 
-          : 1;
+        const rate =
+          productDetails.sale_price > 0
+            ? productDetails.price_cop / productDetails.sale_price
+            : 1;
         priceInSelectedCurrency = customPriceUSD * rate;
       } else {
         priceInSelectedCurrency = customPriceUSD;
       }
     } else {
-      priceInSelectedCurrency = getItemPriceByCurrency(productDetails, selectedDisplayCurrency.value);
+      priceInSelectedCurrency = getItemPriceByCurrency(
+        productDetails,
+        selectedDisplayCurrency.value,
+      );
     }
 
     const payload = {
@@ -1653,18 +1688,18 @@ const addProductToOrder = async ({
 
     const backendResponse = await axios.post(
       `/tpv/orders/${openOrderData.value.id}/items`,
-      payload
+      payload,
     );
     const backendOrderItem = backendResponse.data.data.order_item;
     const existingItemIndex = orderItems.value.findIndex(
-      (item) => item.product_id === backendOrderItem.product_id
+      (item) => item.product_id === backendOrderItem.product_id,
     );
 
     if (existingItemIndex !== -1) {
       orderItems.value[existingItemIndex] =
         formatOrderItemForFrontend(backendOrderItem);
       toast.success(
-        `Cantidad de "${productDetails.name}" incrementada a ${backendOrderItem.quantity}.`
+        `Cantidad de "${productDetails.name}" incrementada a ${backendOrderItem.quantity}.`,
       );
     } else {
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
@@ -1674,7 +1709,7 @@ const addProductToOrder = async ({
   } catch (error) {
     console.error(
       "Error al obtener o agregar el producto a la orden:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     const errorMessage =
       error.response?.data?.message ||
@@ -1688,12 +1723,11 @@ const addProductToOrder = async ({
       const { available_stock, requested_quantity, product_name } =
         error.response.data.data;
       toast.error(
-        `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`
+        `Stock insuficiente para "${product_name}". Disponible: ${available_stock}. Solicitado: ${requested_quantity}.`,
       );
     }
   }
 };
-
 
 // Watcher para actualizar totales en backend con debounce para evitar múltiples llamadas
 let updateTotalsTimer;
@@ -1715,7 +1749,7 @@ watch(
       }
     }
   },
-  { deep: false }
+  { deep: false },
 );
 
 const getItemPriceByCurrency = (item, currency) => {
@@ -1729,7 +1763,7 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const removeOrderItem = async (productIdToRemove) => {
- /* Swal.fire({
+  /* Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea eliminar el producto!",
     icon: "warning",
@@ -1740,35 +1774,31 @@ const removeOrderItem = async (productIdToRemove) => {
     cancelButtonText: "Cancelar",
   }).then(async (result) => {
     if (result.isConfirmed) {*/
-      if (
-        !hasOpenOrder.value ||
-        !openOrderData.value ||
-        !openOrderData.value.id
-      ) {
-        toast.error("No hay una orden abierta para eliminar productos.");
-        return;
-      }
-      try {
-        const itemToRemove = orderItems.value.find(
-          (item) => item.product_id === productIdToRemove
-        );
-        if (!itemToRemove || !itemToRemove.order_detail_id) {
-          toast.error(
-            "No se encontró el detalle del producto en la orden para eliminar."
-          );
-          return;
-        }
-        await axios.delete(
-          `/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`
-        );
-        orderItems.value = orderItems.value.filter(
-          (item) => item.product_id !== productIdToRemove
-        );
-        toast.success("Producto eliminado de la orden.");
-      } catch (error) {
-        toast.error("Error al eliminar el producto de la orden.");
-      }
-    //}
+  if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
+    toast.error("No hay una orden abierta para eliminar productos.");
+    return;
+  }
+  try {
+    const itemToRemove = orderItems.value.find(
+      (item) => item.product_id === productIdToRemove,
+    );
+    if (!itemToRemove || !itemToRemove.order_detail_id) {
+      toast.error(
+        "No se encontró el detalle del producto en la orden para eliminar.",
+      );
+      return;
+    }
+    await axios.delete(
+      `/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`,
+    );
+    orderItems.value = orderItems.value.filter(
+      (item) => item.product_id !== productIdToRemove,
+    );
+    toast.success("Producto eliminado de la orden.");
+  } catch (error) {
+    toast.error("Error al eliminar el producto de la orden.");
+  }
+  //}
   //});
 };
 
@@ -1783,7 +1813,7 @@ const cancelarOrder = async () => {
   } catch (error) {
     console.error(
       "Error al abandonar la orden:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     const errorMessage =
       error.response?.data?.message ||
@@ -1795,7 +1825,7 @@ const cancelarOrder = async () => {
 const reserverOrder = async () => {
   try {
     const response = await axios.patch(
-      `/tpv/order/${openOrderData.value.id}/reserve`
+      `/tpv/order/${openOrderData.value.id}/reserve`,
     );
     hasOpenOrder.value = false;
     openOrderData.value = null;
@@ -1806,7 +1836,7 @@ const reserverOrder = async () => {
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
 
     if (
@@ -1814,27 +1844,27 @@ const reserverOrder = async () => {
     ) {
       try {
         const checkResponse = await axios.get(
-          "/tpv/order/seller/my-open-order"
+          "/tpv/order/seller/my-open-order",
         );
         if (checkResponse.data.data) {
           openOrderData.value = checkResponse.data.data.order.pending_order;
           reservedOrderData.value =
             checkResponse.data.data.order.reserved_order;
           toast.info(
-            "Ya hay una orden reservada. La orden abierta se mantiene."
+            "Ya hay una orden reservada. La orden abierta se mantiene.",
           );
           return;
         }
       } catch (checkError) {
         console.error(
           "Error al verificar el estado de las órdenes:",
-          checkError
+          checkError,
         );
       }
     }
     console.error(
       "Error al reservar la orden:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     toast.error(errorMessage);
   }
@@ -1843,7 +1873,7 @@ const reserverOrder = async () => {
 const openBuysModal = () => {
   if (selectedDiscountType.value === "Recipe" && !prescriptionFile.value) {
     toast.error(
-      "Debe adjuntar la foto de la receta para aplicar este descuento."
+      "Debe adjuntar la foto de la receta para aplicar este descuento.",
     );
     return;
   }
@@ -2042,12 +2072,12 @@ const handleBuysCompletion = async (
   credit,
   changeAmount,
   changeAmountUSD,
-  switchStates
+  switchStates,
 ) => {
   try {
     isFinishingOrder.value = true;
     const balanceUsed = paymentsData.some(
-      (payment) => payment.type === "balance"
+      (payment) => payment.type === "balance",
     );
 
     let currentPercentage = 0;
@@ -2056,7 +2086,7 @@ const handleBuysCompletion = async (
 
     if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
       const offer = activeCompanyOffers.value.find(
-        (o) => o.value === selectedCompanyId.value
+        (o) => o.value === selectedCompanyId.value,
       );
       currentPercentage = parseFloat(offer?.current_discount || 0);
       currentSourceId = selectedCompanyId.value;
@@ -2073,15 +2103,17 @@ const handleBuysCompletion = async (
       prescriptionFile.value
     ) {
       currentPercentage = parseFloat(
-        currentPrescriptionDiscountPercentage.value
+        currentPrescriptionDiscountPercentage.value,
       );
       currentSourceId = activePrescriptionOffers.value[0]?.id;
       currentTypeName = "recipe";
     }
 
-    let taxable_base = appliesSpecialTax.value ? totalOrderAmount.value : 0.00;
-    let spe_surcharge_rate = appliesSpecialTax.value ? 3.00 : 0.00;
-    let spe_surcharge_amount = appliesSpecialTax.value ? specialTaxAmount.value : 0.00;
+    let taxable_base = appliesSpecialTax.value ? totalOrderAmount.value : 0.0;
+    let spe_surcharge_rate = appliesSpecialTax.value ? 3.0 : 0.0;
+    let spe_surcharge_amount = appliesSpecialTax.value
+      ? specialTaxAmount.value
+      : 0.0;
 
     const formData = new FormData();
     formData.append("order_id", orderId);
@@ -2104,12 +2136,12 @@ const handleBuysCompletion = async (
       // 1. Determine Base Price in Current Currency
       let finalPrice = getItemPriceByCurrency(
         item,
-        selectedDisplayCurrency.value
+        selectedDisplayCurrency.value,
       );
 
       let finalPriceBeforeDiscount = getItemPriceByCurrency(
         item,
-        selectedDisplayCurrency.value
+        selectedDisplayCurrency.value,
       );
 
       // 2. Determine Discount Details
@@ -2117,29 +2149,37 @@ const handleBuysCompletion = async (
       let dPercent = 0;
       let dSourceId = null;
 
-      if (item.discount_type === "expiration") {
-        // Priority: Expiration Discount (Item specific)
-        dType = "expiration";
-        dPercent = parseFloat(item.discount_percentage || 0);
-        dSourceId = item.discount_source_id || null;
-      } else if (currentPercentage > 0) {
-        // Global Discount (Company/Doctor/Recipe)
+      const productPct = parseFloat(item.discount_percentage || 0);
+
+      const globalPct =
+        currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
+
+      // Determine Winner
+      if (globalPct > productPct) {
+        // Global Wins
         dType = currentTypeName;
-        dPercent = currentPercentage;
+        dPercent = globalPct;
         dSourceId = currentSourceId;
+      } else if (productPct > 0) {
+        // Product Discount Wins (Expiration, Individual, or Category)
+        dType = item.discount_type || "individual"; // Fallback
+        dPercent = productPct;
+        dSourceId = item.discount_source_id;
       }
 
       // 3. Apply Discount to Price
-      // Note: Expiration items already have their price discounted in the view model.
-      // Global discount items do not, so we calculate it here.
-      if (dPercent > 0 && dType !== "expiration") {
-        finalPrice = finalPrice * (1 - dPercent / 100);
+      // If Global Won, we need to calculate price reduction on the fly
+      // If Expiration Won, the 'price' coming from item might already be discounted if it was fetched that way,
+      // BUT formatOrderItemForFrontend usually sets price based on calculation.
+      // safely re-calculate:
+      if (dPercent > 0) {
+        finalPrice = finalPriceBeforeDiscount * (1 - dPercent / 100);
       }
 
       // 4. Rounding for specific currencies if needed (e.g. COP)
       // getItemPriceByCurrency usually handles base rounding, but discount might introduce decimals.
       /*if (selectedDisplayCurrency.value === 'COP') {
-          // finalPrice = roundUpToNearestHundred(finalPrice); 
+          // finalPrice = roundUpToNearestHundred(finalPrice);
           // Depending on if backend expects strict rounding or specific value
       }*/
 
@@ -2165,7 +2205,7 @@ const handleBuysCompletion = async (
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
 
     if (response.status === 200 || response.status === 201) {
@@ -2185,14 +2225,19 @@ const handleBuysCompletion = async (
       discountTypeForPrint.value = selectedDiscountType.value;
       const orderCompletada = response.data.data.orderCompletada;
       orderData.value = orderCompletada;
-      itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value))
+      itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value));
       TotalToPrint.value = parseFloat(orderData.value.total_amount);
-      paymentsForPrint.value = orderData.value.payment_methods.filter(p => {
+      paymentsForPrint.value = orderData.value.payment_methods.filter((p) => {
         const name = (p.method || "").toString().toUpperCase();
-        return name !== 'N/A' && name !== '' && name !== 'UNDEFINED' && name !== 'NULL';
+        return (
+          name !== "N/A" &&
+          name !== "" &&
+          name !== "UNDEFINED" &&
+          name !== "NULL"
+        );
       });
-      pendingOpenOrder.value = response.data.data.order
-     /* if (response.data.data.order) {
+      pendingOpenOrder.value = response.data.data.order;
+      /* if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
         selectedClient.value = openOrderData.value.client;
@@ -2205,12 +2250,12 @@ const handleBuysCompletion = async (
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
     toast.error("Hubo un problema al procesar su compra.");
-      hasOpenOrder.value = false;
-        openOrderData.value = null;
-        selectedClient.value = null;
-        orderItems.value = [];
-        reservedOrderData.value = null;
-        clientIdentification.value = "";
+    hasOpenOrder.value = false;
+    openOrderData.value = null;
+    selectedClient.value = null;
+    orderItems.value = [];
+    reservedOrderData.value = null;
+    clientIdentification.value = "";
   }
 };
 
@@ -2219,35 +2264,47 @@ const printTickeCompletion = async () => {
     console.error("No hay datos de orden para imprimir");
     return;
   }
-  speSurchargeAmountPrint.value = parseFloat(orderData.value.spe_surcharge_amount || 0);
-  isSpecialTaxpayer.value = parseFloat(orderData.value.spe_surcharge_amount) > 0;
+  speSurchargeAmountPrint.value = parseFloat(
+    orderData.value.spe_surcharge_amount || 0,
+  );
+  isSpecialTaxpayer.value =
+    parseFloat(orderData.value.spe_surcharge_amount) > 0;
   isPrinting.value = true;
   await nextTick();
-  await new Promise(resolve => setTimeout(resolve, 600)); 
+  await new Promise((resolve) => setTimeout(resolve, 600));
   const printContents = document.getElementById("orderPrint");
 
   if (printContents && printContents.innerHTML.trim() !== "") {
     const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+    printWindow.document.write(
+      "<html><head><title>Farmacia Barrio Sucre</title>",
+    );
 
     // Copiar estilos (el bloque try/catch que ya tienes)
-    Array.from(document.styleSheets).forEach(sheet => {
+    Array.from(document.styleSheets).forEach((sheet) => {
       try {
         if (sheet.cssRules) {
-          const css = Array.from(sheet.cssRules).map(r => r.cssText).join("");
+          const css = Array.from(sheet.cssRules)
+            .map((r) => r.cssText)
+            .join("");
           printWindow.document.write("<style>" + css + "</style>");
         } else if (sheet.href) {
-          printWindow.document.write('<link rel="stylesheet" href="' + sheet.href + '">');
+          printWindow.document.write(
+            '<link rel="stylesheet" href="' + sheet.href + '">',
+          );
         }
       } catch (e) {
-        if (sheet.href) printWindow.document.write('<link rel="stylesheet" href="' + sheet.href + '">');
+        if (sheet.href)
+          printWindow.document.write(
+            '<link rel="stylesheet" href="' + sheet.href + '">',
+          );
       }
     });
 
     printWindow.document.write("</head><body>");
     printWindow.document.write(printContents.innerHTML);
     printWindow.document.write("</body></html>");
-    
+
     printWindow.document.close();
     setTimeout(() => {
       printWindow.focus();
@@ -2275,16 +2332,16 @@ const fetchGroupProducts = async (groupId) => {
 
 const fetchFailuresProducts = async (productId) => {
   try {
-    const response = await axios.post('/tpv/product-failure', {
+    const response = await axios.post("/tpv/product-failure", {
       product_id: productId,
-    })
+    });
     toast.info("Reporte de falla guardado correctamente.");
   } catch (error) {
     if (error.response) {
-      console.error('Errores de validación:', error.response.data.errors)
+      console.error("Errores de validación:", error.response.data.errors);
       toast.error("Hubo un problema al procesar su reporte de falla.");
     } else {
-      console.error('Error de conexión:', error.message)
+      console.error("Error de conexión:", error.message);
     }
   }
 };
@@ -2308,7 +2365,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
     } catch (error) {
       console.error(
         `Error al agregar el producto con ID ${product.product_id}:`,
-        error
+        error,
       );
     }
   }
@@ -2320,7 +2377,7 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 const addReserverOrder = async () => {
   try {
     const response = await axios.patch(
-      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`
+      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`,
     );
     const { pending_order, reserved_order } = response.data.data;
 
@@ -2333,10 +2390,9 @@ const addReserverOrder = async () => {
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
 
-
     if (openOrderData.value.details) {
       orderItems.value = openOrderData.value.details.map((item) =>
-        formatOrderItemForFrontend(item)
+        formatOrderItemForFrontend(item),
       );
     } else {
       orderItems.value = [];
@@ -2382,7 +2438,9 @@ const updatePacksOptions = (options) => {
 
 const handleViewPackDetails = async (item) => {
   try {
-    const response = await axios.get(`/tpv/promotions/product-packs/${item.id}`);
+    const response = await axios.get(
+      `/tpv/promotions/product-packs/${item.id}`,
+    );
     const packCompleto = response.data;
     selectedPack.value = packCompleto.data;
     showPackDetailsModal.value = true;
@@ -2395,7 +2453,7 @@ const handleViewPackDetails = async (item) => {
 const handleAddPackToOrder = async ({ pack, quantity }) => {
 
   //if (!pack || !pack.pack_config) return;
-  
+
 
   const productsToAdd = JSON.parse(pack.pack_config)
   if (Object.keys(productsToAdd).length === 0) {
@@ -2442,19 +2500,15 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
   }
 };*/
 
-
 const handleAddPackToOrder = async ({ pack, quantity }) => {
+  // if (!pack || !pack.pack_config) return;
 
+  let configStr = pack.pack_config;
 
-
- // if (!pack || !pack.pack_config) return;
-
-
-
-   let configStr = pack.pack_config;
-  
   if (!configStr) {
-    const itemWithConfig = orderItems.value.find(i => i.pack_id === pack.id && i.original_pack_config);
+    const itemWithConfig = orderItems.value.find(
+      (i) => i.pack_id === pack.id && i.original_pack_config,
+    );
     configStr = itemWithConfig?.original_pack_config;
   }
 
@@ -2463,28 +2517,25 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
     return;
   }
 
-
   const productsToAdd = JSON.parse(pack.pack_config);
   loading.value = true;
 
   try {
-  const itemsInOrderBelongingToPack = orderItems.value.filter(
-      (item) => item.pack_id === pack.id
+    const itemsInOrderBelongingToPack = orderItems.value.filter(
+      (item) => item.pack_id === pack.id,
     );
 
-
-
-if (itemsInOrderBelongingToPack.length > 0) {
+    if (itemsInOrderBelongingToPack.length > 0) {
       // CASO: EL PACK YA EXISTE EN LA ORDEN
       // Iteramos sobre los productos que ya están en el carrito
 
       for (const item of itemsInOrderBelongingToPack) {
-
         // Buscamos en la configuración cuánto debe aumentar este producto específico
         const productConfig = productsToAdd[item.product_id];
-        const unitsPerPack = typeof productConfig === "object" && productConfig !== null
-          ? (productConfig.quantity || 1)
-          : (productConfig || 1);
+        const unitsPerPack =
+          typeof productConfig === "object" && productConfig !== null
+            ? productConfig.quantity || 1
+            : productConfig || 1;
         const totalToAdd = unitsPerPack * quantity;
 
         // Llamamos a actualizar con la cantidad acumulada
@@ -2492,14 +2543,16 @@ if (itemsInOrderBelongingToPack.length > 0) {
           productId: item.product_id,
           quantity: item.selectedQuantity + totalToAdd,
           orderDetailId: item.order_detail_id,
-          packId: pack.id // IMPORTANTE: pasar el packId para que no se pierda
+          packId: pack.id, // IMPORTANTE: pasar el packId para que no se pierda
         });
       }
     } else {
       // CASO: EL PACK ES NUEVO (No hay productos con ese pack_id aún)
       for (const [productId, config] of Object.entries(productsToAdd)) {
-        const unitsPerPack = typeof config === "object" ? (config.quantity || 1) : config;
-        const productPrice = typeof config === "object" ? config.sale_price : null;
+        const unitsPerPack =
+          typeof config === "object" ? config.quantity || 1 : config;
+        const productPrice =
+          typeof config === "object" ? config.sale_price : null;
 
         await addProductToOrder({
           productId: parseInt(productId),
@@ -2513,10 +2566,10 @@ if (itemsInOrderBelongingToPack.length > 0) {
     // Recorremos cada producto definido en la configuración del pack
     /*for (const [productId, config] of Object.entries(productsToAdd)) {
       const idNumeric = parseInt(productId);
-      
+
       // 1. Obtenemos cuántas unidades de este producto vienen en 1 solo pack
-      const unitsPerPack = typeof config === "object" && config !== null 
-        ? parseInt(config.quantity || 1) 
+      const unitsPerPack = typeof config === "object" && config !== null
+        ? parseInt(config.quantity || 1)
         : parseInt(config);
 
       // 2. Calculamos cuánto vamos a añadir (unidades_del_pack * cantidad_de_packs_a_sumar)
@@ -2529,7 +2582,7 @@ if (itemsInOrderBelongingToPack.length > 0) {
       );
 
       if (existingItem) {
-   
+
         await updateOrderItemQuantity({
           productId: idNumeric,
           quantity: existingItem.selectedQuantity + amountToAdd,
@@ -2545,11 +2598,10 @@ if (itemsInOrderBelongingToPack.length > 0) {
         });
       }
     }*/
-    
+
     // Sincronizamos la interfaz con el backend
     await fetchOpenOrder();
     toast.success(`Pack actualizado: +${quantity} unidad(es) de pack.`);
-
   } catch (e) {
     console.error("Error al procesar el pack:", e);
     toast.error("Error al actualizar las cantidades del pack.");
@@ -2557,7 +2609,6 @@ if (itemsInOrderBelongingToPack.length > 0) {
     loading.value = false;
   }
 };
-
 
 watch(activeTab, (val) => {
   if (val === "packs" && packs.value.length === 0 && totalPacks.value === 0) {
@@ -2576,12 +2627,12 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
   }
 
   loading.value = true;
-  
+
   try {
     // 1. Agrupamos todos los productos del pack para enviarlos de forma eficiente
     for (const [productId, config] of Object.entries(productsInPack)) {
       const idNumeric = parseInt(productId);
-      
+
       // Calculamos cuántas unidades totales se van a agregar de este producto
       // (Cantidad base en el pack * cantidad de packs solicitados)
       const baseQtyInPack = typeof config === "object" ? parseInt(config.quantity || 1) : parseInt(config);
@@ -2611,8 +2662,8 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
           original_pack_config: pack.pack_config
         });
       }
-      
-      // CRUCIAL: Refrescamos la orden después de cada producto del pack 
+
+      // CRUCIAL: Refrescamos la orden después de cada producto del pack
       // para que el siguiente producto vea la lista actualizada y no duplique.
       await fetchOpenOrder();
     }
@@ -2629,37 +2680,42 @@ const handleAddPackToOrder = async ({ pack, quantity }) => {
 */
 const itemsForTicket = computed(() => {
   const globalDiscount = currentGlobalDiscountDetails.value;
-  
+
   // Si no hay nada que imprimir, retornamos array vacío
   if (!itemsToPrint.value || itemsToPrint.value.length === 0) return [];
 
-  return itemsToPrint.value.map(item => {
-    // Si el item ya tiene descuento por vencimiento, lo dejamos igual
-    if (item.discount_type === 'expiration') {
-      return { ...item };
-    }
+  return itemsToPrint.value.map((item) => {
+    // Logic for Best Discount on Ticket
 
-    // Normalizamos la cantidad (Laravel usa 'quantity', el carrito local 'selectedQuantity')
-    const qty = item.selectedQuantity || item.quantity || 1;
-    
-    if (globalDiscount && globalDiscount.percentage > 0) {
-      const factor = 1 - (globalDiscount.percentage / 100);
-      
+    const productPct = parseFloat(item.discount_percentage || 0);
+
+    const globalPct =
+      globalDiscount && globalDiscount.percentage > 0 && !item.pack_id
+        ? parseFloat(globalDiscount.percentage)
+        : 0;
+
+    const bestPct = Math.max(productPct, globalPct);
+
+    if (bestPct > 0) {
+      const factor = 1 - bestPct / 100;
       return {
         ...item,
-        // Usamos el precio base y lo multiplicamos por el factor y la cantidad
-        price: (item.price_before_discount * factor) * qty,
-        price_bs: (item.original_price_bs * factor) * qty,
-        price_cop: (item.original_price_cop * factor) * qty,
+        price: item.price_before_discount * factor * qty,
+        price_bs: item.original_price_bs * factor * qty,
+        price_cop: item.original_price_cop * factor * qty,
         price_before_discount: item.price_before_discount * qty,
-        selectedQuantity: qty // Aseguramos que el ticket vea la cantidad
+        selectedQuantity: qty,
+        // Override display info for ticket if global won
+        discount_percentage: bestPct,
+        discount_type:
+          globalPct > productPct ? globalDiscount.type : item.discount_type,
       };
     }
 
     // Si no hay descuento global, devolvemos el item con su cantidad normalizada
-    return { 
-      ...item, 
-      selectedQuantity: qty 
+    return {
+      ...item,
+      selectedQuantity: qty,
     };
   });
 });
@@ -2668,9 +2724,9 @@ const handleExternalSort = async (sortData) => {
   orderBy.value = sortData.order;
   tableOptions.value.sortBy = [{ key: sortData.key, order: sortData.order }];
   try {
-    await axios.post('/user/update-sort-config', {
+    await axios.post("/user/update-sort-config", {
       sortBy: sortData.key,
-      orderBy: sortData.order
+      orderBy: sortData.order,
     });
     toast.success("Orden guardada como preferida");
   } catch (error) {
@@ -2687,7 +2743,8 @@ const finalizeAndCheckPending = () => {
     selectedClient.value = pendingOpenOrder.value.client;
     reservedOrderData.value = null;
     if (pendingOpenOrder.value.currency) {
-      selectedDisplayCurrency.value = pendingOpenOrder.value.currency.toUpperCase();
+      selectedDisplayCurrency.value =
+        pendingOpenOrder.value.currency.toUpperCase();
     }
     orderItems.value = pendingOpenOrder.value.details.map((item) => {
       return formatOrderItemForFrontend(item, selectedDisplayCurrency.value);
@@ -2698,14 +2755,13 @@ const finalizeAndCheckPending = () => {
   } else {
     hasOpenOrder.value = false;
     openOrderData.value = null;
-    selectedDisplayCurrency.value = 'COP';
+    selectedDisplayCurrency.value = "COP";
     orderItems.value = [];
     selectedClient.value = null;
     clientIdentification.value = "";
     reservedOrderData.value = null;
   }
 };
-
 </script>
 <template>
   <div>
@@ -2738,7 +2794,9 @@ const finalizeAndCheckPending = () => {
         @add-reserved-order="addReserverOrder"
         v-model:selected-discount-type="selectedDiscountType"
         :active-doctor-offers="activeDoctorOffers || []"
-        :prescription-discount-percentage="currentPrescriptionDiscountPercentage || 0"
+        :prescription-discount-percentage="
+          currentPrescriptionDiscountPercentage || 0
+        "
         :active-company-offers="activeCompanyOffers || []"
         @doctor-discount-selected="handleDoctorDiscountSelected"
         @prescription-file-selected="handlePrescriptionFileSelected"
@@ -2755,39 +2813,39 @@ const finalizeAndCheckPending = () => {
       />
     </div>
 
-        <OrderFilters
-          v-model:searchQuery="filterSearchQuery"
-          v-model:selectedLaboratory="selectedLaboratory"
-          v-model:selectedOrigin="selectedOrigin"
-          v-model:stockStatusFilter="stockStatusFilter"
-          v-model:isStrictSearch="isStrictSearch"
-          :laboratories="laboratories || []"
-          :origins="origins || []"
-          :loading="isLoadingFilters || false"
-          @clear="handleClearFilters"
-          @sort="handleExternalSort"
-          @back="handleBackFromGroupView"
-        >
-        </OrderFilters>
+    <OrderFilters
+      v-model:searchQuery="filterSearchQuery"
+      v-model:selectedLaboratory="selectedLaboratory"
+      v-model:selectedOrigin="selectedOrigin"
+      v-model:stockStatusFilter="stockStatusFilter"
+      v-model:isStrictSearch="isStrictSearch"
+      :laboratories="laboratories || []"
+      :origins="origins || []"
+      :loading="isLoadingFilters || false"
+      @clear="handleClearFilters"
+      @sort="handleExternalSort"
+      @back="handleBackFromGroupView"
+    >
+    </OrderFilters>
 
-        <OrderProductsTable
-          :products="products || []"
-          :loading="loading"
-          :total-product="totalProduct || 0"
-          v-model:items-per-page="itemsPerPage"
-          v-model:page="page"
-          :discount-min-products="discountMinProducts || 0"
-          :discount-max-products="discountMaxProducts || 0"
-          :current-discount="discount || 0"
-          :order-items="orderItems || []"
-          :options="tableOptions"
-          @update:options="updateTableOptions"
-          @add-product="addProductToOrder"
-          @view-group-products="fetchGroupProducts"
-          @failures-products="fetchFailuresProducts"
-          @view-pack-details="handleViewPackDetails"
-          @add-pack="handleAddPackToOrder"
-        />
+    <OrderProductsTable
+      :products="products || []"
+      :loading="loading"
+      :total-product="totalProduct || 0"
+      v-model:items-per-page="itemsPerPage"
+      v-model:page="page"
+      :discount-min-products="discountMinProducts || 0"
+      :discount-max-products="discountMaxProducts || 0"
+      :current-discount="discount || 0"
+      :order-items="orderItems || []"
+      :options="tableOptions"
+      @update:options="updateTableOptions"
+      @add-product="addProductToOrder"
+      @view-group-products="fetchGroupProducts"
+      @failures-products="fetchFailuresProducts"
+      @view-pack-details="handleViewPackDetails"
+      @add-pack="handleAddPackToOrder"
+    />
 
     <!--   <OrderPacksTable
           :packs="packs"
@@ -2830,7 +2888,9 @@ const finalizeAndCheckPending = () => {
       :recipe-discount-total="totalRecipeDiscountAmount || 0"
       :expiration-discount-total="totalExpirationDiscountAmount || 0"
       :active-doctor-offers="activeDoctorOffers || []"
-      :prescription-discount-percentage="currentPrescriptionDiscountPercentage || 0"
+      :prescription-discount-percentage="
+        currentPrescriptionDiscountPercentage || 0
+      "
       :active-company-offers="activeCompanyOffers || []"
       :global-discount="currentGlobalDiscountDetails || null"
       :is-special-taxpayer="isSpecialTaxpayer || false"
@@ -2838,10 +2898,21 @@ const finalizeAndCheckPending = () => {
       @finish-and-reload="finalizeAndCheckPending"
     />
 
-   <div
-  id="orderPrint"
-  :style="isPrinting ? { position: 'fixed', left: '0', top: '0', zIndex: 9999, background: 'white', width: '80mm' } : { position: 'absolute', left: '-9999px' }"
->
+    <div
+      id="orderPrint"
+      :style="
+        isPrinting
+          ? {
+              position: 'fixed',
+              left: '0',
+              top: '0',
+              zIndex: 9999,
+              background: 'white',
+              width: '80mm',
+            }
+          : { position: 'absolute', left: '-9999px' }
+      "
+    >
       <OrderTicket
         v-if="orderData"
         :order-data="orderData"

@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\ProductLot;
 use App\Services\Resources\ResourceService;
+use App\Models\IndividualOffer;
+use App\Models\CategoryOffer;
 
 class OrderActionService
 {
@@ -167,7 +169,9 @@ class OrderActionService
 
             // HANDLE NORMAL PRODUCTS: Split based on Expiration Rules
 
-            // 1. Remove existing non-pack items for this product to re-calculate distribution
+
+
+            // 1. Remove existing non-pack items for this product
             $order->details()->where('product_id', $validatedData['product_id'])->whereNull('pack_id')->delete();
 
             if ($requestedQuantity === 0) {
@@ -179,16 +183,54 @@ class OrderActionService
                 throw new InsufficientStockException($product->name, $availableStock, $requestedQuantity, 'Stock insuficiente.');
             }
 
+            // --- FETCH OFFERS (Individual & Category) ---
+            $now = Carbon::now();
+
+            // Individual Offer
+            $individualOffer = IndividualOffer::where('product_id', $product->id)
+                ->where('start_date', '<=', $now)
+                ->where('end_date', '>=', $now)
+                ->orderBy('discount_percent', 'desc')
+                ->first();
+
+            // Category Offer
+            $categoryOffer = null;
+            if ($product->category_id) {
+                $categoryOffer = CategoryOffer::where('category_id', $product->category_id)
+                    ->where('is_active', true)
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->orderBy('discount_percentage', 'desc')
+                    ->first();
+            }
+
+            // Determine Best Base Discount (Individual vs Category)
+            $baseDiscountPct = 0;
+            $baseDiscountType = null;
+            $baseDiscountSource = null;
+
+            if ($individualOffer) {
+                $baseDiscountPct = $individualOffer->discount_percent;
+                $baseDiscountType = 'individual';
+                $baseDiscountSource = $individualOffer->id;
+            }
+
+            if ($categoryOffer && $categoryOffer->discount_percentage > $baseDiscountPct) {
+                $baseDiscountPct = $categoryOffer->discount_percentage;
+                $baseDiscountType = 'category';
+                $baseDiscountSource = $categoryOffer->id;
+            }
+
             // 2. Fetch Rules and Lots
             $expirationOffers = \App\Models\ExpirationOffer::where('is_active', true)
-                ->orderBy('months_to_expiration', 'asc') // "Less number of months first"
+                ->orderBy('months_to_expiration', 'asc')
                 ->get();
 
             $lots = $product->lots()->where('quantity', '>', 0)->orderBy('expiration_date', 'asc')->get();
 
             // 3. Distribute
             $remainingQty = $requestedQuantity;
-            $buckets = []; // Key: 'rule_ID' (or 'normal'), Value: Quantity
+            $buckets = [];
 
             foreach ($lots as $lot) {
                 if ($remainingQty <= 0)
@@ -200,14 +242,10 @@ class OrderActionService
                 $matchedRule = null;
                 if ($lot->expiration_date && $expirationOffers->isNotEmpty()) {
                     $monthsToExpiry = Carbon::now()->floatDiffInMonths($lot->expiration_date, false);
-
-                    // Logic: Rule applies if lot expires WITHIN X months. 
-                    // Example: Exp in 2.5 months. Rule 3 months -> Matches (2.5 <= 3). 
-                    // Rule 2 months -> No Match (2.5 > 2).
                     foreach ($expirationOffers as $offer) {
                         if ($monthsToExpiry <= $offer->months_to_expiration) {
                             $matchedRule = $offer;
-                            break; // Pick the first one (sorted by ASC months, so "smallest months" rule)
+                            break;
                         }
                     }
                 }
@@ -222,10 +260,6 @@ class OrderActionService
                 $buckets[$key]['qty'] += $take;
             }
 
-            // If requested qty > sum of lots (should be covered by InsufficientStockException check earlier, but if lots drift...)
-            // The availableStock check earlier used lots_sum_quantity, so strictly we are safe.
-            // But if there is any gap, remainingQty might be > 0 if lots changed. 
-            // We'll treat any remainder as 'normal' (standard stock pointer).
             if ($remainingQty > 0) {
                 if (!isset($buckets['normal']))
                     $buckets['normal'] = ['qty' => 0, 'rule' => null];
@@ -243,35 +277,37 @@ class OrderActionService
                     continue;
 
                 $finalUnitPrice = $unitPriceAtOrder;
-                $discountPct = 0;
-                $discountType = null;
-                $discountSource = null;
 
+                // Start with Base Discount
+                $discountPct = $baseDiscountPct;
+                $discountType = $baseDiscountType;
+                $discountSource = $baseDiscountSource;
+
+                // If Expiration Rule exists, compare and take Max
                 if ($rule) {
-                    $discountPct = $rule->discount_percentage;
-                    $discountType = 'expiration';
-                    $discountSource = $rule->id;
-                    // Apply discount
+                    if ($rule->discount_percentage > $discountPct) {
+                        $discountPct = $rule->discount_percentage;
+                        $discountType = 'expiration';
+                        $discountSource = $rule->id;
+                    }
+                }
+
+                // Apply logic
+                if ($discountPct > 0) {
                     $finalUnitPrice = ceil($unitPriceAtOrder * (1 - ($discountPct / 100)) / 100) * 100;
                 }
 
                 // Compute Total Price Explicitly (Unit * Qty)
                 $calculatedTotalPrice = (float) ($finalUnitPrice * $qty);
-                $calculatedUsdPrice = (float) ($price_usd * $qty);
-
-
-
-                // If mixing currencies, price_usd handling might need adjustment but assuming base behavior
 
                 $newItem = $order->details()->create([
                     'product_id' => $validatedData['product_id'],
                     'quantity' => $qty,
-                    'price' => $calculatedTotalPrice, // Use explicit variable
-                    'unit_cost' => $finalUnitPrice,     // Unit price for this line
-                    'unit_price_usd' => $rule ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
-
+                    'price' => $calculatedTotalPrice,
+                    'unit_cost' => $finalUnitPrice,
+                    'unit_price_usd' => $discountPct > 0 ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
                     'pack_id' => null,
-                    'product_type' => $rule ? 'offer' : 'normal',
+                    'product_type' => $rule ? 'offer' : 'normal', // Keep 'offer' if expiration involved, or maybe 'discounted'? Leaving as is for now.
                     'discount_percentage' => $discountPct > 0 ? $discountPct : null,
                     'discount_type' => $discountType,
                     'discount_source_id' => $discountSource,
@@ -522,7 +558,7 @@ class OrderActionService
                             if ($orderId->currency === 'COP') {
                                 $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
                                 $detail->unit_cost = ceil($itemData['price'] / 100) * 100;
-                                $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100; 
+                                $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100;
                             } else {
                                 $detail->price = $itemData['price'] * $detail->quantity;
                                 $detail->unit_cost = $itemData['price'];
@@ -582,7 +618,7 @@ class OrderActionService
 
                 $quantityExpiration = 0;
                 $lots = $detail->product->lots->sortBy('expiration_date');
-                   
+
 
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
@@ -590,7 +626,7 @@ class OrderActionService
                     }
 
                     $taken = 0;
-                   //  dd($lot->quantity >= $quantityToReduce);
+                    //  dd($lot->quantity >= $quantityToReduce);
                     if ($lot->quantity >= $quantityToReduce) {
                         $taken = $quantityToReduce;
                         $lot->quantity -= $quantityToReduce;
@@ -661,23 +697,23 @@ class OrderActionService
             if ($isFiscalActive) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
-            }else if ($request->generate_invoice) {
+            } else if ($request->generate_invoice) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             }
 
-        if (!$ivaEjecuted) {
-            foreach ($orderId->details as $detail) {
-                if ($detail->product) {
-                    if (!$request->generate_invoice) {
-                        if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
-                            $this->invoicing($orderId, $request->spe);
-                            $ivaEjecuted = true;
+            if (!$ivaEjecuted) {
+                foreach ($orderId->details as $detail) {
+                    if ($detail->product) {
+                        if (!$request->generate_invoice) {
+                            if (($orderId->currency == "BS" || $detail->product->iva == 1) && !$ivaEjecuted) {
+                                $this->invoicing($orderId, $request->spe);
+                                $ivaEjecuted = true;
+                            }
                         }
                     }
                 }
             }
-        }
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
@@ -899,7 +935,7 @@ class OrderActionService
                                 $montoDesc = $amount - $order->usd_conversion;
                                 $cashClosing->usd_cash -= $montoDesc;
                                 $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
-                                 $cashClosing->cop_conversion -= $order->money_returns ?? null;
+                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
                                 $cashClosing->usd_cash -= $amount;
                             }
@@ -934,9 +970,9 @@ class OrderActionService
                                 $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
                                 Log::info("dentro del else conversion.", $order->money_returns);*/
-                                $montoDescCOP = $amount - $order->money_returns;
-                                $cashClosing->cop_cash -= $montoDescCOP;
-                           // }
+                            $montoDescCOP = $amount - $order->money_returns;
+                            $cashClosing->cop_cash -= $montoDescCOP;
+                            // }
                             break;
                         case 'bank_transfer':
                             $cashClosing->cop_transfer -= $amount;
