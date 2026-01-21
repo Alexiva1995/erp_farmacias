@@ -25,6 +25,7 @@ class StoreQuotationRequest extends FormRequest
             'total_amount_usd' => ['required', 'numeric', 'min:0'],
             'total_iva_usd' => ['required', 'numeric', 'min:0'],
             'grand_total_usd' => ['required', 'numeric', 'min:0'],
+            'client_id' => ['nullable', 'numeric', 'exists:clients,id'],
             'currency' => ['required'],
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'exists:products,id'],
@@ -33,9 +34,10 @@ class StoreQuotationRequest extends FormRequest
     }
 
 
-     public function messages(): array
+    public function messages(): array
     {
         return [
+            'client_id.exists' => 'El cliente seleccionado no existe',
             'currency.required' => 'El tipo de moneda es obligatorio',
             'products.required' => 'La cotización debe contener al menos.',
             'products.min' => 'La cotización debe contener al menos un producto.',

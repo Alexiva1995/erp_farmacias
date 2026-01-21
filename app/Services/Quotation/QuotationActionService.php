@@ -4,7 +4,7 @@ namespace App\Services\Quotation;
 
 use App\Models\Product;
 use App\Models\Quotation;
-use App\Models\QuotationProduct; 
+use App\Models\QuotationProduct;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +12,7 @@ class QuotationActionService
 {
 
     public function __construct(
-        
+
     ) {
     }
 
@@ -36,20 +36,21 @@ class QuotationActionService
             $taxExemptValue = ($validatedData['total_iva_usd'] > 0) ? 1 : 0;
 
             $quotation = Quotation::create([
-                'currency'    => $validatedData['currency'] ?? null,
-                'tax_exempt'  =>  $taxExemptValue,
+                'currency' => $validatedData['currency'] ?? null,
+                'tax_exempt' => $taxExemptValue,
                 'vat' => $validatedData['total_iva_usd'],
                 'total' => $validatedData['grand_total_usd'],
-                'created_by' => null,
+                'created_by' => \Auth::id(),
+                'client_id' => $validatedData['client_id']
             ]);
 
-             foreach ($validatedData['products'] as $itemData) {
+            foreach ($validatedData['products'] as $itemData) {
                 $quotationProductsData[] = [
-                    'quotation_id'      => $quotation->id,
-                    'product_id'        => $itemData['id'],
-                    'units'             => $itemData['quantity'],
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
+                    'quotation_id' => $quotation->id,
+                    'product_id' => $itemData['id'],
+                    'units' => $itemData['quantity'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
             }
 
@@ -66,7 +67,7 @@ class QuotationActionService
         }
     }
 
-     public function getProducts(string $quotationId): ?Quotation
+    public function getProducts(string $quotationId): ?Quotation
     {
         $quotation = Quotation::with('products')->find($quotationId);
         return $quotation;

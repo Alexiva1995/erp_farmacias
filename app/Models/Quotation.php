@@ -29,6 +29,7 @@ class Quotation extends Model
         'vat',        // Valor del IVA aplicado
         'total',      // Monto total de la cotización
         'created_by', // ID del usuario que creó la cotización
+        'client_id' // ID cliente al que pertenece la cotización
     ];
 
     /**
@@ -45,5 +46,10 @@ class Quotation extends Model
     public function products(): HasMany
     {
         return $this->hasMany(QuotationProduct::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'client_id');
     }
 }
