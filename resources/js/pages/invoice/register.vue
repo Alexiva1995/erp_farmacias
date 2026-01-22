@@ -98,7 +98,7 @@ const calculatePaymentDate = () => {
   // Nota: payment_due_type viene directo del proveedor, no de una relación
   if (!selectedSupplier.value.payment_due_type) {
     console.warn(
-      "El proveedor no tiene configuración de fecha de pago (payment_due_type)"
+      "El proveedor no tiene configuración de fecha de pago (payment_due_type)",
     );
     return;
   }
@@ -147,7 +147,7 @@ const calculatePaymentDate = () => {
       // La glosa "early_payment" usualmente implica reglas de pago
       if (baseDate && supplierPaymentRules.length > 0) {
         const minDaysRule = supplierPaymentRules.reduce((min, rule) =>
-          rule.days < min.days ? rule : min
+          rule.days < min.days ? rule : min,
         );
         const dateObj = new Date(baseDate);
         // Se suman los días de la regla DIRECTAMENTE (sin restar 1)
@@ -262,7 +262,7 @@ watch(
       // Limpiar fecha de pago si no hay proveedor
       formData.value.payment_date = null;
     }
-  }
+  },
 );
 
 // Watcher adicional para cuando selectedSupplier cambie
@@ -274,7 +274,7 @@ watch(
       calculatePaymentDate();
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -285,7 +285,7 @@ watch(
       await nextTick();
       calculatePaymentDate();
     }
-  }
+  },
 );
 watch(
   () => formData.value.received_date,
@@ -294,7 +294,7 @@ watch(
       await nextTick();
       calculatePaymentDate();
     }
-  }
+  },
 );
 watch(
   () => formData.value.created_invoice_date,
@@ -303,7 +303,7 @@ watch(
       await nextTick();
       calculatePaymentDate();
     }
-  }
+  },
 );
 
 watch(
@@ -312,14 +312,14 @@ watch(
     if (newCurrency === "USD") {
       formData.value.exchange_rate = 0;
     }
-  }
+  },
 );
 
 watch(
   () => formData.value.taxable_base,
   () => {
     formData.value.tax_amount = calculatedTaxAmount.value;
-  }
+  },
 );
 
 watch(
@@ -330,7 +330,7 @@ watch(
   ],
   () => {
     formData.value.total_amount = calculatedTotalAmount.value;
-  }
+  },
 );
 
 watch(
@@ -342,7 +342,7 @@ watch(
   () => {
     formData.value.total_usd = calculatedTotalUsd.value;
   },
-  { deep: true }
+  { deep: true },
 );
 
 onMounted(async () => {
@@ -410,7 +410,7 @@ const fetchDiscountRules = async (supplierId) => {
   loadingRules.value = true;
   try {
     const response = await axios.get(
-      `/supplier-laboratories/${supplierId}/discount-rules`
+      `/supplier-laboratories/${supplierId}/discount-rules`,
     );
     // Verificar si existe la propiedad discount_rules o si es response.data directamente
     const rulesData = response.data.discount_rules || [];
@@ -517,12 +517,10 @@ const handleCancel = () => {
           <VRow>
             <VCol cols="12" md="3">
               <VTextField
-                v-model="formData.exp_date"
-                label="Fecha de Vencimiento"
+                v-model="formData.created_invoice_date"
+                label="F. de Emisión"
                 type="date"
                 placeholder="YYYY-MM-DD"
-                :error="!!expDateError"
-                :error-messages="expDateError"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -535,10 +533,12 @@ const handleCancel = () => {
             </VCol>
             <VCol cols="12" md="3">
               <VTextField
-                v-model="formData.created_invoice_date"
-                label="F. Creación Factura"
+                v-model="formData.exp_date"
+                label="Fecha de Vencimiento"
                 type="date"
                 placeholder="YYYY-MM-DD"
+                :error="!!expDateError"
+                :error-messages="expDateError"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -560,7 +560,7 @@ const handleCancel = () => {
                   de pago:
                   {{
                     translatePaymentMethodType(
-                      selectedSupplier.payment_due_type
+                      selectedSupplier.payment_due_type,
                     ) || "No definido"
                   }}
                   | Días: {{ selectedSupplier.custom_due_days || "N/A" }}
