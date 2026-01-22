@@ -12,16 +12,16 @@ use Illuminate\Support\Facades\Log;
 
 class QuotationController extends Controller
 {
-     public function __construct(
+    public function __construct(
         private QuotationQueryService $quotationQueryService,
-        private QuotationActionService  $quotationActionService
+        private QuotationActionService $quotationActionService
     ) {
     }
 
-   public function index(Request $request)
+    public function index(Request $request)
     {
-       $query = $this->quotationQueryService->getFilteredQuery($request);
-       $perPage = $request->input('itemsPerPage', 10);
+        $query = $this->quotationQueryService->getFilteredQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -39,18 +39,18 @@ class QuotationController extends Controller
         try {
             $quotation = $this->quotationActionService->createQuotation($request->validated());
             return response()->json([
-            'message' => 'Cotización guardada exitosamente.',
-            'quotation' => $quotation
-        ], 201);
+                'message' => 'Cotización guardada exitosamente.',
+                'quotation' => $quotation
+            ], 201);
         } catch (\Exception $e) {
             Log::error('Error al procesar solicitud de creación de cotización en el controlador: ' . $e->getMessage(), [
                 'request_data' => $request->validated(),
-                'trace'        => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'message' => 'Ocurrió un error al guardar la cotización. Por favor, inténtalo de nuevo.',
-                'error'   => $e->getMessage()
-            ], 500); 
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -60,10 +60,10 @@ class QuotationController extends Controller
     public function show(Product $product)
     {
         $detailedProduct = $this->quotationActionService->loadProductDetails($product);
-       
+
         if (!$detailedProduct) {
-             return response()->json([
-                'status'  => 'error',
+            return response()->json([
+                'status' => 'error',
                 'message' => "Producto no encontrado.",
             ]);
         }
@@ -71,10 +71,10 @@ class QuotationController extends Controller
         return response()->json($detailedProduct);
     }
 
-      public function showProducts(int $quotationId)
+    public function showProducts(int $quotationId)
     {
         $quotation = $this->quotationActionService->getProducts($quotationId);
-      
+
         if (!$quotation) {
             return response()->json(['message' => 'Quotation not found'], 404);
         }
@@ -98,5 +98,17 @@ class QuotationController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function getLastNumber()
+    {
+        $quotation = $this->quotationActionService->getLastNumber();
+
+        if (!$quotation) {
+            return response()->json(['message' => 'Quotation not found'], 404);
+        }
+        return response()->json([
+            'quotation_id' => $quotation->id,
+        ]);
     }
 }

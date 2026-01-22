@@ -1,8 +1,9 @@
 <script setup>
+import axiosInstance from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -39,6 +40,14 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  clientIdentification: {
+    type: String,
+    default: "",
+  },
+  selectedClient: {
+    type: Object,
+    default: {},
+  },
   quotationProducts: {
     type: Array,
     default: () => [],
@@ -71,11 +80,16 @@ const props = defineProps({
 
 const emit = defineEmits([
   "update:searchQuery",
+  "update:clientIdentification",
   "remove-quotation-product",
   "remove",
   "print-quotation",
   "add-product-by-barcode",
+  "search-client",
+  "clean-post-save",
 ]);
+
+const lastNumber = ref(null);
 
 const removeQuotationProduct = (productId) => {
   emit("remove-quotation-product", productId);
@@ -137,7 +151,9 @@ const generateWhatsappMessage = () => {
     let rows =
       "💊 " +
       product.title +
-      (product.laboratory && product.laboratory !== "N/A" ? " (" + product.laboratory + ")" : "") +
+      (product.laboratory && product.laboratory !== "N/A"
+        ? " (" + product.laboratory + ")"
+        : "") +
       "\n" +
       "Cantidad: " +
       product.selectedQuantity +
@@ -154,8 +170,10 @@ const generateWhatsappMessage = () => {
     productos_array.push(rows);
   });
 
-  const quotationNumber = props.quotationDetails?.id ? `\nNúmero de Cotización: #${props.quotationDetails.id}\n` : "";
-  
+  const quotationNumber = props.quotationDetails?.id
+    ? `\nNúmero de Cotización: #${props.quotationDetails.id}\n`
+    : "";
+
   const whatsappMessage =
     "Mensaje de presupuesto\n\n" +
     "Fecha: " +
@@ -210,6 +228,27 @@ const handleShareButtonClick = async () => {
   }
 };
 
+const handleSaveQuotation = async () => {
+  try {
+    await props.onSaveQuotation();
+
+    toast.success("Se guardó la cotización exitosamente");
+
+    emit("clean-post-save");
+    fetchLastQuotationNumber();
+  } catch (error) {
+    const noProductsError =
+      "Error: No hay productos en la cotización para guardar.";
+
+    if (error == noProductsError) {
+      toast.error("No hay productos en la cotización para guardar.");
+    } else {
+      toast.error("Hubo un error al guardar la cotización");
+      console.error("Error trying to save quotation", error);
+    }
+  }
+};
+
 const handleCopyWhatsappMessage = async () => {
   try {
     // Guardar la cotización si no está guardada
@@ -235,12 +274,30 @@ const handleCopyWhatsappMessage = async () => {
   }
 };
 const chipColor = "primary";
+
+const fetchLastQuotationNumber = async () => {
+  try {
+    const { data } = await axiosInstance.get("/tpv/quotations/last-number");
+
+    lastNumber.value = data.quotation_id + 1;
+  } catch (error) {
+    lastNumber.value = 1;
+    console.error(error);
+  }
+};
+
+onMounted(() => {
+  fetchLastQuotationNumber();
+});
 </script>
 
 <template>
   <VCard min-height="280" class="d-flex flex-column">
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
+        <VCol cols="12">
+          <h3>Cotización #{{ lastNumber }}</h3>
+        </VCol>
         <VCol cols="12" sm="12" md="12">
           <div class="d-flex align-center gap-4 flex-wrap">
             <AppTextField
@@ -265,6 +322,46 @@ const chipColor = "primary";
               }}</span>
             </VChip>
           </div>
+        </VCol>
+      </VRow>
+      <VRow>
+        <VCol cols="12" sm="12" md="12">
+          <div class="d-flex align-center gap-4 flex-wrap">
+            <AppTextField
+              :model-value="props.clientIdentification"
+              placeholder="Cédula del Cliente"
+              clearable
+              @update:model-value="emit('update:clientIdentification', $event)"
+              class="flex-grow-1"
+            />
+
+            <IconBtn
+              size="small"
+              rounded
+              variant="tonal"
+              color="default"
+              @click="emit('search-client')"
+            >
+              <VIcon icon="tabler-search" />
+            </IconBtn>
+          </div>
+        </VCol>
+      </VRow>
+      <VRow v-if="props.selectedClient.id">
+        <VCol cols="12" sm="12" md="12">
+          <VAlert icon="tabler-user" color="primary">
+            <div class="d-flex align-center gap-4 flex-wrap">
+              <p>{{ props.selectedClient.name }}</p>
+              <p>{{ props.selectedClient.last_name }}</p>
+            </div>
+            <div class="d-flex align-center gap-4 flex-wrap">
+              <p>
+                {{ props.selectedClient.identification_type
+                }}{{ props.selectedClient.identification }}
+              </p>
+              <p>{{ props.selectedClient.phone }}</p>
+            </div>
+          </VAlert>
         </VCol>
       </VRow>
     </VCardText>
@@ -316,7 +413,7 @@ const chipColor = "primary";
                   formatCurrency(
                     getProductPrice(product, props.selectedDisplayCurrency) *
                       product.selectedQuantity,
-                    props.selectedDisplayCurrency
+                    props.selectedDisplayCurrency,
                   )
                 }}</span>
                 <VBtn
@@ -348,6 +445,17 @@ const chipColor = "primary";
             @click="handlePrintButtonClick"
           >
             <VIcon icon="tabler-printer" />
+          </IconBtn>
+        </template>
+      </VTooltip>
+      <VTooltip text="Culminar" location="top">
+        <template #activator="{ props }">
+          <IconBtn
+            v-bind="props"
+            class="text-default"
+            @click="handleSaveQuotation"
+          >
+            <VIcon icon="tabler-check" />
           </IconBtn>
         </template>
       </VTooltip>

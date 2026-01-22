@@ -18,6 +18,8 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
+const clientSearchQuery = ref("");
+const selectedClient = ref({});
 const barcodeSearchQuery = ref("");
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -138,7 +140,7 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/tpv/quotation", { params });
@@ -168,14 +170,14 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
   [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 watch(barcodeSearchQuery, (newValue) => {
@@ -211,10 +213,10 @@ const addProductToQuotationByBarcode = async (barcode) => {
   } catch (error) {
     console.error(
       "Error al agregar producto por código de barras:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     toast.error(
-      "Producto no encontrado o error al agregar por código de barras."
+      "Producto no encontrado o error al agregar por código de barras.",
     );
   }
 };
@@ -231,13 +233,13 @@ const addProductToQuotation = async ({ productId, quantity }) => {
     const availableQuantity = productDetails.valid_stock_sum;
     if (quantity > availableQuantity) {
       toast.error(
-        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`
+        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`,
       );
       return;
     }
 
     const existingItemIndex = quotationItems.value.findIndex(
-      (item) => item.id === productId
+      (item) => item.id === productId,
     );
     if (existingItemIndex !== -1) {
       const currentSelectedQuantity =
@@ -246,7 +248,7 @@ const addProductToQuotation = async ({ productId, quantity }) => {
 
       if (newTotalSelectedQuantity > availableQuantity) {
         toast.warning(
-          `Ya se agrego la cantidad maxima disponible de "${productDetails.name}"`
+          `Ya se agrego la cantidad maxima disponible de "${productDetails.name}"`,
         );
         quotationItems.value[existingItemIndex].selectedQuantity =
           availableQuantity;
@@ -254,7 +256,7 @@ const addProductToQuotation = async ({ productId, quantity }) => {
         quotationItems.value[existingItemIndex].selectedQuantity =
           newTotalSelectedQuantity;
         toast.success(
-          `Cantidad de "${productDetails.name}" incrementada a ${newTotalSelectedQuantity}.`
+          `Cantidad de "${productDetails.name}" incrementada a ${newTotalSelectedQuantity}.`,
         );
       }
     } else {
@@ -279,17 +281,17 @@ const addProductToQuotation = async ({ productId, quantity }) => {
   } catch (error) {
     console.error(
       "Error al obtener o agregar el producto a la cotización:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     toast.error(
-      "Error al agregar el producto a la cotización. Inténtalo de nuevo."
+      "Error al agregar el producto a la cotización. Inténtalo de nuevo.",
     );
   }
 };
 
 const removeQuotationItem = (productId) => {
   quotationItems.value = quotationItems.value.filter(
-    (item) => item.id !== productId
+    (item) => item.id !== productId,
   );
   toast.success("Producto eliminado exitosamente");
 };
@@ -350,6 +352,7 @@ const saveQuotation = async () => {
       total_iva_usd: totalIVAAmountUSD.value,
       grand_total_usd: totalQuotationAmountUSD.value,
       currency: selectedDisplayCurrency.value,
+      client_id: selectedClient.value.id,
       products: quotationItems.value.map((item) => ({
         id: item.id,
         quantity: item.selectedQuantity,
@@ -489,14 +492,14 @@ const saveAndPrintQuotation = async () => {
             printWindow.document.write(`<style>${cssText}</style>`);
           } else if (sheet.href) {
             printWindow.document.write(
-              `<link rel="stylesheet" href="${sheet.href}">`
+              `<link rel="stylesheet" href="${sheet.href}">`,
             );
           }
         } catch (e) {
           console.warn(
             "No se pudo acceder a la hoja de estilo:",
             sheet.href || sheet,
-            e
+            e,
           );
         }
       }
@@ -522,7 +525,7 @@ const saveAndPrintQuotation = async () => {
       };
     } else {
       console.warn(
-        "Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página."
+        "Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página.",
       );
       window.print();
     }
@@ -535,10 +538,10 @@ const saveAndPrintQuotation = async () => {
   } catch (error) {
     console.error(
       "Error al guardar o imprimir la cotización:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     toast.error(
-      "Error al guardar o imprimir la cotización. Inténtalo de nuevo."
+      "Error al guardar o imprimir la cotización. Inténtalo de nuevo.",
     );
     isPrinting.value = false;
   }
@@ -559,18 +562,42 @@ const fetchGroupProducts = async (groupId) => {
 
 const fetchFailuresProducts = async (productId) => {
   try {
-    const response = await axios.post('/tpv/product-failure', {
+    const response = await axios.post("/tpv/product-failure", {
       product_id: productId,
     });
     toast.success("Reporte de falla guardado correctamente.");
   } catch (error) {
     if (error.response) {
-      console.error('Errores de validación:', error.response.data.errors);
+      console.error("Errores de validación:", error.response.data.errors);
       toast.error("Hubo un problema al procesar su reporte de falla.");
     } else {
-      console.error('Error de conexión:', error.message);
+      console.error("Error de conexión:", error.message);
     }
   }
+};
+
+const fetchSearchedClient = async () => {
+  try {
+    const { data } = await axios.get(
+      `/crm/clients/identification/${clientSearchQuery.value}`,
+    );
+
+    selectedClient.value = data.data;
+    clientSearchQuery.value = "";
+  } catch (error) {
+    if (error.response.status == 404) {
+      toast.error("No se encontró ningún cliente con esa cédula");
+    }
+  }
+};
+
+const handleCleanAfterSave = () => {
+  handleClearFilters();
+  handleClearSortOrder();
+  removeQuotation();
+
+  page.value = 1;
+  selectedClient.value = {};
 };
 </script>
 
@@ -590,6 +617,7 @@ const fetchFailuresProducts = async (productId) => {
       <VCol cols="12" sm="12" md="6">
         <QuotationProducts
           v-model:searchQuery="barcodeSearchQuery"
+          v-model:client-identification="clientSearchQuery"
           :quotation-products="quotationItems"
           :quotation-details="quotationDetails"
           :selected-display-currency="selectedDisplayCurrency"
@@ -597,9 +625,12 @@ const fetchFailuresProducts = async (productId) => {
           :total-amount-usd="totalAmountUsd"
           :total-amount-cop="totalAmountCop"
           :on-save-quotation="saveQuotation"
+          :selected-client="selectedClient"
           @remove-quotation-product="removeQuotationItem"
           @remove="removeQuotation"
           @print-quotation="saveAndPrintQuotation"
+          @search-client="fetchSearchedClient"
+          @clean-post-save="handleCleanAfterSave"
         />
       </VCol>
     </VRow>
