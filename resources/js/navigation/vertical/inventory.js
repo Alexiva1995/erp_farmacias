@@ -12,27 +12,19 @@ export default [
       {
         title: 'Productos',
         children: [
-          {
-            title: 'Listado',
-            to: 'inventory-products',
-        },
         {
-          title: 'Código de barras',
-          to: 'inventory-barcodes',
-        },
-        {
-          title: 'Laboratorio',
-          to: 'inventory-laboratory',
-        },
-        {
-          title: 'Origen',
-          to: 'inventory-origin',
+          title: 'Listado',
+          to: 'inventory-products',
         },
         {
           title: 'Sin Grupo',
           to: 'inventory-products-without-group',
         }
         ],
+      },
+      {
+        title: 'Productos incompletos',
+        to: 'inventory-incomplete-products',
       },
       {
         title: 'Grupos de Productos',

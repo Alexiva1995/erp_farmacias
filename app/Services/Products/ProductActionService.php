@@ -80,39 +80,24 @@ class ProductActionService
         return $product;
     }
 
-    public function updateProductBarcode(Product $product, int $barcode): bool
+    public function updateIncompleteFields(Product $product, array $data): bool
     {
         \DB::beginTransaction();
         try {
-            $product->update(['barcode' => $barcode]);
-            \DB::commit();
-            return true;
-        } catch (\Exception $e) {
-            \Log::error($e);
-            \DB::rollback();
-            return false;
-        }
-    }
+            $updateData = [];
+            if (isset($data['barcode'])) {
+                $updateData['barcode'] = $data['barcode'];
+            }
+            if (isset($data['laboratory_id'])) {
+                $updateData['laboratory_id'] = $data['laboratory_id'];
+            }
+            if (isset($data['origin_id'])) {
+                $updateData['origin_id'] = $data['origin_id'];
+            }
 
-    public function updateProductLaboratory(Product $product, ?int $laboratoryId): bool
-    {
-        \DB::beginTransaction();
-        try {
-            $product->update(['laboratory_id' => $laboratoryId]);
-            \DB::commit();
-            return true;
-        } catch (\Exception $e) {
-            \Log::error($e);
-            \DB::rollback();
-            return false;
-        }
-    }
-
-    public function updateProductOrigin(Product $product, ?int $originId): bool
-    {
-        \DB::beginTransaction();
-        try {
-            $product->update(['origin_id' => $originId]);
+            if (!empty($updateData)) {
+                $product->update($updateData);
+            }
             \DB::commit();
             return true;
         } catch (\Exception $e) {
