@@ -451,6 +451,7 @@ Route::prefix("suppliers")->group(function () {
     Route::post('/{supplier}/apply-discount', [SupplierController::class, 'applyGlobalDiscount']);
     Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
     Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
+    Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {

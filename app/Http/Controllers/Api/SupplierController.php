@@ -20,6 +20,7 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Arr;
+use App\Models\Product;
 
 class SupplierController extends Controller
 {
@@ -374,9 +375,17 @@ class SupplierController extends Controller
 
         $results = $this->supplierQueryService->addProductToOrder($request);
 
-        return $results
+        /*return $results
             ? ApiResponse::success()
-            : ApiResponse::error();
+            : ApiResponse::error();*/
+      if ($results['success']) {
+        return ApiResponse::success(
+            'Producto añadido al pedido correctamente', 
+            ['warning' => $results['warning']]
+        );
+    }
+
+    return ApiResponse::error('No se pudo procesar la solicitud');
     }
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
@@ -472,4 +481,13 @@ class SupplierController extends Controller
             return ApiResponse::error("Error al eliminar productos antiguos: " . $e->getMessage(), 500);
         }
     }
+
+    public function toggleOrder(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
+    $product->update([
+        'is_ordered' => false,
+    ]);
+    return ApiResponse::success("Producto eliminado de la lista");
+}
 }
