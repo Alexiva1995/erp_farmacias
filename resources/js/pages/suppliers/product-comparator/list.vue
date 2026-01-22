@@ -7,6 +7,7 @@ import ProductComparisionProductsTable from "@/components/ProductComparisionProd
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
 import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
+import ProductsWithoutSupplierComparatorFilter from "@/components/ProductsWithoutSupplierComparatorFilter.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -70,9 +71,31 @@ const orderByProductsWithoutSupplier = ref();
 // Variable para rastrear la selección
 const selectedProductFromTop = ref(null);
 
+//variables para el flitro de productos sin proveedor
+const con_descuento= ref(true);// Fallas , Execeso o All
+const selectedLaboratory = ref();
+const selectedGroup= ref();
+const tipo_de_vista= ref(false);// grupo o individual
+const tipo_de_filtracion= ref("sales");// promedio o ventas
+const lapso_de_tiempo= ref("3 month");// tiempo
+const stock= ref("all");// Fallas , Execeso o All
+const laboratoriesProductsWithoutSupplier = ref([]);
+
+const handleClearFilters = () => {
+  con_descuento.value = true;
+  tipo_de_vista.value = false;
+  tipo_de_filtracion.value = "sales";
+  lapso_de_tiempo.value = "3 month";
+  stock.value = "all";
+  selectedLaboratory.value = [];
+  selectedGroup.value = [];
+};
+
 const handleSelectProductFromTop = (product) => {
   selectedProductFromTop.value = product;
-  toast.success(`Seleccionado: ${product.name}. Ahora busque el proveedor equivalente abajo.`);
+  toast.success(
+    `Seleccionado: ${product.name}. Ahora busque el proveedor equivalente arriba.`,
+  );
 };
 
 const handleShowDiscountDialog = (supplier) => {
@@ -118,7 +141,7 @@ const handleDeleteOldProducts = async (date) => {
         Swal.fire(
           "¡Eliminados!",
           `Se han eliminado ${response.data.count} productos antiguos.`,
-          "success"
+          "success",
         );
         fetchProducts();
       }
@@ -161,7 +184,7 @@ const handleUpdateAllApi = () => {
 
         if (response.status === 200) {
           toast.success(
-            "El proceso de actualización ha iniciado en segundo plano."
+            "El proceso de actualización ha iniciado en segundo plano.",
           );
         }
       } catch (error) {
@@ -177,19 +200,19 @@ const handleApplyDiscount = async ({ supplier, percentage }) => {
 
   try {
     toast.info(
-      `Procesando descuento del ${percentage}% para ${supplier.name}...`
+      `Procesando descuento del ${percentage}% para ${supplier.name}...`,
     );
 
     const response = await axios.post(
       `/suppliers/${supplier.id}/apply-discount`,
       {
         percentage: parseFloat(percentage),
-      }
+      },
     );
 
     if (response.status === 200) {
       toast.success(
-        response.data.message || "Descuento aplicado correctamente."
+        response.data.message || "Descuento aplicado correctamente.",
       );
 
       await fetchProducts();
@@ -227,7 +250,7 @@ const fetchProducts = async () => {
 
   // Limpieza de parámetros nulos/vacíos
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -254,7 +277,7 @@ const fetchSupplierConnections = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -275,7 +298,7 @@ const fetchStatuses = async () => {
     const newStatuses = data.statuses;
 
     const currentStatus = newStatuses.find(
-      (s) => s.supplier_id === pollingSupplierId.value
+      (s) => s.supplier_id === pollingSupplierId.value,
     );
     if (
       currentStatus &&
@@ -305,22 +328,32 @@ const fetchProductsWithoutSupplier = async () => {
     loadingProductsWithoutSupplier.value = true;
 
     const params = {
-      page: pageProductsWithoutSupplier.value,
-      perPage: itemsPerPageProductsWithoutSupplier.value,
-      sortBy: sortByProductsWithoutSupplier.value,
-      order: orderByProductsWithoutSupplier.value,
-      is_ordered: true 
+      "laboratoryId": selectedLaboratory.value,
+      "groups": selectedGroup.value,
+      //"tipo_vista": tipo_de_vista.value,
+      "tipo_filtracion": tipo_de_filtracion.value,
+      "lapso_de_tiempo": lapso_de_tiempo.value,
+      "stock": stock.value,
+      "page": pageProductsWithoutSupplier.value,
+      "itemsPerPage": itemsPerPageProductsWithoutSupplier.value,
+      "sortBy": sortByProductsWithoutSupplier.value,
+      "orderBy": orderByProductsWithoutSupplier.value,
     };
 
-    // Usamos GET o POST según como tengas definido tu endpoint en Laravel
-    const { data } = await axios.get("/suppliers-ia-order-assistant/products-without-supplier", { params });
+    const { data } = await axios.get(
+      "/suppliers-ia-order-assistant/products-without-supplier",
+      { params },
+    );
 
-    // Asignamos los resultados a las variables reactivas que usa tu tabla
-    listProductsWithoutSupplier.value = data.data;
-    totalProductsWithoutSupplier.value = data.total;
-
+    if (data && data.data && data.data.paginate) {
+      listProductsWithoutSupplier.value = data.data.paginate.data;
+      totalProductsWithoutSupplier.value = data.data.paginate.total;
+    }
   } catch (error) {
-    console.error("Hubo un error al obtener los productos sin proveedor:", error);
+    console.error(
+      "Hubo un error al obtener los productos sin proveedor:",
+      error,
+    );
     toast.error("Error al obtener la lista de productos marcados.");
   } finally {
     loadingProductsWithoutSupplier.value = false;
@@ -347,6 +380,7 @@ const fetchOptions = async () => {
       axios.get("/available-suppliers"),
     ]);
     laboratories.value = labResponse.data;
+    laboratoriesProductsWithoutSupplier.value = labResponse.data;
     origins.value = originResponse.data;
     suppliers.value = suppliersResponse.data.data;
   } catch (error) {
@@ -371,7 +405,7 @@ watch(
     clearTimeout(supplierDebounceTimer);
     supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 // WATCHER DE PRODUCTOS ACTUALIZADO
@@ -383,7 +417,7 @@ watch(
     clearTimeout(productDebounceTimer);
     productDebounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 let debounceTimer;
@@ -402,12 +436,18 @@ watch(
   },
   {
     deep: true,
-  }
+  },
 );
 
 let debounceTimerProductsWithoutSupplier;
 watch(
   [
+    selectedLaboratory,
+    selectedGroup,
+    tipo_de_vista,
+    tipo_de_filtracion,
+    lapso_de_tiempo,
+    stock,
     pageProductsWithoutSupplier,
     itemsPerPageProductsWithoutSupplier,
     sortByProductsWithoutSupplier,
@@ -419,9 +459,8 @@ watch(
       fetchProductsWithoutSupplier();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
-
 
 const handleSearchSupplier = (supplier) => {
   searchedSupplier.value = supplier;
@@ -457,7 +496,7 @@ const handleCheckSupplierApi = async (supplier) => {
 
   try {
     toast.info(
-      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
+      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
 
@@ -483,7 +522,6 @@ const handleClearProductsFilters = () => {
 };
 
 const handleAddItemToAutoOrder = async (product) => {
-
   quantityErrors[product.id] = null;
   const mainProductId = selectedProductFromTop.value?.id ?? null;
 
@@ -494,21 +532,20 @@ const handleAddItemToAutoOrder = async (product) => {
   form.append("discount", enableDiscounts.value);
 
   try {
-    await axios.post("/suppliers/add-product-to-order", form);
-    toast.success(
-      `Se añadieron ${product.quantity} productos al pedido del día`
-    );
+    const response = await axios.post("/suppliers/add-product-to-order", form);
+    const { data, message } = response.data;
+    toast.success(data || `Se añadieron ${product.quantity} productos.`);
+    if (message && message.warning) {
+        toast.warning(message.warning, { timeout: 8000 });
+    }
     selectedProductFromTop.value = null;
     fetchProductsWithoutSupplier();
     fetchProducts();
-    
   } catch (error) {
     if (error.response?.status === 422) {
       quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
     }
-
     console.error("Hubo un error al enviar la petición:", error);
-
     if (error.response?.status === 400) {
       toast.error(error.response.data.message);
     } else {
@@ -530,7 +567,7 @@ const handleHideImportProductsDialog = () => {
 const handleDeleteSupplierProducts = async (supplier) => {
   try {
     const { data } = await axios.delete(
-      `/suppliers/${supplier.id}/delete-products`
+      `/suppliers/${supplier.id}/delete-products`,
     );
     if (data.status === "ok") {
       toast.success(`Se borraron los productos del proveedor ${supplier.name}`);
@@ -542,6 +579,22 @@ const handleDeleteSupplierProducts = async (supplier) => {
     toast.error("No se pudieron borrar los productos del proveedor.");
   }
 };
+
+
+const handleToggleOrder = async (product) => {
+  try {
+    const { data } = await axios.patch(`/suppliers/${product.id}/toggle-order`);
+
+    if (data.status === "success") {
+      toast.success(data.message || "Estado actualizado correctamente");
+      fetchProductsWithoutSupplier();
+    }
+
+  } catch (error) {
+    toast.error("No se pudieron borrar el productos de la lista.");
+  }
+};
+
 
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;
@@ -624,20 +677,8 @@ const updateProductsWithoutSupplierOptions = (options) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-
-       <div class='mb-6'>
-        <ProductsWithoutSupplierComparatorTable
-          v-model="selectedProductFromTop"
-          :products="listProductsWithoutSupplier"
-          :loading="loadingProductsWithoutSupplier"
-          :total-products="totalProductsWithoutSupplier"
-          :items-per-page="itemsPerPageProductsWithoutSupplier"
-          :page="pageProductsWithoutSupplier"
-          @update:options="updateProductsWithoutSupplierOptions"
-          @select-product="handleSelectProductFromTop"
-        />
-        </div>
-        <ProductComparisionProductsTable
+        <div class="mb-6">
+              <ProductComparisionProductsTable
           :products="products"
           :loading="loadingProducts"
           :total-products="productsTotal"
@@ -653,6 +694,36 @@ const updateProductsWithoutSupplierOptions = (options) => {
           @update:options="updateProductsTableOptions"
           @send-product="handleAddItemToAutoOrder"
         />
+        </div>
+
+          <ProductsWithoutSupplierComparatorFilter
+            v-model:selectConDescuento="con_descuento"
+            v-model:selectedLaboratory="selectedLaboratory"
+            v-model:selectedGroup="selectedGroup"
+            v-model:tipo_de_vista="tipo_de_vista"
+            v-model:tipo_de_filtracion="tipo_de_filtracion"
+            v-model:lapso_de_tiempo="lapso_de_tiempo"
+            v-model:stock="stock"
+            :groups="groups"
+            :laboratories="laboratoriesProductsWithoutSupplier"
+            :tipo_de_filtracion="tipo_de_filtracion"
+            :tipo_de_vista="tipo_de_vista"
+            :lapso_de_tiempo="lapso_de_tiempo"
+            :stock="stock"
+            @clear="handleClearFilters"
+          />
+          <ProductsWithoutSupplierComparatorTable
+            v-model="selectedProductFromTop"
+            :products="listProductsWithoutSupplier"
+            :loading="loadingProductsWithoutSupplier"
+            :total-products="totalProductsWithoutSupplier"
+            :items-per-page="itemsPerPageProductsWithoutSupplier"
+            :page="pageProductsWithoutSupplier"
+            @update:options="updateProductsWithoutSupplierOptions"
+            @select-product="handleSelectProductFromTop"
+            @delete="handleToggleOrder"
+          />
+        
       </VTabsWindowItem>
     </VTabsWindow>
   </div>

@@ -89,7 +89,7 @@ Route::middleware("auth:sanctum")->group(function () {
         return $request->user();
     });
     Route::get('/user/config', function (Request $request) {
-        return $request->user()->load('config'); 
+        return $request->user()->load('config');
     });
     Route::post('/user/update-sort-config', [UserController::class, 'updateSortConfig']);
     Route::post("/logout", [LoginController::class, "logout"]);
@@ -204,6 +204,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/quotation/{product}", [QuotationController::class, "show"]);
         Route::post("/quotations", [QuotationController::class, "store"]);
         Route::get("/quotations/{quotationId}/products", [QuotationController::class, "showProducts"]);
+        Route::get("/quotations/last-number", [QuotationController::class, "getLastNumber"]);
         Route::get("/order", [OrderController::class, "index"]);
         Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
         Route::post('/orders', [OrderController::class, 'store']);
@@ -331,6 +332,7 @@ Route::prefix("crm")->group(function () {
         Route::post("/", [ClientController::class, "create"]);
         Route::get("/", [ClientController::class, "consultAll"]);
         Route::get("/{id}", [ClientController::class, "consultById"]);
+        Route::get("/identification/{identification}", [ClientController::class, "consultByIdentification"]);
         Route::delete("/{id}", [ClientController::class, "deleteById"]);
         Route::post("/edit/{id}", [ClientController::class, "edit"]);
         Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
@@ -447,6 +449,7 @@ Route::prefix("suppliers")->group(function () {
     Route::post('/{supplier}/apply-discount', [SupplierController::class, 'applyGlobalDiscount']);
     Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
     Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
+    Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
 });
 
 Route::prefix("suppliers/purchase-orders")->group(function () {

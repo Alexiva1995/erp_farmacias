@@ -632,11 +632,19 @@ class SupplierQueryService
         $product = ProductSupplier::find($productId);
         $mainProduct = Product::find($mainProductId);
 
+        $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
         if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
-            $mainProduct->update([
-                'barcode' => $product->barcode_match
-            ]);
+            $barcodeExists = Product::where('barcode', $product->barcode_match)->exists();
+            if (!$barcodeExists) {
+                // 2. Solo si no existe en ningún otro lado, lo asignamos
+                $mainProduct->update([
+                    'barcode' => $product->barcode_match
+                ]);
+            }else {
+            // Solo guardamos el mensaje, NO detenemos el proceso
+            $barcodeWarning = "Producto añadido al pedido correctamente. El código {$product->barcode_match} ya existe y no se pudo asignar.";
+            }
         }
 
         $order = AutoOrder::where('supplier_id', $product->supplier_id)
@@ -711,7 +719,13 @@ class SupplierQueryService
         }
         $product->decrement("quantity", $quantity);
 
-        return true;
+        //return true;
+        return [
+        'success' => true,
+        'warning' => $barcodeWarning
+    ];
+
+
     }
 
     public function deleteProducts(Supplier $supplier)
