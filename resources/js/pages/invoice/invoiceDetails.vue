@@ -729,7 +729,10 @@ const handleShowProductSearch = () => {
   fetchProducts();
 };
 
-const handleAddNewProduct = () => {
+const handleAddNewProduct = async () => {
+  if (laboratories.value.length === 0 || origins.value.length === 0 || categories.value.length === 0) {
+    await fetchProductSelectOptions();
+  }
   currentProduct.value = {};
   productFormErrors.value = {};
   isEditDialogVisible.value = true;

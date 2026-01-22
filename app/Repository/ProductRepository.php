@@ -99,7 +99,7 @@ class ProductRepository
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
         }
-        
+
         if ($filtros["days"] == 15) {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -122,10 +122,12 @@ class ProductRepository
 
         // calcular diferencia_product según tipo_filtracion
         $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
-        
+
         // Asegurar que previousDate y dateToday estén definidos para sales y combinado
-        if (($tipoFiltracion == "sales" || $tipoFiltracion == "combinado") && 
-            (!isset($filtros["previousDate"]) || !isset($filtros["dateToday"]))) {
+        if (
+            ($tipoFiltracion == "sales" || $tipoFiltracion == "combinado") &&
+            (!isset($filtros["previousDate"]) || !isset($filtros["dateToday"]))
+        ) {
             // Si no están definidos, usar valores por defecto basados en days o 30 días
             $days = $filtros["days"] ?? 30;
             $timeZone = new \DateTimeZone(config("app.timezone"));
@@ -135,7 +137,7 @@ class ProductRepository
             $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
-        
+
         // Subconsulta para total_sold_completed (reutilizable)
         $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -143,7 +145,7 @@ class ProductRepository
                 WHERE order_details.product_id = products.id
                 AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
                 AND orders.status = "Completed")';
-        
+
         if ($tipoFiltracion == "sales") {
             // Diferencia usando ventas: stock - total_sold_completed
             $columnas[] = DB::raw('stock - (' . $subqueryTotalSold . ') AS diferencia_product');
@@ -172,7 +174,7 @@ class ProductRepository
             if ($filtros["q"] != "") {
                 $isStrictSearch = $filtros["isStrictSearch"] ?? false;
                 $searchTerm = $filtros["q"];
-                
+
                 $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                     if ($isStrictSearch) {
                         // Búsqueda estricta: busca el término completo en los campos
@@ -185,7 +187,8 @@ class ProductRepository
                         $words = explode(' ', trim($searchTerm));
                         foreach ($words as $word) {
                             $word = trim($word);
-                            if (empty($word)) continue;
+                            if (empty($word))
+                                continue;
                             $query->where(function ($wordQuery) use ($word) {
                                 $wordQuery->where("name", "like", "%" . $word . "%")
                                     ->orWhere("active_ingredient", "like", "%" . $word . "%")
@@ -538,13 +541,15 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND aod.status = 0
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . ' - (
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto .
+                (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
                 AND aod.status = 0
-            )) AS solicitar'),
+                )' : '') .
+                ') AS solicitar'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
