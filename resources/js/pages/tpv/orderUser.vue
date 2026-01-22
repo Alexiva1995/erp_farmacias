@@ -1583,12 +1583,12 @@ const updateOrderItemQuantity = async ({
     }
 
     // 3. Construcción del Payload con pack_id
+    console.log(currentItem);
     const payload = {
       product_id: productId,
       quantity: computedTotalQuantity,
       price_usd_unit: currentItem.basePrice || currentItem.price,
-      price_at_product:
-        currentItem.basePrice || currentItem.orderPrice || currentItem.price,
+      price_at_product: currentItem.price,
       currency_at_order: selectedDisplayCurrency.value,
       // --- CAMBIO CRUCIAL ---
       // Enviamos el pack_id si el ítem lo tiene para que el backend mantenga la relación
