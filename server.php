@@ -1,18 +1,14 @@
 <?php
 
-$publicPath = getcwd();
+/**
+ * Router para el servidor de desarrollo de PHP (php -S / php artisan serve).
+ * Sirve archivos estáticos desde public/ o delega en public/index.php.
+ */
 
-$uri = urldecode(
-    parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? ''
-);
+$uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
-if ($uri !== '/' && $uri !== '' && file_exists($publicPath.$uri)) {
+if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
     return false;
 }
 
-$formattedDateTime = date('D M j H:i:s Y');
-$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$remoteAddress = ($_SERVER['REMOTE_ADDR'] ?? 'unknown').':'.($_SERVER['REMOTE_PORT'] ?? '0');
-file_put_contents('php://stdout', "[$formattedDateTime] $remoteAddress [$requestMethod] URI: $uri\n");
-
-require_once $publicPath.'/index.php';
+require_once __DIR__.'/public/index.php';

@@ -151,4 +151,205 @@ class ProductActionService
         }
         $product->delete();
     }
+
+    
+    /**
+     * Fusiona dos productos, actualizando todas las referencias del producto con ID mayor
+     * al producto con ID menor.
+     *
+     * @param int $productId1
+     * @param int $productId2
+     * @return array
+     * @throws \Exception
+     */
+    public function mergeProducts(int $productId1, int $productId2): array
+    {
+        // Determinar ID menor y mayor
+        $minId = min($productId1, $productId2);
+        $maxId = max($productId1, $productId2);
+
+        // Verificar que ambos productos existen
+        $productMin = Product::findOrFail($minId);
+        $productMax = Product::findOrFail($maxId);
+
+        DB::beginTransaction();
+        try {
+            // Actualizar todas las tablas que referencian product_id
+            // 1. product_lots
+            DB::table('product_lots')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 2. product_suppliers
+            DB::table('product_suppliers')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 3. expirations
+            DB::table('expirations')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 4. individual_offers
+            DB::table('individual_offers')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 5. returns (return_entries)
+            DB::table('returns')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 6. quotation_products
+            DB::table('quotation_products')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 7. product_profitability
+            DB::table('product_profitability')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 8. product_counts
+            DB::table('product_counts')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 9. order_details
+            DB::table('order_details')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 10. inventory_movements
+            DB::table('inventory_movements')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 11. invoice_details
+            DB::table('invoice_details')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 12. psychotropic_controls
+            DB::table('psychotropic_controls')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 13. invoices_counts
+            DB::table('invoices_counts')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 14. sale_counts
+            DB::table('sales_counts')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 15. employee_product (tabla pivot)
+            DB::table('employee_product')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 16. auto_order_details
+            DB::table('auto_order_details')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 17. product_failures
+            DB::table('product_failures')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 18. product_distributions - No necesita actualización directa ya que no tiene product_id,
+            // se actualiza automáticamente a través de product_counts que ya fue actualizado
+
+            // 19. price_adjustment_logs
+            DB::table('price_adjustment_logs')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 20. fiscal_history_details
+            DB::table('fiscal_history_details')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 21. invoice_returns
+            DB::table('invoice_returns')
+                ->where('product_id', $maxId)
+                ->update(['product_id' => $minId]);
+
+            // 22. product_packs (actualizar pack_config JSON)
+            $packs = DB::table('product_packs')
+                ->whereNotNull('pack_config')
+                ->get();
+
+            foreach ($packs as $pack) {
+                $packConfig = json_decode($pack->pack_config, true);
+                if (is_array($packConfig) && isset($packConfig[$maxId])) {
+                    // Si el producto con ID mayor existe, moverlo al ID menor
+                    if (isset($packConfig[$minId])) {
+                        // Si ya existe el ID menor, combinar las cantidades/configuraciones
+                        if (is_array($packConfig[$maxId]) && is_array($packConfig[$minId])) {
+                            // Combinar configuraciones
+                            $packConfig[$minId]['quantity'] = ($packConfig[$minId]['quantity'] ?? 0) + ($packConfig[$maxId]['quantity'] ?? 0);
+                        } elseif (is_numeric($packConfig[$maxId]) && is_numeric($packConfig[$minId])) {
+                            // Sumar cantidades simples
+                            $packConfig[$minId] = $packConfig[$minId] + $packConfig[$maxId];
+                        }
+                    } else {
+                        // Mover la configuración al ID menor
+                        $packConfig[$minId] = $packConfig[$maxId];
+                    }
+                    unset($packConfig[$maxId]);
+                    DB::table('product_packs')
+                        ->where('id', $pack->id)
+                        ->update(['pack_config' => json_encode($packConfig)]);
+                }
+            }
+
+            // 23. prescription_offers (actualizar products JSON)
+            $prescriptionOffers = DB::table('prescription_offers')
+                ->whereNotNull('products')
+                ->get();
+
+            foreach ($prescriptionOffers as $offer) {
+                $products = json_decode($offer->products, true);
+                if (is_array($products) && isset($products[$maxId])) {
+                    // Si el producto con ID mayor existe, moverlo al ID menor
+                    if (isset($products[$minId])) {
+                        // Si ya existe el ID menor, combinar las configuraciones
+                        if (is_array($products[$maxId]) && is_array($products[$minId])) {
+                            $products[$minId]['quantity'] = ($products[$minId]['quantity'] ?? 0) + ($products[$maxId]['quantity'] ?? 0);
+                        }
+                    } else {
+                        // Mover la configuración al ID menor
+                        $products[$minId] = $products[$maxId];
+                    }
+                    unset($products[$maxId]);
+                    DB::table('prescription_offers')
+                        ->where('id', $offer->id)
+                        ->update(['products' => json_encode($products)]);
+                }
+            }
+
+            // Eliminar el producto con ID mayor
+            if ($productMax->photo_url) {
+                Storage::disk('public')->delete($productMax->photo_url);
+            }
+            $productMax->delete();
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => "Productos fusionados exitosamente. El producto ID {$maxId} ha sido fusionado con el producto ID {$minId}.",
+                'merged_product_id' => $minId,
+                'deleted_product_id' => $maxId
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al fusionar productos: ' . $e->getMessage());
+            throw new \Exception('Error al fusionar productos: ' . $e->getMessage());
+        }
+    }
 }
