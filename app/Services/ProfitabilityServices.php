@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Profitability;
+use App\Models\Product;
 use App\Repository\ProfitabilityRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +28,19 @@ class ProfitabilityServices implements Profitability
 
     public function store(array $data): Model
     {
-        return $this->profitabilityRepository->store($data);
+        $settings = $this->profitabilityRepository->store($data);
+        $percentage = (float) $data['default_profitability_percentage'];
+
+        $productIds = Product::query()
+            ->whereDoesntHave('profitability')
+            ->orWhereHas('profitability', fn ($q) => $q->where('is_locked', '!=', 1))
+            ->pluck('id');
+
+        foreach ($productIds as $productId) {
+            $this->updateProductPrice((int) $productId, $percentage);
+        }
+
+        return $settings;
     }
 
     public function storeProduct(array $data): Model

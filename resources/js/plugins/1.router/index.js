@@ -55,26 +55,61 @@ const router = createRouter({
   },
 })
 
+// Flag para evitar múltiples llamadas simultáneas a fetchUser
+let isFetchingUser = false
+let fetchUserPromise = null
+
 router.beforeEach(async (to, from, next) => {
   console.log('[ROUTER] Iniciando navegación a:', to.path, to.name)
+  
+  let nextCalled = false
+  const safeNext = (...args) => {
+    if (!nextCalled) {
+      nextCalled = true
+      next(...args)
+    }
+  }
+  
+  // Timeout de seguridad: si el guard tarda más de 3 segundos, permitir navegación
+  const safetyTimeout = setTimeout(() => {
+    console.warn('[ROUTER] Timeout de seguridad alcanzado, permitiendo navegación')
+    safeNext()
+  }, 3000)
+  
   try {
     const authStore = useAuthStore()
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
     // Solo intentar obtener el usuario si no está cargado aún
-    // Agregar timeout más corto para evitar bloqueos en Firefox
-    if (!authStore.isLoaded && !authStore.user) {
+    // Usar una promesa compartida para evitar múltiples llamadas simultáneas
+    if (!authStore.isLoaded && !authStore.user && !isFetchingUser) {
       console.log('[ROUTER] Intentando obtener usuario...')
+      isFetchingUser = true
+      
       try {
-        const fetchPromise = authStore.fetchUser()
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000))
-        await Promise.race([fetchPromise, timeoutPromise])
+        fetchUserPromise = authStore.fetchUser()
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500))
+        await Promise.race([fetchUserPromise, timeoutPromise])
         console.log('[ROUTER] Usuario obtenido o timeout alcanzado')
       } catch (fetchError) {
         console.warn('[ROUTER] Error al obtener usuario:', fetchError)
         // Continuar aunque falle para no bloquear la navegación
+      } finally {
+        isFetchingUser = false
+        fetchUserPromise = null
+      }
+    } else if (isFetchingUser && fetchUserPromise) {
+      // Si ya hay una llamada en curso, esperar a que termine (con timeout)
+      console.log('[ROUTER] Esperando a que termine fetchUser en curso...')
+      try {
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500))
+        await Promise.race([fetchUserPromise, timeoutPromise])
+      } catch (error) {
+        console.warn('[ROUTER] Error esperando fetchUser:', error)
       }
     }
+    
+    clearTimeout(safetyTimeout)
     
     const isAuthenticated = authStore.isAuthenticated
     const requiresAuth = to.meta?.requiresAuth
@@ -82,20 +117,21 @@ router.beforeEach(async (to, from, next) => {
     
     if (requiresAuth && !isAuthenticated) {
       console.log('[ROUTER] Redirigiendo a login')
-      return next({ path: '/login' })
+      return safeNext({ path: '/login' })
     }
     
     if (to.path === '/login' && isAuthenticated) {
       console.log('[ROUTER] Redirigiendo a invoices')
-      return next({ path: '/invoice/invoices' })
+      return safeNext({ path: '/invoice/invoices' })
     }
     
     console.log('[ROUTER] Permitiendo navegación')
-    return next()
+    return safeNext()
   } catch (error) {
+    clearTimeout(safetyTimeout)
     console.error('[ROUTER] Error en router guard:', error)
     // En caso de error, permitir la navegación para evitar bloqueos
-    return next()
+    return safeNext()
   }
 })
 

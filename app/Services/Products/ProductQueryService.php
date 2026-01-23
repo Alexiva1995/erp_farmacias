@@ -246,9 +246,15 @@ class ProductQueryService
         return $query;
     }
 
-    public function getPendingProductsQuery(Request $request): Builder
+    public function getIncompleteProductsQuery(Request $request): Builder
     {
         $query = $this->getBaseQuery();
+
+        $query->where(function ($q) {
+            $q->whereNull('barcode')
+                ->orWhereNull('laboratory_id')
+                ->orWhereNull('origin_id');
+        });
 
         $filters = [
             'q' => $request->q,
