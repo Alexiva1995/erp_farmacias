@@ -2376,16 +2376,16 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 
 const addReserverOrder = async () => {
   try {
+
     const response = await axios.patch(
-      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`,
+      `/tpv/order/${openOrderData.value.id}/reserveAdd`,
     );
     const { pending_order, reserved_order } = response.data.data;
 
-    console.log(pending_order.currency.toUpperCase());
-    if (pending_order.currency) {
+    if (pending_order?.currency) {
       selectedDisplayCurrency.value = pending_order.currency.toUpperCase();
     }
-
+/*
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
@@ -2397,10 +2397,34 @@ const addReserverOrder = async () => {
     } else {
       orderItems.value = [];
     }
+
     hasOpenOrder.value = true;
     await nextTick();
     toast.success("Orden agregada exitosamente.");
-    return response.data.data.order;
+    return response.data.data.order;*/
+
+
+    // Actualizamos los datos solo si existen
+    if (pending_order) {
+      openOrderData.value = pending_order;
+      selectedClient.value = pending_order.client;
+      
+      if (pending_order.details) {
+        orderItems.value = pending_order.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
+        orderItems.value = [];
+      }
+      hasOpenOrder.value = true;
+    }
+
+    // La reservada siempre debería existir según tu lógica
+    reservedOrderData.value = reserved_order;
+
+    await nextTick();
+    toast.success("Orden actualizada correctamente.");
+
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
