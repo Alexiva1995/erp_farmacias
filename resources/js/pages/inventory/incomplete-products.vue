@@ -1,6 +1,6 @@
 <script setup>
+import IncompleteProductsTable from "@/components/IncompleteProductsTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
-import PendingProductsTable from "@/components/PendingProductsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
@@ -31,32 +31,6 @@ const categories = ref([]);
 
 const isLoadingFilters = ref(false);
 
-const handleUpdateProduct = async ({ id, barcode }) => {
-  if (productWithError.value === id) {
-    productWithError.value = null;
-    errorMessage.value = "";
-  }
-
-  try {
-    await axios.patch(`/products/pending/${id}`, { barcode });
-    toast.success("Se registró el código de barra en el producto");
-    await fetchProducts();
-  } catch (err) {
-    toast.error("Error al actualizar");
-
-    if (err.response?.status === 422) {
-      productWithError.value = id;
-      // Extraer el mensaje de error del servidor
-      const errors = err.response.data?.errors;
-      if (errors?.barcode && errors.barcode[0]) {
-        errorMessage.value = errors.barcode[0];
-      } else {
-        errorMessage.value = "Ya se encuentra registrado";
-      }
-    }
-  }
-};
-
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
@@ -65,7 +39,6 @@ const fetchSelectOptions = async () => {
       axios.get("/origins"),
       axios.get("/categories"),
     ]);
-    console.log("laboratories response:", labResponse);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
@@ -77,29 +50,69 @@ const fetchSelectOptions = async () => {
   }
 };
 
+const getSuccessMessage = (payload) => {
+  const updatedFields = [];
+  if (payload.barcode) updatedFields.push("código de barras");
+  if (payload.laboratory_id) updatedFields.push("laboratorio");
+  if (payload.origin_id) updatedFields.push("origen");
+
+  if (updatedFields.length === 3) {
+    return "Datos faltantes asignados";
+  } else if (updatedFields.length === 1) {
+    return `Se asignó el ${updatedFields[0]} al producto`;
+  } else if (updatedFields.length === 2) {
+    return `Se asignaron ${updatedFields.join(" y ")}`;
+  }
+  return "Producto actualizado";
+};
+
+const handleUpdateProduct = async (payload) => {
+  if (productWithError.value === payload.id) {
+    productWithError.value = null;
+    errorMessage.value = "";
+  }
+
+  try {
+    await axios.patch(`/products/incomplete/${payload.id}`, payload);
+    toast.success(getSuccessMessage(payload));
+    await fetchProducts();
+  } catch (err) {
+    toast.error("Error al actualizar");
+
+    if (err.response?.status === 422) {
+      productWithError.value = payload.id;
+      const errors = err.response.data?.errors;
+      if (errors?.barcode && errors.barcode[0]) {
+        errorMessage.value = errors.barcode[0];
+      } else {
+        errorMessage.value = "Error al actualizar el producto";
+      }
+    }
+  }
+};
+
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    ...(stockStatusFilter.value !== null && {
-      hasStock: stockStatusFilter.value,
-    }),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    laboratoryId: selectedLaboratory.value,
+    originId: selectedOrigin.value,
     startDate: startDate.value,
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
+    hasStock: stockStatusFilter.value,
   };
+
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
-    const response = await axios.get("/products/pending", { params });
+    const response = await axios.get("/products/incomplete", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -129,7 +142,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -143,7 +156,7 @@ watch(
   ],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 onMounted(async () => {
@@ -177,6 +190,16 @@ const handleSort = (sortOptions) => {
     orderBy.value = sortOptions.order;
   }
 };
+
+const handleLaboratoryCreated = (newLaboratory) => {
+  laboratories.value.push(newLaboratory);
+  laboratories.value.sort((a, b) => a.name.localeCompare(b.name));
+};
+
+const handleOriginCreated = (newOrigin) => {
+  origins.value.push(newOrigin);
+  origins.value.sort((a, b) => a.name.localeCompare(b.name));
+};
 </script>
 
 <template>
@@ -198,7 +221,7 @@ const handleSort = (sortOptions) => {
       @sort="handleSort"
     />
 
-    <PendingProductsTable
+    <IncompleteProductsTable
       :products="products"
       :loading="loading"
       :total-product="totalProduct"
@@ -206,8 +229,12 @@ const handleSort = (sortOptions) => {
       :page="page"
       :product-with-error="productWithError"
       :error-message="errorMessage"
+      :laboratories="laboratories"
+      :origins="origins"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
+      @laboratory-created="handleLaboratoryCreated"
+      @origin-created="handleOriginCreated"
     />
   </div>
 </template>

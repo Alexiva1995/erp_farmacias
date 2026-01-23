@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { ref } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -10,13 +10,22 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   productWithError: { type: [Number, null], default: null },
+  errorMessage: { type: String, default: "" },
+  laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update-product", "origin-created"]);
+const emit = defineEmits([
+  "update:options",
+  "update-product",
+  "laboratory-created",
+  "origin-created",
+]);
 
 const editingProductId = ref(null);
-const editingValue = ref(null);
+const editingBarcode = ref("");
+const editingLaboratoryId = ref(null);
+const editingOriginId = ref(null);
 const searchInput = ref("");
 const currentEditingProduct = ref(null);
 
@@ -24,6 +33,7 @@ const headers = [
   { title: "ID", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory", sortable: true },
+  { title: "Barcode", key: "barcode", sortable: true },
   {
     title: "Stock",
     key: "valid_stock",
@@ -38,6 +48,33 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 
+const isMissing = (product, field) => {
+  if (field === "barcode") return !product.barcode;
+  if (field === "laboratory") return !product.laboratory_id;
+  if (field === "origin") return !product.origin_id;
+  return false;
+};
+
+const createLaboratory = async (name) => {
+  try {
+    const response = await axios.post("/laboratories", { name });
+    toast.success("Laboratorio creado con éxito");
+    emit("laboratory-created", response.data.laboratory);
+    return response.data.laboratory;
+  } catch (err) {
+    if (err.response?.status === 422) {
+      const errorMessage =
+        err.response.data?.errors?.name?.[0] ||
+        err.response.data?.message ||
+        "Error al crear el laboratorio";
+      toast.error(errorMessage);
+    } else {
+      toast.error("Error al crear el laboratorio");
+    }
+    throw err;
+  }
+};
+
 const createOrigin = async (name) => {
   try {
     const response = await axios.post("/origins", { name });
@@ -46,7 +83,10 @@ const createOrigin = async (name) => {
     return response.data.origin;
   } catch (err) {
     if (err.response?.status === 422) {
-      const errorMessage = err.response.data?.errors?.name?.[0] || err.response.data?.message || "Error al crear el origen";
+      const errorMessage =
+        err.response.data?.errors?.name?.[0] ||
+        err.response.data?.message ||
+        "Error al crear el origen";
       toast.error(errorMessage);
     } else {
       toast.error("Error al crear el origen");
@@ -56,64 +96,90 @@ const createOrigin = async (name) => {
 };
 
 const saveInlineEdit = async (product) => {
-  try {
-    emit("update-product", {
-      id: product.id,
-      origin_id: editingValue.value,
-    });
-  } catch (err) {
-    console.error(err);
-  }
+  const payload = { id: product.id };
+  if (editingBarcode.value) payload.barcode = editingBarcode.value;
+  if (editingLaboratoryId.value)
+    payload.laboratory_id = editingLaboratoryId.value;
+  if (editingOriginId.value) payload.origin_id = editingOriginId.value;
+  emit("update-product", payload);
 };
 
 const startEdit = (product) => {
   editingProductId.value = product.id;
-  editingValue.value = product.origin_id || null;
+  editingBarcode.value = product.barcode || "";
+  editingLaboratoryId.value = product.laboratory_id || null;
+  editingOriginId.value = product.origin_id || null;
   currentEditingProduct.value = product;
   searchInput.value = "";
 };
 
 const cancelEdit = () => {
   editingProductId.value = null;
-  editingValue.value = null;
+  editingBarcode.value = "";
+  editingLaboratoryId.value = null;
+  editingOriginId.value = null;
   currentEditingProduct.value = null;
   searchInput.value = "";
+};
+
+const handleLaboratorySearch = (search) => {
+  searchInput.value = search;
 };
 
 const handleOriginSearch = (search) => {
   searchInput.value = search;
 };
 
-const handleCreateOriginOnEnter = async (event) => {
+const handleCreateLaboratoryOnEnter = async (event) => {
   if (!searchInput.value || !searchInput.value.trim()) return;
-  
-  const originName = searchInput.value.trim();
-  
-  // Verificar si ya existe un origen con ese nombre (case-insensitive)
-  const exists = props.origins.some(
-    (origin) => origin.name.toLowerCase() === originName.toLowerCase()
+
+  const labName = searchInput.value.trim();
+
+  const exists = props.laboratories.some(
+    (lab) => lab.name.toLowerCase() === labName.toLowerCase(),
   );
-  
+
   if (exists) {
-    toast.error("Ya existe un origen con ese nombre");
+    toast.error("Ya existe un laboratorio con ese nombre");
     return;
   }
-  
+
   try {
-    const newOrigin = await createOrigin(originName);
-    // Asignar el nuevo origen al producto
-    editingValue.value = newOrigin.id;
-    // Guardar automáticamente
+    const newLab = await createLaboratory(labName);
+    editingLaboratoryId.value = newLab.id;
     if (currentEditingProduct.value) {
       await saveInlineEdit(currentEditingProduct.value);
     }
   } catch (err) {
-    // El error ya se maneja en createOrigin
     console.error(err);
   }
 };
 
-// TODO: hay que modificar la funcion para que muestre la fecha de vencimiento a pesar de que los lotes ya estén todos vencidos (puede que se tenga que modificar la consulta en el backend)
+const handleCreateOriginOnEnter = async (event) => {
+  if (!searchInput.value || !searchInput.value.trim()) return;
+
+  const originName = searchInput.value.trim();
+
+  const exists = props.origins.some(
+    (origin) => origin.name.toLowerCase() === originName.toLowerCase(),
+  );
+
+  if (exists) {
+    toast.error("Ya existe un origen con ese nombre");
+    return;
+  }
+
+  try {
+    const newOrigin = await createOrigin(originName);
+    editingOriginId.value = newOrigin.id;
+    if (currentEditingProduct.value) {
+      await saveInlineEdit(currentEditingProduct.value);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 const nextExpirationDate = (product) => {
   if (
     !product.lots ||
@@ -128,10 +194,9 @@ const nextExpirationDate = (product) => {
     const expirationDate = new Date(lot.expiration_date);
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
-  // if (validLots.length === 0) return "Todos expiraron";
   if (validLots.length === 0) return product.ultima_fecha_vencimiento || "N/A";
   validLots.sort(
-    (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
+    (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date),
   );
   const closestDate = new Date(validLots[0].expiration_date);
   return closestDate.toISOString().split("T")[0];
@@ -165,13 +230,21 @@ const nextExpirationDate = (product) => {
           <div class="d-flex flex-column">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 
-                'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+              :class="{
+                'text-warning font-weight-bold':
+                  item.psychotropic == 1 || item.psychotropic === true,
               }"
             >
               {{ item.name.toUpperCase() }}
               <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+              <span
+                v-if="
+                  item.is_colombian_origin == 1 ||
+                  item.is_colombian_origin === true
+                "
+              >
+                (COL)</span
+              >
             </span>
             <span class="text-sm text-disabled">{{
               item.active_ingredient
@@ -181,7 +254,70 @@ const nextExpirationDate = (product) => {
       </template>
 
       <template #item.laboratory="{ item }">
-        <span>{{ item.laboratory?.name || "—" }}</span>
+        <template
+          v-if="editingProductId === item.id && isMissing(item, 'laboratory')"
+        >
+          <VAutocomplete
+            v-model="editingLaboratoryId"
+            :items="props.laboratories"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            style="width: 300px"
+            placeholder="Buscar o crear laboratorio"
+            clearable
+            @keydown.enter.prevent="
+              searchInput && searchInput.trim() && !editingLaboratoryId
+                ? handleCreateLaboratoryOnEnter()
+                : saveInlineEdit(item)
+            "
+            autofocus
+            :error="props.productWithError === item.id"
+            :error-messages="
+              props.productWithError === item.id
+                ? 'Error al asignar laboratorio'
+                : ''
+            "
+            @update:search="handleLaboratorySearch"
+            :no-data-text="
+              searchInput && searchInput.trim()
+                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                : 'No hay laboratorios disponibles.'
+            "
+          />
+        </template>
+        <template v-else>
+          <div class="d-flex align-center gap-2">
+            <span>{{ item.laboratory?.name || "—" }}</span>
+          </div>
+        </template>
+      </template>
+
+      <template #item.barcode="{ item }">
+        <template
+          v-if="editingProductId === item.id && isMissing(item, 'barcode')"
+        >
+          <VTextField
+            v-model="editingBarcode"
+            density="compact"
+            variant="outlined"
+            style="width: 300px"
+            @keyup.enter="saveInlineEdit(item)"
+            autofocus
+            :error="props.productWithError === item.id"
+            :error-messages="
+              props.productWithError === item.id
+                ? props.errorMessage || 'Ya se encuentra registrado'
+                : ''
+            "
+          />
+        </template>
+        <template v-else>
+          <div class="d-flex align-center gap-2">
+            <span>{{ item.barcode || "—" }}</span>
+          </div>
+        </template>
       </template>
 
       <template #item.valid_stock="{ item }">
@@ -193,9 +329,11 @@ const nextExpirationDate = (product) => {
       </template>
 
       <template #item.origin="{ item }">
-        <template v-if="editingProductId === item.id">
+        <template
+          v-if="editingProductId === item.id && isMissing(item, 'origin')"
+        >
           <VAutocomplete
-            v-model="editingValue"
+            v-model="editingOriginId"
             :items="props.origins"
             item-title="name"
             item-value="id"
@@ -205,7 +343,7 @@ const nextExpirationDate = (product) => {
             placeholder="Buscar o crear origen"
             clearable
             @keydown.enter.prevent="
-              searchInput && searchInput.trim() && !editingValue
+              searchInput && searchInput.trim() && !editingOriginId
                 ? handleCreateOriginOnEnter()
                 : saveInlineEdit(item)
             "
@@ -225,7 +363,9 @@ const nextExpirationDate = (product) => {
           />
         </template>
         <template v-else>
-          {{ item.origin?.name || "—" }}
+          <div class="d-flex align-center gap-2">
+            <span>{{ item.origin?.name || "—" }}</span>
+          </div>
         </template>
       </template>
 
@@ -249,4 +389,3 @@ const nextExpirationDate = (product) => {
     </VDataTableServer>
   </VCard>
 </template>
-
