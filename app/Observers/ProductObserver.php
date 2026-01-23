@@ -82,14 +82,36 @@ class ProductObserver
             $stockBefore = $product->stock ?? 0;
             $stockAfter = $stockBefore + $detail->quantity;
 
-            //$product->updateQuietly(['stock' => $stockAfter]);
-            Product::withoutEvents(function () use ($product, $stockAfter) {
-                $product->update(['stock' => $stockAfter]);
+            // Calcular costo promedio ponderado
+            $currentUnitCost = $product->unit_cost ?? 0;
+            $rate = $invoice->exchange_rate > 0 ? $invoice->exchange_rate : 1;
+            $incomingUnitCost = $detail->unit_cost;
+
+            // Convertir a base (USD) si la factura no está en USD
+            if ($invoice->currency !== 'USD') {
+                $incomingUnitCost = $incomingUnitCost / $rate;
+            }
+
+            // Calcular nuevo costo promedio
+            // (StockActual * CostoActual) + (CantidadEntrante * CostoEntrante) / StockTotal
+            $totalValueBefore = $stockBefore * $currentUnitCost;
+            $totalValueIncoming = $detail->quantity * $incomingUnitCost;
+            $newUnitCost = 0;
+
+            if ($stockAfter > 0) {
+                $newUnitCost = ($totalValueBefore + $totalValueIncoming) / $stockAfter;
+            } else {
+                $newUnitCost = $incomingUnitCost; // Safe fallback
+            }
+
+            Product::withoutEvents(function () use ($product, $stockAfter, $newUnitCost) {
+                $product->update([
+                    'stock' => $stockAfter,
+                    'unit_cost' => $newUnitCost
+                ]);
             });
 
             // Buscar el lote por producto, número de lote y fecha de expiración si no hay product_lot_id
-            // Nota: Cuando se aprueba la factura, los lotes aún no existen, así que product_lot_id será null
-            // Los lotes se crearán cuando se ordene la factura, y entonces se actualizará el movimiento
             $productLotId = $detail->product_lot_id ?? null;
 
             InventoryMovement::create([
@@ -113,28 +135,28 @@ class ProductObserver
      */
     public static function handleReturnMovement(ReturnEntry $return): void
     {
-      
-            $product = $return->product; 
-            $stockBefore = $product->stock ?? 0;
-            $stockAfter = $stockBefore + $return->quantity;
 
-            Product::withoutEvents(function () use ($product, $stockAfter) {
-                $product->update(['stock' => $stockAfter]);
-            });
+        $product = $return->product;
+        $stockBefore = $product->stock ?? 0;
+        $stockAfter = $stockBefore + $return->quantity;
 
-            InventoryMovement::create([
-                'product_id' => $product->id,
-                'product_lot_id' =>  null,
-                'movement_type' => 'return',
-                'quantity' => $return->quantity,
-                'invoice_id' => null,
-                'supplier_id' => null,
-                'order_id' => $return->order_id,
-                'user_id' => $return->generated_by_id ?? Auth::id(),
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'movement_date' => now(),
-            ]);
-        
+        Product::withoutEvents(function () use ($product, $stockAfter) {
+            $product->update(['stock' => $stockAfter]);
+        });
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => null,
+            'movement_type' => 'return',
+            'quantity' => $return->quantity,
+            'invoice_id' => null,
+            'supplier_id' => null,
+            'order_id' => $return->order_id,
+            'user_id' => $return->generated_by_id ?? Auth::id(),
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
+
     }
 }

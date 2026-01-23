@@ -183,7 +183,7 @@ class InvoiceController extends Controller
             $rules['exchange_rate'] = 'required|numeric|gt:0';
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         } else {
-            $rules['exchange_rate'] = 'nullable|numeric|gt:0';
+            $rules['exchange_rate'] = 'nullable|numeric';
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         }
         $validator = Validator::make($request->all(), $rules);
