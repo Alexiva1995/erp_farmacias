@@ -24,13 +24,44 @@ class OrderActionService
 {
     public function createOrder(array $data): Order
     {
-        DB::beginTransaction();
+       // DB::beginTransaction();
         try {
+            return DB::transaction(function () use ($data) {
+                $existsPending = Order::where('seller_id', $data['seller_id'])  
+                ->where('status', Order::PENDING)
+                ->lockForUpdate()
+                ->exists();
 
-            $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
+                if ($existsPending) {
+                    throw new \Exception('Ya tienes una orden abierta. Procesa esa orden o resérvala antes de crear una nueva.');
+                }
+
+                $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
                 ->where('status', CashClosing::OPEN)
                 ->first();
-            if (!$openCashRegisterClosing) {
+
+                if (!$openCashRegisterClosing) {
+                    throw new \Exception('No se encontró un cierre de caja abierto para el vendedor.');
+                }
+
+                $data['cash_closing_id'] = $openCashRegisterClosing->id;
+                $data['total_amount'] = $data['total_amount'] ?? 0;
+                $data['total_amount_usd'] = $data['total_amount_usd'] ?? 0;
+                $data['money_returns'] = $data['money_returns'] ?? 0;
+                $data['total_cost'] = $data['total_cost'] ?? 0;
+                $data['payment_methods'] = null;
+
+                $order = Order::create($data);
+                $order->load('seller', 'client');
+                Log::info("Orden {$order->id} creada por vendedor {$data['seller_id']}");
+                return $order;
+            });
+
+          /*  $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
+                ->where('status', CashClosing::OPEN)
+                ->first();*/
+
+           /* if (!$openCashRegisterClosing) {
                 throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
             } else {
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
@@ -44,7 +75,7 @@ class OrderActionService
             $order = Order::create($data);
             DB::commit();
             $order->load('seller', 'client');
-            return $order;
+            return $order;*/
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al crear la orden: ' . $e->getMessage());
@@ -55,7 +86,6 @@ class OrderActionService
     public function getMyOpenOrder(int $sellerId): array
     {
         try {
-
             $withRelations = [
                 'client',
                 'seller',
@@ -75,7 +105,7 @@ class OrderActionService
                 ->first();
 
             $reservedOrder = Order::where('seller_id', $sellerId)
-                ->where('status', 'Reserved')
+                ->where('status', Order::RESERVED)
                 ->with($withRelations)
                 ->first();
 
@@ -581,6 +611,7 @@ class OrderActionService
                 }
             }
 
+            
             if (isset($request->changeAmount)) {
                 $orderId->money_returns = $request->changeAmount;
             }
@@ -834,6 +865,17 @@ class OrderActionService
     {
         DB::beginTransaction();
         try {
+
+            $alreadyReserved = Order::where('seller_id', $sellerId)
+            ->where('status', Order::RESERVED)
+            ->where('id', '!=', $order->id)
+            ->lockForUpdate() 
+            ->exists();
+
+            if ($alreadyReserved) {
+                throw new \Exception("Ya tienes una orden reservada. No puedes tener dos al mismo tiempo.");
+            }
+
             $order->status = Order::RESERVED;
             $order->save();
             $order->load('seller', 'client', 'details.product');
@@ -854,11 +896,48 @@ class OrderActionService
         }
     }
 
+
+
     public function reserveAndAddOrder(Order $order, $sellerId): array
+{
+    try {
+    return DB::transaction(function () use ($order, $sellerId) {
+        $previouslyReserved = Order::where('seller_id', $sellerId)
+            ->where('status', Order::RESERVED)
+            ->where('id', '!=', $order->id)
+            ->lockForUpdate() 
+            ->first();
+
+        if ($previouslyReserved) {
+            $previouslyReserved->status = Order::PENDING;
+            $previouslyReserved->save();
+        }
+        
+        $order->status = Order::RESERVED;
+        $order->seller_id = $sellerId;
+        $order->save();
+        $order->load('seller', 'client', 'details.product');
+        if ($previouslyReserved) {
+            $previouslyReserved->load('seller', 'client', 'details.product');
+        }
+
+        Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
+
+        return [
+            'reserved_order' => $order,
+            'pending_order' => $previouslyReserved,
+        ];
+    });
+    } catch (\Exception $e) {
+        Log::error("Error en reserveAndAddOrder: " . $e->getMessage());
+        throw $e; 
+    }
+}
+
+ /*  public function reserveAndAddOrder(Order $order, $sellerId): array
     {
         DB::beginTransaction();
         try {
-
             $orderOpen = Order::where('seller_id', $sellerId)
                 ->where('status', Order::PENDING)
                 ->first();
@@ -891,7 +970,7 @@ class OrderActionService
             ]);
             throw $e;
         }
-    }
+    }*/
 
     public function cancelledOrder(Order $order): Order
     {
