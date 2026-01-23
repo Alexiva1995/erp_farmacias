@@ -76,6 +76,26 @@ const props = defineProps({
     type: Function,
     default: null,
   },
+  selectedDiscountType: {
+    type: String,
+    default: null,
+  },
+  activeDoctorOffers: {
+    type: Array,
+    default: () => [],
+  },
+  prescriptionDiscountPercentage: {
+    type: Number,
+    default: 0,
+  },
+  activeCompanyOffers: {
+    type: Array,
+    default: () => [],
+  },
+  globalDiscountPercentage: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -87,7 +107,82 @@ const emit = defineEmits([
   "add-product-by-barcode",
   "search-client",
   "clean-post-save",
+  "update:selectedDiscountType",
+  "doctor-discount-selected",
+  "prescription-file-selected",
+  "company-discount-selected",
 ]);
+
+const selectedDoctor = ref(null);
+const selectedCompany = ref(null);
+const prescriptionFile = ref(null);
+
+watch(
+  () => selectedDoctor.value,
+  (newVal) => {
+    emit("doctor-discount-selected", newVal);
+  },
+);
+
+watch(
+  () => selectedCompany.value,
+  (newVal) => {
+    emit("company-discount-selected", newVal);
+  },
+);
+
+watch(prescriptionFile, (newVal) => {
+  emit("prescription-file-selected", newVal);
+});
+
+watch(
+  () => props.selectedDiscountType,
+  (newVal) => {
+    if (newVal !== "Recipe") {
+      prescriptionFile.value = null;
+    }
+    if (newVal !== "Empresa") {
+      selectedCompany.value = null;
+    }
+    if (newVal !== "Medico") {
+      selectedDoctor.value = null;
+    }
+  },
+);
+
+watch(
+  () => props.selectedClient,
+  (newCliente, oldCliente) => {
+    // Prevent reset if it's the same client
+    if (newCliente?.id === oldCliente?.id) {
+      return;
+    }
+
+    if (
+      newCliente &&
+      newCliente.company_id !== null &&
+      newCliente.company_id !== undefined
+    ) {
+      emit("update:selectedDiscountType", "Empresa");
+      selectedCompany.value = newCliente.company_id;
+    } else {
+      selectedCompany.value = null;
+    }
+  },
+  { immediate: true },
+);
+
+const discountOptions = computed(() => {
+  const options = ["Medico", "Recipe"];
+  if (
+    props.selectedClient &&
+    props.selectedClient.company_id !== null &&
+    props.selectedClient.company_id !== undefined
+  ) {
+    options.unshift("Empresa");
+  }
+  return options;
+});
 
 const lastNumber = ref(null);
 
@@ -97,6 +192,20 @@ const removeQuotationProduct = (productId) => {
 
 const remove = () => {
   emit("remove");
+};
+
+const getBestDiscountForProduct = (product) => {
+  const itemDiscount = parseFloat(product.discount_percentage || 0);
+  const globalDiscount = parseFloat(props.globalDiscountPercentage || 0);
+  const prescriptionDiscount = parseFloat(
+    props.prescriptionDiscountPercentage || 0,
+  );
+
+  // Need to consider how prescription discount interacts. Assuming it's part of the global discount strategy passed in,
+  // but if passed separately, we should maximize.
+  // Generally, globalDiscountPercentage prop in quotation.vue seems to aggregate the "selected" discount.
+
+  return Math.max(itemDiscount, globalDiscount, prescriptionDiscount);
 };
 
 const getProductPrice = (product, currency) => {
@@ -109,6 +218,12 @@ const getProductPrice = (product, currency) => {
   } else {
     // Default to USD price
     basePrice = product.price || 0;
+  }
+
+  // Apply Discount
+  const discountPercentage = getBestDiscountForProduct(product);
+  if (discountPercentage > 0) {
+    basePrice = basePrice * (1 - discountPercentage / 100);
   }
 
   let priceWithIva = basePrice * (1 + taxRate);
@@ -366,6 +481,71 @@ onMounted(() => {
       </VRow>
     </VCardText>
 
+    <VCardText class="pb-2 pt-0">
+      <div class="d-flex align-center gap-2 flex-wrap">
+        <VSelect
+          :model-value="props.selectedDiscountType"
+          :items="discountOptions"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="width: 140px"
+          placeholder="Descuento"
+          clearable
+          @update:model-value="emit('update:selectedDiscountType', $event)"
+        />
+        <VSelect
+          v-if="props.selectedDiscountType === 'Empresa'"
+          v-model="selectedCompany"
+          :items="props.activeCompanyOffers"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="width: 200px"
+          placeholder="Seleccione Empresa"
+          item-title="title"
+          item-value="value"
+          clearable
+        />
+        <VSelect
+          v-if="props.selectedDiscountType === 'Medico'"
+          v-model="selectedDoctor"
+          :items="props.activeDoctorOffers"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="width: 200px"
+          placeholder="Seleccione Médico"
+          item-title="title"
+          item-value="value"
+          clearable
+        />
+        <VFileInput
+          v-if="props.selectedDiscountType === 'Recipe'"
+          v-model="prescriptionFile"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="width: 200px"
+          placeholder="Subir Recipe"
+          accept="image/*"
+          prepend-icon=""
+          append-inner-icon="tabler-upload"
+          clearable
+        />
+        <span
+          v-if="
+            props.selectedDiscountType === 'Recipe' &&
+            props.prescriptionDiscountPercentage > 0
+          "
+          class="text-body-2 text-success font-weight-bold"
+          style="white-space: nowrap"
+        >
+          {{ props.prescriptionDiscountPercentage }}% Descuento
+        </span>
+      </div>
+    </VCardText>
+
     <VCardText class="d-flex flex-column pb-0 flex-grow-1">
       <div
         class="scrollable-list-container"
@@ -401,10 +581,52 @@ onMounted(() => {
             </template>
 
             <VListItemTitle class="font-weight-medium me-4 mx-2">
-              {{ product.title }} - {{ product.laboratory }}
+              <div class="d-flex align-center flex-wrap gap-2">
+                <span>
+                  {{ product.title }}
+                  <template
+                    v-if="product.laboratory && product.laboratory !== 'N/A'"
+                  >
+                    - {{ product.laboratory }}
+                  </template>
+                </span>
+                <VChip
+                  v-if="product.discount_percentage > 0"
+                  color="error"
+                  size="x-small"
+                  variant="flat"
+                  class="font-weight-bold"
+                >
+                  {{ parseFloat(product.discount_percentage) }}%
+                  {{
+                    product.discount_type ? `(${product.discount_type})` : ""
+                  }}
+                </VChip>
+                <VChip
+                  v-if="
+                    getBestDiscountForProduct(product) > 0 &&
+                    Math.abs(
+                      getBestDiscountForProduct(product) -
+                        parseFloat(product.discount_percentage || 0),
+                    ) > 0.01
+                  "
+                  color="warning"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  Aplicado: {{ getBestDiscountForProduct(product) }}%
+                </VChip>
+              </div>
             </VListItemTitle>
             <VListItemSubtitle class="mx-2">
-              {{ product.active_ingredient }}
+              <template
+                v-if="
+                  product.active_ingredient &&
+                  product.active_ingredient !== 'N/A'
+                "
+              >
+                {{ product.active_ingredient }}
+              </template>
             </VListItemSubtitle>
 
             <template #append>

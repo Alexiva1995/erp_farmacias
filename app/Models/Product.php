@@ -48,10 +48,11 @@ class Product extends Model
         'cycle_id',
         'is_ordered',
         'is_deleted',
+        'is_active',
         'stock',
     ];
 
-    protected $appends = ['formatted_details', 'price_bs', 'price_cop'];
+    protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
@@ -246,6 +247,99 @@ class Product extends Model
      * ACCESORES Y MUTADORES
      * =================================================================================================
      */
+
+    /**
+     * Helper param obtener el mejor descuento disponible.
+     */
+    public function getBestProductDiscount(): ?array
+    {
+        $now = now();
+
+        // 1. Individual Offer
+        $individualOffer = $this->individualOffers()
+            ->where('start_date', '<=', $now)
+            ->where('end_date', '>=', $now)
+            ->orderByDesc('discount_percent')
+            ->first();
+
+        $indPercent = $individualOffer ? (float) $individualOffer->discount_percent : 0;
+
+        // 2. Expiration Offer (Dynamic)
+        $expPercent = 0;
+        $expirationOffer = null;
+        $nextLot = $this->next_expiring_lot;
+
+        if ($nextLot) {
+            $monthsToExpiration = $nextLot->months_to_expiration;
+
+            // Find active offers that cover this expiration time (Offer Months >= Lot Months)
+            $expirationOffer = \App\Models\ExpirationOffer::where('is_active', true)
+                ->where('months_to_expiration', '>=', $monthsToExpiration)
+                ->orderByDesc('discount_percentage')
+                ->first();
+
+            $expPercent = $expirationOffer ? (float) $expirationOffer->discount_percentage : 0;
+        }
+
+        // 3. Category Offer
+        $catPercent = 0;
+        $categoryOffer = null;
+
+        if ($this->category) {
+            $categoryOffer = $this->category->offers()
+                ->where('is_active', true)
+                ->where('start_date', '<=', $now)
+                ->where('end_date', '>=', $now)
+                ->orderByDesc('discount_percentage')
+                ->first();
+            $catPercent = $categoryOffer ? (float) $categoryOffer->discount_percentage : 0;
+        }
+
+        // Compare logic: Return the highest discount
+        $maxPercent = max($indPercent, $expPercent, $catPercent);
+
+        if ($maxPercent <= 0) {
+            return null;
+        }
+
+        if ($maxPercent === $indPercent) {
+            return [
+                'percentage' => $indPercent,
+                'type' => 'Individual',
+                'source_id' => $individualOffer->id
+            ];
+        } elseif ($maxPercent === $expPercent) {
+            return [
+                'percentage' => $expPercent,
+                'type' => 'Expiration',
+                'source_id' => $expirationOffer->id
+            ];
+        } else {
+            return [
+                'percentage' => $catPercent,
+                'type' => 'Category',
+                'source_id' => $categoryOffer->id
+            ];
+        }
+    }
+
+    public function getDiscountPercentageAttribute()
+    {
+        $best = $this->getBestProductDiscount();
+        return $best ? $best['percentage'] : 0;
+    }
+
+    public function getDiscountTypeAttribute()
+    {
+        $best = $this->getBestProductDiscount();
+        return $best ? $best['type'] : null;
+    }
+
+    public function getDiscountSourceIdAttribute()
+    {
+        $best = $this->getBestProductDiscount();
+        return $best ? $best['source_id'] : null;
+    }
 
     /**
      * Accesor para obtener los detalles formateados del producto.

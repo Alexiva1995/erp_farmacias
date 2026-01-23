@@ -7,6 +7,7 @@ use App\Models\Quotation;
 use App\Models\QuotationProduct;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class QuotationActionService
 {
@@ -20,6 +21,8 @@ class QuotationActionService
     {
         $product->load([
             'laboratory',
+            'individualOffers',
+            'category.offers',
         ]);
 
         $product->loadSum('lots', 'quantity');

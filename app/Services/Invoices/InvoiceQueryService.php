@@ -157,6 +157,7 @@ class InvoiceQueryService
                 ->select(
                     'products.id as product_id',
                     'products.name as product_name',
+                    'products.is_deleted',
                     'suppliers_config_products.price as supplier_price'
                 )
                 ->get();
@@ -168,6 +169,7 @@ class InvoiceQueryService
                     'product' => [
                         'id' => $productData->product_id,
                         'name' => $productData->product_name,
+                        'is_deleted' => (bool) $productData->is_deleted,
                     ],
                     'quantity' => 1,
                     'unit_cost' => $productData->supplier_price,

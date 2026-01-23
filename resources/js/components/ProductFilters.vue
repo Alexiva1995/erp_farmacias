@@ -74,7 +74,7 @@ const sortOptions = [
     icon: "tabler-calendar-time",
     key: "next_expiration",
     order: "asc",
-  }
+  },
 ];
 
 const authStore = useAuthStore();
@@ -92,7 +92,7 @@ const loadSavedSort = () => {
       const parsedSort = JSON.parse(saved);
       const isValidSort = sortOptions.find(
         (option) =>
-          option.key === parsedSort.key && option.order === parsedSort.order
+          option.key === parsedSort.key && option.order === parsedSort.order,
       );
       if (isValidSort) {
         selectedSort.value = parsedSort;
@@ -135,7 +135,7 @@ const getSelectedSortTitle = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.title : null;
 };
@@ -145,7 +145,7 @@ const getSelectedSortIcon = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.icon : null;
 };
@@ -179,9 +179,8 @@ watch(
       loadSavedSort();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
-
 
 watch(
   () => props.sortData,
@@ -190,7 +189,7 @@ watch(
       selectedSort.value = null;
     }
   },
-  { deep: true }
+  { deep: true },
 );
 </script>
 
@@ -325,8 +324,7 @@ watch(
         </VChip>
       </div>
 
-
- <div class="d-flex align-center mt-3 mb-2">
+      <div class="d-flex align-center mt-3 mb-2">
         <VCheckbox
           :model-value="props.isStrictSearch"
           @update:model-value="emit('update:isStrictSearch', $event)"
@@ -353,7 +351,6 @@ watch(
           Modo Estricto Activo
         </VChip>
       </div>
-   
 
       <VSpacer />
 

@@ -47,6 +47,16 @@ class ProductQueryService
             $query->whereNull('group_id');
         }
 
+        if (isset($filters['is_active'])) {
+            $query->where('is_deleted', !$filters['is_active']);
+        }
+
+        if (!empty($filters['is_pending'])) {
+            $query->where(function ($q) {
+                $q->whereNull('barcode')->orWhere('is_deleted', true);
+            });
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = $filters['q'];
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -224,7 +234,9 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            // 'is_active' => true // Column Removed
+            'is_active' => true // kept for filter mapping only, but maps to is_deleted=0 above
         ];
 
         $this->applyFilters($query, $filters);
@@ -249,7 +261,7 @@ class ProductQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_barcodes' => true
+            'is_pending' => true
         ];
 
         $this->applyFilters($query, $filters);

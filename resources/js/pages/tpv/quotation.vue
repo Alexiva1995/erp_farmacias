@@ -13,6 +13,27 @@ const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
 
+const selectedDiscountType = ref(null);
+const activeDoctorOffers = ref([]);
+const selectedDoctorOffer = ref(null);
+const loadingDoctorOffers = ref(false);
+
+const activePrescriptionOffers = ref([]);
+const prescriptionFile = ref(null);
+const activeCompanyOffers = ref([]);
+const selectedCompanyId = ref(null);
+const selectedCompany = ref(null);
+
+const currentPrescriptionDiscountPercentage = computed(() => {
+  if (
+    selectedDiscountType.value === "Recipe" &&
+    activePrescriptionOffers.value.length > 0
+  ) {
+    return parseFloat(activePrescriptionOffers.value[0].discount_percentage);
+  }
+  return 0;
+});
+
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -50,13 +71,51 @@ const getItemPriceByCurrency = (item, currency) => {
   }
 };
 
+const getGlobalDiscountPercentage = () => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompanyId.value,
+    );
+    return parseFloat(offer?.current_discount || 0);
+  } else if (
+    selectedDiscountType.value === "Medico" &&
+    selectedDoctorOffer.value
+  ) {
+    return parseFloat(selectedDoctorOffer.value.percentage || 0);
+  } else if (selectedDiscountType.value === "Recipe") {
+    return parseFloat(currentPrescriptionDiscountPercentage.value || 0);
+  }
+  return 0;
+};
+
+const calculateItemDiscountedPrice = (item, basePrice) => {
+  const itemDiscount = parseFloat(item.discount_percentage || 0);
+  const globalDiscount = getGlobalDiscountPercentage();
+  const prescriptionDiscount = parseFloat(
+    currentPrescriptionDiscountPercentage.value || 0,
+  );
+
+  const bestDiscount = Math.max(
+    itemDiscount,
+    globalDiscount,
+    prescriptionDiscount,
+  );
+
+  if (bestDiscount > 0) {
+    return basePrice * (1 - bestDiscount / 100);
+  }
+  return basePrice;
+};
+
 const totalAmountBs = computed(() => {
   let total = 0;
   quotationItems.value.forEach((item) => {
     const basePriceBs = item.price_bs || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceBs * quantity * (1 + taxRate);
+
+    const discountedPrice = calculateItemDiscountedPrice(item, basePriceBs);
+    total += discountedPrice * quantity * (1 + taxRate);
   });
   return total;
 });
@@ -67,7 +126,9 @@ const totalAmountUsd = computed(() => {
     const basePriceUsd = item.price || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceUsd * quantity * (1 + taxRate);
+
+    const discountedPrice = calculateItemDiscountedPrice(item, basePriceUsd);
+    total += discountedPrice * quantity * (1 + taxRate);
   });
   return total;
 });
@@ -78,7 +139,16 @@ const totalAmountCop = computed(() => {
     const basePriceCop = item.price_cop || 0;
     const quantity = item.selectedQuantity || 0;
     const taxRate = item.taxRate || 0;
-    total += basePriceCop * quantity * (1 + taxRate);
+
+    let discountedPrice = calculateItemDiscountedPrice(item, basePriceCop);
+    // Apply rounding for COP calculation if needed before or after?
+    // Usually rounding happens on final price. QuotationProducts rounds priceWithIva.
+    // Let's mimic QuotationProducts logic: base -> discount -> +tax -> round.
+
+    let priceWithIva = discountedPrice * (1 + taxRate);
+    priceWithIva = Math.ceil(priceWithIva / 100) * 100; // Manual round up to nearest hundred as per logic
+
+    total += priceWithIva * quantity;
   });
   return total;
 });
@@ -93,6 +163,55 @@ const totalProductsAmount = computed(() => {
   return total;
 });
 
+const totalEligibleAmount = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach((item) => {
+    // Exclude items with expiration discount from the eligible base
+    if (item.discount_type === "expiration") {
+      return;
+    }
+    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+    const quantity = item.selectedQuantity || 0;
+    total += price * quantity;
+  });
+  return total;
+});
+
+const totalCompanyDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find(
+      (o) => o.value === selectedCompanyId.value,
+    );
+    const porcentaje = parseFloat(offer?.current_discount || 0);
+    if (porcentaje > 0) {
+      return totalEligibleAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
+const totalDoctorDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+    const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
+    if (porcentaje > 0) {
+      return totalEligibleAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
+const totalRecipeDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Recipe") {
+    const porcentaje = parseFloat(
+      currentPrescriptionDiscountPercentage.value || 0,
+    );
+    if (porcentaje > 0) {
+      return totalEligibleAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
 const totalIVAAmount = computed(() => {
   let totalIVA = 0;
   quotationItems.value.forEach((item) => {
@@ -105,7 +224,16 @@ const totalIVAAmount = computed(() => {
 });
 
 const totalQuotationAmount = computed(() => {
-  return totalProductsAmount.value + totalIVAAmount.value;
+  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
+  let discountToSubtract = 0;
+  if (selectedDiscountType.value === "Empresa") {
+    discountToSubtract = totalCompanyDiscountAmount.value;
+  } else if (selectedDiscountType.value === "Medico") {
+    discountToSubtract = totalDoctorDiscountAmount.value;
+  } else if (selectedDiscountType.value === "Recipe") {
+    discountToSubtract = totalRecipeDiscountAmount.value;
+  }
+  return baseTotal - discountToSubtract;
 });
 
 const fetchSelectOptions = async () => {
@@ -122,6 +250,99 @@ const fetchSelectOptions = async () => {
     toast.error("No se pudieron cargar los filtros.");
   } finally {
     isLoadingFilters.value = false;
+  }
+};
+
+const fetchDoctorOffers = async () => {
+  loadingDoctorOffers.value = true;
+  try {
+    const response = await axios.get("/tpv/promotions/doctor-offer", {
+      params: {
+        per_page: 100,
+        sort_by: "id",
+        sort_order: "desc",
+      },
+    });
+
+    if (response.data.success) {
+      activeDoctorOffers.value = response.data.data.map((offer) => ({
+        id: offer.id,
+        title: `${offer.doctor.name} - ${offer.discount}%`,
+        value: offer.id,
+        percentage: parseFloat(offer.discount),
+        doctor_id: offer.doctor_id,
+      }));
+    }
+  } catch (error) {
+    console.error("Error fetching doctor offers:", error);
+    toast.error("Error al cargar las ofertas de médicos.");
+  } finally {
+    loadingDoctorOffers.value = false;
+  }
+};
+
+const fetchPrescriptionOffers = async () => {
+  try {
+    const response = await axios.get("/tpv/promotions/prescription-offer", {
+      params: {
+        is_active: true,
+        per_page: 1,
+        sort_by: "discount_percentage",
+        sort_order: "desc",
+      },
+    });
+    if (response.data.success) {
+      activePrescriptionOffers.value = response.data.data;
+    }
+  } catch (error) {
+    console.error("Error fetching prescription offers:", error);
+  }
+};
+
+const fetchCompanyOffers = async (companyId = null) => {
+  try {
+    const params = {
+      is_active: true,
+      per_page: 100,
+      sort_by: "id",
+      order_by: "desc", // Cambiado de sort_order a order_by para tu Laravel
+    };
+
+    if (companyId) {
+      params.search = companyId;
+    }
+
+    const response = await axios.get("/tpv/promotions/company-offer", {
+      params,
+    });
+
+    if (response.data && response.data.data) {
+      activeCompanyOffers.value = response.data.data.map((offer) => {
+        const scales = offer.scales || [];
+        // Calculate min and max percentage for display
+        let discountText = "";
+        if (scales.length > 0) {
+          const percentages = scales.map((s) =>
+            parseFloat(s.discount_percentage),
+          );
+          const minP = Math.min(...percentages);
+          const maxP = Math.max(...percentages);
+          discountText = minP === maxP ? `${minP}%` : `${minP}-${maxP}%`;
+        }
+
+        return {
+          title: `${offer.company?.name || "N/A"} ${
+            discountText ? "- " + discountText : ""
+          }`,
+          value: offer.company_id,
+          scales: scales,
+          id: offer.id,
+          current_discount: offer.company?.current_discount || 0,
+        };
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching company offers:", error);
   }
 };
 
@@ -173,6 +394,104 @@ watch(
   { deep: true },
 );
 
+const handlePrescriptionFileSelected = (file) => {
+  prescriptionFile.value = file;
+  if (file && activePrescriptionOffers.value.length > 0) {
+    const offer = activePrescriptionOffers.value[0];
+    toast.success(
+      `Descuento de receta del ${offer.discount_percentage}% detectado.`,
+    );
+  }
+};
+
+const handleDoctorDiscountSelected = (offerId) => {
+  const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
+  selectedDoctorOffer.value = offer;
+  if (offer) {
+    toast.success(`Descuento de médico ${offer.percentage}% seleccionado.`);
+  } else {
+    selectedDoctorOffer.value = null;
+    toast.info("Descuento de médico removido.");
+  }
+};
+
+const handleCompanyDiscountSelected = async (companyId) => {
+  selectedCompanyId.value = companyId;
+  if (companyId) {
+    await fetchCompanyOffers(companyId);
+  }
+  validateAndApplyCompanyDiscount();
+};
+
+const validateAndApplyCompanyDiscount = () => {
+  if (activeCompanyOffers.value.length === 0) {
+    return;
+  }
+
+  if (!selectedCompanyId.value) {
+    return;
+  }
+
+  const offer = activeCompanyOffers.value.find(
+    (o) => o.value === selectedCompanyId.value,
+  );
+
+  if (!offer) {
+    selectedCompanyId.value = null;
+    return;
+  }
+
+  const porcentaje = parseFloat(offer.current_discount || 0);
+  if (porcentaje > 0) {
+    toast.success(
+      `Descuento de empresa ${porcentaje}% habilitado para esta orden.`,
+    );
+  } else {
+    selectedCompanyId.value = null;
+    toast.info(
+      `Esta empresa no cuenta con un descuento activo para el periodo actual.`,
+    );
+  }
+};
+
+watch(
+  () => selectedClient.value,
+  async (newCliente, oldCliente) => {
+    if (!newCliente) {
+      return;
+    }
+    if (newCliente?.id === oldCliente?.id) {
+      return;
+    }
+
+    try {
+      if (newCliente.company_id) {
+        await fetchCompanyOffers(newCliente.company_id);
+        selectedDiscountType.value = "Empresa";
+        selectedCompany.value = newCliente.company_id;
+      } else {
+        selectedCompany.value = null;
+        await fetchCompanyOffers();
+      }
+    } catch (error) {
+      console.error("[ORDER_USER] Error en watcher de selectedClient:", error);
+    }
+  },
+  { deep: true },
+);
+
+watch(selectedDiscountType, (newValue) => {
+  if (newValue !== "Medico") {
+    selectedDoctorOffer.value = null;
+  }
+  if (newValue !== "Recipe") {
+    prescriptionFile.value = null;
+  }
+  if (newValue !== "Empresa") {
+    selectedCompanyId.value = null;
+  }
+});
+
 watch(
   [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
   () => {
@@ -196,6 +515,9 @@ watch(barcodeSearchQuery, (newValue) => {
 onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
+  fetchDoctorOffers();
+  fetchPrescriptionOffers();
+  fetchCompanyOffers();
 });
 
 const updateTableOptions = (options) => {
@@ -274,6 +596,11 @@ const addProductToQuotation = async ({ productId, quantity }) => {
           ? productDetails.laboratory.name
           : "N/A",
         taxRate: productDetails.iva == 1 ? 0.16 : 0,
+        discount_percentage: parseFloat(
+          productDetails.discount_percentage || 0,
+        ),
+        discount_type: productDetails.discount_type || null,
+        discount_source_id: productDetails.discount_source_id || null,
       };
       quotationItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
@@ -324,33 +651,32 @@ const saveQuotation = async () => {
   }
 
   try {
-    const totalProductsAmountUSD = computed(() => {
-      let total = 0;
-      quotationItems.value.forEach((item) => {
-        total += (item.price || 0) * (item.selectedQuantity || 0);
-      });
-      return total;
+    let productsUsd = 0;
+    let eligibleBaseUsd = 0;
+    let ivaUsd = 0;
+
+    quotationItems.value.forEach((item) => {
+      const p = item.price || 0;
+      const q = item.selectedQuantity || 0;
+      const t = item.taxRate || 0;
+
+      productsUsd += p * q;
+      ivaUsd += p * q * t;
+
+      if (item.discount_type !== "expiration") {
+        eligibleBaseUsd += p * q;
+      }
     });
 
-    const totalIVAAmountUSD = computed(() => {
-      let totalIVA = 0;
-      quotationItems.value.forEach((item) => {
-        totalIVA +=
-          (item.price || 0) *
-          (item.selectedQuantity || 0) *
-          (item.taxRate || 0);
-      });
-      return totalIVA;
-    });
+    const discountPercent = getGlobalDiscountPercentage();
+    const discountAmountUsd = eligibleBaseUsd * (discountPercent / 100);
 
-    const totalQuotationAmountUSD = computed(() => {
-      return totalProductsAmountUSD.value + totalIVAAmountUSD.value;
-    });
+    const grandTotalUsd = productsUsd + ivaUsd - discountAmountUsd;
 
     const payload = {
-      total_amount_usd: totalProductsAmountUSD.value,
-      total_iva_usd: totalIVAAmountUSD.value,
-      grand_total_usd: totalQuotationAmountUSD.value,
+      total_amount_usd: productsUsd,
+      total_iva_usd: ivaUsd,
+      grand_total_usd: grandTotalUsd,
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value.id,
       products: quotationItems.value.map((item) => ({
@@ -375,33 +701,32 @@ const saveAndPrintQuotation = async () => {
   }
 
   try {
-    const totalProductsAmountUSD = computed(() => {
-      let total = 0;
-      quotationItems.value.forEach((item) => {
-        total += (item.price || 0) * (item.selectedQuantity || 0);
-      });
-      return total;
+    let productsUsd = 0;
+    let eligibleBaseUsd = 0;
+    let ivaUsd = 0;
+
+    quotationItems.value.forEach((item) => {
+      const p = item.price || 0;
+      const q = item.selectedQuantity || 0;
+      const t = item.taxRate || 0;
+
+      productsUsd += p * q;
+      ivaUsd += p * q * t;
+
+      if (item.discount_type !== "expiration") {
+        eligibleBaseUsd += p * q;
+      }
     });
 
-    const totalIVAAmountUSD = computed(() => {
-      let totalIVA = 0;
-      quotationItems.value.forEach((item) => {
-        totalIVA +=
-          (item.price || 0) *
-          (item.selectedQuantity || 0) *
-          (item.taxRate || 0);
-      });
-      return totalIVA;
-    });
+    const discountPercent = getGlobalDiscountPercentage();
+    const discountAmountUsd = eligibleBaseUsd * (discountPercent / 100);
 
-    const totalQuotationAmountUSD = computed(() => {
-      return totalProductsAmountUSD.value + totalIVAAmountUSD.value;
-    });
+    const grandTotalUsd = productsUsd + ivaUsd - discountAmountUsd;
 
     const payload = {
-      total_amount_usd: totalProductsAmountUSD.value,
-      total_iva_usd: totalIVAAmountUSD.value,
-      grand_total_usd: totalQuotationAmountUSD.value,
+      total_amount_usd: productsUsd,
+      total_iva_usd: ivaUsd,
+      grand_total_usd: grandTotalUsd,
       currency: selectedDisplayCurrency.value,
       products: quotationItems.value.map((item) => ({
         id: item.id,
@@ -458,7 +783,7 @@ const saveAndPrintQuotation = async () => {
                 td, th {
                   padding: 1px 0 !important;
                   font-size: 9px !important;
-                }
+                  }
                 
                 .break-word {
                   word-break: break-word !important;
@@ -611,6 +936,11 @@ const handleCleanAfterSave = () => {
           :total-quotation-amount="totalQuotationAmount"
           :quotation-items="quotationItems"
           :selected-display-currency="selectedDisplayCurrency"
+          :company-discount-total="totalCompanyDiscountAmount"
+          :doctor-discount-total="totalDoctorDiscountAmount"
+          :recipe-discount-total="totalRecipeDiscountAmount"
+          :other-discounts-total="totalOtherDiscountsAmount"
+          :selected-discount-type="selectedDiscountType"
           @currency-changed="handleCurrencyChanged"
         />
       </VCol>
@@ -626,6 +956,16 @@ const handleCleanAfterSave = () => {
           :total-amount-cop="totalAmountCop"
           :on-save-quotation="saveQuotation"
           :selected-client="selectedClient"
+          v-model:selected-discount-type="selectedDiscountType"
+          :active-doctor-offers="activeDoctorOffers"
+          :prescription-discount-percentage="
+            currentPrescriptionDiscountPercentage
+          "
+          :active-company-offers="activeCompanyOffers"
+          :global-discount-percentage="getGlobalDiscountPercentage()"
+          @doctor-discount-selected="handleDoctorDiscountSelected"
+          @prescription-file-selected="handlePrescriptionFileSelected"
+          @company-discount-selected="handleCompanyDiscountSelected"
           @remove-quotation-product="removeQuotationItem"
           @remove="removeQuotation"
           @print-quotation="saveAndPrintQuotation"
