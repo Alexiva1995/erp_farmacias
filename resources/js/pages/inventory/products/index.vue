@@ -331,7 +331,6 @@ const handleSort = (sortOptions) => {
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"
-      @product-merged="fetchProducts"
     />
     <ProductEditDialog
       v-model="isEditDialogVisible"

@@ -234,9 +234,15 @@ class ProductQueryService
         return $query;
     }
 
-    public function getPendingProductsQuery(Request $request): Builder
+    public function getIncompleteProductsQuery(Request $request): Builder
     {
         $query = $this->getBaseQuery();
+
+        $query->where(function ($q) {
+            $q->whereNull('barcode')
+              ->orWhereNull('laboratory_id')
+              ->orWhereNull('origin_id');
+        });
 
         $filters = [
             'q' => $request->q,
@@ -248,56 +254,7 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_barcodes' => true
-        ];
-
-        $this->applyFilters($query, $filters);
-        $this->subColummn($query);
-        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
-
-        return $query;
-    }
-
-    public function getProductsWithoutLaboratoryQuery(Request $request): Builder
-    {
-        $query = $this->getBaseQuery();
-
-        $filters = [
-            'q' => $request->q,
-            'originId' => $request->originId,
-            'groupId' => $request->groupId,
-            'lockedValue' => $request->lockedValue,
-            'is_psychotropic' => $request->is_psychotropic,
-            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
-            'startDate' => $request->startDate,
-            'endDate' => $request->endDate,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_laboratory' => true
-        ];
-
-        $this->applyFilters($query, $filters);
-        $this->subColummn($query);
-        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
-
-        return $query;
-    }
-
-    public function getProductsWithoutOriginQuery(Request $request): Builder
-    {
-        $query = $this->getBaseQuery();
-
-        $filters = [
-            'q' => $request->q,
-            'laboratoryId' => $request->laboratoryId,
-            'groupId' => $request->groupId,
-            'lockedValue' => $request->lockedValue,
-            'is_psychotropic' => $request->is_psychotropic,
-            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
-            'startDate' => $request->startDate,
-            'endDate' => $request->endDate,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_origin' => true
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
         $this->applyFilters($query, $filters);
@@ -334,7 +291,7 @@ class ProductQueryService
     public function subColummn(Builder $query): Builder
     {
         return $query->addSelect([
-            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0)'),
+            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) as stock_calculado'),
             'ultima_fecha_vencimiento' => DB::table('product_lots')
                 ->selectRaw('MAX(expiration_date)')
                 ->whereColumn('product_lots.product_id', 'products.id'),
