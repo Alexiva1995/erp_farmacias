@@ -2076,6 +2076,14 @@ const handleBuysCompletion = async (
 ) => {
   try {
     isFinishingOrder.value = true;
+
+    if (typeof updateTotalsTimer !== 'undefined') clearTimeout(updateTotalsTimer);
+    await updateOrderTotalsInBackend();
+    const finalAmount = parseFloat(totalOrderAmountWithspecialTaxAmount.value);
+    if (orderItems.value.length > 0 && (finalAmount <= 0 || isNaN(finalAmount))) {
+      throw new Error("El monto total calculado es inválido. Por favor, revisa los productos.");
+    }
+
     const balanceUsed = paymentsData.some(
       (payment) => payment.type === "balance",
     );
@@ -2115,6 +2123,10 @@ const handleBuysCompletion = async (
       ? specialTaxAmount.value
       : 0.0;
 
+
+    const safeChangeAmount = isNaN(parseFloat(changeAmount)) ? 0 : parseFloat(changeAmount);
+    const safeChangeAmountUSD = isNaN(parseFloat(changeAmountUSD)) ? 0 : parseFloat(changeAmountUSD);
+
     const formData = new FormData();
     formData.append("order_id", orderId);
     formData.append("total_amount", totalOrderAmountWithspecialTaxAmount.value);
@@ -2124,8 +2136,8 @@ const handleBuysCompletion = async (
     formData.append("balance_used", balanceUsed ? 1 : 0);
     formData.append("generate_invoice", switchStates.invoice_switch ? 1 : 0);
     formData.append("credit", credit ? 1 : 0);
-    formData.append("changeAmount", changeAmount);
-    formData.append("changeAmountUSD", changeAmountUSD);
+    formData.append("changeAmount", safeChangeAmount);
+    formData.append("changeAmountUSD", safeChangeAmountUSD);
     formData.append("spe", switchStates.spe ? 1 : 0);
     formData.append("payments", JSON.stringify(paymentsData));
     formData.append("taxable_base", taxable_base);
@@ -2376,16 +2388,16 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 
 const addReserverOrder = async () => {
   try {
+
     const response = await axios.patch(
-      `/tpv/order/${reservedOrderData.value.id}/reserveAdd`,
+      `/tpv/order/${openOrderData.value.id}/reserveAdd`,
     );
     const { pending_order, reserved_order } = response.data.data;
 
-    console.log(pending_order.currency.toUpperCase());
-    if (pending_order.currency) {
+    if (pending_order?.currency) {
       selectedDisplayCurrency.value = pending_order.currency.toUpperCase();
     }
-
+/*
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
@@ -2397,10 +2409,34 @@ const addReserverOrder = async () => {
     } else {
       orderItems.value = [];
     }
+
     hasOpenOrder.value = true;
     await nextTick();
     toast.success("Orden agregada exitosamente.");
-    return response.data.data.order;
+    return response.data.data.order;*/
+
+
+    // Actualizamos los datos solo si existen
+    if (pending_order) {
+      openOrderData.value = pending_order;
+      selectedClient.value = pending_order.client;
+      
+      if (pending_order.details) {
+        orderItems.value = pending_order.details.map((item) =>
+          formatOrderItemForFrontend(item)
+        );
+      } else {
+        orderItems.value = [];
+      }
+      hasOpenOrder.value = true;
+    }
+
+    // La reservada siempre debería existir según tu lógica
+    reservedOrderData.value = reserved_order;
+
+    await nextTick();
+    toast.success("Orden actualizada correctamente.");
+
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
