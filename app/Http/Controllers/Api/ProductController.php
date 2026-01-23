@@ -475,4 +475,26 @@ class ProductController extends Controller
             'message' => 'Valor del inventario calculado con éxito.'
         ], 200);
     }
+
+    public function merge(Request $request)
+    {
+        $request->validate([
+            'product_id_1' => 'required|integer|exists:products,id',
+            'product_id_2' => 'required|integer|exists:products,id',
+        ]);
+
+        try {
+            $result = $this->productActionService->mergeProducts(
+                $request->integer('product_id_1'),
+                $request->integer('product_id_2')
+            );
+
+            return response()->json($result, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

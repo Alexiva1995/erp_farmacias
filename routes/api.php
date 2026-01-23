@@ -113,6 +113,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
+    Route::post('/products/merge', [ProductController::class, 'merge']);
 
     // Rutas de Grupos de Productos
     Route::get("/groups", [GroupController::class, "index"]);
