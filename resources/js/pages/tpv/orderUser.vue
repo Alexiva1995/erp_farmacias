@@ -2076,6 +2076,14 @@ const handleBuysCompletion = async (
 ) => {
   try {
     isFinishingOrder.value = true;
+
+    if (typeof updateTotalsTimer !== 'undefined') clearTimeout(updateTotalsTimer);
+    await updateOrderTotalsInBackend();
+    const finalAmount = parseFloat(totalOrderAmountWithspecialTaxAmount.value);
+    if (orderItems.value.length > 0 && (finalAmount <= 0 || isNaN(finalAmount))) {
+      throw new Error("El monto total calculado es inválido. Por favor, revisa los productos.");
+    }
+
     const balanceUsed = paymentsData.some(
       (payment) => payment.type === "balance",
     );
@@ -2115,6 +2123,10 @@ const handleBuysCompletion = async (
       ? specialTaxAmount.value
       : 0.0;
 
+
+    const safeChangeAmount = isNaN(parseFloat(changeAmount)) ? 0 : parseFloat(changeAmount);
+    const safeChangeAmountUSD = isNaN(parseFloat(changeAmountUSD)) ? 0 : parseFloat(changeAmountUSD);
+
     const formData = new FormData();
     formData.append("order_id", orderId);
     formData.append("total_amount", totalOrderAmountWithspecialTaxAmount.value);
@@ -2124,8 +2136,8 @@ const handleBuysCompletion = async (
     formData.append("balance_used", balanceUsed ? 1 : 0);
     formData.append("generate_invoice", switchStates.invoice_switch ? 1 : 0);
     formData.append("credit", credit ? 1 : 0);
-    formData.append("changeAmount", changeAmount);
-    formData.append("changeAmountUSD", changeAmountUSD);
+    formData.append("changeAmount", safeChangeAmount);
+    formData.append("changeAmountUSD", safeChangeAmountUSD);
     formData.append("spe", switchStates.spe ? 1 : 0);
     formData.append("payments", JSON.stringify(paymentsData));
     formData.append("taxable_base", taxable_base);
