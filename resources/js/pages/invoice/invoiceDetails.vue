@@ -129,6 +129,31 @@ const formattedPaymentRules = computed(() => {
   }));
 });
 
+const getRowProps = (data) => {
+  const item = data.item;
+  const classes = [];
+
+  if (isEditableMode.value && isEditMode.value) {
+    classes.push("draggable-row");
+  }
+
+  // Check if product is "new" (pending approval / is_deleted)
+
+  if (
+    item.product &&
+    (item.product.is_deleted == 1 || item.product.is_deleted === true)
+  ) {
+    // Force background color via style for dark mode compatibility
+    return {
+      class: "new-product-row",
+      style:
+        "background-color: rgba(30, 200, 50, 0.15) !important; border-left: 4px solid #4CAF50 !important;",
+    };
+  }
+
+  return {};
+};
+
 const processedInvoiceDetails = computed(() => {
   if (!invoice.value || !invoiceDetails.value) return [];
 
@@ -730,7 +755,11 @@ const handleShowProductSearch = () => {
 };
 
 const handleAddNewProduct = async () => {
-  if (laboratories.value.length === 0 || origins.value.length === 0 || categories.value.length === 0) {
+  if (
+    laboratories.value.length === 0 ||
+    origins.value.length === 0 ||
+    categories.value.length === 0
+  ) {
     await fetchProductSelectOptions();
   }
   currentProduct.value = {};
@@ -1396,9 +1425,7 @@ const detailsHeaders = computed(() => {
               :hide-default-footer="true"
               :items-per-page="-1"
               class="invoice-products-table"
-              :item-class="
-                (item) => (isEditableMode && isEditMode ? 'draggable-row' : '')
-              "
+              :row-props="getRowProps"
             >
               <template #item.product_name_with_tax="{ item }">
                 <div

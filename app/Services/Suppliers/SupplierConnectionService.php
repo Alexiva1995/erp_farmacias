@@ -723,7 +723,7 @@ class SupplierConnectionService
         }
 
         try {
-            $productName = $lineData['descripcion_producto'] ?? 'Producto desde factura';
+            $productName = $lineData['descripcion_producto'] ?? $lineData['name'] ?? $lineData['descripcion'] ?? 'Producto desde factura';
 
             $newProduct = Product::create([
                 'barcode' => $barcode,
@@ -740,7 +740,8 @@ class SupplierConnectionService
                 'psychotropic' => false,
                 'stock' => 0,
                 'sales_average' => 0,
-                'is_deleted' => false,
+                // 'is_active' => false, // Column missing in DB
+                'is_deleted' => true, // Pending approval
             ]);
 
             // Log::info('✅ Producto creado desde factura', [

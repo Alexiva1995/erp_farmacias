@@ -162,10 +162,12 @@ class InvoiceActionService
 
             foreach ($data['details'] as $index => $detail) {
                 if ($detail['quantity'] <= 0) {
+                    Log::warning('Skipping detail with quantity <= 0', ['detail' => $detail]);
                     continue;
                 }
 
                 $productId = $detail['product']['id'];
+                Log::info('Processing detail', ['product_id' => $productId, 'quantity' => $detail['quantity']]);
                 $quantity = (int) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
@@ -291,6 +293,13 @@ class InvoiceActionService
                         'unit_cost' => $finalUnitCost,
                         'total_cost' => $finalUnitCost * $detail->quantity,
                     ]);
+                }
+            }
+
+            // Activar productos pendientes (is_deleted = 1)
+            foreach ($invoice->details as $detail) {
+                if ($detail->product && $detail->product->is_deleted) {
+                    $detail->product->update(['is_deleted' => 0]);
                 }
             }
 

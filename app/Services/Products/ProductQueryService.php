@@ -47,6 +47,16 @@ class ProductQueryService
             $query->whereNull('group_id');
         }
 
+        if (isset($filters['is_active'])) {
+            $query->where('is_deleted', !$filters['is_active']);
+        }
+
+        if (!empty($filters['is_pending'])) {
+            $query->where(function ($q) {
+                $q->whereNull('barcode')->orWhere('is_deleted', true);
+            });
+        }
+
         if (!empty($filters['q'])) {
             $searchTerm = $filters['q'];
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
@@ -224,7 +234,9 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            // 'is_active' => true // Column Removed
+            'is_active' => true // kept for filter mapping only, but maps to is_deleted=0 above
         ];
 
         $this->applyFilters($query, $filters);
@@ -240,8 +252,8 @@ class ProductQueryService
 
         $query->where(function ($q) {
             $q->whereNull('barcode')
-              ->orWhereNull('laboratory_id')
-              ->orWhereNull('origin_id');
+                ->orWhereNull('laboratory_id')
+                ->orWhereNull('origin_id');
         });
 
         $filters = [
@@ -254,7 +266,56 @@ class ProductQueryService
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            'is_pending' => true
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getProductsWithoutLaboratoryQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'originId' => $request->originId,
+            'groupId' => $request->groupId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            'null_laboratory' => true
+        ];
+
+        $this->applyFilters($query, $filters);
+        $this->subColummn($query);
+        $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
+    public function getProductsWithoutOriginQuery(Request $request): Builder
+    {
+        $query = $this->getBaseQuery();
+
+        $filters = [
+            'q' => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'groupId' => $request->groupId,
+            'lockedValue' => $request->lockedValue,
+            'is_psychotropic' => $request->is_psychotropic,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            'null_origin' => true
         ];
 
         $this->applyFilters($query, $filters);
