@@ -299,10 +299,27 @@ class ProductLotObserver
     }
 
     /**
-     * Recalcula y actualiza el stock total y costo promedio ponderado del producto.
+     * Recalcula y actualiza el stock total del producto desde la suma de lotes.
+     * NO recalcula ni actualiza unit_cost (eso solo en rentabilidad o aprobación de factura).
      */
     protected function updateProductStockAndPrice(Product $product)
     {
+        // Verificar si hay algún movimiento de inventario reciente relacionado con una factura en estado 'ordered'
+        $recentOrderedInvoice = \App\Models\InventoryMovement::where('product_id', $product->id)
+            ->whereNotNull('invoice_id')
+            ->whereHas('invoice', function ($query) {
+                $query->where('status', 'ordered');
+            })
+            ->where('created_at', '>=', now()->subMinutes(5))
+            ->exists();
+
+        // Si hay una factura en estado 'ordered', solo actualizar stock
+        if ($recentOrderedInvoice) {
+            $totalStock = $product->lots()->sum('quantity');
+            $product->updateQuietly(['stock' => $totalStock]);
+            return;
+        }
+
         $product->load('lots');
 
         $totalStock = $product->lots()->sum('quantity');
@@ -318,19 +335,7 @@ class ProductLotObserver
             return;
         }
 
-        $totalValue = 0;
-        $totalQuantityWithCost = 0;
-
-        foreach ($lots as $lot) {
-            $totalValue += ($lot->quantity * $lot->unit_cost);
-            $totalQuantityWithCost += $lot->quantity;
-        }
-
-        $averageCost = $totalQuantityWithCost > 0 ? $totalValue / $totalQuantityWithCost : $product->cost;
-
-        $product->updateQuietly([
-            'stock' => $totalStock,
-            'unit_cost' => round($averageCost, 2)
-        ]);
+        // Solo actualizar stock (igual que antes). NO tocar unit_cost.
+        $product->updateQuietly(['stock' => $totalStock]);
     }
 }

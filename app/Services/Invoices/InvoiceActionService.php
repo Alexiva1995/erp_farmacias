@@ -304,10 +304,33 @@ class InvoiceActionService
             }
 
             $invoice->update($updateData);
+            $invoice->refresh();
 
-            // Crear movimientos de inventario cuando se aprueba la factura
-            // Esto asegura que los movimientos estén anclados a la factura desde la aprobación
-            \App\Observers\ProductObserver::handleInvoiceMovement($invoice->fresh());
+            // Cargar detalles con productos y rentabilidad
+            $invoice->load(['details.product.profitability']);
+
+            // Crear movimientos de inventario y calcular costos/precios
+            \App\Observers\ProductObserver::handleInvoiceMovement($invoice);
+
+            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después)
+            foreach ($invoice->details as $detail) {
+                // Convertir unit_cost a USD antes de crear el lote
+                $unitCostInInvoiceCurrency = $detail->unit_cost;
+                $unitCostInUSD = $invoice->currency === 'USD'
+                    ? $unitCostInInvoiceCurrency
+                    : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
+
+                // Crear lote sin ubicación (se actualizará en updateInvoiceLocations)
+                $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
+
+                // Actualizar el movimiento existente con el product_lot_id
+                \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
+                    ->where('product_id', $detail->product_id)
+                    ->whereNull('product_lot_id')
+                    ->where('movement_type', 'purchase')
+                    ->where('quantity', $detail->quantity)
+                    ->update(['product_lot_id' => $productLot->id]);
+            }
 
             return $invoice->fresh(['details.product', 'supplier']);
         });
@@ -336,7 +359,7 @@ class InvoiceActionService
             'lot_number' => $detail->lot_number,
             'expiration_date' => $detail->expiration_date,
             'quantity' => $detail->quantity,
-            'location' => $detail->location,
+            'location' => $detail->location ?? null, // Puede ser null, se actualizará después
             'unit_cost' => $finalUnitCost,
         ]);
     }
@@ -428,23 +451,20 @@ class InvoiceActionService
                 $detail = InvoiceDetail::find($detailData['id']);
 
                 if ($detail && $detail->invoice_id === $invoice->id) {
+                    // Actualizar ubicación en el detalle
                     $detail->update(['location' => $detailData['location']]);
 
-                    // Convertir unit_cost a USD antes de crear el lote
-                    $unitCostInInvoiceCurrency = $detail->unit_cost;
-                    $unitCostInUSD = $invoice->currency === 'USD'
-                        ? $unitCostInInvoiceCurrency
-                        : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
+                    // Actualizar ubicación en el lote correspondiente
+                    // Buscar el lote por producto, número de lote y fecha de expiración
+                    $productLot = ProductLot::where('product_id', $detail->product_id)
+                        ->where('lot_number', $detail->lot_number)
+                        ->where('expiration_date', $detail->expiration_date)
+                        ->where('supplier_id', $invoice->supplier_id)
+                        ->first();
 
-                    $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
-
-                    // Actualizar el movimiento existente (creado al aprobar) con el product_lot_id
-                    \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
-                        ->where('product_id', $detail->product_id)
-                        ->whereNull('product_lot_id')
-                        ->where('movement_type', 'purchase')
-                        ->where('quantity', $detail->quantity)
-                        ->update(['product_lot_id' => $productLot->id]);
+                    if ($productLot) {
+                        $productLot->update(['location' => $detailData['location']]);
+                    }
                 }
             }
 

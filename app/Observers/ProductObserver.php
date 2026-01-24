@@ -79,10 +79,14 @@ class ProductObserver
     {
         foreach ($invoice->details as $detail) {
             $product = $detail->product;
+            // Cargar relación profitability si no está cargada
+            if (!$product->relationLoaded('profitability')) {
+                $product->load('profitability');
+            }
             $stockBefore = $product->stock ?? 0;
             $stockAfter = $stockBefore + $detail->quantity;
 
-            // Calcular costo promedio ponderado
+            // Calcular costo promedio ponderado usando products.unit_cost como fuente de verdad
             $currentUnitCost = $product->unit_cost ?? 0;
             $rate = $invoice->exchange_rate > 0 ? $invoice->exchange_rate : 1;
             $incomingUnitCost = $detail->unit_cost;
@@ -104,10 +108,15 @@ class ProductObserver
                 $newUnitCost = $incomingUnitCost; // Safe fallback
             }
 
-            Product::withoutEvents(function () use ($product, $stockAfter, $newUnitCost) {
+            // Calcular precio de venta usando rentabilidad
+            $profitabilityPercentage = self::getProfitabilityPercentage($product);
+            $newSalePrice = $newUnitCost * (1 + ($profitabilityPercentage / 100));
+
+            Product::withoutEvents(function () use ($product, $stockAfter, $newUnitCost, $newSalePrice) {
                 $product->update([
                     'stock' => $stockAfter,
-                    'unit_cost' => $newUnitCost
+                    'unit_cost' => $newUnitCost,
+                    'sale_price' => $newSalePrice
                 ]);
             });
 
@@ -128,6 +137,21 @@ class ProductObserver
                 'movement_date' => now(),
             ]);
         }
+    }
+
+    /**
+     * Obtener el porcentaje de rentabilidad para un producto
+     */
+    private static function getProfitabilityPercentage(Product $product): float
+    {
+        // Si el producto tiene rentabilidad bloqueada, usar ese porcentaje
+        if ($product->profitability && $product->profitability->is_locked) {
+            return (float) $product->profitability->profitability_percentage;
+        }
+
+        // Si no, usar el porcentaje por defecto del sistema
+        $profitabilitySetting = \App\Models\ProfitabilitySetting::orderBy('id', 'desc')->first();
+        return $profitabilitySetting ? (float) $profitabilitySetting->default_profitability_percentage : 0;
     }
 
     /**

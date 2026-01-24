@@ -31,17 +31,8 @@ class InvoiceObserver
             ProductObserver::handleInvoiceMovement($invoice);
         }
         
-        // Crear movimientos cuando el status cambia a 'to_order' (cuando se aprueba la factura)
-        // Los movimientos se crean aquí para que estén anclados a la factura desde la aprobación
-        if (
-            $invoice->isDirty('status') &&
-            $invoice->status === 'to_order' &&
-            $invoice->getOriginal('status') !== 'to_order'
-        ) {
-            // Solo crear movimientos si no existen ya para esta factura
-            if (!$invoice->inventoryMovements()->exists()) {
-                ProductObserver::handleInvoiceMovement($invoice);
-            }
-        }
+        // NO crear movimientos cuando el status cambia a 'to_order'
+        // El cálculo de costos y creación de movimientos ya se hace en InvoiceActionService::approveInvoice
+        // Si se hace aquí también, se recalcula el costo dos veces causando discrepancias
     }
 }
