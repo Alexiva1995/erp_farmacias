@@ -6,7 +6,9 @@ const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
   discrepancyFilter: [String, null],
+  selectedUser: [Number, String, null],
   laboratories: { type: Array, default: () => [] },
+  users: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 });
 
@@ -14,6 +16,7 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
   "update:discrepancyFilter",
+  "update:selectedUser",
   "clear",
   "sort",
 ]);
@@ -162,7 +165,7 @@ watch(
   <VCard class="mb-6">
     <VCardText>
       <VRow class="align-center">
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, C. Activo..."
@@ -171,7 +174,7 @@ watch(
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <VAutocomplete
             :model-value="props.selectedLaboratory"
             :items="props.laboratories"
@@ -185,7 +188,7 @@ watch(
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.discrepancyFilter"
             :items="[
@@ -201,7 +204,21 @@ watch(
             @update:model-value="emit('update:discrepancyFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
+          <VAutocomplete
+            :model-value="props.selectedUser"
+            :items="props.users"
+            :loading="props.loading"
+            label="Usuario que hizo el conteo"
+            placeholder="Buscar un usuario"
+            item-title="display_name"
+            item-value="id"
+            clearable
+            prepend-inner-icon="tabler-user"
+            @update:model-value="emit('update:selectedUser', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="2">
           <VBtn 
             color="secondary" 
             variant="outlined" 
@@ -212,56 +229,51 @@ watch(
             Limpiar Filtros
           </VBtn>
         </VCol>
+        <VCol cols="12" sm="6" md="2">
+          <div class="d-flex align-center gap-2">
+            <VMenu>
+              <template #activator="{ props: menuProps }">
+                <VBtn v-bind="menuProps" variant="tonal" block>
+                  Ordenar Por
+                  <VIcon end icon="tabler-chevron-down" />
+                </VBtn>
+              </template>
+              <VList>
+                <VListItem
+                  v-for="(option, index) in sortOptions"
+                  :key="index"
+                  :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
+                  @click="handleSortClick(option)"
+                >
+                  <template #prepend>
+                    <VIcon :icon="option.icon" size="20" class="me-2" />
+                  </template>
+                  <VListItemTitle>{{ option.title }}</VListItemTitle>
+                  <template #append>
+                    <VIcon
+                      v-if="isOptionSelected(option)"
+                      icon="tabler-check"
+                      size="16"
+                      color="primary"
+                    />
+                  </template>
+                </VListItem>
+              </VList>
+            </VMenu>
+            <VChip
+              v-if="selectedSort"
+              color="primary"
+              variant="tonal"
+              size="small"
+              closable
+              @click:close="clearSortFilter"
+            >
+              <VIcon :icon="getSelectedSortIcon" size="14" class="me-1" />
+              {{ getSelectedSortTitle }}
+            </VChip>
+          </div>
+        </VCol>
       </VRow>
     </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon" size="14" class="me-1" />
-          {{ getSelectedSortTitle }}
-        </VChip>
-      </div>
-
-      <VSpacer />
-    </VCardActions>
   </VCard>
 </template>

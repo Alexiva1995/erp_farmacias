@@ -163,8 +163,9 @@ Route::middleware("auth:sanctum")->group(function () {
     // Rutas de Inventario
     Route::get("/products/count", [InventoryCycleController::class, "getProductCount"]);
     Route::post("/products/count/{countId}/process", [InventoryCycleController::class, "processCountAction"]);
-    Route::prefix("inventory")->group(function () {
+        Route::prefix("inventory")->group(function () {
         Route::get("cycle/active", [InventoryCycleController::class, "getActiveCycleStatus"])->name("inventory.cycle.active");
+        Route::get("cycle/users-with-counts", [InventoryCycleController::class, "getUsersWithCounts"]);
         Route::get("products", [InventoryCycleController::class, "getProductsForInventory"])->name("inventory.products.index");
         Route::get("/cash-close-items", [InventoryCycleController::class, "getCashCloseItems"]);
         Route::post("/cycle/close", [InventoryCycleController::class, "closeActiveCycle"]);

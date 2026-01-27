@@ -102,6 +102,14 @@ class InventoryCycleQueryService
             }
         }
 
+        if (!empty($filters['userId'])) {
+            // Detectar el nombre de la tabla del modelo base
+            $model = $query->getModel();
+            $tableName = $model->getTable();
+            $userIdColumn = "{$tableName}.user_id";
+            $query->where($userIdColumn, $filters['userId']);
+        }
+
         return $query;
     }
 
@@ -259,6 +267,7 @@ class InventoryCycleQueryService
             'endDate' => $request->endDate,
             'cycleId' => $request->cycleId,
             'discrepancyFilter' => $request->discrepancyFilter,
+            'userId' => $request->userId,
             'is_history' => $isHistoryView,
         ];
 
@@ -354,7 +363,8 @@ class InventoryCycleQueryService
         $query = Product::query()->with(['lots', 'laboratory', 'origin']);
 
         $query->whereHas('invoiceDetails.invoice', function ($subQuery) {
-            $subQuery->where('status', 'ordered');
+            $subQuery->where('status', 'ordered')
+                ->where('created_invoice_date', '>=', '2026-01-25');
         });
 
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
@@ -393,12 +403,18 @@ class InventoryCycleQueryService
     {
         $query = $this->getInvoiceCountBaseQuery();
 
+        // Filtrar solo productos que estén en facturas con fecha >= 2026-01-25
+        $query->whereHas('product.invoiceDetails.invoice', function ($subQuery) {
+            $subQuery->where('created_invoice_date', '>=', '2026-01-25');
+        });
+
         $filters = [
             'q' => $request->q,
             'laboratoryId' => $request->laboratoryId,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'discrepancyFilter' => $request->discrepancyFilter,
+            'userId' => $request->userId,
             'status' => 'pending',
         ];
 
@@ -503,18 +519,28 @@ class InventoryCycleQueryService
         $sortBy = $request->input('sortBy', 'processed_date');
         $orderBy = $request->input('orderBy', 'desc');
 
-        $sortableColumns = [
-            'product.name' => 'products.name',
-            'discrepancy' => 'discrepancies.discrepancy',
-            'user.name' => 'users.username',
-            'amount' => DB::raw('products.sale_price * discrepancies.discrepancy'),
-            'processed_date' => 'discrepancies.updated_at'
-        ];
-
-        if (isset($sortableColumns[$sortBy])) {
-            $query->orderBy($sortableColumns[$sortBy], $orderBy);
+        // Manejar ordenamiento especial para columnas que requieren múltiples campos
+        if ($sortBy === 'user.name') {
+            $query->orderBy(DB::raw('COALESCE(user_employees.name, users.username)'), $orderBy);
+            $query->orderBy(DB::raw('COALESCE(user_employees.last_name, \'\')'), $orderBy);
+        } elseif ($sortBy === 'supervisor.name') {
+            $query->orderBy(DB::raw('COALESCE(supervisor_employees.name, supervisors.username)'), $orderBy);
+            $query->orderBy(DB::raw('COALESCE(supervisor_employees.last_name, \'\')'), $orderBy);
         } else {
-            $query->orderBy('discrepancies.updated_at', 'desc');
+            $sortableColumns = [
+                'product.name' => 'products.name',
+                'product.laboratory.name' => 'laboratories.name',
+                'discrepancy' => 'discrepancies.discrepancy',
+                'product.unit_cost' => 'products.unit_cost',
+                'amount' => DB::raw('products.sale_price * discrepancies.discrepancy'),
+                'processed_date' => 'discrepancies.updated_at'
+            ];
+
+            if (isset($sortableColumns[$sortBy])) {
+                $query->orderBy($sortableColumns[$sortBy], $orderBy);
+            } else {
+                $query->orderBy('discrepancies.updated_at', 'desc');
+            }
         }
 
         return $query;
@@ -606,7 +632,8 @@ class InventoryCycleQueryService
         $query = Product::query()->with(['lots', 'laboratory', 'origin']);
 
         $query->whereHas('orderDetails.order', function ($subQuery) {
-            $subQuery->where('status', 'completed');
+            $subQuery->where('status', 'completed')
+                ->where('order_date', '>=', '2026-01-25');
             $subQuery->whereHas('cashClosing', function ($cashQuery) {
                 $cashQuery->where('status', 'closed'); 
                 $cashQuery->has('dailyClosure'); 
@@ -650,12 +677,18 @@ class InventoryCycleQueryService
     {
         $query = $this->getSaleCountBaseQuery();
 
+        // Filtrar solo productos que estén en órdenes con fecha >= 2026-01-25
+        $query->whereHas('product.orderDetails.order', function ($subQuery) {
+            $subQuery->where('order_date', '>=', '2026-01-25');
+        });
+
         $filters = [
             'q' => $request->q,
             'laboratoryId' => $request->laboratoryId,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'discrepancyFilter' => $request->discrepancyFilter,
+            'userId' => $request->userId,
             'status' => 'pending',
         ];
 

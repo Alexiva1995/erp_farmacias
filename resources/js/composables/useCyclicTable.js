@@ -23,7 +23,10 @@ export function useCyclicTable(endpointPrefix, filters) {
   const fetchData = async () => {
     loading.value = true;
     const params = {
-      ...filters,
+      q: filters.searchQuery,
+      laboratoryId: filters.selectedLaboratory,
+      discrepancyFilter: filters.discrepancyFilter,
+      userId: filters.selectedUser,
       page: options.page,
       itemsPerPage: options.itemsPerPage,
       sortBy: options.sortBy,

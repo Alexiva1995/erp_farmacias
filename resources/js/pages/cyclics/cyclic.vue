@@ -14,6 +14,7 @@ const filters = reactive({
   searchQuery: "",
   selectedLaboratory: null,
   discrepancyFilter: null,
+  selectedUser: null,
   sortBy: undefined,
   orderBy: undefined,
 });
@@ -70,13 +71,27 @@ const {
 } = useCyclicTable("inventory/count/sale", filters);
 
 const laboratories = ref([]);
+const users = ref([]);
 const isLoadingFilters = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const labResponse = await axios.get("/laboratories");
+    const [labResponse, usersResponse] = await Promise.all([
+      axios.get("/laboratories"),
+      axios.get("/inventory/cycle/users-with-counts")
+    ]);
     laboratories.value = labResponse.data;
+    
+    // Formatear usuarios con nombre completo
+    users.value = usersResponse.data.map(user => ({
+      ...user,
+      display_name: user.employee_name && user.employee_last_name
+        ? `${user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()} ${user.employee_last_name.charAt(0).toUpperCase() + user.employee_last_name.slice(1).toLowerCase()}`
+        : user.employee_name
+          ? user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()
+          : user.username || user.email || `Usuario ${user.id}`
+    }));
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -93,6 +108,7 @@ const handleClearFilters = () => {
   filters.searchQuery = "";
   filters.selectedLaboratory = null;
   filters.discrepancyFilter = null;
+  filters.selectedUser = null;
   filters.sortBy = undefined;
   filters.orderBy = undefined;
 };
@@ -113,7 +129,9 @@ const handleExport = async (format) => {
       v-model:searchQuery="filters.searchQuery"
       v-model:selectedLaboratory="filters.selectedLaboratory"
       v-model:discrepancyFilter="filters.discrepancyFilter"
+      v-model:selectedUser="filters.selectedUser"
       :laboratories="laboratories"
+      :users="users"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @export="handleExport"

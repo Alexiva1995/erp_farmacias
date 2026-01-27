@@ -226,6 +226,51 @@ class InventoryCycleController extends Controller
         }
     }
 
+    public function getUsersWithCounts()
+    {
+        try {
+            $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
+            
+            if (!$activeCycleId) {
+                return response()->json([]);
+            }
+
+            // Obtener usuarios únicos que han hecho conteos en el ciclo activo
+            $users = \App\Models\User::query()
+                ->select('users.id', 'users.username', 'users.email')
+                ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                ->join('product_counts', 'users.id', '=', 'product_counts.user_id')
+                ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                ->where('product_counts.cycle_id', $activeCycleId)
+                ->union(
+                    \App\Models\User::query()
+                        ->select('users.id', 'users.username', 'users.email')
+                        ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                        ->join('invoices_counts', 'users.id', '=', 'invoices_counts.user_id')
+                        ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                        ->where('invoices_counts.cycle_id', $activeCycleId)
+                )
+                ->union(
+                    \App\Models\User::query()
+                        ->select('users.id', 'users.username', 'users.email')
+                        ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                        ->join('sales_counts', 'users.id', '=', 'sales_counts.user_id')
+                        ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                        ->where('sales_counts.cycle_id', $activeCycleId)
+                )
+                ->distinct()
+                ->orderBy('employee_name')
+                ->orderBy('employee_last_name')
+                ->get();
+
+            return response()->json($users);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al obtener usuarios: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getInvoiceDetailsToCount(Request $request)
     {
         $query = $this->inventoryCycleQueryService->getInvoiceDetailsToCountQuery($request);
