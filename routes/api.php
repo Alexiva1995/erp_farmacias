@@ -284,6 +284,7 @@ Route::middleware("auth:sanctum")->group(function () {
         });
         //ruta para productos con fallas
         Route::post('/product-failure', [ProductFailureController::class, 'store'])->name('product-failure.store');
+        Route::get('/heartbeat', function () {return response()->json(['status' => 'alive']);});//
     });
     Route::get('debito-fiscal', [OrderController::class, 'getDebitoFiscal']);
     Route::get('fiscal-history', [OrderController::class, 'getFiscalHistoryData']);
