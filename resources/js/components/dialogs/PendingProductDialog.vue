@@ -97,7 +97,8 @@ watch(
   () => props.product,
   (newProduct) => {
     if (newProduct && Object.keys(newProduct).length > 0) {
-      formData.value = JSON.parse(JSON.stringify(newProduct));
+      const clonedProduct = JSON.parse(JSON.stringify(newProduct));
+      formData.value = clonedProduct;
     } else {
       formData.value = {
         name: "",
@@ -168,7 +169,11 @@ const submitForm = () => {
     payload.append("photo_url", imageFile.value);
   }
 
-  payload.append("sale_price", 0);
+  // Para vendedores y supervisores, el precio debe ser 0
+  // Para otros usuarios, el backend calculará el precio automáticamente
+  if (authStore.isVendedor || authStore.isSupervisor) {
+    payload.append("sale_price", 0);
+  }
 
   emit("save", payload);
 };
@@ -184,8 +189,14 @@ const submitForm = () => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">{{
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
 
@@ -200,7 +211,7 @@ const submitForm = () => {
         </VChip>
 
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -357,19 +368,27 @@ const submitForm = () => {
               </div>
 
               <VRow align="center">
-                <VCol cols="12" md="9">
+                <VCol cols="12" md="9" class="d-flex align-center">
                   <VTextField
                     v-model="groupInput"
                     label="Nombre o ID del Grupo a Asignar"
                     variant="outlined"
+                    density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
+                    style="height: 40px;"
                   />
                 </VCol>
-                <VCol cols="12" md="3">
-                  <VBtn color="primary" @click="assignGroup" block
-                    >Asignar</VBtn
+                <VCol cols="12" md="3" class="d-flex align-center">
+                  <VBtn 
+                    color="primary" 
+                    @click="assignGroup" 
+                    block
+                    variant="flat"
+                    style="height: 40px;"
                   >
+                    Asignar
+                  </VBtn>
                 </VCol>
               </VRow>
 
@@ -425,13 +444,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <!-- El VCardActions se mantiene igual, será el pie de página fijo -->
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Cancelar
         </VBtn>
@@ -439,7 +458,8 @@ const submitForm = () => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Guardar
         </VBtn>

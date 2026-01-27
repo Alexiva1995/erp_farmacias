@@ -47,6 +47,7 @@ class UpdateProductRequest extends FormRequest
             'active_ingredient' => 'nullable|string|max:255',
             'laboratory_id' => 'nullable|integer|exists:laboratories,id',
             'unit_cost' => 'nullable|numeric|min:0',
+            'sale_price' => 'nullable|numeric|min:0',
             'origin_id' => 'nullable|integer|exists:origins,id',
             'category_id' => 'nullable|integer|exists:categories,id',
             'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],

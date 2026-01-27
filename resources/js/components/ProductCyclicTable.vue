@@ -154,23 +154,15 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.discrepancy="{ item }">
-        <template
-          v-if="item.product && typeof item.product.stock !== 'undefined'"
+        <span
+          :class="{
+            'text-success': item.discrepancy > 0,
+            'text-error': item.discrepancy < 0,
+          }"
+          class="font-weight-medium"
         >
-          <span
-            :class="{
-              'text-success': item.counted_quantity - item.product.stock > 0,
-              'text-error': item.counted_quantity - item.product.stock < 0,
-            }"
-            class="font-weight-medium"
-          >
-            {{ item.counted_quantity - item.product.stock > 0 ? "+" : ""
-            }}{{ item.counted_quantity - item.product.stock }}
-          </span>
-        </template>
-        <template v-else>
-          <span class="text-disabled">N/A</span>
-        </template>
+          {{ item.discrepancy > 0 ? "+" : "" }}{{ item.discrepancy }}
+        </span>
       </template>
 
       <template #item.actions="{ item }">

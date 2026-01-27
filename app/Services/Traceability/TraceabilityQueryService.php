@@ -19,7 +19,8 @@ class TraceabilityQueryService
     {
 
         $query = InventoryMovement::query()->with([
-            'user', 
+            'user.employee', 
+            'order.seller.employee', 
             'order', 
             'invoice.supplier',
             'supplier', 
@@ -66,7 +67,8 @@ class TraceabilityQueryService
 
 
         $query = InventoryMovement::query()->with([
-            'user', 
+            'user.employee', 
+            'order.seller.employee', 
             'order', 
             'invoice.supplier',
             'supplier', 

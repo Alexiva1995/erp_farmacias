@@ -127,6 +127,9 @@ const loadingProduct = ref(false);
 const laboratories = ref([]);
 const origins = ref([]);
 const categories = ref([]);
+const mergeFormData = ref({});
+const selectedProductToKeep = ref(null); // 'product1' o 'product2'
+const isMerging = ref(false);
 const openModal = (product) => {
   selectedProduct.value = product;
   inputId.value = "";
@@ -140,6 +143,9 @@ const closeModal = () => {
 const closeProductModal = () => {
   isProductModalVisible.value = false;
   productToMerge.value = null;
+  selectedProduct.value = null;
+  selectedProductToKeep.value = null;
+  mergeFormData.value = {};
 };
 const fetchSelectOptions = async () => {
   try {
@@ -182,6 +188,21 @@ const handleSubmit = async () => {
       await fetchSelectOptions();
     }
     productToMerge.value = foundProduct;
+    
+    // Inicializar el formulario con el producto seleccionado por defecto
+    selectedProductToKeep.value = 'product1';
+    
+    // Iniciar con los datos del producto que se mantiene
+    mergeFormData.value = JSON.parse(JSON.stringify(selectedProduct.value));
+    
+    // Unificar campos automáticamente
+    unifyFields();
+    
+    // Normalizar valores booleanos
+    mergeFormData.value.iva = mergeFormData.value.iva ? 1 : 0;
+    mergeFormData.value.psychotropic = mergeFormData.value.psychotropic ? 1 : 0;
+    mergeFormData.value.is_colombian_origin = mergeFormData.value.is_colombian_origin ? 1 : 0;
+    
     isModalVisible.value = false;
     isProductModalVisible.value = true;
   } catch (error) {
@@ -191,6 +212,63 @@ const handleSubmit = async () => {
     loadingProduct.value = false;
   }
 };
+const unifyFields = () => {
+  const productToKeep = selectedProductToKeep.value === 'product1' 
+    ? selectedProduct.value 
+    : productToMerge.value;
+  const productToDelete = selectedProductToKeep.value === 'product1' 
+    ? productToMerge.value 
+    : selectedProduct.value;
+  
+  // Función auxiliar para verificar si un valor está vacío o es "N/A"
+  const isEmpty = (value) => {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' || trimmed.toUpperCase() === 'N/A' || trimmed === 'null';
+    }
+    if (typeof value === 'number') {
+      return value === 0;
+    }
+    return false;
+  };
+  
+  // Unificar campos: si el producto que se mantiene no tiene el dato o está vacío/null
+  // y el producto que se elimina sí lo tiene, copiarlo
+  const fieldsToUnify = [
+    'name', 'active_ingredient', 'laboratory_id', 'origin_id', 'category_id',
+    'barcode', 'unit_cost', 'iva', 'psychotropic', 'is_colombian_origin', 'group_id'
+  ];
+  
+  fieldsToUnify.forEach(field => {
+    const keepValue = mergeFormData.value[field];
+    const deleteValue = productToDelete[field];
+    
+    // Si el producto que se mantiene no tiene el dato o está vacío/null/N/A
+    // y el producto que se elimina sí lo tiene, copiarlo
+    if (isEmpty(keepValue) && !isEmpty(deleteValue)) {
+      mergeFormData.value[field] = deleteValue;
+    }
+  });
+};
+
+const switchProductToKeep = () => {
+  const productToKeep = selectedProductToKeep.value === 'product1' 
+    ? selectedProduct.value 
+    : productToMerge.value;
+  
+  // Iniciar con los datos del producto que se mantiene
+  mergeFormData.value = JSON.parse(JSON.stringify(productToKeep));
+  
+  // Unificar campos automáticamente
+  unifyFields();
+  
+  // Normalizar valores booleanos
+  mergeFormData.value.iva = mergeFormData.value.iva ? 1 : 0;
+  mergeFormData.value.psychotropic = mergeFormData.value.psychotropic ? 1 : 0;
+  mergeFormData.value.is_colombian_origin = mergeFormData.value.is_colombian_origin ? 1 : 0;
+};
+
 const handleMerge = async () => {
   if (!selectedProduct.value || !productToMerge.value) {
     toast.error("Error: No se puede fusionar. Faltan datos de productos.");
@@ -204,11 +282,51 @@ const handleMerge = async () => {
     toast.error("Error: No se puede fusionar un producto consigo mismo.");
     return;
   }
+  if (!selectedProductToKeep.value) {
+    toast.error("Error: Debe seleccionar qué producto se mantiene.");
+    return;
+  }
+  
+  isMerging.value = true;
   try {
+    // Determinar qué producto se mantiene y cuál se elimina
+    const productToKeepId = selectedProductToKeep.value === 'product1' 
+      ? selectedProduct.value.id 
+      : productToMerge.value.id;
+    const productToDeleteId = selectedProductToKeep.value === 'product1' 
+      ? productToMerge.value.id 
+      : selectedProduct.value.id;
+    
+    // Actualizar el producto que se mantiene con los datos del formulario
+    const updatePayload = new FormData();
+    Object.keys(mergeFormData.value).forEach((key) => {
+      const value = mergeFormData.value[key];
+      if (
+        value !== null &&
+        value !== undefined &&
+        !Array.isArray(value) &&
+        typeof value !== "object"
+      ) {
+        updatePayload.append(key, value);
+      }
+    });
+    updatePayload.append("_method", "PUT");
+    
+    // Actualizar el producto que se mantiene
+    await axios.post(`/products/${productToKeepId}`, updatePayload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    
+    // Fusionar los productos - el backend actualizará todas las referencias del producto eliminado
+    // al producto que se mantiene, independientemente de cuál tenga el ID mayor o menor
     const response = await axios.post("/products/merge", {
       product_id_1: selectedProduct.value.id,
       product_id_2: productToMerge.value.id,
+      keep_product_id: productToKeepId,
     });
+    
     if (response.data.success) {
       toast.success(response.data.message || "Productos fusionados exitosamente");
       closeProductModal();
@@ -219,26 +337,18 @@ const handleMerge = async () => {
     }
   } catch (error) {
     console.error("Error al fusionar productos:", error);
-    console.error("IDs enviados:", {
-      product_id_1: selectedProduct.value?.id,
-      product_id_2: productToMerge.value?.id
-    });
-    
     let errorMessage = "Error al fusionar productos";
     
     if (error.response?.data?.message) {
       errorMessage = error.response.data.message;
     } else if (error.response?.data?.errors) {
-      // Si hay errores de validación, mostrar el primero
       const firstError = Object.values(error.response.data.errors)[0];
       errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
     }
     
-    // Agregar información de los IDs en el mensaje de error
-    const idsInfo = ` (IDs: ${selectedProduct.value?.id} y ${productToMerge.value?.id})`;
-    errorMessage += idsInfo;
-    
     toast.error(errorMessage);
+  } finally {
+    isMerging.value = false;
   }
 };
 const formatDate = (dateString) => {
@@ -263,6 +373,7 @@ const lotHeaders = [
   { title: "Stock", key: "quantity", sortable: false },
   { title: "Exp.", key: "expiration_date", sortable: false },
 ];
+
 </script>
 
 <template>
@@ -411,178 +522,301 @@ const lotHeaders = [
           @keyup.enter="handleSubmit"
         />
       </VCardText>
-      <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="closeModal">
+      <VCardActions class="pa-4 d-flex gap-2">
+        <VBtn 
+          color="secondary" 
+          variant="outlined" 
+          @click="closeModal"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+        >
           Cancelar
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="handleSubmit" :loading="loadingProduct">
+        <VBtn 
+          color="primary" 
+          variant="flat" 
+          @click="handleSubmit" 
+          :loading="loadingProduct"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+        >
           Buscar
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
-  <!-- Modal para mostrar producto encontrado -->
+  <!-- Modal para fusionar productos -->
   <VDialog
     :model-value="isProductModalVisible"
-    max-width="1000px"
+    max-width="1400px"
     persistent
     @update:model-value="(val) => !val && closeProductModal()"
     :scrollable="true"
   >
-    <VCard v-if="productToMerge" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3">
-        <span class="text-h5 font-weight-bold">Información del Producto</span>
+    <VCard v-if="selectedProduct && productToMerge" class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon icon="tabler-package" size="24" color="white" class="me-2" />
+        <span class="text-h5 font-weight-bold text-white">Fusionar Productos</span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeProductModal">
+        <VBtn icon variant="text" color="white" size="small" @click="closeProductModal">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
       <VDivider />
       <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
-        <VRow dense class="mb-2">
-          <VCol cols="12" md="6">
-            <VTextField
-              :model-value="productToMerge.name"
-              label="Nombre"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-          <VCol cols="12" md="6">
-            <VTextField
-              :model-value="productToMerge.active_ingredient"
-              label="Principio Activo"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-        </VRow>
-        <VRow dense class="mb-2">
-          <VCol cols="12" md="4">
-            <VTextField
-              :model-value="laboratories.find(l => l.id === productToMerge.laboratory_id)?.name || 'N/A'"
-              label="Laboratorio"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-          <VCol cols="12" md="4">
-            <VTextField
-              :model-value="origins.find(o => o.id === productToMerge.origin_id)?.name || 'N/A'"
-              label="Origen"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-          <VCol cols="12" md="4">
-            <VTextField
-              :model-value="categories.find(c => c.id === productToMerge.category_id)?.name || 'N/A'"
-              label="Categoría"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-        </VRow>
-        <VRow dense class="mb-2">
-          <VCol cols="12" md="4">
-            <VTextField
-              :model-value="productToMerge.barcode || 'N/A'"
-              label="Código de Barra"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-          <VCol cols="12" md="4">
-            <VTextField
-              :model-value="productToMerge.unit_cost || 0"
-              label="Costo de Compra"
-              type="number"
-              prefix="$"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </VCol>
-          <VCol cols="12" md="4" class="d-flex align-center gap-2">
-            <VCheckbox
-              :model-value="productToMerge.iva == 1 || productToMerge.iva === true"
-              label="IVA"
-              readonly
-              density="compact"
-              hide-details
-            />
-            <VCheckbox
-              :model-value="productToMerge.psychotropic == 1 || productToMerge.psychotropic === true"
-              label="Psicotrópico"
-              readonly
-              density="compact"
-              hide-details
-            />
-            <VCheckbox
-              :model-value="productToMerge.is_colombian_origin == 1 || productToMerge.is_colombian_origin === true"
-              label="Colombia"
-              readonly
-              density="compact"
-              hide-details
-            />
-          </VCol>
-        </VRow>
-        <VRow dense class="mb-3">
-          <VCol
-            v-if="productToMerge.photo_url"
-            cols="12"
-            md="4"
-            class="d-flex align-center justify-center"
-          >
-            <VImg
-              :src="productToMerge.photo_url"
-              :width="120"
-              aspect-ratio="1"
-              class="border rounded"
-            />
-          </VCol>
-        </VRow>
-        <template v-if="productToMerge.lots && productToMerge.lots.length > 0">
-          <VDivider class="my-3" />
-          <div class="mb-2">
-            <p class="text-h6 font-weight-medium mb-1">Lotes del Producto</p>
+        <div class="mb-4">
+          <VRow class="mb-4">
+            <VCol cols="12" md="6">
+              <VCard 
+                variant="outlined"
+                :class="selectedProductToKeep === 'product1' ? 'border-primary border-2' : ''"
+                class="cursor-pointer transition-all"
+                @click="selectedProductToKeep = 'product1'; switchProductToKeep()"
+              >
+                <VCardTitle class="d-flex align-center">
+                  <div class="d-flex align-center flex-grow-1">
+                    <VRadio 
+                      :model-value="selectedProductToKeep === 'product1'"
+                      value="product1"
+                      @click.stop="selectedProductToKeep = 'product1'; switchProductToKeep()"
+                      :label="`Producto 1 (ID: ${selectedProduct.id})`"
+                      color="primary"
+                      class="flex-grow-1"
+                    />
+                  </div>
+                  <VChip 
+                    v-if="selectedProductToKeep === 'product1'" 
+                    color="success" 
+                    size="small" 
+                    class="ms-2"
+                    variant="flat"
+                  >
+                    SE MANTIENE
+                  </VChip>
+                  <VChip 
+                    v-else
+                    color="error" 
+                    size="small" 
+                    class="ms-2"
+                    variant="flat"
+                  >
+                    ELIMINAR
+                  </VChip>
+                </VCardTitle>
+                <VCardText>
+                  <VTextField
+                    :model-value="selectedProduct.name"
+                    label="Nombre"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                  />
+                  <VTextField
+                    :model-value="selectedProduct.active_ingredient"
+                    label="Principio Activo"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                    class="mt-2"
+                  />
+                  <VTextField
+                    :model-value="laboratories.find(l => l.id === selectedProduct.laboratory_id)?.name || 'N/A'"
+                    label="Laboratorio"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                    class="mt-2"
+                  />
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="12" md="6">
+              <VCard 
+                variant="outlined"
+                :class="selectedProductToKeep === 'product2' ? 'border-primary border-2' : ''"
+                class="cursor-pointer transition-all"
+                @click="selectedProductToKeep = 'product2'; switchProductToKeep()"
+              >
+                <VCardTitle class="d-flex align-center">
+                  <div class="d-flex align-center flex-grow-1">
+                    <VRadio 
+                      :model-value="selectedProductToKeep === 'product2'"
+                      value="product2"
+                      @click.stop="selectedProductToKeep = 'product2'; switchProductToKeep()"
+                      :label="`Producto 2 (ID: ${productToMerge.id})`"
+                      color="primary"
+                      class="flex-grow-1"
+                    />
+                  </div>
+                  <VChip 
+                    v-if="selectedProductToKeep === 'product2'" 
+                    color="success" 
+                    size="small" 
+                    class="ms-2"
+                    variant="flat"
+                  >
+                    SE MANTIENE
+                  </VChip>
+                  <VChip 
+                    v-else
+                    color="error" 
+                    size="small" 
+                    class="ms-2"
+                    variant="flat"
+                  >
+                    ELIMINAR
+                  </VChip>
+                </VCardTitle>
+                <VCardText>
+                  <VTextField
+                    :model-value="productToMerge.name"
+                    label="Nombre"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                  />
+                  <VTextField
+                    :model-value="productToMerge.active_ingredient"
+                    label="Principio Activo"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                    class="mt-2"
+                  />
+                  <VTextField
+                    :model-value="laboratories.find(l => l.id === productToMerge.laboratory_id)?.name || 'N/A'"
+                    label="Laboratorio"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                    class="mt-2"
+                  />
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
+        </div>
+
+        <VDivider class="my-4" />
+        
+        <div class="mb-4">
+          <div class="d-flex align-center mb-3">
+            <VIcon icon="tabler-edit" class="me-2" color="primary" />
+            <p class="text-h6 font-weight-medium mb-0">Editar Producto que se Mantiene</p>
           </div>
-          <VDataTable
-            :headers="lotHeaders"
-            :items="productToMerge.lots || []"
-            density="compact"
-            class="rounded-lg"
-            no-data-text="Este producto no tiene lotes registrados."
-          >
-            <template #item.lot_number="{ item }">
-              <span>{{ item.lot_number || "N/A" }}</span>
-            </template>
-            <template #item.location="{ item }">
-              <span>{{ item.location || "N/A" }}</span>
-            </template>
-            <template #item.quantity="{ item }">
-              <span>{{ Number(item.quantity) || 0 }}</span>
-            </template>
-            <template #item.expiration_date="{ item }">
-              <span>{{ formatDate(item.expiration_date) }}</span>
-            </template>
-          </VDataTable>
-        </template>
+          <VRow dense>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="mergeFormData.name"
+                label="Nombre"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="mergeFormData.active_ingredient"
+                label="Principio Activo"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+          </VRow>
+          <VRow dense>
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="mergeFormData.laboratory_id"
+                label="Laboratorio"
+                :items="laboratories"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="mergeFormData.origin_id"
+                label="Origen"
+                :items="origins"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VSelect
+                v-model="mergeFormData.category_id"
+                label="Categoría"
+                :items="categories"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </VCol>
+          </VRow>
+          <VRow dense>
+            <VCol cols="12" md="4">
+              <VTextField
+                v-model="mergeFormData.barcode"
+                label="Código de Barra"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12" md="4">
+              <VTextField
+                v-model="mergeFormData.unit_cost"
+                label="Costo de Compra"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12" md="4" class="d-flex align-center gap-2">
+              <VCheckbox
+                v-model="mergeFormData.iva"
+                label="IVA"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+              <VCheckbox
+                v-model="mergeFormData.psychotropic"
+                label="Psicotrópico"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+              <VCheckbox
+                v-model="mergeFormData.is_colombian_origin"
+                label="Colombia"
+                :true-value="1"
+                :false-value="0"
+                density="compact"
+                hide-details
+              />
+            </VCol>
+          </VRow>
+        </div>
       </VCardText>
       <VDivider />
-      <VCardActions class="pa-3">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeProductModal"
-          class="flex-grow-1 mr-2"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+          :disabled="isMerging"
         >
           Cancelar
         </VBtn>
@@ -591,8 +825,10 @@ const lotHeaders = [
           variant="flat"
           @click="handleMerge"
           class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+          :loading="isMerging"
         >
-          Fusionar
+          Fusionar Productos
         </VBtn>
       </VCardActions>
     </VCard>

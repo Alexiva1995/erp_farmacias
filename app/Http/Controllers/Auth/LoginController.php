@@ -37,6 +37,11 @@ class LoginController extends Controller
         $request->validate([
             'login' => 'required|string',
             'password' => 'required|string',
+        ], [
+            'login.required' => 'El campo email es obligatorio.',
+            'login.string' => 'El campo email debe ser texto.',
+            'password.required' => 'El campo contraseña es obligatorio.',
+            'password.string' => 'El campo contraseña debe ser texto.',
         ]);
 
         $this->ensureIsNotRateLimited($request);

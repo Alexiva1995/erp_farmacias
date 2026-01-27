@@ -86,7 +86,7 @@ Route::prefix("finances")->group(function () {
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
     Route::get("/user", function (Request $request) {
-        return $request->user();
+        return $request->user()->load('employee');
     });
     Route::get('/user/config', function (Request $request) {
         return $request->user()->load('config');
@@ -152,6 +152,7 @@ Route::middleware("auth:sanctum")->group(function () {
     // Rutas específicas deben ir ANTES del resource para evitar conflictos
     Route::delete('/product-lots/clean-zero-quantity', [LotController::class, 'deleteLotsWithZeroQuantity']);
     Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
+    Route::get('/product-lots/without-location', [LotController::class, 'lotsWithoutLocation']);
     Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
     Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
     Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);

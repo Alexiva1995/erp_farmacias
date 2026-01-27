@@ -10,6 +10,7 @@ use App\Models\ProductLot;
 use App\Services\Lots\LotActionService;
 use App\Services\Lots\LotQueryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class LotController extends Controller
@@ -222,10 +223,57 @@ class LotController extends Controller
                 'deleted_count' => $deletedCount,
             ]);
         } catch (\Exception $e) {
+            $errorDetails = [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ];
+
+            // Si hay una excepción previa, agregar sus detalles
+            if ($e->getPrevious()) {
+                $previous = $e->getPrevious();
+                $errorDetails['previous'] = [
+                    'message' => $previous->getMessage(),
+                    'code' => $previous->getCode(),
+                    'file' => $previous->getFile(),
+                    'line' => $previous->getLine(),
+                ];
+            }
+
+            Log::error('Error al eliminar lotes con cantidad 0', $errorDetails);
+
+            // Construir mensaje de error más descriptivo
+            $errorMessage = 'Error al eliminar los lotes con cantidad 0.';
+            if (str_contains($e->getMessage(), 'foreign key constraint')) {
+                $errorMessage .= ' El lote está siendo referenciado por otros registros (expirations, inventory_movements, etc.).';
+            } elseif (str_contains($e->getMessage(), 'SQLSTATE')) {
+                $errorMessage .= ' Error de base de datos: ' . $e->getMessage();
+            } else {
+                $errorMessage .= ' ' . $e->getMessage();
+            }
+
             return response()->json([
-                'message' => 'Error al eliminar los lotes.',
+                'message' => $errorMessage,
                 'error' => $e->getMessage(),
+                'details' => config('app.debug') ? $errorDetails : null,
             ], 500);
         }
+    }
+
+    public function lotsWithoutLocation(Request $request)
+    {
+        $query = $this->lotQueryService->getLotsWithoutLocationQuery($request);
+        $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => ['data' => $items, 'total' => $items->count()]]);
+        }
+        
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json([
+            'data' => ['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()],
+        ]);
     }
 }

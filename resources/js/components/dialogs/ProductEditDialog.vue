@@ -100,7 +100,7 @@ watch(
   { deep: true }
 );
 
-watch(
+  watch(
   () => props.product,
   (newProduct) => {
     if (newProduct && Object.keys(newProduct).length > 0) {
@@ -182,7 +182,11 @@ const submitForm = () => {
     payload.append("photo_url", imageFile.value);
   }
 
-  payload.append("sale_price", 0);
+  // Para vendedores y supervisores, el precio debe ser 0
+  // Para otros usuarios, el backend calculará el precio automáticamente
+  if (authStore.isVendedor || authStore.isSupervisor) {
+    payload.append("sale_price", 0);
+  }
 
   emit("save", payload);
 };
@@ -198,8 +202,14 @@ const submitForm = () => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3">
-        <span class="text-h5 font-weight-bold">{{
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
         }}</span>
 
@@ -214,7 +224,7 @@ const submitForm = () => {
         </VChip>
 
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -386,7 +396,7 @@ const submitForm = () => {
               </div>
 
               <VRow v-if="!assignedGroupName" dense class="mb-2">
-                <VCol cols="12" md="9">
+                <VCol cols="12" md="9" class="d-flex align-center">
                   <VTextField
                     v-model="groupInput"
                     label="Nombre o ID del Grupo a Asignar"
@@ -394,9 +404,10 @@ const submitForm = () => {
                     density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
+                    style="height: 40px;"
                   />
                 </VCol>
-                <VCol cols="12" md="3" class="d-flex align-end">
+                <VCol cols="12" md="3" class="d-flex align-center">
                   <VBtn 
                     color="primary" 
                     @click="assignGroup" 
@@ -459,12 +470,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-3">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 mr-2"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Cancelar
         </VBtn>
@@ -473,6 +485,7 @@ const submitForm = () => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Guardar
         </VBtn>

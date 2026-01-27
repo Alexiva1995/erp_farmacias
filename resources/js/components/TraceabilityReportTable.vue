@@ -2,6 +2,23 @@
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
 import { ref } from "vue";
 
+const getUserDisplayName = (user) => {
+  if (!user) return "N/A";
+  
+  // Si tiene employee con name y last_name, usar esos
+  if (user.employee?.name && user.employee?.last_name) {
+    return `${user.employee.name} ${user.employee.last_name}`;
+  }
+  
+  // Si solo tiene employee.name
+  if (user.employee?.name) {
+    return user.employee.name;
+  }
+  
+  // Fallback a username o email
+  return user.username || user.email || "N/A";
+};
+
 const props = defineProps({
   sales: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -83,6 +100,10 @@ const headers = [
 
       <template #item.movement_date="{ item }">
         <span>{{ new Date(item.movement_date).toLocaleDateString() }}</span>
+      </template>
+
+      <template #item.user.email="{ item }">
+        <span>{{ getUserDisplayName(item.user) }}</span>
       </template>
 
       <template #item.customer.name="{ item }">

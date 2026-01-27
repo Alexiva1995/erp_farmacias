@@ -460,7 +460,9 @@ class InventoryCycleQueryService
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->leftJoin('users', 'discrepancies.user_id', '=', 'users.id')
+            ->leftJoin('employees as user_employees', 'users.id', '=', 'user_employees.user_id')
             ->leftJoin('users as supervisors', 'discrepancies.supervisor_id', '=', 'supervisors.id')
+            ->leftJoin('employees as supervisor_employees', 'supervisors.id', '=', 'supervisor_employees.user_id')
             ->where('discrepancies.discrepancy', '!=', 0)
             ->select([
                 'discrepancies.id',
@@ -473,8 +475,12 @@ class InventoryCycleQueryService
                 'laboratories.name as laboratory_name',
                 'users.username as user_name',
                 'users.email as user_email',
+                'user_employees.name as user_employee_name',
+                'user_employees.last_name as user_employee_last_name',
                 'supervisors.username as supervisor_name',
-                'supervisors.email as supervisor_email'
+                'supervisors.email as supervisor_email',
+                'supervisor_employees.name as supervisor_employee_name',
+                'supervisor_employees.last_name as supervisor_employee_last_name'
             ]);
 
         if ($request->filled('searchQuery')) {

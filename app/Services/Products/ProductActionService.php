@@ -42,8 +42,14 @@ class ProductActionService
         if ($newPath) {
             $validatedData['photo_url'] = $newPath;
         }
-        $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
-        $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+        
+        // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
+        // De lo contrario, calcular el precio basado en rentabilidad
+        if (!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) {
+            $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+            $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+        }
+        
         $product = Product::create($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
@@ -66,13 +72,18 @@ class ProductActionService
         } else {
             unset($validatedData['photo_url']);
         }
-        if ($product->profitability && $product->profitability->is_locked) {
-            $percentage = $product->profitability->profitability_percentage;
-        } else {
-            $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
-        }
+        // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
+        // De lo contrario, calcular el precio basado en rentabilidad
+        if (!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) {
+            if ($product->profitability && $product->profitability->is_locked) {
+                $percentage = $product->profitability->profitability_percentage;
+            } else {
+                $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+            }
 
-        $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+            $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+        }
+        
         $product->update($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
@@ -154,129 +165,136 @@ class ProductActionService
 
     
     /**
-     * Fusiona dos productos, actualizando todas las referencias del producto con ID mayor
-     * al producto con ID menor.
+     * Fusiona dos productos, actualizando todas las referencias del producto que se elimina
+     * al producto que se mantiene.
      *
      * @param int $productId1
      * @param int $productId2
+     * @param int $keepProductId El ID del producto que se mantiene
      * @return array
      * @throws \Exception
      */
-    public function mergeProducts(int $productId1, int $productId2): array
+    public function mergeProducts(int $productId1, int $productId2, int $keepProductId): array
     {
-        // Determinar ID menor y mayor
-        $minId = min($productId1, $productId2);
-        $maxId = max($productId1, $productId2);
+        // Verificar que el keepProductId sea uno de los dos productos
+        if ($keepProductId !== $productId1 && $keepProductId !== $productId2) {
+            throw new \Exception('El ID del producto a mantener debe ser uno de los dos productos proporcionados.');
+        }
+
+        // Determinar qué producto se mantiene y cuál se elimina
+        $productToKeepId = $keepProductId;
+        $productToDeleteId = ($keepProductId === $productId1) ? $productId2 : $productId1;
 
         // Verificar que ambos productos existen
-        $productMin = Product::findOrFail($minId);
-        $productMax = Product::findOrFail($maxId);
+        $productToKeep = Product::findOrFail($productToKeepId);
+        $productToDelete = Product::findOrFail($productToDeleteId);
 
         DB::beginTransaction();
         try {
             // Actualizar todas las tablas que referencian product_id
+            // Cambiar todas las referencias del producto que se elimina al producto que se mantiene
             // 1. product_lots
             DB::table('product_lots')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 2. product_suppliers
             DB::table('product_suppliers')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 3. expirations
             DB::table('expirations')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 4. individual_offers
             DB::table('individual_offers')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 5. returns (return_entries)
             DB::table('returns')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 6. quotation_products
             DB::table('quotation_products')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 7. product_profitability
             DB::table('product_profitability')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 8. product_counts
             DB::table('product_counts')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 9. order_details
             DB::table('order_details')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 10. inventory_movements
             DB::table('inventory_movements')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 11. invoice_details
             DB::table('invoice_details')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 12. psychotropic_controls
             DB::table('psychotropic_controls')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 13. invoices_counts
             DB::table('invoices_counts')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 14. sale_counts
             DB::table('sales_counts')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 15. employee_product (tabla pivot)
             DB::table('employee_product')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 16. auto_order_details
             DB::table('auto_order_details')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 17. product_failures
             DB::table('product_failures')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 18. product_distributions - No necesita actualización directa ya que no tiene product_id,
             // se actualiza automáticamente a través de product_counts que ya fue actualizado
 
             // 19. price_adjustment_logs
             DB::table('price_adjustment_logs')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 20. fiscal_history_details
             DB::table('fiscal_history_details')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 21. invoice_returns
             DB::table('invoice_returns')
-                ->where('product_id', $maxId)
-                ->update(['product_id' => $minId]);
+                ->where('product_id', $productToDeleteId)
+                ->update(['product_id' => $productToKeepId]);
 
             // 22. product_packs (actualizar pack_config JSON)
             $packs = DB::table('product_packs')
@@ -285,22 +303,22 @@ class ProductActionService
 
             foreach ($packs as $pack) {
                 $packConfig = json_decode($pack->pack_config, true);
-                if (is_array($packConfig) && isset($packConfig[$maxId])) {
-                    // Si el producto con ID mayor existe, moverlo al ID menor
-                    if (isset($packConfig[$minId])) {
-                        // Si ya existe el ID menor, combinar las cantidades/configuraciones
-                        if (is_array($packConfig[$maxId]) && is_array($packConfig[$minId])) {
+                if (is_array($packConfig) && isset($packConfig[$productToDeleteId])) {
+                    // Si el producto que se elimina existe, moverlo al producto que se mantiene
+                    if (isset($packConfig[$productToKeepId])) {
+                        // Si ya existe el producto que se mantiene, combinar las cantidades/configuraciones
+                        if (is_array($packConfig[$productToDeleteId]) && is_array($packConfig[$productToKeepId])) {
                             // Combinar configuraciones
-                            $packConfig[$minId]['quantity'] = ($packConfig[$minId]['quantity'] ?? 0) + ($packConfig[$maxId]['quantity'] ?? 0);
-                        } elseif (is_numeric($packConfig[$maxId]) && is_numeric($packConfig[$minId])) {
+                            $packConfig[$productToKeepId]['quantity'] = ($packConfig[$productToKeepId]['quantity'] ?? 0) + ($packConfig[$productToDeleteId]['quantity'] ?? 0);
+                        } elseif (is_numeric($packConfig[$productToDeleteId]) && is_numeric($packConfig[$productToKeepId])) {
                             // Sumar cantidades simples
-                            $packConfig[$minId] = $packConfig[$minId] + $packConfig[$maxId];
+                            $packConfig[$productToKeepId] = $packConfig[$productToKeepId] + $packConfig[$productToDeleteId];
                         }
                     } else {
-                        // Mover la configuración al ID menor
-                        $packConfig[$minId] = $packConfig[$maxId];
+                        // Mover la configuración al producto que se mantiene
+                        $packConfig[$productToKeepId] = $packConfig[$productToDeleteId];
                     }
-                    unset($packConfig[$maxId]);
+                    unset($packConfig[$productToDeleteId]);
                     DB::table('product_packs')
                         ->where('id', $pack->id)
                         ->update(['pack_config' => json_encode($packConfig)]);
@@ -314,37 +332,37 @@ class ProductActionService
 
             foreach ($prescriptionOffers as $offer) {
                 $products = json_decode($offer->products, true);
-                if (is_array($products) && isset($products[$maxId])) {
-                    // Si el producto con ID mayor existe, moverlo al ID menor
-                    if (isset($products[$minId])) {
-                        // Si ya existe el ID menor, combinar las configuraciones
-                        if (is_array($products[$maxId]) && is_array($products[$minId])) {
-                            $products[$minId]['quantity'] = ($products[$minId]['quantity'] ?? 0) + ($products[$maxId]['quantity'] ?? 0);
+                if (is_array($products) && isset($products[$productToDeleteId])) {
+                    // Si el producto que se elimina existe, moverlo al producto que se mantiene
+                    if (isset($products[$productToKeepId])) {
+                        // Si ya existe el producto que se mantiene, combinar las configuraciones
+                        if (is_array($products[$productToDeleteId]) && is_array($products[$productToKeepId])) {
+                            $products[$productToKeepId]['quantity'] = ($products[$productToKeepId]['quantity'] ?? 0) + ($products[$productToDeleteId]['quantity'] ?? 0);
                         }
                     } else {
-                        // Mover la configuración al ID menor
-                        $products[$minId] = $products[$maxId];
+                        // Mover la configuración al producto que se mantiene
+                        $products[$productToKeepId] = $products[$productToDeleteId];
                     }
-                    unset($products[$maxId]);
+                    unset($products[$productToDeleteId]);
                     DB::table('prescription_offers')
                         ->where('id', $offer->id)
                         ->update(['products' => json_encode($products)]);
                 }
             }
 
-            // Eliminar el producto con ID mayor
-            if ($productMax->photo_url) {
-                Storage::disk('public')->delete($productMax->photo_url);
+            // Eliminar el producto que se elimina
+            if ($productToDelete->photo_url) {
+                Storage::disk('public')->delete($productToDelete->photo_url);
             }
-            $productMax->delete();
+            $productToDelete->delete();
 
             DB::commit();
 
             return [
                 'success' => true,
-                'message' => "Productos fusionados exitosamente. El producto ID {$maxId} ha sido fusionado con el producto ID {$minId}.",
-                'merged_product_id' => $minId,
-                'deleted_product_id' => $maxId
+                'message' => "Productos fusionados exitosamente. El producto ID {$productToDeleteId} ha sido fusionado con el producto ID {$productToKeepId}.",
+                'merged_product_id' => $productToKeepId,
+                'deleted_product_id' => $productToDeleteId
             ];
         } catch (\Exception $e) {
             DB::rollBack();

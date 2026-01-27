@@ -82,7 +82,7 @@ class TraceabilityController extends Controller
 
     public function getMovementDetails(InventoryMovement $movement)
     {
-        $movement->load(['product', 'user', 'order.seller', 'order.client', 'order' => function($query) {
+        $movement->load(['product', 'user.employee', 'order.seller.employee', 'order.client', 'order' => function($query) {
             $query->select('id', 'url_recipe', 'seller_id', 'client_id');
         }, 'invoice.supplier', 'supplier']);
 
@@ -104,7 +104,8 @@ class TraceabilityController extends Controller
                 if ($returnEntry) {
                     $details['return_entry'] = $returnEntry;
                     $details['original_order'] = $returnEntry->order;
-                    $details['processed_by'] = $returnEntry->generated_by_id ? \App\Models\User::find($returnEntry->generated_by_id) : null;
+                    $processedBy = $returnEntry->generated_by_id ? \App\Models\User::with('employee')->find($returnEntry->generated_by_id) : null;
+                    $details['processed_by'] = $processedBy;
                     $details['status'] = $returnEntry->status;
                 }
                 break;
@@ -179,8 +180,16 @@ class TraceabilityController extends Controller
                     if ($productDistribution && $productDistribution->productCount) {
                         $productCount = $productDistribution->productCount;
                         $details['product_count'] = $productCount;
-                        $details['counted_by'] = $productCount->user;
-                        $details['approved_by'] = $productCount->supervisor;
+                        $countedBy = $productCount->user;
+                        if ($countedBy) {
+                            $countedBy->load('employee');
+                        }
+                        $details['counted_by'] = $countedBy;
+                        $approvedBy = $productCount->supervisor;
+                        if ($approvedBy) {
+                            $approvedBy->load('employee');
+                        }
+                        $details['approved_by'] = $approvedBy;
                     }
                 }
                 break;

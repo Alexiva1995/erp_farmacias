@@ -116,7 +116,7 @@ const viewCycleDetails = (cycleId) => {
     >
       <template #item.cycle_id="{ item: cycle }">
         <VChip color="primary" variant="tonal" size="x-small" label class="text-xs">
-          #{{ cycle.cycle_id }}
+          {{ cycle.cycle_id }}
         </VChip>
       </template>
 
