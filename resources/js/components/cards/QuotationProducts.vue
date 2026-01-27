@@ -46,7 +46,7 @@ const props = defineProps({
   },
   selectedClient: {
     type: Object,
-    default: {},
+    default: null,
   },
   quotationProducts: {
     type: Array,
@@ -169,13 +169,14 @@ watch(
       selectedCompany.value = null;
     }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const discountOptions = computed(() => {
   const options = ["Medico", "Recipe"];
   if (
     props.selectedClient &&
+    props.selectedClient.id &&
     props.selectedClient.company_id !== null &&
     props.selectedClient.company_id !== undefined
   ) {
@@ -462,19 +463,18 @@ onMounted(() => {
           </div>
         </VCol>
       </VRow>
-      <VRow v-if="props.selectedClient.id">
+      <VRow v-if="props.selectedClient && props.selectedClient.id">
         <VCol cols="12" sm="12" md="12">
           <VAlert icon="tabler-user" color="primary">
             <div class="d-flex align-center gap-4 flex-wrap">
-              <p>{{ props.selectedClient.name }}</p>
-              <p>{{ props.selectedClient.last_name }}</p>
+              <p class="font-weight-medium">{{ props.selectedClient.name }} {{ props.selectedClient.last_name }}</p>
             </div>
             <div class="d-flex align-center gap-4 flex-wrap">
               <p>
                 {{ props.selectedClient.identification_type
                 }}{{ props.selectedClient.identification }}
               </p>
-              <p>{{ props.selectedClient.phone }}</p>
+              <p v-if="props.selectedClient.phone">{{ props.selectedClient.phone }}</p>
             </div>
           </VAlert>
         </VCol>

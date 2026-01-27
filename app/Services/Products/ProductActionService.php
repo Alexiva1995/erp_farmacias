@@ -43,12 +43,32 @@ class ProductActionService
             $validatedData['photo_url'] = $newPath;
         }
         
-        // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
-        // De lo contrario, calcular el precio basado en rentabilidad
-        if (!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) {
-            $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
-            $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+        // Asignar valores por defecto si no están presentes (el frontend no los envía)
+        // unit_cost siempre debe tener un valor (0 por defecto) para evitar errores de BD
+        if (!isset($validatedData['unit_cost']) || 
+            $validatedData['unit_cost'] === null || 
+            $validatedData['unit_cost'] === '') {
+            $validatedData['unit_cost'] = 0;
         }
+        
+        // Asegurar que unit_cost sea numérico
+        $validatedData['unit_cost'] = (float)($validatedData['unit_cost'] ?? 0);
+        
+        // sale_price: si no está presente, calcularlo o asignar 0
+        if (!isset($validatedData['sale_price']) || 
+            $validatedData['sale_price'] === null || 
+            $validatedData['sale_price'] === '') {
+            // Si unit_cost > 0, calcular el precio basado en rentabilidad
+            if ($validatedData['unit_cost'] > 0) {
+                $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+                $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+            } else {
+                $validatedData['sale_price'] = 0;
+            }
+        }
+        
+        // Asegurar que sale_price sea numérico
+        $validatedData['sale_price'] = (float)($validatedData['sale_price'] ?? 0);
         
         $product = Product::create($validatedData);
 
@@ -73,8 +93,11 @@ class ProductActionService
             unset($validatedData['photo_url']);
         }
         // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
-        // De lo contrario, calcular el precio basado en rentabilidad
-        if (!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) {
+        // De lo contrario, calcular el precio basado en rentabilidad solo si unit_cost está presente
+        if ((!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) && 
+            isset($validatedData['unit_cost']) && 
+            $validatedData['unit_cost'] !== null && 
+            $validatedData['unit_cost'] > 0) {
             if ($product->profitability && $product->profitability->is_locked) {
                 $percentage = $product->profitability->profitability_percentage;
             } else {

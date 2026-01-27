@@ -214,10 +214,22 @@ const handleSaveProduct = async (productFormData) => {
   } catch (error) {
     if (error.response && error.response.status === 422) {
       productFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
+      
+      // Mostrar los errores específicos en el toast
+      const errorMessages = error.response.data.errors;
+      if (errorMessages && Object.keys(errorMessages).length > 0) {
+        const firstErrorKey = Object.keys(errorMessages)[0];
+        const firstError = Array.isArray(errorMessages[firstErrorKey]) 
+          ? errorMessages[firstErrorKey][0] 
+          : errorMessages[firstErrorKey];
+        toast.error(`Error: ${firstError}`);
+      } else {
+        toast.error("Por favor, corrige los errores en el formulario.");
+      }
     } else {
       console.error("Error al guardar/crear el producto:", error);
-      toast.error("Hubo un error al guardar el producto.");
+      const errorMessage = error.response?.data?.message || "Hubo un error al guardar el producto.";
+      toast.error(errorMessage);
     }
   }
 };

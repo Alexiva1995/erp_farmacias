@@ -25,7 +25,19 @@ class QuotationActionService
             'category.offers',
         ]);
 
-        $product->loadSum('lots', 'quantity');
+        // Calcular valid_stock_sum (stock válido: lotes no expirados con cantidad > 0)
+        $validStockSum = $product->lots()
+            ->where('expiration_date', '>=', now())
+            ->where('quantity', '>', 0)
+            ->sum('quantity');
+        
+        // Agregar valid_stock_sum como atributo al producto usando setRawAttributes
+        // para asegurar que se incluya en la serialización JSON
+        $product->setAttribute('valid_stock_sum', $validStockSum ?? 0);
+        
+        // Asegurar que los accesores estén disponibles en la serialización
+        $product->append(['price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id']);
+        
         return $product;
     }
 

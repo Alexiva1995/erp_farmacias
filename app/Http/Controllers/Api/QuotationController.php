@@ -57,18 +57,47 @@ class QuotationController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show($productId)
     {
-        $detailedProduct = $this->quotationActionService->loadProductDetails($product);
+        try {
+            $product = Product::find($productId);
+            
+            if (!$product) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Producto no encontrado.",
+                ], 404);
+            }
 
-        if (!$detailedProduct) {
+            $detailedProduct = $this->quotationActionService->loadProductDetails($product);
+
+            if (!$detailedProduct) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Error al cargar los detalles del producto.",
+                ], 500);
+            }
+
+            // Convertir a array y asegurar que valid_stock_sum esté presente
+            $productArray = $detailedProduct->toArray();
+            
+            // Asegurar que valid_stock_sum esté en el array si no está
+            if (!isset($productArray['valid_stock_sum'])) {
+                $productArray['valid_stock_sum'] = $detailedProduct->getAttribute('valid_stock_sum') ?? 0;
+            }
+
+            return response()->json($productArray);
+        } catch (\Exception $e) {
+            Log::error('Error loading product details: ' . $e->getMessage(), [
+                'product_id' => $productId,
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'status' => 'error',
-                'message' => "Producto no encontrado.",
-            ]);
+                'message' => "Error al cargar los detalles del producto: " . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($detailedProduct);
     }
 
     public function showProducts(int $quotationId)

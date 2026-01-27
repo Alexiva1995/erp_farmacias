@@ -4,6 +4,8 @@ import QuotationProducts from "@/components/cards/QuotationProducts.vue";
 import QuotationFilters from "@/components/QuotationFilters.vue";
 import QuotationTable from "@/components/QuotationTable.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
+import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
+import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 
@@ -24,6 +26,20 @@ const activeCompanyOffers = ref([]);
 const selectedCompanyId = ref(null);
 const selectedCompany = ref(null);
 
+const newClientFormData = ref({
+  id: null,
+  identification_type: "",
+  identification: "",
+  name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  birthdate: "",
+  company_id: null,
+  address: "",
+  is_spe: false,
+});
+
 const currentPrescriptionDiscountPercentage = computed(() => {
   if (
     selectedDiscountType.value === "Recipe" &&
@@ -40,7 +56,9 @@ const sortBy = ref();
 const orderBy = ref();
 
 const clientSearchQuery = ref("");
-const selectedClient = ref({});
+const clientIdentification = ref("");
+const selectedClient = ref(null);
+const showRegisterClientModal = ref(false);
 const barcodeSearchQuery = ref("");
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -429,6 +447,9 @@ const validateAndApplyCompanyDiscount = () => {
   }
 
   if (!selectedCompanyId.value) {
+    if (selectedDiscountType.value === "Empresa") {
+      selectedDiscountType.value = null;
+    }
     return;
   }
 
@@ -444,7 +465,7 @@ const validateAndApplyCompanyDiscount = () => {
   const porcentaje = parseFloat(offer.current_discount || 0);
   if (porcentaje > 0) {
     toast.success(
-      `Descuento de empresa ${porcentaje}% habilitado para esta orden.`,
+      `Descuento de empresa ${porcentaje}% habilitado para esta cotización.`,
     );
   } else {
     selectedCompanyId.value = null;
@@ -458,6 +479,8 @@ watch(
   () => selectedClient.value,
   async (newCliente, oldCliente) => {
     if (!newCliente) {
+      selectedCompany.value = null;
+      await fetchCompanyOffers();
       return;
     }
     if (newCliente?.id === oldCliente?.id) {
@@ -468,13 +491,14 @@ watch(
       if (newCliente.company_id) {
         await fetchCompanyOffers(newCliente.company_id);
         selectedDiscountType.value = "Empresa";
-        selectedCompany.value = newCliente.company_id;
+        selectedCompanyId.value = newCliente.company_id;
+        validateAndApplyCompanyDiscount();
       } else {
-        selectedCompany.value = null;
+        selectedCompanyId.value = null;
         await fetchCompanyOffers();
       }
     } catch (error) {
-      console.error("[ORDER_USER] Error en watcher de selectedClient:", error);
+      console.error("[QUOTATION] Error en watcher de selectedClient:", error);
     }
   },
   { deep: true },
@@ -582,15 +606,21 @@ const addProductToQuotation = async ({ productId, quantity }) => {
         );
       }
     } else {
+      // Validar que todos los campos necesarios estén presentes
+      if (!productDetails.id || !productDetails.name) {
+        toast.error("El producto no tiene la información completa necesaria.");
+        return;
+      }
+
       const itemToAdd = {
         id: productDetails.id,
-        title: productDetails.name,
-        active_ingredient: productDetails.active_ingredient,
-        itemCode: productDetails.barcode,
-        price: productDetails.sale_price,
-        price_bs: productDetails.price_bs,
-        price_cop: productDetails.price_cop,
-        availableQuantity: availableQuantity,
+        title: productDetails.name || "Producto sin nombre",
+        active_ingredient: productDetails.active_ingredient || null,
+        itemCode: productDetails.barcode || null,
+        price: productDetails.sale_price || 0,
+        price_bs: productDetails.price_bs || 0,
+        price_cop: productDetails.price_cop || 0,
+        availableQuantity: availableQuantity || 0,
         selectedQuantity: quantity,
         laboratory: productDetails.laboratory
           ? productDetails.laboratory.name
@@ -610,9 +640,18 @@ const addProductToQuotation = async ({ productId, quantity }) => {
       "Error al obtener o agregar el producto a la cotización:",
       error.response ? error.response.data : error.message,
     );
-    toast.error(
-      "Error al agregar el producto a la cotización. Inténtalo de nuevo.",
-    );
+    
+    // Mostrar errores de validación si existen
+    if (error.response?.data?.errors) {
+      const errorMessages = Object.values(error.response.data.errors).flat();
+      toast.error(`Error: ${errorMessages.join(", ")}`);
+    } else if (error.response?.data?.message) {
+      toast.error(error.response.data.message);
+    } else {
+      toast.error(
+        "Error al agregar el producto a la cotización. Inténtalo de nuevo.",
+      );
+    }
   }
 };
 
@@ -678,11 +717,10 @@ const saveQuotation = async () => {
       total_iva_usd: ivaUsd,
       grand_total_usd: grandTotalUsd,
       currency: selectedDisplayCurrency.value,
-      client_id: selectedClient.value.id,
+      client_id: selectedClient.value?.id || null,
       products: quotationItems.value.map((item) => ({
         id: item.id,
         quantity: item.selectedQuantity,
-        tax_rate: item.taxRate,
       })),
     };
     const response = await axios.post("/tpv/quotations", payload);
@@ -728,10 +766,10 @@ const saveAndPrintQuotation = async () => {
       total_iva_usd: ivaUsd,
       grand_total_usd: grandTotalUsd,
       currency: selectedDisplayCurrency.value,
+      client_id: selectedClient.value?.id || null,
       products: quotationItems.value.map((item) => ({
         id: item.id,
         quantity: item.selectedQuantity,
-        tax_rate: item.taxRate,
       })),
     };
     const response = await axios.post("/tpv/quotations", payload);
@@ -916,18 +954,64 @@ const fetchSearchedClient = async () => {
   }
 };
 
+const verifyClient = async (identification) => {
+  clientIdentification.value = identification;
+
+  // La cédula es opcional en cotizaciones, si está vacía simplemente no buscamos cliente
+  if (!identification || !identification.trim()) {
+    selectedClient.value = null;
+    selectedCompanyId.value = null;
+    selectedDiscountType.value = null;
+    return;
+  }
+
+  try {
+    const response = await axios.get(`/tpv/order/client/${identification}`);
+    const responseData = response.data.data;
+
+    if (responseData.found === false) {
+      toast.info("Cliente no encontrado. Puede continuar sin cliente o registrarlo.");
+      // Opcionalmente, podemos abrir el modal de registro si el usuario quiere
+      newClientFormData.value = {
+        ...newClientFormData.value,
+        identification: identification,
+      };
+      // No abrimos automáticamente, pero dejamos la opción disponible
+      selectedClient.value = null;
+    } else {
+      const clientData = responseData.client;
+      selectedClient.value = clientData;
+      toast.success(
+        `Cliente ${clientData.name} ${clientData.last_name} encontrado.`,
+      );
+    }
+  } catch (error) {
+    console.error("Error al verificar cliente:", error);
+    toast.error("Error al verificar el cliente.");
+    selectedClient.value = null;
+  }
+};
+
 const handleCleanAfterSave = () => {
   handleClearFilters();
   handleClearSortOrder();
   removeQuotation();
 
   page.value = 1;
-  selectedClient.value = {};
+  selectedClient.value = null;
+  clientIdentification.value = "";
 };
 </script>
 
 <template>
   <div>
+    <OrderClienteCard
+      v-model="clientIdentification"
+      button-text="Buscar cliente"
+      :show-button="true"
+      @verify-client="verifyClient"
+    />
+
     <VRow class="mb-4">
       <VCol cols="12" sm="12" md="6">
         <QuotationCard
@@ -1014,5 +1098,14 @@ const handleCleanAfterSave = () => {
         :selected-display-currency="selectedDisplayCurrency"
       />
     </div>
+
+    <RegisterClientModal
+      v-model="showRegisterClientModal"
+      @client-registered="async (client) => {
+        selectedClient.value = client;
+        showRegisterClientModal.value = false;
+        toast.success('Cliente registrado exitosamente.');
+      }"
+    />
   </div>
 </template>

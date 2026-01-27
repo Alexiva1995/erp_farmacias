@@ -115,7 +115,8 @@ watch(
         name: "",
         active_ingredient: "",
         laboratory_id: null,
-        unit_cost: 0,
+        unit_cost: null,
+        sale_price: null,
         origin_id: null,
         category_id: null,
         group_id: null,
@@ -166,7 +167,13 @@ const submitForm = () => {
 
   const payload = new FormData();
 
+  // Excluir unit_cost y sale_price del loop, los manejaremos después
   Object.keys(formData.value).forEach((key) => {
+    // Saltar unit_cost y sale_price, los manejaremos después
+    if (key === 'unit_cost' || key === 'sale_price') {
+      return;
+    }
+    
     const value = formData.value[key];
     if (
       value !== null &&
@@ -182,10 +189,23 @@ const submitForm = () => {
     payload.append("photo_url", imageFile.value);
   }
 
+  // Solo enviar unit_cost si tiene un valor válido
+  if (formData.value.unit_cost !== null && 
+      formData.value.unit_cost !== undefined && 
+      formData.value.unit_cost !== "" &&
+      !isNaN(formData.value.unit_cost)) {
+    payload.append("unit_cost", formData.value.unit_cost);
+  }
+
   // Para vendedores y supervisores, el precio debe ser 0
-  // Para otros usuarios, el backend calculará el precio automáticamente
+  // Para otros usuarios, solo enviar si tiene valor válido
   if (authStore.isVendedor || authStore.isSupervisor) {
     payload.append("sale_price", 0);
+  } else if (formData.value.sale_price !== null && 
+             formData.value.sale_price !== undefined && 
+             formData.value.sale_price !== "" &&
+             !isNaN(formData.value.sale_price)) {
+    payload.append("sale_price", formData.value.sale_price);
   }
 
   emit("save", payload);
@@ -304,19 +324,7 @@ const submitForm = () => {
                 :error-messages="formErrors.barcode"
               />
             </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="formData.unit_cost"
-                label="Costo de Compra"
-                type="number"
-                prefix="$"
-                variant="outlined"
-                density="compact"
-                :readonly="!authStore.isAdmin"
-                :error-messages="formErrors.unit_cost"
-              />
-            </VCol>
-            <VCol cols="12" md="4" class="d-flex align-center gap-2">
+            <VCol cols="12" md="8" class="d-flex align-center gap-2">
               <VCheckbox
                 v-model="formData.iva"
                 label="IVA"
@@ -340,6 +348,34 @@ const submitForm = () => {
                 :false-value="0"
                 density="compact"
                 hide-details
+              />
+            </VCol>
+          </VRow>
+          
+          <!-- Campos de costo y precio solo para edición -->
+          <VRow v-if="!isNewProduct" dense class="mb-2">
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.unit_cost"
+                label="Costo de Compra"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                :readonly="!authStore.isAdmin"
+                :error-messages="formErrors.unit_cost"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.sale_price"
+                label="Precio de Venta"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                :readonly="authStore.isVendedor || authStore.isSupervisor"
+                :error-messages="formErrors.sale_price"
               />
             </VCol>
           </VRow>

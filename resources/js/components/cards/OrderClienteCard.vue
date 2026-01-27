@@ -6,6 +6,14 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  buttonText: {
+    type: String,
+    default: 'Realizar pedido',
+  },
+  showButton: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(['update:modelValue', 'verify-client']);
@@ -23,7 +31,6 @@ const updateIdentification = (value) => {
   emit('update:modelValue', value);
 };
 
-
 const handleRealizarPedido = () => {
   emit('verify-client', identificationInput.value);
 };
@@ -32,7 +39,7 @@ const handleRealizarPedido = () => {
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" md="9">
+        <VCol cols="12" :md="showButton ? 9 : 12">
           <AppTextField
             placeholder="Ingrese identificación"
             clearable
@@ -40,14 +47,14 @@ const handleRealizarPedido = () => {
             @keyup.enter="handleRealizarPedido"
           />
         </VCol>
-        <VCol cols="12" md="3">
+        <VCol v-if="showButton" cols="12" md="3">
           <VBtn
             color="success"
-            prepend-icon="tabler-plus"
+            prepend-icon="tabler-search"
             block
             @click="handleRealizarPedido"
           >
-            Realizar pedido
+            {{ buttonText }}
           </VBtn>
         </VCol>
       </VRow>

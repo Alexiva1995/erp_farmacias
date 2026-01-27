@@ -31,8 +31,8 @@ class StoreProductRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'origin_id' => ['required', 'exists:origins,id'],
 
-            'unit_cost' => ['required_if:id,null', 'numeric', 'gt:0'],
-            'sale_price' => ['required', 'numeric', 'min:0'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'sale_price' => ['nullable', 'numeric', 'min:0'],
 
             'barcode' => [
                 'nullable',
@@ -76,13 +76,11 @@ class StoreProductRequest extends FormRequest
             'origin_id.required' => 'Debe seleccionar un origen.',
             'origin_id.exists' => 'El origen seleccionado no es válido.',
 
-            'unit_cost.required_if' => 'El costo de compra es obligatorio para productos nuevos.',
             'unit_cost.numeric' => 'El costo de compra debe ser un número.',
-            'unit_cost.gt' => 'El costo de compra debe ser mayor a cero.',
+            'unit_cost.min' => 'El costo de compra no puede ser negativo.',
 
-            'sale_price.required' => 'El costo de venta es obligatorio.',
-            'sale_price.numeric' => 'El costo de venta debe ser un número.',
-            'sale_price.min' => 'El costo de venta no puede ser negativo.',
+            'sale_price.numeric' => 'El precio de venta debe ser un número.',
+            'sale_price.min' => 'El precio de venta no puede ser negativo.',
 
             'barcode.string' => 'El código de barras debe ser texto.',
             'barcode.max' => 'El código de barras no puede exceder los 255 caracteres.',
