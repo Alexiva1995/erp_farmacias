@@ -754,9 +754,9 @@ const specialTaxAmount = computed(() => {
       <VTable density="compact" lines="none">
         <tbody>
           <tr v-for="(product, index) in props.orderProducts" :key="product.id">
-            <td>
+            <td style="white-space: normal; word-wrap: break-word; max-width: none;">
               <div class="d-flex flex-column">
-                <span class="text-body-1 font-weight-medium text-high-emphasis">
+                <span class="text-body-1 font-weight-medium text-high-emphasis" style="white-space: normal; word-wrap: break-word;">
                   {{ product.title }}
                   <VIcon
                     v-if="product.pack_id"

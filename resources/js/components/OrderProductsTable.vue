@@ -40,7 +40,7 @@ const options = ref({
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
-  { title: "Producto", key: "name", sortable: true, maxWidth: "300px" },
+  { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true, align: "end" },
   { title: "Bs", key: "price_bs", sortable: true, align: "end" },
@@ -338,26 +338,26 @@ const getRowClass = (item) => {
         }}</span>
       </template>
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4" style="max-width: 300px;">
+        <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column" style="min-width: 0; width: 100%;">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis text-truncate"
+              class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
-              style="word-wrap: break-word; overflow-wrap: break-word;"
+              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
             >
               {{ item.name }}
               <span v-if="item.iva == 1"> (G)</span>
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
             <span 
-              class="text-sm text-disabled text-truncate"
-              style="word-wrap: break-word; overflow-wrap: break-word;"
+              class="text-sm text-disabled"
+              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
             >
               {{ item.active_ingredient }}
             </span>
             <span 
-              class="text-sm text-disabled text-truncate"
-              style="word-wrap: break-word; overflow-wrap: break-word;"
+              class="text-sm text-disabled"
+              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
             >
               {{ item.origin?.name }}
             </span>
