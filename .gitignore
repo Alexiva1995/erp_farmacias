@@ -41,6 +41,9 @@ dist-ssr
 
 # 👉 Custom Git ignores
 
+# server.php (router local para php artisan serve, no existe en vendor en algunas instalaciones)
+/server.php
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
