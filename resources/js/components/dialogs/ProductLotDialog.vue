@@ -132,10 +132,26 @@ const locations = [
     max-width="600px"
     @update:model-value="onCancel"
     persistent
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard :loading="props.loading" :title="dialogTitle">
-      <VCardText>
-        <VContainer>
+    <VCard :loading="props.loading" class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          :icon="props.isEditing ? 'tabler-edit' : 'tabler-plus'" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">{{ dialogTitle }}</span>
+        <VSpacer />
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
+      </VCardTitle>
+      <VDivider />
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+        <VContainer class="pa-0">
           <VRow>
             <VCol cols="12">
               <VAutocomplete
@@ -146,6 +162,8 @@ const locations = [
                 :item-title="(item) => item.id + ' - ' + item.name"
                 item-value="id"
                 placeholder="Busca un producto"
+                variant="outlined"
+                density="compact"
               />
               <VTextField
                 v-else
@@ -153,12 +171,18 @@ const locations = [
                 label="Producto"
                 readonly
                 variant="outlined"
+                density="compact"
                 bg-color="grey-lighten-5"
               />
             </VCol>
 
             <VCol cols="12" sm="6">
-              <VTextField v-model="lotData.lot_number" label="Número de Lote" />
+              <VTextField 
+                v-model="lotData.lot_number" 
+                label="Número de Lote" 
+                variant="outlined"
+                density="compact"
+              />
             </VCol>
 
             <VCol cols="12" sm="6">
@@ -167,6 +191,8 @@ const locations = [
                 label="Fecha de Vencimiento"
                 type="date"
                 placeholder="YYYY-MM-DD"
+                variant="outlined"
+                density="compact"
               />
             </VCol>
 
@@ -175,6 +201,8 @@ const locations = [
                 v-model="lotData.quantity"
                 label="Cantidad"
                 type="number"
+                variant="outlined"
+                density="compact"
                 :disabled="props.isEditing"
               />
             </VCol>
@@ -185,6 +213,8 @@ const locations = [
                 label="Precio de Costo"
                 type="number"
                 prefix="$"
+                variant="outlined"
+                density="compact"
                 :disabled="props.isEditing"
               />
             </VCol>
@@ -195,6 +225,8 @@ const locations = [
                 label="Ubicación (Opcional)"
                 :items="locations"
                 placeholder="Busca un ubicación"
+                variant="outlined"
+                density="compact"
                 clearable
               />
             </VCol>
@@ -207,6 +239,8 @@ const locations = [
                 item-title="name"
                 item-value="id"
                 placeholder="Busca un proveedor"
+                variant="outlined"
+                density="compact"
                 clearable
               />
             </VCol>
@@ -214,19 +248,26 @@ const locations = [
         </VContainer>
       </VCardText>
 
-      <VCardActions class="pa-4 px-10">
-        <VRow no-gutters class="w-100">
-          <VCol cols="6" class="pe-1">
-            <VBtn color="secondary" variant="outlined" @click="onCancel" block>
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="6" class="ps-1">
-            <VBtn color="primary" variant="flat" @click="onSave" block>
-              {{ props.isEditing ? "Actualizar Lote" : "Guardar Lote" }}
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VDivider />
+      <VCardActions class="pa-4 d-flex gap-2">
+        <VBtn 
+          color="secondary" 
+          variant="outlined" 
+          @click="onCancel" 
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn 
+          color="primary" 
+          variant="flat" 
+          @click="onSave" 
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
+        >
+          {{ props.isEditing ? "Actualizar Lote" : "Guardar Lote" }}
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

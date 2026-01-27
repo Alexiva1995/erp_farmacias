@@ -95,24 +95,30 @@ const productHeaders = [
     content-class="d-flex"
   >
     <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-6">
-        <span class="text-h5 font-weight-bold">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          icon="tabler-package" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">
           Productos del grupo: {{ props.selectedGroup.name }}
         </span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VDataTable
           :headers="productHeaders"
           :items="associatedProducts"
           :loading="isLoadingProducts"
-          density="comfortable"
+          density="compact"
           no-data-text="No hay productos asignados a este grupo."
           class="rounded-lg"
         >
@@ -163,13 +169,13 @@ const productHeaders = [
 
       <VDivider />
 
-      <VCardActions class="pa-6">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
-          size="large"
+          class="flex-grow-1"
+          style="flex: 1 1 100%; max-width: 100%;"
         >
           Cerrar
         </VBtn>

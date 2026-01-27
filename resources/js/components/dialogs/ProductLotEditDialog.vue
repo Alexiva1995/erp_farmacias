@@ -286,16 +286,21 @@ const getFieldError = (field, index) => {
     content-class="d-flex"
   >
     <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold"
-          >Edicion de Lotes: {{ props.productId }} -
-          {{ props.productName }}</span
-        >
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          icon="tabler-edit" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">
+          Edición de Lotes: {{ props.productId }} - {{ props.productName }}
+        </span>
 
         <VChip
           v-if="hasStockDiscrepancy"
           :color="missingStock > 0 ? 'warning' : 'error'"
-          variant="outlined"
+          variant="flat"
           size="small"
           class="ml-4"
         >
@@ -307,19 +312,20 @@ const getFieldError = (field, index) => {
         </VChip>
 
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VAlert
           v-if="hasStockDiscrepancy"
           :type="currentLotsSum > props.productStock ? 'error' : 'warning'"
           variant="tonal"
-          class="mb-4"
+          density="compact"
+          class="mb-3"
         >
           <div>
             <strong>Stock del producto:</strong> {{ props.productStock }} |
@@ -339,12 +345,13 @@ const getFieldError = (field, index) => {
           v-if="errors.total_stock"
           type="error"
           variant="tonal"
-          class="mb-4"
+          density="compact"
+          class="mb-3"
         >
           {{ errors.total_stock }}
         </VAlert>
 
-        <div class="d-flex align-center mb-4">
+        <div class="d-flex align-center mb-3">
           <VSpacer />
           <VBtn
             prepend-icon="tabler-plus"
@@ -467,12 +474,13 @@ const getFieldError = (field, index) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Cancelar
         </VBtn>
@@ -481,7 +489,8 @@ const getFieldError = (field, index) => {
           variant="flat"
           @click="onSave"
           :disabled="!canSave"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Guardar Cambios
         </VBtn>

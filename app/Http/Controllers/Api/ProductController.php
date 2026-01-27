@@ -440,12 +440,14 @@ class ProductController extends Controller
         $request->validate([
             'product_id_1' => 'required|integer|exists:products,id',
             'product_id_2' => 'required|integer|exists:products,id',
+            'keep_product_id' => 'required|integer|in:' . $request->integer('product_id_1') . ',' . $request->integer('product_id_2'),
         ]);
 
         try {
             $result = $this->productActionService->mergeProducts(
                 $request->integer('product_id_1'),
-                $request->integer('product_id_2')
+                $request->integer('product_id_2'),
+                $request->integer('keep_product_id')
             );
 
             return response()->json($result, 200);

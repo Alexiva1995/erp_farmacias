@@ -7,8 +7,13 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
 
 const counts = ref([]);
+const totalCounts = ref(0);
 const loading = ref(false);
 const isClosing = ref(false);
+const page = ref(1);
+const itemsPerPage = ref(25);
+const sortBy = ref();
+const orderBy = ref();
 const filters = reactive({
   searchQuery: "",
   startDate: null,
@@ -18,6 +23,11 @@ const filters = reactive({
 const hasActiveCycle = ref(false);
 const activeCycle = ref(null);
 const isCreatingCycle = ref(false);
+const globalTotals = ref({
+  surplus: 0,
+  shortage: 0,
+  netTotal: 0
+});
 
 const fetchData = async () => {
   loading.value = true;
@@ -25,7 +35,17 @@ const fetchData = async () => {
     searchQuery: filters.searchQuery,
     startDate: filters.startDate,
     endDate: filters.endDate,
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
   };
+  
+  // Remover parámetros null o vacíos
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "" || params[key] === undefined) && delete params[key]
+  );
+  
   try {
     const response = await axios.get("/inventory/cash-close-items", { params });
     counts.value = response.data.data.map((item) => ({
@@ -37,9 +57,27 @@ const fetchData = async () => {
         unit_cost: item.product_unit_cost,
         laboratory: { name: item.laboratory_name }
       },
-      user: { name: item.user_name || item.user_email },
-      supervisor: { name: item.supervisor_name || item.supervisor_email || null },
+      user: { 
+        name: item.user_name || item.user_email,
+        employee_name: item.user_employee_name,
+        employee_last_name: item.user_employee_last_name
+      },
+      supervisor: { 
+        name: item.supervisor_name || item.supervisor_email || null,
+        employee_name: item.supervisor_employee_name,
+        employee_last_name: item.supervisor_employee_last_name
+      },
     }));
+    totalCounts.value = response.data.total || 0;
+    
+    // Actualizar totales globales desde el backend
+    if (response.data.totals) {
+      globalTotals.value = {
+        surplus: response.data.totals.surplus || 0,
+        shortage: response.data.totals.shortage || 0,
+        netTotal: response.data.totals.netTotal || 0
+      };
+    }
   } catch (error) {
     console.error("Error al obtener datos para el cierre de caja:", error);
     toast.error("No se pudieron cargar los datos para el cierre.");
@@ -65,7 +103,7 @@ onMounted(() => {
 
 let debounceTimer;
 watch(
-  filters,
+  [filters, page, itemsPerPage, sortBy, orderBy],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(fetchData, 300);
@@ -73,18 +111,28 @@ watch(
   { deep: true }
 );
 
+watch(
+  [filters.searchQuery, filters.startDate, filters.endDate],
+  () => {
+    page.value = 1;
+  }
+);
+
+const updateTableOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  }
+};
+
 const totals = computed(() => {
-  const result = counts.value.reduce(
-    (acc, item) => {
-      const amount = (item.product.sale_price || 0) * item.discrepancy;
-      if (amount > 0) acc.surplus += amount;
-      else acc.shortage += Math.abs(amount);
-      return acc;
-    },
-    { surplus: 0, shortage: 0 }
-  );
-  result.netTotal = result.surplus - result.shortage;
-  return result;
+  // Usar los totales globales del backend en lugar de calcular solo de la página actual
+  return globalTotals.value;
 });
 
 /*const formatCurrency = (value) => {
@@ -327,7 +375,14 @@ const formatDate = (dateString) => {
       </VCol>
 
       <VCol cols="12">
-        <CashCloseTable :items="counts" :loading="loading" />
+        <CashCloseTable 
+          :items="counts" 
+          :loading="loading"
+          :total-items="totalCounts"
+          :items-per-page="itemsPerPage"
+          :page="page"
+          @update:options="updateTableOptions"
+        />
       </VCol>
     </VRow>
   </div>

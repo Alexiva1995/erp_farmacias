@@ -23,6 +23,7 @@ const currentEditingProduct = ref(null);
 const headers = [
   { title: "ID", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory.name", sortable: true },
   { title: "Grupo de Producto", key: "group", sortable: true },
   {
     title: "Stock",
@@ -176,6 +177,10 @@ const nextExpirationDate = (product) => {
             }}</span>
           </div>
         </div>
+      </template>
+
+      <template #item.laboratory.name="{ item }">
+        <span>{{ item.laboratory?.name || "—" }}</span>
       </template>
 
       <template #item.group="{ item }">

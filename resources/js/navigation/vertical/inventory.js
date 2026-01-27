@@ -11,20 +11,19 @@ export default [
     children: [
       {
         title: 'Productos',
-        children: [
-        {
-          title: 'Listado',
-          to: 'inventory-products',
-        },
-        {
-          title: 'Sin Grupo',
-          to: 'inventory-products-without-group',
-        }
-        ],
+        to: 'inventory-products',
+      },
+      {
+        title: 'Sin Grupo',
+        to: 'inventory-products-without-group',
       },
       {
         title: 'Productos incompletos',
         to: 'inventory-incomplete-products',
+      },
+      {
+        title: 'Lotes sin Ubicación',
+        to: 'inventory-lots-without-location',
       },
       {
         title: 'Grupos de Productos',

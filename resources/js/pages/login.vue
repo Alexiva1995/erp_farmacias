@@ -107,8 +107,7 @@ const on2FAVerified = () => {
       />
 
       <VCard
-        class="auth-card"
-        max-width="600"
+        class="auth-card login-card"
         :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-4'"
       >
         <VCardItem class="justify-center">
@@ -116,9 +115,6 @@ const on2FAVerified = () => {
             <RouterLink to="/">
               <div class="app-logo">
                 <VNodeRenderer :nodes="themeConfig.app.logo" />
-                <h1 class="app-logo-title">
-                  {{ themeConfig.app.title }}
-                </h1>
               </div>
             </RouterLink>
           </VCardTitle>
@@ -140,7 +136,7 @@ const on2FAVerified = () => {
                 <AppTextField
                   v-model="form.login"
                   autofocus
-                  label="Email o Usuario"
+                  label="Email"
                   type="text"
                   placeholder="johndoe@email.com"
                   :error-messages="errors.login"
@@ -188,4 +184,31 @@ const on2FAVerified = () => {
 
 <style lang="scss">
 @use "@core-scss/template/pages/page-auth";
+
+.login-card {
+  width: 546px !important;
+  max-width: 546px !important;
+  min-width: 546px !important;
+}
+
+// Asegurar que la tarjeta tenga el ancho correcto en todos los tamaños de pantalla
+@media (max-width: 959px) {
+  .login-card {
+    width: 90% !important;
+    max-width: 546px !important;
+    min-width: 320px !important;
+  }
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  img {
+    height: 100px !important;
+    max-width: 350px !important;
+    width: auto !important;
+  }
+}
 </style>

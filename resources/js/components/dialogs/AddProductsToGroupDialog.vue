@@ -67,6 +67,8 @@ const fetchProducts = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    // Filtrar productos sin grupo o del grupo actual
+    withoutGroupOrCurrentGroup: props.selectedGroup.id,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -230,17 +232,23 @@ onMounted(() => {
     content-class="d-flex"
   >
     <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-6">
-        <span class="text-h5 font-weight-bold">Añadir productos al grupo</span>
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          icon="tabler-plus" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">Añadir productos al grupo</span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <ProductFilters
           v-model:searchQuery="filterSearchQuery"
           v-model:selectedLaboratory="selectedLaboratory"
@@ -324,13 +332,13 @@ onMounted(() => {
 
       <VDivider />
 
-      <VCardActions class="pa-6">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
-          size="large"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Cancelar
         </VBtn>
@@ -338,8 +346,8 @@ onMounted(() => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
-          size="large"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Guardar
         </VBtn>

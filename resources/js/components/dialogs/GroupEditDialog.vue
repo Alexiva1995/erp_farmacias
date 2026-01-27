@@ -149,51 +149,54 @@ const nextExpirationDate = (product) => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-6">
-        <span class="text-h5 font-weight-bold">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon 
+          :icon="isNewGroup ? 'tabler-plus' : 'tabler-edit'" 
+          size="24" 
+          color="white" 
+          class="me-2" 
+        />
+        <span class="text-h5 font-weight-bold text-white">
           {{ isNewGroup ? "Añadir Nuevo Grupo" : "Editar Grupo" }}
         </span>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
-          <div class="mb-6">
+          <div class="mb-3">
             <p class="text-h6 font-weight-medium mb-1">Información del Grupo</p>
-            <p class="text-body-2 text-medium-emphasis">Nombre del grupo de productos</p>
           </div>
-          <VRow class="mb-4">
+          <VRow>
             <VCol cols="12">
               <VTextField
                 v-model="formData.name"
                 label="Nombre del Grupo"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 :error-messages="formErrors.name"
               />
             </VCol>
           </VRow>
         </VForm>
 
-        <!-- ✅ NUEVA SECCIÓN: LISTA DE PRODUCTOS EN EL GRUPO -->
         <template v-if="!isNewGroup">
-          <VDivider class="my-8" />
+          <VDivider class="my-4" />
 
-          <div class="mb-4">
+          <div class="mb-3">
             <p class="text-h6 font-weight-medium mb-1">Productos en este Grupo</p>
-            <p class="text-body-2 text-medium-emphasis">Lista de productos asociados al grupo</p>
           </div>
 
           <VDataTable
             :headers="productHeaders"
             :items="associatedProducts"
             :loading="isLoadingProducts"
-            density="comfortable"
+            density="compact"
             no-data-text="No hay productos asignados a este grupo."
             class="rounded-lg"
           >
@@ -260,13 +263,13 @@ const nextExpirationDate = (product) => {
 
       <VDivider />
 
-      <VCardActions class="pa-6">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
-          size="large"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Cancelar
         </VBtn>
@@ -274,8 +277,8 @@ const nextExpirationDate = (product) => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
-          size="large"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%;"
         >
           Guardar
         </VBtn>

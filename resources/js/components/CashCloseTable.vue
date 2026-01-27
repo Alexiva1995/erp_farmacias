@@ -1,13 +1,45 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 
-defineProps({
+const props = defineProps({
   items: { type: Array, required: true },
   loading: { type: Boolean, default: false },
+  totalItems: { type: Number, required: true },
+  itemsPerPage: { type: Number, required: true },
+  page: { type: Number, required: true },
 });
 
+const emit = defineEmits(["update:options"]);
+
+const formatEmployeeName = (user) => {
+  if (!user) return "N/A";
+  
+  // Si tiene employee con name y last_name, usar esos
+  if (user.employee_name && user.employee_last_name) {
+    const name = user.employee_name.trim();
+    const lastName = user.employee_last_name.trim();
+    // Capitalize: primera letra mayúscula, resto minúsculas
+    const formattedName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    const formattedLastName = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
+    return `${formattedName} ${formattedLastName}`;
+  }
+  
+  // Si solo tiene employee.name
+  if (user.employee_name) {
+    const name = user.employee_name.trim();
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  }
+  
+  // Fallback a name (username o email)
+  if (user.name) {
+    return user.name;
+  }
+  
+  return "N/A";
+};
+
 const headers = [
-  { title: "Nombre de Producto", key: "product.name", sortable: true },
+  { title: "Nombre de Producto", key: "product.name", sortable: true, width: "250px", maxWidth: "250px" },
   { title: "Laboratorio", key: "product.laboratory.name", sortable: true },
   { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
   { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
@@ -27,13 +59,16 @@ const headers = [
 
 <template>
   <VCard>
-    <VDataTable
+    <VDataTableServer
       :headers="headers"
-      :items="items"
-      :loading="loading"
-      class="text-no-wrap"
+      :items="props.items"
+      :items-length="props.totalItems"
+      :items-per-page="props.itemsPerPage"
+      :page="props.page"
+      :loading="props.loading"
       item-value="id"
       no-data-text="No hay diferencias registradas para el cierre."
+      @update:options="(options) => emit('update:options', options)"
     >
       <template #item.discrepancy="{ item }">
         <VChip
@@ -59,7 +94,9 @@ const headers = [
       </template>
 
       <template #item.product.name="{ item }">
-        <span class="font-weight-medium">{{ item.product.name }}</span>
+        <span class="font-weight-medium text-truncate d-inline-block" style="max-width: 250px;" :title="item.product.name">
+          {{ item.product.name }}
+        </span>
       </template>
 
       <template #item.product.laboratory.name="{ item }">
@@ -72,9 +109,13 @@ const headers = [
         </span>
       </template>
 
-      <template #item.supervisor.name="{ item }">
-        <span>{{ item.supervisor?.name || "N/A" }}</span>
+      <template #item.user.name="{ item }">
+        <span>{{ formatEmployeeName(item.user) }}</span>
       </template>
-    </VDataTable>
+
+      <template #item.supervisor.name="{ item }">
+        <span>{{ formatEmployeeName(item.supervisor) }}</span>
+      </template>
+    </VDataTableServer>
   </VCard>
 </template>

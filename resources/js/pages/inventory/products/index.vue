@@ -16,8 +16,8 @@ const loading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref('name');
+const orderBy = ref('asc');
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);

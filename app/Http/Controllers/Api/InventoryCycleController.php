@@ -345,9 +345,31 @@ class InventoryCycleController extends Controller
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
 
+        // Calcular totales sobre TODOS los registros (no solo la página actual)
+        $totalsQuery = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
+        $allItems = $totalsQuery->get();
+        
+        $totals = [
+            'surplus' => 0,
+            'shortage' => 0,
+            'netTotal' => 0
+        ];
+        
+        foreach ($allItems as $item) {
+            $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
+            if ($amount > 0) {
+                $totals['surplus'] += $amount;
+            } else {
+                $totals['shortage'] += abs($amount);
+            }
+        }
+        
+        $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
+
         return response()->json([
             'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total()
+            'total' => $paginatedResult->total(),
+            'totals' => $totals
         ]);
     }
 

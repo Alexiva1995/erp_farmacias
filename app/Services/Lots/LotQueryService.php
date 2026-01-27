@@ -226,6 +226,91 @@ class LotQueryService
             ->get();
     }
 
+    public function getLotsWithoutLocationQuery(Request $request)
+    {
+        $query = ProductLot::query()
+            ->select('product_lots.*')
+            ->with(['product.laboratory', 'product.origin', 'supplier'])
+            ->where(function ($q) {
+                $q->whereNull('product_lots.location')
+                    ->orWhere('product_lots.location', '');
+            })
+            ->where('product_lots.quantity', '>', 0); // Solo lotes con cantidad > 0
+
+        $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
+
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    
+                    $q->whereRaw("lot_number REGEXP ?", [$pattern])
+                        ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
+                            $productQuery->whereRaw("name REGEXP ?", [$pattern])
+                                ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                                ->orWhere('barcode', '=', $searchTerm)
+                                ->orWhere('id', '=', $searchTerm);
+                        });
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    $q->where(function ($wordClauses) use ($words) {
+                        foreach ($words as $word) {
+                            $word = trim($word);
+                            if (empty($word)) continue;
+                            $wordPattern = "%{$word}%";
+                            $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
+                                $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
+                                    ->orWhereHas('product', function ($productQuery) use ($wordPattern, $searchTerm) {
+                                        $productQuery->where('name', 'like', $wordPattern)
+                                            ->orWhere('active_ingredient', 'like', $wordPattern)
+                                            ->orWhere('barcode', 'like', $wordPattern)
+                                            ->orWhere('id', 'like', $wordPattern)
+                                            ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                                $labQuery->where('name', 'like', $wordPattern);
+                                            });
+                                    });
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        if ($request->has('laboratoryId') && !empty($request->laboratoryId)) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
+                $productQuery->where('laboratory_id', $request->laboratoryId);
+            });
+        }
+
+        if ($request->has('originId') && !empty($request->originId)) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
+                $productQuery->where('origin_id', $request->originId);
+            });
+        }
+
+        if ($request->has('startDate') && !empty($request->startDate)) {
+            $query->whereDate('expiration_date', '>=', $request->startDate);
+        }
+
+        if ($request->has('endDate') && !empty($request->endDate)) {
+            $query->whereDate('expiration_date', '<=', $request->endDate);
+        }
+
+        if ($request->has('sortBy') && $request->has('orderBy')) {
+            $this->applySorting($query, $request->sortBy, $request->orderBy);
+        } else {
+            // Ordenamiento por defecto: por nombre de producto
+            if (!$this->hasJoin($query, 'products')) {
+                $query->join('products', 'product_lots.product_id', '=', 'products.id');
+            }
+            $query->orderBy('products.name', 'asc');
+        }
+
+        return $query;
+    }
+
     public function getAvailableSuppliers()
     {
         return Supplier::select('id', 'name', 'name')

@@ -110,6 +110,15 @@ class ProductQueryService
         if (!empty($filters['groupId'])) {
             $query->where('group_id', $filters['groupId']);
         }
+
+        // Filtrar productos sin grupo o del grupo actual (útil para añadir productos a un grupo)
+        if (!empty($filters['withoutGroupOrCurrentGroup'])) {
+            $currentGroupId = $filters['withoutGroupOrCurrentGroup'];
+            $query->where(function ($q) use ($currentGroupId) {
+                $q->whereNull('group_id')
+                  ->orWhere('group_id', $currentGroupId);
+            });
+        }
         // filtro de profitability is_locked
         if (!empty($filters['lockedValue'])) {
 
@@ -191,9 +200,9 @@ class ProductQueryService
 
             case 'id':
                 return $query->orderBy('products.id', $orderBy);
+            case 'name':
             case 'product.name':
                 return $query->orderBy('products.name', $orderBy);
-                break;
             case 'created_at':
                 return $query->orderBy('created_at', $orderBy);
                 break;
@@ -229,6 +238,7 @@ class ProductQueryService
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'groupId' => $request->groupId,
+            'withoutGroupOrCurrentGroup' => $request->withoutGroupOrCurrentGroup,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,

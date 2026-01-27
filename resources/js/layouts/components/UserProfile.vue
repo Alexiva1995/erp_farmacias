@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -7,10 +8,27 @@ const handleLogout = async () => {
   await authStore.logout()
 }
 
-// Usamos el nombre del usuario del store, con un valor por defecto
-const userName = computed(() => authStore.user?.name || 'Usuario')
+// Obtener nombre y apellido del usuario
+const userName = computed(() => {
+  const user = authStore.user
+  if (!user) return 'Usuario'
+  
+  // Si tiene employee con name y last_name, usar esos
+  if (user.employee?.name && user.employee?.last_name) {
+    return `${user.employee.name} ${user.employee.last_name}`
+  }
+  
+  // Si solo tiene employee.name
+  if (user.employee?.name) {
+    return user.employee.name
+  }
+  
+  // Fallback a username
+  return user.username || 'Usuario'
+})
+
 const userRole = computed(() => (authStore.isAdmin ? 'Admin' : 'Usuario'))
-const userAvatar = computed(() => authStore.user?.photo || '/src/assets/images/avatars/avatar-1.png')
+const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.user?.photo || '/src/assets/images/avatars/avatar-1.png')
 </script>
 
 <template>
@@ -66,7 +84,7 @@ const userAvatar = computed(() => authStore.user?.photo || '/src/assets/images/a
 
           <VDivider class="my-2" />
 
-          <!-- 👉 Profile -->
+          <!-- 👉 Perfil -->
           <VListItem link>
             <template #prepend>
               <VIcon
@@ -76,52 +94,13 @@ const userAvatar = computed(() => authStore.user?.photo || '/src/assets/images/a
               />
             </template>
 
-            <VListItemTitle>Profile</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 Settings -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="tabler-settings"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>Settings</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 Pricing -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="tabler-currency-dollar"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>Pricing</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 FAQ -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="tabler-help"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>FAQ</VListItemTitle>
+            <VListItemTitle>Perfil</VListItemTitle>
           </VListItem>
 
           <!-- Divider -->
           <VDivider class="my-2" />
 
-          <!-- 👉 Logout -->
+          <!-- 👉 Cerrar Sesión -->
           <VListItem @click="handleLogout">
             <template #prepend>
               <VIcon
@@ -130,7 +109,7 @@ const userAvatar = computed(() => authStore.user?.photo || '/src/assets/images/a
                 size="22"
               />
             </template>
-            <VListItemTitle>Logout</VListItemTitle>
+            <VListItemTitle>Cerrar Sesión</VListItemTitle>
           </VListItem>
         </VList>
       </VMenu>
