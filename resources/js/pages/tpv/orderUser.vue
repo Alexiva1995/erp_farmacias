@@ -11,7 +11,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch, onUnmounted } from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -2798,6 +2798,32 @@ const finalizeAndCheckPending = () => {
     reservedOrderData.value = null;
   }
 };
+
+// Enviamos una petición cada 5 minutos (300,000 ms)
+const startHeartbeat = () => {
+  const interval = setInterval(async () => {
+    try {
+      await axios.get('/api/tpv/heartbeat');
+      console.log("Sesión renovada automáticamente");
+    } catch (error) {
+      // Si el token ya se perdió, intentamos recuperarlo
+      if (error.response?.status === 419) {
+        window.location.reload(); 
+      }
+    }
+  }, 300000); 
+  return interval;
+};
+
+let heartbeatInterval;
+onMounted(() => {
+  heartbeatInterval = startHeartbeat();
+});
+
+onUnmounted(() => {
+  clearInterval(heartbeatInterval);
+});
+
 </script>
 <template>
   <div>

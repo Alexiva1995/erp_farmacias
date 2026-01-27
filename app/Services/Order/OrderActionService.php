@@ -348,6 +348,9 @@ class OrderActionService
                 }
             }
 
+          
+            $order->updateTotals();
+
             DB::commit();
             if ($mainItem) {
                 $mainItem->load([
@@ -402,9 +405,11 @@ class OrderActionService
                             $priceToSet = $item->unit_price_usd;
                             break;
                         case 'BS':
-                            $rate = ($product->sale_price > 0) ? ($product->price_bs / $product->sale_price) : 0;
+                            $salePrice = $product->sale_price ?? 0;
+                            $priceBs = $product->price_bs ?? 0;
+                            $rate = ($salePrice > 0) ? ($priceBs / $salePrice) : 0;
                             // Fallback if rate calculation fails, though product should have prices
-                            if ($rate == 0 && $product->price_bs > 0)
+                            if ($rate == 0 && $priceBs > 0)
                                 $rate = 1; // Unlikely but fail safe to avoid 0
                             $priceToSet = $item->unit_price_usd * $rate;
                             break;
