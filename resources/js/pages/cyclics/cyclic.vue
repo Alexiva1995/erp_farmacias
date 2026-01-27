@@ -81,20 +81,26 @@ const fetchSelectOptions = async () => {
       axios.get("/laboratories"),
       axios.get("/inventory/cycle/users-with-counts")
     ]);
-    laboratories.value = labResponse.data;
+    laboratories.value = labResponse.data || [];
     
     // Formatear usuarios con nombre completo
-    users.value = usersResponse.data.map(user => ({
-      ...user,
-      display_name: user.employee_name && user.employee_last_name
-        ? `${user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()} ${user.employee_last_name.charAt(0).toUpperCase() + user.employee_last_name.slice(1).toLowerCase()}`
-        : user.employee_name
-          ? user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()
-          : user.username || user.email || `Usuario ${user.id}`
-    }));
+    if (usersResponse.data && Array.isArray(usersResponse.data)) {
+      users.value = usersResponse.data.map(user => ({
+        ...user,
+        display_name: user.employee_name && user.employee_last_name
+          ? `${user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()} ${user.employee_last_name.charAt(0).toUpperCase() + user.employee_last_name.slice(1).toLowerCase()}`
+          : user.employee_name
+            ? user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()
+            : user.username || user.email || `Usuario ${user.id}`
+      }));
+    } else {
+      users.value = [];
+    }
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
+    laboratories.value = [];
+    users.value = [];
   } finally {
     isLoadingFilters.value = false;
   }

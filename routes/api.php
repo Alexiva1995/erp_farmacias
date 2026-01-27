@@ -296,6 +296,15 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
 
+    // Rutas del Dashboard
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+        Route::get('/stats', [DashboardController::class, 'getDashboardStats']);
+        Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
+        Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
+        Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']);
+    });
+
 });
 
 // Rutas de Trazabilidad
@@ -636,13 +645,6 @@ Route::prefix('islr')->group(function () {
     Route::delete('/declarations/{id}', [IslrController::class, 'deleteDeclaration']);
     Route::patch('/declarations/{id}/mark-paid', [IslrController::class, 'markAsPaid']);
     Route::patch('/declarations/{id}/mark-unpaid', [IslrController::class, 'markAsUnpaid']);
-});
-Route::prefix('dashboard')->group(function () {
-    Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
-    Route::get('/stats', [DashboardController::class, 'getDashboardStats']);
-    Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
-    Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
-    Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']); // Nueva
 });
 Route::prefix('employee-cleaning-activities')->group(function () {
     Route::get('/', [EmployeeCleaningActivityController::class, 'index']);

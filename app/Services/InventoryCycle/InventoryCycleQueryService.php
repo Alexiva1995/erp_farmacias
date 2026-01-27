@@ -635,7 +635,8 @@ class InventoryCycleQueryService
             $subQuery->where('status', 'completed')
                 ->where('order_date', '>=', '2026-01-25');
             $subQuery->whereHas('cashClosing', function ($cashQuery) {
-                $cashQuery->where('status', 'closed'); 
+                $cashQuery->where('status', 'closed')
+                    ->where('closing_date', '>=', '2026-01-25'); 
                 $cashQuery->has('dailyClosure'); 
             });
         });
