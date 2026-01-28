@@ -19,26 +19,27 @@ use App\Models\ProductLot;
 use App\Services\Resources\ResourceService;
 use App\Models\IndividualOffer;
 use App\Models\CategoryOffer;
+use App\Models\FiscalHistoryDetail;
 
 class OrderActionService
 {
     public function createOrder(array $data): Order
     {
-       // DB::beginTransaction();
+        // DB::beginTransaction();
         try {
             return DB::transaction(function () use ($data) {
-                $existsPending = Order::where('seller_id', $data['seller_id'])  
-                ->where('status', Order::PENDING)
-                ->lockForUpdate()
-                ->exists();
+                $existsPending = Order::where('seller_id', $data['seller_id'])
+                    ->where('status', Order::PENDING)
+                    ->lockForUpdate()
+                    ->exists();
 
                 if ($existsPending) {
                     throw new \Exception('Ya tienes una orden abierta. Procesa esa orden o resérvala antes de crear una nueva.');
                 }
 
                 $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
-                ->where('status', CashClosing::OPEN)
-                ->first();
+                    ->where('status', CashClosing::OPEN)
+                    ->first();
 
                 if (!$openCashRegisterClosing) {
                     throw new \Exception('No se encontró un cierre de caja abierto para el vendedor.');
@@ -57,11 +58,11 @@ class OrderActionService
                 return $order;
             });
 
-          /*  $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
+            /*  $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])
                 ->where('status', CashClosing::OPEN)
                 ->first();*/
 
-           /* if (!$openCashRegisterClosing) {
+            /* if (!$openCashRegisterClosing) {
                 throw new Exception('No se encontró un cierre de caja abierto para el vendedor.');
             } else {
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
@@ -348,7 +349,7 @@ class OrderActionService
                 }
             }
 
-          
+
             $order->updateTotals();
 
             DB::commit();
@@ -364,8 +365,6 @@ class OrderActionService
 
             // Fallback if transaction commited but no items created (qty 0 case handled above)
             return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
-
-
         } catch (InsufficientStockException $e) {
             DB::rollBack();
             Log::warning("Intento de agregar o actualizar productos con stock insuficiente: " . $e->getMessage(), [
@@ -394,6 +393,7 @@ class OrderActionService
             $order->total_amount_usd = $validatedData['total_amount_usd'];
             $order->total_cost = $validatedData['total_cost'];
             $order->currency = $targetCurrency;
+            //   dd($targetCurrency);
             $order->save();
             $order->load('details.product');
             foreach ($order->details as $item) {
@@ -554,6 +554,32 @@ class OrderActionService
             ]);
 
             $fiscalHistory->save();
+
+            foreach ($order->details as $detail) {
+                $product = $detail->product;
+                $priceBs = $product->price_bs;
+                $quantity = $detail->quantity;
+                $isTaxable = ($product->iva == 1);
+                $ivaRate = $isTaxable ? 0.16 : 0;
+                $subtotal = $priceBs * $quantity;
+                $ivaAmount = $subtotal * $ivaRate;
+                $totalItem = $subtotal + $ivaAmount;
+
+                // Insertamos en la tabla de detalles
+                FiscalHistoryDetail::create([
+                    'fiscal_history_id' => $fiscalHistory->id,
+                    'product_id'        => $product->id,
+                    'product_name'      => $product->name,
+                    'quantity'          => $quantity,
+                    'vat_status'        => $isTaxable ? 1 : 0,
+                    'exempt_amount'     => !$isTaxable ? $subtotal : 0,
+                    'iva_amount'        => $ivaAmount,
+                    'total_amount'      => $totalItem,
+                    'big_amount'      => $totalItem,
+                ]);
+            }
+
+
             return $fiscalHistory;
         }
         return $fiscalexist;
@@ -616,7 +642,7 @@ class OrderActionService
                 }
             }
 
-            
+
             if (isset($request->changeAmount)) {
                 $orderId->money_returns = $request->changeAmount;
             }
@@ -730,15 +756,30 @@ class OrderActionService
             }
 
 
-            if ($isFiscalActive) {
+            /*if ($isFiscalActive) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             } else if ($request->generate_invoice) {
                 $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
+            }*/
+
+            // 1. Verificar condiciones globales y de solicitud de fiscal
+            $currency = strtoupper($orderId->currency);
+            $shouldInvoice = $isFiscalActive || $request->generate_invoice || ($currency === 'BS');
+
+            if (!$shouldInvoice) {
+                $shouldInvoice = $orderId->details->contains(function ($detail) {
+                    return optional($detail->product)->iva == 1;
+                });
             }
 
-            if (!$ivaEjecuted) {
+            if ($shouldInvoice) {
+                $this->invoicing($orderId, $request->spe);
+                $ivaEjecuted = true;
+            }
+
+            /*if (!$ivaEjecuted) {
                 foreach ($orderId->details as $detail) {
                     if ($detail->product) {
                         if (!$request->generate_invoice) {
@@ -749,7 +790,7 @@ class OrderActionService
                         }
                     }
                 }
-            }
+            }*/
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
@@ -872,10 +913,10 @@ class OrderActionService
         try {
 
             $alreadyReserved = Order::where('seller_id', $sellerId)
-            ->where('status', Order::RESERVED)
-            ->where('id', '!=', $order->id)
-            ->lockForUpdate() 
-            ->exists();
+                ->where('status', Order::RESERVED)
+                ->where('id', '!=', $order->id)
+                ->lockForUpdate()
+                ->exists();
 
             if ($alreadyReserved) {
                 throw new \Exception("Ya tienes una orden reservada. No puedes tener dos al mismo tiempo.");
@@ -904,42 +945,42 @@ class OrderActionService
 
 
     public function reserveAndAddOrder(Order $order, $sellerId): array
-{
-    try {
-    return DB::transaction(function () use ($order, $sellerId) {
-        $previouslyReserved = Order::where('seller_id', $sellerId)
-            ->where('status', Order::RESERVED)
-            ->where('id', '!=', $order->id)
-            ->lockForUpdate() 
-            ->first();
+    {
+        try {
+            return DB::transaction(function () use ($order, $sellerId) {
+                $previouslyReserved = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::RESERVED)
+                    ->where('id', '!=', $order->id)
+                    ->lockForUpdate()
+                    ->first();
 
-        if ($previouslyReserved) {
-            $previouslyReserved->status = Order::PENDING;
-            $previouslyReserved->save();
+                if ($previouslyReserved) {
+                    $previouslyReserved->status = Order::PENDING;
+                    $previouslyReserved->save();
+                }
+
+                $order->status = Order::RESERVED;
+                $order->seller_id = $sellerId;
+                $order->save();
+                $order->load('seller', 'client', 'details.product');
+                if ($previouslyReserved) {
+                    $previouslyReserved->load('seller', 'client', 'details.product');
+                }
+
+                Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
+
+                return [
+                    'reserved_order' => $order,
+                    'pending_order' => $previouslyReserved,
+                ];
+            });
+        } catch (\Exception $e) {
+            Log::error("Error en reserveAndAddOrder: " . $e->getMessage());
+            throw $e;
         }
-        
-        $order->status = Order::RESERVED;
-        $order->seller_id = $sellerId;
-        $order->save();
-        $order->load('seller', 'client', 'details.product');
-        if ($previouslyReserved) {
-            $previouslyReserved->load('seller', 'client', 'details.product');
-        }
-
-        Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
-
-        return [
-            'reserved_order' => $order,
-            'pending_order' => $previouslyReserved,
-        ];
-    });
-    } catch (\Exception $e) {
-        Log::error("Error en reserveAndAddOrder: " . $e->getMessage());
-        throw $e; 
     }
-}
 
- /*  public function reserveAndAddOrder(Order $order, $sellerId): array
+    /*  public function reserveAndAddOrder(Order $order, $sellerId): array
     {
         DB::beginTransaction();
         try {

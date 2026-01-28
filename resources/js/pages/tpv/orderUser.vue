@@ -677,15 +677,34 @@ const formatOrderItemForFrontend = (backendItem) => {
   const originalPriceCop = parseFloat(product.price_cop) || 0;
 
   // Precio con descuento (unit_cost del pack o precio normal)
-  const discountedPrice =
-    parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
-  const discountedPriceBs = backendItem.unit_cost
+  const discountedPrice = parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
+console.log('moneda de backend');
+    console.log(backendItem);
+  /*const discountedPriceBs = backendItem.unit_cost
     ? originalPriceBs * (discountedPrice / originalPriceBs)
     : originalPriceBs * discountFactor;
 
   const discountedPriceCop = backendItem.unit_cost
     ? originalPriceCop * (discountedPrice / originalPriceCop)
-    : originalPriceCop * discountFactor;
+    : originalPriceCop * discountFactor;*/
+
+let priceFactor = discountFactor; // Por defecto el factor de vencimiento (1 o menos)
+
+if (backendItem.unit_cost) {
+  const unitCost = parseFloat(backendItem.unit_cost);
+  if (selectedDisplayCurrency.value === "BS") {
+    priceFactor = unitCost / originalPriceBs;
+  } else if (selectedDisplayCurrency.value === "COP") {
+    priceFactor = unitCost / originalPriceCop;
+  } else {
+    priceFactor = unitCost / originalPrice; // USD
+  }
+}
+
+// 3. Aplicar el factor resultante a todas las monedas para mantener la paridad
+const discountedPriceBs  = originalPriceBs * priceFactor;
+const discountedPriceCop = originalPriceCop * priceFactor;
+  
 
   // Determinar si hay descuento de pack (precio personalizado diferente al original)
   const hasPackDiscount =
@@ -751,6 +770,8 @@ const fetchOpenOrder = async () => {
       } else {
         orderItems.value = [];
       }
+      console.log('llamando la orden');
+      console.log(orderItems);
     } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
@@ -1153,6 +1174,10 @@ const handleCurrencyChanged = async (newCurrency) => {
         // But basePrice should be present for all valid products now.
         calculatedTotalUSD += usdPrice * qty;
 
+
+        console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
+        console.log(item);
+
         // Calculate Target Currency Total
         if (newCurrency === "BS") {
           calculatedTotal += (item.price_bs || 0) * qty;
@@ -1162,8 +1187,10 @@ const handleCurrencyChanged = async (newCurrency) => {
           // USD
           calculatedTotal += usdPrice * qty;
         }
+         console.log('LLAMANDO ANTES DE ACTUZALIAR MONEDA '+item.price_cop);
       });
-
+     console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
+   
       await axios.patch(`/tpv/orders/${openOrderData.value.id}`, {
         currency: newCurrency,
         total_amount: calculatedTotal,
@@ -1436,12 +1463,11 @@ const updateOrderTotalsInBackend = async () => {
   try {
     const payload = {
       total_amount: total,
-      total_amount_usd: totalAmountUsd.value,
-      total_cost: totalOrderCost.value,
+      total_amount_usd: parseFloat(totalAmountUsd.value) || 0,
+      total_cost: parseFloat(totalOrderCost.value) || 0,
       currency: selectedDisplayCurrency.value,
-      discount_type: selectedDiscountType.value,
+      discount_type: selectedDiscountType.value || null,
     };
-
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
   } catch (error) {
     toast.error("Error al actualizar los totales de la orden.");

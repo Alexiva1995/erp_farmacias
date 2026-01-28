@@ -17,6 +17,7 @@ class FiscalHistoryDetail extends Model
         'exempt_amount',
         'iva_amount',
         'total_amount',
+        'big_amount'
     ];
 
     public function fiscalHistory(): BelongsTo
