@@ -511,15 +511,20 @@ class OrderActionService
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
                 $product = $detail->product;
-                $priceBs = $product->price_bs;
+                //$priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
+                $unitPriceInOrderCurrency = $detail->unit_cost;
+                $unitPriceInUsd = $detail->unit_price_usd;
+
+                $priceBs = (strtoupper($order->currency) !== 'BS') 
+                ? ($unitPriceInUsd * $exchangeRate) 
+                : $unitPriceInOrderCurrency;
 
                 $itemSubtotal = $priceBs * $quantity;
 
                 if ($product->iva == 1) {
                     $ivaRate = 0.16;
-                    $itemTotal = $priceBs * $quantity;
-                    $itemIva = $itemTotal * $ivaRate;
+                    $itemIva = $itemSubtotal * $ivaRate;
                     $totalIva += $itemIva;
                     $taxableAmount += $itemSubtotal;
                 } else {
@@ -556,13 +561,22 @@ class OrderActionService
             $fiscalHistory->save();
 
             foreach ($order->details as $detail) {
+                $unitPriceInOrderCurrency = $detail->unit_cost;
+
                 $product = $detail->product;
-                $priceBs = $product->price_bs;
+                //$priceBs = $product->price_bs;
+
+                $unitPriceInOrderCurrency = $detail->unit_cost;
+                $unitPriceInUsd = $detail->unit_price_usd;
+
+                $priceBs = (strtoupper($order->currency) !== 'BS') 
+                ? ($unitPriceInUsd * $exchangeRate) 
+                : $unitPriceInOrderCurrency;
+
                 $quantity = $detail->quantity;
                 $isTaxable = ($product->iva == 1);
-                $ivaRate = $isTaxable ? 0.16 : 0;
-                $subtotal = $priceBs * $quantity;
-                $ivaAmount = $subtotal * $ivaRate;
+                $subtotal = $priceBs * $detail->quantity;
+                $ivaAmount = $isTaxable ? ($subtotal * 0.16) : 0;
                 $totalItem = $subtotal + $ivaAmount;
 
                 // Insertamos en la tabla de detalles
@@ -605,6 +619,7 @@ class OrderActionService
 
             // Save discount details if provided
             if ($request->has('items')) {
+    
                 foreach ($request->items as $itemData) {
                     if (isset($itemData['order_detail_id'])) {
                         $detail = OrderDetail::where('id', $itemData['order_detail_id'])
@@ -618,11 +633,11 @@ class OrderActionService
 
                             if ($orderId->currency === 'COP') {
                                 $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
-                                $detail->unit_cost = ceil($itemData['price'] / 100) * 100;
+                                $detail->unit_cost = ceil($itemData['unit_cost'] / 100) * 100;
                                 $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100;
                             } else {
                                 $detail->price = $itemData['price'] * $detail->quantity;
-                                $detail->unit_cost = $itemData['price'];
+                                $detail->unit_cost = $itemData['unit_cost'];
                                 $detail->price_before_discount = $itemData['price_before_discount'] * $detail->quantity;
                             }
 
