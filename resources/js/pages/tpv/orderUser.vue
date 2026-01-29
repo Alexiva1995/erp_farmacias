@@ -671,21 +671,41 @@ const formatOrderItemForFrontend = (backendItem) => {
       ? 1 - backendItem.discount_percentage / 100
       : 1;
 
+
+  const taxMultiplier = product.iva == 1 ? 0.16 : 0;
+
   // Precio original del producto
   const originalPrice = parseFloat(product.sale_price) || 0;
   const originalPriceBs = parseFloat(product.price_bs) || 0;
   const originalPriceCop = parseFloat(product.price_cop) || 0;
 
   // Precio con descuento (unit_cost del pack o precio normal)
-  const discountedPrice =
-    parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
-  const discountedPriceBs = backendItem.unit_cost
+  const discountedPrice = parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
+
+  /*const discountedPriceBs = backendItem.unit_cost
     ? originalPriceBs * (discountedPrice / originalPriceBs)
     : originalPriceBs * discountFactor;
 
   const discountedPriceCop = backendItem.unit_cost
     ? originalPriceCop * (discountedPrice / originalPriceCop)
-    : originalPriceCop * discountFactor;
+    : originalPriceCop * discountFactor;*/
+
+let priceFactor = discountFactor; // Por defecto el factor de vencimiento (1 o menos)
+
+if (backendItem.unit_cost) {
+  const unitCost = parseFloat(backendItem.unit_cost);
+  if (selectedDisplayCurrency.value === "BS") {
+    priceFactor = unitCost / originalPriceBs;
+  } else if (selectedDisplayCurrency.value === "COP") {
+    priceFactor = unitCost / originalPriceCop;
+  } else {
+    priceFactor = unitCost / originalPrice; // USD
+  }
+}
+
+// 3. Aplicar el factor resultante a todas las monedas para mantener la paridad
+const discountedPriceBs  = originalPriceBs * priceFactor;
+const discountedPriceCop = originalPriceCop * priceFactor;
 
   // Determinar si hay descuento de pack (precio personalizado diferente al original)
   const hasPackDiscount =
@@ -712,7 +732,7 @@ const formatOrderItemForFrontend = (backendItem) => {
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
     laboratory: product.laboratory ? product.laboratory.name : "N/A",
-    taxRate: product.iva == 1 ? 0.16 : 0,
+    taxRate: taxMultiplier,
     pack_id: backendItem.pack_id || null,
     discount_percentage: parseFloat(backendItem.discount_percentage) || 0,
     discount_type: backendItem.discount_type || null,
@@ -751,6 +771,8 @@ const fetchOpenOrder = async () => {
       } else {
         orderItems.value = [];
       }
+      console.log('llamando la orden');
+      console.log(orderItems);
     } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
@@ -1153,6 +1175,10 @@ const handleCurrencyChanged = async (newCurrency) => {
         // But basePrice should be present for all valid products now.
         calculatedTotalUSD += usdPrice * qty;
 
+
+        console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
+        console.log(item);
+
         // Calculate Target Currency Total
         if (newCurrency === "BS") {
           calculatedTotal += (item.price_bs || 0) * qty;
@@ -1162,8 +1188,10 @@ const handleCurrencyChanged = async (newCurrency) => {
           // USD
           calculatedTotal += usdPrice * qty;
         }
+         console.log('LLAMANDO ANTES DE ACTUZALIAR MONEDA '+item.price_cop);
       });
-
+     console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
+   
       await axios.patch(`/tpv/orders/${openOrderData.value.id}`, {
         currency: newCurrency,
         total_amount: calculatedTotal,
@@ -1436,12 +1464,11 @@ const updateOrderTotalsInBackend = async () => {
   try {
     const payload = {
       total_amount: total,
-      total_amount_usd: totalAmountUsd.value,
-      total_cost: totalOrderCost.value,
+      total_amount_usd: parseFloat(totalAmountUsd.value) || 0,
+      total_cost: parseFloat(totalOrderCost.value) || 0,
       currency: selectedDisplayCurrency.value,
-      discount_type: selectedDiscountType.value,
+      discount_type: selectedDiscountType.value || null,
     };
-
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
   } catch (error) {
     toast.error("Error al actualizar los totales de la orden.");
@@ -2145,16 +2172,14 @@ const handleBuysCompletion = async (
     formData.append("spe_surcharge_amount", spe_surcharge_amount);
 
     const mappedItems = orderItems.value.map((item) => {
-      // 1. Determine Base Price in Current Currency
-      let finalPrice = getItemPriceByCurrency(
-        item,
-        selectedDisplayCurrency.value,
-      );
 
-      let finalPriceBeforeDiscount = getItemPriceByCurrency(
-        item,
-        selectedDisplayCurrency.value,
-      );
+    const isTaxable = item.taxRate != 0;
+    const taxRateValue = isTaxable ? 0.16 : 0;
+    const taxMultiplier = isTaxable ? 1.16 : 1;
+
+      // 1. Determine Base Price in Current Currency
+      let finalPrice = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
+      let finalPriceBeforeDiscount = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
 
       // 2. Determine Discount Details
       let dType = null;
@@ -2163,8 +2188,7 @@ const handleBuysCompletion = async (
 
       const productPct = parseFloat(item.discount_percentage || 0);
 
-      const globalPct =
-        currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
+      const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
 
       // Determine Winner
       if (globalPct > productPct) {
@@ -2187,6 +2211,13 @@ const handleBuysCompletion = async (
       if (dPercent > 0) {
         finalPrice = finalPriceBeforeDiscount * (1 - dPercent / 100);
       }
+      
+      const ivaAmount = finalPrice * taxRateValue;
+      let finalPriceTax = (finalPrice * taxMultiplier);
+      let finalPriceBeforeDiscountTax = (finalPriceBeforeDiscount * taxMultiplier);
+
+      let finalIva;
+      finalIva = (selectedDisplayCurrency.value === 'COP') ? roundUpToNearestHundred(ivaAmount) : parseFloat(ivaAmount.toFixed(2));
 
       // 4. Rounding for specific currencies if needed (e.g. COP)
       // getItemPriceByCurrency usually handles base rounding, but discount might introduce decimals.
@@ -2197,8 +2228,11 @@ const handleBuysCompletion = async (
 
       return {
         order_detail_id: item.order_detail_id,
-        price: finalPrice,
-        price_before_discount: finalPriceBeforeDiscount,
+        unit_cost: finalPrice,
+        iva_amount: finalIva,
+        price: finalPriceTax,
+        tax: item.taxRate,
+        price_before_discount: finalPriceBeforeDiscountTax,
         discount_percentage: dPercent > 0 ? dPercent : null,
         discount_type: dType,
         discount_source_id: dSourceId,
@@ -2722,7 +2756,7 @@ const itemsForTicket = computed(() => {
 
   return itemsToPrint.value.map((item) => {
     // Logic for Best Discount on Ticket
-
+    const qty = parseFloat(item.quantity || item.selectedQuantity || 1);
     const productPct = parseFloat(item.discount_percentage || 0);
 
     const globalPct =
