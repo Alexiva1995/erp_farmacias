@@ -13,8 +13,8 @@ const totalProductLots = ref(0);
 const loading = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref("id");
-const orderBy = ref("desc");
+const sortBy = ref("product.name");
+const orderBy = ref("asc");
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -137,8 +137,8 @@ onMounted(() => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key || "id";
-  orderBy.value = options.sortBy[0]?.order || "desc";
+  sortBy.value = options.sortBy[0]?.key || "product.name";
+  orderBy.value = options.sortBy[0]?.order || "asc";
 };
 
 const handleSort = (sortOptions) => {

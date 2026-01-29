@@ -30,7 +30,7 @@ const paymentsOrderBy = ref();
 
 const searchQuery = ref("");
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(25);
 const sortBy = ref();
 const orderBy = ref();
 
@@ -138,7 +138,7 @@ const clearFilters = () => {
 const clearPaymentFilters = () => {
   searchQuery.value = "";
   page.value = 1;
-  itemsPerPage.value = 10;
+  itemsPerPage.value = 25;
   sortBy.value = null;
   orderBy.value = null;
   clientFilter.value = null;
