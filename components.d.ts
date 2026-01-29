@@ -173,6 +173,7 @@ declare module 'vue' {
     LoanFilters: typeof import('./resources/js/components/LoanFilters.vue')['default']
     LoanTable: typeof import('./resources/js/components/LoanTable.vue')['default']
     LotDistributionModal: typeof import('./resources/js/components/dialogs/LotDistributionModal.vue')['default']
+    LotsWithoutLocationTable: typeof import('./resources/js/components/LotsWithoutLocationTable.vue')['default']
     LotteryDialoge: typeof import('./resources/js/components/dialogs/LotteryDialoge.vue')['default']
     LotteryFiltrers: typeof import('./resources/js/components/LotteryFiltrers.vue')['default']
     LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
@@ -322,6 +323,5 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }
