@@ -1056,6 +1056,24 @@ const verifyClient = async (identification) => {
   }
 };
 
+
+const reservedOrderCliente = async () => {
+try {
+ const response = await axios.get(`/tpv/order/searchReserved`);
+ if (response.data && response.data.message) {
+      toast.success(response.data.message);
+    }
+  await fetchOpenOrder();
+} catch (error) {
+    if (error.response && error.response.data && error.response.data.message) {
+      toast.warning(error.response.data.message);
+    } else {
+      console.error("Error al verificar la orden reservada:", error);
+      toast.error("Ocurrió un error inesperado al procesar la orden.");
+    }
+  }
+};
+
 const addOrden = async (id) => {
   const params = {
     client_id: id,
@@ -2282,7 +2300,7 @@ const handleBuysCompletion = async (
           name !== "NULL"
         );
       });
-      pendingOpenOrder.value = response.data.data.order;
+      //pendingOpenOrder.value = response.data.data.order;
       /* if (response.data.data.order) {
         hasOpenOrder.value = true;
         openOrderData.value = response.data.data.order;
@@ -2807,7 +2825,7 @@ const handleExternalSort = async (sortData) => {
 const finalizeAndCheckPending = () => {
   showBuysModal.value = false;
   console.log("Revisando órdenes pendientes...", pendingOpenOrder.value);
-  if (pendingOpenOrder.value) {
+  /*if (pendingOpenOrder.value) {
     hasOpenOrder.value = true;
     openOrderData.value = pendingOpenOrder.value;
     selectedClient.value = pendingOpenOrder.value.client;
@@ -2822,7 +2840,7 @@ const finalizeAndCheckPending = () => {
     pendingOpenOrder.value = null;
     reservedOrderData.value = null;
     toast.info("Orden reservada cargada automáticamente.");
-  } else {
+  } else {*/
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedDisplayCurrency.value = "COP";
@@ -2830,7 +2848,7 @@ const finalizeAndCheckPending = () => {
     selectedClient.value = null;
     clientIdentification.value = "";
     reservedOrderData.value = null;
-  }
+  //}
 };
 
 // Enviamos una petición cada 5 minutos (300,000 ms)
@@ -2906,6 +2924,7 @@ onUnmounted(() => {
       <OrderClienteCard
         v-model="clientIdentification"
         @verify-client="verifyClient"
+        @reserved-order-cliente="reservedOrderCliente"
       />
     </div>
 

@@ -892,24 +892,24 @@ class OrderActionService
             $current_cash->update();
 
 
-            $reservedOrder = Order::where('seller_id', $sellerId)
+            /*$reservedOrder = Order::where('seller_id', $sellerId)
                 ->where('status', Order::RESERVED)
-                ->first();
+                ->first();*/
 
 
             $newPendingOrder = null;
 
-            if ($reservedOrder) {
+            /*if ($reservedOrder) {
                 $reservedOrder->status = Order::PENDING;
                 $reservedOrder->save();
                 $reservedOrder->load('seller', 'client', 'details.product');
                 $newPendingOrder = $reservedOrder;
-            }
+            }*/
 
             $orderId->load(['seller', 'client', 'details.product']);
             DB::commit();
             return [
-                'order' => $newPendingOrder,
+                //'order' => $newPendingOrder,
                 'orderCompletada' => $orderId,
             ];
         } catch (\Throwable $e) {

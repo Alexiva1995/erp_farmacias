@@ -1600,7 +1600,7 @@ const getAvailableMethodsForCurrency = (currency) => {
         <span class="text-h5 font-weight-bold pr-1">Compra </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
+        <VBtn icon variant="text"  @click="currentProgress === 0 ? closeModal() : handleCancelAfterTicket()">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
