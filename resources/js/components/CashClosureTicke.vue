@@ -273,7 +273,7 @@ const hasAnyReference = computed(() => {
               <span>Vendedor:</span>
             </td>
             <td style="text-align: right">
-              <span>{{ props.cashData.seller_id }}</span>
+              <span>{{ props.cashData.seller?.username }}</span>
             </td>
           </tr>
         </tbody>
