@@ -120,9 +120,12 @@ class SuppliersIaOrderAssistantController extends Controller
                 $stock = $items->lote_quantity ?? 0;
                 $ventas = $items->total_sold_completed ?? 0;
 
-                // Correction: Use average if filter type is average
-                $promedio = $items->promedio_calculado ?? 0;
-                $baseCalculation = ($filtros["tipo_filtracion"] == "average") ? $promedio : $ventas;
+                // Determine base calculation correctly for Combinado
+                if ($filtros["tipo_filtracion"] == "combinado") {
+                    $baseCalculation = ($promedio + $ventas) / 2;
+                } else {
+                    $baseCalculation = ($filtros["tipo_filtracion"] == "average") ? $promedio : $ventas;
+                }
 
                 if (($filtros['stock'] ?? '') === 'fallas') {
                     $items->solicitar = $stock - $baseCalculation;
