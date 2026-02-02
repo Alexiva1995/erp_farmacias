@@ -146,16 +146,24 @@ class ProductRepository
                 AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
                 AND orders.status = "Completed")';
 
+        $calcDiff = "";
+        $stockQuery = $this->subConsultaParaCalcularStockPorLotes;
+
         if ($tipoFiltracion == "sales") {
             // Diferencia usando ventas: stock - total_sold_completed
-            $columnas[] = DB::raw('stock - (' . $subqueryTotalSold . ') AS diferencia_product');
+            $calcDiff = '(' . $stockQuery . ') - (' . $subqueryTotalSold . ')';
         } elseif ($tipoFiltracion == "combinado") {
             // Diferencia usando combinado: stock - ((total_sold_completed + promedio_calculado) / 2)
-            $columnas[] = DB::raw('stock - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2) AS diferencia_product');
+            $calcDiff = '(' . $stockQuery . ') - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2)';
         } else {
             // Diferencia usando promedio (default): stock - promedio_calculado
-            $columnas[] = DB::raw('stock - (' . $promedio_calculado . ') AS diferencia_product');
+            $calcDiff = '(' . $stockQuery . ') - (' . $promedio_calculado . ')';
         }
+
+        $columnas[] = DB::raw("CASE 
+            WHEN ($calcDiff) > 0 THEN CEIL($calcDiff) 
+            ELSE FLOOR($calcDiff) 
+        END AS diferencia_product");
 
         // calcular demanda_ajustada con promedio_calculado
         $columnas[] = DB::raw('COALESCE(
@@ -364,22 +372,24 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 12';
         }
 
-        // Calcular demanda segun el tipo de filtracion
-        $demanda = $promedio_calculado;
-        if (isset($filtros["tipo_filtracion"]) && $filtros["tipo_filtracion"] == 'sales') {
-            $demanda = "total_sold_completed";
-        } elseif (isset($filtros["tipo_filtracion"]) && $filtros["tipo_filtracion"] == 'combinado') {
-            $demanda = "((" . $promedio_calculado . " + total_sold_completed) / 2)";
+        // calcular solicitar
+        // Subconsulta para total_sold_completed (reutilizable)
+        $subqueryTotalSold = '(
+                SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND orders.status = "Completed"
+            )';
+
+        // calcular solicitar
+        $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
+        if ($tipo_filtracion == "combinado") {
+            $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS solicitar');
+        } else {
+            $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
         }
-
-        // Calculo base: Stock - Demanda
-        $calculoBase = $this->subConsultaParaCalcularStockPorLotes . ' - (' . $demanda . ')';
-
-        // Aplicar redondeo: Positivo -> CEIL (Exceso), Negativo -> FLOOR (Falta)
-        $columnas[] = DB::raw("CASE 
-            WHEN ($calculoBase) > 0 THEN CEIL($calculoBase) 
-            ELSE FLOOR($calculoBase) 
-        END AS solicitar");
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
