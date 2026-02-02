@@ -114,24 +114,25 @@ class SuppliersIaOrderAssistantController extends Controller
                     $items->solicitar = -$resultado;
                 }
 
-                $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
-            } else {
-                // AO ya está incluido en el cálculo SQL, pero verificamos que esté correcto
-                // Si el cálculo SQL no incluyó AO correctamente, lo ajustamos
                 $solicitarCalculado = $items->solicitar;
                 $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                 // Recalcular para asegurar que AO esté incluido
                 $stock = $items->lote_quantity ?? 0;
                 $ventas = $items->total_sold_completed ?? 0;
-                $stock = $items->lote_quantity ?? 0;
-                $ventas = $items->total_sold_completed ?? 0;
+
+                // Correction: Use average if filter type is average
+                $promedio = $items->promedio_calculado ?? 0;
+                $baseCalculation = ($filtros["tipo_filtracion"] == "average") ? $promedio : $ventas;
 
                 if (($filtros['stock'] ?? '') === 'fallas') {
-                    $items->solicitar = $stock - $ventas;
+                    $items->solicitar = $stock - $baseCalculation;
                 } else {
-                    $items->solicitar = $stock - $ventas - $aoActual;
+                    $items->solicitar = $stock - $baseCalculation - $aoActual;
                 }
             }
+
+            // Apply rounding to ALL types (combinado and standard)
+            $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
 
             // Si el producto tiene ventas 0 y stock 0, debe ser negativo (falla)
             // NO forzar a 1, debe calcularse como negativo
@@ -194,10 +195,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
         if ($filtrosFallas["tipo_filtracion"] == "average") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-        } else if ($filtrosFallas["tipo_filtracion"] == "sales") {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
         } else {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
+            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
         }
 
         if ($productosFallas == null) {
@@ -460,128 +459,128 @@ class SuppliersIaOrderAssistantController extends Controller
 
 
     public function getProductosMarcados(Request $request): JsonResponse
-{
-    /*try {
-        $perPage = $request->query('perPage', 10);
-        $sortBy = $request->query('sortBy', 'id');
-        $order = $request->query('order', 'desc');
-        $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
-            (int) $perPage, 
-            $sortBy, 
-            $order
-        );
-       
-        return response()->json($productos);
-        
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Error al obtener productos'], 500);
-    }*/
+    {
+        /*try {
+            $perPage = $request->query('perPage', 10);
+            $sortBy = $request->query('sortBy', 'id');
+            $order = $request->query('order', 'desc');
+            $productos = $this->autoOrder->getMarkedProductsWithoutSupplier(
+                (int) $perPage, 
+                $sortBy, 
+                $order
+            );
 
-    try {
+            return response()->json($productos);
 
-        $respuesta = [
-            "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
-            "paginate" => [],
-        ];
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al obtener productos'], 500);
+        }*/
 
-        $filtros = [
-            "itemsPerPage" => $request->itemsPerPage,
-            "page" => $request->page,
-            "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
-            "lapso_de_tiempo" => $request->lapso_de_tiempo,
-            "is_ordered"      => true,
-        ];
+        try {
 
-        if ($request->filled("orderBy") && $request->filled("sortBy")) {
-            $filtros["orderBy"] = $request->orderBy;
-            $filtros["sortBy"] = $request->sortBy;
-        }
+            $respuesta = [
+                "tipo_filtracion" => $request->tipo_filtracion,
+                "tipo_vista" => $request->tipo_vista,
+                "paginate" => [],
+            ];
 
-        if ($request->filled("stock") && $request->stock !== 'all') {
-            $filtros["stock"] = $request->stock;
-        }
+            $filtros = [
+                "itemsPerPage" => $request->itemsPerPage,
+                "page" => $request->page,
+                "tipo_filtracion" => $request->tipo_filtracion,
+                "tipo_vista" => $request->tipo_vista,
+                "lapso_de_tiempo" => $request->lapso_de_tiempo,
+                "is_ordered" => true,
+            ];
 
-        if ($request->filled("laboratoryId")) {
-            $filtros["laboratoryId"] = $request->laboratoryId;
-        }
+            if ($request->filled("orderBy") && $request->filled("sortBy")) {
+                $filtros["orderBy"] = $request->orderBy;
+                $filtros["sortBy"] = $request->sortBy;
+            }
 
-        if ($request->filled("groups")) {
-            $filtros["groups"] = $request->groups;
-        }
+            if ($request->filled("stock") && $request->stock !== 'all') {
+                $filtros["stock"] = $request->stock;
+            }
 
-        if ($request->filled("lapso_de_tiempo")) {
-            $timeZone = new DateTimeZone(config("app.timezone"));
-            $dateToday = new DateTime("now", $timeZone);
-            $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
-            $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $previousDate = new DateTime("now", $timeZone);
-            $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
-            $filtros["previousDate"] = $previousDate->format("Y-m-d");
-        }
+            if ($request->filled("laboratoryId")) {
+                $filtros["laboratoryId"] = $request->laboratoryId;
+            }
 
-        if ($respuesta["tipo_filtracion"] == "sales") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-        }else{
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        }
+            if ($request->filled("groups")) {
+                $filtros["groups"] = $request->groups;
+            }
 
-         $respuesta["paginate"]->each(function ($items) use ($filtros) {
-            $items = $this->product->calcularAOProduct($items);
-            $ventasCero = ($items->total_sold_completed ?? 0) == 0;
-            $stockCero = ($items->lote_quantity ?? 0) == 0;
-            $esProductoSinVentasNiStock = $ventasCero && $stockCero;
+            if ($request->filled("lapso_de_tiempo")) {
+                $timeZone = new DateTimeZone(config("app.timezone"));
+                $dateToday = new DateTime("now", $timeZone);
+                $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
+                $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
+                $previousDate = new DateTime("now", $timeZone);
+                $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
+                $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+                $filtros["previousDate"] = $previousDate->format("Y-m-d");
+            }
 
-            if ($filtros["tipo_filtracion"] == "combinado") {
-                $filtrosVentas = $filtros;
-                $filtrosVentas["id"] = $items->id;
-                $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
-
-                if ($itemVentas) {
-                    $itemVentas = $this->product->calcularAOProduct($itemVentas);
-
-                    $ventasTotales = $itemVentas->total_sold_completed ?? 0;
-                    $promedio = $items->promedio_calculado ?? 0;
-                    $stockActual = $items->lote_quantity ?? 0;
-                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
-
-                    $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
-
-                    $items->solicitar = -$resultado;
-                } else {
-                    $promedio = $items->promedio_calculado ?? 0;
-                    $stockActual = $items->lote_quantity ?? 0;
-                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
-
-                    $resultado = $promedio - $stockActual - $autoOrder;
-
-                    $items->solicitar = -$resultado;
-                }
-
-                $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
+            if ($respuesta["tipo_filtracion"] == "sales") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
             } else {
-                $solicitarCalculado = $items->solicitar;
-                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-                $stock = $items->lote_quantity ?? 0;
-                $ventas = $items->total_sold_completed ?? 0;
-                $items->solicitar = $stock - $ventas - $aoActual;
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
             }
-            if ($esProductoSinVentasNiStock) {
-                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-                $items->solicitar = 0 - $aoActual;
-                if ($aoActual == 0) {
-                    $items->solicitar = -1;
-                }
-            }
-        });
 
-        return ApiResponse::success($respuesta, "ok", 200);
-        
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Error al obtener productos'], 500);
+            $respuesta["paginate"]->each(function ($items) use ($filtros) {
+                $items = $this->product->calcularAOProduct($items);
+                $ventasCero = ($items->total_sold_completed ?? 0) == 0;
+                $stockCero = ($items->lote_quantity ?? 0) == 0;
+                $esProductoSinVentasNiStock = $ventasCero && $stockCero;
+
+                if ($filtros["tipo_filtracion"] == "combinado") {
+                    $filtrosVentas = $filtros;
+                    $filtrosVentas["id"] = $items->id;
+                    $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
+
+                    if ($itemVentas) {
+                        $itemVentas = $this->product->calcularAOProduct($itemVentas);
+
+                        $ventasTotales = $itemVentas->total_sold_completed ?? 0;
+                        $promedio = $items->promedio_calculado ?? 0;
+                        $stockActual = $items->lote_quantity ?? 0;
+                        $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
+
+                        $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
+
+                        $items->solicitar = -$resultado;
+                    } else {
+                        $promedio = $items->promedio_calculado ?? 0;
+                        $stockActual = $items->lote_quantity ?? 0;
+                        $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
+
+                        $resultado = $promedio - $stockActual - $autoOrder;
+
+                        $items->solicitar = -$resultado;
+                    }
+
+                    $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
+                } else {
+                    $solicitarCalculado = $items->solicitar;
+                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
+                    $stock = $items->lote_quantity ?? 0;
+                    $ventas = $items->total_sold_completed ?? 0;
+                    $items->solicitar = $stock - $ventas - $aoActual;
+                }
+                if ($esProductoSinVentasNiStock) {
+                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
+                    $items->solicitar = 0 - $aoActual;
+                    if ($aoActual == 0) {
+                        $items->solicitar = -1;
+                    }
+                }
+            });
+
+            return ApiResponse::success($respuesta, "ok", 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al obtener productos'], 500);
+        }
     }
-}
 
 }
