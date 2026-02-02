@@ -219,6 +219,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
         Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
         Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
+        Route::get("/order/searchReserved", [OrderController::class, "getSearchReserved"]);
         Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
         Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
         Route::get('/orders/all', [OrderController::class, 'getAllOrder']);

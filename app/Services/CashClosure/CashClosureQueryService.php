@@ -22,7 +22,10 @@ class CashClosureQueryService
     {
         $sellerId = Auth::id();
         // $sellerId = 2;
-        return CashClosing::query()->where('seller_id', $sellerId)->where('status', CashClosing::CLOSED)->with('orders.details.product');
+        return CashClosing::query()->where('seller_id', $sellerId)->where('status', CashClosing::CLOSED)->with([
+        'seller',                     
+        'orders.details.product',
+        ]);
     }
 
 

@@ -16,7 +16,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update:modelValue', 'verify-client']);
+const emit = defineEmits(['update:modelValue', 'verify-client', 'reserved-order-cliente']);
 const identificationInput = ref(props.modelValue);
 
 watch(() => props.modelValue, (newVal) => {
@@ -34,6 +34,10 @@ const updateIdentification = (value) => {
 const handleRealizarPedido = () => {
   emit('verify-client', identificationInput.value);
 };
+
+const reservadaPedido = () => {
+  emit('reserved-order-cliente');
+};
 </script>
 <template>
   <VCard class="mb-6">
@@ -48,14 +52,34 @@ const handleRealizarPedido = () => {
           />
         </VCol>
         <VCol v-if="showButton" cols="12" md="3">
-          <VBtn
-            color="success"
-            prepend-icon="tabler-search"
-            block
-            @click="handleRealizarPedido"
-          >
-            {{ buttonText }}
-          </VBtn>
+         
+
+
+          <VRow>
+
+  <VCol v-if="showButton" cols="6" md="6">
+    <VBtn
+      color="success"
+      prepend-icon="tabler-search"
+      block
+      @click="handleRealizarPedido"
+    >
+      {{ buttonText }}
+    </VBtn>
+  </VCol>
+
+  <VCol v-if="showButton" cols="6" md="6">
+    <VBtn
+      color="warning"
+      prepend-icon="tabler-archive"
+      block
+      @click="reservadaPedido"
+    >
+      Reservada
+    </VBtn>
+  </VCol>
+</VRow>
+
         </VCol>
       </VRow>
     </VCardText>

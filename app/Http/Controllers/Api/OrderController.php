@@ -394,4 +394,29 @@ class OrderController extends Controller
         }
     }
 
+    public function getSearchReserved(){
+
+    $sellerId = Auth::id();
+
+    $hasPending = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::PENDING)
+                    ->exists();
+
+    if ($hasPending) {
+        return response()->json(['message' => 'Ya tienes una orden pendiente activa.'], 400);
+    }
+
+    $order = Order::where('seller_id', $sellerId)
+                ->where('status', Order::RESERVED)
+                ->first();
+    if ($order) {
+        $order->status = Order::PENDING;
+        $order->save();
+        
+        return response()->json(['message' => 'Orden actualizada.']);
+    }
+
+    return response()->json(['message' => 'No se encontró ninguna orden reservada.'], 404);
+
+    }
 }

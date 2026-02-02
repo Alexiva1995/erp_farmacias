@@ -43,7 +43,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
               <span>Vendedor:</span>
             </td>
             <td style="text-align: right">
-              <span>{{ props.cashData.seller_id }}</span>
+              <span>{{ props.cashData.seller?.username }}</span>
             </td>
           </tr>
         </tbody>
