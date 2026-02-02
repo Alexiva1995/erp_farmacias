@@ -364,8 +364,22 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 12';
         }
 
-        // calcular solicitar
-        $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
+        // Calcular demanda segun el tipo de filtracion
+        $demanda = $promedio_calculado;
+        if (isset($filtros["tipo_filtracion"]) && $filtros["tipo_filtracion"] == 'sales') {
+            $demanda = "total_sold_completed";
+        } elseif (isset($filtros["tipo_filtracion"]) && $filtros["tipo_filtracion"] == 'combinado') {
+            $demanda = "((" . $promedio_calculado . " + total_sold_completed) / 2)";
+        }
+
+        // Calculo base: Stock - Demanda
+        $calculoBase = $this->subConsultaParaCalcularStockPorLotes . ' - (' . $demanda . ')';
+
+        // Aplicar redondeo: Positivo -> CEIL (Exceso), Negativo -> FLOOR (Falta)
+        $columnas[] = DB::raw("CASE 
+            WHEN ($calculoBase) > 0 THEN CEIL($calculoBase) 
+            ELSE FLOOR($calculoBase) 
+        END AS solicitar");
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
 
@@ -1002,7 +1016,7 @@ class ProductRepository
             } else if ($filtros["is_colombia"] == false) {
                 $consulta->where("is_colombian_origin", "=", 0);
             }
-        } 
+        }
 
         if (array_key_exists("is_ordered", $filtros)) {
             $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
