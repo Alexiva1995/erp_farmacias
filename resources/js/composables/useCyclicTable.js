@@ -38,7 +38,11 @@ export function useCyclicTable(endpointPrefix, filters) {
 
     try {
       const response = await axios.get(`${endpointPrefix}/count`, { params });
-      items.value = response.data.data;
+      items.value = (response.data.data || []).map(item => ({
+        ...item,
+        product_id: item.product_id ?? item.product?.id ?? null,
+        productId: item.product_id ?? item.product?.id ?? null,
+      }));
       totalItems.value = response.data.total;
     } catch (error) {
       console.error(`Error al obtener datos de ${endpointPrefix}/count:`, error);

@@ -12,8 +12,8 @@ const loading = ref(false);
 const isClosing = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(25);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref("product.name");
+const orderBy = ref("asc");
 const filters = reactive({
   searchQuery: "",
   startDate: null,
@@ -50,8 +50,10 @@ const fetchData = async () => {
     const response = await axios.get("/inventory/cash-close-items", { params });
     counts.value = response.data.data.map((item) => ({
       id: item.id,
+      productId: item.product_id,
       discrepancy: item.discrepancy,
       product: { 
+        id: item.product_id,
         name: item.product_name, 
         sale_price: item.product_sale_price,
         unit_cost: item.product_unit_cost,
@@ -125,8 +127,8 @@ const updateTableOptions = (options) => {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
   } else {
-    sortBy.value = undefined;
-    orderBy.value = undefined;
+    sortBy.value = "product.name";
+    orderBy.value = "asc";
   }
 };
 

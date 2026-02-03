@@ -1,10 +1,10 @@
 <script setup>
 import CycleSummaryFilters from "@/components/CycleSummaryFilters.vue";
 import CycleSummaryTable from "@/components/CycleSummaryTable.vue";
-import CycleDetailsModal from "@/components/dialogs/CycleDetailsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 const cycles = ref([]);
 const totalCycles = ref(0);
@@ -19,9 +19,7 @@ const endDate = ref(null);
 const cycleStatus = ref(null);
 const isLoadingFilters = ref(false);
 
-// Modal state
-const showCycleDetailsModal = ref(false);
-const selectedCycleId = ref(null);
+const router = useRouter();
 
 const fetchCycles = async () => {
   loading.value = true;
@@ -100,8 +98,7 @@ const handleSort = (sortOptions) => {
 };
 
 const viewCycleDetails = (cycleId) => {
-  selectedCycleId.value = cycleId;
-  showCycleDetailsModal.value = true;
+  router.push(`/cyclics/${cycleId}/details`);
 };
 </script>
 
@@ -126,10 +123,5 @@ const viewCycleDetails = (cycleId) => {
       @view-cycle-details="viewCycleDetails"
     />
 
-    <!-- Modal de detalles del ciclo -->
-    <CycleDetailsModal
-      v-model="showCycleDetailsModal"
-      :cycle-id="selectedCycleId"
-    />
   </div>
 </template>

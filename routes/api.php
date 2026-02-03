@@ -161,6 +161,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);
 
     // Rutas de Inventario
+    // Ejemplo: GET /api/inventory/cycle/1
     Route::get("/products/count", [InventoryCycleController::class, "getProductCount"]);
     Route::post("/products/count/{countId}/process", [InventoryCycleController::class, "processCountAction"]);
         Route::prefix("inventory")->group(function () {
