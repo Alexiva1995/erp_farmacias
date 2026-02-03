@@ -16,6 +16,7 @@ const emits = defineEmits([
 ]);
 
 const headers = [
+  { title: "#", key: "product_id", align: "center", width: "78px" },
   { title: "Producto", key: "product.name", width: "300px" },
   { title: "Stock Sistema", key: "system_quantity", align: "center" },
   { title: "Cant. Contada", key: "counted_quantity", align: "center" },
@@ -102,6 +103,12 @@ const handleRejectProduct = async (product) => {
       item-value="id"
       hover
     >
+      <template #item.product_id="{ item }">
+        <span class="font-weight-medium text-high-emphasis">
+          {{ item.productId ?? item.product_id ?? "—" }}
+        </span>
+      </template>
+
       <template #item.product.name="{ item }">
         <div class="d-flex align-start gap-x-4" style="max-width: 300px; width: 100%;">
           <VAvatar
@@ -115,17 +122,21 @@ const handleRejectProduct = async (product) => {
           <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 
+              :class="{
                 'text-primary': item.product.psychotropic == 1,
                 'text-warning font-weight-bold': item.product.psychotropic == 1 || item.product.psychotropic === true
               }"
               style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; white-space: normal;"
             >
-              {{ item.product.name?.toUpperCase() || 'N/A' }}
+              {{ item.product.name?.toUpperCase() || "N/A" }}
               <span v-if="item.product.iva == 1"> (G)</span>
               <span v-if="item.product.is_colombian_origin == 1"> (COL)</span>
             </span>
-            <span class="text-sm text-disabled d-flex align-center gap-1" v-if="item.product.laboratory?.name" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">
+            <span
+              v-if="item.product.laboratory?.name"
+              class="text-sm text-disabled d-flex align-center gap-1"
+              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;"
+            >
               <VIcon icon="tabler-building" size="14" />
               {{ item.product.laboratory.name }}
             </span>
@@ -149,11 +160,15 @@ const handleRejectProduct = async (product) => {
         <div class="d-flex justify-center gap-2">
           <IconBtn @click="handleApproveProduct(item)" size="small" color="success">
             <VIcon icon="tabler-check" />
-            <VTooltip activator="parent" location="top">Aprobar</VTooltip>
+            <VTooltip activator="parent" location="top">
+              Aprobar
+            </VTooltip>
           </IconBtn>
           <IconBtn @click="handleRejectProduct(item)" size="small" color="error">
             <VIcon icon="tabler-x" />
-            <VTooltip activator="parent" location="top">Rechazar</VTooltip>
+            <VTooltip activator="parent" location="top">
+              Rechazar
+            </VTooltip>
           </IconBtn>
         </div>
       </template>
@@ -162,7 +177,7 @@ const handleRejectProduct = async (product) => {
 </template>
 
 <style scoped>
-:deep(.v-data-table td:nth-child(1)) {
+::deep(.v-data-table td:nth-child(2)) {
   white-space: normal !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
@@ -174,13 +189,13 @@ const handleRejectProduct = async (product) => {
   overflow: hidden !important;
 }
 
-:deep(.v-data-table th:nth-child(1)) {
+::deep(.v-data-table th:nth-child(2)) {
   max-width: 300px !important;
   width: 300px !important;
   white-space: normal !important;
 }
 
-:deep(.v-data-table__wrapper) {
+::deep(.v-data-table__wrapper) {
   overflow-x: auto;
 }
 </style>

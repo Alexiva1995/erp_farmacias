@@ -16,8 +16,8 @@ const loading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref('name');
-const orderBy = ref('asc');
+const sortBy = ref("name");
+const orderBy = ref("asc");
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -49,11 +49,9 @@ const fetchSelectOptions = async () => {
       axios.get("/categories"),
       axios.get("/groups/consult-all"),
     ]);
-    console.log("laboratories response:", labResponse);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
-    // El endpoint consultAll devuelve los datos en data.data según ApiResponse::success
     groups.value = groupsResponse.data?.data || groupsResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
@@ -81,7 +79,7 @@ const fetchProducts = async () => {
     isStrictSearch: isStrictSearch.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    key => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -115,21 +113,14 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
+  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 onMounted(async () => {
@@ -137,20 +128,20 @@ onMounted(async () => {
   fetchProducts();
 });
 
-const updateTableOptions = (options) => {
+const updateTableOptions = options => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
   sortBy.value = options.sortBy[0]?.key;
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const handleEditProduct = (product) => {
+const handleEditProduct = product => {
   currentProduct.value = { ...product };
   productFormErrors.value = {};
   isEditDialogVisible.value = true;
 };
 
-const handleDeleteProduct = async (id) => {
+const handleDeleteProduct = async id => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
     text: "¡No podrás revertir la eliminación de este producto!",
@@ -189,16 +180,13 @@ const handleDeleteProduct = async (id) => {
   }
 };
 
-const handleSaveProduct = async (productFormData) => {
+const handleSaveProduct = async productFormData => {
   const isNewProduct = !currentProduct.value.id;
-  const url = isNewProduct
-    ? "/products"
-    : `/products/${currentProduct.value.id}`;
+  const url = isNewProduct ? "/products" : `/products/${currentProduct.value.id}`;
 
   try {
-    if (!isNewProduct) {
+    if (!isNewProduct)
       productFormData.append("_method", "PUT");
-    }
 
     await axios.post(url, productFormData, {
       headers: {
@@ -206,21 +194,17 @@ const handleSaveProduct = async (productFormData) => {
       },
     });
 
-    toast.success(
-      `Producto ${isNewProduct ? "creado" : "actualizado"} con éxito`
-    );
+    toast.success(`Producto ${isNewProduct ? "creado" : "actualizado"} con éxito`);
     isEditDialogVisible.value = false;
     await fetchProducts();
   } catch (error) {
     if (error.response && error.response.status === 422) {
       productFormErrors.value = error.response.data.errors;
-      
-      // Mostrar los errores específicos en el toast
       const errorMessages = error.response.data.errors;
       if (errorMessages && Object.keys(errorMessages).length > 0) {
         const firstErrorKey = Object.keys(errorMessages)[0];
-        const firstError = Array.isArray(errorMessages[firstErrorKey]) 
-          ? errorMessages[firstErrorKey][0] 
+        const firstError = Array.isArray(errorMessages[firstErrorKey])
+          ? errorMessages[firstErrorKey][0]
           : errorMessages[firstErrorKey];
         toast.error(`Error: ${firstError}`);
       } else {
@@ -242,8 +226,6 @@ const handleClearFilters = () => {
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
-  // sortBy.value = undefined;
-  // orderBy.value = undefined;
 };
 
 const handleAddProduct = () => {
@@ -256,7 +238,7 @@ const clearFormErrors = () => {
   productFormErrors.value = {};
 };
 
-const handleExport = async (format) => {
+const handleExport = async format => {
   const params = {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
@@ -266,13 +248,12 @@ const handleExport = async (format) => {
     }),
     startDate: startDate.value,
     endDate: endDate.value,
-    format: format,
+    format,
   };
 
-  Object.keys(params).forEach((key) => {
-    if (params[key] === null || params[key] === "") {
+  Object.keys(params).forEach(key => {
+    if (params[key] === null || params[key] === "")
       delete params[key];
-    }
   });
 
   try {
@@ -303,7 +284,8 @@ const handleExport = async (format) => {
     console.error("Error al exportar los datos:", error);
   }
 };
-const handleSort = (sortOptions) => {
+
+const handleSort = sortOptions => {
   if (sortOptions.key === undefined && sortOptions.order === undefined) {
     sortBy.value = undefined;
     orderBy.value = undefined;
@@ -343,8 +325,9 @@ const handleSort = (sortOptions) => {
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"
-        @product-merged="fetchProducts"
+      @product-merged="fetchProducts"
     />
+
     <ProductEditDialog
       v-model="isEditDialogVisible"
       :product="currentProduct"

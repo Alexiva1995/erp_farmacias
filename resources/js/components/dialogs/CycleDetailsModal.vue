@@ -25,6 +25,8 @@ const itemsPerPage = ref(15);
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const discrepancyFilter = ref(null);
+const sortBy = ref();
+const orderBy = ref();
 const laboratories = ref([]);
 const isLoadingFilters = ref(false);
 
@@ -52,13 +54,13 @@ const headers = ref([
     title: "Usuario Conteo",
     key: "user.email",
     align: "center",
-    sortable: false,
+    sortable: true,
   },
   {
     title: "Supervisor Aprobación",
     key: "supervisor.email",
     align: "center",
-    sortable: false,
+    sortable: true,
   },
 ]);
 
@@ -92,6 +94,8 @@ const fetchCycleProducts = async () => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     discrepancyFilter: discrepancyFilter.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
   };
 
   Object.keys(params).forEach(
@@ -148,6 +152,30 @@ const formatDate = (dateString) => {
 const updateOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
+
+  if (options.sortBy && options.sortBy.length > 0) {
+    const sort = options.sortBy[0];
+    const sortKeyMap = {
+      product: 'product.name',
+      'product.name': 'product.name',
+      'product.laboratory.name': 'laboratory.name',
+      count_final_quantity: 'final_quantity',
+      final_quantity: 'final_quantity',
+      count_system_quantity: 'system_quantity',
+      system_quantity: 'system_quantity',
+      discrepancy: 'discrepancy',
+      user: 'user.email',
+      'user.email': 'user.email',
+      processed_at: 'processed_at',
+      updated_at: 'updated_at',
+    };
+
+    sortBy.value = sortKeyMap[sort.key] || sort.key;
+    orderBy.value = sort.order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  }
 };
 
 const closeModal = () => {
@@ -176,7 +204,7 @@ watch(
 );
 
 let debounceTimer;
-watch([page, itemsPerPage, searchQuery, selectedLaboratory, discrepancyFilter], () => {
+watch([page, itemsPerPage, searchQuery, selectedLaboratory, discrepancyFilter, sortBy, orderBy], () => {
   if (props.modelValue && props.cycleId) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCycleProducts(), 300);
