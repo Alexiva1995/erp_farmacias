@@ -55,7 +55,7 @@ class InventoryCycleController extends Controller
     public function storeProductCount(Request $request, $productId)
     {
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
-        
+
         $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity' => 'required|numeric|min:0',
@@ -230,7 +230,7 @@ class InventoryCycleController extends Controller
     {
         try {
             $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
-            
+
             if (!$activeCycleId) {
                 return response()->json([]);
             }
@@ -242,6 +242,9 @@ class InventoryCycleController extends Controller
                 ->join('product_counts', 'users.id', '=', 'product_counts.user_id')
                 ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
                 ->where('product_counts.cycle_id', $activeCycleId)
+                ->when(Auth::user()->role !== 'admin', function ($query) {
+                    $query->where('users.id', '!=', Auth::id());
+                })
                 ->union(
                     \App\Models\User::query()
                         ->select('users.id', 'users.username', 'users.email')
@@ -288,7 +291,7 @@ class InventoryCycleController extends Controller
     public function storeInvoiceCount(Request $request, $productId)
     {
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
-        
+
         $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity' => 'required|numeric|min:0',
@@ -305,7 +308,7 @@ class InventoryCycleController extends Controller
         try {
             $data = $request->all();
             $data['allow_without_barcode'] = $allowWithoutBarcode;
-            
+
             $result = $this->inventoryCycleActionService->createInvoiceCount($productId, $data);
 
             if ($result['success']) {
@@ -393,13 +396,13 @@ class InventoryCycleController extends Controller
         // Calcular totales sobre TODOS los registros (no solo la página actual)
         $totalsQuery = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
         $allItems = $totalsQuery->get();
-        
+
         $totals = [
             'surplus' => 0,
             'shortage' => 0,
             'netTotal' => 0
         ];
-        
+
         foreach ($allItems as $item) {
             $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
             if ($amount > 0) {
@@ -408,7 +411,7 @@ class InventoryCycleController extends Controller
                 $totals['shortage'] += abs($amount);
             }
         }
-        
+
         $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
 
         return response()->json([
@@ -472,7 +475,7 @@ class InventoryCycleController extends Controller
         }
     }
 
-     public function getSaleDetailsToCount(Request $request)
+    public function getSaleDetailsToCount(Request $request)
     {
         $query = $this->inventoryCycleQueryService->getSalesDetailsToCountQuery($request);
         $perPage = $request->input('itemsPerPage', 10);
@@ -486,10 +489,10 @@ class InventoryCycleController extends Controller
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
-     public function storeSaleCount(Request $request, $productId)
+    public function storeSaleCount(Request $request, $productId)
     {
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
-        
+
         $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity' => 'required|numeric|min:0',
@@ -506,7 +509,7 @@ class InventoryCycleController extends Controller
         try {
             $data = $request->all();
             $data['allow_without_barcode'] = $allowWithoutBarcode;
-            
+
             $result = $this->inventoryCycleActionService->createSaleCount($productId, $data);
 
             if ($result['success']) {
@@ -540,7 +543,7 @@ class InventoryCycleController extends Controller
             ], 500);
         }
     }
-    
+
     public function getSaleCount(Request $request)
     {
         $query = $this->inventoryCycleQueryService->getSaleCountFilteredQuery($request);
@@ -551,7 +554,7 @@ class InventoryCycleController extends Controller
     }
 
 
-     public function processSaleCountAction(Request $request, $countId)
+    public function processSaleCountAction(Request $request, $countId)
     {
         $request->validate([
             'action' => 'required|in:approve,reject',
