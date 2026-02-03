@@ -3,10 +3,11 @@
   "version": "9.4.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . -c .eslintrc.cjs --fix --ext .ts,.js,.cjs,.vue,.tsx,.jsx",
+    "lint": "eslint . --fix",
     "build:icons": "tsx resources/js/plugins/iconify/build-icons.js",
     "msw:init": "msw init public/ --save",
     "postinstall": "npm run build:icons && npm run msw:init"
@@ -31,7 +32,7 @@
     "@tiptap/vue-3": "^2.12.0",
     "@vueuse/core": "10.11.1",
     "@vueuse/math": "10.11.1",
-    "apexcharts": "3.54.1",
+    "apexcharts": "^4.0.0",
     "axios": "^1.9.0",
     "chart.js": "4.4.9",
     "cookie-es": "1.2.2",
@@ -55,7 +56,7 @@
     "vue": "3.5.14",
     "vue-chartjs": "5.3.2",
     "vue-flatpickr-component": "11.0.5",
-    "vue-i18n": "9.13.1",
+    "vue-i18n": "^11.0.0",
     "vue-prism-component": "2.0.0",
     "vue-recaptcha-v3": "^2.0.1",
     "vue-router": "4.5.1",
@@ -65,7 +66,7 @@
     "webfontloader": "1.6.28"
   },
   "devDependencies": {
-    "@antfu/eslint-config-vue": "0.43.1",
+    "@antfu/eslint-config": "^4.0.0",
     "@antfu/utils": "0.7.10",
     "@fullcalendar/core": "6.1.17",
     "@fullcalendar/daygrid": "6.1.17",
@@ -90,14 +91,11 @@
     "@videojs-player/vue": "1.0.0",
     "@vitejs/plugin-vue": "5.2.4",
     "@vitejs/plugin-vue-jsx": "4.2.0",
-    "eslint": "8.57.1",
-    "eslint-config-airbnb-base": "15.0.0",
+    "eslint": "^9.0.0",
     "eslint-import-resolver-typescript": "3.10.1",
-    "eslint-plugin-case-police": "0.6.1",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-promise": "6.6.0",
     "eslint-plugin-regex": "1.10.0",
-    "eslint-plugin-sonarjs": "0.24.0",
     "eslint-plugin-unicorn": "51.0.1",
     "eslint-plugin-vue": "9.33.0",
     "laravel-vite-plugin": "1.2.0",
@@ -106,7 +104,7 @@
     "postcss-scss": "4.0.9",
     "sass": "1.76.0",
     "shiki": "1.29.2",
-    "stylelint": "16.8.0",
+    "stylelint": "^16.8.2",
     "stylelint-config-idiomatic-order": "10.0.0",
     "stylelint-config-standard-scss": "13.1.0",
     "stylelint-use-logical-spec": "5.0.1",
@@ -114,23 +112,30 @@
     "unplugin-auto-import": "0.18.6",
     "unplugin-vue-components": "0.27.5",
     "unplugin-vue-router": "0.8.8",
-    "video.js": "8.6.0",
+    "video.js": "^7.20.0",
     "vite": "6.3.5",
-    "vite-plugin-vue-devtools": "7.3.7",
+    "vite-plugin-vue-devtools": "^8.0.0",
     "vite-plugin-vue-meta-layouts": "0.5.1",
-    "vite-plugin-vuetify": "2.0.3",
+    "vite-plugin-vuetify": "^2.1.0",
     "vite-svg-loader": "5.1.0",
     "vue-shepherd": "3.0.0"
   },
   "resolutions": {
     "postcss": "^8",
     "@tiptap/core": "^2",
-    "@types/video.js": "^7"
+    "@types/video.js": "^7",
+    "tar": "^7.5.0"
   },
   "overrides": {
     "postcss": "^8",
     "@tiptap/core": "^2",
-    "@types/video.js": "^7"
+    "@types/video.js": "^7",
+    "tar": "^7.5.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "tar": "^7.5.0"
+    }
   },
   "msw": {
     "workerDirectory": "public"

@@ -273,6 +273,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     await printCash(completedCashData);
     fetchCashClosure();
     fetchClosingHistory();
+    fetchOrder();
     isPrinting.value = false;
     cashData.value = null;
     isDownloadingPdf.value = false;

@@ -23,7 +23,17 @@ class ExpirationController extends Controller
     {
         $query = $this->queryService->getExpiringLotsQuery($request);
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+
+            return response()->json([
+                'data' => $items,
+                'total' => $items->count(),
+            ]);
+        }
+
         $paginatedResult = $query->paginate($perPage);
 
         return response()->json([
@@ -168,9 +178,9 @@ class ExpirationController extends Controller
     {
         $query = $this->queryService->getExpiredLotsLogQuery($request);
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
-        if ($perPage == -1) {
+        if ($perPage < 1) {
             $logs = $query->get();
             return response()->json([
                 'data' => $logs,

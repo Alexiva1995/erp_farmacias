@@ -55,7 +55,7 @@ export default [
           title: 'Inventario  Ciclicos',
           to: 'cyclics-users',
           action: 'manage',
-          subject: 'cycli-user',
+          subject: 'user',
         },
     ],
   }, 
