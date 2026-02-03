@@ -1,98 +1,62 @@
 export default [
   {
-    title: 'Inventario',
+    title: "Inventario",
     icon: {
-      is: 'font-awesome-icon', 
+      is: "font-awesome-icon",
       props: {
-        icon: ['fas', 'boxes-stacked'],
-        size: 'sm',
+        icon: ["fas", "boxes-stacked"],
+        size: "sm",
       },
     },
     children: [
       {
-        title: 'Productos',
-        to: 'inventory-products',
+        title: "Productos",
+        to: "inventory-products",
       },
       {
-        title: 'Sin Grupo',
-        to: 'inventory-products-without-group',
+        title: "Sin Grupo",
+        to: "inventory-products-without-group",
       },
       {
-        title: 'Productos incompletos',
-        to: 'inventory-incomplete-products',
+        title: "Productos incompletos",
+        to: "inventory-incomplete-products",
       },
       {
-        title: 'Lotes sin Ubicación',
-        to: 'inventory-lots-without-location',
+        title: "Lotes sin Ubicación",
+        to: "inventory-lots-without-location",
       },
       {
-        title: 'Grupos de Productos',
-        to: 'inventory-group-products',
-      },
-       {
-        title: 'Lotes',
-        to: 'lot-list',
+        title: "Grupos de Productos",
+        to: "inventory-group-products",
       },
       {
-        title: 'Caducidad',
-        to: 'inventory-expirations',
+        title: "Lotes",
+        to: "lot-list",
       },
       {
-        title: 'Trazabilidad',
-        to: 'inventory-traceability',
+        title: "Caducidad",
+        to: "inventory-expirations",
       },
       {
-        title: 'Psicotropicos',
-        to: 'inventory-psychotropics',
+        title: "Trazabilidad",
+        to: "inventory-traceability",
       },
       {
-        title: 'Control de Stock',
-        to: 'inventory-stock',
-        action: 'manage',
-        subject: 'admin',
-      },
-       {
-        title: 'Inventario Ciclicos',
-        icon: {
-        is: 'font-awesome-icon', 
-        props: {
-          icon: ['fas', 'boxes-stacked'],
-          size: 'sm',
-        },
-      },
-        children: [
-                  {
-          title: 'Historial',
-          to: 'cyclics-history',
-          action: 'manage',
-          subject: 'cyclic-history',
-        },
-         {
-          title: 'Cierre de Inventario',
-          to: 'cyclics-closing',
-          action: 'manage',
-          subject: 'closing-cyclics',
-        },
-        {
-          title: 'Pendientes',
-          to: 'cyclics-cyclic',
-          action: 'manage',
-          subject: 'pending-cyclics',
-        },
-        {
-          title: 'Inventarios Users',
-          to: 'cyclics-users',
-          action: 'manage',
-          subject: 'user',
-        }
-        ]
+        title: "Psicotropicos",
+        to: "inventory-psychotropics",
       },
       {
-          title: 'Inventario  Ciclicos',
-          to: 'cyclics-users',
-          action: 'manage',
-          subject: 'cycli-user',
-        },
+        title: "Control de Stock",
+        to: "inventory-stock",
+        action: "manage",
+        subject: "admin",
+      },
+      {
+        title: "Inventario  Ciclicos",
+        to: "cyclics-users",
+        action: "manage",
+        subject: "cycli-user",
+      },
     ],
-  }, 
-]
+  },
+];
