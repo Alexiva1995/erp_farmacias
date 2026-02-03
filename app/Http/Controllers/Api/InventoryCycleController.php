@@ -445,34 +445,25 @@ class InventoryCycleController extends Controller
     public function getCashCloseItems(Request $request)
     {
         $query = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
-        $paginatedResult = $query->paginate($perPage);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
-        // Calcular totales sobre TODOS los registros (no solo la página actual)
-        $totalsQuery = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
-        $allItems = $totalsQuery->get();
-        
-        $totals = [
-            'surplus' => 0,
-            'shortage' => 0,
-            'netTotal' => 0
-        ];
-        
-        foreach ($allItems as $item) {
-            $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
-            if ($amount > 0) {
-                $totals['surplus'] += $amount;
-            } else {
-                $totals['shortage'] += abs($amount);
-            }
+        if ($perPage < 1) {
+            $items = $query->get();
+
+            return response()->json([
+                'data' => $items,
+                'total' => $items->count(),
+                'totals' => $this->calculateCashCloseTotals($items),
+            ]);
         }
-        
-        $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
+
+        $paginatedResult = $query->paginate($perPage);
+        $totalsItems = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request)->get();
 
         return response()->json([
             'data' => $paginatedResult->items(),
             'total' => $paginatedResult->total(),
-            'totals' => $totals
+            'totals' => $this->calculateCashCloseTotals($totalsItems),
         ]);
     }
 
@@ -642,5 +633,28 @@ class InventoryCycleController extends Controller
             Log::error('Error en processSaleCountAction', ['countId' => $countId, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Error interno del servidor.'], 500);
         }
+    }
+
+    private function calculateCashCloseTotals($items): array
+    {
+        $totals = [
+            'surplus' => 0,
+            'shortage' => 0,
+            'netTotal' => 0,
+        ];
+
+        foreach ($items as $item) {
+            $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
+
+            if ($amount > 0) {
+                $totals['surplus'] += $amount;
+            } else {
+                $totals['shortage'] += abs($amount);
+            }
+        }
+
+        $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
+
+        return $totals;
     }
 }
