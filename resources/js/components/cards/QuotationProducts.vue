@@ -412,7 +412,15 @@ onMounted(() => {
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
         <VCol cols="12">
-          <h3>Cotización #{{ lastNumber }}</h3>
+          <h3>
+            Cotización #{{ lastNumber }}
+            <template v-if="props.selectedClient && props.selectedClient.id">
+              <span class="text-medium-emphasis font-weight-normal ms-2">
+                — {{ props.selectedClient.name }} {{ props.selectedClient.last_name }}
+                ({{ props.selectedClient.identification_type }}{{ props.selectedClient.identification }})
+              </span>
+            </template>
+          </h3>
         </VCol>
         <VCol cols="12" sm="12" md="12">
           <div class="d-flex align-center gap-4 flex-wrap">
@@ -440,7 +448,7 @@ onMounted(() => {
           </div>
         </VCol>
       </VRow>
-      <VRow>
+      <VRow v-if="!props.selectedClient || !props.selectedClient.id">
         <VCol cols="12" sm="12" md="12">
           <div class="d-flex align-center gap-4 flex-wrap">
             <AppTextField
@@ -461,22 +469,6 @@ onMounted(() => {
               <VIcon icon="tabler-search" />
             </IconBtn>
           </div>
-        </VCol>
-      </VRow>
-      <VRow v-if="props.selectedClient && props.selectedClient.id">
-        <VCol cols="12" sm="12" md="12">
-          <VAlert icon="tabler-user" color="primary">
-            <div class="d-flex align-center gap-4 flex-wrap">
-              <p class="font-weight-medium">{{ props.selectedClient.name }} {{ props.selectedClient.last_name }}</p>
-            </div>
-            <div class="d-flex align-center gap-4 flex-wrap">
-              <p>
-                {{ props.selectedClient.identification_type
-                }}{{ props.selectedClient.identification }}
-              </p>
-              <p v-if="props.selectedClient.phone">{{ props.selectedClient.phone }}</p>
-            </div>
-          </VAlert>
         </VCol>
       </VRow>
     </VCardText>

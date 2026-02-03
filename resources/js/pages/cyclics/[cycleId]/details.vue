@@ -357,13 +357,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               {{ item.source_type }}
             </VChip>
           </template>
-
-          <template #bottom>
-            <VDivider />
-            <div class="pa-2 text-xs text-disabled">
-              Mostrando {{ products.length }} de {{ totalProducts }} registros
-            </div>
-          </template>
         </VDataTableServer>
       </VCardText>
     </VCard>

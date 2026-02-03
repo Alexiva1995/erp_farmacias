@@ -253,7 +253,7 @@ const handleClear = () => {
           <div class="d-flex align-center">
             <VIcon icon="tabler-flag" class="me-2" size="20" />
             <span class="text-subtitle-1 font-weight-medium">
-              COLOMBIANO
+              COL
             </span>
           </div>
         </template>
@@ -261,7 +261,7 @@ const handleClear = () => {
 
       <VChip v-if="props.isColombian" color="info" size="small" class="ms-2">
         <VIcon icon="tabler-flag" size="14" class="me-1" />
-        Solo Productos Colombianos
+        COL
       </VChip>
 
       <div class="d-flex align-center gap-2">

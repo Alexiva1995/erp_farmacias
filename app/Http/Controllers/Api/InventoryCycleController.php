@@ -27,16 +27,26 @@ class InventoryCycleController extends Controller
 
     public function getProductsForInventory(Request $request)
     {
-        $query = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        try {
+            $query = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
+            $perPage = (int) $request->input('itemsPerPage', 10);
 
-        if ($perPage < 1) {
-            $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            if ($perPage < 1) {
+                $items = $query->get();
+                return response()->json(['data' => $items, 'total' => $items->count()]);
+            }
+
+            $paginatedResult = $query->paginate($perPage);
+            return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        } catch (\Throwable $e) {
+            Log::error('getProductsForInventory error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'message' => 'Error al obtener productos: ' . $e->getMessage(),
+                'data' => [],
+                'total' => 0,
+            ], 500);
         }
-
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
     public function getProductCount(Request $request)
@@ -293,7 +303,7 @@ class InventoryCycleController extends Controller
                 return response()->json([]);
             }
 
-            // Obtener usuarios únicos que han hecho conteos en el ciclo activo
+            // Obtener usuarios únicos que han hecho conteos O supervisado en el ciclo activo
             $users = \App\Models\User::query()
                 ->select('users.id', 'users.username', 'users.email')
                 ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
@@ -319,6 +329,33 @@ class InventoryCycleController extends Controller
                         ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
                         ->where('sales_counts.cycle_id', $activeCycleId)
                 )
+                ->union(
+                    \App\Models\User::query()
+                        ->select('users.id', 'users.username', 'users.email')
+                        ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                        ->join('product_counts', 'users.id', '=', 'product_counts.supervisor_id')
+                        ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                        ->where('product_counts.cycle_id', $activeCycleId)
+                        ->whereNotNull('product_counts.supervisor_id')
+                )
+                ->union(
+                    \App\Models\User::query()
+                        ->select('users.id', 'users.username', 'users.email')
+                        ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                        ->join('invoices_counts', 'users.id', '=', 'invoices_counts.supervisor_id')
+                        ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                        ->where('invoices_counts.cycle_id', $activeCycleId)
+                        ->whereNotNull('invoices_counts.supervisor_id')
+                )
+                ->union(
+                    \App\Models\User::query()
+                        ->select('users.id', 'users.username', 'users.email')
+                        ->selectRaw('employees.name as employee_name, employees.last_name as employee_last_name')
+                        ->join('sales_counts', 'users.id', '=', 'sales_counts.supervisor_id')
+                        ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+                        ->where('sales_counts.cycle_id', $activeCycleId)
+                        ->whereNotNull('sales_counts.supervisor_id')
+                )
                 ->distinct()
                 ->orderBy('employee_name')
                 ->orderBy('employee_last_name')
@@ -334,16 +371,26 @@ class InventoryCycleController extends Controller
 
     public function getInvoiceDetailsToCount(Request $request)
     {
-        $query = $this->inventoryCycleQueryService->getInvoiceDetailsToCountQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        try {
+            $query = $this->inventoryCycleQueryService->getInvoiceDetailsToCountQuery($request);
+            $perPage = (int) $request->input('itemsPerPage', 10);
 
-        if ($perPage < 1) {
-            $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            if ($perPage < 1) {
+                $items = $query->get();
+                return response()->json(['data' => $items, 'total' => $items->count()]);
+            }
+
+            $paginatedResult = $query->paginate($perPage);
+            return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        } catch (\Throwable $e) {
+            Log::error('getInvoiceDetailsToCount error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'message' => 'Error al obtener productos de factura: ' . $e->getMessage(),
+                'data' => [],
+                'total' => 0,
+            ], 500);
         }
-
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
     public function storeInvoiceCount(Request $request, $productId)
@@ -546,16 +593,26 @@ class InventoryCycleController extends Controller
 
     public function getSaleDetailsToCount(Request $request)
     {
-        $query = $this->inventoryCycleQueryService->getSalesDetailsToCountQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        try {
+            $query = $this->inventoryCycleQueryService->getSalesDetailsToCountQuery($request);
+            $perPage = (int) $request->input('itemsPerPage', 10);
 
-        if ($perPage < 1) {
-            $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            if ($perPage < 1) {
+                $items = $query->get();
+                return response()->json(['data' => $items, 'total' => $items->count()]);
+            }
+
+            $paginatedResult = $query->paginate($perPage);
+            return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        } catch (\Throwable $e) {
+            Log::error('getSaleDetailsToCount error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'message' => 'Error al obtener productos de punto de venta: ' . $e->getMessage(),
+                'data' => [],
+                'total' => 0,
+            ], 500);
         }
-
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
     public function storeSaleCount(Request $request, $productId)

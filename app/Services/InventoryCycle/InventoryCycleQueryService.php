@@ -27,7 +27,11 @@ class InventoryCycleQueryService
 
     private function getProductsBaseQuery(): Builder
     {
-        return Product::query()->with(['lots', 'laboratory', 'origin']);
+        return Product::query()
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->with(['lots', 'laboratory', 'origin']);
     }
 
     /**
@@ -327,7 +331,12 @@ class InventoryCycleQueryService
 
     public function getFilteredQuery(Request $request): Builder
     {
-        $query = $this->getBaseQuery();
+        $query = $this->getBaseQuery()
+            ->whereHas('product', function (Builder $q) {
+                $q->where(function ($q2) {
+                    $q2->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                });
+            });
         $isHistoryView = $request->boolean('history');
 
         $filters = [
@@ -419,12 +428,16 @@ class InventoryCycleQueryService
 
     public function getProductsWithFrequentDiscrepancies(int $limit = 10): \Illuminate\Database\Eloquent\Collection
     {
-        return Product::withCount([
-            'productCounts as discrepancy_count' => function ($query) {
-                $query->where('discrepancy', '!=', 0)
-                    ->where('created_at', '>=', now()->subDays(30));
-            }
-        ])
+        return Product::query()
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->withCount([
+                'productCounts as discrepancy_count' => function ($query) {
+                    $query->where('discrepancy', '!=', 0)
+                        ->where('created_at', '>=', now()->subDays(30));
+                }
+            ])
             ->with(['laboratory'])
             ->having('discrepancy_count', '>', 0)
             ->orderBy('discrepancy_count', 'desc')
@@ -434,7 +447,7 @@ class InventoryCycleQueryService
 
     public function getInvoiceDetailsToCountQuery(Request $request): Builder
     {
-        $query = Product::query()->with(['lots', 'laboratory', 'origin']);
+        $query = $this->getProductsBaseQuery();
 
         $query->whereHas('invoiceDetails.invoice', function ($subQuery) {
             $subQuery->where('status', 'ordered')
@@ -475,7 +488,12 @@ class InventoryCycleQueryService
 
     public function getInvoiceCountFilteredQuery(Request $request): Builder
     {
-        $query = $this->getInvoiceCountBaseQuery();
+        $query = $this->getInvoiceCountBaseQuery()
+            ->whereHas('product', function (Builder $q) {
+                $q->where(function ($q2) {
+                    $q2->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                });
+            });
 
         // Filtrar solo productos que estén en facturas con fecha >= 2026-01-25
         $query->whereHas('product.invoiceDetails.invoice', function ($subQuery) {
@@ -513,6 +531,9 @@ class InventoryCycleQueryService
             ->leftJoin('users as supervisors', 'discrepancies.supervisor_id', '=', 'supervisors.id')
             ->leftJoin('employees as supervisor_employees', 'supervisors.id', '=', 'supervisor_employees.user_id')
             ->where('discrepancies.discrepancy', '!=', 0)
+            ->where(function ($q) {
+                $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
+            })
             ->select([
                 'discrepancies.id',
                 'discrepancies.product_id',
@@ -667,7 +688,10 @@ class InventoryCycleQueryService
                 'supervisor_employees.name as supervisor_employee_name',
                 'supervisor_employees.last_name as supervisor_employee_last_name',
             ])
-            ->where('counts.cycle_id', $cycleId);
+            ->where('counts.cycle_id', $cycleId)
+            ->where(function ($q) {
+                $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
+            });
 
         // Búsqueda general
         if ($request->filled('q')) {
@@ -802,7 +826,7 @@ class InventoryCycleQueryService
 
     public function getSalesDetailsToCountQuery(Request $request): Builder
     {
-        $query = Product::query()->with(['lots', 'laboratory', 'origin']);
+        $query = $this->getProductsBaseQuery();
 
         $query->whereHas('orderDetails.order', function ($subQuery) {
             $subQuery->where('status', 'completed')
@@ -849,7 +873,12 @@ class InventoryCycleQueryService
 
     public function getSaleCountFilteredQuery(Request $request): Builder
     {
-        $query = $this->getSaleCountBaseQuery();
+        $query = $this->getSaleCountBaseQuery()
+            ->whereHas('product', function (Builder $q) {
+                $q->where(function ($q2) {
+                    $q2->whereNull('is_deleted')->orWhere('is_deleted', 0);
+                });
+            });
 
         // Filtrar solo productos que estén en órdenes con fecha >= 2026-01-25
         $query->whereHas('product.orderDetails.order', function ($subQuery) {

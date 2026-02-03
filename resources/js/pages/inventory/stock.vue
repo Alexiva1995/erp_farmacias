@@ -289,6 +289,8 @@ async function exportarExcel(formato){
       :total-product="modulo.totalItems"
       :items-per-page="itemsPerPage"
       :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @update:options="updateTableOptions"
     />
   </div>

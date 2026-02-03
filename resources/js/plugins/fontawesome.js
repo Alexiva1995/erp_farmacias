@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import {
     faAddressBook,
+    faArrowsRotate,
     faBarcode,
     faChartSimple,
     faCog,
@@ -31,7 +32,8 @@ library.add(
   faBarcode,
   faFileLines,
   faAddressBook,
-  faChartSimple
+  faChartSimple,
+  faArrowsRotate
 )
 
 export default function (app) {
