@@ -3,7 +3,10 @@ export default [
     title: "Inventario Ciclicos",
     icon: {
       is: "font-awesome-icon",
-      props: { icon: ["fas", "boxes-stacked"], size: "sm" },
+      props: {
+        icon: ["fas", "boxes-stacked"],
+        size: "sm",
+      },
     },
     children: [
       {
