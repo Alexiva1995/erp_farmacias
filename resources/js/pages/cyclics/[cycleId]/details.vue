@@ -179,21 +179,11 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 
 <template>
   <div>
-    <VBtn
-      class="mb-4"
-      color="primary"
-      variant="tonal"
-      prepend-icon="tabler-arrow-left"
-      @click="goBack"
-    >
-      Volver
-    </VBtn>
-
-    <VCard class="mb-4">
+    <VCard class="mb-6">
       <VCardTitle>Filtros</VCardTitle>
       <VCardText>
         <VRow>
-          <VCol cols="12" md="4">
+          <VCol cols="12" md="3">
             <AppTextField
               v-model="searchQuery"
               placeholder="Buscar producto o usuario..."
@@ -201,7 +191,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               prepend-inner-icon="tabler-search"
             />
           </VCol>
-          <VCol cols="12" md="4">
+          <VCol cols="12" md="3">
             <VAutocomplete
               v-model="selectedLaboratory"
               :items="laboratories"
@@ -214,7 +204,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               prepend-inner-icon="tabler-building"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VSelect
               v-model="discrepancyFilter"
               :items="[
@@ -229,7 +219,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               prepend-inner-icon="tabler-filter"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VAutocomplete
               v-model="selectedUserId"
               :items="userOptions"
@@ -241,7 +231,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               prepend-inner-icon="tabler-user"
             />
           </VCol>
-          <VCol cols="12" md="3">
+          <VCol cols="12" md="2">
             <VAutocomplete
               v-model="selectedSupervisorId"
               :items="supervisorOptions"
@@ -253,22 +243,34 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               prepend-inner-icon="tabler-user-check"
             />
           </VCol>
-          <VCol cols="12" md="1" class="d-flex align-end">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              block
-              prepend-icon="tabler-x"
-              @click="handleClearFilters"
-            >
-              Limpiar
-            </VBtn>
-          </VCol>
         </VRow>
       </VCardText>
 
       <VDivider />
 
+      <VCardActions class="px-6 py-4 d-flex flex-wrap gap-3">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          prepend-icon="tabler-x"
+          @click="handleClearFilters"
+        >
+          Limpiar filtros
+        </VBtn>
+
+        <VSpacer />
+
+        <VBtn
+          color="primary"
+          variant="tonal"
+          icon="tabler-arrow-left"
+          @click="goBack"
+        />
+      </VCardActions>
+
+    </VCard>
+
+    <VCard>
       <VCardText>
         <VDataTableServer
           :headers="headers"
