@@ -30,6 +30,69 @@ class InventoryCycleQueryService
         return Product::query()->with(['lots', 'laboratory', 'origin']);
     }
 
+    /**
+     * Construye un query con la unión de product_counts, invoice_counts y sale_counts
+     * filtrado por ciclo y estado según sea necesario.
+     */
+    private function buildDiscrepanciesUnionQuery(?int $cycleId = null, bool $includePending = false)
+    {
+        $productCounts = ProductCount::query()
+            ->select([
+                'id',
+                'cycle_id',
+                'product_id',
+                'user_id',
+                'supervisor_id',
+                'counted_quantity',
+                'system_quantity',
+                'discrepancy',
+                'status',
+                'created_at',
+                'updated_at',
+                DB::raw("'product_count' as source_type"),
+            ])
+            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+
+        $invoiceCounts = InvoiceCount::query()
+            ->select([
+                'id',
+                'cycle_id',
+                'product_id',
+                'user_id',
+                'supervisor_id',
+                'counted_quantity',
+                'system_quantity',
+                'discrepancy',
+                'status',
+                'created_at',
+                'updated_at',
+                DB::raw("'invoice_count' as source_type"),
+            ])
+            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+
+        $saleCounts = SaleCount::query()
+            ->select([
+                'id',
+                'cycle_id',
+                'product_id',
+                'user_id',
+                'supervisor_id',
+                'counted_quantity',
+                'system_quantity',
+                'discrepancy',
+                'status',
+                'created_at',
+                'updated_at',
+                DB::raw("'sale_count' as source_type"),
+            ])
+            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+
+        return $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);
+    }
+
     private function applyFiltersToCount(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
@@ -272,10 +335,13 @@ class InventoryCycleQueryService
         ];
 
         
-        if ($isHistoryView || $request->cycleId) {
+        if ($isHistoryView) {
             $filters['status'] = ['approved', 'rejected', 'pending'];
+        } elseif ($request->cycleId) {
+            // Para detalles de ciclo, no filtrar por status
+            $filters['status'] = null;
         } else {
-            $filters['status'] =  'pending';
+            $filters['status'] = 'pending';
         }
       
         $query = $this->applyFiltersToCount($query, $filters);
@@ -428,49 +494,7 @@ class InventoryCycleQueryService
     {
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
 
-        $productCounts = ProductCount::query()
-            ->select([
-                'id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'discrepancy',
-                'status',
-                'updated_at',
-                DB::raw("'product_count' as source_type")
-            ])
-            ->where('status', '!=', 'pending')
-            ->where('cycle_id', $activeCycleId);
-
-        $invoiceCounts = InvoiceCount::query()
-            ->select([
-                'id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'discrepancy',
-                'status',
-                'updated_at',
-                DB::raw("'invoice_count' as source_type")
-            ])
-            ->where('status', '!=', 'pending')
-            ->where('cycle_id', $activeCycleId);
-
-        $saleCounts = SaleCount::query()
-            ->select([
-                'id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'discrepancy',
-                'status',
-                'updated_at',
-                DB::raw("'sale_count' as source_type")
-            ])
-            ->where('status', '!=', 'pending')
-            ->where('cycle_id', $activeCycleId);
-
-        $unionQuery = $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
@@ -482,6 +506,7 @@ class InventoryCycleQueryService
             ->where('discrepancies.discrepancy', '!=', 0)
             ->select([
                 'discrepancies.id',
+                'discrepancies.product_id',
                 'discrepancies.discrepancy',
                 'discrepancies.source_type',
                 'discrepancies.updated_at as processed_date',
@@ -547,33 +572,35 @@ class InventoryCycleQueryService
     }
     public function getCycleSummaryQuery(Request $request)
     {
-        $query = DB::table('product_counts as pc')
-            ->join('inventory_cycles as ic', 'pc.cycle_id', '=', 'ic.id')
-            ->leftJoin('products as p', 'pc.product_id', '=', 'p.id')
+        $unionQuery = $this->buildDiscrepanciesUnionQuery();
+
+        $query = DB::query()->fromSub($unionQuery, 'discrepancies')
+            ->join('inventory_cycles as ic', 'discrepancies.cycle_id', '=', 'ic.id')
+            ->leftJoin('products as p', 'discrepancies.product_id', '=', 'p.id')
             ->select([
-                'pc.cycle_id',
+                'discrepancies.cycle_id',
                 'ic.start_date',
                 'ic.end_date',
                 'ic.status as cycle_status',
-                DB::raw('COUNT(pc.id) as total_products'),
+                DB::raw('COUNT(discrepancies.id) as total_products'),
                 DB::raw('SUM(CASE 
-                WHEN pc.discrepancy > 0 AND p.sale_price IS NOT NULL 
-                THEN pc.discrepancy * p.sale_price 
-                ELSE 0 
-            END) as total_surplus'),
+                    WHEN discrepancies.discrepancy > 0 AND p.sale_price IS NOT NULL 
+                    THEN discrepancies.discrepancy * p.sale_price 
+                    ELSE 0 
+                END) as total_surplus'),
                 DB::raw('SUM(CASE 
-                WHEN pc.discrepancy < 0 AND p.sale_price IS NOT NULL 
-                THEN ABS(pc.discrepancy) * p.sale_price 
-                ELSE 0 
-            END) as total_shortage'),
+                    WHEN discrepancies.discrepancy < 0 AND p.sale_price IS NOT NULL 
+                    THEN ABS(discrepancies.discrepancy) * p.sale_price 
+                    ELSE 0 
+                END) as total_shortage'),
                 DB::raw('SUM(CASE 
-                WHEN pc.discrepancy IS NOT NULL AND p.sale_price IS NOT NULL 
-                THEN pc.discrepancy * p.sale_price 
-                ELSE 0 
-            END) as net_total')
+                    WHEN discrepancies.discrepancy IS NOT NULL AND p.sale_price IS NOT NULL 
+                    THEN discrepancies.discrepancy * p.sale_price 
+                    ELSE 0 
+                END) as net_total'),
             ])
-            ->whereNotNull('pc.cycle_id')
-            ->groupBy('pc.cycle_id', 'ic.start_date', 'ic.end_date', 'ic.status');
+            ->whereNotNull('discrepancies.cycle_id')
+            ->groupBy('discrepancies.cycle_id', 'ic.start_date', 'ic.end_date', 'ic.status');
 
         $filters = [
             'startDate' => $request->startDate,
@@ -583,6 +610,143 @@ class InventoryCycleQueryService
 
         $query = $this->applyCycleSummaryFilters($query, $filters);
         $query = $this->applyCycleSummarySorting($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+
+        return $query;
+    }
+
+    public function getCycleDetailedCountsQuery(Request $request)
+    {
+        $cycleId = $request->input('cycleId');
+        if (!$cycleId) {
+            return DB::query()->whereRaw('1 = 0');
+        }
+
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($cycleId, true);
+
+        $query = DB::query()->fromSub($unionQuery, 'counts')
+            ->leftJoin('products', 'counts.product_id', '=', 'products.id')
+            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->leftJoin('users', 'counts.user_id', '=', 'users.id')
+            ->leftJoin('employees as user_employees', 'users.id', '=', 'user_employees.user_id')
+            ->leftJoin('users as supervisors', 'counts.supervisor_id', '=', 'supervisors.id')
+            ->leftJoin('employees as supervisor_employees', 'supervisors.id', '=', 'supervisor_employees.user_id')
+            ->select([
+                'counts.id',
+                'counts.cycle_id',
+                'counts.product_id',
+                'counts.user_id',
+                'counts.supervisor_id',
+                'counts.counted_quantity',
+                'counts.system_quantity',
+                'counts.discrepancy',
+                'counts.status',
+                'counts.source_type',
+                'counts.created_at',
+                'counts.updated_at',
+                'products.name as product_name',
+                'products.photo_url as product_photo_url',
+                'products.iva as product_iva',
+                'products.psychotropic as product_psychotropic',
+                'products.is_colombian_origin as product_is_colombian_origin',
+                'laboratories.name as laboratory_name',
+                'users.email as user_email',
+                'users.username as user_username',
+                'user_employees.name as user_employee_name',
+                'user_employees.last_name as user_employee_last_name',
+                'supervisors.email as supervisor_email',
+                'supervisors.username as supervisor_username',
+                'supervisor_employees.name as supervisor_employee_name',
+                'supervisor_employees.last_name as supervisor_employee_last_name',
+            ])
+            ->where('counts.cycle_id', $cycleId);
+
+        // Búsqueda general
+        if ($request->filled('q')) {
+            $searchTerm = '%' . $request->input('q') . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('products.name', 'like', $searchTerm)
+                    ->orWhere('users.email', 'like', $searchTerm)
+                    ->orWhere('users.username', 'like', $searchTerm)
+                    ->orWhere('user_employees.name', 'like', $searchTerm)
+                    ->orWhere('user_employees.last_name', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('laboratoryId')) {
+            $query->where('products.laboratory_id', $request->input('laboratoryId'));
+        }
+
+        if ($request->filled('discrepancyFilter')) {
+            switch ($request->input('discrepancyFilter')) {
+                case 'with_discrepancy':
+                    $query->where('counts.discrepancy', '!=', 0);
+                    break;
+                case 'surplus':
+                    $query->where('counts.discrepancy', '>', 0);
+                    break;
+                case 'shortage':
+                    $query->where('counts.discrepancy', '<', 0);
+                    break;
+                case 'exact':
+                    $query->where('counts.discrepancy', '=', 0);
+                    break;
+            }
+        }
+
+        if ($request->filled('userId')) {
+            $query->where('counts.user_id', $request->input('userId'));
+        }
+
+        if ($request->filled('supervisorId')) {
+            $query->where('counts.supervisor_id', $request->input('supervisorId'));
+        }
+
+        if ($request->filled('startDate')) {
+            $query->where('counts.updated_at', '>=', $request->input('startDate'));
+        }
+
+        if ($request->filled('endDate')) {
+            $query->where('counts.updated_at', '<=', $request->input('endDate') . ' 23:59:59');
+        }
+
+        $sortBy = $request->input('sortBy');
+        $orderBy = $request->input('orderBy', 'desc');
+
+        if ($sortBy) {
+            switch ($sortBy) {
+                case 'product.name':
+                    $query->orderBy('products.name', $orderBy);
+                    break;
+                case 'laboratory.name':
+                    $query->orderBy('laboratories.name', $orderBy);
+                    break;
+                case 'system_quantity':
+                    $query->orderBy('counts.system_quantity', $orderBy);
+                    break;
+                case 'final_quantity':
+                case 'counted_quantity':
+                    $query->orderBy('counts.counted_quantity', $orderBy);
+                    break;
+                case 'discrepancy':
+                    $query->orderBy('counts.discrepancy', $orderBy);
+                    break;
+                case 'user.email':
+                    $query->orderBy('users.email', $orderBy);
+                    break;
+                case 'supervisor.email':
+                    $query->orderBy('supervisors.email', $orderBy);
+                    break;
+                case 'processed_at':
+                case 'updated_at':
+                    $query->orderBy('counts.updated_at', $orderBy);
+                    break;
+                default:
+                    $query->orderBy('counts.updated_at', 'desc');
+                    break;
+            }
+        } else {
+            $query->orderBy('products.name', 'asc');
+        }
 
         return $query;
     }
@@ -607,14 +771,14 @@ class InventoryCycleQueryService
     private function applyCycleSummarySorting($query, ?string $sortBy, string $orderBy = 'desc')
     {
         $validSortFields = [
-            'cycle_id' => 'pc.cycle_id',
+            'cycle_id' => 'discrepancies.cycle_id',
             'start_date' => 'ic.start_date',
             'end_date' => 'ic.end_date',
             'cycle_status' => 'ic.status',
             'total_products' => 'total_products',
             'total_surplus' => 'total_surplus',
             'total_shortage' => 'total_shortage',
-            'net_total' => 'net_total'
+            'net_total' => 'net_total',
         ];
 
         if ($sortBy && isset($validSortFields[$sortBy])) {

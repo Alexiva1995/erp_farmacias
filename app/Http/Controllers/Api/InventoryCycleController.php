@@ -41,15 +41,29 @@ class InventoryCycleController extends Controller
 
     public function getProductCount(Request $request)
     {
-        $query = $this->inventoryCycleQueryService->getFilteredQuery($request);
+        if ($request->filled('cycleId')) {
+            $query = $this->inventoryCycleQueryService->getCycleDetailedCountsQuery($request);
+        } else {
+            $query = $this->inventoryCycleQueryService->getFilteredQuery($request);
+        }
+
         $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            $data = $request->filled('cycleId')
+                ? $this->formatCycleDetailItems($items)
+                : $items;
+
+            return response()->json(['data' => $data, 'total' => $items->count()]);
         }
+
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        $data = $request->filled('cycleId')
+            ? $this->formatCycleDetailItems($paginatedResult->items())
+            : $paginatedResult->items();
+
+        return response()->json(['data' => $data, 'total' => $paginatedResult->total()]);
     }
 
     public function storeProductCount(Request $request, $productId)
@@ -121,6 +135,50 @@ class InventoryCycleController extends Controller
     private function calculateCurrentStock(Product $product): int
     {
         return $this->inventoryCycleActionService->calculateCurrentStock($product);
+    }
+
+    private function formatCycleDetailItems($items)
+    {
+        return collect($items)->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'cycle_id' => $item->cycle_id,
+                'product_id' => $item->product_id,
+                'user_id' => $item->user_id,
+                'supervisor_id' => $item->supervisor_id,
+                'counted_quantity' => $item->counted_quantity,
+                'system_quantity' => $item->system_quantity,
+                'final_quantity' => $item->counted_quantity,
+                'discrepancy' => $item->discrepancy,
+                'status' => $item->status,
+                'source_type' => $item->source_type,
+                'created_at' => $item->created_at,
+                'updated_at' => $item->updated_at,
+                'product' => [
+                    'id' => $item->product_id,
+                    'name' => $item->product_name,
+                    'photo_url' => $item->product_photo_url,
+                    'iva' => $item->product_iva,
+                    'psychotropic' => $item->product_psychotropic,
+                    'is_colombian_origin' => $item->product_is_colombian_origin,
+                    'laboratory' => [
+                        'name' => $item->laboratory_name,
+                    ],
+                ],
+                'user' => [
+                    'email' => $item->user_email,
+                    'username' => $item->user_username,
+                    'employee_name' => $item->user_employee_name,
+                    'employee_last_name' => $item->user_employee_last_name,
+                ],
+                'supervisor' => [
+                    'email' => $item->supervisor_email,
+                    'username' => $item->supervisor_username,
+                    'employee_name' => $item->supervisor_employee_name,
+                    'employee_last_name' => $item->supervisor_employee_last_name,
+                ],
+            ];
+        })->all();
     }
 
     public function processCountAction(Request $request, $countId)

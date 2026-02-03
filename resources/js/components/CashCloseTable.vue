@@ -39,12 +39,12 @@ const formatEmployeeName = (user) => {
 };
 
 const headers = [
-  { title: "Nombre de Producto", key: "product.name", sortable: true, width: "250px", maxWidth: "250px" },
-  { title: "Laboratorio", key: "product.laboratory.name", sortable: true },
+  { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
+  { title: "Producto", key: "product.name", sortable: true, width: "320px", maxWidth: "320px" },
   { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
   { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
-  { title: "Usuario Conteo", key: "user.name", sortable: true },
-  { title: "Supervisor Aprobación", key: "supervisor.name", sortable: true },
+  { title: "Usuario", key: "user.name", sortable: true },
+  { title: "Supervisión", key: "supervisor.name", sortable: true },
   { title: "Monto", key: "amount", align: "end", sortable: true },
 ];
 
@@ -93,14 +93,14 @@ const headers = [
         </span>
       </template>
 
-      <template #item.product.name="{ item }">
-        <span class="font-weight-medium text-truncate d-inline-block" style="max-width: 250px;" :title="item.product.name">
-          {{ item.product.name }}
-        </span>
+      <template #item.product_id="{ item }">
+        <span class="font-weight-medium">{{ item.productId || item.product_id || "—" }}</span>
       </template>
 
-      <template #item.product.laboratory.name="{ item }">
-        <span>{{ item.product.laboratory?.name || "N/A" }}</span>
+      <template #item.product.name="{ item }">
+        <span class="font-weight-medium text-truncate d-inline-block" style="max-width: 320px;" :title="item.product.name">
+          {{ item.product.name }}
+        </span>
       </template>
 
       <template #item.product.unit_cost="{ item }">
