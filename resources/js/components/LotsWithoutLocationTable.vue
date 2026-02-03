@@ -48,7 +48,7 @@ const saveInlineEdit = async (lot) => {
 
   try {
     emit("update-lot", {
-      id: lot.id,
+      lot_id: lot.lot_id,
       location: editingLocation.value.trim(),
     });
   } catch (err) {
@@ -57,7 +57,7 @@ const saveInlineEdit = async (lot) => {
 };
 
 const startEdit = (lot) => {
-  editingLotId.value = lot.id;
+  editingLotId.value = lot.lot_id;
   editingLocation.value = lot.location || "";
   currentEditingLot.value = lot;
   searchInput.value = "";
@@ -155,7 +155,7 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.location="{ item }">
-        <template v-if="editingLotId === item.id">
+        <template v-if="editingLotId === item.lot_id">
           <VAutocomplete
             v-model="editingLocation"
             :items="locations"
@@ -166,9 +166,9 @@ const formatDate = (dateString) => {
             clearable
             @keydown.enter.prevent="saveInlineEdit(item)"
             autofocus
-            :error="props.lotWithError === item.id"
+            :error="props.lotWithError === item.lot_id"
             :error-messages="
-              props.lotWithError === item.id
+              props.lotWithError === item.lot_id
                 ? props.errorMessage || 'Error al asignar ubicación'
                 : ''
             "
@@ -182,7 +182,7 @@ const formatDate = (dateString) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex gap-2">
-          <template v-if="editingLotId === item.id">
+          <template v-if="editingLotId === item.lot_id">
             <VBtn
               icon="tabler-check"
               size="small"

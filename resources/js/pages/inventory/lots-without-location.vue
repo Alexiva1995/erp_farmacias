@@ -47,20 +47,20 @@ const fetchSelectOptions = async () => {
 };
 
 const handleUpdateLot = async (payload) => {
-  if (lotWithError.value === payload.id) {
+  if (lotWithError.value === payload.lot_id) {
     lotWithError.value = null;
     errorMessage.value = "";
   }
 
   try {
-    await axios.put(`/product-lots/${payload.id}`, { location: payload.location });
+    await axios.put(`/product-lots/${payload.lot_id}`, { location: payload.location });
     toast.success("Ubicación asignada correctamente");
     await fetchLots();
   } catch (err) {
     toast.error("Error al actualizar la ubicación");
 
     if (err.response?.status === 422) {
-      lotWithError.value = payload.id;
+      lotWithError.value = payload.lot_id;
       const errors = err.response.data?.errors;
       if (errors?.location && errors.location[0]) {
         errorMessage.value = errors.location[0];

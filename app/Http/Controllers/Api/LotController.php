@@ -25,8 +25,21 @@ class LotController extends Controller
     {
         $query = $this->lotQueryService->getFilteredQuery($request);
 
+        $perPage = (int) $request->get('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+
+            return response()->json([
+                'data' => [
+                    'data' => $items,
+                    'total' => $items->count(),
+                ],
+            ]);
+        }
+
         return response()->json([
-            'data' => $query->paginate($request->get('itemsPerPage', 10)),
+            'data' => $query->paginate($perPage),
         ]);
     }
 
@@ -268,12 +281,28 @@ class LotController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => ['data' => $items, 'total' => $items->count()]]);
+            $data = $items->map(fn ($lot) => $this->mapLotWithoutLocationToProductId($lot));
+
+            return response()->json(['data' => ['data' => $data, 'total' => $data->count()]]);
         }
-        
+
         $paginatedResult = $query->paginate($perPage);
+        $data = collect($paginatedResult->items())->map(fn ($lot) => $this->mapLotWithoutLocationToProductId($lot));
+
         return response()->json([
-            'data' => ['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()],
+            'data' => ['data' => $data->values()->all(), 'total' => $paginatedResult->total()],
         ]);
+    }
+
+    /**
+     * Expone id como product_id y el id del lote como lot_id para la vista lotes sin ubicación.
+     */
+    private function mapLotWithoutLocationToProductId(ProductLot $lot): array
+    {
+        $arr = $lot->toArray();
+        $arr['lot_id'] = $arr['id'];
+        $arr['id'] = $lot->product_id;
+
+        return $arr;
     }
 }

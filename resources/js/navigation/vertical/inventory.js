@@ -42,7 +42,7 @@ export default [
         to: "inventory-traceability",
       },
       {
-        title: "Psicotropicos",
+        title: "Psicotrópicos",
         to: "inventory-psychotropics",
       },
       {
@@ -52,10 +52,10 @@ export default [
         subject: "admin",
       },
       {
-        title: "Inventario  Ciclicos",
+        title: "Inventario Cíclicos",
         to: "cyclics-users",
         action: "manage",
-        subject: "cycli-user",
+        subject: "user",
       },
     ],
   },

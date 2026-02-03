@@ -101,17 +101,16 @@ class LotQueryService
             $this->applySorting($query, $sortBy, $orderBy);
         } else {
             // Ordenamiento por defecto: por nombre de producto
-            // Verificar si ya hay un join con products para evitar duplicados
             $hasProductsJoin = $this->hasJoin($query, 'products');
-            
             if (!$hasProductsJoin) {
                 $query->join('products', 'product_lots.product_id', '=', 'products.id');
             }
-            $query->orderBy('products.name', 'asc');
+            // Incluir columna en SELECT para compatibilidad con DISTINCT en MySQL (ONLY_FULL_GROUP_BY)
+            $query->addSelect('products.name as _order_product_name');
+            $query->orderBy('_order_product_name', 'asc');
         }
-        
+
         // Usar distinct para evitar duplicados cuando hay joins
-        // Verificar si hay joins después de aplicar el ordenamiento
         $hasJoins = !empty($query->getQuery()->joins);
         if ($hasJoins) {
             $query->distinct();
@@ -301,11 +300,8 @@ class LotQueryService
         if ($request->has('sortBy') && $request->has('orderBy')) {
             $this->applySorting($query, $request->sortBy, $request->orderBy);
         } else {
-            // Ordenamiento por defecto: por nombre de producto
-            if (!$this->hasJoin($query, 'products')) {
-                $query->join('products', 'product_lots.product_id', '=', 'products.id');
-            }
-            $query->orderBy('products.name', 'asc');
+            // Ordenamiento por defecto: alfabético por nombre de producto
+            $this->applySorting($query, 'product.name', 'asc');
         }
 
         return $query;
@@ -342,14 +338,16 @@ class LotQueryService
                 if (!$this->hasJoin($query, 'products')) {
                     $query->join('products', 'product_lots.product_id', '=', 'products.id');
                 }
-                $query->orderBy('products.name', $orderBy);
+                $query->addSelect('products.name as _order_product_name');
+                $query->orderBy('_order_product_name', $orderBy);
                 break;
 
             case 'supplier.name':
                 if (!$this->hasJoin($query, 'suppliers')) {
                     $query->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id');
                 }
-                $query->orderBy('suppliers.name', $orderBy);
+                $query->addSelect('suppliers.name as _order_supplier_name');
+                $query->orderBy('_order_supplier_name', $orderBy);
                 break;
 
             case 'laboratory.name':
@@ -359,9 +357,10 @@ class LotQueryService
                 if (!$this->hasJoin($query, 'laboratories')) {
                     $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id');
                 }
-                $query->orderBy('laboratories.name', $orderBy);
+                $query->addSelect('laboratories.name as _order_lab_name');
+                $query->orderBy('_order_lab_name', $orderBy);
                 break;
-            
+
             case 'origin.name':
                 if (!$this->hasJoin($query, 'products')) {
                     $query->join('products', 'product_lots.product_id', '=', 'products.id');
@@ -369,7 +368,8 @@ class LotQueryService
                 if (!$this->hasJoin($query, 'origins')) {
                     $query->join('origins', 'products.origin_id', '=', 'origins.id');
                 }
-                $query->orderBy('origins.name', $orderBy);
+                $query->addSelect('origins.name as _order_origin_name');
+                $query->orderBy('_order_origin_name', $orderBy);
                 break;
 
             case 'quantity':
