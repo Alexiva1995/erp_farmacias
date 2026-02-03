@@ -79,6 +79,12 @@ class GroupQueryService
         $this->applySorting($query, $request);
 
         $perPage = $request->input('itemsPerPage', 10);
+
+        if ($perPage == -1) {
+            $perPage = 99999;
+            return $query->paginate($perPage);
+        }
+
         return $query->paginate($perPage);
     }
 

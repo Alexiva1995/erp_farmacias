@@ -132,7 +132,7 @@ class InventoryCycleQueryService
             $model = $query->getModel();
             $tableName = $model->getTable();
             $discrepancyColumn = "{$tableName}.discrepancy";
-            
+
             switch ($filters['discrepancyFilter']) {
                 case 'with_discrepancy':
                     $query->where($discrepancyColumn, '!=', 0);
@@ -318,6 +318,13 @@ class InventoryCycleQueryService
         }
     }
 
+    private function applyNotAuthUserFilterToCount(Builder $query): Builder
+    {
+        $query->where('user_id', '!=', auth()->id());
+
+        return $query;
+    }
+
     public function getFilteredQuery(Request $request): Builder
     {
         $query = $this->getBaseQuery();
@@ -334,8 +341,8 @@ class InventoryCycleQueryService
             'is_history' => $isHistoryView,
         ];
 
-        
-        if ($isHistoryView) {
+
+        if ($isHistoryView || $request->cycleId) {
             $filters['status'] = ['approved', 'rejected', 'pending'];
         } elseif ($request->cycleId) {
             // Para detalles de ciclo, no filtrar por status
@@ -343,8 +350,9 @@ class InventoryCycleQueryService
         } else {
             $filters['status'] = 'pending';
         }
-      
+
         $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applyNotAuthUserFilterToCount($query);
         $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
 
         return $query;
@@ -485,6 +493,7 @@ class InventoryCycleQueryService
         ];
 
         $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applyNotAuthUserFilterToCount($query);
         $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
 
         return $query;
@@ -791,7 +800,7 @@ class InventoryCycleQueryService
     }
 
 
-      public function getSalesDetailsToCountQuery(Request $request): Builder
+    public function getSalesDetailsToCountQuery(Request $request): Builder
     {
         $query = Product::query()->with(['lots', 'laboratory', 'origin']);
 
@@ -800,8 +809,8 @@ class InventoryCycleQueryService
                 ->where('order_date', '>=', '2026-01-25');
             $subQuery->whereHas('cashClosing', function ($cashQuery) {
                 $cashQuery->where('status', 'closed')
-                    ->where('closing_date', '>=', '2026-01-25'); 
-                $cashQuery->has('dailyClosure'); 
+                    ->where('closing_date', '>=', '2026-01-25');
+                $cashQuery->has('dailyClosure');
             });
         });
 
@@ -826,7 +835,7 @@ class InventoryCycleQueryService
     }
 
 
-        private function getSaleCountBaseQuery(): Builder
+    private function getSaleCountBaseQuery(): Builder
     {
         return SaleCount::query()->select('sales_counts.*')->with([
             'product' => function ($query) {
@@ -838,7 +847,7 @@ class InventoryCycleQueryService
         ]);
     }
 
-     public function getSaleCountFilteredQuery(Request $request): Builder
+    public function getSaleCountFilteredQuery(Request $request): Builder
     {
         $query = $this->getSaleCountBaseQuery();
 
@@ -858,6 +867,7 @@ class InventoryCycleQueryService
         ];
 
         $query = $this->applyFiltersToCount($query, $filters);
+        $query = $this->applyNotAuthUserFilterToCount($query);
         $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
 
         return $query;
