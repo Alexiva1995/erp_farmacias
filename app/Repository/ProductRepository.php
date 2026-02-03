@@ -176,7 +176,7 @@ class ProductRepository
             ) AS demanda_ajustada');
 
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots"]);
+        $consulta = Product::select($columnas)->with(["laboratory", "lots"])->where('is_deleted', false);
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
@@ -391,7 +391,7 @@ class ProductRepository
             $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
         }
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
 
         if (array_key_exists("ids", $filtros)) {
             $consulta->whereIn("id", $filtros["ids"]);
@@ -609,7 +609,7 @@ class ProductRepository
         }
 
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"]);
+        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
 
         if (array_key_exists("ids", $filtros)) {
             $consulta->whereIn("id", $filtros["ids"]);
@@ -823,7 +823,7 @@ class ProductRepository
         $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
 
 
-        $consulta = Product::select($columnas)->with([
+        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
             "laboratory",
             "lots",
             "group",
@@ -995,7 +995,7 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)->with([
+        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
             "laboratory",
             "lots",
             "group",

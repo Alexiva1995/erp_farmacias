@@ -53,7 +53,8 @@ class ProductQueryService
 
         if (!empty($filters['is_pending'])) {
             $query->where(function ($q) {
-                $q->whereNull('barcode')->orWhere('is_deleted', true);
+                // Ensure we only look for items with null barcode that are NOT deleted
+                $q->whereNull('barcode')->where('is_deleted', false);
             });
         }
 
@@ -116,7 +117,7 @@ class ProductQueryService
             $currentGroupId = $filters['withoutGroupOrCurrentGroup'];
             $query->where(function ($q) use ($currentGroupId) {
                 $q->whereNull('group_id')
-                  ->orWhere('group_id', $currentGroupId);
+                    ->orWhere('group_id', $currentGroupId);
             });
         }
         // filtro de profitability is_locked
@@ -277,7 +278,8 @@ class ProductQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'is_pending' => true
+            'is_pending' => true,
+            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -301,7 +303,8 @@ class ProductQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_laboratory' => true
+            'null_laboratory' => true,
+            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -325,7 +328,8 @@ class ProductQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_origin' => true
+            'null_origin' => true,
+            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -349,7 +353,8 @@ class ProductQueryService
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'null_group' => true
+            'null_group' => true,
+            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
