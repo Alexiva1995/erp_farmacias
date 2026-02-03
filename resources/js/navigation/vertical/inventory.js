@@ -83,7 +83,7 @@ export default [
           title: 'Inventarios Users',
           to: 'cyclics-users',
           action: 'manage',
-          subject: 'user',
+          subject: 'cycli-user',
         }
         ]
       },
@@ -91,7 +91,7 @@ export default [
           title: 'Inventario  Ciclicos',
           to: 'cyclics-users',
           action: 'manage',
-          subject: 'cycli-user',
+          subject: 'user',
         },
     ],
   }, 
