@@ -119,7 +119,9 @@ class OrderQueryService
                 DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
                 DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
             ])
-            ->whereNull('products.deleted_at');
+            ->where(function ($q) {
+                $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
+            });
 
         // 2. Consulta de PACKS
         $packsQuery = DB::table('product_packs')

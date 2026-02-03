@@ -1,5 +1,5 @@
 <script setup>
-import {defineProps} from "vue";
+import { computed, defineProps } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -9,6 +9,8 @@ const props = defineProps({
   origins: { type: Array, default: () => [] },
   stockStatusFilter: [Boolean, null],
   isStrictSearch: Boolean,
+  sortBy: { type: [String, undefined], default: undefined },
+  orderBy: { type: String, default: "asc" },
 });
 
 const emit = defineEmits([
@@ -18,7 +20,9 @@ const emit = defineEmits([
   "update:stockStatusFilter",
   "update:isStrictSearch",
   "clear",
+  "clear-sort",
   "back",
+  "sort",
 ]);
 
 const stockOptions = [
@@ -71,6 +75,22 @@ const sortOptions = [
     order: "asc",
   },
 ];
+
+const selectedSort = computed(() => {
+  if (!props.sortBy) return null;
+  return sortOptions.find(
+    (o) => o.key === props.sortBy && o.order === props.orderBy,
+  ) || { key: props.sortBy, order: props.orderBy, title: props.sortBy, icon: "tabler-arrow-up" };
+});
+
+const isOptionSelected = (option) =>
+  props.sortBy === option.key && props.orderBy === option.order;
+
+const getSelectedSortTitle = () => selectedSort.value?.title || props.sortBy;
+
+const getSelectedSortIcon = () => selectedSort.value?.icon || "tabler-arrow-up";
+
+const clearSortFilter = () => emit("clear-sort");
 
 const handleSortClick = (option) => {
   emit("sort", { key: option.key, order: option.order });
@@ -175,15 +195,36 @@ const handleBack = () => {
             <VListItem
               v-for="(option, index) in sortOptions"
               :key="index"
+              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
               @click="handleSortClick(option)"
             >
               <template #prepend>
                 <VIcon :icon="option.icon" size="20" class="me-2" />
               </template>
               <VListItemTitle>{{ option.title }}</VListItemTitle>
+              <template #append>
+                <VIcon
+                  v-if="isOptionSelected(option)"
+                  icon="tabler-check"
+                  size="16"
+                  color="primary"
+                />
+              </template>
             </VListItem>
           </VList>
         </VMenu>
+
+        <VChip
+          v-if="selectedSort"
+          color="primary"
+          variant="tonal"
+          size="small"
+          closable
+          @click:close="clearSortFilter"
+        >
+          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
+          {{ getSelectedSortTitle() }}
+        </VChip>
       </div>
 
       <VBtn

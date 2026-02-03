@@ -111,6 +111,7 @@ const openOrderData = ref(null);
 const orderData = ref(null);
 const reservedOrderData = ref(null);
 const pendingOpenOrder = ref(null); // Orden que será abierta tras imprimir.
+const pendingQuotationProducts = ref([]); // Productos de cotización pendientes cuando no hay cliente.
 
 const orderItems = ref([]);
 const itemsToPrint = ref([]);
@@ -952,6 +953,13 @@ const handleClearFilters = () => {
   isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
+  tableOptions.value.sortBy = [];
+};
+
+const handleClearSortOrder = () => {
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+  tableOptions.value.sortBy = [];
 };
 
 watch(
@@ -1046,7 +1054,11 @@ const verifyClient = async (identification) => {
       } else {
         hasOpenOrder.value = false;
         openOrderData.value = null;
-        await addOrden(clientData.id);
+        const order = await addOrden(clientData.id);
+        if (order && pendingQuotationProducts.value.length > 0) {
+          await handleAddQuotationProducts(pendingQuotationProducts.value);
+          pendingQuotationProducts.value = [];
+        }
       }
     }
   } catch (error) {
@@ -1056,6 +1068,35 @@ const verifyClient = async (identification) => {
   }
 };
 
+
+const handleLoadQuotation = async (quotationId) => {
+  if (!quotationId?.trim()) return;
+  try {
+    const response = await axios.get(`/tpv/quotations/${quotationId}/products`);
+    const { products, client } = response.data;
+
+    if (!products || products.length === 0) {
+      toast.info("La cotización no tiene productos o está vacía.");
+      return;
+    }
+
+    if (client && client.id) {
+      const order = await addOrden(client.id);
+      if (order) {
+        selectedClient.value = order.client;
+        await handleAddQuotationProducts(products);
+        toast.success("Cotización cargada. Productos agregados al pedido.");
+      }
+    } else {
+      pendingQuotationProducts.value = products;
+      toast.warning("La cotización no tiene cliente. Ingrese la cédula del cliente.");
+    }
+  } catch (error) {
+    const msg = error.response?.data?.message || "Error al cargar la cotización.";
+    toast.error(msg);
+    console.error("Error loading quotation:", error);
+  }
+};
 
 const reservedOrderCliente = async () => {
 try {
@@ -2923,8 +2964,11 @@ onUnmounted(() => {
     <div v-else>
       <OrderClienteCard
         v-model="clientIdentification"
+        :buttons-icon-only="true"
+        :show-quotation-input="true"
         @verify-client="verifyClient"
         @reserved-order-cliente="reservedOrderCliente"
+        @load-quotation="handleLoadQuotation"
       />
     </div>
 
@@ -2937,7 +2981,10 @@ onUnmounted(() => {
       :laboratories="laboratories || []"
       :origins="origins || []"
       :loading="isLoadingFilters || false"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @clear="handleClearFilters"
+      @clear-sort="handleClearSortOrder"
       @sort="handleExternalSort"
       @back="handleBackFromGroupView"
     >

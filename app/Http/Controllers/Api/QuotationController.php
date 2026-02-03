@@ -107,9 +107,13 @@ class QuotationController extends Controller
         if (!$quotation) {
             return response()->json(['message' => 'Quotation not found'], 404);
         }
+
+        $quotation->load('client');
+
         return response()->json([
             'quotation_id' => $quotation->id,
             'products' => $quotation->products,
+            'client' => $quotation->client,
         ]);
     }
 

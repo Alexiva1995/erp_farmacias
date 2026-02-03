@@ -22,9 +22,17 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  buttonsIconOnly: {
+    type: Boolean,
+    default: false,
+  },
+  showQuotationInput: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['update:modelValue', 'verify-client', 'reserved-order-cliente']);
+const emit = defineEmits(['update:modelValue', 'verify-client', 'reserved-order-cliente', 'load-quotation']);
 const identificationInput = ref(props.modelValue);
 
 watch(() => props.modelValue, (newVal) => {
@@ -46,42 +54,90 @@ const handleRealizarPedido = () => {
 const reservadaPedido = () => {
   emit('reserved-order-cliente');
 };
+
+const quotationIdInput = ref('');
+const loadQuotation = () => {
+  if (quotationIdInput.value?.trim()) {
+    emit('load-quotation', quotationIdInput.value.trim());
+    quotationIdInput.value = '';
+  }
+};
 </script>
 <template>
   <VCard class="mb-6">
     <VCardText>
       <VRow v-if="!props.selectedClient || !props.selectedClient.id">
-        <VCol cols="12" :md="showButton ? 9 : 12">
-          <AppTextField
-            placeholder="Ingrese identificación"
-            clearable
-            v-model="identificationInput"
-            @keyup.enter="handleRealizarPedido"
-          />
-        </VCol>
-        <VCol v-if="showButton" cols="12" md="3">
-          <VRow>
-            <VCol cols="12" :md="showReservedButton ? 6 : 12">
+        <VCol cols="12" :md="props.showQuotationInput ? 6 : 12">
+          <div class="d-flex align-center gap-2">
+            <AppTextField
+              placeholder="Ingrese identificación"
+              clearable
+              v-model="identificationInput"
+              class="flex-grow-1"
+              @keyup.enter="handleRealizarPedido"
+            />
+            <template v-if="showButton">
               <VBtn
+                v-if="props.buttonsIconOnly"
+                icon
+                color="success"
+                variant="tonal"
+                @click="handleRealizarPedido"
+              >
+                <VIcon icon="tabler-search" />
+              </VBtn>
+              <VBtn
+                v-else
                 color="success"
                 prepend-icon="tabler-search"
-                block
+                variant="tonal"
                 @click="handleRealizarPedido"
               >
                 {{ buttonText }}
               </VBtn>
-            </VCol>
-            <VCol v-if="showReservedButton" cols="12" md="6">
               <VBtn
+                v-if="showReservedButton"
+                v-show="props.buttonsIconOnly"
+                icon
+                color="warning"
+                variant="tonal"
+                @click="reservadaPedido"
+              >
+                <VIcon icon="tabler-archive" />
+              </VBtn>
+              <VBtn
+                v-if="showReservedButton && !props.buttonsIconOnly"
                 color="warning"
                 prepend-icon="tabler-archive"
-                block
+                variant="tonal"
                 @click="reservadaPedido"
               >
                 Reservada
               </VBtn>
-            </VCol>
-          </VRow>
+            </template>
+          </div>
+        </VCol>
+        <VCol v-if="props.showQuotationInput" cols="12" md="6">
+          <AppTextField
+            v-model="quotationIdInput"
+            placeholder="ID de cotización"
+            clearable
+            class="flex-grow-1"
+            @keyup.enter="loadQuotation"
+          >
+            <template #append-inner>
+              <VBtn
+                icon
+                variant="text"
+                color="primary"
+                size="small"
+                :disabled="!quotationIdInput?.trim()"
+                @click="loadQuotation"
+              >
+                <VIcon icon="tabler-file-import" />
+              </VBtn>
+            </template>
+          </AppTextField>
         </VCol>
       </VRow>
       <VRow v-else>
