@@ -206,6 +206,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("tpv")->group(function () {
         Route::get("/quotation", [QuotationController::class, "index"]);
         Route::get("/quotation/{product}", [QuotationController::class, "show"]);
+        Route::get("/quotations/list", [QuotationController::class, "list"]);
         Route::post("/quotations", [QuotationController::class, "store"]);
         Route::get("/quotations/{quotationId}/products", [QuotationController::class, "showProducts"]);
         Route::get("/quotations/last-number", [QuotationController::class, "getLastNumber"]);

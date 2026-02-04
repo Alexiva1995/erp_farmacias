@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from "vue";
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
+import { formatAmountOnly } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -10,6 +12,7 @@ const props = defineProps({
   headers: { type: Array, required: true },
   sortBy: { type: [String, Array], default: () => [] },
   orderBy: { type: String, default: "desc" },
+  showThermalPrint: { type: Boolean, default: false },
 });
 
 const sortByModel = computed(() => {
@@ -18,7 +21,7 @@ const sortByModel = computed(() => {
   return key ? [{ key, order: props.orderBy || "desc" }] : [];
 });
 
-const emit = defineEmits(["update:options", "print-order", "view-order"]);
+const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order"]);
 
 const date = (order) => {
   const time = new Date(order);
@@ -86,6 +89,11 @@ const renderUsername = (item) => {
     return "N/A";
   }
 };
+
+const renderSellerName = (item) => {
+  const name = item.seller?.username;
+  return name ? capitalizeFirstAndLastName(name) : "N/A";
+};
 </script>
 <template>
   <VCard>
@@ -108,22 +116,28 @@ const renderUsername = (item) => {
         {{ renderUsername(item) }}
       </template>
 
+      <template v-slot:item.seller.username="{ item }">
+        {{ renderSellerName(item) }}
+      </template>
+
       <template v-slot:item.total_amount="{ item }">
-        <span>
-          {{ item.total_amount }}
-        </span>
-        <IconBtn
-          v-if="item.has_multiple_currencies === true"
-          @click="toggleExpand(item.id)"
-        >
-          <VIcon
-            :icon="
-              expandedRows.includes(item.id)
-                ? 'tabler-chevron-up'
-                : 'tabler-chevron-down'
-            "
-          />
-        </IconBtn>
+        <div class="d-flex align-center justify-end gap-1">
+          <span class="text-end">
+            {{ formatAmountOnly(Number(item.total_amount) || 0, item.currency || 'COP') }}
+          </span>
+          <IconBtn
+            v-if="item.has_multiple_currencies === true"
+            @click="toggleExpand(item.id)"
+          >
+            <VIcon
+              :icon="
+                expandedRows.includes(item.id)
+                  ? 'tabler-chevron-up'
+                  : 'tabler-chevron-down'
+              "
+            />
+          </IconBtn>
+        </div>
       </template>
 
       <template v-slot:item.currency="{ item }">
@@ -169,6 +183,13 @@ const renderUsername = (item) => {
           <IconBtn @click="$emit('print-order', item.id)">
             <VIcon icon="tabler-printer" />
           </IconBtn>
+          <VTooltip v-if="showThermalPrint" text="Ticket 54mm térmico" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn v-bind="tooltipProps" @click="$emit('print-order-thermal', item.id)" color="secondary">
+                <VIcon icon="tabler-receipt" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
 
@@ -185,7 +206,7 @@ const renderUsername = (item) => {
                   Método: {{ getPaymentMethodLabel(payment.method) }}
                 </VListItemTitle>
                 <VListItemSubtitle>
-                  Monto: {{ payment.currency }} {{ payment.amount }}
+                  Monto: {{ formatAmountOnly(Number(payment.amount) || 0, payment.currency || 'COP') }}
                 </VListItemSubtitle>
               </VListItem>
             </VList>

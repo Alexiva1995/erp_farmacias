@@ -1,18 +1,19 @@
 <script setup>
-import OrderFiltersGeneral from "@/components/OrderFiltersGeneral.vue";
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import OrderTable from "@/components/OrderTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
+import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const ordersCompleted = ref([]);
 const totalOrdersCompleted = ref(0);
 const loadingOrdersCompleted = ref(false);
 
 const pageOrdersCompleted = ref(1);
-const itemsPerPageOrdersCompleted = ref(10);
+const itemsPerPageOrdersCompleted = ref(25);
 const sortByOrdersCompleted = ref();
 const orderByOrdersCompleted = ref();
 
@@ -21,7 +22,7 @@ const totalOrdersAll = ref(0);
 const loadingOrdersAll = ref(false);
 
 const pageOrdersAll = ref(1);
-const itemsPerPageOrdersAll = ref(10);
+const itemsPerPageOrdersAll = ref(25);
 const sortByOrdersAll = ref();
 const orderByOrdersAll = ref();
 
@@ -32,7 +33,7 @@ const totalOrdersAbandoned = ref(0);
 const loadingOrdersAbandoned = ref(false);
 
 const pageOrdersAbandoned = ref(1);
-const itemsPerPageOrdersAbandoned = ref(10);
+const itemsPerPageOrdersAbandoned = ref(25);
 const sortByOrdersAbandoned = ref();
 const orderByOrdersAbandoned = ref();
 
@@ -41,33 +42,24 @@ const totalOrdersCancelled = ref(0);
 const loadingOrdersCancelled = ref(false);
 
 const pageOrdersCancelled = ref(1);
-const itemsPerPageOrdersCancelled = ref(10);
+const itemsPerPageOrdersCancelled = ref(25);
 const sortByOrdersCancelled = ref();
 const orderByOrdersCancelled = ref();
 
+const quotations = ref([]);
+const totalQuotations = ref(0);
+const loadingQuotations = ref(false);
+const pageQuotations = ref(1);
+const itemsPerPageQuotations = ref(25);
+
 const sellers = ref([]);
 
-const currencyFilterCompleted = ref(null);
-const sellerFilterCompleted = ref(null);
-const filterSearchQueryCompleted = ref("");
-const filterSearchQueryIdCompleted = ref("");
-const offerCompleted = ref("");
-
-const currencyFilterAll = ref(null);
-const sellerFilterAll = ref(null);
-const filterSearchQueryAll = ref("");
-const filterSearchQueryIdAll = ref("");
+// Filtros unificados para todas las pestañas (un solo card de filtros)
+const filterSearchQueryId = ref("");
+const filterSearchQuery = ref("");
+const currencyFilter = ref(null);
+const sellerFilter = ref(null);
 const stateFilterAll = ref(null);
-
-const filterSearchQueryIdAbandoned = ref("");
-const currencyFilterAbandoned = ref(null);
-const sellerFilterAbandoned = ref(null);
-const filterSearchQueryAbandoned = ref("");
-
-const filterSearchQueryIdCancelled = ref("");
-const currencyFilterCancelled = ref(null);
-const sellerFilterCancelled = ref(null);
-const filterSearchQueryCancelled = ref("");
 
 const paymentsForPrint = ref([]);
 const changeAmountForPrint = ref(0);
@@ -80,16 +72,60 @@ const orderItems = ref([]);
 
 const viewModal = ref(false);
 
-// Rango de fechas global: por defecto desde 2026-01-01 para cargar datos recientes
-const globalStartDate = ref("2026-01-01");
-const globalEndDate = ref(null);
+const activeTab = ref(0);
+
+// Rango de fechas global: por defecto primer día del mes actual (evita tabla vacía por zona horaria o sin ventas hoy)
+const toDateString = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const getToday = () => toDateString(new Date());
+const getFirstDayOfMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+};
+
+// Por defecto: día actual desde 00:00 (solo hoy)
+const globalStartDate = ref(getToday());
+const globalEndDate = ref(getToday());
+
+const setDateRange = (start, end) => {
+  globalStartDate.value = start;
+  globalEndDate.value = end;
+};
+const setDateHoy = () => {
+  const t = new Date();
+  setDateRange(toDateString(t), toDateString(t));
+};
+const setDateAyer = () => {
+  const a = new Date();
+  a.setDate(a.getDate() - 1);
+  const s = toDateString(a);
+  setDateRange(s, s);
+};
+const setDateSemana = () => {
+  const h = new Date();
+  const inicio = new Date(h);
+  const dia = inicio.getDay();
+  const diff = inicio.getDate() - dia + (dia === 0 ? -6 : 1);
+  inicio.setDate(diff);
+  setDateRange(toDateString(inicio), toDateString(h));
+};
+const setDateMes = () => {
+  const h = new Date();
+  setDateRange(getFirstDayOfMonth(), toDateString(h));
+};
+const setDateAno = () => {
+  const h = new Date();
+  const inicio = `${h.getFullYear()}-01-01`;
+  setDateRange(inicio, toDateString(h));
+};
 
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Identificación", key: "identification", sortable: true },
   { title: "Cliente", key: "client_full_name", sortable: true },
   { title: "Vendedor", key: "seller.username", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "Monto", key: "total_amount", sortable: true, align: "end" },
   { title: "Moneda", key: "currency", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
   { title: "Acción", key: "actions", sortable: false },
@@ -100,24 +136,29 @@ const headersAll = [
   { title: "Identificación", key: "identification", sortable: true },
   { title: "Cliente", key: "client_full_name", sortable: true },
   { title: "Vendedor", key: "seller.username", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
+  { title: "Monto", key: "total_amount", sortable: true, align: "end" },
   { title: "Moneda", key: "currency", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
   { title: "Estado", key: "status", sortable: true },
   { title: "Acción", key: "actions", sortable: false },
 ];
 
+const headersQuotations = [
+  { title: "ID", key: "id", sortable: true },
+  { title: "Cliente", key: "client_display", sortable: false },
+  { title: "Creado por", key: "creator_display", sortable: false },
+  { title: "Total", key: "total", sortable: true },
+  { title: "Moneda", key: "currency", sortable: true },
+  { title: "Fecha", key: "created_at", sortable: true },
+];
+
 const fetchOrderCompleted = async () => {
   loadingOrdersCompleted.value = true;
   const params = {
-    id: filterSearchQueryIdCompleted.value,
-    q: filterSearchQueryCompleted.value,
-    ...(currencyFilterCompleted.value !== null && {
-      currency: currencyFilterCompleted.value,
-    }),
-    ...(sellerFilterCompleted.value !== null && {
-      seller_id: sellerFilterCompleted.value,
-    }),
+    id: filterSearchQueryId.value,
+    q: filterSearchQuery.value,
+    ...(currencyFilter.value !== null && { currency: currencyFilter.value }),
+    ...(sellerFilter.value !== null && { seller_id: sellerFilter.value }),
     ...(globalStartDate.value && { start_date: globalStartDate.value }),
     ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersCompleted.value,
@@ -130,8 +171,8 @@ const fetchOrderCompleted = async () => {
   );
   try {
     const response = await axios.get("/tpv/orders/completed", { params });
-    ordersCompleted.value = response.data.data;
-    totalOrdersCompleted.value = response.data.total;
+    ordersCompleted.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    totalOrdersCompleted.value = response.data?.total ?? 0;
   } catch (error) {
     console.error("Hubo un error al obtener las ordenes:", error);
     toast.error("Error al obtener las ordenes.");
@@ -143,17 +184,11 @@ const fetchOrderCompleted = async () => {
 const fetchOrderAll = async () => {
   loadingOrdersAll.value = true;
   const params = {
-    id: filterSearchQueryIdAll.value,
-    q: filterSearchQueryAll.value,
-    ...(currencyFilterAll.value !== null && {
-      currency: currencyFilterAll.value,
-    }),
-    ...(sellerFilterAll.value !== null && {
-      seller_id: sellerFilterAll.value,
-    }),
-    ...(stateFilterAll.value !== null && {
-      state: stateFilterAll.value,
-    }),
+    id: filterSearchQueryId.value,
+    q: filterSearchQuery.value,
+    ...(currencyFilter.value !== null && { currency: currencyFilter.value }),
+    ...(sellerFilter.value !== null && { seller_id: sellerFilter.value }),
+    ...(stateFilterAll.value !== null && { state: stateFilterAll.value }),
     ...(globalStartDate.value && { start_date: globalStartDate.value }),
     ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersAll.value,
@@ -166,8 +201,8 @@ const fetchOrderAll = async () => {
   );
   try {
     const response = await axios.get("/tpv/orders/all", { params });
-    ordersAll.value = response.data.data;
-    totalOrdersAll.value = response.data.total;
+    ordersAll.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    totalOrdersAll.value = response.data?.total ?? 0;
   } catch (error) {
     console.error("Hubo un error al obtener las ordenes:", error);
     toast.error("Error al obtener las ordenes.");
@@ -179,14 +214,10 @@ const fetchOrderAll = async () => {
 const fetchOrderAbandoned = async () => {
   loadingOrdersAbandoned.value = true;
   const params = {
-    id: filterSearchQueryIdAbandoned.value,
-    q: filterSearchQueryAbandoned.value,
-    ...(currencyFilterAbandoned.value !== null && {
-      currency: currencyFilterAbandoned.value,
-    }),
-    ...(sellerFilterAbandoned.value !== null && {
-      seller_id: sellerFilterAbandoned.value,
-    }),
+    id: filterSearchQueryId.value,
+    q: filterSearchQuery.value,
+    ...(currencyFilter.value !== null && { currency: currencyFilter.value }),
+    ...(sellerFilter.value !== null && { seller_id: sellerFilter.value }),
     ...(globalStartDate.value && { start_date: globalStartDate.value }),
     ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersAbandoned.value,
@@ -199,8 +230,8 @@ const fetchOrderAbandoned = async () => {
   );
   try {
     const response = await axios.get("/tpv/orders/abandoned", { params });
-    ordersAbandoned.value = response.data.data;
-    totalOrdersAbandoned.value = response.data.total;
+    ordersAbandoned.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    totalOrdersAbandoned.value = response.data?.total ?? 0;
   } catch (error) {
     console.error("Hubo un error al obtener las ordenes:", error);
     toast.error("Error al obtener las ordenes.");
@@ -212,14 +243,10 @@ const fetchOrderAbandoned = async () => {
 const fetchOrderCancelled = async () => {
   loadingOrdersCancelled.value = true;
   const params = {
-    id: filterSearchQueryIdCancelled.value,
-    q: filterSearchQueryCancelled.value,
-    ...(currencyFilterCancelled.value !== null && {
-      currency: currencyFilterCancelled.value,
-    }),
-    ...(sellerFilterCancelled.value !== null && {
-      seller_id: sellerFilterCancelled.value,
-    }),
+    id: filterSearchQueryId.value,
+    q: filterSearchQuery.value,
+    ...(currencyFilter.value !== null && { currency: currencyFilter.value }),
+    ...(sellerFilter.value !== null && { seller_id: sellerFilter.value }),
     ...(globalStartDate.value && { start_date: globalStartDate.value }),
     ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersCancelled.value,
@@ -232,8 +259,8 @@ const fetchOrderCancelled = async () => {
   );
   try {
     const response = await axios.get("/tpv/orders/cancelled", { params });
-    ordersCancelled.value = response.data.data;
-    totalOrdersCancelled.value = response.data.total;
+    ordersCancelled.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    totalOrdersCancelled.value = response.data?.total ?? 0;
   } catch (error) {
     console.error("Hubo un error al obtener las ordenes:", error);
     toast.error("Error al obtener las ordenes.");
@@ -242,13 +269,30 @@ const fetchOrderCancelled = async () => {
   }
 };
 
-const storeSelectedOffer = (offer) => {
-  localStorage.setItem("selected_offer", offer);
-};
+const resetGlobalDateRange = () => setDateHoy();
 
-const resetGlobalDateRange = () => {
-  globalStartDate.value = "2026-01-01";
-  globalEndDate.value = null;
+const fetchQuotations = async () => {
+  loadingQuotations.value = true;
+  const params = {
+    q: filterSearchQuery.value || undefined,
+    start_date: globalStartDate.value || undefined,
+    end_date: globalEndDate.value || undefined,
+    page: pageQuotations.value,
+    itemsPerPage: itemsPerPageQuotations.value,
+  };
+  Object.keys(params).forEach((k) => (params[k] == null || params[k] === "") && delete params[k]);
+  try {
+    const response = await axios.get("/tpv/quotations/list", { params });
+    quotations.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    totalQuotations.value = response.data?.total ?? 0;
+  } catch (error) {
+    console.error("Error al obtener cotizaciones:", error);
+    toast.error("Error al obtener las cotizaciones.");
+    quotations.value = [];
+    totalQuotations.value = 0;
+  } finally {
+    loadingQuotations.value = false;
+  }
 };
 
 const fetchSellers = async () => {
@@ -266,6 +310,7 @@ onMounted(() => {
   fetchOrderAll();
   fetchOrderAbandoned();
   fetchOrderCancelled();
+  fetchQuotations();
 });
 
 let debounceTimerCompleted;
@@ -273,18 +318,16 @@ watch(
   [
     pageOrdersCompleted,
     itemsPerPageOrdersCompleted,
-    currencyFilterCompleted,
-    sellerFilterCompleted,
-    filterSearchQueryIdCompleted,
-    filterSearchQueryCompleted,
+    currencyFilter,
+    sellerFilter,
+    filterSearchQueryId,
+    filterSearchQuery,
     sortByOrdersCompleted,
     orderByOrdersCompleted,
   ],
   () => {
     clearTimeout(debounceTimerCompleted);
-    debounceTimerCompleted = setTimeout(() => {
-      fetchOrderCompleted();
-    }, 300);
+    debounceTimerCompleted = setTimeout(() => fetchOrderCompleted(), 300);
   },
   { deep: true }
 );
@@ -294,19 +337,17 @@ watch(
   [
     pageOrdersAll,
     itemsPerPageOrdersAll,
-    currencyFilterAll,
-    sellerFilterAll,
+    currencyFilter,
+    sellerFilter,
     stateFilterAll,
-    filterSearchQueryIdAll,
-    filterSearchQueryAll,
+    filterSearchQueryId,
+    filterSearchQuery,
     sortByOrdersAll,
     orderByOrdersAll,
   ],
   () => {
     clearTimeout(debounceTimerAll);
-    debounceTimerAll = setTimeout(() => {
-      fetchOrderAll();
-    }, 300);
+    debounceTimerAll = setTimeout(() => fetchOrderAll(), 300);
   },
   { deep: true }
 );
@@ -316,18 +357,16 @@ watch(
   [
     pageOrdersAbandoned,
     itemsPerPageOrdersAbandoned,
-    currencyFilterAbandoned,
-    sellerFilterAbandoned,
-    filterSearchQueryIdAbandoned,
-    filterSearchQueryAbandoned,
+    currencyFilter,
+    sellerFilter,
+    filterSearchQueryId,
+    filterSearchQuery,
     sortByOrdersAbandoned,
     orderByOrdersAbandoned,
   ],
   () => {
     clearTimeout(debounceTimerAbandoned);
-    debounceTimerAbandoned = setTimeout(() => {
-      fetchOrderAbandoned();
-    }, 300);
+    debounceTimerAbandoned = setTimeout(() => fetchOrderAbandoned(), 300);
   },
   { deep: true }
 );
@@ -337,92 +376,85 @@ watch(
   [
     pageOrdersCancelled,
     itemsPerPageOrdersCancelled,
-    currencyFilterCancelled,
-    sellerFilterCancelled,
-    filterSearchQueryIdCancelled,
-    filterSearchQueryCancelled,
+    currencyFilter,
+    sellerFilter,
+    filterSearchQueryId,
+    filterSearchQuery,
     sortByOrdersCancelled,
     orderByOrdersCancelled,
   ],
   () => {
     clearTimeout(debounceTimerCancelled);
-    debounceTimerCancelled = setTimeout(() => {
-      fetchOrderCancelled();
-    }, 300);
+    debounceTimerCancelled = setTimeout(() => fetchOrderCancelled(), 300);
   },
   { deep: true }
 );
 
-const handleClearFiltersCompleted = () => {
-  filterSearchQueryIdCompleted.value = "";
-  filterSearchQueryCompleted.value = "";
-  currencyFilterCompleted.value = null;
-  sellerFilterCompleted.value = null;
+const handleClearFilters = () => {
+  filterSearchQueryId.value = "";
+  filterSearchQuery.value = "";
+  currencyFilter.value = null;
+  sellerFilter.value = null;
+  stateFilterAll.value = null;
   sortByOrdersCompleted.value = undefined;
   orderByOrdersCompleted.value = undefined;
-};
-
-const handleClearFiltersAll = () => {
-  filterSearchQueryIdAll.value = "";
-  filterSearchQueryAll.value = "";
-  currencyFilterAll.value = null;
-  sellerFilterAll.value = null;
-  stateFilterAll.value = null;
   sortByOrdersAll.value = undefined;
   orderByOrdersAll.value = undefined;
-};
-
-const handleClearFiltersAbandoned = () => {
-  filterSearchQueryIdAbandoned.value = "";
-  filterSearchQueryAbandoned.value = "";
-  currencyFilterAbandoned.value = null;
-  sellerFilterAbandoned.value = null;
   sortByOrdersAbandoned.value = undefined;
   orderByOrdersAbandoned.value = undefined;
-};
-
-const handleClearFiltersCancelled = () => {
-  filterSearchQueryIdCancelled.value = "";
-  filterSearchQueryCancelled.value = "";
-  currencyFilterCancelled.value = null;
-  sellerFilterCancelled.value = null;
   sortByOrdersCancelled.value = undefined;
   orderByOrdersCancelled.value = undefined;
+  pageOrdersCompleted.value = 1;
+  pageOrdersAll.value = 1;
+  pageOrdersAbandoned.value = 1;
+  pageOrdersCancelled.value = 1;
+  pageQuotations.value = 1;
 };
 
-watch([filterSearchQueryCompleted, currencyFilterCompleted, sellerFilterCompleted], () => {
-  pageOrdersCompleted.value = 1;
-});
+let debounceTimerQuotations;
+watch(
+  [pageQuotations, itemsPerPageQuotations, filterSearchQuery, globalStartDate, globalEndDate],
+  () => {
+    clearTimeout(debounceTimerQuotations);
+    debounceTimerQuotations = setTimeout(() => fetchQuotations(), 300);
+  },
+  { deep: true }
+);
 
-watch([filterSearchQueryAll, currencyFilterAll, sellerFilterAll, stateFilterAll], () => {
-  pageOrdersAll.value = 1;
-});
+watch(
+  [filterSearchQuery, currencyFilter, sellerFilter],
+  () => { pageOrdersCompleted.value = 1; },
+  { deep: true }
+);
 
-watch([filterSearchQueryAbandoned, currencyFilterAbandoned, sellerFilterAbandoned], () => {
-  pageOrdersAbandoned.value = 1;
-});
+watch(
+  [filterSearchQuery, currencyFilter, sellerFilter, stateFilterAll],
+  () => { pageOrdersAll.value = 1; },
+  { deep: true }
+);
 
-watch([filterSearchQueryCancelled, currencyFilterCancelled, sellerFilterCancelled], () => {
-  pageOrdersCancelled.value = 1;
-});
+watch(
+  [filterSearchQuery, currencyFilter, sellerFilter],
+  () => {
+    pageOrdersAbandoned.value = 1;
+    pageOrdersCancelled.value = 1;
+    pageQuotations.value = 1;
+  },
+  { deep: true }
+);
 
 watch([globalStartDate, globalEndDate], () => {
   pageOrdersCompleted.value = 1;
   pageOrdersAll.value = 1;
   pageOrdersAbandoned.value = 1;
   pageOrdersCancelled.value = 1;
+  pageQuotations.value = 1;
   fetchOrderCompleted();
   fetchOrderAll();
   fetchOrderAbandoned();
   fetchOrderCancelled();
+  fetchQuotations();
 }, { deep: true });
-
-watch(
-  () => offerCompleted.value,
-  (offer) => {
-    storeSelectedOffer(offer);
-  }
-);
 
 const updateTableOptionsOrdersCompleted = (options) => {
   pageOrdersCompleted.value = options.page;
@@ -472,6 +504,17 @@ const updateTableOptionsOrdersCancelled = (options) => {
   }
 };
 
+const updateTableOptionsQuotations = (options) => {
+  pageQuotations.value = options.page;
+  itemsPerPageQuotations.value = options.itemsPerPage;
+};
+
+const formatQuotationDate = (dateStr) => {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+
 const printOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
@@ -479,9 +522,12 @@ const printOrder = async (orderId) => {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
-        title: detail.product.name,
+        id: detail.product?.id ?? detail.product_id,
+        product_id: detail.product_id ?? detail.product?.id,
+        title: detail.product?.name,
+        laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
-        taxRate: detail.product.iva,
+        taxRate: detail.product?.iva,
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
@@ -496,8 +542,6 @@ const printOrder = async (orderId) => {
         ? parseFloat(response.data.data.order.total_amount)
         : 0;
       creditForPrint.value = response.data.data.hasCreditPayment;
-      console.log(response.data.data);
-      console.log(creditAmountForPrint.value);
       isPrinting.value = true;
       await nextTick();
       const printContents = document.getElementById("orderPrint");
@@ -580,6 +624,171 @@ const printOrder = async (orderId) => {
   }
 };
 
+/** CSS completo para ticket térmico 54mm: negro sobre blanco, sin grises */
+const THERMAL_54MM_CSS = `
+  @page { size: 54mm auto; margin: 0; padding: 0; }
+  html, body {
+    width: 54mm !important;
+    max-width: 54mm !important;
+    min-width: 54mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+  body * {
+    box-sizing: border-box !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+  .thermal-54-ticket {
+    width: 54mm !important;
+    max-width: 54mm !important;
+    min-width: 54mm !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .thermal-header {
+    text-align: center !important;
+    margin-bottom: 2mm !important;
+    padding-bottom: 2mm !important;
+    border-bottom: 1px dashed #000000 !important;
+  }
+  .thermal-logo {
+    display: block !important;
+    margin: 0 auto 1mm !important;
+    max-width: 40mm !important;
+    height: auto !important;
+    filter: grayscale(100%) contrast(1.1) !important;
+  }
+  .thermal-rif { font-size: 9px !important; font-weight: bold !important; margin: 0 0 0.5mm !important; }
+  .thermal-company { font-size: 10px !important; font-weight: bold !important; margin: 0 0 0.5mm !important; }
+  .thermal-address { font-size: 9px !important; margin: 0 !important; line-height: 1.15 !important; }
+  .thermal-data { margin-bottom: 2mm !important; }
+  .thermal-data-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin: 0.5mm 0 !important;
+    font-size: 10px !important;
+  }
+  .thermal-label { font-weight: bold !important; flex-shrink: 0 !important; }
+  .thermal-value { text-align: right !important; word-break: break-word !important; margin-left: 2mm !important; }
+  .thermal-products {
+    margin-bottom: 2mm !important;
+    border-top: 1px dashed #000000 !important;
+    padding-top: 1mm !important;
+  }
+  .thermal-products-head {
+    display: flex !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    padding: 0.5mm 0 !important;
+    border-bottom: 1px dashed #000000 !important;
+  }
+  .thermal-col-qty { width: 10mm !important; flex-shrink: 0 !important; }
+  .thermal-col-desc { flex: 1 !important; min-width: 0 !important; padding: 0 1mm !important; }
+  .thermal-col-amount { width: 18mm !important; flex-shrink: 0 !important; text-align: right !important; }
+  .thermal-product-row {
+    display: flex !important;
+    align-items: flex-start !important;
+    padding: 1mm 0 !important;
+    font-size: 10px !important;
+    border-bottom: 1px solid #000000 !important;
+  }
+  .thermal-product-row .thermal-col-desc { display: flex !important; flex-direction: column !important; }
+  .thermal-product-name { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+  .thermal-product-meta { font-size: 8px !important; margin-top: 0.5mm !important; color: #000000 !important; }
+  .thermal-totals { margin-top: 2mm !important; padding-top: 1mm !important; font-size: 10px !important; }
+  .thermal-total-row { display: flex !important; justify-content: space-between !important; margin: 0.5mm 0 !important; }
+  .thermal-total-block {
+    border-top: 2px solid #000000 !important;
+    border-bottom: 2px solid #000000 !important;
+    padding: 1.5mm 0 !important;
+    margin: 1mm 0 !important;
+  }
+  .thermal-total-main { font-size: 11px !important; font-weight: bold !important; }
+  .thermal-footer {
+    text-align: center !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    margin-top: 3mm !important;
+    padding-top: 2mm !important;
+    border-top: 1px dashed #000000 !important;
+  }
+`;
+
+const printOrderThermal54 = async (orderId) => {
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
+    if (response.data?.data?.order) {
+      const { order } = response.data.data;
+      orderData.value = order;
+      currency.value = order.currency.toUpperCase();
+      orderItems.value = order.details.map((detail) => ({
+        id: detail.product?.id ?? detail.product_id,
+        product_id: detail.product_id ?? detail.product?.id,
+        title: detail.product?.name,
+        laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
+        selectedQuantity: detail.quantity,
+        taxRate: detail.product?.iva,
+        price_bs: parseFloat(detail.price),
+        price_cop: parseFloat(detail.price),
+        price: parseFloat(detail.price),
+        price_before_discount: parseFloat(detail.price_before_discount),
+      }));
+      paymentsForPrint.value = order.payment_methods;
+      changeAmountForPrint.value = parseFloat(order.money_returns);
+      amountForPrint.value = parseFloat(order.total_amount);
+      creditAmountForPrint.value = response.data.data.hasCreditPayment
+        ? parseFloat(order.total_amount)
+        : 0;
+      creditForPrint.value = response.data.data.hasCreditPayment;
+      isPrinting.value = true;
+      await nextTick();
+      const printContents = document.getElementById("orderPrintThermal54");
+      if (printContents) {
+        const win = window.open("", "", "height=400,width=280");
+        win.document.write("<html><head><title>Ticket 54mm - Farmacia Barrio Sucre</title>");
+        win.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
+        win.document.write("</head><body>");
+        win.document.write(printContents.innerHTML);
+        win.document.write("</body></html>");
+        win.document.close();
+        win.focus();
+        win.print();
+        win.close();
+      } else {
+        toast.error("No se encontró el contenido del ticket térmico.");
+      }
+    } else {
+      toast.error("La respuesta del servidor no tiene el formato esperado.");
+    }
+  } catch (error) {
+    console.error("Error al imprimir ticket 54mm:", error);
+    toast.error(error.response?.data?.message || "Error al imprimir el ticket térmico.");
+  } finally {
+    setTimeout(() => {
+      isPrinting.value = false;
+      paymentsForPrint.value = [];
+      orderData.value = null;
+      orderItems.value = [];
+      changeAmountForPrint.value = 0;
+      creditAmountForPrint.value = 0;
+      amountForPrint.value = 0;
+      creditForPrint.value = false;
+    }, 500);
+  }
+};
+
 const handleCloseViewModal = () => {
   viewModal.value = false;
   orderData.value = null;
@@ -598,9 +807,12 @@ const handleViewOrder = async (orderId) => {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
-        title: detail.product.name,
+        id: detail.product?.id ?? detail.product_id,
+        product_id: detail.product_id ?? detail.product?.id,
+        title: detail.product?.name,
+        laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
-        taxRate: detail.product.iva,
+        taxRate: detail.product?.iva,
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
@@ -694,29 +906,29 @@ const speSurchargeAmount = computed(() => {
   return 0.00;
 });
 
+// Opciones para filtros (mismo diseño que /inventory/products)
+const currencyOptions = [
+  { title: "BS", value: "BS" },
+  { title: "USD", value: "USD" },
+  { title: "COP", value: "COP" },
+];
+const stateOptions = [
+  { title: "Completada", value: "Completed" },
+  { title: "Abandonada", value: "Abandoned" },
+  { title: "Cancelada", value: "Cancelled" },
+];
+const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName(item.username) : "");
 </script>
 <template>
   <div>
-    <VCard title="Rango de fechas" class="mb-6">
+    <!-- Filtros: mismo diseño que /inventory/products (incl. fecha) -->
+    <VCard class="mb-6">
       <VCardText>
-        <VRow align="center">
-          <VCol cols="12" sm="6" md="4">
+        <VRow>
+          <VCol cols="12" sm="3" md="2">
             <AppDateTimePicker
               v-model="globalStartDate"
-              label="Desde"
-              placeholder="Desde (ej: 2026-01-01)"
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="4">
-            <AppDateTimePicker
-              v-model="globalEndDate"
-              label="Hasta (opcional)"
-              placeholder="Hasta (vacío = hasta hoy)"
+              placeholder="Desde"
               clearable
               :config="{
                 altInput: true,
@@ -725,137 +937,282 @@ const speSurchargeAmount = computed(() => {
               }"
             />
           </VCol>
-          <VCol cols="12" sm="12" md="4">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              @click="resetGlobalDateRange"
-            >
-              Restaurar por defecto (2026)
-            </VBtn>
+          <VCol cols="12" sm="3" md="2">
+            <AppDateTimePicker
+              v-model="globalEndDate"
+              placeholder="Hasta"
+              clearable
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
+            />
+          </VCol>
+          <VCol cols="12" sm="3" md="2">
+            <AppTextField
+              v-model="filterSearchQueryId"
+              placeholder="ID"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="3" md="2">
+            <AppTextField
+              v-model="filterSearchQuery"
+              placeholder="Identificación, Vendedor"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="3" md="2">
+            <VSelect
+              v-model="currencyFilter"
+              label="Moneda"
+              :items="currencyOptions"
+              clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="3" md="2">
+            <VSelect
+              v-model="sellerFilter"
+              label="Vendedor"
+              :items="sellers"
+              :item-title="sellerDisplayName"
+              item-value="id"
+              clearable
+            />
+          </VCol>
+          <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
+            <VSelect
+              v-model="stateFilterAll"
+              label="Estado"
+              :items="stateOptions"
+              clearable
+            />
           </VCol>
         </VRow>
-        <p class="text-caption text-medium-emphasis mt-2 mb-0">
-          Por defecto se cargan órdenes desde el 01/01/2026. Cambia "Desde" para consultar años anteriores.
-        </p>
       </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6 d-flex flex-wrap align-center gap-2">
+        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
+          Limpiar Filtros
+        </VBtn>
+        <VDivider vertical class="my-0" />
+        <span class="text-body-2 text-medium-emphasis mr-1">Rango rápido:</span>
+        <VBtn color="secondary" variant="tonal" size="small" @click="setDateHoy">
+          Hoy
+        </VBtn>
+        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAyer">
+          Ayer
+        </VBtn>
+        <VBtn color="secondary" variant="tonal" size="small" @click="setDateSemana">
+          Semana
+        </VBtn>
+        <VBtn color="secondary" variant="tonal" size="small" @click="setDateMes">
+          Mes
+        </VBtn>
+        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAno">
+          Año
+        </VBtn>
+      </VCardActions>
     </VCard>
 
-    <OrderFiltersGeneral
-      v-model:idSearchQuery="filterSearchQueryIdCompleted"
-      v-model:searchQuery="filterSearchQueryCompleted"
-      v-model:currencyFilter="currencyFilterCompleted"
-      v-model:sellerFilter="sellerFilterCompleted"
-      v-model:offer="offerCompleted"
-      :sellers="sellers"
-      @clear="handleClearFiltersCompleted"
-    />
+    <!-- Pestañas con badge de cantidad por tipo -->
+    <VTabs v-model="activeTab" class="mb-4 orders-tabs" density="comfortable">
+      <VTab :value="0" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Completadas
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="success"
+            class="tab-count"
+          >
+            {{ totalOrdersCompleted }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="1" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Todas
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="primary"
+            class="tab-count"
+          >
+            {{ totalOrdersAll }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="2" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Canceladas
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="error"
+            class="tab-count"
+          >
+            {{ totalOrdersCancelled }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="3" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Abandonadas
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="warning"
+            class="tab-count"
+          >
+            {{ totalOrdersAbandoned }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="4" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Cotizaciones
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="info"
+            class="tab-count"
+          >
+            {{ totalQuotations }}
+          </VChip>
+        </span>
+      </VTab>
+    </VTabs>
 
-    <VCard title="Órdenes Completadas">
-      <div class="mb-2"></div>
-      <OrderTable
-        :orders="ordersCompleted"
-        :loading="loadingOrdersCompleted"
-        :total-orders="totalOrdersCompleted"
-        :items-per-page="itemsPerPageOrdersCompleted"
-        :page="pageOrdersCompleted"
-        :headers="headers"
-        :sort-by="sortByOrdersCompleted"
-        :order-by="orderByOrdersCompleted"
-        @update:options="updateTableOptionsOrdersCompleted"
-        @print-order="printOrder"
-        @view-order="handleViewOrder"
-      />
-    </VCard>
-    <div class="mb-5"></div>
-
-    <OrderFiltersGeneral
-      v-model:idSearchQuery="filterSearchQueryIdAll"
-      v-model:searchQuery="filterSearchQueryAll"
-      v-model:currencyFilter="currencyFilterAll"
-      v-model:sellerFilter="sellerFilterAll"
-      v-model:stateFilter="stateFilterAll"
-      :sellers="sellers"
-      @clear="handleClearFiltersAll"
-      :showStateFilters="true"
-    />
-
-    <VCard title="Todas las Órdenes">
-      <div class="mb-2"></div>
-      <OrderTable
-        :orders="ordersAll"
-        :loading="loadingOrdersAll"
-        :total-orders="totalOrdersAll"
-        :items-per-page="itemsPerPageOrdersAll"
-        :page="pageOrdersAll"
-        :headers="headersAll"
-        :sort-by="sortByOrdersAll"
-        :order-by="orderByOrdersAll"
-        @update:options="updateTableOptionsOrdersAll"
-        @print-order="printOrder"
-        @view-order="handleViewOrder"
-      />
-    </VCard>
-    <div class="mb-5"></div>
-
-    <OrderFiltersGeneral
-      v-model:idSearchQuery="filterSearchQueryIdCancelled"
-      v-model:searchQuery="filterSearchQueryCancelled"
-      v-model:currencyFilter="currencyFilterCancelled"
-      v-model:sellerFilter="sellerFilterCancelled"
-      :sellers="sellers"
-      @clear="handleClearFiltersCancelled"
-    />
-
-    <VCard title="Órdenes Canceladas">
-      <div class="mb-2"></div>
-      <OrderTable
-        :orders="ordersCancelled"
-        :loading="loadingOrdersCancelled"
-        :total-orders="totalOrdersCancelled"
-        :items-per-page="itemsPerPageOrdersCancelled"
-        :page="pageOrdersCancelled"
-        :headers="headers"
-        :sort-by="sortByOrdersCancelled"
-        :order-by="orderByOrdersCancelled"
-        @update:options="updateTableOptionsOrdersCancelled"
-        @print-order="printOrder"
-        @view-order="handleViewOrder"
-      />
-    </VCard>
-    <div class="mb-5"></div>
-
-    <OrderFiltersGeneral
-      v-model:idSearchQuery="filterSearchQueryIdAbandoned"
-      v-model:searchQuery="filterSearchQueryAbandoned"
-      v-model:currencyFilter="currencyFilterAbandoned"
-      v-model:sellerFilter="sellerFilterAbandoned"
-      :sellers="sellers"
-      @clear="handleClearFiltersAbandoned"
-    />
-
-    <VCard title="Órdenes Abandonadas">
-      <div class="mb-2"></div>
-      <OrderTable
-        :orders="ordersAbandoned"
-        :loading="loadingOrdersAbandoned"
-        :total-orders="totalOrdersAbandoned"
-        :items-per-page="itemsPerPageOrdersAbandoned"
-        :page="pageOrdersAbandoned"
-        :headers="headers"
-        :sort-by="sortByOrdersAbandoned"
-        :order-by="orderByOrdersAbandoned"
-        @update:options="updateTableOptionsOrdersAbandoned"
-        @print-order="printOrder"
-        @view-order="handleViewOrder"
-      />
-    </VCard>
+    <VWindow v-model="activeTab" class="orders-window">
+      <VWindowItem :value="0">
+        <OrderTable
+          :orders="ordersCompleted"
+          :loading="loadingOrdersCompleted"
+          :total-orders="totalOrdersCompleted"
+          :items-per-page="itemsPerPageOrdersCompleted"
+          :page="pageOrdersCompleted"
+          :headers="headers"
+          :sort-by="sortByOrdersCompleted"
+          :order-by="orderByOrdersCompleted"
+          :show-thermal-print="true"
+          @update:options="updateTableOptionsOrdersCompleted"
+          @print-order="printOrder"
+          @print-order-thermal="printOrderThermal54"
+          @view-order="handleViewOrder"
+        />
+      </VWindowItem>
+      <VWindowItem :value="1">
+        <OrderTable
+          :orders="ordersAll"
+          :loading="loadingOrdersAll"
+          :total-orders="totalOrdersAll"
+          :items-per-page="itemsPerPageOrdersAll"
+          :page="pageOrdersAll"
+          :headers="headersAll"
+          :sort-by="sortByOrdersAll"
+          :order-by="orderByOrdersAll"
+          :show-thermal-print="true"
+          @update:options="updateTableOptionsOrdersAll"
+          @print-order="printOrder"
+          @print-order-thermal="printOrderThermal54"
+          @view-order="handleViewOrder"
+        />
+      </VWindowItem>
+      <VWindowItem :value="2">
+        <OrderTable
+          :orders="ordersCancelled"
+          :loading="loadingOrdersCancelled"
+          :total-orders="totalOrdersCancelled"
+          :items-per-page="itemsPerPageOrdersCancelled"
+          :page="pageOrdersCancelled"
+          :headers="headers"
+          :sort-by="sortByOrdersCancelled"
+          :order-by="orderByOrdersCancelled"
+          :show-thermal-print="true"
+          @update:options="updateTableOptionsOrdersCancelled"
+          @print-order="printOrder"
+          @print-order-thermal="printOrderThermal54"
+          @view-order="handleViewOrder"
+        />
+      </VWindowItem>
+      <VWindowItem :value="3">
+        <OrderTable
+          :orders="ordersAbandoned"
+          :loading="loadingOrdersAbandoned"
+          :total-orders="totalOrdersAbandoned"
+          :items-per-page="itemsPerPageOrdersAbandoned"
+          :page="pageOrdersAbandoned"
+          :headers="headers"
+          :sort-by="sortByOrdersAbandoned"
+          :order-by="orderByOrdersAbandoned"
+          :show-thermal-print="true"
+          @update:options="updateTableOptionsOrdersAbandoned"
+          @print-order="printOrder"
+          @print-order-thermal="printOrderThermal54"
+          @view-order="handleViewOrder"
+        />
+      </VWindowItem>
+      <VWindowItem :value="4">
+        <VCard>
+          <VDataTableServer
+            :items="quotations"
+            :headers="headersQuotations"
+            :items-length="totalQuotations"
+            :loading="loadingQuotations"
+            :items-per-page="itemsPerPageQuotations"
+            :page="pageQuotations"
+            class="text-no-wrap"
+            @update:options="updateTableOptionsQuotations"
+          >
+            <template #item.client_display="{ item }">
+              {{ item.client ? `${item.client.name || ''} ${item.client.last_name || ''}`.trim() || item.client.identification : '—' }}
+            </template>
+            <template #item.creator_display="{ item }">
+              {{ item.creator?.username ? capitalizeFirstAndLastName(item.creator.username) : '—' }}
+            </template>
+            <template #item.total="{ item }">
+              {{ Number(item.total ?? 0).toLocaleString('es', { minimumFractionDigits: 2 }) }}
+            </template>
+            <template #item.created_at="{ item }">
+              {{ formatQuotationDate(item.created_at) }}
+            </template>
+          </VDataTableServer>
+        </VCard>
+      </VWindowItem>
+    </VWindow>
 
     <div
       id="orderPrint"
       :class="{ 'd-none': !isPrinting, 'print-container': true }"
     >
       <OrderTicket
+        v-if="isPrinting && orderData"
+        :order-data="orderData"
+        :order-products="orderItems"
+        :total-amount="amountForPrint"
+        :selected-currency="currency"
+        :payments="paymentsForPrint"
+        :change-amount="changeAmountForPrint"
+        :credit-amount="creditAmountForPrint"
+        :credit="creditForPrint"
+        :company-discount-total="totalCompanyDiscountAmount"
+        :selected-discount-type="selectedDiscountType"
+        :doctor-discount-total="totalDoctorDiscountAmount"
+        :recipe-discount-total="totalRecipeDiscountAmount"
+        :is-special-taxpayer="isSpecialTaxpayer"
+        :spe-surcharge-amount="speSurchargeAmount"
+      />
+    </div>
+
+    <div
+      id="orderPrintThermal54"
+      :class="{ 'd-none': !isPrinting, 'print-container': true }"
+    >
+      <OrderTicketThermal54
         v-if="isPrinting && orderData"
         :order-data="orderData"
         :order-products="orderItems"
@@ -889,3 +1246,16 @@ const speSurchargeAmount = computed(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.orders-window {
+  overflow: visible;
+}
+
+.tab-with-badge .tab-count {
+  min-width: 1.5rem;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+</style>

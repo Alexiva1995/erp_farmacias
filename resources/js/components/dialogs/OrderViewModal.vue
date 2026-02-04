@@ -1,6 +1,8 @@
 <script setup>
-import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
+import { formatDateTime } from "@/utils/formatDateTime";
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, defineEmits, defineProps } from "vue";
 
 const props = defineProps({
@@ -66,9 +68,34 @@ const closeModal = () => {
   emit("modal-closed");
 };
 
-const logoSrc = computed(() => {
-  return BASE64_LOGO_DATA;
+const formattedOrderDate = computed(() => {
+  if (!props.orderData?.created_at) return "—";
+  return formatDateTime(props.orderData.created_at, "datetime");
 });
+
+const paymentBadge = computed(() => {
+  if (props.credit) return { label: "Crédito", currency: props.selectedCurrency || "", color: "primary" };
+  if (!props.payments?.length) return { label: "—", currency: "", color: "secondary" };
+  const first = props.payments[0];
+  const label = getPaymentMethodLabel(first.method, first.currency);
+  const currency = first.currency || props.selectedCurrency || "";
+  if (first.method === "credit") return { label: "Crédito", currency, color: "primary" };
+  if (["cash_cop", "cash_bs", "cash_usd", "mobile_payment"].includes(first.method))
+    return { label: label || "Efectivo", currency, color: "success" };
+  if (["debit_card", "credit_card"].includes(first.method))
+    return { label: label || "Tarjeta", currency, color: "info" };
+  return { label: label || "Pagado", currency, color: "success" };
+});
+
+const getCurrencyChipColor = (currency) => {
+  if (!currency) return "secondary";
+  switch (String(currency).toUpperCase()) {
+    case "COP": return "primary";
+    case "BS": return "success";
+    case "USD": return "warning";
+    default: return "info";
+  }
+};
 
 const getPaymentMethodLabel = (methodValue, currency) => {
   const paymentMethodsByCurrency = {
@@ -194,240 +221,127 @@ const activeDiscount = computed(() => {
     return { label: "Descuento Recipe", amount: discounts.recipe };
   return null;
 });
+
+const getLineTotal = (product) => {
+  const price = getItemPriceByCurrency(product, props.selectedCurrency);
+  const qty = product.selectedQuantity || 0;
+  return price * qty;
+};
+
+const productId = (product) => {
+  const id = product.id ?? product.product_id;
+  return id != null && id !== "" ? id : null;
+};
+
+/** Formato: ID - Nombre - Laboratorio (solo partes existentes, unidas por " - ") */
+const productLineLabel = (product) => {
+  const id = productId(product);
+  const name = product.title?.trim() || "—";
+  const lab = product.laboratory?.trim() || "";
+  const parts = [id != null ? String(id) : null, name, lab || null].filter(Boolean);
+  return parts.join(" - ");
+};
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="500px">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"></span>
+  <VDialog v-model="dialogVisible" max-width="560" persistent content-class="order-view-dialog">
+    <VCard class="order-view-card rounded-lg">
+      <VCardTitle class="order-view-header d-flex align-center flex-wrap gap-2 pt-3 px-3 pb-2">
+        <span class="text-subtitle-1 font-weight-bold section-title">Orden #{{ orderData.id }}</span>
+        <VChip :color="paymentBadge.color" size="x-small" variant="tonal" density="compact">
+          {{ paymentBadge.label }}
+        </VChip>
+        <VChip v-if="paymentBadge.currency" size="x-small" variant="tonal" :color="getCurrencyChipColor(paymentBadge.currency)" density="compact">
+          {{ paymentBadge.currency }}
+        </VChip>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon>tabler-x</VIcon>
+        <span class="header-date">{{ formattedOrderDate }}</span>
+        <VBtn icon variant="text" size="x-small" @click="closeModal">
+          <VIcon size="18">tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
-      <VCardText>
-        <div class="text-center">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">J-50540695-7</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular"
-            >FARMACIA BARRIO SUCRE 2024, C.A.</span
-          >
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">CALLE PRINCIPAL LOCAL 05 (L5)</span>
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular"
-            >SECTOR BARRIO SUCRE LA FRIA TACHIRA</span
-          >
-        </div>
-        <div class="text-center">
-          <span class="font-weight-regular">ZONA POSTAL 5020</span>
-        </div>
-        <div
-          class="ticket-header d-flex justify-space-between align-start mt-2"
-        >
-          <span class="font-weight-bold text-h6"
-            >Order N° {{ orderData.id }}</span
-          >
-          <div class="text-right d-flex flex-column align-end">
-            <p class="text-black font-weight-regular text-h6 mb-0">
-              Fecha:
-              {{
-                orderData.created_at
-                  ? formatDateTime(props.orderData.created_at, "date")
-                  : "N/A"
-              }}
-              {{
-                orderData.created_at
-                  ? formatDateTime(props.orderData.created_at, "time")
-                  : ""
-              }}
-            </p>
-          </div>
-        </div>
-        <div class="d-flex justify-space-between align-start mb-1">
-          <span class="font-weight-bold text-h6">Cajero:</span>
-          <span class="font-weight-bold text-h6">{{
-            orderData.seller?.username || "N/A"
-          }}</span>
-        </div>
-
-        <div class="d-flex justify-space-between align-start mb-1">
-          <span class="font-weight-bold text-h6">Cliente:</span>
-          <span class="font-weight-bold text-h6"
-            >{{ orderData.client?.name || "" }}
-            {{ orderData.client?.last_name || "" }}</span
-          >
-        </div>
-
-        <div class="d-flex justify-space-between align-start mb-1">
-          <span class="font-weight-bold text-h6">Documento:</span>
-          <span class="font-weight-bold text-h6"
-            >{{ orderData.client?.identification_type || "" }}
-            {{ orderData.client?.identification || "" }}</span
-          >
-        </div>
-
-        <div class="d-flex flex-wrap justify-space-between textoPrint">
-          <p class="font-weight-bold text-h6">Métodos de Pago</p>
-          <div class="text-end">
-            <template v-if="normalPayments.length">
-              <p
-                v-for="(payment, pIndex) in normalPayments"
-                :key="`ticket-payment-${pIndex}`"
-                class="font-weight-bold text-h6 my-1"
-              >
-                <span
-                  >{{
-                    getPaymentMethodLabel(payment.method, payment.currency)
-                  }}
-                  ({{ payment.currency }})</span
-                >
-              </p>
-            </template>
-            <template v-else>
-              <p class="font-weight-bold text-h6 my-1">N/A</p>
-            </template>
+      <VCardText class="px-4 pb-4 pt-3">
+        <!-- Cajero | Cliente -->
+        <div class="order-view-data mb-4">
+          <div class="data-block-unified rounded pa-3 d-flex">
+            <div class="data-half flex-grow-1">
+              <span class="data-label d-block">Cajero</span>
+              <span class="data-value">{{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}</span>
+            </div>
+            <div class="data-divider" />
+            <div class="data-half flex-grow-1">
+              <span class="data-label d-block">Cliente</span>
+              <span class="data-value">{{ orderData.client?.name || "" }} {{ orderData.client?.last_name || "" }}{{ orderData.client?.identification ? ` · ${orderData.client.identification_type || ""} ${orderData.client.identification}` : "" }}</span>
+            </div>
           </div>
         </div>
 
-        <div
-          class="scrollable-list-container"
-          :class="{ 'show-scroll': orderProducts.length > 2 }"
-        >
-          <VList class="card-list" density="compact" nav>
-            <VListItem
-              v-for="product in orderProducts"
-              :key="product.id"
-              class="rounded-0"
-            >
-              <template #prepend>
-                <span>{{ product.selectedQuantity }} x</span>
-              </template>
-
-              <VListItemTitle class="font-weight-medium me-4 mx-2 text-wrap">{{
-                `${product.title} ${
-                  product.laboratory ? "(" + product.laboratory + ")" : ""
-                }`
-              }}</VListItemTitle>
-              <!-- Subtitle removed/merged as history might not have explicit lab separate -->
-
-              <template #append>
-                <div class="d-flex align-center">
-                   <span
-                        v-if="activeDiscount"
-                        class="text-caption text-decoration-line-through text-error"
-                        style="margin-top: -4px"
-                      >
-                        {{formatCurrency(product.price_before_discount,
-                        selectedCurrency
-                      )
-                    
-                        }}</span>
-                  <span class="text-body-1 me-2">
-                    {{
-                      formatCurrency(
-                        getItemPriceByCurrency(product, selectedCurrency),
-                        selectedCurrency
-                      )
-                    }}</span
-                  >
-                </div>
-              </template>
-            </VListItem>
-          </VList>
-        </div>
-        <hr />
-        <div
-          v-if="activeDiscount"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold text-h6"
-            >{{ activeDiscount.label }}:</span
-          >
-          <span class="text-end font-weight-bold text-h6">
-            - {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}
-          </span>
-        </div>
-
-
-        <div
-          v-if="isSpecialTaxpayer"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold text-h6"
-            >Recargo Sujeto Pasivo Especial (3%):</span
-          >
-          <span class="text-end font-weight-bold text-h6">
-             {{props.orderData?.spe_surcharge_amount}} {{selectedCurrency}}
-          </span>
-        </div>
-
-        <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold text-h6">TOTAL VENTA:</span>
-          <span class="text-end font-weight-bold text-h6">
-            {{ formatCurrency(totalAmount, selectedCurrency) }}
-          </span>
-        </div>
-        <div
-          class="ticket-total d-flex flex-wrap justify-space-between"
-          v-if="normalPayments.length"
-        >
-          <p class="font-weight-bold text-h6 mt-2">PAGO:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in normalPayments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold text-h6 my-1"
-            >
-              <span>
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
-              </span>
-            </p>
+        <!-- Tabla de productos -->
+        <div class="order-view-products mb-4">
+          <div class="products-table-wrapper rounded overflow-hidden">
+            <table class="products-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-end">Unit.</th>
+                  <th class="quantity-col">Cant.</th>
+                  <th class="text-end">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
+                  <td class="product-cell">
+                    <span class="product-line-full">{{ productLineLabel(product) }}</span>
+                    <span
+                      v-if="activeDiscount && product.price_before_discount != null"
+                      class="text-caption text-decoration-line-through text-error d-block mt-1"
+                    >
+                      {{ formatAmountOnly(product.price_before_discount, selectedCurrency) }}
+                    </span>
+                  </td>
+                  <td class="text-end table-amount">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                  <td class="quantity-cell">{{ product.selectedQuantity }}</td>
+                  <td class="text-end table-amount font-weight-medium">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div
-          v-if="debtPayments.length > 0"
-          class="ticket-total d-flex flex-wrap justify-space-between"
-        >
-          <p class="font-weight-bold text-h6 mt-2">SALDO:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in debtPayments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold text-h6 my-1"
-            >
-              <span>
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div
-          v-if="credit"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold text-h6">{{ "CRÉDITO" }}:</span>
-          <span class="text-end font-weight-bold text-h6">
-            {{ formatCurrency(creditAmount, selectedCurrency) }}
-          </span>
-        </div>
 
-        <div
-          v-if="changeAmount"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold text-h6">DEVOLUCION:</span>
-          <span class="text-end font-weight-bold text-h6">
-            {{ formatCurrency(changeAmount, "COP") }}
-          </span>
+        <!-- Resumen de pago (compacto) -->
+        <div class="order-view-summary rounded pa-3">
+          <div v-if="activeDiscount" class="summary-row">
+            <span class="summary-label">{{ activeDiscount.label }}</span>
+            <span class="summary-value">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
+          </div>
+          <div v-if="isSpecialTaxpayer" class="summary-row">
+            <span class="summary-label">Recargo SPE (3%)</span>
+            <span class="summary-value">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
+          </div>
+          <div v-if="credit" class="summary-row">
+            <span class="summary-label">Crédito</span>
+            <span class="summary-value">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
+          </div>
+          <div v-if="debtPayments.length" class="summary-row">
+            <span class="summary-label">Saldo</span>
+            <span class="summary-value">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
+          </div>
+          <template v-if="normalPayments.length">
+            <div v-for="(payment, pIndex) in normalPayments" :key="`pay-${pIndex}`" class="summary-row">
+              <span class="summary-label">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
+              <span class="summary-value">{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
+            </div>
+          </template>
+          <div v-if="changeAmount" class="summary-row">
+            <span class="summary-label">Devolución</span>
+            <span class="summary-value">{{ formatCurrency(changeAmount, "COP") }}</span>
+          </div>
+          <VDivider class="summary-divider" />
+          <div class="summary-row total-row">
+            <span class="total-label">Total</span>
+            <span class="total-amount">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
+          </div>
         </div>
       </VCardText>
     </VCard>
@@ -435,12 +349,204 @@ const activeDiscount = computed(() => {
 </template>
 
 <style scoped>
-.scrollable-list-container {
-  max-height: 95px;
-  overflow-y: hidden;
-  transition: overflow-y 0.3s ease-in-out;
+.order-view-dialog :deep(.v-overlay__content) {
+  align-items: flex-start;
+  padding: 0.75rem 0;
 }
-.scrollable-list-container.show-scroll {
+.order-view-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: rgb(var(--v-theme-surface));
+}
+/* Chips x-small en el modal: 30px altura, 13px fuente */
+.order-view-card :deep(.v-chip:not(.v-chip--pill).v-chip--size-x-small) {
+  --v-chip-height: 30px;
+  min-height: 30px;
+  font-size: 13px;
+  padding: 4px 10px;
+}
+.order-view-card :deep(.v-chip__underlay) {
+  border-radius: 6px;
+  margin: 2px;
+}
+.order-view-header {
+  border-bottom: none;
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+.section-title {
+  color: rgb(var(--v-theme-primary));
+}
+.section-label {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+/* Cards de datos: etiquetas más grandes y legibles */
+.data-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  margin-bottom: 2px;
+}
+.data-value {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+.data-block-unified {
+  background: rgba(var(--v-theme-primary), 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.data-half {
+  min-width: 0;
+  padding: 0 12px;
+}
+.data-divider {
+  width: 1px;
+  background: rgba(var(--v-theme-primary), 0.18);
+  flex-shrink: 0;
+}
+/* Tabla: más aire, jerarquía visual en producto */
+.products-table-wrapper {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: rgba(var(--v-theme-primary), 0.04);
+  max-height: 280px;
   overflow-y: auto;
+}
+.products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.products-table th {
+  text-align: left;
+  padding: 4px 8px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+.products-table th.text-end { text-align: right; }
+.products-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity, 0.12));
+  vertical-align: top;
+  line-height: 1.25;
+}
+.products-table-row:nth-child(even) {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+.products-table-row:last-child td {
+  border-bottom: none;
+}
+.quantity-col { width: 52px; }
+.quantity-cell { width: 52px; text-align: center; }
+.product-cell { min-width: 0; }
+.product-line-full {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+  word-break: break-word;
+}
+.table-amount {
+  font-size: 0.8125rem;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+/* Resumen de pago */
+.order-view-summary {
+  background: rgba(var(--v-theme-primary), 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  min-height: 1.5rem;
+}
+.summary-label {
+  font-size: 0.8125rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+.summary-value {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+.summary-divider {
+  margin: 6px 0 !important;
+}
+.total-row {
+  padding-top: 2px;
+}
+.total-label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+}
+.total-amount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  letter-spacing: 0.02em;
+}
+/* — Modo oscuro: contraste y elevación — */
+.v-theme--dark .order-view-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+.v-theme--dark .order-view-header {
+  background: rgba(255, 255, 255, 0.06);
+}
+.v-theme--dark .section-title,
+.v-theme--dark .section-label,
+.v-theme--dark .header-date {
+  color: rgba(255, 255, 255, 0.9);
+}
+.header-date {
+  font-size: 0.8125rem;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+.v-theme--dark .data-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+.v-theme--dark .data-value {
+  color: rgba(255, 255, 255, 0.92);
+}
+.v-theme--dark .data-block-unified {
+  background: rgba(255, 255, 255, 0.06);
+}
+.v-theme--dark .data-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+.v-theme--dark .products-table-wrapper {
+  background: rgba(255, 255, 255, 0.05);
+}
+.v-theme--dark .products-table th {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+}
+.v-theme--dark .product-line-full {
+  color: rgba(255, 255, 255, 0.92);
+}
+.v-theme--dark .table-amount {
+  color: rgba(255, 255, 255, 0.9);
+}
+.v-theme--dark .products-table-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+.v-theme--dark .order-view-summary {
+  background: rgba(255, 255, 255, 0.07);
+}
+.v-theme--dark .summary-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.v-theme--dark .summary-value {
+  color: rgba(255, 255, 255, 0.92);
+}
+.v-theme--dark .total-label,
+.v-theme--dark .total-amount {
+  color: rgba(255, 255, 255, 1);
 }
 </style>

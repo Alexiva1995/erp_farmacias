@@ -44,3 +44,15 @@ export const formatDateToMonthShort = (value, toTimeForCurrentDay = true) => {
   return new Intl.DateTimeFormat('en-US', formatting).format(new Date(value))
 }
 export const prefixWithPlus = value => value > 0 ? `+${value}` : value
+
+/**
+ * Capitaliza primer nombre y primer apellido (primeras dos palabras).
+ * Ej: "juan perez" -> "Juan Perez", "MARÍA GARCÍA LÓPEZ" -> "María García"
+ */
+export const capitalizeFirstAndLastName = value => {
+  if (!value || typeof value !== 'string') return ''
+  const parts = value.trim().split(/\s+/).filter(Boolean)
+  const first = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase() : ''
+  const second = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase() : ''
+  return [first, second].filter(Boolean).join(' ')
+}
