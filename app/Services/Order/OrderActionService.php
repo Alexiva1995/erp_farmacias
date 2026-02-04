@@ -78,7 +78,6 @@ class OrderActionService
             $order->load('seller', 'client');
             return $order;*/
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Error al crear la orden: ' . $e->getMessage());
             throw $e;
         }
@@ -627,43 +626,34 @@ class OrderActionService
                 $orderId->url_recipe = $path;
             }
 
-            // Save discount details if provided
-            if ($request->has('items')) {
-    
+            // Save discount details if provided (optimizado: cargar detalles una vez)
+            if ($request->has('items') && !empty($request->items)) {
+                $detailsById = $orderId->details()->get()->keyBy('id');
+
                 foreach ($request->items as $itemData) {
-                    if (isset($itemData['order_detail_id'])) {
-                        $detail = OrderDetail::where('id', $itemData['order_detail_id'])
-                            ->where('order_id', $orderId->id)
-                            ->first();
-
-                        if ($detail) {
-                            if (isset($itemData['quantity'])) {
-                                $detail->quantity = $itemData['quantity'];
-                            }
-
-                            if ($orderId->currency === 'COP') {
-                                $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
-                                $detail->unit_cost = ceil($itemData['unit_cost'] / 100) * 100;
-                                $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100;
-                            } else {
-                                $detail->price = $itemData['price'] * $detail->quantity;
-                                $detail->unit_cost = $itemData['unit_cost'];
-                                $detail->price_before_discount = $itemData['price_before_discount'] * $detail->quantity;
-                            }
-
-                            if (isset($itemData['discount_percentage'])) {
-                                $detail->discount_percentage = $itemData['discount_percentage'];
-                                $detail->discount_type = $itemData['discount_type'] ?? null;
-                                $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
-                            }
-                            // Also update unit_price_usd if sent?
-                            if (isset($itemData['price_usd'])) { // Assuming logic handles currency conversion elsewhere or passed here
-                                // $detail->unit_price_usd = ...; 
-                            }
-
-                            $detail->save();
-                        }
+                    $detailId = $itemData['order_detail_id'] ?? null;
+                    $detail = $detailId ? $detailsById->get($detailId) : null;
+                    if (!$detail) {
+                        continue;
                     }
+                    if (isset($itemData['quantity'])) {
+                        $detail->quantity = $itemData['quantity'];
+                    }
+                    if ($orderId->currency === 'COP') {
+                        $detail->price = ceil(($itemData['price'] ?? 0) * $detail->quantity / 100) * 100;
+                        $detail->unit_cost = ceil(($itemData['unit_cost'] ?? 0) / 100) * 100;
+                        $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) * $detail->quantity / 100) * 100;
+                    } else {
+                        $detail->price = ($itemData['price'] ?? 0) * $detail->quantity;
+                        $detail->unit_cost = $itemData['unit_cost'] ?? 0;
+                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0) * $detail->quantity;
+                    }
+                    if (isset($itemData['discount_percentage'])) {
+                        $detail->discount_percentage = $itemData['discount_percentage'];
+                        $detail->discount_type = $itemData['discount_type'] ?? null;
+                        $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
+                    }
+                    $detail->save();
                 }
             }
 
@@ -833,12 +823,8 @@ class OrderActionService
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
-            if (!isset($current_cash)) {
-                $current_cash = CashClosing::create([
-                    'seller_id' => $orderId->seller_id,
-                    'status' => CashClosing::OPEN,
-                    'closing_date' => Carbon::now(),
-                ]);
+            if (!$current_cash) {
+                throw new \Exception('No se encontró un cierre de caja abierto para el vendedor. Debe abrir caja antes de completar la venta.');
             }
 
             foreach ($request->payments as $payment) {
