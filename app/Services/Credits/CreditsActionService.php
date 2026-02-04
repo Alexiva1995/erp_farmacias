@@ -20,6 +20,22 @@ class CreditsActionService
     {
     }
 
+    public function delete(array $creditIds): bool
+    {
+        try {
+            DB::beginTransaction();
+            Credit::whereIn('id', $creditIds)->delete();
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al eliminar créditos: ' . $e->getMessage(), [
+                'credit_ids' => $creditIds,
+            ]);
+            throw $e;
+        }
+    }
+
     public function updateStatus(array $creditIds, string $status): bool
     {
         try {

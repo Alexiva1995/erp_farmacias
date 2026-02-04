@@ -10,6 +10,7 @@ use App\Services\Credits\CreditsActionService;
 use App\Models\Credit;
 use App\Helpers\ApiResponse;
 use App\Http\Requests\Credits\UpdateCreditStatusRequest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class CreditsController extends Controller
@@ -40,6 +41,26 @@ class CreditsController extends Controller
             'data' => $credits,
             'total' => $paginatedResult->total(),
         ]);
+    }
+
+    public function destroy(Request $request)
+    {
+        $request->validate([
+            'credit_ids' => 'required|array',
+            'credit_ids.*' => 'integer|exists:credits,id',
+        ]);
+
+        if (Auth::id() && \App\Models\User::find(Auth::id())?->role_id !== 1) {
+            return ApiResponse::error('No autorizado. Solo administradores pueden eliminar créditos.', 403);
+        }
+
+        try {
+            $this->creditsActionService->delete($request->input('credit_ids'));
+            return ApiResponse::success(null, 'Crédito(s) eliminado(s) correctamente.');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar crédito:', ['error' => $e->getMessage()]);
+            return ApiResponse::error('No se pudo eliminar el crédito: ' . $e->getMessage(), 500);
+        }
     }
 
     public function updateCreditStatus(UpdateCreditStatusRequest $request, Credit $credit)

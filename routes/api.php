@@ -229,6 +229,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
         Route::patch('/orders/{order}/cancelled', [OrderController::class, 'cancelledOrder']);
         Route::get('/credits', [CreditsController::class, 'index']);
+        Route::delete('/credits', [CreditsController::class, 'destroy']);
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);

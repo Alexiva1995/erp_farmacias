@@ -7,6 +7,7 @@ import CreditTable from "@/components/CreditTable.vue";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
 import axios from "@/plugins/axios";
+import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { nextTick, onMounted, ref, watch } from "vue";
@@ -174,6 +175,51 @@ const viewOrderCreditsModal = async (credit) => {
 const closeCreditsModal = () => {
   showCreditsModal.value = false;
   creditsData.value = null;
+};
+
+const handleDeleteCredit = async (item) => {
+  const creditIds = Array.isArray(item.credit_ids)
+    ? item.credit_ids.map((id) => parseInt(id))
+    : String(item.credit_ids || "")
+        .split(",")
+        .map((id) => parseInt(id.trim()))
+        .filter((n) => !isNaN(n));
+
+  if (!creditIds.length) {
+    toast.error("No se encontraron créditos para eliminar.");
+    return;
+  }
+
+  const { isConfirmed } = await Swal.fire({
+    title: "¿Eliminar crédito?",
+    text: "Esta acción no se puede deshacer. Se eliminarán los créditos seleccionados.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#6e7d88",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!isConfirmed) return;
+
+  try {
+    const response = await axios.delete("/tpv/credits", {
+      data: { credit_ids: creditIds },
+    });
+    if (response.data?.success !== false) {
+      toast.success("Crédito(s) eliminado(s) correctamente.");
+      await fetchCredits();
+    } else {
+      toast.error(response.data?.message || "Error al eliminar el crédito.");
+    }
+  } catch (error) {
+    const msg =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      "Error al eliminar el crédito.";
+    toast.error(msg);
+  }
 };
 
 const closeViewOrderCreditsModal = () => {
@@ -394,6 +440,7 @@ watch(
     @reload="fetchCredits"
     @view-order-modal="viewOrderCreditsModal"
     @print-order="printCreditOrders"
+    @delete-credit="handleDeleteCredit"
   />
 
   <VSpacer v-if="!isVendedor" class="my-6" />
