@@ -7,6 +7,7 @@ use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\ReturnEntry;
+use App\Exceptions\InsufficientStockException;
 use Illuminate\Support\Facades\Auth;
 
 class ProductObserver
@@ -43,14 +44,29 @@ class ProductObserver
     }
 
     /**
-     * Manejar movimientos de órdenes (ventas)
+     * Manejar movimientos de órdenes (ventas).
+     * La única fuente de verdad es SUM(product_lots.quantity).
+     * Product.stock se sincroniza desde los lotes; si el resultado fuera negativo, se lanza InsufficientStockException.
      */
     public static function handleOrderMovement(Order $order): void
     {
         foreach ($order->details as $detail) {
             $product = $detail->product;
+            if (!$product) {
+                continue;
+            }
             $stockBefore = $product->stock ?? 0;
-            $stockAfter = $stockBefore - $detail->quantity;
+            $lotsSum = (int) $product->lots()->sum('quantity');
+            $stockAfter = $lotsSum;
+
+            if ($stockAfter < 0) {
+                throw new InsufficientStockException(
+                    $product->name ?? 'Producto',
+                    max(0, $lotsSum),
+                    (int) $detail->quantity,
+                    "Inconsistencia de inventario: la suma de lotes para '{$product->name}' es negativa ({$lotsSum})."
+                );
+            }
 
             Product::withoutEvents(function () use ($product, $stockAfter) {
                 $product->update(['stock' => $stockAfter]);

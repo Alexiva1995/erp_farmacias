@@ -598,6 +598,41 @@ class OrderActionService
         return $fiscalexist;
     }
 
+    /**
+     * Valida que la suma de los pagos cubra el total de la orden (en la moneda de la orden).
+     * Lanza \InvalidArgumentException si no coinciden o la suma es menor.
+     */
+    private function validatePaymentsCoverOrderTotal(Order $order, array $payments): void
+    {
+        $resourceService = app(ResourceService::class);
+        $orderCurrency = strtoupper($order->currency ?? 'USD');
+        $orderTotal = (float) $order->total_amount;
+        $tolerance = 0.02; // Tolerancia para redondeos (2 centavos)
+
+        $rates = [
+            'USD' => $resourceService->getExchangeRate('USD') ?: 1,
+            'COP' => $resourceService->getExchangeRate('COP') ?: 1,
+            'BS' => $resourceService->getExchangeRate('BS') ?: 1,
+        ];
+        $orderRate = $rates[$orderCurrency] ?? 1;
+
+        $sumInOrderCurrency = 0;
+        foreach ($payments as $p) {
+            $amount = (float) ($p['amount'] ?? 0);
+            $currency = strtoupper($p['currency'] ?? 'USD');
+            $rate = $rates[$currency] ?? 1;
+            // Convertir a moneda de la orden: amount en X -> USD -> orden
+            $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
+            $sumInOrderCurrency += $amountInOrderCurrency;
+        }
+
+        if ($sumInOrderCurrency < ($orderTotal - $tolerance)) {
+            throw new \InvalidArgumentException(
+                'La suma de los pagos (' . round($sumInOrderCurrency, 2) . ') no cubre el total de la orden (' . round($orderTotal, 2) . ' ' . $orderCurrency . ').'
+            );
+        }
+    }
+
     public function complete(Order $orderId, Request $request, $sellerId): array
     {
         DB::beginTransaction();
@@ -684,18 +719,23 @@ class OrderActionService
             $uniqueCurrencies = array_unique($currencies);
             $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
-            // First, update lot quantities BEFORE saving the order
-            // This way, when the order is saved and triggers handleOrderMovement,
-            // the sale movement will be created first, preventing expired movements
-            $orderId->load('details.product.lots');
+            // Bloqueo anti-overselling: cargar y bloquear los lotes de los productos de la orden
+            $orderId->load('details.product');
+            $productIds = $orderId->details->pluck('product_id')->unique()->filter()->values()->all();
+            $lotsByProduct = collect();
+            if (!empty($productIds)) {
+                $lockedLots = ProductLot::whereIn('product_id', $productIds)
+                    ->where('quantity', '>', 0)
+                    ->orderBy('expiration_date')
+                    ->lockForUpdate()
+                    ->get();
+                $lotsByProduct = $lockedLots->groupBy('product_id');
+            }
 
             foreach ($orderId->details as $detail) {
-                $quantityToReduce = $detail->quantity;
-
-
+                $quantityToReduce = (int) $detail->quantity;
                 $quantityExpiration = 0;
-                $lots = $detail->product->lots->sortBy('expiration_date');
-
+                $lots = $lotsByProduct->get($detail->product_id, collect())->sortBy('expiration_date')->values();
 
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
@@ -756,6 +796,9 @@ class OrderActionService
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
 
+            // Validación de integridad financiera: suma de pagos debe cubrir el total
+            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments);
+
             // Recargo Sujeto Pasivo Especial
             $orderId->taxable_base = $request->taxable_base ?? 0;
             $orderId->spe_surcharge_rate = $request->spe_surcharge_rate ?? 0;
@@ -769,7 +812,7 @@ class OrderActionService
             $balancePayment = collect($request->payments)->firstWhere('method', 'balance');
             if ($balancePayment) {
                 $client = $orderId->client;
-                $client->balance -= $balancePayment['amount'];
+                $client->balance -= (float) ($balancePayment['amount'] ?? 0);
                 $client->save();
             }
 
@@ -777,8 +820,8 @@ class OrderActionService
                 Credit::create([
                     'client_id' => $request->client_id,
                     'order_id' => $orderId->id,
-                    'credit_amount' => $request->total_amount,
-                    'pending_amount' => $request->total_amount,
+                    'credit_amount' => $orderId->total_amount,
+                    'pending_amount' => $orderId->total_amount,
                     'credit_date' => Carbon::now(),
                     'status' => 'Active'
                 ]);
@@ -827,9 +870,13 @@ class OrderActionService
                 throw new \Exception('No se encontró un cierre de caja abierto para el vendedor. Debe abrir caja antes de completar la venta.');
             }
 
+            // Usar montos validados: el total de la orden (calculado en servidor) para crédito;
+            // los montos por método se validaron en validatePaymentsCoverOrderTotal
+            $orderTotal = (float) $orderId->total_amount;
+
             foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
-                $amount = $payment['amount'] ?? 0;
+                $amount = (float) ($payment['amount'] ?? 0);
 
                 if (isset($method)) {
                     switch ($method) {
@@ -843,7 +890,7 @@ class OrderActionService
                             $current_cash->usd_paypal += $amount;
                             break;
                         case 'credit':
-                            $current_cash->usd_credit += $request->total_amount;
+                            $current_cash->usd_credit += $orderTotal;
                             break;
                         case 'cash_bs':
                             $current_cash->bs_cash += $amount;

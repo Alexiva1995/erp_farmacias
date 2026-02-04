@@ -195,6 +195,8 @@ class OrderController extends Controller
                 'requested_quantity' => $e->getRequestedQuantity(),
                 'product_name' => $e->getProductName(),
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         } catch (\Exception $e) {
             Log::error('Error al completar la orden', [
                 'order_id' => $orderId->id,
