@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   orders: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -6,6 +8,14 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   headers: { type: Array, required: true },
+  sortBy: { type: [String, Array], default: () => [] },
+  orderBy: { type: String, default: "desc" },
+});
+
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  const key = Array.isArray(props.sortBy) ? props.sortBy[0] : props.sortBy;
+  return key ? [{ key, order: props.orderBy || "desc" }] : [];
 });
 
 const emit = defineEmits(["update:options", "print-order", "view-order"]);
@@ -86,6 +96,7 @@ const renderUsername = (item) => {
       :items="props.orders"
       :items-length="props.totalOrders"
       :loading="props.loading"
+      :sort-by="sortByModel"
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
       :expanded="expandedRows"

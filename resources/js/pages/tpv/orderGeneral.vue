@@ -24,8 +24,6 @@ const pageOrdersAll = ref(1);
 const itemsPerPageOrdersAll = ref(10);
 const sortByOrdersAll = ref();
 const orderByOrdersAll = ref();
-const startDateFilterAll = ref(null);
-const endDateFilterAll = ref(null);
 
 const isPrinting = ref(false);
 
@@ -37,8 +35,6 @@ const pageOrdersAbandoned = ref(1);
 const itemsPerPageOrdersAbandoned = ref(10);
 const sortByOrdersAbandoned = ref();
 const orderByOrdersAbandoned = ref();
-const startDateFilterAbandoned = ref(null);
-const endDateFilterAbandoned = ref(null);
 
 const ordersCancelled = ref([]);
 const totalOrdersCancelled = ref(0);
@@ -48,25 +44,29 @@ const pageOrdersCancelled = ref(1);
 const itemsPerPageOrdersCancelled = ref(10);
 const sortByOrdersCancelled = ref();
 const orderByOrdersCancelled = ref();
-const startDateFilterCancelled = ref(null);
-const endDateFilterCancelled = ref(null);
+
+const sellers = ref([]);
 
 const currencyFilterCompleted = ref(null);
+const sellerFilterCompleted = ref(null);
 const filterSearchQueryCompleted = ref("");
 const filterSearchQueryIdCompleted = ref("");
 const offerCompleted = ref("");
 
 const currencyFilterAll = ref(null);
+const sellerFilterAll = ref(null);
 const filterSearchQueryAll = ref("");
 const filterSearchQueryIdAll = ref("");
 const stateFilterAll = ref(null);
 
 const filterSearchQueryIdAbandoned = ref("");
 const currencyFilterAbandoned = ref(null);
+const sellerFilterAbandoned = ref(null);
 const filterSearchQueryAbandoned = ref("");
 
 const filterSearchQueryIdCancelled = ref("");
 const currencyFilterCancelled = ref(null);
+const sellerFilterCancelled = ref(null);
 const filterSearchQueryCancelled = ref("");
 
 const paymentsForPrint = ref([]);
@@ -80,6 +80,9 @@ const orderItems = ref([]);
 
 const viewModal = ref(false);
 
+// Rango de fechas global: por defecto desde 2026-01-01 para cargar datos recientes
+const globalStartDate = ref("2026-01-01");
+const globalEndDate = ref(null);
 
 const headers = [
   { title: "id", key: "id", sortable: true },
@@ -112,6 +115,11 @@ const fetchOrderCompleted = async () => {
     ...(currencyFilterCompleted.value !== null && {
       currency: currencyFilterCompleted.value,
     }),
+    ...(sellerFilterCompleted.value !== null && {
+      seller_id: sellerFilterCompleted.value,
+    }),
+    ...(globalStartDate.value && { start_date: globalStartDate.value }),
+    ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersCompleted.value,
     itemsPerPage: itemsPerPageOrdersCompleted.value,
     sortBy: sortByOrdersCompleted.value,
@@ -140,15 +148,14 @@ const fetchOrderAll = async () => {
     ...(currencyFilterAll.value !== null && {
       currency: currencyFilterAll.value,
     }),
+    ...(sellerFilterAll.value !== null && {
+      seller_id: sellerFilterAll.value,
+    }),
     ...(stateFilterAll.value !== null && {
       state: stateFilterAll.value,
     }),
-    ...(startDateFilterAll.value !== null && {
-      start_date: startDateFilterAll.value,
-    }),
-    ...(endDateFilterAll.value !== null && {
-      end_date: endDateFilterAll.value,
-    }),
+    ...(globalStartDate.value && { start_date: globalStartDate.value }),
+    ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersAll.value,
     itemsPerPage: itemsPerPageOrdersAll.value,
     sortBy: sortByOrdersAll.value,
@@ -177,12 +184,11 @@ const fetchOrderAbandoned = async () => {
     ...(currencyFilterAbandoned.value !== null && {
       currency: currencyFilterAbandoned.value,
     }),
-    ...(startDateFilterAbandoned.value !== null && {
-      start_date: startDateFilterAbandoned.value,
+    ...(sellerFilterAbandoned.value !== null && {
+      seller_id: sellerFilterAbandoned.value,
     }),
-    ...(endDateFilterAbandoned.value !== null && {
-      end_date: endDateFilterAbandoned.value,
-    }),
+    ...(globalStartDate.value && { start_date: globalStartDate.value }),
+    ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersAbandoned.value,
     itemsPerPage: itemsPerPageOrdersAbandoned.value,
     sortBy: sortByOrdersAbandoned.value,
@@ -211,12 +217,11 @@ const fetchOrderCancelled = async () => {
     ...(currencyFilterCancelled.value !== null && {
       currency: currencyFilterCancelled.value,
     }),
-    ...(startDateFilterCancelled.value !== null && {
-      start_date: startDateFilterCancelled.value,
+    ...(sellerFilterCancelled.value !== null && {
+      seller_id: sellerFilterCancelled.value,
     }),
-    ...(endDateFilterCancelled.value !== null && {
-      end_date: endDateFilterCancelled.value,
-    }),
+    ...(globalStartDate.value && { start_date: globalStartDate.value }),
+    ...(globalEndDate.value && { end_date: globalEndDate.value }),
     page: pageOrdersCancelled.value,
     itemsPerPage: itemsPerPageOrdersCancelled.value,
     sortBy: sortByOrdersCancelled.value,
@@ -241,7 +246,22 @@ const storeSelectedOffer = (offer) => {
   localStorage.setItem("selected_offer", offer);
 };
 
+const resetGlobalDateRange = () => {
+  globalStartDate.value = "2026-01-01";
+  globalEndDate.value = null;
+};
+
+const fetchSellers = async () => {
+  try {
+    const { data } = await axios.get("/users");
+    sellers.value = data?.data ?? data ?? [];
+  } catch (error) {
+    toast.error("No se pudo cargar el listado de vendedores.");
+  }
+};
+
 onMounted(() => {
+  fetchSellers();
   fetchOrderCompleted();
   fetchOrderAll();
   fetchOrderAbandoned();
@@ -254,6 +274,7 @@ watch(
     pageOrdersCompleted,
     itemsPerPageOrdersCompleted,
     currencyFilterCompleted,
+    sellerFilterCompleted,
     filterSearchQueryIdCompleted,
     filterSearchQueryCompleted,
     sortByOrdersCompleted,
@@ -274,13 +295,12 @@ watch(
     pageOrdersAll,
     itemsPerPageOrdersAll,
     currencyFilterAll,
+    sellerFilterAll,
     stateFilterAll,
     filterSearchQueryIdAll,
     filterSearchQueryAll,
     sortByOrdersAll,
     orderByOrdersAll,
-    startDateFilterAll,
-    endDateFilterAll,
   ],
   () => {
     clearTimeout(debounceTimerAll);
@@ -297,12 +317,11 @@ watch(
     pageOrdersAbandoned,
     itemsPerPageOrdersAbandoned,
     currencyFilterAbandoned,
+    sellerFilterAbandoned,
     filterSearchQueryIdAbandoned,
     filterSearchQueryAbandoned,
     sortByOrdersAbandoned,
     orderByOrdersAbandoned,
-    startDateFilterAbandoned,
-    endDateFilterAbandoned,
   ],
   () => {
     clearTimeout(debounceTimerAbandoned);
@@ -319,12 +338,11 @@ watch(
     pageOrdersCancelled,
     itemsPerPageOrdersCancelled,
     currencyFilterCancelled,
+    sellerFilterCancelled,
     filterSearchQueryIdCancelled,
     filterSearchQueryCancelled,
     sortByOrdersCancelled,
     orderByOrdersCancelled,
-    startDateFilterCancelled,
-    endDateFilterCancelled,
   ],
   () => {
     clearTimeout(debounceTimerCancelled);
@@ -339,6 +357,7 @@ const handleClearFiltersCompleted = () => {
   filterSearchQueryIdCompleted.value = "";
   filterSearchQueryCompleted.value = "";
   currencyFilterCompleted.value = null;
+  sellerFilterCompleted.value = null;
   sortByOrdersCompleted.value = undefined;
   orderByOrdersCompleted.value = undefined;
 };
@@ -347,48 +366,56 @@ const handleClearFiltersAll = () => {
   filterSearchQueryIdAll.value = "";
   filterSearchQueryAll.value = "";
   currencyFilterAll.value = null;
+  sellerFilterAll.value = null;
   stateFilterAll.value = null;
   sortByOrdersAll.value = undefined;
   orderByOrdersAll.value = undefined;
-  startDateFilterAll.value = null;
-  endDateFilterAll.value = null;
 };
 
 const handleClearFiltersAbandoned = () => {
   filterSearchQueryIdAbandoned.value = "";
   filterSearchQueryAbandoned.value = "";
   currencyFilterAbandoned.value = null;
+  sellerFilterAbandoned.value = null;
   sortByOrdersAbandoned.value = undefined;
   orderByOrdersAbandoned.value = undefined;
-  startDateFilterAbandoned.value = null;
-  endDateFilterAbandoned.value = null;
 };
 
 const handleClearFiltersCancelled = () => {
   filterSearchQueryIdCancelled.value = "";
   filterSearchQueryCancelled.value = "";
   currencyFilterCancelled.value = null;
+  sellerFilterCancelled.value = null;
   sortByOrdersCancelled.value = undefined;
   orderByOrdersCancelled.value = undefined;
-  startDateFilterCancelled.value = null;
-  endDateFilterCancelled.value = null;
 };
 
-watch([filterSearchQueryCompleted, currencyFilterCompleted], () => {
+watch([filterSearchQueryCompleted, currencyFilterCompleted, sellerFilterCompleted], () => {
   pageOrdersCompleted.value = 1;
 });
 
-watch([filterSearchQueryAll, currencyFilterAll, stateFilterAll], () => {
+watch([filterSearchQueryAll, currencyFilterAll, sellerFilterAll, stateFilterAll], () => {
   pageOrdersAll.value = 1;
 });
 
-watch([filterSearchQueryAbandoned, currencyFilterAbandoned], () => {
+watch([filterSearchQueryAbandoned, currencyFilterAbandoned, sellerFilterAbandoned], () => {
   pageOrdersAbandoned.value = 1;
 });
 
-watch([filterSearchQueryCancelled, currencyFilterCancelled], () => {
+watch([filterSearchQueryCancelled, currencyFilterCancelled, sellerFilterCancelled], () => {
   pageOrdersCancelled.value = 1;
 });
+
+watch([globalStartDate, globalEndDate], () => {
+  pageOrdersCompleted.value = 1;
+  pageOrdersAll.value = 1;
+  pageOrdersAbandoned.value = 1;
+  pageOrdersCancelled.value = 1;
+  fetchOrderCompleted();
+  fetchOrderAll();
+  fetchOrderAbandoned();
+  fetchOrderCancelled();
+}, { deep: true });
 
 watch(
   () => offerCompleted.value,
@@ -670,13 +697,59 @@ const speSurchargeAmount = computed(() => {
 </script>
 <template>
   <div>
+    <VCard title="Rango de fechas" class="mb-6">
+      <VCardText>
+        <VRow align="center">
+          <VCol cols="12" sm="6" md="4">
+            <AppDateTimePicker
+              v-model="globalStartDate"
+              label="Desde"
+              placeholder="Desde (ej: 2026-01-01)"
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <AppDateTimePicker
+              v-model="globalEndDate"
+              label="Hasta (opcional)"
+              placeholder="Hasta (vacío = hasta hoy)"
+              clearable
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
+            />
+          </VCol>
+          <VCol cols="12" sm="12" md="4">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              @click="resetGlobalDateRange"
+            >
+              Restaurar por defecto (2026)
+            </VBtn>
+          </VCol>
+        </VRow>
+        <p class="text-caption text-medium-emphasis mt-2 mb-0">
+          Por defecto se cargan órdenes desde el 01/01/2026. Cambia "Desde" para consultar años anteriores.
+        </p>
+      </VCardText>
+    </VCard>
+
     <OrderFiltersGeneral
       v-model:idSearchQuery="filterSearchQueryIdCompleted"
       v-model:searchQuery="filterSearchQueryCompleted"
       v-model:currencyFilter="currencyFilterCompleted"
+      v-model:sellerFilter="sellerFilterCompleted"
       v-model:offer="offerCompleted"
+      :sellers="sellers"
       @clear="handleClearFiltersCompleted"
-    ></OrderFiltersGeneral>
+    />
 
     <VCard title="Órdenes Completadas">
       <div class="mb-2"></div>
@@ -687,6 +760,8 @@ const speSurchargeAmount = computed(() => {
         :items-per-page="itemsPerPageOrdersCompleted"
         :page="pageOrdersCompleted"
         :headers="headers"
+        :sort-by="sortByOrdersCompleted"
+        :order-by="orderByOrdersCompleted"
         @update:options="updateTableOptionsOrdersCompleted"
         @print-order="printOrder"
         @view-order="handleViewOrder"
@@ -698,13 +773,12 @@ const speSurchargeAmount = computed(() => {
       v-model:idSearchQuery="filterSearchQueryIdAll"
       v-model:searchQuery="filterSearchQueryAll"
       v-model:currencyFilter="currencyFilterAll"
-      v-model:startDate="startDateFilterAll"
-      v-model:endDate="endDateFilterAll"
+      v-model:sellerFilter="sellerFilterAll"
       v-model:stateFilter="stateFilterAll"
+      :sellers="sellers"
       @clear="handleClearFiltersAll"
-      :showDateFilters="true"
       :showStateFilters="true"
-    ></OrderFiltersGeneral>
+    />
 
     <VCard title="Todas las Órdenes">
       <div class="mb-2"></div>
@@ -715,6 +789,8 @@ const speSurchargeAmount = computed(() => {
         :items-per-page="itemsPerPageOrdersAll"
         :page="pageOrdersAll"
         :headers="headersAll"
+        :sort-by="sortByOrdersAll"
+        :order-by="orderByOrdersAll"
         @update:options="updateTableOptionsOrdersAll"
         @print-order="printOrder"
         @view-order="handleViewOrder"
@@ -726,11 +802,10 @@ const speSurchargeAmount = computed(() => {
       v-model:idSearchQuery="filterSearchQueryIdCancelled"
       v-model:searchQuery="filterSearchQueryCancelled"
       v-model:currencyFilter="currencyFilterCancelled"
+      v-model:sellerFilter="sellerFilterCancelled"
+      :sellers="sellers"
       @clear="handleClearFiltersCancelled"
-      v-model:startDate="startDateFilterCancelled"
-      v-model:endDate="endDateFilterCancelled"
-      :showDateFilters="true"
-    ></OrderFiltersGeneral>
+    />
 
     <VCard title="Órdenes Canceladas">
       <div class="mb-2"></div>
@@ -741,6 +816,8 @@ const speSurchargeAmount = computed(() => {
         :items-per-page="itemsPerPageOrdersCancelled"
         :page="pageOrdersCancelled"
         :headers="headers"
+        :sort-by="sortByOrdersCancelled"
+        :order-by="orderByOrdersCancelled"
         @update:options="updateTableOptionsOrdersCancelled"
         @print-order="printOrder"
         @view-order="handleViewOrder"
@@ -752,11 +829,10 @@ const speSurchargeAmount = computed(() => {
       v-model:idSearchQuery="filterSearchQueryIdAbandoned"
       v-model:searchQuery="filterSearchQueryAbandoned"
       v-model:currencyFilter="currencyFilterAbandoned"
+      v-model:sellerFilter="sellerFilterAbandoned"
+      :sellers="sellers"
       @clear="handleClearFiltersAbandoned"
-      v-model:startDate="startDateFilterAbandoned"
-      v-model:endDate="endDateFilterAbandoned"
-      :showDateFilters="true"
-    ></OrderFiltersGeneral>
+    />
 
     <VCard title="Órdenes Abandonadas">
       <div class="mb-2"></div>
@@ -767,6 +843,8 @@ const speSurchargeAmount = computed(() => {
         :items-per-page="itemsPerPageOrdersAbandoned"
         :page="pageOrdersAbandoned"
         :headers="headers"
+        :sort-by="sortByOrdersAbandoned"
+        :order-by="orderByOrdersAbandoned"
         @update:options="updateTableOptionsOrdersAbandoned"
         @print-order="printOrder"
         @view-order="handleViewOrder"

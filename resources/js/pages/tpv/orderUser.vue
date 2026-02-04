@@ -2303,12 +2303,14 @@ const handleBuysCompletion = async (
     if (selectedDiscountType.value === "Recipe" && prescriptionFile.value) {
       formData.append("prescription_image", prescriptionFile.value);
     }
+    const idempotencyKey = `order-complete-${orderId}-${Date.now()}`;
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          "X-Idempotency-Key": idempotencyKey,
         },
       },
     );
@@ -2354,13 +2356,20 @@ const handleBuysCompletion = async (
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
-    toast.error("Hubo un problema al procesar su compra.");
+    const msg =
+      error.response?.data?.message ||
+      (error.response?.status === 422
+        ? "Stock insuficiente para uno o más productos."
+        : "Hubo un problema al procesar su compra.");
+    toast.error(msg);
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
     orderItems.value = [];
     reservedOrderData.value = null;
     clientIdentification.value = "";
+  } finally {
+    isFinishingOrder.value = false;
   }
 };
 
@@ -3040,6 +3049,7 @@ onUnmounted(() => {
       v-model:is-dialog-visible="showBuysModal"
       :order-products="orderItems || []"
       :order-data="openOrderData || null"
+      :is-external-loading="isFinishingOrder"
       :total-amount="totalOrderAmount || 0"
       :selected-currency="selectedDisplayCurrency || 'USD'"
       @modal-closed="closeBuysModal"

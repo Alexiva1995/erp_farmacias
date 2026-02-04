@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CashClosureExport;
 use App\Http\Requests\CashClosure\CloseCashClosureRequest;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class CashClosureController extends Controller
@@ -87,7 +88,12 @@ class CashClosureController extends Controller
 
     public function getCashClosureOrders(Request $request)
     {
-        $query = $this->cashClosureQueryService->getFilteredQueryOrder($request);
+        try {
+            $query = $this->cashClosureQueryService->getFilteredQueryOrder($request);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['data' => [], 'total' => 0]);
+        }
+
         $perPage = $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {

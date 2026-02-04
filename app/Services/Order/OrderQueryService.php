@@ -14,13 +14,18 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 class OrderQueryService
 {
 
-    private function getBaseQuery($valor): Builder
+    private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
         if ($valor == 'Completed') {
-            $start = now()->startOfDay();
-            $end = now()->endOfDay();
-            return Order::query()->where('status', $valor)->whereBetween('order_date', [$start, $end])->with('client', 'seller');
-        } else if ($valor == 'all') {
+            $query = Order::query()->where('status', $valor)->with('client', 'seller');
+            // Si no hay rango de fechas, usar solo el día actual (comportamiento por defecto)
+            if (empty($startDate) && empty($endDate)) {
+                $start = now()->startOfDay();
+                $end = now()->endOfDay();
+                return $query->whereBetween('order_date', [$start, $end]);
+            }
+            return $query;
+        } elseif ($valor == 'all') {
             return Order::query()->with('client', 'seller');
         }
 
@@ -58,6 +63,10 @@ class OrderQueryService
             $query->where('status', $filters['state']);
         }
 
+        if (!empty($filters['seller_id'])) {
+            $query->where('seller_id', $filters['seller_id']);
+        }
+
         if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
             $startDate = !empty($filters['start_date']) ? Carbon::parse($filters['start_date'])->startOfDay() : null;
             $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
@@ -76,7 +85,11 @@ class OrderQueryService
 
     public function getFilteredQuery(Request $request, $valor): Builder
     {
-        $query = $this->getBaseQuery($valor);
+        $query = $this->getBaseQuery(
+            $valor,
+            $request->input('start_date'),
+            $request->input('end_date')
+        );
         $filters = [
             'id' => $request->id,
             'q' => $request->q,
@@ -84,9 +97,54 @@ class OrderQueryService
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
             'state' => $request->state,
+            'seller_id' => $request->seller_id,
         ];
         $this->applyFilters($query, $filters);
+        $this->applyOrderSorting(
+            $query,
+            $request->input('sortBy'),
+            $request->input('orderBy', 'desc')
+        );
         return $query;
+    }
+
+    private function applyOrderSorting(Builder $query, ?string $sortBy, string $orderBy): Builder
+    {
+        if (empty($sortBy)) {
+            return $query->orderBy('orders.id', 'desc');
+        }
+
+        $sortDir = strtolower($orderBy) === 'asc' ? 'asc' : 'desc';
+
+        $directColumns = [
+            'id' => 'orders.id',
+            'total_amount' => 'orders.total_amount',
+            'currency' => 'orders.currency',
+            'date' => 'orders.order_date',
+            'status' => 'orders.status',
+        ];
+
+        if (isset($directColumns[$sortBy])) {
+            return $query->orderBy($directColumns[$sortBy], $sortDir);
+        }
+
+        switch ($sortBy) {
+            case 'identification':
+                return $query->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+                    ->orderBy('clients.identification', $sortDir)
+                    ->select('orders.*');
+            case 'client_full_name':
+                return $query->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+                    ->orderBy('clients.name', $sortDir)
+                    ->orderBy('clients.last_name', $sortDir)
+                    ->select('orders.*');
+            case 'seller.username':
+                return $query->leftJoin('users', 'orders.seller_id', '=', 'users.id')
+                    ->orderBy('users.username', $sortDir)
+                    ->select('orders.*');
+            default:
+                return $query->orderBy('orders.id', 'desc');
+        }
     }
 
 

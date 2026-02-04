@@ -190,6 +190,18 @@ class OrderController extends Controller
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
 
+        } catch (InsufficientStockException $e) {
+            Log::warning('Stock insuficiente al completar orden', [
+                'order_id' => $orderId->id,
+                'product' => $e->getProductName(),
+                'available' => $e->getAvailableStock(),
+                'requested' => $e->getRequestedQuantity(),
+            ]);
+            return ApiResponse::error($e->getMessage(), 422, [
+                'available_stock' => $e->getAvailableStock(),
+                'requested_quantity' => $e->getRequestedQuantity(),
+                'product_name' => $e->getProductName(),
+            ]);
         } catch (\Exception $e) {
             Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);

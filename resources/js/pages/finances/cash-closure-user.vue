@@ -1,7 +1,7 @@
 <script setup>
 import CashSummary from "@/components/CashSummary.vue";
 import axios from "@/plugins/axios";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch, computed, nextTick } from "vue";
 import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
 import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
 import { toast } from "@/plugins/sweetalert";

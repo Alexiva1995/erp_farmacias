@@ -601,10 +601,20 @@ class OrderActionService
 
     public function complete(Order $orderId, Request $request, $sellerId): array
     {
-
         DB::beginTransaction();
         try {
+            // 1. Idempotencia: si la orden ya está completada, retornar sin reprocesar
+            $order = Order::where('id', $orderId->id)->lockForUpdate()->firstOrFail();
+            if ($order->status === Order::COMPLETED || $order->status === 'paid') {
+                DB::commit();
+                $order->load(['seller', 'client', 'details.product']);
+                return [
+                    'orderCompletada' => $order,
+                    'already_completed' => true,
+                ];
+            }
 
+            $orderId = $order;
             $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
@@ -732,7 +742,15 @@ class OrderActionService
                 }
 
                 if ($quantityToReduce > 0) {
-                    throw new \Exception("No hay suficiente stock en los lotes para el producto ID: {$detail->product->id}");
+                    $product = $detail->product;
+                    $productName = $product?->name ?? 'Producto';
+                    $available = $product ? (int) $product->lots->sum('quantity') : 0;
+                    throw new InsufficientStockException(
+                        $productName,
+                        $available,
+                        (int) $detail->quantity,
+                        "No hay suficiente stock para '{$productName}'. Disponible: {$available}, solicitado: {$detail->quantity}."
+                    );
                 }
 
                 // Save quantity_expiration
@@ -742,10 +760,16 @@ class OrderActionService
                 }
             }
 
-            //  Recargo Sujeto Pasivo Especial
-            $orderId->taxable_base = $request->taxable_base;
-            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate;
-            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount;
+            // Recalcular totales desde los detalles en BD (no confiar en el cliente)
+            $orderId->total_amount = $orderId->details->sum('price');
+            $orderId->total_amount_usd = $orderId->details->sum(function ($d) {
+                return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
+            });
+
+            // Recargo Sujeto Pasivo Especial
+            $orderId->taxable_base = $request->taxable_base ?? 0;
+            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate ?? 0;
+            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount ?? 0;
 
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
             // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
