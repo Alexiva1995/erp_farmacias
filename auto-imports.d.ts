@@ -16,6 +16,7 @@ declare global {
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
   const avatarText: typeof import('./resources/js/@core/utils/formatters.js')['avatarText']
   const betweenValidator: typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']
+  const capitalizeFirstAndLastName: typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']
   const computed: typeof import('vue')['computed']
   const computedAsync: typeof import('@vueuse/core')['computedAsync']
   const computedEager: typeof import('@vueuse/core')['computedEager']
@@ -48,6 +49,7 @@ declare global {
   const effectScope: typeof import('vue')['effectScope']
   const emailValidator: typeof import('./resources/js/@core/utils/validators.js')['emailValidator']
   const extendRef: typeof import('@vueuse/core')['extendRef']
+  const formatAmountOnly: typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
   const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
   const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
@@ -393,6 +395,7 @@ declare module 'vue' {
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly avatarText: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['avatarText']>
     readonly betweenValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']>
+    readonly capitalizeFirstAndLastName: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly computedAsync: UnwrapRef<typeof import('@vueuse/core')['computedAsync']>
     readonly computedEager: UnwrapRef<typeof import('@vueuse/core')['computedEager']>
@@ -425,6 +428,7 @@ declare module 'vue' {
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly emailValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['emailValidator']>
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
+    readonly formatAmountOnly: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
     readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
