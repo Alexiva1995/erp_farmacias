@@ -1,7 +1,8 @@
 <script setup>
 import OrderFilters from "@/components/OrderFilters.vue";
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
-import OrderTicket from "@/components/OrderTicket.vue";
+import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
+import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import BuysModal from "@/components/dialogs/BuysModal.vue";
@@ -2390,30 +2391,8 @@ const printTickeCompletion = async () => {
 
   if (printContents && printContents.innerHTML.trim() !== "") {
     const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>",
-    );
-
-    // Copiar estilos (el bloque try/catch que ya tienes)
-    Array.from(document.styleSheets).forEach((sheet) => {
-      try {
-        if (sheet.cssRules) {
-          const css = Array.from(sheet.cssRules)
-            .map((r) => r.cssText)
-            .join("");
-          printWindow.document.write("<style>" + css + "</style>");
-        } else if (sheet.href) {
-          printWindow.document.write(
-            '<link rel="stylesheet" href="' + sheet.href + '">',
-          );
-        }
-      } catch (e) {
-        if (sheet.href)
-          printWindow.document.write(
-            '<link rel="stylesheet" href="' + sheet.href + '">',
-          );
-      }
-    });
+    printWindow.document.write("<html><head><title>Ticket 54mm - Farmacia Barrio Sucre</title>");
+    printWindow.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
 
     printWindow.document.write("</head><body>");
     printWindow.document.write(printContents.innerHTML);
@@ -3080,12 +3059,12 @@ onUnmounted(() => {
               top: '0',
               zIndex: 9999,
               background: 'white',
-              width: '80mm',
+              width: '54mm',
             }
           : { position: 'absolute', left: '-9999px' }
       "
     >
-      <OrderTicket
+      <OrderTicketThermal54
         v-if="orderData"
         :order-data="orderData"
         :order-products="itemsForTicket || []"
@@ -3099,7 +3078,6 @@ onUnmounted(() => {
         :selected-discount-type="discountTypeForPrint || null"
         :doctor-discount-total="doctorDiscountForPrint || 0"
         :recipe-discount-total="recipeDiscountForPrint || 0"
-        :expiration-discount-total="expirationDiscountForPrint || 0"
         :is-special-taxpayer="isSpecialTaxpayer || false"
         :spe-surcharge-amount="speSurchargeAmountPrint || 0"
       />

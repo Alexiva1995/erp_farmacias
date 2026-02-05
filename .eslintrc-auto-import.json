@@ -378,6 +378,8 @@
     "pdfPayslipGenerator": true,
     "pdfGastos": true,
     "translateMethod": true,
-    "useExpenses": true
+    "useExpenses": true,
+    "capitalizeFirstAndLastName": true,
+    "formatAmountOnly": true
   }
 }

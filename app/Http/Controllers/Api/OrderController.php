@@ -209,6 +209,7 @@ class OrderController extends Controller
 
     public function getcompletedOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -222,6 +223,7 @@ class OrderController extends Controller
 
     public function getAllOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'all');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -235,6 +237,7 @@ class OrderController extends Controller
 
     public function getAbandonedOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -248,6 +251,7 @@ class OrderController extends Controller
 
     public function getCancelledOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -447,6 +451,17 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return ApiResponse::error('Ocurrió un error al procesar la orden reservada. Intente de nuevo.', 500);
+        }
+    }
+
+    /**
+     * Si el usuario es vendedor (role_id 3), fuerza el filtro seller_id al usuario actual.
+     */
+    private function applySellerFilterForVendedor(Request $request): void
+    {
+        $user = Auth::user();
+        if ($user && (int) $user->role_id === 3) {
+            $request->merge(['seller_id' => $user->id]);
         }
     }
 }

@@ -53,6 +53,7 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'productividad');
       can('manage', 'comparadorAssistence');
       can('manage', 'gastos-expenses');
+      can('manage', 'order-general-user');
     }
     // ... otros permisos para otros roles
   }

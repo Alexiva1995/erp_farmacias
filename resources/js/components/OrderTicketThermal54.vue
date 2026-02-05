@@ -271,11 +271,11 @@ const clientDisplayLine = computed(() => {
   margin-bottom: 2mm;
   border-top: 1px dashed #000000;
   padding-top: 1mm;
-  font-size: 3px !important;
+  font-size: 10px;
 }
 .thermal-products-head {
   display: flex;
-  font-size: 3px !important;
+  font-size: 10px;
   font-weight: bold;
   padding: 0.4mm 0;
   border-bottom: 1px dashed #000000;
@@ -294,7 +294,7 @@ const clientDisplayLine = computed(() => {
   display: flex;
   align-items: flex-start;
   padding: 0.5mm 0;
-  font-size: 3px !important;
+  font-size: 10px;
   line-height: 1.2;
   border-bottom: 1px solid #000000;
 }
@@ -302,14 +302,15 @@ const clientDisplayLine = computed(() => {
   display: flex;
   flex-direction: column;
 }
+/* Producto: 2pt más pequeño que el resto (8px vs 10px base) - !important evita que otra regla lo sobrescriba */
 .thermal-product-name {
+  font-size: 8px !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
   text-transform: uppercase;
-  font-size: 3px !important;
 }
 .thermal-product-meta {
-  font-size: 2px;
+  font-size: 8px;
   margin-top: 0.2mm;
   opacity: 1;
   color: #000000;
