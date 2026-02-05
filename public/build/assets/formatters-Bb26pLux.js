@@ -1,0 +1,1 @@
+const a=r=>r?r.split(" ").map(e=>e.charAt(0).toUpperCase()).join(""):"",o=r=>{if(!r||typeof r!="string")return"";const t=r.trim().split(/\s+/).filter(Boolean),e=t[0]?t[0].charAt(0).toUpperCase()+t[0].slice(1).toLowerCase():"",s=t[1]?t[1].charAt(0).toUpperCase()+t[1].slice(1).toLowerCase():"";return[e,s].filter(Boolean).join(" ")};export{a,o as c};
