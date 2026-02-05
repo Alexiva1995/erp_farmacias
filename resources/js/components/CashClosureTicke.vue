@@ -299,7 +299,7 @@ const hasAnyReference = computed(() => {
         <SectionDivider :isPdf="props.isPdf" text="PAGOS" width="42%" />
         <PaymentTable :payments="creditPayments" />
       </div>
-      <div v-if="totalDelivery > 0">
+      <div>
         <SectionDivider :isPdf="props.isPdf" text="ENTREGA" width="40%" />
         <PaymentTable :payments="delivery" />
       </div>
