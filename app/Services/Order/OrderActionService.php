@@ -939,7 +939,7 @@ class OrderActionService
             $current_cash->total_cop = $total_cop;
             $current_cash->total_usd = $total_usd;
             $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
-            $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
+            $current_cash->cop_delivered = $current_cash->cop_cash - ($current_cash->cop_conversion+$current_cash->cop_conversion_payment_credit);
             $current_cash->bs_delivered = $current_cash->bs_cash;
 
             $cop_in_usd = $current_cash->total_cop_in_usd;
@@ -1188,7 +1188,7 @@ class OrderActionService
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;
                 $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
-                $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
+                $cashClosing->cop_delivered = $cashClosing->cop_cash - ($cashClosing->cop_conversion+$cashClosing->cop_conversion_payment_credit);
                 $cashClosing->bs_delivered = $cashClosing->bs_cash;
 
                 $cop_in_usd = $cashClosing->total_cop_in_usd;
