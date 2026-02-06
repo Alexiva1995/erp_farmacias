@@ -103,6 +103,16 @@ watch(
   { immediate: true }
 );
 
+/** Stock actual en todos los lotes existentes (al abrir el modal). */
+const currentLotsStockSum = computed(() => {
+  return originalLots.value.reduce((sum, lot) => sum + (Number(lot.quantity) || 0), 0);
+});
+
+/** Objetivo = stock actual en lotes + cantidad devuelta. Representa el stock total que debería haber tras procesar la devolución. */
+const objective = computed(() => {
+  return currentLotsStockSum.value + (Number(props.targetQuantity) || 0);
+});
+
 /** Suma de unidades añadidas: (Cantidad Ajustada - Stock Sistema) por lote existente + cantidad en lotes nuevos. Debe coincidir con las unidades devueltas. */
 const totalDistributed = computed(() => {
   return distributedLots.value.reduce((sum, lot) => {
@@ -305,7 +315,7 @@ const closeDialog = () => {
                 <VIcon icon="tabler-target" size="20" />
                 <span class="text-sm text-medium-emphasis">Objetivo</span>
               </div>
-              <p class="text-h6 font-weight-bold mb-0">{{ props.targetQuantity }}</p>
+              <p class="text-h6 font-weight-bold mb-0">{{ objective }}</p>
             </VCard>
           </VCol>
           <VCol cols="12" md="4">

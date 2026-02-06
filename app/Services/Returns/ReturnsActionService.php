@@ -4,7 +4,9 @@ namespace App\Services\Returns;
 
 use App\Services\Resources\ResourceService;
 use App\Models\Client;
+use App\Models\InventoryMovement;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\ProductLot;
 use App\Models\ReturnEntry;
 use Carbon\Carbon;
@@ -14,7 +16,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use App\Observers\ProductObserver;
 
 class ReturnsActionService
 {
@@ -135,24 +136,7 @@ class ReturnsActionService
                 throw new Exception('No se encontró el cliente asociado a la orden.');
             }
 
-            // Si se proporciona lote, validar e incrementar cantidad
-            if ($productLotId) {
-                $lot = ProductLot::where('id', $productLotId)
-                    ->where('product_id', $productData['id'])
-                    ->first();
-
-                if (!$lot) {
-                    throw new Exception('El lote seleccionado no existe o no pertenece al producto.');
-                }
-
-                $lot->quantity += $returnsQuantity;
-                ProductLot::withoutEvents(function () use ($lot) {
-                    $lot->save();
-                });
-            }
-
-            // Siempre se crea en estado pendiente (null). La aprobación y asignación
-            // del monto al saldo del cliente se hace en /tpv/returnsSupervisor
+            // La distribución en lotes y el movimiento de inventario se realizan al aprobar en /tpv/returnsSupervisor
             $return = ReturnEntry::create([
                 'order_id' => $orderData['id'],
                 'generated_by_id' => Auth::id(),
@@ -163,7 +147,6 @@ class ReturnsActionService
                 'status' => null
             ]);
 
-            ProductObserver::handleReturnMovement($return);
             DB::commit();
             return [
                 'success' => true,
@@ -231,50 +214,58 @@ class ReturnsActionService
      * Valida que la suma distribuida coincida con la cantidad devuelta.
      * updated_lots: [{ id, quantity }] cantidad final por lote existente.
      * new_lots: [{ lot_number, expiration_date, location, quantity }].
+     * Retorna lista de [ product_lot_id, quantity ] para generar movimientos de inventario por lote (como en cyclics).
      */
-    private function applyLotDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): void
+    private function applyLotDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): array
     {
         $productId = $returnEntry->product_id;
         $returnQty = (int) $returnEntry->quantity;
 
         $totalDistributed = 0;
+        $distributionForMovements = [];
 
-        foreach ($updatedLots as $row) {
-            $lot = ProductLot::where('id', $row['id'])->where('product_id', $productId)->first();
-            if (!$lot) {
-                throw new Exception("Lote no encontrado o no pertenece al producto.");
+        ProductLot::withoutEvents(function () use ($returnEntry, $updatedLots, $newLots, $productId, $returnQty, &$totalDistributed, &$distributionForMovements) {
+            foreach ($updatedLots as $row) {
+                $lot = ProductLot::where('id', $row['id'])->where('product_id', $productId)->first();
+                if (!$lot) {
+                    throw new Exception("Lote no encontrado o no pertenece al producto.");
+                }
+                $newQty = (int) ($row['quantity'] ?? 0);
+                $delta = $newQty - (int) $lot->quantity;
+                if ($delta > 0) {
+                    $lot->increment('quantity', $delta);
+                    $totalDistributed += $delta;
+                    $distributionForMovements[] = ['product_lot_id' => $lot->id, 'quantity' => $delta];
+                }
             }
-            $newQty = (int) ($row['quantity'] ?? 0);
-            $delta = $newQty - (int) $lot->quantity;
-            if ($delta > 0) {
-                $lot->increment('quantity', $delta);
-                $totalDistributed += $delta;
-            }
-        }
 
-        foreach ($newLots as $row) {
-            $qty = (int) ($row['quantity'] ?? 0);
-            if ($qty <= 0) {
-                continue;
+            foreach ($newLots as $row) {
+                $qty = (int) ($row['quantity'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+                $newLot = ProductLot::create([
+                    'product_id' => $productId,
+                    'lot_number' => $row['lot_number'] ?? '',
+                    'expiration_date' => !empty($row['expiration_date']) ? $row['expiration_date'] : null,
+                    'location' => $row['location'] ?? '',
+                    'quantity' => $qty,
+                ]);
+                $totalDistributed += $qty;
+                $distributionForMovements[] = ['product_lot_id' => $newLot->id, 'quantity' => $qty];
             }
-            ProductLot::create([
-                'product_id' => $productId,
-                'lot_number' => $row['lot_number'] ?? '',
-                'expiration_date' => !empty($row['expiration_date']) ? $row['expiration_date'] : null,
-                'location' => $row['location'] ?? '',
-                'quantity' => $qty,
-            ]);
-            $totalDistributed += $qty;
-        }
+        });
 
         if ($totalDistributed !== $returnQty) {
             throw new Exception("La cantidad distribuida ({$totalDistributed}) debe coincidir con las unidades devueltas ({$returnQty}). Ajuste los lotes para que el total sea stock actual + devolución.");
         }
+
+        return $distributionForMovements;
     }
 
     /**
      * Aprueba la devolución solo después de distribuir las unidades en lotes.
-     * Flujo: 1) Distribuir en lotes (stock actual + devolución), 2) Aprobar devolución (saldo, etc.).
+     * Flujo: 1) Distribuir en lotes (stock actual + devolución), 2) Registrar un movimiento de inventario (tipo devolución) por cada lote, como en cyclics, 3) Aprobar devolución (saldo, etc.).
      */
     public function approveWithDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): ReturnEntry
     {
@@ -284,7 +275,34 @@ class ReturnsActionService
 
         DB::beginTransaction();
         try {
-            $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
+            $product = $returnEntry->product;
+            $stockBefore = (int) ($product->stock ?? 0);
+
+            $distributionForMovements = $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
+
+            // Stock objetivo = suma real de lotes (actual en lotes + lo devuelto distribuido)
+            $stockAfter = (int) $product->fresh()->lots()->sum('quantity');
+
+            Product::withoutEvents(function () use ($product, $stockAfter) {
+                $product->update(['stock' => $stockAfter]);
+            });
+
+            foreach ($distributionForMovements as $item) {
+                InventoryMovement::create([
+                    'product_id' => $returnEntry->product_id,
+                    'product_lot_id' => $item['product_lot_id'],
+                    'movement_type' => 'return',
+                    'quantity' => (int) $item['quantity'],
+                    'invoice_id' => null,
+                    'supplier_id' => null,
+                    'order_id' => $returnEntry->order_id,
+                    'user_id' => Auth::id(),
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'movement_date' => now(),
+                ]);
+            }
+
             $returnEntry = $this->updateStatus($returnEntry, ReturnEntry::APPROVED);
             DB::commit();
             return $returnEntry;
