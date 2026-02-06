@@ -7,6 +7,7 @@ use App\Models\InvoiceCount;
 use App\Models\Product;
 use App\Models\ProductCount;
 use App\Models\SaleCount;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -449,12 +450,19 @@ class InventoryCycleQueryService
     {
         $query = $this->getProductsBaseQuery();
 
-        $query->whereHas('invoiceDetails.invoice', function ($subQuery) {
+        $activeCycle = InventoryCycle::where('status', 'active')->first();
+        $cycleStartDate = $activeCycle?->start_date;
+
+        $afterCycleStart = $cycleStartDate ? Carbon::parse($cycleStartDate)->addSecond() : null;
+        $query->whereHas('invoiceDetails.invoice', function ($subQuery) use ($afterCycleStart) {
             $subQuery->where('status', 'ordered')
                 ->where('created_invoice_date', '>=', '2026-01-25');
+            if ($afterCycleStart) {
+                $subQuery->where('created_invoice_date', '>', $afterCycleStart);
+            }
         });
 
-        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        $activeCycleId = $activeCycle?->id;
         if ($activeCycleId) {
             $query->whereDoesntHave('invoiceCounts', function (Builder $subQuery) use ($activeCycleId) {
                 $subQuery->where('cycle_id', $activeCycleId);
@@ -839,9 +847,16 @@ class InventoryCycleQueryService
     {
         $query = $this->getProductsBaseQuery();
 
-        $query->whereHas('orderDetails.order', function ($subQuery) {
+        $activeCycle = InventoryCycle::where('status', 'active')->first();
+        $cycleStartDate = $activeCycle?->start_date;
+
+        $afterCycleStart = $cycleStartDate ? Carbon::parse($cycleStartDate)->addSecond() : null;
+        $query->whereHas('orderDetails.order', function ($subQuery) use ($afterCycleStart) {
             $subQuery->where('status', 'completed')
                 ->where('order_date', '>=', '2026-01-25');
+            if ($afterCycleStart) {
+                $subQuery->where('order_date', '>', $afterCycleStart);
+            }
             $subQuery->whereHas('cashClosing', function ($cashQuery) {
                 $cashQuery->where('status', 'closed')
                     ->where('closing_date', '>=', '2026-01-25');
@@ -849,7 +864,7 @@ class InventoryCycleQueryService
             });
         });
 
-        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        $activeCycleId = $activeCycle?->id;
         if ($activeCycleId) {
             $query->whereDoesntHave('saleCounts', function (Builder $subQuery) use ($activeCycleId) {
                 $subQuery->where('cycle_id', $activeCycleId);
