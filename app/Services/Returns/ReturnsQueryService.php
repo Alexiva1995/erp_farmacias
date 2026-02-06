@@ -11,7 +11,7 @@ class ReturnsQueryService
     public function getQueryOrder(Request $request): Builder
     {
         $query = ReturnEntry::query()
-            ->with(['order.client', 'order.seller', 'product']);
+            ->with(['order.client', 'order.seller', 'product.laboratory']);
 
         $this->applySearch($query, $request->input('search'));
         $this->applyStatusFilter($query, $request->input('status'));

@@ -243,12 +243,11 @@ const totalRefundAmount = computed(() => {
                 <span class="text-body-2 font-weight-medium">
                   {{ detailItem.product ? detailItem.product.name : "N/A" }}
                 </span>
-                <span class="text-caption text-disabled">
-                  {{
-                    detailItem.product && detailItem.product.laboratory
-                      ? detailItem.product.laboratory.name
-                      : ""
-                  }}
+                <span
+                  v-if="detailItem.product?.laboratory?.name"
+                  class="text-caption text-medium-emphasis"
+                >
+                  {{ detailItem.product.laboratory.name }}
                 </span>
               </div>
             </template>

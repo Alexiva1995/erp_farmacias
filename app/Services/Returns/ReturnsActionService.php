@@ -35,7 +35,7 @@ class ReturnsActionService
             // Órdenes de los últimos 7 días (una semana) para devoluciones (por fecha de orden)
             $query = Order::where('order_date', '>=', Carbon::now()->subDays(7)->startOfDay())
                 ->where('status', Order::COMPLETED)
-                ->with('client', 'details.product')
+                ->with('client', 'details.product.laboratory')
                 ->where(function ($q) use ($searchTerm) {
                     // Búsqueda por ID de orden (solo si es un número corto que podría ser ID)
                     if (is_numeric($searchTerm) && strlen($searchTerm) <= 8) {
