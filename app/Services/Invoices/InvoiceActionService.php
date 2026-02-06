@@ -309,7 +309,8 @@ class InvoiceActionService
             // Cargar detalles con productos y rentabilidad
             $invoice->load(['details.product.profitability']);
 
-            // Crear movimientos de inventario y calcular costos/precios
+            // ÚNICO punto donde se crean movimientos de inventario (purchase) por factura.
+            // No se crean al cargar (loaded) ni al ordenar/archivar (ordered); solo al aprobar (loaded → to_order).
             \App\Observers\ProductObserver::handleInvoiceMovement($invoice);
 
             // Crear lotes al aprobar (sin ubicación todavía, se actualizará después)

@@ -3,6 +3,8 @@ const props = defineProps({
   searchQuery: [String, null],
   startDate: [String, null],
   endDate: [String, null],
+  showBaselineButton: { type: Boolean, default: false },
+  baselineLoading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -11,6 +13,7 @@ const emit = defineEmits([
   "update:endDate",
   "clear",
   "export",
+  "register-baseline",
 ]);
 </script>
 
@@ -62,6 +65,16 @@ const emit = defineEmits([
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
+      </VBtn>
+      <VBtn
+        v-if="showBaselineButton"
+        color="warning"
+        variant="tonal"
+        prepend-icon="tabler-adjustments"
+        :loading="baselineLoading"
+        @click="emit('register-baseline')"
+      >
+        Registrar ajuste inicial (Stock A=0, Stock F=actual)
       </VBtn>
       <VSpacer />
       <VMenu>

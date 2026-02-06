@@ -3,6 +3,7 @@
 namespace App\Services\InventoryCycle;
 
 use App\Models\InventoryCycle;
+use App\Models\InventoryMovement;
 use App\Models\InvoiceCount;
 use App\Models\InvoiceCountDistribution;
 use App\Models\Product;
@@ -80,6 +81,10 @@ class InventoryCycleActionService
 
                 $productCount->load(['product', 'user', 'cycle']);
 
+                if ($status === 'approved') {
+                    $this->createVerificationMovement($product, $systemStock, $productCount->created_at);
+                }
+
                 $message = $status === 'approved' 
                     ? "Conteo registrado y aprobado automáticamente (sin discrepancia)."
                     : "Conteo registrado exitosamente.";
@@ -117,6 +122,23 @@ class InventoryCycleActionService
     private function getActiveCycle(): ?InventoryCycle
     {
         return InventoryCycle::where('status', 'active')->first();
+    }
+
+    /**
+     * Crea un movimiento de inventario tipo ajuste cuando el conteo físico coincide con el stock en sistema.
+     */
+    private function createVerificationMovement(Product $product, int $stockQuantity, \DateTimeInterface $movementDate): void
+    {
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => null,
+            'movement_type' => 'adjustment',
+            'quantity' => 0,
+            'user_id' => Auth::id(),
+            'stock_before' => $stockQuantity,
+            'stock_after' => $stockQuantity,
+            'movement_date' => $movementDate,
+        ]);
     }
 
     public function calculateCurrentStock(Product $product): int
@@ -415,6 +437,10 @@ class InventoryCycleActionService
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
 
+                if ($status === 'approved') {
+                    $this->createVerificationMovement($product, $data['system_quantity'], $invoiceCount->created_at);
+                }
+
                 $message = $status === 'approved' 
                     ? "Conteo de factura registrado y aprobado automáticamente (sin discrepancia)."
                     : "Conteo de factura registrado.";
@@ -623,6 +649,10 @@ class InventoryCycleActionService
                 ]);
 
                 $SaleCount->load(['product', 'user', 'cycle']);
+
+                if ($status === 'approved') {
+                    $this->createVerificationMovement($product, $data['system_quantity'], $SaleCount->created_at);
+                }
 
                 $message = $status === 'approved' 
                     ? "Conteo de punto de venta registrado y aprobado automáticamente (sin discrepancia)."

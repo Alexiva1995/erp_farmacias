@@ -240,6 +240,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
+        Route::post('/returns/{returnEntryId}/distribute-lots', [ReturnsController::class, 'distributeLots']);
+        Route::post('/returns/{returnEntryId}/approve-with-distribution', [ReturnsController::class, 'approveWithDistribution']);
         // Rutas de Promociones
         Route::prefix("promotions")->group(function () {
             Route::prefix("individual")->group(function () {
@@ -317,6 +319,7 @@ Route::prefix("sales/report")->controller(TraceabilityController::class)->group(
     Route::get("/filterByPsychotropics", "filterByPsychotropics");
     Route::get("/export", "export")->name("api.sales.report.export");
     Route::get("/movement/{movement}", "getMovementDetails")->name("api.sales.report.movement.details");
+    Route::post("/register-baseline-adjustments", "registerBaselineAdjustments");
 });
 
 // Rutas de CRM

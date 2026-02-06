@@ -33,6 +33,10 @@ const loadingPayments = ref(false);
 const filterClient = ref("");
 const filterDate = ref("");
 const filterCurrency = ref("");
+const exchangeRates = ref({});
+const pageOrders = ref(1);
+const pagePayments = ref(1);
+const itemsPerPage = 10;
 
 const closeModal = () => {
   emit("update:isDialogVisible", false);
@@ -109,7 +113,7 @@ const productLineLabel = (detail) => {
 };
 
 const fetchPayments = async () => {
-  const clientId = clientInfo.value?.id;
+  const clientId = clientInfo.value?.id ?? props.creditsData?.[0]?.client_id ?? props.creditsData?.[0]?.client?.id;
   if (!clientId) return;
 
   loadingPayments.value = true;
@@ -127,21 +131,16 @@ const fetchPayments = async () => {
 };
 
 const flattenedPaymentRows = computed(() => {
-  let rows = [];
-  payments.value.forEach((cp) => {
-    const pay = cp.payments;
-    if (pay) {
-      rows.push({
-        date: cp.payment_date,
-        amount: pay.amount,
-        currency: pay.currency,
-        method: pay.method,
-        reference: pay.reference,
-        seller: pay.seller ?? cp.seller?.username ?? "N/A",
-      });
-    }
-  });
-  return rows;
+  const data = payments.value;
+  if (!Array.isArray(data) || data.length === 0) return [];
+  return data.map((row) => ({
+    date: row.payment_date ?? row.date,
+    amount: row.amount ?? 0,
+    currency: row.currency ?? "USD",
+    method: row.method ?? "",
+    reference: row.reference ?? "",
+    seller: row.seller ?? "N/A",
+  }));
 });
 
 const filteredPaymentRows = computed(() => {
@@ -172,6 +171,73 @@ const totalPaid = computed(() => {
   );
 });
 
+const fetchExchangeRates = async () => {
+  try {
+    const response = await axios.get("/public/exchange-rates");
+    if (response.status !== 200) return;
+    const apiRates = response.data || [];
+    const formatted = {};
+    apiRates.forEach((item) => {
+      const code = item.currency_code;
+      const rate = parseFloat(item.rate) || 0;
+      if (!formatted["USD"]) formatted["USD"] = {};
+      formatted["USD"][code] = rate;
+      if (!formatted[code]) formatted[code] = {};
+      formatted[code]["USD"] = rate !== 0 ? 1 / rate : 0;
+    });
+    exchangeRates.value = formatted;
+  } catch (e) {
+    console.warn("Error cargando tasas:", e);
+  }
+};
+
+const totalPaidUSD = computed(() => {
+  const rates = exchangeRates.value;
+  return filteredPaymentRows.value.reduce((sum, r) => {
+    const amount = parseFloat(r.amount) || 0;
+    const cur = (r.currency || "USD").toUpperCase();
+    if (cur === "USD") return sum + amount;
+    const rateToUsd = rates?.[cur]?.["USD"];
+    return sum + (rateToUsd ? amount * rateToUsd : amount);
+  }, 0);
+});
+
+const paginatedCredits = computed(() => {
+  const list = sortedCredits.value;
+  const start = (pageOrders.value - 1) * itemsPerPage;
+  return list.slice(start, start + itemsPerPage);
+});
+
+const totalPagesOrders = computed(() =>
+  Math.ceil((sortedCredits.value.length || 0) / itemsPerPage)
+);
+
+const paginatedPaymentRows = computed(() => {
+  const list = filteredPaymentRows.value;
+  const start = (pagePayments.value - 1) * itemsPerPage;
+  return list.slice(start, start + itemsPerPage);
+});
+
+const totalPagesPayments = computed(() =>
+  Math.ceil((filteredPaymentRows.value.length || 0) / itemsPerPage)
+);
+
+const formatPaymentAmount = (amount, currency) =>
+  formatAmountOnly(parseFloat(amount) || 0, (currency || "USD").toUpperCase());
+
+const prevPageOrders = () => {
+  pageOrders.value = Math.max(1, pageOrders.value - 1);
+};
+const nextPageOrders = () => {
+  pageOrders.value = Math.min(totalPagesOrders.value, pageOrders.value + 1);
+};
+const prevPagePayments = () => {
+  pagePayments.value = Math.max(1, pagePayments.value - 1);
+};
+const nextPagePayments = () => {
+  pagePayments.value = Math.min(totalPagesPayments.value, pagePayments.value + 1);
+};
+
 const paymentHeaders = [
   { title: "Fecha", key: "date", sortable: false },
   { title: "Monto", key: "amount", sortable: false },
@@ -181,13 +247,22 @@ const paymentHeaders = [
 ];
 
 watch(
-  () => props.isDialogVisible,
-  (newVal) => {
-    if (newVal) {
+  () => [props.isDialogVisible, props.creditsData],
+  ([visible, credits]) => {
+    const hasClient = credits?.length > 0 && credits[0]?.client?.id;
+    if (visible && hasClient) {
       fetchPayments();
+      fetchExchangeRates();
+      pageOrders.value = 1;
+      pagePayments.value = 1;
     }
-  }
+  },
+  { immediate: true, deep: true }
 );
+
+watch([filterClient, filterDate, filterCurrency], () => {
+  pagePayments.value = 1;
+});
 </script>
 
 <template>
@@ -241,9 +316,9 @@ watch(
           </div>
         </div>
 
-        <!-- Órdenes agrupadas (cada una como OrderViewModal) -->
+        <!-- Órdenes agrupadas (últimas 10 por página) -->
         <div
-          v-for="(credit, idx) in sortedCredits"
+          v-for="(credit, idx) in paginatedCredits"
           :key="credit.id || credit.order?.id || idx"
           class="mb-4"
         >
@@ -320,30 +395,29 @@ watch(
                 </table>
               </div>
             </div>
-
-            <!-- Resumen por orden -->
-            <div class="order-view-summary rounded pa-3 mt-2">
-              <div class="summary-row">
-                <span class="summary-label">Crédito (Orden)</span>
-                <span class="summary-value">
-                  {{ formatCurrency(credit.credit_amount || 0, credit.order?.currency || "USD") }}
-                </span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Pendiente</span>
-                <span class="summary-value text-error">
-                  {{ formatCurrency(credit.pending_amount || 0, credit.order?.currency || "USD") }}
-                </span>
-              </div>
-              <VDivider class="summary-divider" />
-              <div class="summary-row total-row">
-                <span class="total-label">Total Orden</span>
-                <span class="total-amount">
-                  {{ formatCurrency(credit.order?.total_amount || 0, credit.order?.currency || "USD") }}
-                </span>
-              </div>
-            </div>
           </div>
+        </div>
+
+        <div v-if="totalPagesOrders > 1" class="d-flex justify-center align-center gap-2 my-3">
+          <VBtn
+            icon
+            variant="tonal"
+            size="small"
+            :disabled="pageOrders <= 1"
+            @click="prevPageOrders"
+          >
+            <VIcon icon="tabler-chevron-left" />
+          </VBtn>
+          <span class="text-caption">Página {{ pageOrders }} de {{ totalPagesOrders }}</span>
+          <VBtn
+            icon
+            variant="tonal"
+            size="small"
+            :disabled="pageOrders >= totalPagesOrders"
+            @click="nextPageOrders"
+          >
+            <VIcon icon="tabler-chevron-right" />
+          </VBtn>
         </div>
 
         <!-- Totales globales -->
@@ -371,7 +445,7 @@ watch(
               Historial de Pagos
             </span>
             <VChip color="success" size="small" variant="tonal">
-              Total Pagado: {{ formatCurrency(totalPaid, "USD") }}
+              Total Pagado: {{ formatCurrency(totalPaidUSD, "USD") }}
             </VChip>
           </div>
 
@@ -419,15 +493,15 @@ watch(
               </thead>
               <tbody>
                 <tr
-                  v-for="(row, rIdx) in filteredPaymentRows"
+                  v-for="(row, rIdx) in paginatedPaymentRows"
                   :key="rIdx"
                   class="products-table-row"
                 >
                   <td>
-                    {{ row.date ? String(row.date).split(" ")[0] : "N/A" }}
+                    {{ row.date ? formatDateTime(row.date, "date") : "N/A" }}
                   </td>
                   <td class="font-weight-medium">
-                    {{ parseFloat(row.amount || 0).toFixed(2) }}
+                    {{ formatPaymentAmount(row.amount, row.currency) }}
                   </td>
                   <td>
                     <VChip
@@ -454,13 +528,34 @@ watch(
               </tbody>
             </table>
           </div>
+
+          <div v-if="totalPagesPayments > 1" class="d-flex justify-center align-center gap-2 mt-3">
+            <VBtn
+              icon
+              variant="tonal"
+              size="small"
+              :disabled="pagePayments <= 1"
+              @click="prevPagePayments"
+            >
+              <VIcon icon="tabler-chevron-left" />
+            </VBtn>
+            <span class="text-caption">Página {{ pagePayments }} de {{ totalPagesPayments }}</span>
+            <VBtn
+              icon
+              variant="tonal"
+              size="small"
+              :disabled="pagePayments >= totalPagesPayments"
+              @click="nextPagePayments"
+            >
+              <VIcon icon="tabler-chevron-right" />
+            </VBtn>
+          </div>
         </div>
       </VCardText>
 
       <VDivider />
       <VCardActions class="pa-3">
-        <VSpacer />
-        <VBtn color="secondary" variant="outlined" @click="closeModal">
+        <VBtn color="secondary" variant="outlined" block @click="closeModal">
           Cerrar
         </VBtn>
       </VCardActions>

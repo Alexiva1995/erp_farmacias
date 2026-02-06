@@ -8,31 +8,24 @@ class InvoiceObserver
 {
     /**
      * Handle the Invoice "created" event.
+     * NO crear movimientos aquí. Los movimientos de inventario para facturas se crean
+     * únicamente al aprobar la factura cargada (InvoiceActionService::approveInvoice).
      */
     public function created(Invoice $invoice): void
     {
-        // Cuando se crea una factura, generar movimientos de inventario
-        if ($invoice->status === 'received' || $invoice->status === 'processed') {
-            ProductObserver::handleInvoiceMovement($invoice);
-        }
+        // Los movimientos se crean solo cuando se aprueba la factura (loaded → to_order),
+        // no al cargar (invoiceLoaded) ni al ordenar/archivar (invoice ordered).
     }
 
     /**
      * Handle the Invoice "updated" event.
+     * NO crear movimientos por cambio de status. Los movimientos se crean únicamente
+     * en approveInvoice (loaded → to_order). Ni "cargada" ni "ordenada" crean movimientos.
      */
     public function updated(Invoice $invoice): void
     {
-        // Crear movimientos cuando el status cambia a 'received' o 'processed'
-        if (
-            $invoice->isDirty('status') &&
-            ($invoice->status === 'received' || $invoice->status === 'processed') &&
-            ($invoice->getOriginal('status') !== 'received' && $invoice->getOriginal('status') !== 'processed')
-        ) {
-            ProductObserver::handleInvoiceMovement($invoice);
-        }
-        
-        // NO crear movimientos cuando el status cambia a 'to_order'
-        // El cálculo de costos y creación de movimientos ya se hace en InvoiceActionService::approveInvoice
-        // Si se hace aquí también, se recalcula el costo dos veces causando discrepancias
+        // Los movimientos de inventario (purchase) para facturas se crean solo en
+        // InvoiceActionService::approveInvoice cuando status pasa de 'loaded' a 'to_order'.
+        // No se crean al cargar la factura ni al archivarla (ordered).
     }
 }

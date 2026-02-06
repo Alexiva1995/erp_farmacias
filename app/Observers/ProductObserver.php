@@ -89,7 +89,10 @@ class ProductObserver
     }
 
     /**
-     * Manejar movimientos de facturas (compras)
+     * Manejar movimientos de facturas (compras).
+     * Se llama únicamente desde InvoiceActionService::approveInvoice (cuando la factura
+     * pasa de 'cargada' a 'ordenada para pago'). No se debe llamar al cargar la factura
+     * ni al archivarla (ordered).
      */
     public static function handleInvoiceMovement(Invoice $invoice): void
     {

@@ -3,7 +3,8 @@ import TraceabilityReportFilters from "@/components/TraceabilityReportFilters.vu
 import TraceabilityReportTable from "@/components/TraceabilityReportTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import { computed, onMounted, ref, watch } from "vue";
 
 const sales = ref([]);
 const totalSales = ref(0);
@@ -88,10 +89,28 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role_id === 1);
+
 const handleClearFilters = () => {
   searchQuery.value = "";
   startDate.value = null;
   endDate.value = null;
+};
+
+const registeringBaseline = ref(false);
+const handleRegisterBaseline = async () => {
+  registeringBaseline.value = true;
+  try {
+    const { data } = await axios.post("/sales/report/register-baseline-adjustments");
+    toast.success(data.message ?? "Ajustes iniciales registrados.");
+    await fetchSales();
+  } catch (error) {
+    const msg = error.response?.data?.message ?? error.response?.data?.error ?? "Error al registrar ajustes.";
+    toast.error(msg);
+  } finally {
+    registeringBaseline.value = false;
+  }
 };
 
 const handleExport = async (format) => {
@@ -144,8 +163,11 @@ const handleExport = async (format) => {
       v-model:searchQuery="searchQuery"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      :show-baseline-button="isAdmin"
+      :baseline-loading="registeringBaseline"
       @clear="handleClearFilters"
       @export="handleExport"
+      @register-baseline="handleRegisterBaseline"
     />
 
     <TraceabilityReportTable

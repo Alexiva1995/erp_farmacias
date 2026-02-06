@@ -1,5 +1,4 @@
 <script setup>
-import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
@@ -15,15 +14,6 @@ const emit = defineEmits(["update:modelValue"]);
 const router = useRouter();
 const loading = ref(false);
 const movementDetails = ref(null);
-const orderData = ref(null);
-const orderItems = ref([]);
-const currency = ref("");
-const paymentsForPrint = ref([]);
-const changeAmountForPrint = ref(0);
-const amountForPrint = ref(0);
-const creditAmountForPrint = ref(0);
-const creditForPrint = ref(false);
-const showOrderModal = ref(false);
 
 const isDialogVisible = computed({
   get() {
@@ -75,47 +65,28 @@ const closeDialog = () => {
   movementDetails.value = null;
 };
 
-const handleViewOrder = async (orderId) => {
-  try {
-    const response = await axios.get(`/tpv/orders/${orderId}/print`);
-    if (response.data && response.data.data && response.data.data.order) {
-      orderData.value = response.data.data.order;
-      currency.value = response.data.data.order.currency.toUpperCase();
-      orderItems.value = response.data.data.order.details.map((detail) => ({
-        title: detail.product.name,
-        selectedQuantity: detail.quantity,
-        taxRate: detail.product.iva,
-        price_bs: parseFloat(detail.price),
-        price_cop: parseFloat(detail.price),
-        price: parseFloat(detail.price),
-        price_before_discount: parseFloat(detail.price_before_discount),
-      }));
-      paymentsForPrint.value = response.data.data.order.payment_methods;
-      changeAmountForPrint.value = parseFloat(
-        response.data.data.order.money_returns
-      );
-      amountForPrint.value = parseFloat(response.data.data.order.total_amount);
-      creditAmountForPrint.value = response.data.data.hasCreditPayment
-        ? parseFloat(response.data.data.order.total_amount)
-        : 0;
-      creditForPrint.value = response.data.data.hasCreditPayment;
-      showOrderModal.value = true;
-    } else {
-      toast.error("La respuesta del servidor no tiene el formato esperado.");
-    }
-  } catch (error) {
-    console.error("Error al obtener los detalles de la orden:", error);
-    toast.error("Error al obtener los detalles de la orden.");
+const handleViewOrder = (orderId) => {
+  const route = router.resolve({
+    path: '/tpv/order-general',
+    query: { orderId },
+  });
+  const url = route.href.startsWith('http') ? route.href : `${window.location.origin}${route.href}`;
+  const newWindow = window.open(url, '_blank');
+  if (!newWindow) {
+    toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
   }
 };
 
 const handleViewInvoice = (invoiceId) => {
-  // Navigate to ordered invoices page and open the invoice directly
-  router.push({ 
+  const route = router.resolve({
     name: 'invoice-invoice-ordered',
-    query: { invoiceId: invoiceId }
+    query: { invoiceId },
   });
-  closeDialog();
+  const url = route.href.startsWith('http') ? route.href : `${window.location.origin}${route.href}`;
+  const newWindow = window.open(url, '_blank');
+  if (!newWindow) {
+    toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
+  }
 };
 
 const formatDate = (date) => {
@@ -496,20 +467,6 @@ const getUserDisplayName = (user) => {
         </VBtn>
       </VCardActions>
     </VCard>
-
-    <!-- Order Modal -->
-    <OrderViewModal
-      :is-dialog-visible="showOrderModal"
-      :order-data="orderData"
-      :order-products="orderItems"
-      :selected-currency="currency"
-      :payments="paymentsForPrint"
-      :change-amount="changeAmountForPrint"
-      :total-amount="amountForPrint"
-      :credit-amount="creditAmountForPrint"
-      :credit="creditForPrint"
-      @update:is-dialog-visible="showOrderModal = $event"
-    />
   </VDialog>
 </template>
 

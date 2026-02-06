@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Exports\TraceabilityExport;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryMovement;
+use App\Models\Product;
 use App\Models\ProductDistribution;
 use App\Models\ReturnEntry;
 use App\Services\Traceability\TraceabilityQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TraceabilityController extends Controller
@@ -201,5 +204,56 @@ class TraceabilityController extends Controller
         }
 
         return response()->json(['data' => $details]);
+    }
+
+    /**
+     * Registra un ajuste inicial por producto para trazabilidad: Stock A = 0, Stock F = suma de lotes.
+     * Un registro por producto, realizado por el admin. Para dejar la trazabilidad lista con el stock actual.
+     */
+    public function registerBaselineAdjustments(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || (int) $user->role_id !== 1) {
+            return response()->json(['message' => 'No autorizado. Solo el administrador puede ejecutar esta acción.'], 403);
+        }
+
+        $now = Carbon::now();
+
+        $products = Product::query()
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->withSum('lots as total_stock', 'quantity')
+            ->get();
+
+        $created = 0;
+        DB::beginTransaction();
+        try {
+            foreach ($products as $product) {
+                $stock = (int) ($product->total_stock ?? 0);
+                InventoryMovement::create([
+                    'product_id' => $product->id,
+                    'product_lot_id' => null,
+                    'movement_type' => 'adjustment',
+                    'quantity' => $stock,
+                    'stock_before' => 0,
+                    'stock_after' => $stock,
+                    'user_id' => $user->id,
+                    'movement_date' => $now,
+                ]);
+                $created++;
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al registrar los ajustes: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => "Se registraron {$created} ajustes iniciales (Stock A=0, Stock F=stock actual). Realizado por administrador.",
+            'created' => $created,
+        ]);
     }
 }

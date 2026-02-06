@@ -13,6 +13,7 @@ const props = defineProps({
   sortBy: { type: [String, Array], default: () => [] },
   orderBy: { type: String, default: "desc" },
   showThermalPrint: { type: Boolean, default: false },
+  showPrintActions: { type: Boolean, default: true },
 });
 
 const sortByModel = computed(() => {
@@ -180,16 +181,18 @@ const renderSellerName = (item) => {
           <IconBtn @click="handleView(item.id)" color="info">
             <VIcon icon="tabler-eye" />
           </IconBtn>
-          <IconBtn @click="$emit('print-order', item.id)">
-            <VIcon icon="tabler-printer" />
-          </IconBtn>
-          <VTooltip v-if="showThermalPrint" text="Ticket 54mm térmico" location="top">
-            <template #activator="{ props: tooltipProps }">
-              <IconBtn v-bind="tooltipProps" @click="$emit('print-order-thermal', item.id)" color="secondary">
-                <VIcon icon="tabler-receipt" />
-              </IconBtn>
-            </template>
-          </VTooltip>
+          <template v-if="showPrintActions">
+            <IconBtn @click="$emit('print-order', item.id)">
+              <VIcon icon="tabler-printer" />
+            </IconBtn>
+            <VTooltip v-if="showThermalPrint" text="Ticket 54mm térmico" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <IconBtn v-bind="tooltipProps" @click="$emit('print-order-thermal', item.id)" color="secondary">
+                  <VIcon icon="tabler-receipt" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+          </template>
         </div>
       </template>
 

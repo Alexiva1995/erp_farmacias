@@ -500,6 +500,14 @@ class InventoryCycleQueryService
             $subQuery->where('created_invoice_date', '>=', '2026-01-25');
         });
 
+        // Solo conteos con fecha superior (al menos 1 segundo) a la fecha de apertura del ciclo
+        $query->whereExists(function ($sub) {
+            $sub->select(DB::raw(1))
+                ->from('inventory_cycles')
+                ->whereColumn('inventory_cycles.id', 'invoices_counts.cycle_id')
+                ->whereRaw('invoices_counts.created_at > DATE_ADD(inventory_cycles.start_date, INTERVAL 1 SECOND)');
+        });
+
         $filters = [
             'q' => $request->q,
             'laboratoryId' => $request->laboratoryId,
@@ -773,6 +781,9 @@ class InventoryCycleQueryService
                 case 'updated_at':
                     $query->orderBy('counts.updated_at', $orderBy);
                     break;
+                case 'created_at':
+                    $query->orderBy('counts.created_at', $orderBy);
+                    break;
                 default:
                     $query->orderBy('counts.updated_at', 'desc');
                     break;
@@ -883,6 +894,14 @@ class InventoryCycleQueryService
         // Filtrar solo productos que estén en órdenes con fecha >= 2026-01-25
         $query->whereHas('product.orderDetails.order', function ($subQuery) {
             $subQuery->where('order_date', '>=', '2026-01-25');
+        });
+
+        // Solo conteos con fecha superior (al menos 1 segundo) a la fecha de apertura del ciclo
+        $query->whereExists(function ($sub) {
+            $sub->select(DB::raw(1))
+                ->from('inventory_cycles')
+                ->whereColumn('inventory_cycles.id', 'sales_counts.cycle_id')
+                ->whereRaw('sales_counts.created_at > DATE_ADD(inventory_cycles.start_date, INTERVAL 1 SECOND)');
         });
 
         $filters = [

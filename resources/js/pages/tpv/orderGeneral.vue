@@ -7,9 +7,11 @@ import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { useRoute } from "vue-router";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const { isVendedor } = useAuthStore();
+const route = useRoute();
 
 const ordersCompleted = ref([]);
 const totalOrdersCompleted = ref(0);
@@ -307,13 +309,20 @@ const fetchSellers = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   fetchSellers();
   fetchOrderCompleted();
   fetchOrderAll();
   fetchOrderAbandoned();
   fetchOrderCancelled();
   fetchQuotations();
+
+  if (route.query.orderId) {
+    const orderId = parseInt(route.query.orderId, 10);
+    if (orderId) {
+      await handleViewOrder(orderId);
+    }
+  }
 });
 
 let debounceTimerCompleted;
@@ -1001,7 +1010,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           :headers="headers"
           :sort-by="sortByOrdersCompleted"
           :order-by="orderByOrdersCompleted"
-          :show-thermal-print="true"
+          :show-print-actions="false"
           @update:options="updateTableOptionsOrdersCompleted"
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
@@ -1018,7 +1027,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           :headers="headersAll"
           :sort-by="sortByOrdersAll"
           :order-by="orderByOrdersAll"
-          :show-thermal-print="true"
+          :show-print-actions="false"
           @update:options="updateTableOptionsOrdersAll"
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
@@ -1035,7 +1044,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           :headers="headers"
           :sort-by="sortByOrdersCancelled"
           :order-by="orderByOrdersCancelled"
-          :show-thermal-print="true"
+          :show-print-actions="false"
           @update:options="updateTableOptionsOrdersCancelled"
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
@@ -1052,7 +1061,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           :headers="headers"
           :sort-by="sortByOrdersAbandoned"
           :order-by="orderByOrdersAbandoned"
-          :show-thermal-print="true"
+          :show-print-actions="false"
           @update:options="updateTableOptionsOrdersAbandoned"
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"

@@ -34,6 +34,7 @@ const headers = [
   { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center" },
   { title: "Físico", key: "final_quantity", sortable: true, align: "center" },
   { title: "Discrepancia", key: "discrepancy", sortable: true, align: "center" },
+  { title: "Fecha conteo", key: "created_at", value: "created_at", sortable: true, align: "center" },
   { title: "Usuario", key: "user.email", value: "user.email", sortable: true, align: "center" },
   { title: "Supervisor", key: "supervisor.email", value: "supervisor.email", sortable: true, align: "center" },
 ];
@@ -119,6 +120,7 @@ const handleUpdateOptions = options => {
       product: "product.name",
       "product.name": "product.name",
       system_quantity: "system_quantity",
+      created_at: "created_at",
       final_quantity: "final_quantity",
       fisico: "final_quantity",
       discrepancy: "discrepancy",
@@ -330,6 +332,10 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             >
               {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
             </span>
+          </template>
+
+          <template #item.created_at="{ item }">
+            {{ item.created_at ? new Date(item.created_at).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—' }}
           </template>
 
           <template #item.user.email="{ item }">

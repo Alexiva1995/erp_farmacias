@@ -114,27 +114,33 @@ class CreditsController extends Controller
             'client_id' => 'required|integer|exists:clients,id',
         ]);
 
-        $payments = \App\Models\CreditPayment::with('seller')
+        $creditPayments = \App\Models\CreditPayment::with('seller')
             ->where('client_id', $request->input('client_id'))
             ->orderBy('payment_date', 'desc')
-            ->get()
-            ->map(function ($credit) {
-                $methodPayments = $credit->method_Payment;
-                foreach ($methodPayments as $payment) {
-                    $credit['payments'] = [
-                        'amount' => $payment['amount'],
-                        'method' => $payment['method'],
-                        'currency' => $payment['currency'],
-                        'reference' => $payment['reference'],
-                        'date' => $credit->payment_date,
-                        'seller' => $credit->seller->username,
-                    ];
-                }
+            ->get();
 
-                unset($credit->method_Payment);
+        $payments = [];
+        foreach ($creditPayments as $cp) {
+            $methodPayments = $cp->method_Payment;
+            if (!is_array($methodPayments)) {
+                $methodPayments = [];
+            }
+            $sellerName = $cp->seller?->username ?? 'N/A';
+            $paymentDate = $cp->payment_date
+                ? (is_object($cp->payment_date) ? $cp->payment_date->format('Y-m-d H:i:s') : (string) $cp->payment_date)
+                : null;
 
-                return $credit;
-            });
+            foreach ($methodPayments as $payment) {
+                $payments[] = [
+                    'payment_date' => $paymentDate,
+                    'amount' => $payment['amount'] ?? 0,
+                    'method' => $payment['method'] ?? '',
+                    'currency' => $payment['currency'] ?? 'USD',
+                    'reference' => $payment['reference'] ?? '',
+                    'seller' => $sellerName,
+                ];
+            }
+        }
 
         return response()->json($payments);
     }

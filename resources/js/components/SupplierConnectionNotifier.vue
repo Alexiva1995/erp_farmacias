@@ -1,8 +1,10 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref } from "vue";
+import { useSupplierConnectionStore } from "@/stores/supplierConnection";
+import { onUnmounted, ref, watch } from "vue";
 
+const store = useSupplierConnectionStore();
 const pollingInterval = ref(null);
 // Mapa de IDs notificados con fecha
 const notifiedMap = ref(JSON.parse(localStorage.getItem("notifiedSupplierStatusMap") || "{}"));
@@ -56,9 +58,35 @@ const cleanOldMap = () => {
 
 setTimeout(cleanOldMap, 24 * 60 * 60 * 1000); // 24 horas
 
-onMounted(() => {
-  pollingInterval.value = setInterval(fetchStatuses, 5000); // cada 5 segundos
-});
+const startPolling = () => {
+  if (pollingInterval.value) return;
+  fetchStatuses(); // primera petición inmediata
+  pollingInterval.value = setInterval(() => {
+    if (store.shouldStopPolling()) {
+      stopPolling();
+      return;
+    }
+    fetchStatuses();
+  }, 5000);
+};
+
+const stopPolling = () => {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value);
+    pollingInterval.value = null;
+  }
+  store.resetConnection();
+};
+
+watch(
+  () => store.hasPendingConnectionJob,
+  (active) => {
+    if (active) startPolling();
+    else stopPolling();
+  },
+);
+
+onUnmounted(stopPolling);
 </script>
 
 <template>
