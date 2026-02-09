@@ -206,6 +206,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("tpv")->group(function () {
         Route::get("/quotation", [QuotationController::class, "index"]);
         Route::get("/quotation/{product}", [QuotationController::class, "show"]);
+        Route::get("/quotations/list", [QuotationController::class, "list"]);
         Route::post("/quotations", [QuotationController::class, "store"]);
         Route::get("/quotations/{quotationId}/products", [QuotationController::class, "showProducts"]);
         Route::get("/quotations/last-number", [QuotationController::class, "getLastNumber"]);
@@ -228,6 +229,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/orders/{orderId}/print', [OrderController::class, 'getCPrintOrder']);
         Route::patch('/orders/{order}/cancelled', [OrderController::class, 'cancelledOrder']);
         Route::get('/credits', [CreditsController::class, 'index']);
+        Route::delete('/credits', [CreditsController::class, 'destroy']);
         Route::put('/credits/status', [CreditsController::class, 'updateCreditStatus']);
         Route::post('/credits/complete', [CreditsController::class, 'completeCredits']);
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
@@ -238,6 +240,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
+        Route::post('/returns/{returnEntryId}/distribute-lots', [ReturnsController::class, 'distributeLots']);
+        Route::post('/returns/{returnEntryId}/approve-with-distribution', [ReturnsController::class, 'approveWithDistribution']);
         // Rutas de Promociones
         Route::prefix("promotions")->group(function () {
             Route::prefix("individual")->group(function () {
@@ -315,6 +319,7 @@ Route::prefix("sales/report")->controller(TraceabilityController::class)->group(
     Route::get("/filterByPsychotropics", "filterByPsychotropics");
     Route::get("/export", "export")->name("api.sales.report.export");
     Route::get("/movement/{movement}", "getMovementDetails")->name("api.sales.report.movement.details");
+    Route::post("/register-baseline-adjustments", "registerBaselineAdjustments");
 });
 
 // Rutas de CRM

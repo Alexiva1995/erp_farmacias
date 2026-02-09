@@ -73,6 +73,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isExternalLoading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -2029,9 +2033,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                   :style="remainingAmount <= 0 && !hasMissingReferences() ? 'background-color: #28C76F; color: white;' : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'"
                   variant="flat"
                   @click="handleCompletePurchase"
-                  :loading="issubmitting"
+                  :loading="issubmitting || props.isExternalLoading"
                   block
-                  :disabled="issubmitting || currentProgress === 0 && (remainingAmount > 0.01 || hasMissingReferences())"
+                  :disabled="issubmitting || props.isExternalLoading || (currentProgress === 0 && (remainingAmount > 0.01 || hasMissingReferences()))"
                 >
                   {{ continueButtonText }}
                 </VBtn>

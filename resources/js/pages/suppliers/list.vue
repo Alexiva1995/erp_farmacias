@@ -10,6 +10,7 @@ import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingI
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from 'vue-router';
 
@@ -232,6 +233,8 @@ const handleDeleteSupplier = async (id) => {
   }
 };
 
+const supplierConnectionStore = useSupplierConnectionStore();
+
 const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
 
@@ -240,6 +243,7 @@ const handleCheckSupplierApi = async (supplier) => {
       `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
+    supplierConnectionStore.startConnection();
   } catch (error) {
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
   } finally {

@@ -8,44 +8,56 @@
  * @param {string} currency - El código de la moneda ('USD', 'VES', 'COP').
  * @returns {string} El valor formateado con el símbolo de la moneda.
  */
+/** Locale con miles en . y decimales en , (ej. 1.234.567,89) */
+const LOCALE_NUMBERS = 'es-ES';
+
 export const formatCurrency = (value, currency) => {
   if (typeof value !== 'number' || isNaN(value)) {
     value = 0;
   }
 
-  let locale = 'en-US';
   let currencySymbol = '';
-  let digital=0;
+  let digital = 2;
 
   if (currency === 'BS') {
-    locale = 'es-VE';
     currencySymbol = ' BS';
   } else if (currency === 'COP') {
-    locale = 'es-CO';
     currencySymbol = ' COP';
+    digital = 0; // COP sin decimales
   } else if (currency === 'USD') {
-    locale = 'en-US';
     currencySymbol = ' USD';
   } else {
-    locale = 'en-US';
     currencySymbol = '';
   }
 
-
-  if (currency === 'COP') { 
-      digital = 0;
-  }else{
-      digital = 2;
-  }
-
-
-  const formatter = new Intl.NumberFormat(locale, {
+  const formatter = new Intl.NumberFormat(LOCALE_NUMBERS, {
     minimumFractionDigits: digital,
     maximumFractionDigits: digital,
     useGrouping: true,
   });
 
   const formattedValue = formatter.format(value);
-
   return `${formattedValue}${currencySymbol}`;
+};
+
+/**
+ * Formatea solo el monto numérico, sin símbolo ni código de moneda.
+ * @param {number} value - El valor numérico a formatear.
+ * @param {string} currency - El código de la moneda (para locale y decimales).
+ * @returns {string} El valor formateado sin moneda.
+ */
+export const formatAmountOnly = (value, currency) => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    value = 0;
+  }
+  let digital = 2;
+  if (currency === 'COP') {
+    digital = 0; // COP sin decimales
+  }
+  const formatter = new Intl.NumberFormat(LOCALE_NUMBERS, {
+    minimumFractionDigits: digital,
+    maximumFractionDigits: digital,
+    useGrouping: true,
+  });
+  return formatter.format(value);
 };

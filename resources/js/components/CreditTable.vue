@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
@@ -15,6 +16,7 @@ const emit = defineEmits([
   "reload",
   "view-order-modal",
   "print-order",
+  "delete-credit",
 ]);
 
 const headers = [
@@ -27,6 +29,7 @@ const headers = [
 ];
 
 const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role_id === 1);
 </script>
 <template>
   <VCard>
@@ -90,6 +93,13 @@ const authStore = useAuthStore();
           /></IconBtn>
           <IconBtn @click="emit('print-order', item)">
             <VIcon icon="tabler-printer" />
+          </IconBtn>
+          <IconBtn
+            v-if="isAdmin"
+            color="error"
+            @click="emit('delete-credit', item)"
+          >
+            <VIcon icon="tabler-trash" />
           </IconBtn>
         </div>
       </template>

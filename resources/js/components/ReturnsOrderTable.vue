@@ -1,9 +1,7 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import Swal from "sweetalert2";
-import { ref, watch } from "vue";
-import SelectLotForReturnDialog from "@/components/dialogs/SelectLotForReturnDialog.vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -14,11 +12,11 @@ const props = defineProps({
   isVendedor: { type: Boolean, required: true },
 });
 const emit = defineEmits(["update:options", "return-product"]);
-const expanded = ref([]);
 const selectedProductsToReturn = ref({});
-
-const showLotDialog = ref(false);
-const pendingReturnData = ref(null);
+const showProductsModal = ref(false);
+const selectedOrderForModal = ref(null);
+/** Cantidad a devolver por detail.id para reactividad al editar */
+const returnsQuantityByDetailId = ref({});
 
 watch(
   () => props.orders,
@@ -37,52 +35,17 @@ watch(
   { immediate: true, deep: true }
 );
 
-const handleReturnProduct = (detailItem, order) => {
-  const quantity = parseFloat(detailItem.returns_quantity);
-
-  if (isNaN(quantity) || quantity <= 0) {
-    toast.warning("La cantidad a devolver debe ser mayor a cero.");
+watch(selectedOrderForModal, (order) => {
+  if (!order?.details) {
+    returnsQuantityByDetailId.value = {};
     return;
   }
-
-  if (quantity > detailItem.quantity) {
-    toast.warning(
-      "La cantidad a devolver no puede ser mayor que la cantidad vendida."
-    );
-    return;
-  }
-
-  // Guardar datos pendientes y abrir diálogo de selección de lote
-  pendingReturnData.value = {
-    product: detailItem.product,
-    order: order,
-    returns_quantity: quantity,
-  };
-  showLotDialog.value = true;
-};
-
-const handleLotSelected = (selectedLot) => {
-  if (!pendingReturnData.value) {
-    console.error("No hay datos pendientes de devolución");
-    return;
-  }
-
-  if (!selectedLot || !selectedLot.id) {
-    console.error("Lote seleccionado inválido:", selectedLot);
-    toast.error("El lote seleccionado no es válido.");
-    return;
-  }
-
-  // Emitir directamente la devolución sin confirmación adicional
-  emit("return-product", {
-    product: pendingReturnData.value.product,
-    order: pendingReturnData.value.order,
-    returns_quantity: pendingReturnData.value.returns_quantity,
-    product_lot_id: selectedLot.id,
+  const next = {};
+  order.details.forEach((d) => {
+    next[d.id] = d.returns_quantity ?? d.quantity ?? 0;
   });
-
-  pendingReturnData.value = null;
-};
+  returnsQuantityByDetailId.value = next;
+}, { immediate: true });
 
 const handleReturnSelectedProducts = async (order) => {
   const selected = selectedProductsToReturn.value[order.id];
@@ -93,9 +56,9 @@ const handleReturnSelectedProducts = async (order) => {
   }
 
   const itemsToReturn = selected.map((selectedItem) => {
-    const upToDateProduct = order.details.find(
-      (detail) => detail.id === selectedItem
-    );
+    const upToDateProduct = typeof selectedItem === "object" && selectedItem != null
+      ? selectedItem
+      : order.details.find((detail) => detail.id === selectedItem);
     if (
       !upToDateProduct ||
       isNaN(parseFloat(upToDateProduct.returns_quantity)) ||
@@ -126,20 +89,19 @@ const handleReturnSelectedProducts = async (order) => {
     return;
   }
 
-  // Si solo hay un producto, mostrar diálogo de selección de lote
-  if (validItemsToReturn.length === 1) {
-    pendingReturnData.value = validItemsToReturn[0];
-    showLotDialog.value = true;
-    return;
-  }
+  // Devolución directa: sin selección de lote, se asigna USD al saldo del cliente
+  emit("return-product", validItemsToReturn);
+  closeProductsModal();
+};
 
-  // Para múltiples productos, mostrar advertencia
-  Swal.fire({
-    title: "Devolución múltiple",
-    text: "Para devoluciones múltiples, debe seleccionar el lote para cada producto individualmente.",
-    icon: "info",
-    confirmButtonText: "Entendido",
-  });
+const openProductsModal = (item) => {
+  selectedOrderForModal.value = item;
+  showProductsModal.value = true;
+};
+
+const closeProductsModal = () => {
+  showProductsModal.value = false;
+  selectedOrderForModal.value = null;
 };
 
 const headers = [
@@ -147,7 +109,7 @@ const headers = [
   { title: "Cliente", key: "client", sortable: true },
   { title: "Monto", key: "amount", sortable: true },
   { title: "Fecha", key: "date", sortable: true },
-  { title: "Productos", key: "data-table-expand", sortable: false },
+  { title: "Productos", key: "products", sortable: false, width: "80px" },
 ];
 
 const orderItemHeaders = [
@@ -155,12 +117,55 @@ const orderItemHeaders = [
   { title: "Cantidad", key: "quantity" },
   { title: "Precio", key: "price" },
   { title: "Cantidad a Devolver", key: "returns_quantity" },
+  { title: "Monto a devolver", key: "refund_amount" },
 ];
+
+/** Indica si el detalle está seleccionado (checkbox marcado). */
+const isDetailSelected = (detail) => {
+  const orderId = selectedOrderForModal.value?.id;
+  if (!orderId) return false;
+  const selected = selectedProductsToReturn.value[orderId] || [];
+  return selected.some((d) => d.id === detail.id);
+};
+
+/**
+ * Monto a devolver: si está seleccionado, cantidad_a_devolver * precio_unitario; si no, 0.
+ * Usa returnsQuantityByDetailId para que sea reactivo al cambiar la cantidad.
+ */
+const getRefundAmount = (detail, isSelected) => {
+  if (!isSelected) return 0;
+  const qty = parseFloat(returnsQuantityByDetailId.value[detail.id] ?? detail?.returns_quantity ?? detail?.quantity ?? 0) || 0;
+  const price = parseFloat(detail?.price ?? detail?.unit_price_usd ?? 0) || 0;
+  return qty * price;
+};
+
+/** Formatea el monto a devolver con 2 decimales y sufijo " BS". */
+const formatRefundAmount = (detail, isSelected) => {
+  const amount = getRefundAmount(detail, isSelected);
+  return formatCurrency(amount, "BS");
+};
+
+const setReturnsQuantity = (detailId, value) => {
+  returnsQuantityByDetailId.value[detailId] = value;
+  const order = selectedOrderForModal.value;
+  if (order?.details) {
+    const d = order.details.find((x) => x.id === detailId);
+    if (d) d.returns_quantity = value;
+  }
+};
+
+const totalRefundAmount = computed(() => {
+  if (!selectedOrderForModal.value) return { amount: 0, formatted: formatCurrency(0, "BS") };
+  const orderId = selectedOrderForModal.value.id;
+  const selected = selectedProductsToReturn.value[orderId] || [];
+  const itemsToSum = Array.isArray(selected) ? selected : [];
+  const amount = itemsToSum.reduce((sum, d) => sum + getRefundAmount(d, true), 0);
+  return { amount, formatted: formatCurrency(amount, "BS") };
+});
 </script>
 <template>
   <VCard>
     <VDataTableServer
-      v-model:expanded="expanded"
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
@@ -171,7 +176,6 @@ const orderItemHeaders = [
       class="text-no-wrap"
       fixed-header
       height="auto"
-      show-expand
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.client="{ item }">
@@ -192,120 +196,124 @@ const orderItemHeaders = [
           new Date(item.created_at).toISOString().split("T")[0]
         }}</span>
       </template>
-      <template
-        v-slot:item.data-table-expand="{
-          internalItem,
-          isExpanded,
-          toggleExpand,
-        }"
-      >
-        <v-btn
-          :append-icon="
-            isExpanded(internalItem) ? 'mdi-chevron-up' : 'mdi-chevron-down'
-          "
-          :text="
-            isExpanded(internalItem) ? 'Menos información' : 'Más información'
-          "
-          class="text-none"
+      <template #item.products="{ item }">
+        <VBtn
+          icon
           color="medium-emphasis"
           size="small"
           variant="text"
-          width="205"
-          border
-          slim
-          @click="toggleExpand(internalItem)"
-        ></v-btn>
-      </template>
-
-      <template v-slot:expanded-row="{ columns, item }">
-        <tr>
-          <td :colspan="columns.length">
-            <VCard flat class="my-4">
-              <VCardText>
-                <VDataTable
-                  v-model="selectedProductsToReturn[item.id]"
-                  :headers="orderItemHeaders"
-                  :items="item.details"
-                  item-key="id"
-                  hide-default-footer
-                  class="elevation-1"
-                  show-select
-                >
-                  <template #item.product.name="{ item: detailItem }">
-                    <div class="d-flex align-center gap-x-4">
-                      <div class="d-flex flex-column">
-                        <span
-                          class="text-body-1 font-weight-medium text-high-emphasis"
-                        >
-                          {{
-                            detailItem.product ? detailItem.product.name : "N/A"
-                          }}
-                        </span>
-                        <span class="text-sm text-disabled">
-                          {{
-                            detailItem.product
-                              ? detailItem.product.active_ingredient
-                              : "N/A"
-                          }}
-                        </span>
-                        <span class="text-sm text-disabled">
-                          {{
-                            detailItem.product && detailItem.product.laboratory
-                              ? detailItem.product.laboratory.name
-                              : "N/A"
-                          }}
-                        </span>
-                      </div>
-                    </div>
-                  </template>
-                  <template #item.quantity="{ item: detailItem }">
-                    {{ detailItem.quantity }}
-                  </template>
-                  <template #item.price="{ item: detailItem }">
-                    {{
-                      formatCurrency(
-                        parseFloat(detailItem.price),
-                        detailItem.currency
-                      )
-                    }}
-                  </template>
-                  <template #item.returns_quantity="{ item: detailItem }">
-                    <VTextField
-                      v-model="detailItem.returns_quantity"
-                      type="number"
-                      min="0"
-                      density="compact"
-                      variant="outlined"
-                      hide-details
-                      single-line
-                      style="max-width: 90px; min-width: 90px"
-                      class="my-2 quantity-input-field"
-                      :max="detailItem.quantity"
-                      :disabled="detailItem.quantity === 0"
-                    />
-                  </template>
-                </VDataTable>
-                <div class="d-flex justify-end mt-4">
-                  <VBtn
-                    color="warning"
-                    size="large"
-                    :disabled="selectedProductsToReturn[item.id].length === 0"
-                    @click="handleReturnSelectedProducts(item)"
-                  >
-                    Devolver ({{ selectedProductsToReturn[item.id].length }})
-                  </VBtn>
-                </div>
-              </VCardText>
-            </VCard>
-          </td>
-        </tr>
+          @click="openProductsModal(item)"
+        >
+          <VIcon icon="tabler-package" />
+        </VBtn>
       </template>
     </VDataTableServer>
 
-    <SelectLotForReturnDialog
-      v-model="showLotDialog"
-      :product="pendingReturnData?.product || {}"
-      @select-lot="handleLotSelected"
-    />
+    <VDialog
+      v-model="showProductsModal"
+      max-width="800"
+      persistent
+      transition="dialog-transition"
+      @click:outside="closeProductsModal"
+    >
+      <VCard v-if="selectedOrderForModal">
+        <VCardTitle class="d-flex align-center pa-4">
+          <VIcon icon="tabler-package" start />
+          <span>Orden #{{ selectedOrderForModal.id }}</span>
+          <VSpacer />
+          <span class="text-body-2 text-medium-emphasis">
+            {{ selectedOrderForModal.client?.name }} {{ selectedOrderForModal.client?.last_name }}
+          </span>
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-4">
+          <VDataTable
+            v-model="selectedProductsToReturn[selectedOrderForModal.id]"
+            :headers="orderItemHeaders"
+            :items="selectedOrderForModal.details || []"
+            item-key="id"
+            item-value="id"
+            return-object
+            hide-default-footer
+            class="elevation-0"
+            show-select
+          >
+            <template #item.product.name="{ item: detailItem }">
+              <div class="d-flex flex-column">
+                <span class="text-body-2 font-weight-medium">
+                  {{ detailItem.product ? detailItem.product.name : "N/A" }}
+                </span>
+                <span
+                  v-if="detailItem.product?.laboratory?.name"
+                  class="text-caption text-medium-emphasis"
+                >
+                  {{ detailItem.product.laboratory.name }}
+                </span>
+              </div>
+            </template>
+            <template #item.quantity="{ item: detailItem }">
+              {{ detailItem.quantity }}
+            </template>
+            <template #item.price="{ item: detailItem }">
+              {{ formatCurrency(parseFloat(detailItem.price), detailItem.currency) }}
+            </template>
+            <template #item.returns_quantity="{ item: detailItem }">
+              <VTextField
+                :model-value="returnsQuantityByDetailId[detailItem.id] ?? detailItem.returns_quantity ?? detailItem.quantity"
+                type="number"
+                min="0"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 90px"
+                :max="detailItem.quantity"
+                :disabled="detailItem.quantity === 0"
+                @update:model-value="(v) => setReturnsQuantity(detailItem.id, v)"
+              />
+            </template>
+            <template #item.refund_amount="{ item: detailItem }">
+              <span class="font-weight-medium text-primary">
+                {{ formatRefundAmount(detailItem, isDetailSelected(detailItem)) }}
+              </span>
+            </template>
+          </VDataTable>
+          <div
+            v-if="selectedProductsToReturn[selectedOrderForModal.id]?.length"
+            class="d-flex justify-end align-center mt-3 text-h6"
+          >
+            <span class="text-medium-emphasis me-2">Total a devolver:</span>
+            <span class="font-weight-bold text-primary">
+              {{ totalRefundAmount.formatted }}
+            </span>
+          </div>
+        </VCardText>
+        <VDivider />
+        <VCardActions class="pa-4 d-flex gap-3">
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            size="large"
+            class="flex-grow-1"
+            style="flex: 1 1 50%"
+            @click="closeProductsModal"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="warning"
+            size="large"
+            class="flex-grow-1"
+            style="flex: 1 1 50%"
+            :disabled="
+              !selectedProductsToReturn[selectedOrderForModal.id]?.length
+            "
+            @click="handleReturnSelectedProducts(selectedOrderForModal)"
+          >
+            <VIcon icon="tabler-arrow-back-up" start />
+            Devolver ({{ selectedProductsToReturn[selectedOrderForModal.id]?.length || 0 }}) - {{ totalRefundAmount.formatted }}
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </VCard>
 </template>

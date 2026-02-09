@@ -34,8 +34,9 @@ const fetchOrders = async () => {
     orders.value = response.data.data;
     totalOrder.value = response.data.total;
   } catch (error) {
-    console.error("Error al buscar pedidos:", error.response?.data?.error);
-    toast.error(error.response?.data?.error || "Error al buscar los pedidos.");
+    const errMsg = error.response?.data?.error ?? error.response?.data?.message ?? error.message;
+    console.error("Error al buscar pedidos:", errMsg);
+    toast.error(errMsg || "Error al buscar los pedidos.");
   } finally {
     loading.value = false;
   }
@@ -59,16 +60,20 @@ const updateTableOptions = (newOptions) => {
   fetchOrders();
 };
 
-const handleReturnProduct = async ({ product, order, returns_quantity, product_lot_id }) => {
+const handleReturnProduct = async (items) => {
+  const itemsArray = Array.isArray(items) ? items : [items];
   try {
-    const response = await axios.post("/tpv/returns/product", {
-      product: product,
-      order: order,
-      returns_quantity: returns_quantity,
-      product_lot_id: product_lot_id,
-    });
-
-    toast.success(`Devolución de ${product.name} procesada. Pendiente de aprobación del supervisor.`);
+    for (const { product, order, returns_quantity } of itemsArray) {
+      await axios.post("/tpv/returns/product", {
+        product,
+        order,
+        returns_quantity,
+      });
+    }
+    const msg = itemsArray.length === 1
+      ? `Devolución de ${itemsArray[0].product.name} registrada. Pendiente de aprobación del supervisor.`
+      : `${itemsArray.length} devoluciones registradas. Pendientes de aprobación del supervisor.`;
+    toast.success(msg);
     handleClearSearch();
   } catch (error) {
     console.error("Error al devolver producto:", error.response?.data?.error);
@@ -89,6 +94,16 @@ const handleClearSearch = () => {
     @search-order="verifyClientOrder"
     @clear-search="handleClearSearch"
   />
+  <VAlert
+    v-if="clientIdentification && !loading && totalOrder === 0"
+    type="info"
+    variant="tonal"
+    closable
+    class="mb-6"
+  >
+    No hay órdenes disponibles en los últimos 7 días para la búsqueda realizada.
+    Verifique la identificación o el N° de orden ingresado.
+  </VAlert>
   <ReturnsOrderTable
     :orders="orders"
     :loading="loading"

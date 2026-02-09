@@ -146,18 +146,25 @@ class ProductRepository
                 AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
                 AND orders.status = "Completed")';
 
-        $calcDiff = "";
+        // Stock efectivo = stock en lotes + cantidad en auto orden (producto pedido pendiente por recibir)
+        $subqueryAutoOrder = '(SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0)';
         $stockQuery = $this->subConsultaParaCalcularStockPorLotes;
+        $stockEfectivo = '(COALESCE((' . $stockQuery . '), 0) + COALESCE((' . $subqueryAutoOrder . '), 0))';
 
+        $calcDiff = "";
         if ($tipoFiltracion == "sales") {
-            // Diferencia usando ventas: stock - total_sold_completed
-            $calcDiff = '(' . $stockQuery . ') - (' . $subqueryTotalSold . ')';
+            // Diferencia usando ventas: stock_efectivo - total_sold_completed
+            $calcDiff = '(' . $stockEfectivo . ') - (' . $subqueryTotalSold . ')';
         } elseif ($tipoFiltracion == "combinado") {
-            // Diferencia usando combinado: stock - ((total_sold_completed + promedio_calculado) / 2)
-            $calcDiff = '(' . $stockQuery . ') - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2)';
+            // Diferencia usando combinado: stock_efectivo - ((total_sold_completed + promedio_calculado) / 2)
+            $calcDiff = '(' . $stockEfectivo . ') - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2)';
         } else {
-            // Diferencia usando promedio (default): stock - promedio_calculado
-            $calcDiff = '(' . $stockQuery . ') - (' . $promedio_calculado . ')';
+            // Diferencia usando promedio (default): stock_efectivo - promedio_calculado
+            $calcDiff = '(' . $stockEfectivo . ') - (' . $promedio_calculado . ')';
         }
 
         $columnas[] = DB::raw("CASE 
@@ -176,7 +183,11 @@ class ProductRepository
             ) AS demanda_ajustada');
 
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots"])->where('is_deleted', false);
+        $consulta = Product::select($columnas)
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->with(["laboratory", "lots"]);
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
@@ -253,7 +264,13 @@ class ProductRepository
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
-            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+            $sortCol = $filtros["sortBy"];
+            $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
+            if ($sortCol === 'totalQuantityInAutoOrder') {
+                $consulta->orderByRaw("({$subqueryAutoOrder}) {$sortDir}");
+            } else {
+                $consulta->orderBy($sortCol, $sortDir);
+            }
         } else {
             $consulta->orderBy("name", "ASC");
         }

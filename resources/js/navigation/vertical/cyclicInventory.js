@@ -4,7 +4,7 @@ export default [
     icon: {
       is: "font-awesome-icon",
       props: {
-        icon: ["fas", "boxes-stacked"],
+        icon: ["fas", "arrows-rotate"],
         size: "sm",
       },
     },
@@ -28,10 +28,10 @@ export default [
         subject: "pending-cyclics",
       },
       {
-        title: "Inventarios Users",
+        title: "Inventario de Usuario",
         to: "cyclics-users",
         action: "manage",
-        subject: "user",
+        subject: "cycli-user",
       },
     ],
   },

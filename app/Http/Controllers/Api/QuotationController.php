@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Quotation;
 use App\Services\Quotation\QuotationActionService;
 use App\Services\Quotation\QuotationQueryService;
 use App\Models\Product;
 use App\Http\Requests\StoreQuotationRequest;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class QuotationController extends Controller
 {
@@ -107,9 +109,13 @@ class QuotationController extends Controller
         if (!$quotation) {
             return response()->json(['message' => 'Quotation not found'], 404);
         }
+
+        $quotation->load('client');
+
         return response()->json([
             'quotation_id' => $quotation->id,
             'products' => $quotation->products,
+            'client' => $quotation->client,
         ]);
     }
 
@@ -139,5 +145,40 @@ class QuotationController extends Controller
         return response()->json([
             'quotation_id' => $quotation->id,
         ]);
+    }
+
+    /**
+     * Listado de cotizaciones realizadas (para TPV orderGeneral).
+     */
+    public function list(Request $request)
+    {
+        $query = Quotation::query()
+            ->with(['client', 'creator'])
+            ->orderBy('id', 'desc');
+
+        if ($request->filled('start_date')) {
+            $start = Carbon::parse($request->start_date)->startOfDay();
+            $query->where('created_at', '>=', $start);
+        }
+        if ($request->filled('end_date')) {
+            $end = Carbon::parse($request->end_date)->endOfDay();
+            $query->where('created_at', '<=', $end);
+        }
+        if ($request->filled('q')) {
+            $term = '%' . $request->q . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('id', 'like', $term)
+                    ->orWhereHas('client', fn ($c) => $c->where('name', 'like', $term)->orWhere('identification', 'like', $term))
+                    ->orWhereHas('creator', fn ($u) => $u->where('username', 'like', $term));
+            });
+        }
+
+        $perPage = (int) $request->input('itemsPerPage', 10);
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json(['data' => $items, 'total' => $items->count()]);
+        }
+        $paginated = $query->paginate($perPage);
+        return response()->json(['data' => $paginated->items(), 'total' => $paginated->total()]);
     }
 }

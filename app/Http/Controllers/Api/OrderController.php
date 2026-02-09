@@ -11,6 +11,7 @@ use App\Services\Order\OrderQueryService;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
+use App\Http\Requests\Order\CompleteOrderRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use Illuminate\Support\Facades\Auth;
@@ -172,32 +173,43 @@ class OrderController extends Controller
         }
     }
 
-    public function completeOrder(Order $orderId, Request $request)
+    public function completeOrder(Order $orderId, CompleteOrderRequest $request)
     {
         if ($orderId->details()->doesntExist()) {
-            return ApiResponse::error('No hay productos en la orden', 500);
+            return ApiResponse::error('No hay productos en la orden', 400);
         }
 
         try {
             $sellerId = Auth::id();
-            if ($request->has('items')) {
-                $request->merge(['items' => json_decode($request->items, true)]);
-            }
-            if ($request->has('payments')) {
-                $request->merge(['payments' => json_decode($request->payments, true)]);
-            }
-
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
-
+        } catch (InsufficientStockException $e) {
+            Log::warning('Stock insuficiente al completar orden', [
+                'order_id' => $orderId->id,
+                'product' => $e->getProductName(),
+                'available' => $e->getAvailableStock(),
+                'requested' => $e->getRequestedQuantity(),
+            ]);
+            return ApiResponse::error($e->getMessage(), 422, [
+                'available_stock' => $e->getAvailableStock(),
+                'requested_quantity' => $e->getRequestedQuantity(),
+                'product_name' => $e->getProductName(),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         } catch (\Exception $e) {
-            Log::error('Error al completar la orden:', ['error' => $e->getMessage(), 'order_id' => $orderId->id]);
-            return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
+            Log::error('Error al completar la orden', [
+                'order_id' => $orderId->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ApiResponse::error('No se pudo completar la orden. Por favor, intente de nuevo.', 500);
         }
     }
 
     public function getcompletedOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -211,6 +223,7 @@ class OrderController extends Controller
 
     public function getAllOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'all');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -224,6 +237,7 @@ class OrderController extends Controller
 
     public function getAbandonedOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -237,6 +251,7 @@ class OrderController extends Controller
 
     public function getCancelledOrder(Request $request)
     {
+        $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -251,7 +266,7 @@ class OrderController extends Controller
 
     public function getCPrintOrder(int $orderId)
     {
-        $order = Order::with('details.product', 'client', 'seller')->find($orderId);
+        $order = Order::with('details.product.laboratory', 'client', 'seller')->find($orderId);
         if (!$order) {
             return ApiResponse::error('Orden no encontrada.', 404);
         }
@@ -394,29 +409,59 @@ class OrderController extends Controller
         }
     }
 
-    public function getSearchReserved(){
+    public function getSearchReserved(): JsonResponse
+    {
+        try {
+            $sellerId = Auth::id();
+            if (!$sellerId) {
+                return ApiResponse::error('Vendedor no autenticado.', 401);
+            }
 
-    $sellerId = Auth::id();
-
-    $hasPending = Order::where('seller_id', $sellerId)
+            $result = DB::transaction(function () use ($sellerId) {
+                $hasPending = Order::where('seller_id', $sellerId)
                     ->where('status', Order::PENDING)
+                    ->lockForUpdate()
                     ->exists();
 
-    if ($hasPending) {
-        return response()->json(['message' => 'Ya tienes una orden pendiente activa.'], 400);
+                if ($hasPending) {
+                    return ['success' => false, 'message' => 'Ya tienes una orden pendiente activa.', 'status' => 400];
+                }
+
+                $order = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::RESERVED)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($order) {
+                    $order->status = Order::PENDING;
+                    $order->save();
+                    return ['success' => true, 'message' => 'Orden actualizada.', 'status' => 200];
+                }
+
+                return ['success' => false, 'message' => 'No se encontró ninguna orden reservada.', 'status' => 404];
+            });
+
+            if ($result['success']) {
+                return response()->json(['message' => $result['message']], $result['status']);
+            }
+            return response()->json(['message' => $result['message']], $result['status']);
+        } catch (\Exception $e) {
+            Log::error('Error en getSearchReserved', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ApiResponse::error('Ocurrió un error al procesar la orden reservada. Intente de nuevo.', 500);
+        }
     }
 
-    $order = Order::where('seller_id', $sellerId)
-                ->where('status', Order::RESERVED)
-                ->first();
-    if ($order) {
-        $order->status = Order::PENDING;
-        $order->save();
-        
-        return response()->json(['message' => 'Orden actualizada.']);
-    }
-
-    return response()->json(['message' => 'No se encontró ninguna orden reservada.'], 404);
-
+    /**
+     * Si el usuario es vendedor (role_id 3), fuerza el filtro seller_id al usuario actual.
+     */
+    private function applySellerFilterForVendedor(Request $request): void
+    {
+        $user = Auth::user();
+        if ($user && (int) $user->role_id === 3) {
+            $request->merge(['seller_id' => $user->id]);
+        }
     }
 }

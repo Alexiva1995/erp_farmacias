@@ -47,11 +47,13 @@ export const buildAbilityForRules = (user) => {
     }
 
     if (user.role_id === 3) {
-      can('manage', 'user'); 
-     // can('manage', 'cycli-user');
+      can('manage', 'user');
+      can('manage', 'cycli-user');
+      can('manage', 'pending-cyclics');
       can('manage', 'productividad');
       can('manage', 'comparadorAssistence');
       can('manage', 'gastos-expenses');
+      can('manage', 'order-general-user');
     }
     // ... otros permisos para otros roles
   }

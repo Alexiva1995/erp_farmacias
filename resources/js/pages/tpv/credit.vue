@@ -2,11 +2,14 @@
 import CreditFilters from "@/components/CreditFilters.vue";
 import CreditPaymentsFilters from "@/components/CreditPaymentsFilter.vue";
 import CreditPaymentsTable from "@/components/CreditPaymentsTable.vue";
+import CreditsOrderTicketThermal54 from "@/components/CreditsOrderTicketThermal54.vue";
 import CreditsTicket from "@/components/CreditsTicket.vue";
 import CreditTable from "@/components/CreditTable.vue";
+import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
 import axios from "@/plugins/axios";
+import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { nextTick, onMounted, ref, watch } from "vue";
@@ -176,6 +179,51 @@ const closeCreditsModal = () => {
   creditsData.value = null;
 };
 
+const handleDeleteCredit = async (item) => {
+  const creditIds = Array.isArray(item.credit_ids)
+    ? item.credit_ids.map((id) => parseInt(id))
+    : String(item.credit_ids || "")
+        .split(",")
+        .map((id) => parseInt(id.trim()))
+        .filter((n) => !isNaN(n));
+
+  if (!creditIds.length) {
+    toast.error("No se encontraron créditos para eliminar.");
+    return;
+  }
+
+  const { isConfirmed } = await Swal.fire({
+    title: "¿Eliminar crédito?",
+    text: "Esta acción no se puede deshacer. Se eliminarán los créditos seleccionados.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#6e7d88",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!isConfirmed) return;
+
+  try {
+    const response = await axios.delete("/tpv/credits", {
+      data: { credit_ids: creditIds },
+    });
+    if (response.data?.success !== false) {
+      toast.success("Crédito(s) eliminado(s) correctamente.");
+      await fetchCredits();
+    } else {
+      toast.error(response.data?.message || "Error al eliminar el crédito.");
+    }
+  } catch (error) {
+    const msg =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      "Error al eliminar el crédito.";
+    toast.error(msg);
+  }
+};
+
 const closeViewOrderCreditsModal = () => {
   showViewOrderModal.value = false;
   creditsData.value = null;
@@ -297,63 +345,34 @@ const printCreditOrders = async (credit) => {
       credit_ids: creditIds,
     });
     const detailedCredits = response.data;
-    creditsData.value = detailedCredits;
+    creditsData.value = Array.isArray(detailedCredits) ? detailedCredits : [detailedCredits];
 
     isPrintingCreditOrder.value = true;
     await nextTick();
-    const printContents = document.getElementById("CreditOrderPrint");
+    const printContents = document.getElementById("CreditOrderPrintThermal54");
 
     if (printContents) {
-      const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write(
-        "<html><head><title>Farmacia Barrio Sucre</title>"
-      );
-
-      const styleSheets = document.styleSheets;
-      for (let i = 0; i < styleSheets.length; i++) {
-        const sheet = styleSheets[i];
-        try {
-          if (sheet.cssRules) {
-            let cssText = "";
-            for (let j = 0; j < sheet.cssRules.length; j++) {
-              cssText += sheet.cssRules[j].cssText;
-            }
-            printWindow.document.write(`<style>${cssText}</style>`);
-          } else if (sheet.href) {
-            printWindow.document.write(
-              `<link rel="stylesheet" href="${sheet.href}">`
-            );
-          }
-        } catch (e) {
-          console.warn(
-            "No se pudo acceder a la hoja de estilo:",
-            sheet.href || sheet,
-            e
-          );
-        }
-      }
-
-      printWindow.document.write("</head><body>");
-      printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
+      const win = window.open("", "", "height=400,width=280");
+      win.document.write("<html><head><title>Ticket 54mm - Crédito Pendiente - Farmacia Barrio Sucre</title>");
+      win.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
+      win.document.write("</head><body>");
+      win.document.write(printContents.innerHTML);
+      win.document.write("</body></html>");
+      win.document.close();
+      win.focus();
+      win.print();
+      win.close();
     } else {
-      console.warn(
-        "Elemento #CreditOrderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-      );
-      window.print();
+      toast.error("No se encontró el contenido del ticket térmico.");
     }
     setTimeout(() => {
-      isPrinting.value = false;
+      isPrintingCreditOrder.value = false;
       creditsData.value = null;
     }, 500);
   } catch (error) {
     console.error("Error al obtener los detalles de los créditos:", error);
     toast.error("No se pudo cargar el historial de la orden.");
-    isPrinting.value = false;
+    isPrintingCreditOrder.value = false;
     creditsData.value = null;
   }
 };
@@ -394,6 +413,7 @@ watch(
     @reload="fetchCredits"
     @view-order-modal="viewOrderCreditsModal"
     @print-order="printCreditOrders"
+    @delete-credit="handleDeleteCredit"
   />
 
   <VSpacer v-if="!isVendedor" class="my-6" />
@@ -441,10 +461,10 @@ watch(
   </div>
 
   <div
-    id="CreditOrderPrint"
+    id="CreditOrderPrintThermal54"
     :class="{ 'd-none': !isPrintingCreditOrder, 'print-container': true }"
   >
-    <CreditsOrderTicket
+    <CreditsOrderTicketThermal54
       v-if="isPrintingCreditOrder && creditsData"
       :credits-data="creditsData"
     />

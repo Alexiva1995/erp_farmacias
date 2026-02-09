@@ -63,7 +63,9 @@ const date = (order) => {
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{ item.product.name }}</span>
-            <span class="text-sm text-disabled">{{ item.product.active_ingredient }}</span>
+            <span v-if="item.product?.laboratory?.name" class="text-caption text-medium-emphasis">
+              {{ item.product.laboratory.name }}
+            </span>
           </div>
         </div>
       </template>

@@ -31,11 +31,12 @@ export function useDataTable(apiEndpoint, filters) {
 
     try {
       const response = await axios.get(apiEndpoint, { params });
-      items.value = response.data.data;
-      totalItems.value = response.data.total;
+      items.value = Array.isArray(response.data?.data) ? response.data.data : [];
+      totalItems.value = typeof response.data?.total === 'number' ? response.data.total : 0;
     } catch (error) {
       console.error(`Error al obtener datos de ${apiEndpoint}:`, error);
-      toast.error('Error al obtener los datos de la tabla.');
+      const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+      toast.error(msg || 'Error al obtener los datos de la tabla.');
       items.value = [];
       totalItems.value = 0;
     } finally {

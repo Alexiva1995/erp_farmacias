@@ -78,7 +78,6 @@ class OrderActionService
             $order->load('seller', 'client');
             return $order;*/
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Error al crear la orden: ' . $e->getMessage());
             throw $e;
         }
@@ -599,12 +598,57 @@ class OrderActionService
         return $fiscalexist;
     }
 
+    /**
+     * Valida que la suma de los pagos cubra el total de la orden (en la moneda de la orden).
+     * Lanza \InvalidArgumentException si no coinciden o la suma es menor.
+     */
+    private function validatePaymentsCoverOrderTotal(Order $order, array $payments): void
+    {
+        $resourceService = app(ResourceService::class);
+        $orderCurrency = strtoupper($order->currency ?? 'USD');
+        $orderTotal = (float) $order->total_amount;
+        $tolerance = 0.02; // Tolerancia para redondeos (2 centavos)
+
+        $rates = [
+            'USD' => $resourceService->getExchangeRate('USD') ?: 1,
+            'COP' => $resourceService->getExchangeRate('COP') ?: 1,
+            'BS' => $resourceService->getExchangeRate('BS') ?: 1,
+        ];
+        $orderRate = $rates[$orderCurrency] ?? 1;
+
+        $sumInOrderCurrency = 0;
+        foreach ($payments as $p) {
+            $amount = (float) ($p['amount'] ?? 0);
+            $currency = strtoupper($p['currency'] ?? 'USD');
+            $rate = $rates[$currency] ?? 1;
+            // Convertir a moneda de la orden: amount en X -> USD -> orden
+            $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
+            $sumInOrderCurrency += $amountInOrderCurrency;
+        }
+
+        if ($sumInOrderCurrency < ($orderTotal - $tolerance)) {
+            throw new \InvalidArgumentException(
+                'La suma de los pagos (' . round($sumInOrderCurrency, 2) . ') no cubre el total de la orden (' . round($orderTotal, 2) . ' ' . $orderCurrency . ').'
+            );
+        }
+    }
+
     public function complete(Order $orderId, Request $request, $sellerId): array
     {
-
         DB::beginTransaction();
         try {
+            // 1. Idempotencia: si la orden ya está completada, retornar sin reprocesar
+            $order = Order::where('id', $orderId->id)->lockForUpdate()->firstOrFail();
+            if ($order->status === Order::COMPLETED || $order->status === 'paid') {
+                DB::commit();
+                $order->load(['seller', 'client', 'details.product']);
+                return [
+                    'orderCompletada' => $order,
+                    'already_completed' => true,
+                ];
+            }
 
+            $orderId = $order;
             $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
@@ -617,43 +661,34 @@ class OrderActionService
                 $orderId->url_recipe = $path;
             }
 
-            // Save discount details if provided
-            if ($request->has('items')) {
-    
+            // Save discount details if provided (optimizado: cargar detalles una vez)
+            if ($request->has('items') && !empty($request->items)) {
+                $detailsById = $orderId->details()->get()->keyBy('id');
+
                 foreach ($request->items as $itemData) {
-                    if (isset($itemData['order_detail_id'])) {
-                        $detail = OrderDetail::where('id', $itemData['order_detail_id'])
-                            ->where('order_id', $orderId->id)
-                            ->first();
-
-                        if ($detail) {
-                            if (isset($itemData['quantity'])) {
-                                $detail->quantity = $itemData['quantity'];
-                            }
-
-                            if ($orderId->currency === 'COP') {
-                                $detail->price = ceil($itemData['price'] * $detail->quantity / 100) * 100;
-                                $detail->unit_cost = ceil($itemData['unit_cost'] / 100) * 100;
-                                $detail->price_before_discount = ceil($itemData['price_before_discount'] * $detail->quantity / 100) * 100;
-                            } else {
-                                $detail->price = $itemData['price'] * $detail->quantity;
-                                $detail->unit_cost = $itemData['unit_cost'];
-                                $detail->price_before_discount = $itemData['price_before_discount'] * $detail->quantity;
-                            }
-
-                            if (isset($itemData['discount_percentage'])) {
-                                $detail->discount_percentage = $itemData['discount_percentage'];
-                                $detail->discount_type = $itemData['discount_type'] ?? null;
-                                $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
-                            }
-                            // Also update unit_price_usd if sent?
-                            if (isset($itemData['price_usd'])) { // Assuming logic handles currency conversion elsewhere or passed here
-                                // $detail->unit_price_usd = ...; 
-                            }
-
-                            $detail->save();
-                        }
+                    $detailId = $itemData['order_detail_id'] ?? null;
+                    $detail = $detailId ? $detailsById->get($detailId) : null;
+                    if (!$detail) {
+                        continue;
                     }
+                    if (isset($itemData['quantity'])) {
+                        $detail->quantity = $itemData['quantity'];
+                    }
+                    if ($orderId->currency === 'COP') {
+                        $detail->price = ceil(($itemData['price'] ?? 0) * $detail->quantity / 100) * 100;
+                        $detail->unit_cost = ceil(($itemData['unit_cost'] ?? 0) / 100) * 100;
+                        $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) * $detail->quantity / 100) * 100;
+                    } else {
+                        $detail->price = ($itemData['price'] ?? 0) * $detail->quantity;
+                        $detail->unit_cost = $itemData['unit_cost'] ?? 0;
+                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0) * $detail->quantity;
+                    }
+                    if (isset($itemData['discount_percentage'])) {
+                        $detail->discount_percentage = $itemData['discount_percentage'];
+                        $detail->discount_type = $itemData['discount_type'] ?? null;
+                        $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
+                    }
+                    $detail->save();
                 }
             }
 
@@ -684,18 +719,23 @@ class OrderActionService
             $uniqueCurrencies = array_unique($currencies);
             $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
-            // First, update lot quantities BEFORE saving the order
-            // This way, when the order is saved and triggers handleOrderMovement,
-            // the sale movement will be created first, preventing expired movements
-            $orderId->load('details.product.lots');
+            // Bloqueo anti-overselling: cargar y bloquear los lotes de los productos de la orden
+            $orderId->load('details.product');
+            $productIds = $orderId->details->pluck('product_id')->unique()->filter()->values()->all();
+            $lotsByProduct = collect();
+            if (!empty($productIds)) {
+                $lockedLots = ProductLot::whereIn('product_id', $productIds)
+                    ->where('quantity', '>', 0)
+                    ->orderBy('expiration_date')
+                    ->lockForUpdate()
+                    ->get();
+                $lotsByProduct = $lockedLots->groupBy('product_id');
+            }
 
             foreach ($orderId->details as $detail) {
-                $quantityToReduce = $detail->quantity;
-
-
+                $quantityToReduce = (int) $detail->quantity;
                 $quantityExpiration = 0;
-                $lots = $detail->product->lots->sortBy('expiration_date');
-
+                $lots = $lotsByProduct->get($detail->product_id, collect())->sortBy('expiration_date')->values();
 
                 foreach ($lots as $lot) {
                     if ($quantityToReduce <= 0) {
@@ -732,7 +772,15 @@ class OrderActionService
                 }
 
                 if ($quantityToReduce > 0) {
-                    throw new \Exception("No hay suficiente stock en los lotes para el producto ID: {$detail->product->id}");
+                    $product = $detail->product;
+                    $productName = $product?->name ?? 'Producto';
+                    $available = $product ? (int) $product->lots->sum('quantity') : 0;
+                    throw new InsufficientStockException(
+                        $productName,
+                        $available,
+                        (int) $detail->quantity,
+                        "No hay suficiente stock para '{$productName}'. Disponible: {$available}, solicitado: {$detail->quantity}."
+                    );
                 }
 
                 // Save quantity_expiration
@@ -742,10 +790,19 @@ class OrderActionService
                 }
             }
 
-            //  Recargo Sujeto Pasivo Especial
-            $orderId->taxable_base = $request->taxable_base;
-            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate;
-            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount;
+            // Recalcular totales desde los detalles en BD (no confiar en el cliente)
+            $orderId->total_amount = $orderId->details->sum('price');
+            $orderId->total_amount_usd = $orderId->details->sum(function ($d) {
+                return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
+            });
+
+            // Validación de integridad financiera: suma de pagos debe cubrir el total
+            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments);
+
+            // Recargo Sujeto Pasivo Especial
+            $orderId->taxable_base = $request->taxable_base ?? 0;
+            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate ?? 0;
+            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount ?? 0;
 
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
             // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
@@ -755,7 +812,7 @@ class OrderActionService
             $balancePayment = collect($request->payments)->firstWhere('method', 'balance');
             if ($balancePayment) {
                 $client = $orderId->client;
-                $client->balance -= $balancePayment['amount'];
+                $client->balance -= (float) ($balancePayment['amount'] ?? 0);
                 $client->save();
             }
 
@@ -763,8 +820,8 @@ class OrderActionService
                 Credit::create([
                     'client_id' => $request->client_id,
                     'order_id' => $orderId->id,
-                    'credit_amount' => $request->total_amount,
-                    'pending_amount' => $request->total_amount,
+                    'credit_amount' => $orderId->total_amount,
+                    'pending_amount' => $orderId->total_amount,
                     'credit_date' => Carbon::now(),
                     'status' => 'Active'
                 ]);
@@ -809,17 +866,17 @@ class OrderActionService
 
             DB::table('order_details')->where('order_id', $orderId->id)->update(['updated_at' => Carbon::now()]);
             $current_cash = CashClosing::where('status', CashClosing::OPEN)->where('seller_id', $orderId->seller_id)->first();
-            if (!isset($current_cash)) {
-                $current_cash = CashClosing::create([
-                    'seller_id' => $orderId->seller_id,
-                    'status' => CashClosing::OPEN,
-                    'closing_date' => Carbon::now(),
-                ]);
+            if (!$current_cash) {
+                throw new \Exception('No se encontró un cierre de caja abierto para el vendedor. Debe abrir caja antes de completar la venta.');
             }
+
+            // Usar montos validados: el total de la orden (calculado en servidor) para crédito;
+            // los montos por método se validaron en validatePaymentsCoverOrderTotal
+            $orderTotal = (float) $orderId->total_amount;
 
             foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
-                $amount = $payment['amount'] ?? 0;
+                $amount = (float) ($payment['amount'] ?? 0);
 
                 if (isset($method)) {
                     switch ($method) {
@@ -833,7 +890,7 @@ class OrderActionService
                             $current_cash->usd_paypal += $amount;
                             break;
                         case 'credit':
-                            $current_cash->usd_credit += $request->total_amount;
+                            $current_cash->usd_credit += $orderTotal;
                             break;
                         case 'cash_bs':
                             $current_cash->bs_cash += $amount;
@@ -882,7 +939,7 @@ class OrderActionService
             $current_cash->total_cop = $total_cop;
             $current_cash->total_usd = $total_usd;
             $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
-            $current_cash->cop_delivered = $current_cash->cop_cash - $current_cash->cop_conversion;
+            $current_cash->cop_delivered = $current_cash->cop_cash - ($current_cash->cop_conversion+$current_cash->cop_conversion_payment_credit);
             $current_cash->bs_delivered = $current_cash->bs_cash;
 
             $cop_in_usd = $current_cash->total_cop_in_usd;
@@ -1131,7 +1188,7 @@ class OrderActionService
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;
                 $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
-                $cashClosing->cop_delivered = $cashClosing->cop_cash - $cashClosing->cop_conversion;
+                $cashClosing->cop_delivered = $cashClosing->cop_cash - ($cashClosing->cop_conversion+$cashClosing->cop_conversion_payment_credit);
                 $cashClosing->bs_delivered = $cashClosing->bs_cash;
 
                 $cop_in_usd = $cashClosing->total_cop_in_usd;

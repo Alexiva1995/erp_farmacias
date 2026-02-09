@@ -33,23 +33,24 @@ const handleSearchOrder = () => {
 <template>
   <VCard class="mb-6">
     <VCardText>
-      <VRow>
-        <VCol cols="12">
-          <AppTextField
-            placeholder="Ingrese identificación, N° Orden"
-            clearable
-            class="flex-grow-1"
-            :model-value="identificationInput"
-            @update:model-value="updateIdentification"
-            @keyup.enter="handleSearchOrder"
-          />
-        </VCol>
-      </VRow>
+      <div class="d-flex align-center gap-2">
+        <AppTextField
+          placeholder="Ingrese identificación, N° Orden"
+          clearable
+          class="flex-grow-1"
+          :model-value="identificationInput"
+          @update:model-value="updateIdentification"
+          @keyup.enter="handleSearchOrder"
+        />
+        <VBtn
+          icon
+          color="success"
+          variant="tonal"
+          @click="handleSearchOrder"
+        >
+          <VIcon icon="tabler-search" />
+        </VBtn>
+      </div>
     </VCardText>
-    <VDivider />
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VSpacer />
-      <VBtn color="primary" @click="handleSearchOrder"> Buscar pedido </VBtn>
-    </VCardActions>
   </VCard>
 </template>

@@ -194,6 +194,7 @@ declare module 'vue' {
     OrderProductsTable: typeof import('./resources/js/components/OrderProductsTable.vue')['default']
     OrderTable: typeof import('./resources/js/components/OrderTable.vue')['default']
     OrderTicket: typeof import('./resources/js/components/OrderTicket.vue')['default']
+    OrderTicketThermal54: typeof import('./resources/js/components/OrderTicketThermal54.vue')['default']
     OrderViewModal: typeof import('./resources/js/components/dialogs/OrderViewModal.vue')['default']
     OrderWithPsychotropicsTable: typeof import('./resources/js/components/OrderWithPsychotropicsTable.vue')['default']
     PackDetailsModal: typeof import('./resources/js/components/dialogs/PackDetailsModal.vue')['default']

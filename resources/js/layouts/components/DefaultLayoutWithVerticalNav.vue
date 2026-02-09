@@ -30,8 +30,7 @@ const processedNavItems = computed(() => {
     return navItems;
   }
 
-  // Para usuarios tipo "usuario", modificar el menú de Inventario Ciclicos
-  // Crear una copia profunda para evitar mutaciones
+  // Para usuarios tipo "usuario", mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
   try {
     return navItems.map((item) => {
       if (
@@ -42,14 +41,15 @@ const processedNavItems = computed(() => {
         return {
           ...item,
           children: item.children.map((child) => {
-            if (child.title === "Inventario Ciclicos") {
-              // Convertir el item con children en un item directo que apunta a closing
+            if (child.title === "Inventario Ciclicos" && child.children) {
+              // Filtrar solo Pendientes e Inventario de Usuario para usuarios
+              const allowedSubjects = ["pending-cyclics", "cycli-user"];
+              const userCyclicChildren = child.children.filter(
+                (c) => c.subject && allowedSubjects.includes(c.subject)
+              );
               return {
-                title: "Inventario Ciclicos",
-                to: "cyclics-closing",
-                action: "manage",
-                subject: "closing-cyclics",
-                icon: child.icon || item.icon,
+                ...child,
+                children: userCyclicChildren,
               };
             }
             return { ...child };

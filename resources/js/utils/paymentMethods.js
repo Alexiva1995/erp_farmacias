@@ -12,6 +12,7 @@ export const translateMethod = (method) => {
     paypal: "PayPal",
     credit: "Crédito",
     balance: "Saldo",
+    card: "Tarjeta",
   };
 
   return options[method] || method;

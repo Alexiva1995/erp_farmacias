@@ -4,7 +4,6 @@ import QuotationProducts from "@/components/cards/QuotationProducts.vue";
 import QuotationFilters from "@/components/QuotationFilters.vue";
 import QuotationTable from "@/components/QuotationTable.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
-import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
@@ -1005,13 +1004,6 @@ const handleCleanAfterSave = () => {
 
 <template>
   <div>
-    <OrderClienteCard
-      v-model="clientIdentification"
-      button-text="Buscar cliente"
-      :show-button="true"
-      @verify-client="verifyClient"
-    />
-
     <VRow class="mb-4">
       <VCol cols="12" sm="12" md="6">
         <QuotationCard

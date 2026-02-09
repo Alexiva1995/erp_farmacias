@@ -37,8 +37,13 @@ class ReturnsController extends Controller
     public function searchOrders(Request $request)
     {
         try {
+            $identification = $request->input('identification');
+            if (empty($identification) || !is_string($identification)) {
+                return response()->json(['data' => [], 'total' => 0]);
+            }
+
             $ordersQuery = $this->returnsActionService->searchOrdersReturns(
-                $request->input('identification'),
+                trim($identification),
                 $request->all()
             );
 
@@ -53,15 +58,12 @@ class ReturnsController extends Controller
 
             $mappedItems = $paginator->getCollection()->map(function ($order) {
                 $orderArray = $order->toArray();
-
-                $currency = strtoupper($order->currency);
-
-                $orderArray['details'] = collect($orderArray['details'])->map(function ($detail) use ($currency) {
+                $currency = strtoupper($order->currency ?? 'USD');
+                $details = $orderArray['details'] ?? [];
+                $orderArray['details'] = collect($details)->map(function ($detail) use ($currency) {
                     $detail['currency'] = $currency;
-
                     return $detail;
                 })->all();
-
                 return $orderArray;
             });
 
@@ -72,7 +74,11 @@ class ReturnsController extends Controller
                 'total' => $paginator->total()
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 404);
+            Log::error('Error en searchOrders (returns):', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -107,7 +113,43 @@ class ReturnsController extends Controller
             Log::error('Error al aprobar la devolución:', ['error' => $e->getMessage(), 'returnEntry_id' => $ReturnEntry->id]);
             return ApiResponse::error('No se pudo aprobar la devolución: ' . $e->getMessage(), 500);
         }
+    }
 
+    /**
+     * Distribuir cantidad devuelta en lotes (reingreso a inventario). Solo para devoluciones ya aprobadas.
+     */
+    public function distributeLots(Request $request, $returnEntryId)
+    {
+        $returnEntry = ReturnEntry::findOrFail($returnEntryId);
+        $updatedLots = $request->input('updated_lots', []);
+        $newLots = $request->input('new_lots', []);
+
+        try {
+            $this->returnsActionService->distributeLots($returnEntry, $updatedLots, $newLots);
+            return ApiResponse::success('Cantidad distribuida en lotes correctamente.');
+        } catch (\Exception $e) {
+            Log::error('Error al distribuir lotes (return):', ['error' => $e->getMessage(), 'returnEntry_id' => $returnEntry->id]);
+            return ApiResponse::error($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aprobar devolución solo después de distribuir las unidades en lotes (obligatorio).
+     * Primero aplica la distribución (stock actual + unidades devueltas), luego aprueba.
+     */
+    public function approveWithDistribution(Request $request, $returnEntryId)
+    {
+        $returnEntry = ReturnEntry::findOrFail($returnEntryId);
+        $updatedLots = $request->input('updated_lots', []);
+        $newLots = $request->input('new_lots', []);
+
+        try {
+            $return = $this->returnsActionService->approveWithDistribution($returnEntry, $updatedLots, $newLots);
+            return ApiResponse::success(['return' => $return], 'Devolución aprobada y cantidad distribuida en lotes correctamente.');
+        } catch (\Exception $e) {
+            Log::error('Error al aprobar con distribución:', ['error' => $e->getMessage(), 'returnEntry_id' => $returnEntry->id]);
+            return ApiResponse::error($e->getMessage(), 500);
+        }
     }
 }
 

@@ -1,10 +1,20 @@
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: [String, Array], default: () => [] },
+  orderBy: { type: String, default: "asc" },
+});
+
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  const key = Array.isArray(props.sortBy) ? props.sortBy[0] : props.sortBy;
+  return key ? [{ key, order: props.orderBy || "asc" }] : [];
 });
 
 const emit = defineEmits(["update:options"]);
@@ -37,7 +47,7 @@ const headers = [
   {
     title: "AO",
     key: "totalQuantityInAutoOrder",
-    sortable: false,
+    sortable: true,
   },
   {
     title: "Diferencia ",
@@ -56,6 +66,7 @@ const headers = [
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
+      :sort-by="sortByModel"
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >

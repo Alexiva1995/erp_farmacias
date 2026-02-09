@@ -1,7 +1,8 @@
 <script setup>
 import OrderFilters from "@/components/OrderFilters.vue";
 import OrderProductsTable from "@/components/OrderProductsTable.vue";
-import OrderTicket from "@/components/OrderTicket.vue";
+import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
+import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import BuysModal from "@/components/dialogs/BuysModal.vue";
@@ -111,6 +112,7 @@ const openOrderData = ref(null);
 const orderData = ref(null);
 const reservedOrderData = ref(null);
 const pendingOpenOrder = ref(null); // Orden que será abierta tras imprimir.
+const pendingQuotationProducts = ref([]); // Productos de cotización pendientes cuando no hay cliente.
 
 const orderItems = ref([]);
 const itemsToPrint = ref([]);
@@ -952,6 +954,13 @@ const handleClearFilters = () => {
   isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
+  tableOptions.value.sortBy = [];
+};
+
+const handleClearSortOrder = () => {
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+  tableOptions.value.sortBy = [];
 };
 
 watch(
@@ -1046,7 +1055,11 @@ const verifyClient = async (identification) => {
       } else {
         hasOpenOrder.value = false;
         openOrderData.value = null;
-        await addOrden(clientData.id);
+        const order = await addOrden(clientData.id);
+        if (order && pendingQuotationProducts.value.length > 0) {
+          await handleAddQuotationProducts(pendingQuotationProducts.value);
+          pendingQuotationProducts.value = [];
+        }
       }
     }
   } catch (error) {
@@ -1056,6 +1069,35 @@ const verifyClient = async (identification) => {
   }
 };
 
+
+const handleLoadQuotation = async (quotationId) => {
+  if (!quotationId?.trim()) return;
+  try {
+    const response = await axios.get(`/tpv/quotations/${quotationId}/products`);
+    const { products, client } = response.data;
+
+    if (!products || products.length === 0) {
+      toast.info("La cotización no tiene productos o está vacía.");
+      return;
+    }
+
+    if (client && client.id) {
+      const order = await addOrden(client.id);
+      if (order) {
+        selectedClient.value = order.client;
+        await handleAddQuotationProducts(products);
+        toast.success("Cotización cargada. Productos agregados al pedido.");
+      }
+    } else {
+      pendingQuotationProducts.value = products;
+      toast.warning("La cotización no tiene cliente. Ingrese la cédula del cliente.");
+    }
+  } catch (error) {
+    const msg = error.response?.data?.message || "Error al cargar la cotización.";
+    toast.error(msg);
+    console.error("Error loading quotation:", error);
+  }
+};
 
 const reservedOrderCliente = async () => {
 try {
@@ -2262,12 +2304,14 @@ const handleBuysCompletion = async (
     if (selectedDiscountType.value === "Recipe" && prescriptionFile.value) {
       formData.append("prescription_image", prescriptionFile.value);
     }
+    const idempotencyKey = `order-complete-${orderId}-${Date.now()}`;
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          "X-Idempotency-Key": idempotencyKey,
         },
       },
     );
@@ -2313,13 +2357,20 @@ const handleBuysCompletion = async (
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
-    toast.error("Hubo un problema al procesar su compra.");
+    const msg =
+      error.response?.data?.message ||
+      (error.response?.status === 422
+        ? "Stock insuficiente para uno o más productos."
+        : "Hubo un problema al procesar su compra.");
+    toast.error(msg);
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
     orderItems.value = [];
     reservedOrderData.value = null;
     clientIdentification.value = "";
+  } finally {
+    isFinishingOrder.value = false;
   }
 };
 
@@ -2340,30 +2391,8 @@ const printTickeCompletion = async () => {
 
   if (printContents && printContents.innerHTML.trim() !== "") {
     const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>",
-    );
-
-    // Copiar estilos (el bloque try/catch que ya tienes)
-    Array.from(document.styleSheets).forEach((sheet) => {
-      try {
-        if (sheet.cssRules) {
-          const css = Array.from(sheet.cssRules)
-            .map((r) => r.cssText)
-            .join("");
-          printWindow.document.write("<style>" + css + "</style>");
-        } else if (sheet.href) {
-          printWindow.document.write(
-            '<link rel="stylesheet" href="' + sheet.href + '">',
-          );
-        }
-      } catch (e) {
-        if (sheet.href)
-          printWindow.document.write(
-            '<link rel="stylesheet" href="' + sheet.href + '">',
-          );
-      }
-    });
+    printWindow.document.write("<html><head><title>Ticket 54mm - Farmacia Barrio Sucre</title>");
+    printWindow.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
 
     printWindow.document.write("</head><body>");
     printWindow.document.write(printContents.innerHTML);
@@ -2923,8 +2952,11 @@ onUnmounted(() => {
     <div v-else>
       <OrderClienteCard
         v-model="clientIdentification"
+        :buttons-icon-only="true"
+        :show-quotation-input="true"
         @verify-client="verifyClient"
         @reserved-order-cliente="reservedOrderCliente"
+        @load-quotation="handleLoadQuotation"
       />
     </div>
 
@@ -2937,7 +2969,10 @@ onUnmounted(() => {
       :laboratories="laboratories || []"
       :origins="origins || []"
       :loading="isLoadingFilters || false"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @clear="handleClearFilters"
+      @clear-sort="handleClearSortOrder"
       @sort="handleExternalSort"
       @back="handleBackFromGroupView"
     >
@@ -2993,6 +3028,7 @@ onUnmounted(() => {
       v-model:is-dialog-visible="showBuysModal"
       :order-products="orderItems || []"
       :order-data="openOrderData || null"
+      :is-external-loading="isFinishingOrder"
       :total-amount="totalOrderAmount || 0"
       :selected-currency="selectedDisplayCurrency || 'USD'"
       @modal-closed="closeBuysModal"
@@ -3023,12 +3059,12 @@ onUnmounted(() => {
               top: '0',
               zIndex: 9999,
               background: 'white',
-              width: '80mm',
+              width: '54mm',
             }
           : { position: 'absolute', left: '-9999px' }
       "
     >
-      <OrderTicket
+      <OrderTicketThermal54
         v-if="orderData"
         :order-data="orderData"
         :order-products="itemsForTicket || []"
@@ -3042,7 +3078,6 @@ onUnmounted(() => {
         :selected-discount-type="discountTypeForPrint || null"
         :doctor-discount-total="doctorDiscountForPrint || 0"
         :recipe-discount-total="recipeDiscountForPrint || 0"
-        :expiration-discount-total="expirationDiscountForPrint || 0"
         :is-special-taxpayer="isSpecialTaxpayer || false"
         :spe-surcharge-amount="speSurchargeAmountPrint || 0"
       />

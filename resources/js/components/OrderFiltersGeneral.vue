@@ -1,9 +1,16 @@
 <script setup>
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
+
 const props = defineProps({
   searchQuery: String,
   offer: String,
   idSearchQuery: String,
   currencyFilter: [Number, String, null],
+  sellerFilter: [Number, String, null],
+  sellers: {
+    type: Array,
+    default: () => [],
+  },
   startDate: {
     type: String,
     default: null,
@@ -20,6 +27,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  showOfferFilters: {
+    type: Boolean,
+    default: true,
+  },
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
   stateFilter: [Number, String, null],
 });
 
@@ -27,6 +42,7 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:idSearchQuery",
   "update:currencyFilter",
+  "update:sellerFilter",
   "clear",
   "update:startDate",
   "update:endDate",
@@ -100,87 +116,110 @@ const sortOptions = [
 const handleSortClick = (option) => {
   emit("sort", { key: option.key, order: option.order });
 };
+
+const sellerDisplayName = (item) => capitalizeFirstAndLastName(item?.username ?? "");
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard v-if="!props.embedded" title="Filtros" class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="6" sm="4" md="2" lg="2">
           <AppTextField
             :model-value="props.idSearchQuery"
-            placeholder="Buscar por ID"
+            placeholder="ID"
             clearable
+            density="compact"
+            hide-details
             @update:model-value="emit('update:idSearchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="6" sm="4" md="2" lg="2">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por Identificación, Vendedor"
+            placeholder="Identificación, Vendedor"
             clearable
+            density="compact"
+            hide-details
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="6" sm="4" md="2" lg="2">
           <VSelect
             :model-value="props.currencyFilter"
             label="Moneda"
             :items="currencyOptions"
             clearable
+            density="compact"
+            hide-details
             @update:model-value="emit('update:currencyFilter', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="6" sm="4" md="2" lg="2">
+          <VSelect
+            :model-value="props.sellerFilter"
+            label="Vendedor"
+            :items="props.sellers"
+            :item-title="sellerDisplayName"
+            item-value="id"
+            clearable
+            density="compact"
+            hide-details
+            @update:model-value="emit('update:sellerFilter', $event)"
+          />
+        </VCol>
+        <VCol v-if="props.showOfferFilters" cols="6" sm="4" md="2" lg="2">
           <VSelect
             :model-value="props.offer"
             label="Descuentos"
             :items="offerOptions"
             clearable
+            density="compact"
+            hide-details
             @update:model-value="emit('update:offer', $event)"
           />
         </VCol>
-        <template v-if="props.showStateFilters">
-          <VCol cols="12" sm="6" md="3">
-            <VSelect
-              :model-value="props.stateFilter"
-              label="Estados"
-              :items="stateOptions"
-              clearable
-              @update:model-value="emit('update:stateFilter', $event)"
-            />
-          </VCol>
-        </template>
-        <template v-if="props.showDateFilters">
-          <VCol cols="12" sm="6" md="4">
-            <AppDateTimePicker
-              :model-value="props.startDate"
-              placeholder="Fecha Desde"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-              @update:model-value="emit('update:startDate', $event)"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6" md="4">
-            <AppDateTimePicker
-              :model-value="props.endDate"
-              placeholder="Fecha Hasta"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-              @update:model-value="emit('update:endDate', $event)"
-            />
-          </VCol>
-        </template>
+        <VCol v-if="props.showStateFilters" cols="6" sm="4" md="2" lg="2">
+          <VSelect
+            :model-value="props.stateFilter"
+            label="Estado"
+            :items="stateOptions"
+            clearable
+            density="compact"
+            hide-details
+            @update:model-value="emit('update:stateFilter', $event)"
+          />
+        </VCol>
+        <VCol v-if="props.showDateFilters" cols="6" sm="4" md="2" lg="2">
+          <AppDateTimePicker
+            :model-value="props.startDate"
+            placeholder="Desde"
+            clearable
+            density="compact"
+            hide-details
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
+            @update:model-value="emit('update:startDate', $event)"
+          />
+        </VCol>
+        <VCol v-if="props.showDateFilters" cols="6" sm="4" md="2" lg="2">
+          <AppDateTimePicker
+            :model-value="props.endDate"
+            placeholder="Hasta"
+            clearable
+            density="compact"
+            hide-details
+            :config="{
+              altInput: true,
+              altFormat: 'Y-m-d',
+              dateFormat: 'Y-m-d',
+            }"
+            @update:model-value="emit('update:endDate', $event)"
+          />
+        </VCol>
       </VRow>
     </VCardText>
 
@@ -192,4 +231,102 @@ const handleSortClick = (option) => {
       </VBtn>
     </VCardActions>
   </VCard>
+
+  <template v-else>
+    <VRow>
+      <VCol cols="6" sm="4" md="2" lg="2">
+        <AppTextField
+          :model-value="props.idSearchQuery"
+          placeholder="ID"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:idSearchQuery', $event)"
+        />
+      </VCol>
+      <VCol cols="6" sm="4" md="2" lg="2">
+        <AppTextField
+          :model-value="props.searchQuery"
+          placeholder="Identificación, Vendedor"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:searchQuery', $event)"
+        />
+      </VCol>
+      <VCol cols="6" sm="4" md="2" lg="2">
+        <VSelect
+          :model-value="props.currencyFilter"
+          label="Moneda"
+          :items="currencyOptions"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:currencyFilter', $event)"
+        />
+      </VCol>
+      <VCol cols="6" sm="4" md="2" lg="2">
+        <VSelect
+          :model-value="props.sellerFilter"
+          label="Vendedor"
+          :items="props.sellers"
+          :item-title="sellerDisplayName"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:sellerFilter', $event)"
+        />
+      </VCol>
+      <VCol v-if="props.showOfferFilters" cols="6" sm="4" md="2" lg="2">
+        <VSelect
+          :model-value="props.offer"
+          label="Descuentos"
+          :items="offerOptions"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:offer', $event)"
+        />
+      </VCol>
+      <VCol v-if="props.showStateFilters" cols="6" sm="4" md="2" lg="2">
+        <VSelect
+          :model-value="props.stateFilter"
+          label="Estado"
+          :items="stateOptions"
+          clearable
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:stateFilter', $event)"
+        />
+      </VCol>
+      <VCol v-if="props.showDateFilters" cols="6" sm="4" md="2" lg="2">
+        <AppDateTimePicker
+          :model-value="props.startDate"
+          placeholder="Desde"
+          clearable
+          density="compact"
+          hide-details
+          :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          @update:model-value="emit('update:startDate', $event)"
+        />
+      </VCol>
+      <VCol v-if="props.showDateFilters" cols="6" sm="4" md="2" lg="2">
+        <AppDateTimePicker
+          :model-value="props.endDate"
+          placeholder="Hasta"
+          clearable
+          density="compact"
+          hide-details
+          :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          @update:model-value="emit('update:endDate', $event)"
+        />
+      </VCol>
+    </VRow>
+    <div class="d-flex mt-3">
+      <VBtn color="secondary" variant="outlined" size="small" @click="emit('clear')">
+        Limpiar Filtros
+      </VBtn>
+    </div>
+  </template>
 </template>

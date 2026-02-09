@@ -8,7 +8,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
 });
-const emit = defineEmits(["update:options", "status"]);
+const emit = defineEmits(["update:options", "status", "open-approve-lots"]);
 const expanded = ref([]);
 
 const headers = [
@@ -29,18 +29,21 @@ const date = (order) => {
 
 const handleApproveReturn = async (item) => {
   const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `¿Desea aceptar devolver el producto? Se le sumará saldo por ${item.amount_refunded}$ al cliente ${item.order.client.name} ${item.order.client.last_name}`,
+    title: "Aprobar devolución",
+    html: `
+      <p class="text-start mb-2">Para aprobar debe distribuir las <strong>${item.quantity ?? 0} unidades</strong> devueltas en lotes (stock actual + unidades devueltas).</p>
+      <p class="text-start text-body-2 text-medium-emphasis">Se abrirá el modal de ajuste de lotes. La devolución se aprobará al guardar.</p>
+    `,
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#3085d6",
     cancelButtonColor: "#d33",
-    confirmButtonText: "Continuar",
+    confirmButtonText: "Aceptar",
     cancelButtonText: "Cancelar",
   });
 
   if (result.isConfirmed) {
-    emit("status", item, "Approved");
+    emit("open-approve-lots", item);
   }
 };
 
@@ -80,7 +83,7 @@ const handleRejectReturn = async (item) => {
     >
       <template #item.client="{ item }">
         <span class="font-weight-medium">
-          {{ item.order.seller.username }}
+          {{ item.order?.seller?.username ?? "—" }}
         </span>
       </template>
 
@@ -101,9 +104,9 @@ const handleRejectReturn = async (item) => {
             <span class="text-body-1 font-weight-medium text-high-emphasis">{{
               item.product.name
             }}</span>
-            <span class="text-sm text-disabled">{{
-              item.product.active_ingredient
-            }}</span>
+            <span v-if="item.product?.laboratory?.name" class="text-caption text-medium-emphasis">
+              {{ item.product.laboratory.name }}
+            </span>
           </div>
         </div>
       </template>

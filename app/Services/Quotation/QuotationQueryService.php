@@ -12,9 +12,13 @@ class QuotationQueryService
 
     private function getBaseQuery(): Builder
     {
-        return Product::query()->select(
-            'products.*'
-        )
+        return Product::query()
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->select(
+                'products.*'
+            )
             ->with([
                 'laboratory',
                 'origin',

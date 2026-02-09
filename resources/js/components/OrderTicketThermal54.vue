@@ -1,0 +1,347 @@
+<script setup>
+import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
+import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDateTime } from "@/utils/formatDateTime";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { computed } from "vue";
+
+const props = defineProps({
+  orderData: { type: Object, default: () => ({}) },
+  totalAmount: { type: Number, default: 0 },
+  selectedCurrency: { type: String, default: "COP" },
+  orderProducts: { type: Array, default: () => [] },
+  payments: { type: Array, default: () => [] },
+  changeAmount: { type: Number, default: 0 },
+  creditAmount: { type: Number, default: 0 },
+  credit: { type: Boolean, default: false },
+  companyDiscountTotal: { type: Number, default: 0 },
+  selectedDiscountType: { type: String, default: null },
+  doctorDiscountTotal: { type: Number, default: 0 },
+  recipeDiscountTotal: { type: Number, default: 0 },
+  isSpecialTaxpayer: { type: Boolean, default: false },
+  speSurchargeAmount: { type: [Number, String], default: 0 },
+});
+
+const getItemPriceByCurrency = (item, currency) => {
+  const taxRate = item.taxRate || 0;
+  let basePrice = 0;
+  if (currency === "BS") basePrice = item.price_bs || 0;
+  else if (currency === "COP") basePrice = item.price_cop || 0;
+  else basePrice = item.price || 0;
+  let priceWithIva = basePrice * (1 + taxRate);
+  if (currency === "COP") priceWithIva = roundUpToNearestHundred(priceWithIva);
+  return priceWithIva;
+};
+
+const getLineTotal = (item) => {
+  const price = getItemPriceByCurrency(item, props.selectedCurrency);
+  const qty = item.selectedQuantity || 0;
+  return price * qty;
+};
+
+const getPaymentMethodLabel = (methodValue, currency) => {
+  const map = {
+    COP: [{ label: "Efectivo", value: "cash_cop" }, { label: "Transferencia", value: "bank_transfer" }],
+    BS: [
+      { label: "Efectivo", value: "cash_bs" }, { label: "Pago Móvil", value: "mobile_payment" },
+      { label: "Transferencia", value: "bank_transfer_bs" }, { label: "Tarjeta", value: "card" },
+      { label: "T. Débito", value: "debit_card" }, { label: "T. Crédito", value: "credit_card" },
+    ],
+    USD: [
+      { label: "Efectivo", value: "cash_usd" }, { label: "Binance", value: "binance" },
+      { label: "PayPal", value: "paypal" }, { label: "Crédito", value: "credit" }, { label: "Saldo", value: "balance" },
+    ],
+  };
+  const list = map[currency] || Object.values(map).flat();
+  const found = list.find((m) => m.value === methodValue);
+  return found ? found.label : (methodValue || "").replace(/_/g, " ").toUpperCase();
+};
+
+const activeDiscount = computed(() => {
+  const type = (props.selectedDiscountType || "").toLowerCase();
+  const cur = props.selectedCurrency;
+  const config = {
+    empresa: { label: "Descuento Empresa", amount: props.companyDiscountTotal },
+    company: { label: "Descuento Empresa", amount: props.companyDiscountTotal },
+    medico: { label: "Descuento Médico", amount: props.doctorDiscountTotal },
+    doctor: { label: "Descuento Médico", amount: props.doctorDiscountTotal },
+    recipe: { label: "Descuento Recipe", amount: props.recipeDiscountTotal },
+  };
+  const c = config[type];
+  return c && c.amount > 0 ? c : null;
+});
+
+const productLab = (item) => item.laboratory || null;
+const productLineText = (item) => {
+  const qty = item.selectedQuantity ?? "";
+  const title = (item.title || "—").toUpperCase();
+  const lab = productLab(item) ? String(productLab(item)).toUpperCase() : "";
+  const line = lab ? `${qty} X ${title} ${lab}` : `${qty} X ${title}`;
+  return line.trim();
+};
+
+const clientDisplayLine = computed(() => {
+  const c = props.orderData?.client;
+  if (!c) return "—";
+  const name = [c.name, c.last_name].filter(Boolean).join(" ").trim();
+  const identification = c.identification ? (c.identification_type ? `${c.identification_type}${c.identification}` : c.identification) : "";
+  const parts = [name, identification].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
+});
+</script>
+
+<template>
+  <div class="thermal-54-ticket">
+    <!-- Encabezado: logo e info fiscal -->
+    <header class="thermal-header">
+      <img class="thermal-logo" :src="BASE64_LOGO_DATA" alt="Logo" />
+      <div class="thermal-rif">J-50540695-7</div>
+      <div class="thermal-company">FARMACIA BARRIO SUCRE 2024, C.A.</div>
+      <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>
+      <div class="thermal-address">SECTOR BARRIO SUCRE LA FRIA TACHIRA</div>
+      <div class="thermal-address">ZONA POSTAL 5020</div>
+    </header>
+
+    <!-- Datos de venta: orden y fecha -->
+    <div class="thermal-data">
+      <div class="thermal-data-row">
+        <span class="thermal-label">Nº Orden:</span>
+        <span class="thermal-value">{{ orderData.id }}</span>
+      </div>
+      <div class="thermal-data-row">
+        <span class="thermal-label">Fecha:</span>
+        <span class="thermal-value">{{ formatDateTime(orderData.created_at, "date") }} {{ formatDateTime(orderData.created_at, "time") }}</span>
+      </div>
+      <div class="thermal-data-row">
+        <span class="thermal-label">Cajero:</span>
+        <span class="thermal-value">{{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}</span>
+      </div>
+      <div class="thermal-data-row">
+        <span class="thermal-label">Cliente:</span>
+        <span class="thermal-value thermal-value-cliente">{{ clientDisplayLine }}</span>
+      </div>
+      <div v-if="orderData.client?.phone" class="thermal-data-row thermal-data-row-tel">
+        <span class="thermal-label">Tel:</span>
+        <span class="thermal-value">{{ orderData.client.phone }}</span>
+      </div>
+    </div>
+
+    <!-- Tabla de productos: "Cant. X Producto" + Monto -->
+    <div class="thermal-products">
+      <div class="thermal-products-head">
+        <span class="thermal-col-desc">Producto</span>
+        <span class="thermal-col-amount">Monto</span>
+      </div>
+      <div
+        v-for="(item, idx) in orderProducts"
+        :key="item.id || idx"
+        class="thermal-product-row"
+      >
+        <div class="thermal-col-desc">
+          <span class="thermal-product-name">{{ productLineText(item) }}</span>
+        </div>
+        <span class="thermal-col-amount">{{ formatCurrency(getLineTotal(item), selectedCurrency) }}</span>
+      </div>
+    </div>
+
+    <!-- Totales -->
+    <div class="thermal-totals">
+      <template v-if="activeDiscount">
+        <div class="thermal-total-row">
+          <span>{{ activeDiscount.label }}</span>
+          <span>- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
+        </div>
+      </template>
+      <template v-if="isSpecialTaxpayer && speSurchargeAmount">
+        <div class="thermal-total-row">
+          <span>Recargo SPE (3%)</span>
+          <span>{{ formatCurrency(Number(speSurchargeAmount), selectedCurrency) }}</span>
+        </div>
+      </template>
+      <div class="thermal-total-block">
+        <div class="thermal-total-row thermal-total-main">
+          <span>TOTAL</span>
+          <span>{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
+        </div>
+      </div>
+      <template v-if="payments?.length">
+        <div class="thermal-total-row" v-for="(p, i) in payments" :key="i">
+          <span>{{ getPaymentMethodLabel(p.method, p.currency) }} ({{ p.currency }})</span>
+          <span>{{ formatCurrency(p.amount || 0, p.currency) }}</span>
+        </div>
+      </template>
+      <template v-if="credit">
+        <div class="thermal-total-row">
+          <span>Crédito</span>
+          <span>{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
+        </div>
+      </template>
+      <template v-if="changeAmount > 0">
+        <div class="thermal-total-row">
+          <span>Devolución</span>
+          <span>{{ formatCurrency(changeAmount, "COP") }}</span>
+        </div>
+      </template>
+    </div>
+
+    <!-- Pie -->
+    <footer class="thermal-footer">
+      ¡GRACIAS POR SU COMPRA!
+    </footer>
+  </div>
+</template>
+
+<style scoped>
+.thermal-54-ticket {
+  width: 54mm;
+  max-width: 54mm;
+  min-width: 54mm;
+  padding: 2mm;
+  margin: 0;
+  background: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  line-height: 1.25;
+  box-sizing: border-box;
+  text-transform: uppercase;
+}
+.thermal-54-ticket * {
+  color: #000000 !important;
+  background: transparent !important;
+  box-sizing: border-box;
+  text-transform: uppercase !important;
+}
+.thermal-header {
+  text-align: center;
+  margin-bottom: 2mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px dashed #000000;
+}
+.thermal-logo {
+  display: block;
+  margin: 0 auto 1mm;
+  max-width: 40mm;
+  height: auto;
+  filter: grayscale(100%) contrast(1.1);
+}
+.thermal-rif {
+  font-size: 9px;
+  font-weight: bold;
+  margin: 0 0 0.5mm;
+}
+.thermal-company {
+  font-size: 10px;
+  font-weight: bold;
+  margin: 0 0 0.5mm;
+}
+.thermal-address {
+  font-size: 9px;
+  margin: 0;
+  line-height: 1.15;
+}
+.thermal-data {
+  margin-bottom: 2mm;
+}
+.thermal-data-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5mm 0;
+  font-size: 10px;
+}
+.thermal-label {
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.thermal-value {
+  text-align: right;
+  word-break: break-word;
+  margin-left: 2mm;
+}
+.thermal-value-cliente {
+  text-align: right;
+  word-break: break-word;
+}
+.thermal-data-row-tel {
+  margin-top: 0.25mm;
+  font-size: 9px;
+}
+.thermal-products {
+  margin-bottom: 2mm;
+  border-top: 1px dashed #000000;
+  padding-top: 1mm;
+  font-size: 10px;
+}
+.thermal-products-head {
+  display: flex;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 0.4mm 0;
+  border-bottom: 1px dashed #000000;
+}
+.thermal-col-desc {
+  flex: 1;
+  min-width: 0;
+  padding: 0 1.5mm 0 0;
+}
+.thermal-col-amount {
+  width: 16mm;
+  flex-shrink: 0;
+  text-align: right;
+}
+.thermal-product-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.5mm 0;
+  font-size: 10px;
+  line-height: 1.2;
+  border-bottom: 1px solid #000000;
+}
+.thermal-product-row .thermal-col-desc {
+  display: flex;
+  flex-direction: column;
+}
+/* Producto: 2pt más pequeño que el resto (8px vs 10px base) - !important evita que otra regla lo sobrescriba */
+.thermal-product-name {
+  font-size: 8px !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-transform: uppercase;
+}
+.thermal-product-meta {
+  font-size: 8px;
+  margin-top: 0.2mm;
+  opacity: 1;
+  color: #000000;
+  text-transform: uppercase;
+}
+.thermal-totals {
+  margin-top: 2mm;
+  padding-top: 1mm;
+  font-size: 10px;
+}
+.thermal-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5mm 0;
+}
+.thermal-total-block {
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  padding: 1.5mm 0;
+  margin: 1mm 0;
+}
+.thermal-total-main {
+  font-size: 11px;
+  font-weight: bold;
+}
+.thermal-footer {
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 3mm;
+  padding-top: 2mm;
+  border-top: 1px dashed #000000;
+}
+</style>

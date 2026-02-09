@@ -11,6 +11,7 @@ import ProductsWithoutSupplierComparatorFilter from "@/components/ProductsWithou
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import { onMounted, reactive, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
@@ -490,6 +491,8 @@ const handleShowProducts = (supplier) => {
   isShowSupplierProductsDialogActive.value = true;
 };
 
+const supplierConnectionStore = useSupplierConnectionStore();
+
 const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
   pollingSupplierId.value = supplier.id;
@@ -499,7 +502,7 @@ const handleCheckSupplierApi = async (supplier) => {
       `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
-
+    supplierConnectionStore.startConnection();
     startPolling();
   } catch (error) {
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);

@@ -1,5 +1,6 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { useAuthStore } from "@/stores/auth";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
@@ -224,7 +225,7 @@ onMounted(() => {
       </div>
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint">Cajero:</span>
-        <span>{{ orderData.seller.username }}</span>
+        <span>{{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : '—' }}</span>
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
