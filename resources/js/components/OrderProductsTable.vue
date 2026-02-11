@@ -290,32 +290,21 @@ const handleAddPack = (packId) => {
   inputQuantities.value.set(packId, 1);
 };
 
-// Función para determinar el estilo de la fila según stock y expiración
+// Oferta por expiración: precio rojo. Otras ofertas: verde. Sin oferta: normal
+const getPriceClass = (item) => {
+  const hasDiscount = item.discount_percentage > 0 || (shouldApplyDiscount.value && props.currentDiscount > 0);
+  if (!hasDiscount) return 'precio-normal';
+  if (item.discount_type === 'expiration') return 'precio-expira';
+  return 'precio-oferta';
+};
+
+// Función para determinar el estilo de la fila: stock <= 0 -> fila roja con letras blancas
 const getRowClass = (item) => {
-  const classes = [];
-  
-  // Stock en 0: fondo rojo, letras blancas
-  if (item.valid_stock_sum === 0) {
-    classes.push('row-zero-stock');
-    return classes.join(' '); // Retornar inmediatamente si stock es 0
+  const stock = item.valid_stock_sum ?? 0;
+  if (stock <= 0) {
+    return 'row-zero-stock';
   }
-  
-  // Verificar si está vencido o tiene menos de 6 meses por vencer
-  if (item.next_expiration) {
-    const expirationDate = new Date(item.next_expiration);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sixMonthsFromNow = new Date();
-    sixMonthsFromNow.setMonth(today.getMonth() + 6);
-    sixMonthsFromNow.setHours(23, 59, 59, 999);
-    
-    // Si está vencido (antes de hoy) o tiene menos de 6 meses por vencer
-    if (expirationDate < today || expirationDate <= sixMonthsFromNow) {
-      classes.push('row-zero-stock'); // Fondo rojo para productos vencidos o próximos a vencer
-    }
-  }
-  
-  return classes.join(' ');
+  return '';
 };
 </script>
 
@@ -330,7 +319,7 @@ const getRowClass = (item) => {
       :items-length="props.totalProduct"
       :loading="props.loading"
       class="text-no-wrap"
-      :row-props="(item) => ({ class: getRowClass(item) })"
+      :row-props="(data) => ({ class: getRowClass(data.item) })"
       @update:options="handleUpdateOptions" >
 
       <template #item.id="{ item }">
@@ -352,6 +341,15 @@ const getRowClass = (item) => {
               {{ item.name }}
               <span v-if="item.iva == 1"> (G)</span>
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+              <VChip
+                v-if="item.discount_type === 'expiration' && item.discount_percentage > 0"
+                color="error"
+                size="x-small"
+                class="ms-1"
+                label
+              >
+                Expira (-{{ item.discount_percentage }}%)
+              </VChip>
             </span>
             <span 
               class="text-sm text-disabled"
@@ -377,7 +375,7 @@ const getRowClass = (item) => {
             {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
           </del>
           <span
-            :class="(item.discount_percentage > 0 || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="getPriceClass(item)"
             class="font-weight-medium"
           >
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
@@ -390,7 +388,7 @@ const getRowClass = (item) => {
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
           </del>
           <span
-            :class="(item.discount_percentage > 0 || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="getPriceClass(item)"
             class="font-weight-medium"
           >
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item)) }}
@@ -403,7 +401,7 @@ const getRowClass = (item) => {
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
           <span
-            :class="(item.discount_percentage > 0 || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="getPriceClass(item)"
             class="font-weight-medium"
           >
             {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
@@ -424,15 +422,15 @@ const getRowClass = (item) => {
             single-line
             style="max-width: 90px; min-width: 90px"
             class="my-2 quantity-input-field"
-            :disabled="item.valid_stock_sum === 0"
+            :disabled="(item.valid_stock_sum ?? 0) <= 0"
           />
           <IconBtn
             @click="handleAddProduct(item.id)"
              v-if="item.item_type === 'product'"
             :disabled="
               (inputQuantities.get(item.id) ?? 0) <= 0 ||
-              (inputQuantities.get(item.id) ?? 0) > item.valid_stock_sum ||
-              item.valid_stock_sum === 0
+              (inputQuantities.get(item.id) ?? 0) > (item.valid_stock_sum ?? 0) ||
+              (item.valid_stock_sum ?? 0) <= 0
             "
           >
             <VIcon icon="tabler-plus" />
@@ -527,8 +525,9 @@ const getRowClass = (item) => {
 </template>
 
 <style scoped>
+/* 1. Resaltado de productos sin stock: fondo rojo #d32f2f, letras blancas */
 :deep(.row-zero-stock) {
-  background-color: rgb(var(--v-theme-error)) !important;
+  background-color: #d32f2f !important;
   color: white !important;
 }
 
@@ -537,35 +536,31 @@ const getRowClass = (item) => {
   color: white !important;
 }
 
+/* Prioridad: si no hay stock, TODO el texto es blanco (incluye precios de oferta por vencimiento) */
 :deep(.row-zero-stock .text-disabled),
 :deep(.row-zero-stock .text-black),
 :deep(.row-zero-stock .text-high-emphasis),
 :deep(.row-zero-stock .precio-normal),
-:deep(.row-zero-stock .precio-tachado) {
-  color: rgba(255, 255, 255, 0.9) !important;
+:deep(.row-zero-stock .precio-tachado),
+:deep(.row-zero-stock .precio-oferta),
+:deep(.row-zero-stock .precio-expira) {
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 
-:deep(.row-expiring) {
-  background-color: rgb(var(--v-theme-warning)) !important;
-}
-
-:deep(.row-expiring td),
-:deep(.row-expiring th) {
-  color: rgb(var(--v-theme-on-warning)) !important;
-}
-
-:deep(.row-expiring .text-disabled) {
-  color: rgba(0, 0, 0, 0.6) !important;
-}
-
-/* Si una fila tiene ambas clases (stock 0 y expirando), el rojo tiene prioridad */
-:deep(.row-zero-stock.row-expiring) {
-  background-color: rgb(var(--v-theme-error)) !important;
+/* Inputs y botones en fila sin stock: legibles sobre fondo rojo */
+:deep(.row-zero-stock .quantity-input-field input),
+:deep(.row-zero-stock .quantity-input-field .v-field__input),
+:deep(.row-zero-stock input) {
   color: white !important;
+  -webkit-text-fill-color: white !important;
 }
 
-:deep(.row-zero-stock.row-expiring td),
-:deep(.row-zero-stock.row-expiring th) {
+:deep(.row-zero-stock .v-field) {
+  --v-field-border-opacity: 0.4;
+}
+
+:deep(.row-zero-stock .v-chip) {
+  background-color: rgba(255, 255, 255, 0.2) !important;
   color: white !important;
 }
 
@@ -581,9 +576,15 @@ const getRowClass = (item) => {
   font-size: 0.75rem;
 }
 
-/* Precio con oferta individual */
+/* Precio con oferta individual/categoría */
 .precio-oferta {
   color: rgb(var(--v-theme-success));
+  font-weight: 600;
+}
+
+/* 2. Precios en rojo para ofertas por vencimiento (USD, BS, COP) - solo cuando la fila NO es sin stock */
+.precio-expira {
+  color: #d32f2f;
   font-weight: 600;
 }
 </style>

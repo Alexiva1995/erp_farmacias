@@ -12,7 +12,6 @@ const emit = defineEmits([
   'update:status',
   'update:months',
   'clear',
-  'search',
   'add-expiration-offer'
 ]);
 
@@ -36,46 +35,33 @@ const monthsOptions = [
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por meses, descuento, producto..."
+            placeholder="Buscar por meses, descuento..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
-            @keyup.enter="emit('search')"
           />
         </VCol>
-        
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.status"
             :items="statusOptions"
             label="Estado"
             clearable
+            density="default"
             @update:model-value="emit('update:status', $event)"
           />
         </VCol>
-
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.months"
             :items="monthsOptions"
             label="Meses"
             clearable
+            density="default"
             @update:model-value="emit('update:months', $event)"
           />
-        </VCol>
-        
-        <VCol cols="12" sm="6" md="3" class="d-flex align-center">
-          <VBtn
-            color="primary"
-            variant="outlined"
-            :loading="props.loading"
-            @click="emit('search')"
-          >
-            <VIcon icon="tabler-search" class="me-2" />
-            Buscar
-          </VBtn>
         </VCol>
       </VRow>
     </VCardText>

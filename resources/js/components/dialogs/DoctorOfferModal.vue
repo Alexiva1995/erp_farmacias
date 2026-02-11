@@ -141,19 +141,26 @@ const formatDateForInput = (dateString) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="700px"
     persistent
+    scrollable
+    :retain-focus="false"
     @update:model-value="onCancel"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center p-4">
-        <span class="text-h5 font-weight-bold">{{ dialogTitle }}</span>
-        <VSpacer />
+    <VCard :loading="loading">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-stethoscope" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="flex-grow-1 pa-6">
+      <VCardText class="pa-5">
         <p class="text-h6 font-weight-medium mb-4">Información de la Oferta</p>
 
         <VRow>
@@ -224,24 +231,25 @@ const formatDateForInput = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-6">
-        <VRow>
-          <VCol cols="6" class="pe-2">
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
             <VBtn
               color="secondary"
               variant="outlined"
+              prepend-icon="tabler-x"
               block
-              :disabled="loading"
               @click="onCancel"
+              :disabled="loading"
             >
               Cancelar
             </VBtn>
           </VCol>
-
-          <VCol cols="6" class="ps-2">
+          <VCol cols="6" class="pa-2">
             <VBtn
               color="primary"
               variant="flat"
+              prepend-icon="tabler-check"
               block
               :loading="loading"
               @click="onSave"
