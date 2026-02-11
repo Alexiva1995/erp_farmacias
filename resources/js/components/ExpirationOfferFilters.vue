@@ -33,7 +33,7 @@ const monthsOptions = [
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="3">
