@@ -173,9 +173,25 @@ class OrderQueryService
                 'products.psychotropic',
                 'laboratories.name as laboratory_name',
                 DB::raw('NULL as pack_config'),
-            DB::raw("'product' as item_type"),
+                DB::raw("'product' as item_type"),
                 DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
-                DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum')
+                DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'),
+                DB::raw("(
+                    SELECT GREATEST(
+                        COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0),
+                        COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
+                    )
+                ) as discount_percentage"),
+                DB::raw("(
+                    SELECT CASE
+                        WHEN COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0) >=
+                             COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
+                        THEN 'individual'
+                        WHEN (SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1) > 0
+                        THEN 'category'
+                        ELSE NULL
+                    END
+                ) as discount_type"),
             ])
             ->where(function ($q) {
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
@@ -212,7 +228,9 @@ class OrderQueryService
                 DB::raw("product_packs.pack_config as pack_config"), 
             DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
-                'product_packs.max_quantity as valid_stock_sum'
+                'product_packs.max_quantity as valid_stock_sum',
+                DB::raw('NULL as discount_percentage'),
+                DB::raw('NULL as discount_type'),
             ])->where('product_packs.is_active', true)
             ->where(function ($q) {
                 $q->whereNull('product_packs.max_sale_date')

@@ -88,9 +88,15 @@ const shouldApplyDiscount = computed(() => {
   );
 });
 
-// Calcular precio con descuento si aplica
-const calculatePriceWithDiscount = (basePrice) => {
+// Calcular precio con descuento si aplica (empresa, oferta individual o categoría)
+const calculatePriceWithDiscount = (basePrice, product = null) => {
   const price = parseFloat(basePrice) || 0;
+
+  // Oferta individual o categoría: prioridad si el producto la tiene
+  if ((product?.discount_type === "individual" || product?.discount_type === "category") && parseFloat(product?.discount_percentage || 0) > 0) {
+    const pct = parseFloat(product.discount_percentage);
+    return price * (1 - pct / 100);
+  }
 
   if (shouldApplyDiscount.value && props.currentDiscount > 0) {
     const discountAmount = price * (props.currentDiscount / 100);
@@ -102,7 +108,7 @@ const calculatePriceWithDiscount = (basePrice) => {
 
 // Calcular precio con IVA y descuento (si aplica)
 const calculatePriceWithIVAAndDiscount = (basePrice, product) => {
-  let effectivePrice = calculatePriceWithDiscount(basePrice);
+  let effectivePrice = calculatePriceWithDiscount(basePrice, product);
   let taxRate = product.iva == 1 ? 0.16 : 0;
 
   if (taxRate > 0) {
@@ -365,48 +371,50 @@ const getRowClass = (item) => {
         </div>
       </template>
       <template #item.sale_price="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatCurrency(
-              calculatePriceWithIVAAndDiscount(item.sale_price, item)
-            )
-          }}</span>
-          <!-- Mostrar precio original tachado si hay descuento -->
-          <span
-            v-if="shouldApplyDiscount && currentDiscount > 0"
-            class="text-xs text-disabled text-decoration-line-through"
-          >
+        <div class="d-flex flex-column align-end">
+          <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+          </del>
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+          </span>
+          <span
+            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            class="font-weight-medium"
+          >
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
           </span>
         </div>
       </template>
       <template #item.price_bs="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatCurrency(
-              calculatePriceWithIVAAndDiscount(item.price_bs, item)
-            )
-          }}</span>
-          <!-- Mostrar precio original tachado si hay descuento -->
-          <span
-            v-if="shouldApplyDiscount && currentDiscount > 0"
-            class="text-xs text-disabled text-decoration-line-through"
-          >
+        <div class="d-flex flex-column align-end">
+          <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
+          </del>
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
+          </span>
+          <span
+            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            class="font-weight-medium"
+          >
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item)) }}
           </span>
         </div>
       </template>
       <template #item.price_cop="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item)
-          }}</span>
-          <!-- Mostrar precio original tachado si hay descuento -->
-          <span
-            v-if="shouldApplyDiscount && currentDiscount > 0"
-            class="text-xs text-disabled text-decoration-line-through"
-          >
+        <div class="d-flex flex-column align-end">
+          <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
+          </del>
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+            {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
+          </span>
+          <span
+            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            class="font-weight-medium"
+          >
+            {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
           </span>
         </div>
       </template>
@@ -563,5 +571,23 @@ const getRowClass = (item) => {
 :deep(.row-zero-stock.row-expiring td),
 :deep(.row-zero-stock.row-expiring th) {
   color: white !important;
+}
+
+/* Precio normal (sin oferta): color negro */
+.precio-normal {
+  color: #000;
+}
+
+/* Oferta individual: precio original tachado */
+.precio-tachado {
+  color: #9e9e9e;
+  text-decoration: line-through;
+  font-size: 0.75rem;
+}
+
+/* Precio con oferta individual */
+.precio-oferta {
+  color: rgb(var(--v-theme-success));
+  font-weight: 600;
 }
 </style>
