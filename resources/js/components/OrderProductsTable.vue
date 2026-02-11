@@ -370,16 +370,19 @@ const getRowClass = (item) => {
           </div>
         </div>
       </template>
+      <template #item.laboratory_name="{ item }">
+        <span class="font-weight-medium">{{ item.laboratory_name }}</span>
+      </template>
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
           <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
           </del>
-          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
           </span>
           <span
-            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="((item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
             class="font-weight-medium"
           >
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
@@ -391,11 +394,11 @@ const getRowClass = (item) => {
           <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
           </del>
-          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
           </span>
           <span
-            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="((item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
             class="font-weight-medium"
           >
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item)) }}
@@ -407,11 +410,11 @@ const getRowClass = (item) => {
           <del v-if="(item.discount_type === 'individual' || item.discount_type === 'category') && item.discount_percentage > 0" class="precio-tachado">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
-          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="text-xs text-disabled text-decoration-line-through">
+          <span v-else-if="shouldApplyDiscount && currentDiscount > 0" class="precio-tachado">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </span>
           <span
-            :class="(item.discount_type === 'individual' || item.discount_type === 'category' || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
+            :class="((item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)) ? 'precio-oferta' : 'precio-normal'"
             class="font-weight-medium"
           >
             {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
@@ -545,8 +548,12 @@ const getRowClass = (item) => {
   color: white !important;
 }
 
-:deep(.row-zero-stock .text-disabled) {
-  color: rgba(255, 255, 255, 0.7) !important;
+:deep(.row-zero-stock .text-disabled),
+:deep(.row-zero-stock .text-black),
+:deep(.row-zero-stock .text-high-emphasis),
+:deep(.row-zero-stock .precio-normal),
+:deep(.row-zero-stock .precio-tachado) {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 :deep(.row-expiring) {
@@ -573,14 +580,14 @@ const getRowClass = (item) => {
   color: white !important;
 }
 
-/* Precio normal (sin oferta): color negro */
+/* Precio normal (sin oferta): hereda color del tema como /inventory/products */
 .precio-normal {
-  color: #000;
+  /* Sin color explícito - igual que ProductTable */
 }
 
-/* Oferta individual: precio original tachado */
+/* Precio original tachado (cuando hay oferta) */
 .precio-tachado {
-  color: #9e9e9e;
+  color: #a0a0a0;
   text-decoration: line-through;
   font-size: 0.75rem;
 }
