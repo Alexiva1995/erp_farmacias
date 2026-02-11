@@ -480,10 +480,16 @@ const validateAndApplyCompanyDiscount = () => {
 
   const porcentaje = parseFloat(offer.current_discount || 0);
   if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "company",
+      name: offer.title,
+      id: offer.id,
+    });
     toast.success(
       `Descuento de empresa ${porcentaje}% habilitado para esta orden.`,
     );
   } else {
+    removeDiscount();
     selectedCompanyId.value = null;
     toast.info(
       `Esta empresa no cuenta con un descuento activo para el periodo actual.`,
@@ -535,28 +541,27 @@ const validateAndApplyCompanyDiscount = () => {
 
 const applyDiscount = (percentage, source) => {
   orderItems.value = orderItems.value.map((item) => {
-    // Exclude expiration or pack items from global discounts
     if (item.discount_type === "expiration" || item.pack_id) {
       return item;
     }
-
-    if (!item.originalPrice) {
-      item.originalPrice = item.price;
-      item.originalPriceBs = item.price_bs;
-      item.originalPriceCop = item.price_cop;
-    }
-
-    const discountFactor = 1 - percentage / 100;
-
+    const origUsd = item.originalPrice ?? item.original_price_usd ?? item.price;
+    const origBs = item.originalPriceBs ?? item.original_price_bs ?? item.price_bs;
+    const origCop = item.originalPriceCop ?? item.original_price_cop ?? item.price_cop;
+    const productPct = parseFloat(item.discount_percentage || 0);
+    const bestPct = Math.max(percentage, productPct);
+    const discountFactor = bestPct > 0 ? 1 - bestPct / 100 : 1;
     return {
       ...item,
-      price: item.originalPrice * discountFactor,
-      price_bs: item.originalPriceBs * discountFactor,
-      price_cop: item.originalPriceCop * discountFactor,
+      originalPrice: origUsd,
+      originalPriceBs: origBs,
+      originalPriceCop: origCop,
+      price: origUsd * discountFactor,
+      price_bs: origBs * discountFactor,
+      price_cop: origCop * discountFactor,
       discountApplied: true,
-      discountSource: source.type,
-      discountSourceId: source.id,
-      appliedDiscountPercentage: percentage,
+      discountSource: bestPct === productPct ? (item.discount_type || "individual") : source.type,
+      discountSourceId: bestPct === productPct ? item.discount_source_id : source.id,
+      appliedDiscountPercentage: bestPct,
     };
   });
 };
@@ -1363,17 +1368,10 @@ const totalOrderAmountWithspecialTaxAmount = computed(() => {
   return base;
 });
 
+// Monto Total = suma de totales de cada fila (Precio con Descuento + IVA)
+// El descuento ya está aplicado en el Precio Base de cada producto
 const totalOrderAmount = computed(() => {
-  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
-  let discountToSubtract = 0;
-  if (selectedDiscountType.value === "Empresa") {
-    discountToSubtract = totalCompanyDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Medico") {
-    discountToSubtract = totalDoctorDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Recipe") {
-    discountToSubtract = totalRecipeDiscountAmount.value;
-  }
-  return baseTotal - discountToSubtract;
+  return totalProductsAmount.value + totalIVAAmount.value;
 });
 
 const totalOrderAmountSinDiscount = computed(() => {
@@ -2237,44 +2235,48 @@ const handleBuysCompletion = async (
     const taxRateValue = isTaxable ? 0.16 : 0;
     const taxMultiplier = isTaxable ? 1.16 : 1;
 
-      // 1. Precio base y final
-      // getItemPriceByCurrency devuelve el precio que viene del backend (unit_cost), que YA incluye
-      // el descuento de producto (oferta individual, vencimiento, categoría) aplicado al agregar.
+      // getItemPriceByCurrency devuelve item.price/price_bs/price_cop (ya modificados por applyDiscount si aplica)
       let finalPrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
       let finalPriceBeforeDiscount = finalPrice;
-
-      // 2. Determinar qué descuento aplicar
       let dType = null;
       let dPercent = 0;
       let dSourceId = null;
 
-      const productPct = parseFloat(item.discount_percentage || 0);
-      const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
-
-      if (globalPct > productPct) {
-        // Descuento global gana (empresa, médico, receta): aplicar sobre precio original
-        dType = currentTypeName;
-        dPercent = globalPct;
-        dSourceId = currentSourceId;
-        const basePrice = selectedDisplayCurrency.value === "BS"
-          ? (item.original_price_bs ?? item.basePrice)
+      // Si applyDiscount ya modificó el item, NO recalcular: el precio ya está correcto
+      if (item.discountApplied) {
+        dType = item.discountSource || item.discount_type;
+        dPercent = parseFloat(item.appliedDiscountPercentage || 0);
+        dSourceId = item.discountSourceId || item.discount_source_id;
+        const orig = selectedDisplayCurrency.value === "BS"
+          ? (item.originalPriceBs ?? item.original_price_bs)
           : selectedDisplayCurrency.value === "COP"
-            ? (item.original_price_cop ?? item.basePrice)
-            : (item.basePrice ?? item.original_price_usd);
-        finalPriceBeforeDiscount = basePrice;
-        finalPrice = basePrice * (1 - dPercent / 100);
-      } else if (productPct > 0) {
-        // Descuento de producto (individual, vencimiento, categoría): el precio YA está descontado
-        // No volver a aplicar; el unit_cost del backend ya tiene el descuento aplicado.
-        dType = item.discount_type || "individual";
-        dPercent = productPct;
-        dSourceId = item.discount_source_id;
-        finalPriceBeforeDiscount = (selectedDisplayCurrency.value === "BS"
-          ? item.original_price_bs
-          : selectedDisplayCurrency.value === "COP"
-            ? item.original_price_cop
-            : item.basePrice) ?? finalPrice;
-        // finalPrice ya es correcto (viene del backend descontado)
+            ? (item.originalPriceCop ?? item.original_price_cop)
+            : (item.originalPrice ?? item.original_price_usd);
+        if (orig != null) finalPriceBeforeDiscount = orig;
+      } else {
+        const productPct = parseFloat(item.discount_percentage || 0);
+        const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
+        if (globalPct > productPct) {
+          dType = currentTypeName;
+          dPercent = globalPct;
+          dSourceId = currentSourceId;
+          const basePrice = selectedDisplayCurrency.value === "BS"
+            ? (item.original_price_bs ?? item.originalPriceBs ?? item.basePrice)
+            : selectedDisplayCurrency.value === "COP"
+              ? (item.original_price_cop ?? item.originalPriceCop ?? item.basePrice)
+              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice);
+          finalPriceBeforeDiscount = basePrice;
+          finalPrice = basePrice * (1 - dPercent / 100);
+        } else if (productPct > 0) {
+          dType = item.discount_type || "individual";
+          dPercent = productPct;
+          dSourceId = item.discount_source_id;
+          finalPriceBeforeDiscount = (selectedDisplayCurrency.value === "BS"
+            ? (item.original_price_bs ?? item.originalPriceBs)
+            : selectedDisplayCurrency.value === "COP"
+              ? (item.original_price_cop ?? item.originalPriceCop)
+              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice)) ?? finalPrice;
+        }
       }
       
       const ivaAmount = finalPrice * taxRateValue;
