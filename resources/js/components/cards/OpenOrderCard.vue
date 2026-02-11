@@ -224,22 +224,16 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
+// Factor: Precio = Original * (1 - Max(Global, Individual/Expiration) / 100)
+// Evita doble descuento: NUNCA aplicar % sobre un precio ya descontado
 const getDiscountFactor = (product) => {
-  // If pack, no discount ever
   if (product.pack_id) return 1;
 
   const globalPct = props.globalDiscount
     ? parseFloat(props.globalDiscount.percentage)
     : 0;
-
-  // Check if expiration discount exists
-  let expirationPct = 0;
-  if (product.discount_type === "expiration") {
-    expirationPct = parseFloat(product.discount_percentage || 0);
-  }
-
-  // Use the larger of the two
-  const bestPct = Math.max(globalPct, expirationPct);
+  const productPct = parseFloat(product.discount_percentage || 0);
+  const bestPct = Math.max(globalPct, productPct);
 
   if (bestPct > 0) {
     return 1 - bestPct / 100;
@@ -247,18 +241,26 @@ const getDiscountFactor = (product) => {
   return 1;
 };
 
-// Base con descuento aplicado; usa getDiscountFactor si applyDiscount no modificó el item
+// Precio original de lista (para aplicar descuento una sola vez)
+const getOriginalBasePrice = (product, currency) => {
+  if (currency === "BS") {
+    return product.original_price_bs ?? product.originalPriceBs ?? product.price_bs ?? 0;
+  }
+  if (currency === "COP") {
+    return product.original_price_cop ?? product.originalPriceCop ?? product.price_cop ?? 0;
+  }
+  return product.original_price_usd ?? product.originalPrice ?? product.basePrice ?? product.price ?? 0;
+};
+
+// Base con descuento aplicado; usa precio ORIGINAL * factor único para evitar doble descuento
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
-  }
-  if (activeDiscountDisplay.value != null && !product.discountApplied) {
-    basePrice = basePrice * getDiscountFactor(product);
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -327,44 +329,34 @@ const getProductPriceSinDescuento = (product, currency) => {
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
-  }
-  // applyDiscount en orderUser ya modifica el precio; no aplicar getDiscountFactor de nuevo
-  if (activeDiscountDisplay.value != null && !product.discountApplied) {
-    basePrice = basePrice * getDiscountFactor(product);
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
-
   return priceWithIva;
 };
 
 const getIva = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
-  }
-  // applyDiscount ya modificó la base; IVA sobre base rebajada
-  if (activeDiscountDisplay.value != null && !product.discountApplied) {
-    basePrice = basePrice * getDiscountFactor(product);
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
-
   return Iva;
 };
 

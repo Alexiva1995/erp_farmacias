@@ -345,13 +345,19 @@ const fetchCompanyOffers = async (companyId = null) => {
   }
 };*/
 
+// Handshake idéntico a handleDoctorDiscountSelected: validación + applyDiscount
 const handlePrescriptionFileSelected = (file) => {
   prescriptionFile.value = file;
+  validateAndApplyPrescriptionDiscount();
   if (file && activePrescriptionOffers.value.length > 0) {
-    const offer = activePrescriptionOffers.value[0];
-    toast.success(
-      `Descuento de receta del ${offer.discount_percentage}% detectado.`,
-    );
+    const porcentaje = parseFloat(activePrescriptionOffers.value[0].discount_percentage || 0);
+    if (porcentaje > 0) {
+      toast.success(`Descuento de receta del ${porcentaje}% aplicado.`);
+    } else {
+      toast.info("No hay un descuento de receta activo.");
+    }
+  } else if (selectedDiscountType.value === "Recipe") {
+    toast.info("Descuento de receta removido.");
   }
 };
 
@@ -400,6 +406,33 @@ const validateAndApplyDoctorDiscount = () => {
     toast.info(
       "Esta oferta de médico no tiene un descuento configurado.",
     );
+  }
+};
+
+// Espejo exacto de validateAndApplyDoctorDiscount para Recipe
+const validateAndApplyPrescriptionDiscount = () => {
+  if (activePrescriptionOffers.value.length === 0) {
+    return;
+  }
+
+  if (!prescriptionFile.value) {
+    if (selectedDiscountType.value === "Recipe") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activePrescriptionOffers.value[0];
+  const porcentaje = parseFloat(offer.discount_percentage || 0);
+
+  if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "recipe",
+      name: "Recipe médica",
+      id: offer.id,
+    });
+  } else {
+    removeDiscount();
   }
 };
 
@@ -576,6 +609,8 @@ const validateAndApplyCompanyDiscount = () => {
   }
 };*/
 
+// Precio Final = Original * (1 - Max(DescuentoGlobal, DescuentoIndividual) / 100)
+// Usado por Médico, Recipe y Empresa. Evita doble descuento.
 const applyDiscount = (percentage, source) => {
   orderItems.value = orderItems.value.map((item) => {
     if (item.discount_type === "expiration" || item.pack_id) {
@@ -610,19 +645,24 @@ const removeDiscount = () => {
       return item;
     }
 
-    if (item.originalPrice) {
-      return {
-        ...item,
-        price: item.originalPrice,
-        price_bs: item.originalPriceBs,
-        price_cop: item.originalPriceCop,
-        discountApplied: false,
-        discountSource: null,
-        discountSourceId: null,
-        appliedDiscountPercentage: 0,
-      };
-    }
-    return item;
+    // Restaurar al precio del backend (con descuento individual/categoría si aplica)
+    // Misma lógica que Médico: no perder el descuento base del producto
+    const origUsd = item.original_price_usd ?? item.originalPrice ?? item.price;
+    const origBs = item.original_price_bs ?? item.originalPriceBs ?? item.price_bs;
+    const origCop = item.original_price_cop ?? item.originalPriceCop ?? item.price_cop;
+    const productPct = parseFloat(item.discount_percentage || 0);
+    const factor = productPct > 0 ? 1 - productPct / 100 : 1;
+
+    return {
+      ...item,
+      price: origUsd * factor,
+      price_bs: origBs * factor,
+      price_cop: origCop * factor,
+      discountApplied: false,
+      discountSource: null,
+      discountSourceId: null,
+      appliedDiscountPercentage: 0,
+    };
   });
 };
 
@@ -669,6 +709,16 @@ watch(
       clearTimeout(discountValidationTimer);
       discountValidationTimer = setTimeout(() => {
         validateAndApplyDoctorDiscount();
+      }, 300);
+    }
+    if (
+      selectedDiscountType.value === "Recipe" &&
+      prescriptionFile.value &&
+      activePrescriptionOffers.value.length > 0
+    ) {
+      clearTimeout(discountValidationTimer);
+      discountValidationTimer = setTimeout(() => {
+        validateAndApplyPrescriptionDiscount();
       }, 300);
     }
   },
@@ -1828,6 +1878,20 @@ const addProductToOrder = async ({
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
+    }
+
+    // Si hay descuento global activo, aplicar al producto recién agregado (igual que Médico)
+    if (
+      selectedDiscountType.value === "Medico" &&
+      selectedDoctorOffer.value
+    ) {
+      validateAndApplyDoctorDiscount();
+    } else if (
+      selectedDiscountType.value === "Recipe" &&
+      prescriptionFile.value &&
+      activePrescriptionOffers.value.length > 0
+    ) {
+      validateAndApplyPrescriptionDiscount();
     }
   } catch (error) {
     console.error(
