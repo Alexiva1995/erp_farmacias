@@ -2237,39 +2237,44 @@ const handleBuysCompletion = async (
     const taxRateValue = isTaxable ? 0.16 : 0;
     const taxMultiplier = isTaxable ? 1.16 : 1;
 
-      // 1. Determine Base Price in Current Currency
-      let finalPrice = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
-      let finalPriceBeforeDiscount = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
+      // 1. Precio base y final
+      // getItemPriceByCurrency devuelve el precio que viene del backend (unit_cost), que YA incluye
+      // el descuento de producto (oferta individual, vencimiento, categoría) aplicado al agregar.
+      let finalPrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+      let finalPriceBeforeDiscount = finalPrice;
 
-      // 2. Determine Discount Details
+      // 2. Determinar qué descuento aplicar
       let dType = null;
       let dPercent = 0;
       let dSourceId = null;
 
       const productPct = parseFloat(item.discount_percentage || 0);
-
       const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
 
-      // Determine Winner
       if (globalPct > productPct) {
-        // Global Wins
+        // Descuento global gana (empresa, médico, receta): aplicar sobre precio original
         dType = currentTypeName;
         dPercent = globalPct;
         dSourceId = currentSourceId;
+        const basePrice = selectedDisplayCurrency.value === "BS"
+          ? (item.original_price_bs ?? item.basePrice)
+          : selectedDisplayCurrency.value === "COP"
+            ? (item.original_price_cop ?? item.basePrice)
+            : (item.basePrice ?? item.original_price_usd);
+        finalPriceBeforeDiscount = basePrice;
+        finalPrice = basePrice * (1 - dPercent / 100);
       } else if (productPct > 0) {
-        // Product Discount Wins (Expiration, Individual, or Category)
-        dType = item.discount_type || "individual"; // Fallback
+        // Descuento de producto (individual, vencimiento, categoría): el precio YA está descontado
+        // No volver a aplicar; el unit_cost del backend ya tiene el descuento aplicado.
+        dType = item.discount_type || "individual";
         dPercent = productPct;
         dSourceId = item.discount_source_id;
-      }
-
-      // 3. Apply Discount to Price
-      // If Global Won, we need to calculate price reduction on the fly
-      // If Expiration Won, the 'price' coming from item might already be discounted if it was fetched that way,
-      // BUT formatOrderItemForFrontend usually sets price based on calculation.
-      // safely re-calculate:
-      if (dPercent > 0) {
-        finalPrice = finalPriceBeforeDiscount * (1 - dPercent / 100);
+        finalPriceBeforeDiscount = (selectedDisplayCurrency.value === "BS"
+          ? item.original_price_bs
+          : selectedDisplayCurrency.value === "COP"
+            ? item.original_price_cop
+            : item.basePrice) ?? finalPrice;
+        // finalPrice ya es correcto (viene del backend descontado)
       }
       
       const ivaAmount = finalPrice * taxRateValue;
