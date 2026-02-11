@@ -19,6 +19,7 @@ const emit = defineEmits([
   "clear",
 ]);
 const statuses = [
+  { title: "Todas", value: "" },
   { title: "Pendiente", value: "pending" },
   { title: "Aprobado", value: "Approved" },
   { title: "Rechazado", value: "Rejected" },
@@ -29,23 +30,19 @@ const statuses = [
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="4" md="2">
-          <VTextField
+        <VCol cols="12" sm="6" md="2">
+          <AppTextField
             :model-value="props.search"
             placeholder="Buscar por producto o n° orden..."
             clearable
-            density="compact"
-            hide-details
             @update:model-value="emit('update:search', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4" md="2">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Desde"
             clearable
-            density="compact"
-            hide-details
             :config="{
               altInput: true,
               altFormat: 'Y-m-d',
@@ -54,13 +51,11 @@ const statuses = [
             @update:model-value="emit('update:startDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4" md="2">
+        <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Hasta"
             clearable
-            density="compact"
-            hide-details
             :config="{
               altInput: true,
               altFormat: 'Y-m-d',
@@ -69,27 +64,25 @@ const statuses = [
             @update:model-value="emit('update:endDate', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4" md="2">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.status"
             :items="statuses"
+            label="Estado"
             placeholder="Estado"
             clearable
-            density="compact"
-            hide-details
             @update:model-value="emit('update:status', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4" md="2">
+        <VCol cols="12" sm="6" md="4">
           <VSelect
             :model-value="props.seller"
             :items="props.sellers ?? []"
             item-title="username"
             item-value="id"
-            clearable
+            label="Vendedor"
             placeholder="Vendedor"
-            density="compact"
-            hide-details
+            clearable
             @update:model-value="emit('update:seller', $event)"
           />
         </VCol>
@@ -98,7 +91,7 @@ const statuses = [
 
     <VDivider />
 
-    <VCardActions class="pa-4 px-6">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>

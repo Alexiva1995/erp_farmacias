@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
+use App\Http\Requests\Product\UpdateIncompleteProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Products\ProductActionService;
@@ -23,6 +24,19 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
+        // Búsqueda directa por ID: evita filtros (q, hasStock, is_deleted, etc.)
+        // Acepta product_id (snake_case) y productId (camelCase)
+        $productId = $request->input('product_id') ?? $request->input('productId') ?? $request->input('id');
+        if ($productId && is_numeric($productId)) {
+            $product = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots'])
+                ->find((int) $productId);
+            if ($product) {
+                $product->stock_calculado = $product->lots->where('expiration_date', '>=', now())->sum('quantity');
+                return response()->json(['data' => [$product], 'total' => 1]);
+            }
+            return response()->json(['data' => [], 'total' => 0]);
+        }
+
         $query = $this->productQueryService->getFilteredQuery($request);
         $perPage = $request->input('itemsPerPage', 10);
 
@@ -80,13 +94,9 @@ class ProductController extends Controller
         ], 200);
     }
 
-    public function updateIncomplete(Request $request, Product $product)
+    public function updateIncomplete(UpdateIncompleteProductRequest $request, Product $product)
     {
-        $validated = $request->validate([
-            'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $product->id],
-            'laboratory_id' => ['nullable', 'integer', 'exists:laboratories,id'],
-            'origin_id' => ['nullable', 'integer', 'exists:origins,id'],
-        ]);
+        $validated = $request->validated();
 
         $this->productActionService->updateIncompleteFields($product, $validated);
 
