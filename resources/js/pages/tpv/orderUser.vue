@@ -358,11 +358,48 @@ const handlePrescriptionFileSelected = (file) => {
 const handleDoctorDiscountSelected = (offerId) => {
   const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
   selectedDoctorOffer.value = offer;
+  validateAndApplyDoctorDiscount();
   if (offer) {
-    toast.success(`Descuento de médico ${offer.percentage}% seleccionado.`);
+    toast.success(`Descuento de médico ${offer.percentage}% habilitado para esta orden.`);
   } else {
-    selectedDoctorOffer.value = null;
     toast.info("Descuento de médico removido.");
+  }
+};
+
+const validateAndApplyDoctorDiscount = () => {
+  if (activeDoctorOffers.value.length === 0) {
+    return;
+  }
+
+  if (!selectedDoctorOffer.value) {
+    if (selectedDiscountType.value === "Medico") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activeDoctorOffers.value.find(
+    (o) => o.value === selectedDoctorOffer.value.value,
+  );
+
+  if (!offer) {
+    selectedDoctorOffer.value = null;
+    return;
+  }
+
+  const porcentaje = parseFloat(offer.percentage || 0);
+  if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "doctor",
+      name: offer.title,
+      id: offer.id,
+    });
+  } else {
+    removeDiscount();
+    selectedDoctorOffer.value = null;
+    toast.info(
+      "Esta oferta de médico no tiene un descuento configurado.",
+    );
   }
 };
 
@@ -595,22 +632,17 @@ const removeDiscount = () => {
 watch(selectedDiscountType, (newValue) => {
   if (newValue !== "Medico") {
     selectedDoctorOffer.value = null;
-    // Ensure we don't accidentally remove subscription/company discount if we just added one?
-    // But here we switch types, so yes, clear others.
-    // Since applyDiscount overwrites based on orderItems map logic using originalPrice, it should be fine to "remove" first
-    // effectively resetting.
-    if (selectedDiscountType.value === "Medico") removeDiscount();
+    removeDiscount();
   }
   if (newValue !== "Recipe") {
     prescriptionFile.value = null;
-    if (selectedDiscountType.value === "Recipe") removeDiscount();
+    removeDiscount();
   }
   if (newValue !== "Empresa") {
     selectedCompanyId.value = null;
-    if (selectedDiscountType.value === "Empresa") removeDiscount();
+    removeDiscount();
   }
 
-  // Explicit removal when clearing type (newValue is null)
   if (!newValue) {
     removeDiscount();
   }
@@ -631,6 +663,12 @@ watch(
       clearTimeout(discountValidationTimer);
       discountValidationTimer = setTimeout(() => {
         validateAndApplyCompanyDiscount();
+      }, 300);
+    }
+    if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+      clearTimeout(discountValidationTimer);
+      discountValidationTimer = setTimeout(() => {
+        validateAndApplyDoctorDiscount();
       }, 300);
     }
   },
