@@ -1,30 +1,35 @@
 <script setup lang="js">
 import day from "dayjs";
-
+import { computed } from "vue";
 
 const props= defineProps({
-  companyId: { type: String, required: true },
+  companyId: { type: [String, Number], required: true },
   clients: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   totalClients: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  // search: { type: String, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: undefined },
 })
 
-const emit= defineEmits(["edit",'delete','update:options',"assignCompany"])
+const emit= defineEmits(["edit",'delete','update:options','remove-from-company'])
+
+const sortByModel = computed(() => {
+  if (props.sortBy) {
+    return [{ key: props.sortBy, order: props.orderBy || 'asc' }]
+  }
+  return []
+})
 
 const headers = [
-  { title: '', key: 'assign', sortable: false,},
-  { title: 'id', key: 'id', sortable: true,},
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
-  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, },
-  { title: 'Empresa', key: 'company.name', sortable: false },
-  { title: 'Dirección', key: 'address', sortable: true  },
-  { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
+  { title: 'ID', key: 'id', sortable: true },
+  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true },
+  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
+  { title: 'Dirección', key: 'address', sortable: true },
+  { title: 'Fecha', key: 'created_at', sortable: true, value: item => {
     const fechaStr = item.created_at.replace('Z', '');
-    const fecha = day(fechaStr).format('DD/MM/YYYY');
-    return fecha;
+    return day(fechaStr).format('DD/MM/YYYY');
   }},
   { title: 'Acciones', key: 'acciones', sortable: false },
 ];
@@ -39,30 +44,30 @@ const headers = [
       :items-length="props.totalClients"
       :loading="loading"
       :page="props.page"
+      :sort-by="sortByModel"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.assign="{ item }">
-        <v-checkbox
-          @click="
-            emit('assignCompany', {
-              client_id: item.id,
-              company_id: companyId,
-              status: !(companyId == item.company_id),
-            })
-          "
-          :model-value="companyId == item.company_id"
-        ></v-checkbox>
+      <template #item.id="{ item }">
+        <span class="font-weight-medium">{{ item.id }}</span>
       </template>
-      <template #item.id="{ item }"
-        ><span class="font-weight-medium">{{ item.id }}</span></template
-      >
       <template #item.acciones="{ item }">
-        <IconBtn @click="emit('edit', item.id)"
-          ><VIcon icon="tabler-edit"
-        /></IconBtn>
-        <IconBtn @click="emit('delete', item.id)"
-          ><VIcon icon="tabler-trash"
-        /></IconBtn>
+        <IconBtn @click="emit('edit', item.id)" color="warning">
+          <VIcon icon="tabler-edit" />
+        </IconBtn>
+        <IconBtn @click="emit('delete', item.id)" color="error">
+          <VIcon icon="tabler-trash" />
+        </IconBtn>
+        <VTooltip text="Quitar de la empresa" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <IconBtn
+              v-bind="tooltipProps"
+              @click="emit('remove-from-company', item.id)"
+              color="secondary"
+            >
+              <VIcon icon="tabler-unlink" />
+            </IconBtn>
+          </template>
+        </VTooltip>
       </template>
     </VDataTableServer>
   </VCard>

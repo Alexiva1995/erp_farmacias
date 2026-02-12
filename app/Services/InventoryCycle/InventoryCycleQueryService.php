@@ -325,7 +325,11 @@ class InventoryCycleQueryService
 
     private function applyNotAuthUserFilterToCount(Builder $query): Builder
     {
-        $query->where('user_id', '!=', auth()->id());
+        // El admin (role_id = 1) puede ver todos los conteos, incluyendo los propios
+        $user = auth()->user();
+        if (!$user || (int) $user->role_id !== 1) {
+            $query->where('user_id', '!=', auth()->id());
+        }
 
         return $query;
     }

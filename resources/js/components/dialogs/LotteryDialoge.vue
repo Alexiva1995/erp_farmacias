@@ -25,10 +25,6 @@ function close() {
   emit("modalClose", false)
 }
 
-function viewOrder(order) {
-  emit("viewOrder", order)
-}
-
 const handleViewOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
@@ -54,15 +50,16 @@ const handleViewOrder = async (orderId) => {
         : 0;
       creditForPrint.value = response.data.data.hasCreditPayment;
       viewModal.value = true;
-
     } else {
       console.error("Respuesta de API con formato incorrecto:", response.data);
-      console.error("La respuesta del servidor no tiene el formato esperado.");
     }
   } catch (error) {
     console.error("Error al obtener los detalles de la orden:", error);
-    console.error("Error al obtener los detalles de la orden.");
   }
+};
+
+const handleCloseViewModal = () => {
+  viewModal.value = false;
 };
 </script>
 
@@ -80,59 +77,76 @@ const handleViewOrder = async (orderId) => {
     @close="handleCloseViewModal"
   />
 
-  <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
+  <VDialog
+    :model-value="props.modalFormulario"
+    max-width="700px"
+    persistent
+    scrollable
+    :retain-focus="false"
+    @click:outside.prevent
+    @keydown.esc.prevent="close"
+  >
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"
-          >Total de ganadores: {{ props.lista.length }}</span
-        >
-        <VSpacer />
-        <VBtn icon variant="text" @click="close">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-trophy" size="24" color="white" />
+          <span class="text-h6 text-white">
+            Ganadores del Sorteo ({{ props.lista.length }})
+          </span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="close">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
+
+      <VCardText class="pa-5">
+        <VList lines="two" density="compact" class="rounded border">
+          <template v-for="(item, index) in props.lista" :key="index">
+            <VListItem>
+              <template #prepend>
+                <VAvatar
+                  :color="index === 0 ? 'warning' : index === 1 ? 'secondary' : 'info'"
+                  variant="tonal"
+                  size="40"
+                >
+                  <span class="text-body-2 font-weight-bold">{{ index + 1 }}</span>
+                </VAvatar>
+              </template>
+              <VListItemTitle class="text-body-2 font-weight-medium">
+                {{ item.client || "Cliente no disponible" }}
+              </VListItemTitle>
+              <VListItemSubtitle class="text-caption">
+                <VChip size="x-small" color="primary" variant="tonal" class="me-1">
+                  Orden #{{ item.order_id }}
+                </VChip>
+              </VListItemSubtitle>
+              <template #append>
+                <IconBtn color="info" @click.stop="handleViewOrder(item.order_id)">
+                  <VIcon icon="tabler-eye" size="20" />
+                </IconBtn>
+              </template>
+            </VListItem>
+            <VDivider v-if="index < props.lista.length - 1" />
+          </template>
+        </VList>
+      </VCardText>
+
       <VDivider />
 
-      <VList lines="two">
-        <VListItem v-for="(item, index) in props.lista" :key="item.id">
-          <VListItemTitle class="d-flex justify-space-between align-center">
-            <div>
-              <span class="font-weight-bold">{{
-                item.client || "Cliente no disponible"
-              }}</span>
-              <VChip size="small" color="primary" variant="flat" class="ml-2">
-                Orden #{{ item.order_id }}
-              </VChip>
-            </div>
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="12" class="pa-2">
             <VBtn
-              icon
-              size="small"
-              variant="text"
-              color="info"
-              @click.stop="handleViewOrder(item.order_id)"
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="close"
             >
-              <VIcon size="20">tabler-eye</VIcon>
+              Cerrar
             </VBtn>
-          </VListItemTitle>
-        </VListItem>
-      </VList>
-      <VDivider />
-      <VCardActions>
-        <VSpacer />
-        <VContainer>
-          <VRow justify="end">
-            <VCol cols="12" sm="6" md="4" lg="3">
-              <VBtn
-                color="secondary"
-                variant="outlined"
-                @click="close"
-                width="100%"
-              >
-                Cerrar
-              </VBtn>
-            </VCol>
-          </VRow>
-        </VContainer>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

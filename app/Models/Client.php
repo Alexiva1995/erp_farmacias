@@ -8,11 +8,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory; // De la rama develop
 
 class Client extends Model
 {
-    // Constantes para los tipos de identificación de la rama 5.0-CRM
+    // Constantes para los tipos de identificación
     const IDENTIFICATION_TYPE_VENEZOLANO = "V-";
     const IDENTIFICATION_TYPE_GOBIERNO = "G-";
     const IDENTIFICATION_TYPE_EXTRANJERO = "E-";
     const IDENTIFICATION_TYPE_JURIDICO = "J-";
+
+    // Constantes para los tipos de cliente
+    const CLIENT_TYPE_NUEVO = 'Nuevo';
+    const CLIENT_TYPE_OCASIONAL = 'Ocasional';
+    const CLIENT_TYPE_FRECUENTE = 'Frecuente';
+    const CLIENT_TYPE_VIP = 'VIP';
+    const CLIENT_TYPE_EN_RIESGO = 'En Riesgo';
+
+    const CLIENT_TYPES = [
+        self::CLIENT_TYPE_NUEVO,
+        self::CLIENT_TYPE_OCASIONAL,
+        self::CLIENT_TYPE_FRECUENTE,
+        self::CLIENT_TYPE_VIP,
+        self::CLIENT_TYPE_EN_RIESGO,
+    ];
 
     use SoftDeletes; // De la rama 5.0-CRM
     use HasFactory; // De la rama develop
@@ -27,9 +42,10 @@ class Client extends Model
         'address',
         'birthdate', // De la rama 5.0-CRM
         'company_id', // De la rama 5.0-CRM
-        'balance', // De la rama pedidos,
+        'balance',
         'is_spe',
-        'status'
+        'status',
+        'client_type'
     ];
 
     // Casts para los campos de fecha de la rama 5.0-CRM
