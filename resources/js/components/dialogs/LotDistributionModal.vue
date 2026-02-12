@@ -62,6 +62,7 @@ const props = defineProps({
   productName: { type: String, default: "" },
   lots: { type: Array, default: () => [] },
   targetQuantity: { type: Number, required: true },
+  mode: { type: String, default: "return", validator: (v) => ["return", "adjustment"].includes(v) },
 });
 
 const emit = defineEmits(["update:modelValue", "save"]);
@@ -108,13 +109,29 @@ const currentLotsStockSum = computed(() => {
   return originalLots.value.reduce((sum, lot) => sum + (Number(lot.quantity) || 0), 0);
 });
 
-/** Objetivo = stock actual en lotes + cantidad devuelta. Representa el stock total que debería haber tras procesar la devolución. */
+/**
+ * Objetivo:
+ * - Modo "return" (devolución): stock actual en lotes + cantidad devuelta.
+ * - Modo "adjustment" (ajuste cíclico): la cantidad contada directamente (targetQuantity).
+ */
 const objective = computed(() => {
+  if (props.mode === "adjustment") {
+    return Number(props.targetQuantity) || 0;
+  }
   return currentLotsStockSum.value + (Number(props.targetQuantity) || 0);
 });
 
-/** Suma de unidades añadidas: (Cantidad Ajustada - Stock Sistema) por lote existente + cantidad en lotes nuevos. Debe coincidir con las unidades devueltas. */
+/**
+ * Total distribuido:
+ * - Modo "return": suma de incrementos (Cantidad Ajustada - Stock Sistema) por lote existente + nuevos lotes.
+ * - Modo "adjustment": suma total de TODAS las cantidades en lotes (existentes ajustados + nuevos).
+ */
 const totalDistributed = computed(() => {
+  if (props.mode === "adjustment") {
+    return distributedLots.value.reduce((sum, lot) => {
+      return sum + (Number(lot.quantity) || 0);
+    }, 0);
+  }
   return distributedLots.value.reduce((sum, lot) => {
     const qty = Number(lot.quantity) || 0;
     if (lot.isNew) return sum + qty;
@@ -124,7 +141,15 @@ const totalDistributed = computed(() => {
   }, 0);
 });
 
+/**
+ * Diferencia:
+ * - Modo "return": targetQuantity - totalDistributed (unidades devueltas pendientes de asignar).
+ * - Modo "adjustment": objective - totalDistributed (cuánto falta para alcanzar la cantidad contada).
+ */
 const discrepancy = computed(() => {
+  if (props.mode === "adjustment") {
+    return objective.value - totalDistributed.value;
+  }
   return props.targetQuantity - totalDistributed.value;
 });
 

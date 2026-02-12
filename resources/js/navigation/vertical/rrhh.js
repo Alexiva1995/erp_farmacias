@@ -13,6 +13,7 @@ export default [
         title: 'Empleados',
         to: 'rrhh-employees',
         action: 'manage',
+        subject: 'admin',
       },
       {
         title: 'Prestaciones Sociales',
