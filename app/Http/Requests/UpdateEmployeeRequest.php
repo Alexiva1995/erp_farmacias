@@ -40,6 +40,7 @@ class UpdateEmployeeRequest extends FormRequest
             ],
             'password' => 'nullable|string|min:3',
             'role' => 'required|integer|exists:roles,id',
+            'total_package_usd' => 'nullable|numeric|min:0',
         ];
     }
 

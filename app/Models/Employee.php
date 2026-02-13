@@ -20,7 +20,9 @@ class Employee extends Model
         "rif",
         "residence_letter",
         "cv",
-        "user_id"
+        "user_id",
+        "total_package_usd",
+        "saldo_deuda",
     ];
 
     /**
@@ -98,5 +100,10 @@ class Employee extends Model
     {
         return $this->hasMany(CleaningActivityExecution::class)
             ->where('status', 'Procesada');
+    }
+
+    public function paymentCalculations()
+    {
+        return $this->hasMany(EmployeePaymentCalculation::class)->orderByDesc('year')->orderByDesc('month');
     }
 }

@@ -22,4 +22,12 @@ interface Employee
   public function storeDocuments(MEmployee $employee, array $data): bool;
   public function downloadDocument(MEmployee $employee, string $file): Exception|StreamedResponse;
   public function reset2FA(MEmployee $employee): bool;
+
+  /** @return array{ calculation?: array, history: array, employee: array } */
+  public function getPayments(MEmployee $employee, array $data): array;
+
+  /** @return array calculation result and updated employee saldo_deuda */
+  public function runPaymentCalculation(MEmployee $employee, array $data): array;
+
+  public function setHealthConsumption(MEmployee $employee, int $year, int $month, float $amount): void;
 }

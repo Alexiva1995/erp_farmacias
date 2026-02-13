@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { watch } from "vue";
+import { computed, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -22,6 +22,20 @@ const identification = ref("");
 const email = ref("");
 const password = ref("");
 const role = ref(null);
+const showPassword = ref(false);
+const totalPackageUsd = ref("");
+
+const roleItems = computed(() =>
+  props.roles.map((role) => ({
+    title:
+      role.name === 'Admin'
+        ? 'Administrador'
+        : role.name === 'Employee'
+        ? 'Empleado'
+        : 'Supervisor',
+    value: Number(role.id),
+  }))
+);
 
 const closeDialog = () => {
   emit("close");
@@ -39,6 +53,7 @@ const handleClearFilters = () => {
   email.value = "";
   password.value = "";
   role.value = null;
+  totalPackageUsd.value = "";
 };
 
 const submitForm = async () => {
@@ -57,7 +72,13 @@ const submitForm = async () => {
     form.append("email", email.value);
     form.append("role", role.value);
 
+    if (props.selectedEmployee != null && totalPackageUsd.value !== "" && totalPackageUsd.value != null) {
+      form.append("total_package_usd", totalPackageUsd.value);
+    }
+
     if (props.selectedEmployee == null) {
+      form.append("password", password.value);
+    } else if (password.value) {
       form.append("password", password.value);
     }
 
@@ -113,9 +134,11 @@ watch(
       name.value = employee.name;
       lastName.value = employee.last_name;
       identification.value = employee.identification;
-      email.value = employee.email;
-      role.value = employee.role_id;
+      email.value = employee?.user?.email ?? employee.email ?? "";
+      const currentRoleId = employee?.user?.role_id ?? employee.role_id ?? employee?.user?.role?.id ?? null;
+      role.value = currentRoleId != null ? Number(currentRoleId) : null;
       password.value = "";
+      totalPackageUsd.value = employee.total_package_usd != null ? String(employee.total_package_usd) : "";
     }
   },
   { immediate: true }
@@ -183,13 +206,15 @@ watch(
               :error-messages="errors.email"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" v-if="selectedEmployee == null || isAdmin">
+          <VCol cols="12" sm="6" md="6" v-if="props.selectedEmployee == null || isAdmin">
             <VTextField
               v-model="password"
               label="Contraseña"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               variant="outlined"
               :error-messages="errors.password"
+              :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+              @click:append-inner="showPassword = !showPassword"
             />
           </VCol>
           <VCol cols="12" sm="6" md="6">
@@ -197,18 +222,20 @@ watch(
               v-model="role"
               label="Rol"
               variant="outlined"
-              :items="
-                roles.map((role) => ({
-                  title:
-                    role.name === 'Admin'
-                      ? 'Administrador'
-                      : role.name === 'Employee'
-                      ? 'Empleado'
-                      : 'Supervisor',
-                  value: role.id,
-                }))
-              "
+              :items="roleItems"
               :error-messages="errors.role"
+            />
+          </VCol>
+          <VCol v-if="props.selectedEmployee != null" cols="12" sm="6" md="6">
+            <VTextField
+              v-model="totalPackageUsd"
+              label="Paquete total (USD) – referencia nómina"
+              type="number"
+              min="0"
+              step="0.01"
+              variant="outlined"
+              :error-messages="errors.total_package_usd"
+              placeholder="Ej. 200"
             />
           </VCol>
         </VRow>

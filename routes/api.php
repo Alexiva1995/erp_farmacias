@@ -384,6 +384,11 @@ Route::prefix('rrhh')->group(function () {
         Route::put('/{employee}', [EmployeeController::class, 'update']);
         Route::put('/{employee}/fire', [EmployeeController::class, 'fire']);
         Route::put('/{employee}/reset-2fa', [EmployeeController::class, 'reset2FA']);
+        Route::get('/{employee}/performance', [EmployeePerformanceController::class, 'getPerformance']);
+        Route::get('/{employee}/payments', [EmployeeController::class, 'getPayments']);
+        Route::post('/{employee}/payments', [EmployeeController::class, 'storePaymentCalculation']);
+        Route::put('/{employee}/payroll-settings', [EmployeeController::class, 'updatePayrollSettings']);
+        Route::post('/{employee}/health-consumption', [EmployeeController::class, 'setHealthConsumption']);
     });
 
     Route::prefix('social-benefits')->group(function () {

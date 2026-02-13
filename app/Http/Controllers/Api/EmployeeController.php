@@ -91,7 +91,14 @@ class EmployeeController extends Controller
     {
         $data = $request->validated();
         $results = $this->employeeServices->storeDocuments($employee, $data);
-        return ApiResponse::success(['status' => $results]);
+        
+        // Recargar los datos actualizados del empleado
+        $updatedEmployee = $this->employeeServices->profile($employee);
+        
+        return ApiResponse::success([
+            'status' => $results,
+            'data' => $updatedEmployee
+        ]);
     }
 
     public function downloadDocument(Employee $employee, string $file)
@@ -110,10 +117,45 @@ class EmployeeController extends Controller
         return ApiResponse::success(['status' => $result]);
     }
 
-    public function payments(Request $request)
+    public function getPayments(Employee $employee, Request $request)
     {
-        $data = $request->all();
-        $results = $this->employeeServices->payments($data);
+        $data = $request->only(['month', 'year', 'consumo_farmacia_actual']);
+        $results = $this->employeeServices->getPayments($employee, $data);
         return ApiResponse::success($results);
+    }
+
+    public function storePaymentCalculation(Employee $employee, Request $request)
+    {
+        $data = $request->validate([
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020|max:2100',
+            'consumo_farmacia_actual' => 'nullable|numeric|min:0',
+        ]);
+        try {
+            $results = $this->employeeServices->runPaymentCalculation($employee, $data);
+            return ApiResponse::success($results);
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    public function setHealthConsumption(Employee $employee, Request $request)
+    {
+        $data = $request->validate([
+            'year' => 'required|integer|min:2020|max:2100',
+            'month' => 'required|integer|min:1|max:12',
+            'amount' => 'required|numeric|min:0',
+        ]);
+        $this->employeeServices->setHealthConsumption($employee, $data['year'], $data['month'], (float) $data['amount']);
+        return ApiResponse::success(['message' => 'Consumo salud registrado.']);
+    }
+
+    public function updatePayrollSettings(Employee $employee, Request $request)
+    {
+        $data = $request->validate([
+            'total_package_usd' => 'nullable|numeric|min:0',
+        ]);
+        $employee->update(array_filter($data));
+        return ApiResponse::success($this->employeeServices->profile($employee));
     }
 }

@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Services\EmployeePerformance\EmployeePerformanceQueryService;
+use App\Models\Order;
+use App\Models\SaleCount;
+use App\Models\OrderDetail;
+use App\Models\Employee;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class EmployeePerformanceController extends Controller
@@ -36,5 +42,472 @@ class EmployeePerformanceController extends Controller
                 'data' => []
             ], 500);
         }
+    }
+
+    /**
+     * Get performance data for a specific employee.
+     */
+    public function getPerformance(Employee $employee)
+    {
+        try {
+            $currentMonth = Carbon::now()->month;
+            $currentYear = Carbon::now()->year;
+
+            // Depuración: Verificar datos del empleado
+            \Log::info('Employee Performance Debug', [
+                'employee_id' => $employee->id,
+                'user_id' => $employee->user_id,
+                'employee_name' => $employee->name . ' ' . $employee->last_name,
+                'current_month' => $currentMonth,
+                'current_year' => $currentYear
+            ]);
+
+            // Usar la misma lógica que el servicio funcional
+            $currentMonthSales = $this->calculateSales($employee->user_id, $currentMonth, $currentYear);
+            
+            // Calcular datos históricos acumulados (desde 2026)
+            $historicalOrders = Order::where('seller_id', $employee->user_id)
+                ->whereDate('order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('status', 'Completed')
+                          ->orWhereNotNull('completed_at');
+                })
+                ->get();
+
+            $historicalTotal = $historicalOrders->sum('total_amount_usd');
+            $historicalUnits = OrderDetail::whereIn('order_id', $historicalOrders->pluck('id'))
+                ->sum('quantity');
+
+            // Depuración: Verificar datos históricos
+            \Log::info('Historical Orders Debug', [
+                'total_orders' => $historicalOrders->count(),
+                'historical_total' => $historicalTotal,
+                'historical_units' => $historicalUnits
+            ]);
+
+            $historicalTicketAvg = $historicalOrders->count() > 0 ? 
+                $historicalTotal / $historicalOrders->count() : 0;
+
+            $historicalUnitsAvg = $historicalOrders->count() > 0 ? 
+                $historicalUnits / $historicalOrders->count() : 0;
+
+            // Calcular métricas del mes actual
+            $currentMonthOrders = Order::where('seller_id', $employee->user_id)
+                ->whereMonth('order_date', $currentMonth)
+                ->whereYear('order_date', $currentYear)
+                ->where(function($query) {
+                    $query->where('status', 'Completed')
+                          ->orWhereNotNull('completed_at');
+                })
+                ->get();
+
+            $currentMonthUnits = OrderDetail::whereIn('order_id', $currentMonthOrders->pluck('id'))
+                ->sum('quantity');
+
+            // Depuración: Verificar datos del mes actual
+            \Log::info('Current Month Orders Debug', [
+                'total_orders' => $currentMonthOrders->count(),
+                'current_month_sales' => $currentMonthSales,
+                'current_month_units' => $currentMonthUnits
+            ]);
+
+            $currentMonthTicketAvg = $currentMonthOrders->count() > 0 ? 
+                $currentMonthSales / $currentMonthOrders->count() : 0;
+
+            $currentMonthUnitsAvg = $currentMonthOrders->count() > 0 ? 
+                $currentMonthUnits / $currentMonthOrders->count() : 0;
+
+            // Rankings
+            $rankings = $this->getRankings($employee->user_id, $currentMonth, $currentYear);
+            
+            // Datos de inventario
+            $inventoryCounts = $this->getInventoryCounts($employee->user_id);
+
+            return ApiResponse::success([
+                'salesMetrics' => [
+                    'currentMonth' => [
+                        'totalAmount' => $currentMonthSales,
+                        'totalUnits' => $currentMonthUnits,
+                        'ticketAverage' => $currentMonthTicketAvg,
+                        'unitsAverage' => $currentMonthUnitsAvg,
+                        'totalOrders' => $currentMonthOrders->count()
+                    ],
+                    'historical' => [
+                        'totalAmount' => $historicalTotal,    // ← Acumulado desde 2026
+                        'totalUnits' => $historicalUnits,      // ← Acumulado desde 2026
+                        'ticketAverage' => $historicalTicketAvg,
+                        'unitsAverage' => $historicalUnitsAvg,
+                        'totalOrders' => $historicalOrders->count()
+                    ]
+                ],
+                'profitabilityMetrics' => [
+                    'currentMonth' => [
+                        'upsellRate' => 0,
+                        'avgOrderTime' => 0,
+                        'returnRate' => 0
+                    ],
+                    'historical' => [
+                        'upsellRate' => 0,
+                        'avgOrderTime' => 0,
+                        'returnRate' => 0
+                    ]
+                ],
+                'rankings' => $rankings,
+                'inventoryCounts' => $inventoryCounts
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error en getPerformance: ' . $e->getMessage());
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    // Usar el mismo método calculateSales que funciona en el servicio
+    private function calculateSales(int $userId, int $month, int $year): float
+    {
+        return (float) Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereDate('order_date', '>=', '2026-01-01 00:00:00')
+            ->where(function($query) {
+                $query->where('status', 'Completed')
+                      ->orWhereNotNull('completed_at');
+            })
+            ->sum('total_amount_usd');
+    }
+
+    private function getSalesMetrics($userId, $month, $year)
+    {
+        // Histórico completo
+        $historicalOrders = Order::where('seller_id', $userId)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        $historicalTotal = $historicalOrders->sum(function($order) {
+            return $order->usd_conversion ? $order->total_amount_usd : $order->total_amount;
+        });
+
+        $historicalUnits = OrderDetail::whereIn('order_id', $historicalOrders->pluck('id'))
+            ->sum('quantity');
+
+        $historicalTicketAvg = $historicalOrders->count() > 0 ? 
+            $historicalTotal / $historicalOrders->count() : 0;
+
+        $historicalUnitsAvg = $historicalOrders->count() > 0 ? 
+            $historicalUnits / $historicalOrders->count() : 0;
+
+        // Mes actual
+        $currentMonthOrders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        $currentMonthTotal = $currentMonthOrders->sum(function($order) {
+            return $order->usd_conversion ? $order->total_amount_usd : $order->total_amount;
+        });
+
+        $currentMonthUnits = OrderDetail::whereIn('order_id', $currentMonthOrders->pluck('id'))
+            ->sum('quantity');
+
+        $currentMonthTicketAvg = $currentMonthOrders->count() > 0 ? 
+            $currentMonthTotal / $currentMonthOrders->count() : 0;
+
+        $currentMonthUnitsAvg = $currentMonthOrders->count() > 0 ? 
+            $currentMonthUnits / $currentMonthOrders->count() : 0;
+
+        return [
+            'historical' => [
+                'totalAmount' => $historicalTotal,
+                'totalUnits' => $historicalUnits,
+                'ticketAverage' => $historicalTicketAvg,
+                'unitsAverage' => $historicalUnitsAvg,
+                'totalOrders' => $historicalOrders->count()
+            ],
+            'currentMonth' => [
+                'totalAmount' => $currentMonthTotal,
+                'totalUnits' => $currentMonthUnits,
+                'ticketAverage' => $currentMonthTicketAvg,
+                'unitsAverage' => $currentMonthUnitsAvg,
+                'totalOrders' => $currentMonthOrders->count()
+            ]
+        ];
+    }
+
+    private function getProfitabilityMetrics($userId, $month, $year)
+    {
+        // Histórico completo
+        $historicalOrders = Order::where('seller_id', $userId)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        // Tasa de UP-selling (órdenes con >1 producto distinto)
+        $historicalUpsellCount = 0;
+        foreach ($historicalOrders as $order) {
+            $uniqueProducts = OrderDetail::where('order_id', $order->id)
+                ->distinct('product_id')
+                ->count();
+            if ($uniqueProducts > 1) {
+                $historicalUpsellCount++;
+            }
+        }
+        $historicalUpsellRate = $historicalOrders->count() > 0 ? 
+            ($historicalUpsellCount / $historicalOrders->count()) * 100 : 0;
+
+        // Tiempo promedio de orden
+        $historicalCompletedOrders = Order::where('seller_id', $userId)
+            ->whereNotNull('completed_at')
+            ->get();
+        
+        $historicalAvgTime = 0;
+        if ($historicalCompletedOrders->count() > 0) {
+            $totalTime = $historicalCompletedOrders->sum(function($order) {
+                return $order->created_at->diffInMinutes($order->completed_at);
+            });
+            $historicalAvgTime = $totalTime / $historicalCompletedOrders->count();
+        }
+
+        // % de Devoluciones
+        $historicalReturnedOrders = Order::where('seller_id', $userId)
+            ->where('status', 'Returned')
+            ->count();
+        
+        $historicalReturnRate = $historicalOrders->count() > 0 ? 
+            ($historicalReturnedOrders / $historicalOrders->count()) * 100 : 0;
+
+        // Mes actual
+        $currentMonthOrders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        // Tasa de UP-selling mes actual
+        $currentUpsellCount = 0;
+        foreach ($currentMonthOrders as $order) {
+            $uniqueProducts = OrderDetail::where('order_id', $order->id)
+                ->distinct('product_id')
+                ->count();
+            if ($uniqueProducts > 1) {
+                $currentUpsellCount++;
+            }
+        }
+        $currentUpsellRate = $currentMonthOrders->count() > 0 ? 
+            ($currentUpsellCount / $currentMonthOrders->count()) * 100 : 0;
+
+        // Tiempo promedio mes actual
+        $currentCompletedOrders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereNotNull('completed_at')
+            ->get();
+        
+        $currentAvgTime = 0;
+        if ($currentCompletedOrders->count() > 0) {
+            $totalTime = $currentCompletedOrders->sum(function($order) {
+                return $order->created_at->diffInMinutes($order->completed_at);
+            });
+            $currentAvgTime = $totalTime / $currentCompletedOrders->count();
+        }
+
+        // % de Devoluciones mes actual
+        $currentReturnedOrders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->where('status', 'Returned')
+            ->count();
+        
+        $currentReturnRate = $currentMonthOrders->count() > 0 ? 
+            ($currentReturnedOrders / $currentMonthOrders->count()) * 100 : 0;
+
+        return [
+            'historical' => [
+                'upsellRate' => round($historicalUpsellRate, 2),
+                'avgOrderTime' => round($historicalAvgTime, 2), // en minutos
+                'returnRate' => round($historicalReturnRate, 2)
+            ],
+            'currentMonth' => [
+                'upsellRate' => round($currentUpsellRate, 2),
+                'avgOrderTime' => round($currentAvgTime, 2), // en minutos
+                'returnRate' => round($currentReturnRate, 2)
+            ]
+        ];
+    }
+
+    private function getRankings($userId, $month, $year)
+    {
+        // Top 10 Productos por unidades
+        $topProductsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->where('orders.seller_id', $userId)
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+            ->where(function($query) {
+                $query->where('orders.status', 'Completed')
+                      ->orWhereNotNull('orders.completed_at');
+            })
+            ->selectRaw('
+                products.id,
+                products.name,
+                SUM(order_details.quantity) as units,
+                SUM(order_details.quantity * order_details.unit_price_usd) as amount
+            ')
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('units')
+            ->limit(10)
+            ->get();
+
+        // Top 10 Productos por monto
+        $topProductsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->where('orders.seller_id', $userId)
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+            ->where(function($query) {
+                $query->where('orders.status', 'Completed')
+                      ->orWhereNotNull('orders.completed_at');
+            })
+            ->selectRaw('
+                products.id,
+                products.name,
+                SUM(order_details.quantity) as units,
+                SUM(order_details.quantity * order_details.unit_price_usd) as amount
+            ')
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('amount')
+            ->limit(10)
+            ->get();
+
+        // Top 5 Laboratorios por unidades
+        $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->where('orders.seller_id', $userId)
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+            ->where(function($query) {
+                $query->where('orders.status', 'Completed')
+                      ->orWhereNotNull('orders.completed_at');
+            })
+            ->selectRaw('
+                laboratories.id,
+                laboratories.name,
+                SUM(order_details.quantity) as units,
+                SUM(order_details.quantity * order_details.unit_price_usd) as amount
+            ')
+            ->groupBy('laboratories.id', 'laboratories.name')
+            ->orderByDesc('units')
+            ->limit(5)
+            ->get();
+
+        // Top 5 Laboratorios por monto
+        $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->where('orders.seller_id', $userId)
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+            ->where(function($query) {
+                $query->where('orders.status', 'Completed')
+                      ->orWhereNotNull('orders.completed_at');
+            })
+            ->selectRaw('
+                laboratories.id,
+                laboratories.name,
+                SUM(order_details.quantity) as units,
+                SUM(order_details.quantity * order_details.unit_price_usd) as amount
+            ')
+            ->groupBy('laboratories.id', 'laboratories.name')
+            ->orderByDesc('amount')
+            ->limit(5)
+            ->get();
+
+        return [
+            'topProductsByUnits' => $topProductsByUnits,
+            'topProductsByAmount' => $topProductsByAmount,
+            'topLabsByUnits' => $topLabsByUnits,
+            'topLabsByAmount' => $topLabsByAmount
+        ];
+    }
+
+    private function getMonthlySales($userId, $month, $year)
+    {
+        $orders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        $totalAmount = $orders->sum(function($order) {
+            // Convertir a USD si tiene tasa de cambio
+            return $order->usd_conversion ? $order->total_amount_usd : $order->total_amount;
+        });
+        
+        $totalUnits = OrderDetail::whereIn('order_id', $orders->pluck('id'))
+            ->sum('quantity');
+
+        return [
+            'amount' => $totalAmount,
+            'units' => $totalUnits
+        ];
+    }
+
+    private function getAverages($userId, $month, $year)
+    {
+        $orders = Order::where('seller_id', $userId)
+            ->whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->whereIn('status', ['Completed', 'Closed'])
+            ->get();
+
+        $totalAmount = $orders->sum(function($order) {
+            return $order->usd_conversion ? $order->total_amount_usd : $order->total_amount;
+        });
+        
+        $orderCount = $orders->count();
+        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
+
+        $dailyAverage = $orderCount > 0 ? $totalAmount / $daysInMonth : 0;
+        $ticketAverage = $orderCount > 0 ? $totalAmount / $orderCount : 0;
+
+        return [
+            'dailyAverage' => $dailyAverage,
+            'ticketAverage' => $ticketAverage
+        ];
+    }
+
+    private function getTopProducts($userId, $month, $year, $limit = 5)
+    {
+        return OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->where('orders.seller_id', $userId)
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->where('orders.status', 'Completed')
+            ->selectRaw('
+                products.id,
+                products.name,
+                SUM(order_details.quantity) as units
+            ')
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('units')
+            ->limit($limit)
+            ->get();
+    }
+
+    private function getInventoryCounts($userId)
+    {
+        $totalCounts = SaleCount::where('user_id', $userId)->count();
+        $discrepancies = SaleCount::where('user_id', $userId)
+            ->where('discrepancy', '!=', 0)
+            ->count();
+
+        return [
+            'total' => $totalCounts,
+            'discrepancies' => $discrepancies
+        ];
     }
 }

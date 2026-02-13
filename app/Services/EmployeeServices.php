@@ -86,4 +86,21 @@ class EmployeeServices implements Employee
   {
     return $this->employeeRepository->reset2FA($employee);
   }
+
+  /** @return array{ calculation?: array, history: array, employee: array } */
+  public function getPayments(MEmployee $employee, array $data): array
+  {
+    return $this->employeeRepository->getPayments($employee, $data);
+  }
+
+  /** @return array calculation and updated employee saldo_deuda */
+  public function runPaymentCalculation(MEmployee $employee, array $data): array
+  {
+    return $this->employeeRepository->runPaymentCalculation($employee, $data);
+  }
+
+  public function setHealthConsumption(MEmployee $employee, int $year, int $month, float $amount): void
+  {
+    $this->employeeRepository->setHealthConsumption($employee, $year, $month, $amount);
+  }
 }
