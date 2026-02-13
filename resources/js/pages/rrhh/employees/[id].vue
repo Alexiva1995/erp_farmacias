@@ -56,14 +56,18 @@ const residenceLetter = ref(null);
 const rif = ref(null);
 const cv = ref(null);
 
-// Computed properties
+// Computed properties: mapeo de roles con manejo seguro de nulos
 const translatedRole = computed(() => {
   const roleMap = {
     admin: "Administrador",
-    employee: "Empleado", 
-    supervisor: "Supervisor"
+    employee: "Empleado",
+    supervisor: "Supervisor",
+    hr: "Recursos Humanos",
   };
-  return roleMap[employee.value.user?.role?.name] || employee.value.user?.role?.name || "N/A";
+  const roleName = employee.value?.user?.role?.name;
+  if (roleName == null) return "N/A";
+  const normalized = String(roleName).toLowerCase();
+  return roleMap[normalized] ?? roleName;
 });
 
 const fetchRoles = async () => {
@@ -508,7 +512,7 @@ onMounted(async () => {
     />
 
     <VRow>
-      <VCol cols="12" md="4">
+      <VCol cols="12" md="3">
         <VCard class="pb-4">
           <VCardText class="text-center pt-6">
             <div class="position-relative d-inline-block mb-4">
@@ -574,14 +578,17 @@ onMounted(async () => {
             </VList>
 
             <div class="text-left px-4 mt-4">
-              <div class="text-caption text-disabled">IDENTIFICACIÓN</div>
-              <div class="text-body-1 mb-2">{{ employee.identification }}</div>
-              
-              <div class="text-caption text-disabled">CORREO</div>
-              <div class="text-body-1 mb-2">{{ employee?.user?.email }}</div>
+              <div class="text-overline text-disabled mb-1">IDENTIFICACIÓN</div>
+              <div class="text-body-1 text-high-emphasis mb-3">{{ employee?.identification ?? '—' }}</div>
 
-              <div class="text-caption text-disabled">ROL</div>
-              <div class="text-body-1 font-weight-bold text-primary">{{ translatedRole }}</div>
+              <div class="text-overline text-disabled mb-1">CORREO</div>
+              <div class="text-body-1 text-high-emphasis mb-3">{{ employee?.user?.email ?? '—' }}</div>
+
+              <div class="text-overline text-disabled mb-1">ROL</div>
+              <div class="text-body-1 font-weight-bold text-primary d-flex align-center">
+                <VIcon icon="tabler-shield-check" size="20" class="mr-2" />
+                {{ translatedRole }}
+              </div>
             </div>
 
             <VBtn
@@ -610,7 +617,7 @@ onMounted(async () => {
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="8">
+      <VCol cols="12" md="9">
         
         <div v-if="activeTab === 'profile'">
           <h2 class="text-h5 mb-4 font-weight-bold">Dashboard de Rendimiento Avanzado</h2>
@@ -1021,39 +1028,62 @@ onMounted(async () => {
             <VProgressLinear indeterminate color="primary" />
           </VCardText>
           <VCardText v-else>
+            <p class="text-body-2 text-medium-emphasis mb-3">
+              El único valor editable es el <strong>paquete total</strong>. Los demás conceptos se distribuyen según ese mes (consumo salud y deuda anterior). Solo visual; aquí no se cierra nómina.
+            </p>
             <VRow dense>
-  <VCol cols="12">
-    <div class="d-flex align-stretch">
-      
-      <VTextField
-        v-model.number="paymentForm.total_package_usd"
-        label="Paquete total (USD)"
-        type="number"
-        min="0"
-        step="0.01"
-        variant="outlined"
-        density="comfortable"
-        placeholder="Ej. 200"
-        hide-details
-        class="flex-grow-1"
-      />
-
-      <VBtn
-        v-if="isAdmin"
-        color="primary"
-        variant="tonal"
-        :loading="savingPackage"
-        @click="savePackage"
-        class="ml-2"
-        height="48" 
-        elevation="0"
-      >
-        Guardar
-      </VBtn>
-      
-    </div>
-  </VCol>
-</VRow>
+              <VCol cols="12">
+                <div class="d-flex align-stretch">
+                  <VTextField
+                    v-model.number="paymentForm.total_package_usd"
+                    label="Paquete total (USD)"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    variant="outlined"
+                    density="comfortable"
+                    placeholder="Ej. 200"
+                    hide-details
+                    class="flex-grow-1"
+                  />
+                  <VBtn
+                    v-if="isAdmin"
+                    color="primary"
+                    variant="flat"
+                    :loading="savingPackage"
+                    @click="savePackage"
+                    class="ml-2"
+                    height="48"
+                  >
+                    Guardar paquete en perfil
+                  </VBtn>
+                </div>
+              </VCol>
+              <VCol cols="12" sm="4" md="2">
+                <VSelect
+                  v-model.number="paymentForm.month"
+                  :items="Array.from({ length: 12 }, (_, i) => ({ title: monthNames[i], value: i + 1 }))"
+                  label="Mes"
+                  variant="outlined"
+                  density="comfortable"
+                />
+              </VCol>
+              <VCol cols="12" sm="4" md="2">
+                <VTextField
+                  v-model.number="paymentForm.year"
+                  label="Año"
+                  type="number"
+                  min="2020"
+                  variant="outlined"
+                  density="comfortable"
+                />
+              </VCol>
+              <VCol cols="12" sm="4" md="2" class="d-flex align-end">
+                <VBtn variant="tonal" color="secondary" @click="fetchPayments">
+                  Actualizar distribución
+                </VBtn>
+              </VCol>
+            </VRow>
             <VCard v-if="distribution" variant="tonal" class="mt-4" density="comfortable">
               <VCardTitle class="text-subtitle-2">
                 Distribución para {{ formatPeriod(distribution.year, distribution.month) }}
@@ -1071,23 +1101,23 @@ onMounted(async () => {
                     </template>
                     <VListItemTitle>{{ c.name }}</VListItemTitle>
                     <template #append>
-                      <span class="font-weight-medium">{{ formatCurrency(c.amount) }}</span>
+                      <span class="font-weight-medium text-high-emphasis">{{ formatCurrency(c.amount) }}</span>
                     </template>
                   </VListItem>
                   <VDivider class="my-2" />
                   <VListItem class="px-0">
                     <VListItemTitle class="font-weight-bold">Total a cobrar (Salario + Bono + Incentivo)</VListItemTitle>
                     <template #append>
-                      <span class="font-weight-bold text-primary">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
+                      <span class="font-weight-bold text-primary text-high-emphasis">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
                     </template>
                   </VListItem>
                 </VList>
               </VCardText>
             </VCard>
-            <p v-else-if="paymentForm.total_package_usd != null && paymentForm.total_package_usd > 0" class="text-medium-emphasis mt-4 mb-0">
+            <p v-else-if="paymentForm.total_package_usd != null && paymentForm.total_package_usd > 0" class="text-medium-emphasis mt-4 mb-3">
               Seleccione mes y año para ver la distribución.
             </p>
-            <p v-else class="text-medium-emphasis mt-4 mb-0">
+            <p v-else class="text-medium-emphasis mt-4 mb-3">
               Defina el paquete total y seleccione mes y año para ver cómo se distribuyen los conceptos.
             </p>
           </VCardText>
@@ -1115,13 +1145,13 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr v-for="row in paymentHistory" :key="row.id">
-                  <td>{{ formatFecha(row.fecha) }}</td>
-                  <td class="text-right">{{ formatCurrency(row.salario_base) }}</td>
-                  <td class="text-right">{{ formatCurrency(row.bono_alimentacion) }}</td>
-                  <td class="text-right">{{ formatCurrency(row.beneficio_salud) }}</td>
-                  <td class="text-right">{{ formatCurrency(row.incentivo_metas) }}</td>
-                  <td class="text-right">{{ formatCurrency(row.total_pagado_usd) }}</td>
-                  <td class="text-right">{{ formatVes(row.total_pagado_ves) }}</td>
+                  <td class="text-high-emphasis">{{ formatFecha(row.fecha) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.salario_base) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.bono_alimentacion) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.beneficio_salud) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.incentivo_metas) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.total_pagado_usd) }}</td>
+                  <td class="text-right text-high-emphasis">{{ formatVes(row.total_pagado_ves) }}</td>
                 </tr>
               </tbody>
             </VTable>
