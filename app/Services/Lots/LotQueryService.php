@@ -13,7 +13,7 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
-            ->with(['product.laboratory', 'supplier','product.origin']);
+            ->with(['product.laboratory', 'supplier', 'product.origin']);
 
         $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
 
@@ -31,7 +31,7 @@ class LotQueryService
                     $escapedTerm = preg_quote($searchTerm, '/');
                     // Buscar palabra completa: al inicio del string, al final, o con espacios/caracteres no alfanuméricos alrededor
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
-                    
+
                     $q->whereRaw("lot_number REGEXP ?", [$pattern])
                         ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
                             $productQuery->whereRaw("name REGEXP ?", [$pattern])
@@ -45,7 +45,8 @@ class LotQueryService
                     $q->where(function ($wordClauses) use ($words, $searchTerm) {
                         foreach ($words as $word) {
                             $word = trim($word);
-                            if (empty($word)) continue;
+                            if (empty($word))
+                                continue;
                             $wordPattern = "%{$word}%";
                             $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
                                 $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
@@ -96,7 +97,7 @@ class LotQueryService
         // Aplicar ordenamiento
         $sortBy = $request->input('sortBy', 'id');
         $orderBy = $request->input('orderBy', 'desc');
-        
+
         if ($request->has('sortBy') && $request->has('orderBy')) {
             $this->applySorting($query, $sortBy, $orderBy);
         } else {
@@ -115,7 +116,7 @@ class LotQueryService
         if ($hasJoins) {
             $query->distinct();
         }
-        
+
         return $query;
     }
 
@@ -130,7 +131,7 @@ class LotQueryService
                     $locationQuery->whereNull('product_lots.location')
                         ->orWhere('product_lots.location', '');
                 })
-                ->orWhere(function ($lotNumberQuery) {
+                    ->orWhere(function ($lotNumberQuery) {
                     $lotNumberQuery->whereNull('product_lots.lot_number')
                         ->orWhere('product_lots.lot_number', '');
                 });
@@ -148,47 +149,48 @@ class LotQueryService
             });
         }*/
 
-    if ($request->has('search') && !empty($request->search)) {
-        $searchTerm = $request->search;
-        
-        $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
-            if ($isStrictSearch) {
-                // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
-                $escapedTerm = preg_quote($searchTerm, '/');
-                $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
-                
-                $q->whereRaw("lot_number REGEXP ?", [$pattern])
-                    ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
-                        $productQuery->whereRaw("name REGEXP ?", [$pattern])
-                            ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
-                            ->orWhere('barcode', '=', $searchTerm)
-                            ->orWhere('id', '=', $searchTerm);
-                    });
-            } else {
-                // Búsqueda normal: permite coincidencias parciales
-                $words = explode(' ', trim($searchTerm));
-                $q->where(function ($wordClauses) use ($words) {
-                    foreach ($words as $word) {
-                        $word = trim($word);
-                        if (empty($word)) continue;
-                        $wordPattern = "%{$word}%";
-                        $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
-                            $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
-                                ->orWhereHas('product', function ($productQuery) use ($wordPattern, $searchTerm) {
-                                    $productQuery->where('name', 'like', $wordPattern)
-                                        ->orWhere('active_ingredient', 'like', $wordPattern)
-                                        ->orWhere('barcode', 'like', $wordPattern)
-                                        ->orWhere('id', 'like', $wordPattern)
-                                        ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
-                                            $labQuery->where('name', 'like', $wordPattern);
-                                        });
-                                });
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+
+            $query->where(function ($q) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+
+                    $q->whereRaw("lot_number REGEXP ?", [$pattern])
+                        ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
+                            $productQuery->whereRaw("name REGEXP ?", [$pattern])
+                                ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                                ->orWhere('barcode', '=', $searchTerm)
+                                ->orWhere('id', '=', $searchTerm);
                         });
-                    }
-                });
-            }
-        });
-    }
+                } else {
+                    // Búsqueda normal: permite coincidencias parciales
+                    $words = explode(' ', trim($searchTerm));
+                    $q->where(function ($wordClauses) use ($words, $searchTerm) {
+                        foreach ($words as $word) {
+                            $word = trim($word);
+                            if (empty($word))
+                                continue;
+                            $wordPattern = "%{$word}%";
+                            $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
+                                $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
+                                    ->orWhereHas('product', function ($productQuery) use ($wordPattern, $searchTerm) {
+                                        $productQuery->where('name', 'like', $wordPattern)
+                                            ->orWhere('active_ingredient', 'like', $wordPattern)
+                                            ->orWhere('barcode', 'like', $wordPattern)
+                                            ->orWhere('id', 'like', $wordPattern)
+                                            ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                                $labQuery->where('name', 'like', $wordPattern);
+                                            });
+                                    });
+                            });
+                        }
+                    });
+                }
+            });
+        }
 
         if ($request->has('laboratoryId') && !empty($request->laboratoryId)) {
             $query->whereHas('product', function ($productQuery) use ($request) {
@@ -196,7 +198,7 @@ class LotQueryService
             });
         }
 
-         if ($request->has('originId') && !empty($request->originId)) {
+        if ($request->has('originId') && !empty($request->originId)) {
             $query->whereHas('product', function ($productQuery) use ($request) {
                 $productQuery->where('origin_id', $request->originId);
             });
@@ -220,7 +222,7 @@ class LotQueryService
 
     public function getProductsWithoutLot()
     {
-        return Product::with('laboratory','origin')
+        return Product::with('laboratory', 'origin')
             ->orderBy('name', 'asc')
             ->get();
     }
@@ -244,7 +246,7 @@ class LotQueryService
                 if ($isStrictSearch) {
                     $escapedTerm = preg_quote($searchTerm, '/');
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
-                    
+
                     $q->whereRaw("lot_number REGEXP ?", [$pattern])
                         ->orWhereHas('product', function ($productQuery) use ($pattern, $searchTerm) {
                             $productQuery->whereRaw("name REGEXP ?", [$pattern])
@@ -254,10 +256,11 @@ class LotQueryService
                         });
                 } else {
                     $words = explode(' ', trim($searchTerm));
-                    $q->where(function ($wordClauses) use ($words) {
+                    $q->where(function ($wordClauses) use ($words, $searchTerm) {
                         foreach ($words as $word) {
                             $word = trim($word);
-                            if (empty($word)) continue;
+                            if (empty($word))
+                                continue;
                             $wordPattern = "%{$word}%";
                             $wordClauses->where(function ($fieldClauses) use ($wordPattern, $searchTerm) {
                                 $fieldClauses->orWhere('lot_number', 'like', $wordPattern)
