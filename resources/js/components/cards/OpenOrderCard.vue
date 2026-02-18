@@ -224,22 +224,16 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
+// Factor: Precio = Original * (1 - Max(Global, Individual/Expiration) / 100)
+// Evita doble descuento: NUNCA aplicar % sobre un precio ya descontado
 const getDiscountFactor = (product) => {
-  // If pack, no discount ever
   if (product.pack_id) return 1;
 
   const globalPct = props.globalDiscount
     ? parseFloat(props.globalDiscount.percentage)
     : 0;
-
-  // Check if expiration discount exists
-  let expirationPct = 0;
-  if (product.discount_type === "expiration") {
-    expirationPct = parseFloat(product.discount_percentage || 0);
-  }
-
-  // Use the larger of the two
-  const bestPct = Math.max(globalPct, expirationPct);
+  const productPct = parseFloat(product.discount_percentage || 0);
+  const bestPct = Math.max(globalPct, productPct);
 
   if (bestPct > 0) {
     return 1 - bestPct / 100;
@@ -247,24 +241,54 @@ const getDiscountFactor = (product) => {
   return 1;
 };
 
+// Precio original de lista (para aplicar descuento una sola vez)
+const getOriginalBasePrice = (product, currency) => {
+  if (currency === "BS") {
+    return product.original_price_bs ?? product.originalPriceBs ?? product.price_bs ?? 0;
+  }
+  if (currency === "COP") {
+    return product.original_price_cop ?? product.originalPriceCop ?? product.price_cop ?? 0;
+  }
+  return product.original_price_usd ?? product.originalPrice ?? product.basePrice ?? product.price ?? 0;
+};
+
+// Base con descuento aplicado; usa precio ORIGINAL * factor único para evitar doble descuento
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
-
-  // Apply visual discount
-  //basePrice = basePrice * getDiscountFactor(product);
-
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
     priceSinIva = roundUpToNearestHundred(priceSinIva);
   }
+  return priceSinIva;
+};
 
+// Precio original sin IVA (para mostrar tachado): producto/pack o Empresa
+const getProductPriceOriginalSinIva = (product, currency) => {
+  let basePrice = 0;
+  const hasProductDiscount = product.discount_percentage > 0 || (product.has_pack_discount && product.pack_id);
+  const hasGlobalDiscount = activeDiscountDisplay.value != null && !product.pack_id && product.discount_type !== "expiration";
+  if (hasProductDiscount || hasGlobalDiscount) {
+    if (currency === "BS") {
+      basePrice = product.original_price_bs || product.originalPriceBs || product.price_bs || 0;
+    } else if (currency === "COP") {
+      basePrice = product.original_price_cop || product.originalPriceCop || product.price_cop || 0;
+    } else {
+      basePrice = product.original_price_usd || product.originalPrice || product.basePrice || product.price || 0;
+    }
+  } else {
+    if (currency === "BS") basePrice = product.price_bs || 0;
+    else if (currency === "COP") basePrice = product.price_cop || 0;
+    else basePrice = product.price || 0;
+  }
+  let priceSinIva = basePrice * product.selectedQuantity;
+  if (currency === "COP") priceSinIva = roundUpToNearestHundred(priceSinIva);
   return priceSinIva;
 };
 
@@ -272,17 +296,19 @@ const getProductPriceSinDescuento = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
 
-  // Si tiene descuento de pack, usar el precio original
-  if (product.has_pack_discount && product.pack_id) {
+  // Precio original cuando hay descuento (pack, individual, vencimiento, categoría)
+  if (
+    (product.has_pack_discount && product.pack_id) ||
+    product.discount_percentage > 0
+  ) {
     if (currency === "BS") {
-      basePrice = product.original_price_bs || 0;
+      basePrice = product.original_price_bs || product.price_bs || 0;
     } else if (currency === "COP") {
-      basePrice = product.original_price_cop || 0;
+      basePrice = product.original_price_cop || product.price_cop || 0;
     } else {
-      basePrice = product.original_price_usd || 0;
+      basePrice = product.original_price_usd || product.basePrice || product.price || 0;
     }
   } else {
-    // Precio normal sin descuento
     if (currency === "BS") {
       basePrice = product.price_bs || 0;
     } else if (currency === "COP") {
@@ -303,46 +329,34 @@ const getProductPriceSinDescuento = (product, currency) => {
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
-
-  // Apply visual discount
-  if (activeDiscountDisplay.value != null) {
-    basePrice = basePrice * getDiscountFactor(product);
-  }
-
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
-
   return priceWithIva;
 };
 
 const getIva = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
+  if (product.discountApplied) {
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = product.price || 0;
+    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
-
-  // Apply visual discount
-  basePrice = basePrice * getDiscountFactor(product);
-
   let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
     Iva = roundUpToNearestHundred(Iva);
   }
-
   return Iva;
 };
 
@@ -794,9 +808,10 @@ const specialTaxAmount = computed(() => {
                           parseFloat(product.discount_percentage) >=
                             parseFloat(props.globalDiscount.percentage))
                       "
-                      color="secondary"
+                      color="success"
+                      variant="flat"
                       size="x-small"
-                      class="ms-1"
+                      class="ms-1 chip-oferta"
                       label
                     >
                       Oferta (-{{ product.discount_percentage }}%)
@@ -811,9 +826,10 @@ const specialTaxAmount = computed(() => {
                           parseFloat(product.discount_percentage) >=
                             parseFloat(props.globalDiscount.percentage))
                       "
-                      color="secondary"
+                      color="info"
+                      variant="flat"
                       size="x-small"
-                      class="ms-1"
+                      class="ms-1 chip-categoria"
                       label
                     >
                       Cat (-{{ product.discount_percentage }}%)
@@ -894,17 +910,37 @@ const specialTaxAmount = computed(() => {
                   class="text-caption text-medium-emphasis"
                   >Precio</span
                 >
-                <span class="text-body-1 font-weight-regular">
-                  {{
-                    formatCurrency(
-                      getProductPriceSinIva(
-                        product,
+                <div class="d-flex flex-column align-end">
+                  <del
+                    v-if="(product.discount_percentage > 0 || product.has_pack_discount) || (activeDiscountDisplay && !product.pack_id && product.discount_type !== 'expiration')"
+                    class="precio-tachado"
+                  >
+                    {{
+                      formatCurrency(
+                        getProductPriceOriginalSinIva(product, props.selectedDisplayCurrency),
                         props.selectedDisplayCurrency,
-                      ),
-                      props.selectedDisplayCurrency,
-                    )
-                  }}
-                </span>
+                      )
+                    }}
+                  </del>
+                  <span
+                    :class="
+                      (product.discount_percentage > 0 || product.has_pack_discount) || (activeDiscountDisplay && !product.pack_id && product.discount_type !== 'expiration')
+                        ? 'precio-oferta'
+                        : 'precio-normal'
+                    "
+                    class="text-body-1 font-weight-regular"
+                  >
+                    {{
+                      formatCurrency(
+                        getProductPriceSinIva(
+                          product,
+                          props.selectedDisplayCurrency,
+                        ),
+                        props.selectedDisplayCurrency,
+                      )
+                    }}
+                  </span>
+                </div>
               </div>
             </td>
             <td class="text-right">
@@ -914,7 +950,7 @@ const specialTaxAmount = computed(() => {
                   class="text-caption text-medium-emphasis"
                   >IVA</span
                 >
-                <span class="text-body-1 font-weight-regular">
+                <span class="text-body-1 font-weight-regular precio-normal">
                   {{
                     formatCurrency(
                       getIva(product, props.selectedDisplayCurrency),
@@ -932,27 +968,18 @@ const specialTaxAmount = computed(() => {
                   class="text-caption text-medium-emphasis"
                   >Total</span
                 >
-                <div class="d-flex align-center gap-1">
-                  <!-- Mostrar precio original tachado si hay descuento global o descuento de pack -->
+                <div class="d-flex align-center">
+                  <!-- Solo monto final: (Base con descuento) + IVA. Sin tachados -->
                   <span
-                    v-if="
+                    :class="
                       activeDiscountDisplay ||
-                      (product.has_pack_discount && product.pack_id)
+                      (product.has_pack_discount && product.pack_id) ||
+                      product.discount_percentage > 0
+                        ? 'precio-oferta'
+                        : 'precio-normal'
                     "
-                    class="text-caption text-disabled text-decoration-line-through me-1 text-error"
+                    class="text-body-1 font-weight-bold"
                   >
-                    {{
-                      formatCurrency(
-                        getProductPriceSinDescuento(
-                          product,
-                          props.selectedDisplayCurrency,
-                        ),
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </span>
-
-                  <span class="text-body-1 font-weight-bold text-black">
                     {{
                       formatCurrency(
                         getProductPrice(product, props.selectedDisplayCurrency),
@@ -968,74 +995,6 @@ const specialTaxAmount = computed(() => {
       </VTable>
     </VCardText>
     <VDivider class="mt-auto" />
-
-    <div v-if="activeDiscountDisplay">
-      <VCardText class="py-2 bg-grey-lighten-4">
-        <VTable density="compact" lines="none">
-          <tbody>
-            <tr>
-              <td>
-                <div class="d-flex flex-column">
-                  <span
-                    class="text-subtitle-1 me-2 text-error font-weight-medium"
-                  >
-                    {{ activeDiscountDisplay.label }}:
-                  </span>
-                </div>
-              </td>
-              <td><div class="d-flex align-center"></div></td>
-              <td class="text-right"></td>
-              <td class="text-right"></td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span class="text-body-1 font-weight-bold text-error">
-                    - {{ activeDiscountDisplay.formatted }}
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
-      </VCardText>
-      <VDivider class="mt-auto" />
-    </div>
-
-    <div v-if="props.expirationDiscountTotal > 0">
-      <VCardText class="py-2 bg-grey-lighten-4">
-        <VTable density="compact" lines="none">
-          <tbody>
-            <tr>
-              <td>
-                <div class="d-flex flex-column">
-                  <span
-                    class="text-subtitle-1 me-2 text-error font-weight-medium"
-                  >
-                    Descuento por Vencimiento:
-                  </span>
-                </div>
-              </td>
-              <td><div class="d-flex align-center"></div></td>
-              <td class="text-right"></td>
-              <td class="text-right"></td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span class="text-body-1 font-weight-bold text-error">
-                    -
-                    {{
-                      formatCurrency(
-                        props.expirationDiscountTotal,
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
-      </VCardText>
-      <VDivider class="mt-auto" />
-    </div>
 
     <div v-if="appliesSpecialTax">
       <VCardText class="py-2 bg-grey-lighten-4">
@@ -1121,5 +1080,35 @@ const specialTaxAmount = computed(() => {
 <style scoped>
 .v-table__wrapper > table > tbody > tr > td {
   border-bottom: none !important;
+}
+
+/* Precio normal (sin oferta): color negro */
+.precio-normal {
+  color: #000;
+}
+
+/* Precio original tachado (base sin IVA) cuando hay descuento */
+.precio-tachado {
+  color: #a0a0a0;
+  text-decoration: line-through;
+  font-size: 0.75rem;
+}
+
+/* Precio con oferta/descuento - destaca (tono chocolate/dorado) */
+.precio-oferta {
+  color: rgb(var(--v-theme-success));
+  font-weight: 600;
+}
+
+/* Chip de oferta individual - más atractivo (verde) */
+.chip-oferta {
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Chip de oferta por categoría - color distinto (azul/info) */
+.chip-categoria {
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 </style>

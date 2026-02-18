@@ -129,19 +129,27 @@ watch(
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="600px" persistent>
-    <VCard :loading="loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4">
-        <span class="text-h5 font-weight-bold">{{ dialogTitle }}</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="onCancel">
-          <VIcon icon="tabler-x" />
+  <VDialog
+    v-model="dialogVisible"
+    max-width="600px"
+    persistent
+    scrollable
+    :retain-focus="false"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
+  >
+    <VCard :loading="loading">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-prescription" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
+          <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="pa-6">
+      <VCardText class="pa-5">
         <VRow>
           <VCol cols="12">
             <VTextField
@@ -202,20 +210,33 @@ watch(
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-6">
-        <VSpacer />
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="onCancel"
-          :disabled="loading"
-        >
-          Cancelar
-        </VBtn>
-
-        <VBtn color="primary" variant="flat" @click="onSave" :loading="loading">
-          {{ isEditing ? "Actualizar" : "Guardar" }}
-        </VBtn>
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="onCancel"
+              :disabled="loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
+              @click="onSave"
+              :loading="loading"
+            >
+              {{ isEditing ? "Actualizar" : "Guardar" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

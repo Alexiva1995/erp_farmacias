@@ -1,11 +1,13 @@
 <script setup lang="js">
+
 import CompaniesClientsFilters from "@/components/CompaniesClientsFilters.vue";
 import CompaniesClientFormDialoge from "@/components/dialogs/CompaniesClientFormDialoge.vue";
+import AddClientToCompanyModal from "@/components/dialogs/AddClientToCompanyModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfClienstGenerator from "@/utils/pdfClienstGenerator";
 import Swal from 'sweetalert2';
-import { onMounted, reactive } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from "vue-router";
 
 const router = useRoute()
@@ -22,6 +24,8 @@ const modal= reactive({
   statu:false,
   titulo:"Nuevo"
 })
+
+const isAddClientModalVisible = ref(false)
 
 const formulario= reactive({
   id:null,
@@ -51,8 +55,8 @@ const loading = ref(false)
 
 const page = ref(1)
 const itemsPerPage = ref(10)
-const sortBy = ref()
-const orderBy = ref()
+const sortBy = ref('id')
+const orderBy = ref('desc')
 
 const buscardor_filtro= ref("");
 const tipo_identificacion_filtro= ref(null);
@@ -69,7 +73,7 @@ function mostarModal(){
 function mostarModoEdit(payload){
   let cliente= statuModule.items.find(client => client.id==payload)
   modal.statu=true
-  modal.titulo=`${cliente.name} ${cliente.last_name}`
+  modal.titulo=`${cliente.name} ${cliente.last_name || ''}`
 
   insertarDatosAlFormulario({...cliente})
 }
@@ -128,7 +132,6 @@ async function consultAllcomapanies(){
 }
 
 function enviar(payload){
-  // console.log("data id => ",payload.get("id"))
   if(formulario.id==null){
     crear(payload)
   }
@@ -189,18 +192,18 @@ function cargarErrores(errores){
 async function actualizarTabla(){
   loading.value = true;
 
-  let filtroNaturales={
+  let filtros={
     page:page.value,
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    // company_id:company_id_filtro.value,
+    company_id:company_id_filtro.value,
   }
-  let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientes=respuestaApiNaturles.data
-  statuModule.totalClientes=respuestaApiNaturles.total
+  let respuestaApi= await filtrar(filtros)
+  statuModule.itemsClientes=respuestaApi.data
+  statuModule.totalClientes=respuestaApi.total
 
-  statuModule.items=[...respuestaApiNaturles.data]
+  statuModule.items=[...respuestaApi.data]
 
   loading.value = false;
 }
@@ -208,7 +211,7 @@ async function actualizarTabla(){
 async function actualizarTablaTablaClientes(){
   loading.value = true;
 
-  let filtroNaturales={
+  let filtros={
     page:page.value,
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
@@ -216,22 +219,20 @@ async function actualizarTablaTablaClientes(){
     // filtros
     buscardor_filtro:buscardor_filtro.value,
     tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    // company_id:company_id_filtro.value,
+    company_id:company_id_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
-  let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientes=respuestaApiNaturles.data
-  statuModule.totalClientes=respuestaApiNaturles.total
+  let respuestaApi= await filtrar(filtros)
+  statuModule.itemsClientes=respuestaApi.data
+  statuModule.totalClientes=respuestaApi.total
 
-  statuModule.items=[...respuestaApiNaturles.data]
+  statuModule.items=[...respuestaApi.data]
 
   loading.value = false;
 }
 
 async function confirmarEliminarCliente(payload){
-  // alert(payload)
-
   const result = await Swal.fire({
     title: '¿Estás seguro?',
     text: '¡No podrás revertir la eliminación de este cliente!',
@@ -252,6 +253,41 @@ async function confirmarEliminarCliente(payload){
   }
 }
 
+async function confirmarQuitarDeEmpresa(clientId){
+  const result = await Swal.fire({
+    title: '¿Quitar cliente de la empresa?',
+    text: 'El cliente será desvinculado de esta empresa.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, quitar',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-warning v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    await removeFromCompany(clientId)
+  }
+}
+
+async function removeFromCompany(clientId){
+  try {
+    await axios.post(`/crm/clients/${clientId}/update-company/${router.params.id}`, {
+      client_id: clientId,
+      company_id: parseInt(router.params.id),
+      status: false,
+    })
+    toast.success("Cliente desvinculado de la empresa")
+    await actualizarTabla()
+  } catch (error) {
+    toast.error("Error al desvincular el cliente")
+    console.error("error => ", error)
+  }
+}
 
 async function eliminarCliente(id){
   try {
@@ -270,7 +306,6 @@ async function eliminarCliente(id){
 }
 
 const updateTableOptions = options => {
-  // console.log(options)
   page.value = options.page
   itemsPerPage.value = options.itemsPerPage
   sortBy.value = options.sortBy[0]?.key
@@ -283,7 +318,6 @@ watch(
       tipo_identificacion_filtro,
       fechaDesde_filtro,
       fechaHasta_filtro,
-      company_id_filtro,
       page,
       itemsPerPage,
       orderBy,
@@ -308,7 +342,6 @@ watch(
 function limpiarFiltros(){
   buscardor_filtro.value=""
   tipo_identificacion_filtro.value=""
-  // company_id_filtro.value=""
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
 }
@@ -318,7 +351,6 @@ async function filtrar(dataFiltro){
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
-  // console.log("respues api => ",respuestaApi)
 
   return {...respuestaApi.data.data}
 }
@@ -328,7 +360,6 @@ async function filtrarSinPaginar(dataFiltro){
   if(respuestaApi.status!=200){
     toast.success("Error al filtrar los datos")
   }
-  // console.log("respues api => ",respuestaApi)
 
   return [...respuestaApi.data.data]
 }
@@ -336,7 +367,6 @@ async function filtrarSinPaginar(dataFiltro){
 
 async function exportarPdf(){
     let filtros={
-      // filtros
       buscardor_filtro:buscardor_filtro.value,
       tipo_identificacion_filtro:tipo_identificacion_filtro.value,
       company_id:company_id_filtro.value,
@@ -344,7 +374,6 @@ async function exportarPdf(){
       fechaHasta_filtro:fechaHasta_filtro.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
-  console.log("respuesta => ",respuestaApi)
 
   if(respuestaApi.length==0){
     toast.info("No hay clientes para poder genera un reporte")
@@ -371,8 +400,6 @@ async function exportarExcel(formato){
       params,
       responseType: "blob",
     })
-
-    console.log("res => ",respuestaApi)
 
     if(respuestaApi.status!=200){
       toast.success("Error al filtrar los datos")
@@ -407,27 +434,17 @@ async function consultarCompanyById(id){
   if(respuestaApi.status!=200){
     toast.success("Error al consultar la información de la empresa")
   }
-  // console.log("respues api => ",respuestaApi)
 
   return {...respuestaApi.data.data}
 }
 
-
-async function assignCompany(data) {
-  console.log("data assign => ",data)
-  let body={
-    client_id:  parseInt(data.client_id),
-    company_id: parseInt(data.company_id),
-    status:     data.status,
-  }
-
-  let respuestaApi = await axios.post(`/crm/clients/${data.client_id}/update-company/${data.company_id}`,body)
-  if(respuestaApi.status!=200){
-    toast.error("Error al asignar la empresa al cliente")
-  }
-  await actualizarTabla()
+function onClientAssigned(){
+  actualizarTabla()
 }
 
+function openAddClientModal(){
+  isAddClientModalVisible.value = true
+}
 
 onMounted(async () => {
   let responseComponies = await consultAllcomapanies()
@@ -441,20 +458,17 @@ onMounted(async () => {
 </script>
 <template>
   <div>
-    <VCard
-      :title="'Clientes de la Empresa: ' + statuModule.company.name"
-      class="mb-5"
-    ></VCard>
     <CompaniesClientsFilters
       v-model:buscador="buscardor_filtro"
       v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       @clear="limpiarFiltros"
-      @add-client="mostarModal"
+      @add-existing-client="openAddClientModal"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
     />
+
     <CompaniesClientFormDialoge
       :modal-formulario="modal.statu"
       :titulo="modal.titulo"
@@ -464,7 +478,15 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Clientes">
+
+    <AddClientToCompanyModal
+      v-model="isAddClientModalVisible"
+      :company-id="router.params.id"
+      :company-name="statuModule.company.name || ''"
+      @client-assigned="onClientAssigned"
+    />
+
+    <VCard>
       <VDivider />
       <ClientOfCompanyTable
         :companyId="router.params.id"
@@ -473,10 +495,12 @@ onMounted(async () => {
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
+        :sort-by="sortBy"
+        :order-by="orderBy"
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
+        @remove-from-company="confirmarQuitarDeEmpresa"
         @update:options="updateTableOptions"
-        @assign-company="assignCompany"
       />
     </VCard>
   </div>

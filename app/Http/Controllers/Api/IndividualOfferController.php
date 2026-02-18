@@ -15,7 +15,7 @@ class IndividualOfferController extends Controller
     public function index(Request $request)
     {
         $query = IndividualOffer::with(['product' => function ($query) {
-            $query->select('id', 'name', 'active_ingredient'); // Solo cargar campos necesarios
+            $query->select('id', 'name', 'active_ingredient', 'sale_price');
         }]);
 
         // Filtro por ID de oferta

@@ -16,24 +16,18 @@ const searchQuery = defineModel("searchQuery");
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="3">
-          <VTextField
+        <VCol cols="12" sm="6">
+          <AppTextField
             v-model="idSearchQuery"
-            label="Buscar por ID"
-            placeholder="ID de empresa..."
-            variant="outlined"
-            density="compact"
+            placeholder="Buscar por ID de empresa..."
             clearable
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="3">
-          <VTextField
+        <VCol cols="12" sm="6">
+          <AppTextField
             v-model="searchQuery"
-            label="Buscar por nombre"
-            placeholder="Nombre de empresa..."
-            variant="outlined"
-            density="compact"
+            placeholder="Buscar por nombre de empresa..."
             clearable
           />
         </VCol>

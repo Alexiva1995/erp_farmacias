@@ -195,6 +195,7 @@ const handleExport = async (format) => {
       :product-name="productForLotDistribution?.name || 'Producto'"
       :lots="productForLotDistribution?.lots || []"
       :target-quantity="productTargetQuantity || 0"
+      mode="adjustment"
       @save="handleProductLots"
     />
 
@@ -208,6 +209,7 @@ const handleExport = async (format) => {
       :product-name="invoiceForLotDistribution?.name || 'Producto'"
       :lots="invoiceForLotDistribution?.lots || []"
       :target-quantity="invoiceTargetQuantity || 0"
+      mode="adjustment"
       @save="handleInvoiceLots"
     />
 
@@ -221,6 +223,7 @@ const handleExport = async (format) => {
       :product-name="saleForLotDistribution?.name || 'Producto'"
       :lots="saleForLotDistribution?.lots || []"
       :target-quantity="saleTargetQuantity || 0"
+      mode="adjustment"
       @save="handleSaleLots"
     />
   </div>

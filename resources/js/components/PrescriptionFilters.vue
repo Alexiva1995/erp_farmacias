@@ -17,20 +17,28 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="4">
-          <VTextField
+          <AppTextField
             :model-value="idSearchQuery"
             @update:model-value="(value) => emit('update:idSearchQuery', value)"
-            placeholder="Buscar por ID"
-            variant="outlined"
+            placeholder="Buscar por ID de oferta..."
             clearable
             :disabled="props.loading"
           />
         </VCol>
         <VCol cols="12" sm="6" md="4">
+          <AppTextField
+            :model-value="searchQuery"
+            @update:model-value="(value) => emit('update:searchQuery', value)"
+            placeholder="Buscar por descuento o estado (ej: '10%', 'activo', 'inactivo')"
+            clearable
+            :disabled="props.loading"
+          />
+        </VCol>
+        <VCol cols="12" sm="12" md="4">
           <VSelect
             :model-value="mode"
             @update:model-value="(value) => emit('update:mode', value)"

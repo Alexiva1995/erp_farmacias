@@ -104,7 +104,10 @@ class CategoryOfferController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-        $category = Category::find($request->category_id['id']);
+        $categoryId = is_array($request->category_id)
+            ? ($request->category_id['id'] ?? $request->category_id)
+            : $request->category_id;
+        $category = Category::find($categoryId);
         if (!$category) {
             return response()->json([
                 'status' => false,

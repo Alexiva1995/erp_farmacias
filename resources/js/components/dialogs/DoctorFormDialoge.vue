@@ -37,19 +37,29 @@ function submitForm(){
 </script>
 
 <template>
-  <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
+  <VDialog
+    :model-value="props.modalFormulario"
+    max-width="700px"
+    persistent
+    scrollable
+    :retain-focus="false"
+    @click:outside.prevent
+    @keydown.esc.prevent="close"
+  >
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline">{{ props.titulo }}</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="close">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-stethoscope" size="24" color="white" />
+          <span class="text-h6 text-white">{{ props.titulo }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="close">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-      <VDivider />
-      <VContainer>
+
+      <VCardText class="pa-5">
         <VRow>
-          <VCol cols="12" sm="6" md="6" lg="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="formData.name"
               :error-messages="formError.name"
@@ -58,7 +68,7 @@ function submitForm(){
               variant="outlined"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" lg="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="formData.identification"
               :error-messages="formError.identification"
@@ -76,25 +86,35 @@ function submitForm(){
             />
           </VCol>
         </VRow>
-      </VContainer>
+      </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="close"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Cancelar</VBtn
-        >
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-          >Guardar Cambios</VBtn
-        >
+
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="close"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
+              @click="submitForm"
+            >
+              {{ formData.id ? 'Actualizar' : 'Guardar' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

@@ -258,12 +258,21 @@ const formatDateForInput = (dateString) => {
     :model-value="props.modelValue"
     max-width="800px"
     persistent
+    scrollable
+    :retain-focus="false"
     @update:model-value="onCancel"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
   >
     <VCard :loading="loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center p-4">
-        <span class="text-h5 font-weight-bold">{{ dialogTitle }}</span>
-        <VSpacer />
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-building" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
@@ -418,46 +427,43 @@ const formatDateForInput = (dateString) => {
         </VRow>
       </VCardText>
 
-      <VCardActions class="pa-4 px-6">
-        <VRow>
-          <VCol cols="6" class="pe-2">
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
             <VBtn
               v-if="currentStep > 1"
               color="secondary"
               variant="outlined"
+              prepend-icon="tabler-arrow-left"
               block
               @click="prevStep"
             >
-              <VIcon>mdi-arrow-left</VIcon>
               Anterior
             </VBtn>
             <VBtn
               v-else
               color="secondary"
               variant="outlined"
+              prepend-icon="tabler-x"
               block
               @click="onCancel"
+              :disabled="loading"
             >
               Cancelar
             </VBtn>
           </VCol>
-
-          <VCol cols="6" class="ps-2">
+          <VCol cols="6" class="pa-2">
             <VBtn
               color="primary"
               variant="flat"
+              :prepend-icon="currentStep === 1 ? 'tabler-arrow-right' : 'tabler-check'"
               block
               :disabled="!canProceedToNext"
               :loading="loading"
               @click="onSave"
             >
-              <template v-if="currentStep === 1">
-                Siguiente
-                <VIcon>mdi-arrow-right</VIcon>
-              </template>
-              <template v-else>
-                {{ props.isEditing ? "Actualizar" : "Guardar" }}
-              </template>
+              <template v-if="currentStep === 1">Siguiente</template>
+              <template v-else>{{ props.isEditing ? "Actualizar" : "Guardar" }}</template>
             </VBtn>
           </VCol>
         </VRow>

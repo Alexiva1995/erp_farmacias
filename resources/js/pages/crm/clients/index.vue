@@ -1,11 +1,20 @@
 <script setup lang="js">
 import ClientsFilters from "@/components/ClientsFilters.vue";
 import ClientFormDialoge from "@/components/dialogs/ClientFormDialoge.vue";
+import ClientStatsModal from "@/components/dialogs/ClientStatsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfClienstGenerator from "@/utils/pdfClienstGenerator";
 import Swal from 'sweetalert2';
-import { onMounted, reactive } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
+
+const isStatsModalVisible = ref(false);
+const statsClientId = ref(null);
+
+function openStatsModal(clientId) {
+  statsClientId.value = clientId;
+  isStatsModalVisible.value = true;
+}
 
 const statuModule= reactive({
   items:[],
@@ -50,12 +59,13 @@ const loading = ref(false)
 
 const page = ref(1)
 const itemsPerPage = ref(10)
-const sortBy = ref()
-const orderBy = ref()
+const sortBy = ref('id')
+const orderBy = ref('desc')
 
 const buscardor_filtro= ref("");
 const tipo_identificacion_filtro= ref(null);
 const company_id_filtro= ref("");
+const client_type_filtro= ref(null);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
 
@@ -216,11 +226,11 @@ async function actualizarTabla(){
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    // tipo:["V-","E-"],
 
     buscardor_filtro:buscardor_filtro.value,
     tipo_identificacion_filtro:tipo_identificacion_filtro.value,
     company_id:company_id_filtro.value,
+    client_type:client_type_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
@@ -241,11 +251,11 @@ async function actualizarTablaTablaClientes(){
     itemsPerPage:itemsPerPage.value,
     orderBy:orderBy.value,
     sortBy:sortBy.value,
-    // tipo:["V-","E-"],
-    // filtros
+
     buscardor_filtro:buscardor_filtro.value,
     tipo_identificacion_filtro:tipo_identificacion_filtro.value,
     company_id:company_id_filtro.value,
+    client_type:client_type_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
   }
@@ -327,6 +337,7 @@ watch(
       fechaDesde_filtro,
       fechaHasta_filtro,
       company_id_filtro,
+      client_type_filtro,
       page,
       itemsPerPage,
       orderBy,
@@ -352,6 +363,7 @@ function limpiarFiltros(){
   buscardor_filtro.value=""
   tipo_identificacion_filtro.value=""
   company_id_filtro.value=""
+  client_type_filtro.value=null
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
 }
@@ -386,10 +398,10 @@ async function filtrarSinPaginar(dataFiltro){
 
 async function exportarPdf(){
     let filtros={
-      // filtros
       buscardor_filtro:buscardor_filtro.value,
       tipo_identificacion_filtro:tipo_identificacion_filtro.value,
       company_id:company_id_filtro.value,
+      client_type:client_type_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
   }
@@ -412,6 +424,7 @@ async function exportarExcel(formato){
       buscardor_filtro:buscardor_filtro.value,
       tipo_identificacion_filtro:tipo_identificacion_filtro.value,
       company_id:company_id_filtro.value,
+      client_type:client_type_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
       formato,
@@ -466,6 +479,7 @@ onMounted(async () => {
       v-model:buscador="buscardor_filtro"
       v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
       v-model:company_id_filtro="company_id_filtro"
+      v-model:client_type_filtro="client_type_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       :companies="statuModule.comapanies"
@@ -492,10 +506,18 @@ onMounted(async () => {
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
+        :sort-by="sortBy"
+        :order-by="orderBy"
         @edit="mostarModoEdit"
         @delete="confirmarEliminarCliente"
+        @view-stats="openStatsModal"
         @update:options="updateTableOptions"
       />
     </VCard>
+
+    <ClientStatsModal
+      v-model="isStatsModalVisible"
+      :client-id="statsClientId"
+    />
   </div>
 </template>

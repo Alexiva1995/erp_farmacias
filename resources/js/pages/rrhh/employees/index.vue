@@ -78,13 +78,13 @@ const handleShowFireEmployeeDialog = (employee) => {
 };
 
 const handleDeleteEmployee = async (employee) => {
+  console.log('Empleado a eliminar:', employee);
   try {
-    const form = new FormData();
-    form.append("_method", "DELETE");
-    await axios.post(`/rrhh/employees/${employee.id}`, form);
-
+    await axios.delete(`/rrhh/employees/${employee.id}`);
+    await fetchEmployees();
     toast.success("Se eliminó el empleado exitosamente");
   } catch (error) {
+    console.error('Error al eliminar empleado:', error.response?.data || error.message);
     toast.error("No se pudo eliminar al empleado");
   }
 };

@@ -1,10 +1,10 @@
 <script setup>
 const props = defineProps({
-  numero_de_premios: [String, null],
+  numero_de_premios: [String, Number, null],
   fechaHasta_filtro: [String, null],
   fechaDesde_filtro: [String, null],
-  laboratory_id: [String, null],
-  monto_minimo: [String, null],
+  laboratory_id: [String, Number, null],
+  monto_minimo: [String, Number, null],
   laboratories: { type: Array, default: () => [] },
 });
 
@@ -20,13 +20,13 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VAutocomplete
             :model-value="props.laboratory_id"
-            label="Laboratorios"
+            placeholder="Laboratorio"
             :items="props.laboratories"
             item-title="name"
             item-value="id"
@@ -36,7 +36,7 @@ const emit = defineEmits([
         </VCol>
         <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
-            placeholder="Fecha Desde"
+            placeholder="Desde"
             :model-value="props.fechaDesde_filtro"
             clearable
             :config="{
@@ -49,7 +49,7 @@ const emit = defineEmits([
         </VCol>
         <VCol cols="12" sm="6" md="2">
           <AppDateTimePicker
-            placeholder="Fecha Hasta"
+            placeholder="Hasta"
             :model-value="props.fechaHasta_filtro"
             clearable
             :config="{
@@ -61,24 +61,20 @@ const emit = defineEmits([
           />
         </VCol>
         <VCol cols="12" sm="6" md="2">
-          <v-text-field
-            label="Monto Minimo"
+          <AppTextField
             type="number"
             :model-value="props.monto_minimo"
-            placeholder="Monto Minimo"
+            placeholder="Monto Mínimo"
             clearable
-            variant="outlined"
             @update:model-value="emit('update:monto_minimo', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <v-text-field
-            label="Numero de Ganadores"
+        <VCol cols="12" sm="6" md="3">
+          <AppTextField
             type="number"
             :model-value="props.numero_de_premios"
-            placeholder="Numero de ganadores"
+            placeholder="N° de Ganadores"
             clearable
-            variant="outlined"
             @update:model-value="emit('update:numero_de_premios', $event)"
           />
         </VCol>
@@ -87,14 +83,14 @@ const emit = defineEmits([
 
     <VDivider />
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
       <VSpacer />
       <VBtn
         color="primary"
-        prepend-icon="tabler-plus"
+        prepend-icon="tabler-trophy"
         @click="emit('action-sortiar', 'ok')"
       >
         Realizar Sorteo

@@ -18,7 +18,7 @@ const currencies = ["USD", "COP", "BS"];
 </script>
 
 <template>
-  <VCard title="Filtro" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="4">
@@ -53,7 +53,7 @@ const currencies = ["USD", "COP", "BS"];
 
     <VCardActions class="pa-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtro
+        Limpiar
       </VBtn>
     </VCardActions>
   </VCard>

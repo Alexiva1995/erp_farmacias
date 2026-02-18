@@ -106,20 +106,24 @@ watch(
     :model-value="props.modelValue"
     max-width="500px"
     persistent
+    scrollable
+    :retain-focus="false"
     @update:model-value="onCancel"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
   >
     <VCard :loading="props.loading">
-      <VCardTitle class="d-flex align-center pa-4">
-        <span class="text-h5 font-weight-bold">{{ dialogTitle }}</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="onCancel">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-clock" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="props.loading">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="pa-4">
+      <VCardText class="pa-5">
         <VForm>
           <VRow>
             <VCol cols="12">
@@ -129,6 +133,7 @@ watch(
                 type="number"
                 min="1"
                 max="36"
+                variant="outlined"
                 :error-messages="formErrors.months_to_expiration"
                 placeholder="Ej: 3"
                 :disabled="props.loading"
@@ -147,6 +152,7 @@ watch(
                 max="100"
                 step="0.01"
                 suffix="%"
+                variant="outlined"
                 :error-messages="formErrors.discount_percentage"
                 placeholder="Ej: 15.50"
                 :disabled="props.loading"
@@ -172,29 +178,36 @@ watch(
 
       <VDivider />
 
-      <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          :disabled="props.loading"
-          @click="onCancel"
-        >
-          Cancelar
-        </VBtn>
-
-        <VSpacer />
-
-        <VBtn
-          color="primary"
-          variant="flat"
-          :loading="props.loading"
-          :disabled="
-            !offerData.months_to_expiration || !offerData.discount_percentage
-          "
-          @click="onSave"
-        >
-          {{ props.isEditing ? "Actualizar" : "Crear" }} Oferta
-        </VBtn>
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="onCancel"
+              :disabled="props.loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
+              :loading="props.loading"
+              :disabled="
+                !offerData.months_to_expiration || !offerData.discount_percentage
+              "
+              @click="onSave"
+            >
+              {{ props.isEditing ? "Actualizar" : "Guardar" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

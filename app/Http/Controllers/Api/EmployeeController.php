@@ -75,8 +75,14 @@ class EmployeeController extends Controller
         return ApiResponse::success(['status' => $results]);
     }
 
-    public function deleteEmployee(Employee $employee)
+    public function deleteEmployee($employeeId)
     {
+        $employee = Employee::withTrashed()->find($employeeId);
+        
+        if (!$employee) {
+            return ApiResponse::error('Empleado no encontrado');
+        }
+        
         $results = $this->employeeServices->deleteEmployee($employee);
         return ApiResponse::success(['status' => $results]);
     }

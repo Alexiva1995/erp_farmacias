@@ -1,54 +1,53 @@
 <script setup>
-const props = defineProps({
-  searchQuery: { type: String, required: true },
-  loading: { type: Boolean, default: false },
+defineProps({
   addOfferLoading: { type: Boolean, default: false },
   showAddButton: { type: Boolean, default: true },
 });
 
-const emit = defineEmits(["update:searchQuery", "clear", "add-doctors"]);
+defineEmits(["clear", "add-doctors"]);
 
-const handleSearchUpdate = (value) => {
-  emit("update:searchQuery", value);
-};
+const idSearchQuery = defineModel("idSearchQuery");
+const searchQuery = defineModel("searchQuery");
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6">
           <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por ID ó Nombre de Médico"
+            v-model="idSearchQuery"
+            placeholder="Buscar por ID de médico..."
             clearable
-            @update:model-value="handleSearchUpdate"
+          />
+        </VCol>
+
+        <VCol cols="12" sm="6">
+          <AppTextField
+            v-model="searchQuery"
+            placeholder="Buscar por nombre de médico..."
+            clearable
           />
         </VCol>
       </VRow>
     </VCardText>
     <VDivider />
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn 
-        color="secondary" 
-        variant="outlined" 
-        @click="emit('clear')"
-        :disabled="props.loading"
-      >
-        Limpiar Filtro
+      <VBtn color="secondary" variant="outlined" @click="$emit('clear')">
+        Limpiar Filtros
       </VBtn>
-      
       <VSpacer />
-      
+      <VSpacer />
+
       <VBtn
-        v-if="props.showAddButton"
+        v-if="showAddButton"
         color="primary"
         prepend-icon="tabler-plus"
-        :loading="props.addOfferLoading"
-        :disabled="props.addOfferLoading"
-        @click="emit('add-doctors')"
+        :loading="addOfferLoading"
+        :disabled="addOfferLoading"
+        @click="$emit('add-doctors')"
       >
-        Añadir Oferta
+        Añadir Oferta por Médico
       </VBtn>
     </VCardActions>
   </VCard>

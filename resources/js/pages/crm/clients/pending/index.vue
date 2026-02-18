@@ -49,8 +49,8 @@ const loading = ref(false)
 
 const page = ref(1)
 const itemsPerPage = ref(10)
-const sortBy = ref()
-const orderBy = ref()
+const sortBy = ref('id')
+const orderBy = ref('desc')
 
 const status = ref(null)
 
@@ -278,6 +278,8 @@ onMounted(async () => {
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"
+        :sort-by="sortBy"
+        :order-by="orderBy"
         @edit="mostarModoEdit"
         @update:options="updateTableOptions"
       />

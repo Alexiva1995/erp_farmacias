@@ -14,8 +14,10 @@ const emit = defineEmits(["update:options", "edit-offer", "delete-offer"]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "product.name", sortable: true, width: "40%" },
+  { title: "Producto", key: "product.name", sortable: true, width: "35%" },
   { title: "% Descuento", key: "discount_percent", sortable: true },
+  { title: "Precio normal", key: "sale_price", sortable: false, align: "end" },
+  { title: "Precio descuento", key: "discount_price", sortable: false, align: "end" },
   { title: "Fecha Inicio", key: "start_date", sortable: true },
   { title: "Fecha Final", key: "end_date", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
@@ -43,6 +45,14 @@ const headers = [
       
       <template #item.discount_percent="{ item }">
         {{ item.discount_percent }}%
+      </template>
+
+      <template #item.sale_price="{ item }">
+        <span class="text-body-2 text-medium-emphasis text-decoration-line-through">${{ (parseFloat(item.product?.sale_price) || 0).toFixed(2) }}</span>
+      </template>
+
+      <template #item.discount_price="{ item }">
+        <span class="text-body-1 font-weight-medium text-success">${{ ((parseFloat(item.product?.sale_price) || 0) * (1 - (parseFloat(item.discount_percent) || 0) / 100)).toFixed(2) }}</span>
       </template>
       
       <template #item.start_date="{ item }">

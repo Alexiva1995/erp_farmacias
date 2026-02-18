@@ -141,27 +141,33 @@ const formatDateForInput = (dateString) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="600px"
+    max-width="700px"
     persistent
+    scrollable
+    :retain-focus="false"
     @update:model-value="onCancel"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4">
-        <span class="text-h5 font-weight-bold">{{ dialogTitle }}</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="onCancel">
-          <VIcon icon="tabler-x" />
+    <VCard :loading="loading">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-stethoscope" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
+          <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
-      <VDivider />
+      <VCardText class="pa-5">
+        <p class="text-h6 font-weight-medium mb-4">Información de la Oferta</p>
 
-      <VCardText class="pa-6">
         <VRow>
           <VCol cols="12">
             <VSelect
               v-model="doctorsOfferData.doctor_id"
-              label="Seleccionar Médico *"
+              label="Seleccionar Médico"
               :items="props.doctorsData"
               :item-title="(item) => `${item.id} - ${item.name}`"
               item-value="id"
@@ -177,6 +183,7 @@ const formatDateForInput = (dateString) => {
               v-model="doctorsOfferData.start_date"
               label="Fecha de Inicio"
               type="date"
+              placeholder="YYYY-MM-DD"
               variant="outlined"
               :error-messages="formErrors.start_date"
             />
@@ -187,6 +194,7 @@ const formatDateForInput = (dateString) => {
               v-model="doctorsOfferData.end_date"
               label="Fecha de Finalización"
               type="date"
+              placeholder="YYYY-MM-DD"
               variant="outlined"
               :error-messages="formErrors.end_date"
             />
@@ -195,9 +203,9 @@ const formatDateForInput = (dateString) => {
           <VCol cols="12" sm="6">
             <VTextField
               v-model="doctorsOfferData.discount"
-              label="Porcentaje de Descuento *"
+              label="Porcentaje de Descuento"
               type="number"
-              placeholder="Ej: 15.5"
+              placeholder="0"
               suffix="%"
               min="0"
               max="100"
@@ -213,6 +221,7 @@ const formatDateForInput = (dateString) => {
               :items="statusOptions"
               item-title="title"
               item-value="value"
+              placeholder="Seleccione un estatus"
               variant="outlined"
               :error-messages="formErrors.is_active"
             />
@@ -222,20 +231,33 @@ const formatDateForInput = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-6">
-        <VSpacer />
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="onCancel"
-          :disabled="loading"
-        >
-          Cancelar
-        </VBtn>
-
-        <VBtn color="primary" variant="flat" @click="onSave" :loading="loading">
-          {{ props.isEditing ? "Actualizar Oferta" : "Guardar Oferta" }}
-        </VBtn>
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="onCancel"
+              :disabled="loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
+              :loading="loading"
+              @click="onSave"
+            >
+              {{ props.isEditing ? "Actualizar" : "Guardar" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

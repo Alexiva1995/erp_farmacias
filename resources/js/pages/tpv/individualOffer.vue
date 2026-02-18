@@ -8,8 +8,6 @@ import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 
 // Estados reactivos
-const availableProducts = ref([]);
-const getAvailableProducts = ref(false);
 const productDataOffer = ref([]);
 const discount = ref(0);
 const loadingProduct = ref(false);
@@ -18,7 +16,6 @@ const itemsPerPageProduct = ref(10);
 const sortByProduct = ref();
 const orderByProduct = ref();
 const isOfferDialogVisible = ref(false);
-const isLoadingDialogData = ref(false);
 const currentOfferToEdit = ref(null);
 
 // Filtros
@@ -57,27 +54,12 @@ const formularioError = reactive({
 });
 
 // Editar oferta
-const handleEditOffer = async (indvOffer) => {
-  isLoadingDialogData.value = true;
-  try {
-    // Cargar productos si no están cargados
-    if (!getAvailableProducts.value) {
-      const productsResponse = await axios.get("/products/all");
-      availableProducts.value = productsResponse.data;
-      getAvailableProducts.value = true;
-    }
-    
-    currentOfferToEdit.value = { ...indvOffer };
-    Object.assign(currentIndvOffer, indvOffer);
-    formularioError.value = {};
-    isOfferDialogVisible.value = true;
-    isEditingMode.value = true;
-  } catch (error) {
-    console.error("Error al cargar datos para editar:", error);
-    toast.error("Error al cargar los datos para editar");
-  } finally {
-    isLoadingDialogData.value = false;
-  }
+const handleEditOffer = (indvOffer) => {
+  currentOfferToEdit.value = { ...indvOffer };
+  Object.assign(currentIndvOffer, indvOffer);
+  formularioError.value = {};
+  isOfferDialogVisible.value = true;
+  isEditingMode.value = true;
 };
 
 // Limpiar filtros
@@ -89,33 +71,17 @@ const handleClearFiltersIndivOffer = () => {
   actualizarTabla();
 };
 
-const handleAddIndividualOfferModal = async () => {
-  isLoadingDialogData.value = true;
-  try {
-    if (!getAvailableProducts.value) {
-      const productsResponse = await axios.get("/products/all");
-      availableProducts.value = productsResponse.data;
-      getAvailableProducts.value = true;
-    }
-    
-    // Resetear formulario
-    Object.assign(currentIndvOffer, {
-      id: null,
-      product_id: null,
-      discount_percent: "",
-      start_date: "",
-      end_date: "",
-    });
-    
-    isEditingMode.value = false;
-    currentOfferToEdit.value = null;
-    isOfferDialogVisible.value = true;
-  } catch (error) {
-    console.error("Error al obtener datos para el modal:", error);
-    toast.error("No se pudieron cargar los datos para crear la oferta.");
-  } finally {
-    isLoadingDialogData.value = false;
-  }
+const handleAddIndividualOfferModal = () => {
+  Object.assign(currentIndvOffer, {
+    id: null,
+    product_id: null,
+    discount_percent: "",
+    start_date: "",
+    end_date: "",
+  });
+  isEditingMode.value = false;
+  currentOfferToEdit.value = null;
+  isOfferDialogVisible.value = true;
 };
 
 // Manejar eliminación
@@ -169,7 +135,6 @@ function limpiarForm() {
     end_date: "",
   });
   isEditingMode.value = false;
-  isLoadingDialogData.value = false;
   currentOfferToEdit.value = null;
 }
 
@@ -256,7 +221,6 @@ onMounted(async () => {
     <IndividualOfferFilters
       v-model:id-search-query="filterSearchQueryIdIndivOffer"
       v-model:search-query="filterSearchQueryIndivOffer"
-      :add-offer-loading="isLoadingDialogData"
       @clear="handleClearFiltersIndivOffer"
       @add-product="handleAddIndividualOfferModal"
     />
@@ -279,8 +243,6 @@ onMounted(async () => {
     <IndividualCreateOffer
       v-model="isOfferDialogVisible"
       :form-data="currentIndvOffer"
-      :loading="isLoadingDialogData"
-      :products-data="availableProducts"
       :form-errors="formularioError"
       :is-editing="isEditingMode"
       :product-offer-to-edit="currentOfferToEdit"

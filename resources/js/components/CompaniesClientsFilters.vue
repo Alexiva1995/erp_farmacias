@@ -13,6 +13,7 @@ const emit = defineEmits([
   "update:fechaDesde_filtro",
   "clear",
   "add-client",
+  "add-existing-client",
   "export-pdf",
   "export-excel",
 ]);
@@ -22,29 +23,27 @@ const emit = defineEmits([
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppTextField
             :model-value="props.buscador"
-            placeholder="Buscar por nombre, apellido o identificación..."
+            placeholder="Buscar..."
             clearable
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             :model-value="props.tipo_identificacion_filtro"
-            label="Tipo de identificación"
+            label="Tipo ID"
             :items="['V-', 'J-', 'G-', 'E-']"
             clearable
-            @update:model-value="
-              emit('update:tipo_identificacion_filtro', $event)
-            "
+            @update:model-value="emit('update:tipo_identificacion_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
-            placeholder="Deste"
+            placeholder="Desde"
             clearable
             :config="{
               altInput: true,
@@ -54,7 +53,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
             placeholder="Hasta"
@@ -72,7 +71,7 @@ const emit = defineEmits([
 
     <VDivider />
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
@@ -103,13 +102,13 @@ const emit = defineEmits([
           </VListItem>
         </VList>
       </VMenu>
-      <!-- <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-client')"
+      <VBtn
+        color="info"
+        prepend-icon="tabler-user-plus"
+        @click="emit('add-existing-client')"
       >
-        Agregar Cliente
-      </VBtn> -->
+        Añadir Cliente
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>

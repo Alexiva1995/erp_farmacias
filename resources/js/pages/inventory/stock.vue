@@ -4,7 +4,7 @@ import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
-import { onMounted, reactive, watch } from 'vue';
+import { onMounted, reactive, watch, nextTick } from 'vue';
 import { useRouter } from "vue-router";
 const route= useRouter()
 
@@ -17,6 +17,11 @@ const modulo= reactive({
   items:[],
   totalItems:0,
 })
+
+// Contador de solicitudes para evitar race conditions
+let requestId = 0
+let debounceTimer = null
+let skipPaginationWatch = false
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -72,17 +77,23 @@ const fetchProducts = async () => {
     isColombian: isColombian.value,
   };
   loading.value = true;
-  let respuesApi=await axios.post("/inventory/stock/filter",data)
-  if(respuesApi.status==200){
-    console.log("productos consultados correctamente")
-  }
-  else{
+  try {
+    let respuesApi=await axios.post("/inventory/stock/filter",data)
+    if(respuesApi.status==200){
+      console.log("productos consultados correctamente")
+    }
+    else{
+      toast.error("error al consultar")
+      console.log("error en el servidor => ",respuesApi)
+    }
+    loading.value=false
+    return {...respuesApi.data.data}
+  } catch (error) {
     toast.error("error al consultar")
-    console.log("error en el servidor => ",error)
+    console.log("error en el servidor => ", error)
+    loading.value=false
+    return { data: [], total: 0 }
   }
-  loading.value=false
-  console.log(respuesApi)
-  return {...respuesApi.data.data}
 };
 
 const handleClearFilters = () => {
@@ -111,6 +122,7 @@ const handleSort = (sortOptions) => {
   }
 };
 
+// Watch con debounce para filtros que cambian frecuentemente (ej: escribir en búsqueda)
 watch(
     [
       expProd,
@@ -121,32 +133,83 @@ watch(
       stockStatusFilter,
       startDate,
       endDate,
-      page,
-      itemsPerPage,
-      sortBy,
-      orderBy,
       isStrictSearch,
       tipoFiltracion,
       isColombian
   ],
-  async () =>{
+  () =>{
+    // Cuando cambia un filtro, volver a la página 1
+    // Marcamos el flag para que el watch de paginación no dispare una llamada duplicada
+    if (page.value !== 1) {
+      skipPaginationWatch = true
+      page.value = 1
+    }
+    actualizarTablaDebounced()
+  }
+)
+
+// Watch sin debounce para paginación y ordenamiento (respuesta inmediata)
+watch(
+    [
+      page,
+      itemsPerPage,
+      sortBy,
+      orderBy,
+  ],
+  () =>{
+    // Si el cambio de página viene del watch de filtros, no hacer doble llamada
+    if (skipPaginationWatch) {
+      skipPaginationWatch = false
+      return
+    }
     actualizarTabla()
   }
 )
 
+// Versión con debounce para cambios de filtros
+function actualizarTablaDebounced(){
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    actualizarTabla()
+  }, 300)
+}
+
+// Versión principal con protección contra race conditions
 async function actualizarTabla(){
+  const currentRequestId = ++requestId
   let dataTabla=await fetchProducts();
+
+  // Si hubo otra solicitud más reciente mientras esta estaba en curso,
+  // descartamos esta respuesta obsoleta para evitar sobrescribir datos correctos
+  if (currentRequestId !== requestId) {
+    console.log("Respuesta descartada (solicitud obsoleta)")
+    return
+  }
+
   console.log("=> ",dataTabla)
   modulo.items=dataTabla.data
   modulo.totalItems=dataTabla.total
 }
 
 const updateTableOptions = options => {
-  // console.log(options)
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
+  // Evitar disparar watchers si los valores no cambiaron realmente
+  const newPage = options.page
+  const newItemsPerPage = options.itemsPerPage
+  const newSortBy = options.sortBy[0]?.key
+  const newOrderBy = options.sortBy[0]?.order
+
+  // Verificar si realmente cambió algo antes de actualizar
+  const changed = page.value !== newPage
+    || itemsPerPage.value !== newItemsPerPage
+    || sortBy.value !== newSortBy
+    || orderBy.value !== newOrderBy
+
+  if (!changed) return
+
+  page.value = newPage
+  itemsPerPage.value = newItemsPerPage
+  sortBy.value = newSortBy
+  orderBy.value = newOrderBy
 }
 
 onMounted(async () => {

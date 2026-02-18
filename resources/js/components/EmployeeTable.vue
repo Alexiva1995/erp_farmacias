@@ -143,7 +143,7 @@ const confirmGenerateResignation = async (employee) => {
           v-if="user?.role_id == 1"
         >
           <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-employee', item.id)" color="error">
+            <IconBtn v-bind="props" @click="emit('delete-employee', item)" color="error">
               <VIcon icon="tabler-trash" />
             </IconBtn>
           </template>

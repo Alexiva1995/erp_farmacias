@@ -36,7 +36,7 @@ const defaultCategoryOffer = {
 const localFormData = ref({ ...defaultCategoryOffer });
 
 const dialogTitle = computed(() => {
-  return props.isEditing ? "Editar Oferta por Categoría" : "Crear Oferta por Categoría";
+  return props.isEditing ? "Editar Oferta" : "Crear Oferta";
 });
 
 // Computed para el display de la categoría seleccionada
@@ -130,114 +130,134 @@ watch(
 </script>
 
 <template>
-  <VDialog :model-value="props.modelValue" max-width="600px" persistent>
-    <VCard :loading="props.loading" class="d-flex flex-column">
-      <VContainer>
-        <VCardTitle class="d-flex align-center p-2">
-          <span class="text-h5 font-weight-bold pr-1">{{ dialogTitle }}</span>
-          <VSpacer />
-        </VCardTitle>
-        <VDivider />
-        <VCardText class="flex-grow-1" style="overflow-y: auto">
-          <VRow>
-            <VCol cols="12">
-              <VAutocomplete
-                v-if="!props.isEditing"
-                v-model="localFormData.category_id"
-                label="Seleccionar una Categoría"
-                variant="outlined"
-                :items="props.categoriesData"
-                :item-title="(item) => `${item.id} - ${item.name}`"
-                item-value="id"
-                :model-value="localFormData.category_id"
-                placeholder="Buscar categoría por ID o nombre"
-                :error="!!props.formErrors.category_id"
-                :error-messages="props.formErrors.category_id"
-                clearable
-                no-data-text="No se encontraron categorías"
-                return-object
-                :hide-no-data="false"
-              />
-              <VTextField
-                v-else
-                :model-value="selectedCategoryDisplay"
-                label="Categoría"
-                readonly
-                variant="outlined"
-                bg-color="grey-lighten-5"
-              />
-            </VCol>
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model="localFormData.discount_percentage"
-                label="% Descuento"
-                variant="outlined"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                :error="!!props.formErrors.discount_percentage"
-                :error-messages="props.formErrors.discount_percentage"
-              />
-            </VCol>
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model="localFormData.start_date"
-                label="Fecha de Inicio"
-                variant="outlined"
-                type="date"
-                placeholder="YYYY-MM-DD"
-                :error="!!props.formErrors.start_date"
-                :error-messages="props.formErrors.start_date"
-              />
-            </VCol>
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model="localFormData.end_date"
-                label="Fecha de Final"
-                variant="outlined"
-                type="date"
-                placeholder="YYYY-MM-DD"
-                :error="!!props.formErrors.end_date"
-                :error-messages="props.formErrors.end_date"
-              />
-            </VCol>
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="localFormData.is_active"
-                label="Estado"
-                variant="outlined"
-                :items="[
-                  { value: true, title: 'Activa' },
-                  { value: false, title: 'Inactiva' },
-                ]"
-                item-title="title"
-                item-value="value"
-                placeholder="Seleccione un estado"
-                :error="!!props.formErrors.is_active"
-                :error-messages="props.formErrors.is_active"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-      </VContainer>
+  <VDialog
+    :model-value="props.modelValue"
+    max-width="700px"
+    persistent
+    scrollable
+    :retain-focus="false"
+    @click:outside.prevent
+    @keydown.esc.prevent="onCancel"
+  >
+    <VCard :loading="props.loading">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-folder" size="24" color="white" />
+          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="props.loading">
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
+      </VCardTitle>
 
-      <VCardActions class="pa-4 px-10">
+      <VCardText class="pa-5">
         <VRow>
-          <VCol cols="6" class="pe-1">
-            <VBtn color="secondary" variant="outlined" block @click="onCancel">
+          <VCol cols="12" sm="8" md="9">
+            <VAutocomplete
+              v-if="!props.isEditing"
+              v-model="localFormData.category_id"
+              label="Seleccionar Categoría"
+              variant="outlined"
+              :items="props.categoriesData"
+              :item-title="(item) => `${item.id} - ${item.name}`"
+              item-value="id"
+              placeholder="Buscar categoría por ID o nombre"
+              :error="!!props.formErrors.category_id"
+              :error-messages="props.formErrors.category_id"
+              clearable
+              no-data-text="No se encontraron categorías"
+              :disabled="props.loading"
+            />
+            <VTextField
+              v-else
+              :model-value="selectedCategoryDisplay"
+              label="Categoría"
+              readonly
+              variant="outlined"
+              bg-color="grey-lighten-5"
+            />
+          </VCol>
+          <VCol cols="12" sm="4" md="3">
+            <VSelect
+              v-model="localFormData.is_active"
+              label="Estado"
+              variant="outlined"
+              :items="[
+                { value: true, title: 'Activa' },
+                { value: false, title: 'Inactiva' },
+              ]"
+              item-title="title"
+              item-value="value"
+              :error="!!props.formErrors.is_active"
+              :error-messages="props.formErrors.is_active"
+              :disabled="props.loading"
+            />
+          </VCol>
+          <VCol cols="12" sm="4" md="4">
+            <VTextField
+              v-model="localFormData.discount_percentage"
+              label="% Descuento"
+              variant="outlined"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              :error="!!props.formErrors.discount_percentage"
+              :error-messages="props.formErrors.discount_percentage"
+              :disabled="props.loading"
+            />
+          </VCol>
+          <VCol cols="12" sm="4" md="4">
+            <VTextField
+              v-model="localFormData.start_date"
+              label="Fecha Inicio"
+              variant="outlined"
+              type="date"
+              :error="!!props.formErrors.start_date"
+              :error-messages="props.formErrors.start_date"
+              :disabled="props.loading"
+            />
+          </VCol>
+          <VCol cols="12" sm="4" md="4">
+            <VTextField
+              v-model="localFormData.end_date"
+              label="Fecha Final"
+              variant="outlined"
+              type="date"
+              :error="!!props.formErrors.end_date"
+              :error-messages="props.formErrors.end_date"
+              :disabled="props.loading"
+            />
+          </VCol>
+        </VRow>
+      </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="onCancel"
+              :disabled="props.loading"
+            >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="6" class="ps-1">
-            <VBtn 
-              color="primary" 
-              variant="flat" 
-              block 
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
               @click="onSave"
               :disabled="props.loading || (!localFormData.category_id && !props.isEditing)"
             >
-              {{ props.isEditing ? "Actualizar Oferta" : "Guardar Oferta" }}
+              {{ props.isEditing ? "Actualizar" : "Guardar" }}
             </VBtn>
           </VCol>
         </VRow>

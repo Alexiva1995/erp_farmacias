@@ -21,7 +21,7 @@ const emit = defineEmits([
   <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="12" md="2">
+        <VCol cols="12" sm="12" md="4">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, identificación o dirección..."
@@ -29,7 +29,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.fechaDesde_filtro"
             placeholder="Desde"
@@ -42,7 +42,7 @@ const emit = defineEmits([
             @update:model-value="emit('update:fechaDesde_filtro', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
+        <VCol cols="12" sm="6" md="4">
           <AppDateTimePicker
             :model-value="props.fechaHasta_filtro"
             placeholder="Hasta"
@@ -60,7 +60,7 @@ const emit = defineEmits([
 
     <VDivider />
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>

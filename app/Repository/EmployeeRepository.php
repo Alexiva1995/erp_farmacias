@@ -151,7 +151,13 @@ class EmployeeRepository
 
   public function deleteEmployee(Employee $employee): bool
   {
-    $employee->delete();
+    // Si el empleado está soft deleted, restaurarlo primero
+    if ($employee->trashed()) {
+      $employee->restore();
+    }
+    
+    $employee->is_active = false;
+    $employee->save();
     return true;
   }
 

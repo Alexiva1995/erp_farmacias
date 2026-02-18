@@ -44,31 +44,50 @@ const dialogVisible = computed({
 
 const isEditing = computed(() => props.packData && props.packData.id);
 
-// Cargar productos con búsqueda
+// Cargar productos con el mismo filtrado que /inventory/products
 const loadAvailableProducts = async (search = "") => {
   loadingProducts.value = true;
   try {
+    const trimmedSearch = String(search ?? "").trim();
     const params = {
-      q: search,
-      itemsPerPage: 100, // Aumentar el límite para buscar más productos
-      hasStock: true, // Solo productos con stock
-      isStrictSearch: false, // Permitir búsqueda flexible para incluir ID
+      q: trimmedSearch || undefined,
+      itemsPerPage: 100,
+      isStrictSearch: false,
+      sortBy: "name",
+      orderBy: "asc",
     };
-    
+    // Si es solo número, enviar product_id (snake_case) para búsqueda directa por ID
+    if (/^\d+$/.test(trimmedSearch)) {
+      params.product_id = parseInt(trimmedSearch, 10);
+    }
+    Object.keys(params).forEach((k) => params[k] === undefined && delete params[k]);
+
+    console.log("Enviando búsqueda:", params);
+
     const response = await axios.get("/products", { params });
-    if (response.data && response.data.data) {
-      availableProducts.value = response.data.data.map((product) => ({
-        id: product.id,
-        name: product.name,
-        active_ingredient: product.active_ingredient,
-        stock: product.stock_calculado || product.stock || 0,
-        sale_price: product.sale_price,
-        unit_cost: product.unit_cost,
-        next_expiration: product.next_expiration,
-        laboratory: product.laboratory?.name,
-        photo_url: product.photo_url,
-        barcode: product.barcode,
-      }));
+    const items = Array.isArray(response.data?.data) ? response.data.data : [];
+    if (items.length > 0) {
+      const seenIds = new Set();
+      availableProducts.value = items
+        .filter((product) => {
+          if (seenIds.has(product.id)) return false;
+          seenIds.add(product.id);
+          return true;
+        })
+        .map((product) => ({
+          id: product.id,
+          name: product.name,
+          active_ingredient: product.active_ingredient,
+          stock: product.stock_calculado || product.stock || 0,
+          sale_price: product.sale_price,
+          unit_cost: product.unit_cost,
+          next_expiration: product.next_expiration,
+          laboratory: product.laboratory?.name,
+          photo_url: product.photo_url,
+          barcode: product.barcode,
+        }));
+    } else {
+      availableProducts.value = [];
     }
   } catch (error) {
     console.error("Error loading products:", error);
@@ -81,10 +100,11 @@ const loadAvailableProducts = async (search = "") => {
 // Búsqueda con debounce
 let searchTimeout;
 const handleProductSearch = (search) => {
-  productSearchQuery.value = search;
+  const searchStr = String(search ?? "");
+  productSearchQuery.value = searchStr;
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    loadAvailableProducts(search);
+    loadAvailableProducts(searchStr);
   }, 300);
 };
 
@@ -430,20 +450,20 @@ watch(
         <!-- Información del Pack -->
         <div class="mb-6">
           <VRow>
-            <VCol cols="12" md="4">
+            <VCol cols="12" sm="6" md="4">
               <AppTextField
                 v-model="formData.name"
                 label="Nombre del Pack *"
                 variant="outlined"
                 :error-messages="formErrors.name"
-                placeholder="Ej: Pack Familiar, Oferta Especial..."
+                placeholder="Ej: Pack Familiar..."
                 :disabled="loading"
               />
             </VCol>
-            <VCol cols="12" md="4">
+            <VCol cols="12" sm="6" md="2">
               <AppTextField
                 v-model.number="formData.products_count"
-                label="Cantidad de Productos *"
+                label="Cant. Productos *"
                 variant="outlined"
                 type="number"
                 min="1"
@@ -452,7 +472,7 @@ watch(
                 :disabled="loading"
               />
             </VCol>
-            <VCol cols="12" md="4">
+            <VCol cols="12" sm="6" md="2">
               <AppSelect
                 v-model="formData.is_active"
                 label="Estado"
@@ -465,23 +485,25 @@ watch(
                 :disabled="loading"
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol cols="12" sm="6" md="2">
               <AppTextField
                 v-model.number="formData.max_quantity"
-                label="Cantidad Máxima de Ventas"
+                label="Cant. Máx. Ventas"
                 variant="outlined"
                 type="number"
                 min="1"
-                placeholder="Dejar vacío para ilimitado"
+                placeholder="Ilimitado si vacío"
                 :disabled="loading"
               />
             </VCol>
-            <VCol cols="12" md="6">
+            <VCol cols="12" sm="6" md="2" class="date-input-compact">
               <AppTextField
                 v-model="formData.max_sale_date"
-                label="Fecha Máxima de Venta"
+                label="Fecha Máx. Venta"
                 variant="outlined"
                 type="date"
+                density="compact"
+                hide-details
                 :disabled="loading"
               />
             </VCol>
@@ -524,30 +546,19 @@ watch(
                 return-object
                 clearable
                 :disabled="loading"
-                placeholder="Buscar por ID, nombre o código de barras..."
+                placeholder="Buscar por ID, Producto, C. Activo..."
+                :custom-filter="() => true"
                 @update:search="handleProductSearch"
                 @update:model-value="calculateTotalPrice()"
               >
                 <template #item="{ props: itemProps, item: productItem }">
-                  <VListItem v-bind="itemProps">
-                    <template #prepend>
-                      <VAvatar
-                        v-if="productItem.raw.photo_url"
-                        size="40"
-                        :image="productItem.raw.photo_url"
-                        variant="tonal"
-                      />
-                      <VAvatar v-else size="40" variant="tonal" color="primary">
-                        <VIcon icon="tabler-pill" />
-                      </VAvatar>
+                  <VListItem v-bind="{ ...itemProps, title: '' }">
+                    <template v-if="productItem.raw.photo_url" #prepend>
+                      <VAvatar size="40" :image="productItem.raw.photo_url" variant="tonal" />
                     </template>
-                    <VListItemTitle>
-                      {{ productItem.raw.name }}
-                    </VListItemTitle>
+                    <VListItemTitle>{{ productItem.raw.name }}</VListItemTitle>
                     <VListItemSubtitle>
-                      ID: {{ productItem.raw.id }} | 
-                      Stock: {{ productItem.raw.stock }} | 
-                      Precio: ${{ productItem.raw.sale_price }}
+                      ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | Precio: ${{ productItem.raw.sale_price }}
                       <span v-if="productItem.raw.barcode"> | Código: {{ productItem.raw.barcode }}</span>
                     </VListItemSubtitle>
                   </VListItem>
@@ -660,6 +671,10 @@ watch(
 </template>
 
 <style scoped>
+.date-input-compact :deep(input) {
+  font-size: 0.8rem;
+}
+
 :deep(.v-data-table) {
   border-radius: 8px;
 }

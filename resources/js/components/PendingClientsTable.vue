@@ -1,5 +1,6 @@
 <script setup lang="js">
 import day from "dayjs";
+import { computed } from "vue";
 
 const props = defineProps({
   clients: { type: Array, required: true },
@@ -7,7 +8,15 @@ const props = defineProps({
   totalClients: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: [String, Array], default: () => [] },
+  orderBy: { type: String, default: "asc" },
 })
+
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  const key = Array.isArray(props.sortBy) ? props.sortBy[0] : props.sortBy;
+  return key ? [{ key, order: props.orderBy || "asc" }] : [];
+});
 
 const emit = defineEmits(["edit", 'update:options'])
 
@@ -38,14 +47,15 @@ const headers = [
       :items-length="props.totalClients"
       :loading="loading"
       :page="props.page"
+      :sort-by="sortByModel"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }"
         ><span class="font-weight-medium">{{ item.id }}</span></template
       >
       <template #item.acciones="{ item }">
-        <IconBtn @click="emit('edit', item.id)">
-          <VIcon icon="tabler-check" />
+        <IconBtn @click="emit('edit', item.id)" color="warning">
+          <VIcon icon="tabler-edit" />
         </IconBtn>
       </template>
     </VDataTableServer>

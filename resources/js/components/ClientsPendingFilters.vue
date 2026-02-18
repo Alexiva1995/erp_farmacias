@@ -12,10 +12,10 @@ const options = [
 </script>
 
 <template>
-  <VCard class="mb-6 p-0">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
-        <VCol cols="12" sm="4">
+        <VCol cols="12">
           <VSelect
             :model-value="props.status"
             label="Estado"
@@ -24,12 +24,16 @@ const options = [
             @update:model-value="emit('update:status', $event)"
           />
         </VCol>
-        <VCol cols="12" md="8" class="d-flex justify-end">
-          <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-            Limpiar Filtros
-          </VBtn>
-        </VCol>
       </VRow>
     </VCardText>
+
+    <VDivider />
+
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+        Limpiar Filtros
+      </VBtn>
+      <VSpacer />
+    </VCardActions>
   </VCard>
 </template>

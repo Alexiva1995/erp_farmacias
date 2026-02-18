@@ -125,81 +125,78 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="700px"
     persistent
-    @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
+    scrollable
+    :retain-focus="false"
+    @click:outside.prevent
+    @keydown.esc.prevent="closeDialog"
   >
     <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline">
-          {{ props.selectedEmployee != null ? "Editar" : "Nuevo" }} empleado
-        </span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VIcon icon="tabler-user-plus" size="24" color="white" />
+          <span class="text-h6 text-white">
+            {{ props.selectedEmployee != null ? "Editar" : "Nuevo" }} empleado
+          </span>
+        </div>
+        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
-      <VDivider />
-      <VContainer>
+
+      <VCardText class="pa-5">
         <VRow>
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="name"
               label="Nombres"
               type="text"
               variant="outlined"
-              hide-details="auto"
               :error-messages="errors.name"
             />
           </VCol>
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="lastName"
               label="Apellidos"
               type="text"
               variant="outlined"
-              hide-details="auto"
               :error-messages="errors.last_name"
             />
           </VCol>
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="identification"
               label="Cédula"
               type="number"
               variant="outlined"
-              hide-details="auto"
               :error-messages="errors.identification"
             />
           </VCol>
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="6" md="6">
             <VTextField
               v-model="email"
               label="Correo"
               type="email"
               variant="outlined"
-              hide-details="auto"
               :error-messages="errors.email"
             />
           </VCol>
-          <VCol cols="12" sm="6" v-if="selectedEmployee == null || isAdmin">
+          <VCol cols="12" sm="6" md="6" v-if="selectedEmployee == null || isAdmin">
             <VTextField
               v-model="password"
               label="Contraseña"
               type="password"
               variant="outlined"
-              hide-details="auto"
               :error-messages="errors.password"
             />
           </VCol>
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="6" md="6">
             <VSelect
               v-model="role"
               label="Rol"
               variant="outlined"
-              hide-details="auto"
               :items="
                 roles.map((role) => ({
                   title:
@@ -215,27 +212,35 @@ watch(
             />
           </VCol>
         </VRow>
-      </VContainer>
+      </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeDialog"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-        >
-          Guardar Cambios
-        </VBtn>
+
+      <VCardActions class="pa-4 px-5">
+        <VRow class="w-100 ma-0">
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              prepend-icon="tabler-x"
+              block
+              @click="closeDialog"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-2">
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-check"
+              block
+              @click="submitForm"
+            >
+              {{ props.selectedEmployee != null ? 'Actualizar' : 'Guardar' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

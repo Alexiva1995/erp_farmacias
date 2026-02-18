@@ -106,6 +106,10 @@ class ClientRepository
             $consulta->where("company_id", "=", $filtros["company_id"]);
         }
 
+        if (array_key_exists("client_type", $filtros) && $filtros["client_type"] != "") {
+            $consulta->where("client_type", "=", $filtros["client_type"]);
+        }
+
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {

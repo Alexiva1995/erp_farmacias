@@ -6,7 +6,7 @@ import DoctorViewOffer from "@/components/dialogs/DoctorViewOffer.vue";
 import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 
 // Datos reactivos
 const doctorsOfferData = ref([]);
@@ -15,6 +15,7 @@ const loadingDoctors = ref(false);
 const pageDoctors = ref(1);
 const itemsPerPageDoctors = ref(10);
 const totalDoctors = ref(0);
+const filterSearchQueryIdDoctorsOffer = ref("");
 const filterSearchQueryDoctorsOffer = ref("");
 const sortByDoctors = ref("id");
 const orderByDoctors = ref("desc");
@@ -36,8 +37,9 @@ const searchParams = computed(() => {
     sort_order: orderByDoctors.value,
   };
 
-  if (filterSearchQueryDoctorsOffer.value) {
-    params.search = filterSearchQueryDoctorsOffer.value;
+  const searchParts = [filterSearchQueryIdDoctorsOffer.value, filterSearchQueryDoctorsOffer.value].filter(Boolean);
+  if (searchParts.length) {
+    params.search = searchParts.join(" ").trim();
   }
 
   return params;
@@ -94,6 +96,7 @@ const updateTableOptionsDoctors = (options) => {
 
 // Limpiar filtros
 const handleClearFiltersDoctorsOffer = () => {
+  filterSearchQueryIdDoctorsOffer.value = "";
   filterSearchQueryDoctorsOffer.value = "";
   sortByDoctors.value = "id";
   orderByDoctors.value = "desc";
@@ -191,8 +194,8 @@ const closeViewOfferModal = () => {
 
 // Watchers para recargar datos cuando cambien los filtros
 watch(
-  () => filterSearchQueryDoctorsOffer.value,
-  (newValue, oldValue) => {
+  [() => filterSearchQueryIdDoctorsOffer.value, () => filterSearchQueryDoctorsOffer.value],
+  () => {
     pageDoctors.value = 1;
     loadDoctorOffers();
   },
@@ -215,10 +218,9 @@ onMounted(async () => {
 <template>
   <div>
     <DoctorOfferFilters
-      :search-query="filterSearchQueryDoctorsOffer"
-      :loading="loadingDoctors"
+      v-model:id-search-query="filterSearchQueryIdDoctorsOffer"
+      v-model:search-query="filterSearchQueryDoctorsOffer"
       :add-offer-loading="isLoadingDialogData"
-      @update:search-query="filterSearchQueryDoctorsOffer = $event"
       @clear="handleClearFiltersDoctorsOffer"
       @add-doctors="handleAddDoctorsOfferModal"
     />

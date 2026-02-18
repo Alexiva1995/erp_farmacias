@@ -62,6 +62,7 @@ use App\Services\RoleServices;
 use App\Services\PayslipServices;
 use App\Services\SocialBenefitServices;
 use App\Services\TransactionServices;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -176,6 +177,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Forzar HTTPS en todas las URLs generadas por Laravel
+        if ($this->app->environment('production') || str_starts_with(config('app.url'), 'https')) {
+            URL::forceScheme('https');
+        }
     }
 }

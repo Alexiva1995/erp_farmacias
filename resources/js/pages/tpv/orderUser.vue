@@ -345,24 +345,94 @@ const fetchCompanyOffers = async (companyId = null) => {
   }
 };*/
 
+// Handshake idéntico a handleDoctorDiscountSelected: validación + applyDiscount
 const handlePrescriptionFileSelected = (file) => {
   prescriptionFile.value = file;
+  validateAndApplyPrescriptionDiscount();
   if (file && activePrescriptionOffers.value.length > 0) {
-    const offer = activePrescriptionOffers.value[0];
-    toast.success(
-      `Descuento de receta del ${offer.discount_percentage}% detectado.`,
-    );
+    const porcentaje = parseFloat(activePrescriptionOffers.value[0].discount_percentage || 0);
+    if (porcentaje > 0) {
+      toast.success(`Descuento de receta del ${porcentaje}% aplicado.`);
+    } else {
+      toast.info("No hay un descuento de receta activo.");
+    }
+  } else if (selectedDiscountType.value === "Recipe") {
+    toast.info("Descuento de receta removido.");
   }
 };
 
 const handleDoctorDiscountSelected = (offerId) => {
   const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
   selectedDoctorOffer.value = offer;
+  validateAndApplyDoctorDiscount();
   if (offer) {
-    toast.success(`Descuento de médico ${offer.percentage}% seleccionado.`);
+    toast.success(`Descuento de médico ${offer.percentage}% habilitado para esta orden.`);
   } else {
-    selectedDoctorOffer.value = null;
     toast.info("Descuento de médico removido.");
+  }
+};
+
+const validateAndApplyDoctorDiscount = () => {
+  if (activeDoctorOffers.value.length === 0) {
+    return;
+  }
+
+  if (!selectedDoctorOffer.value) {
+    if (selectedDiscountType.value === "Medico") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activeDoctorOffers.value.find(
+    (o) => o.value === selectedDoctorOffer.value.value,
+  );
+
+  if (!offer) {
+    selectedDoctorOffer.value = null;
+    return;
+  }
+
+  const porcentaje = parseFloat(offer.percentage || 0);
+  if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "doctor",
+      name: offer.title,
+      id: offer.id,
+    });
+  } else {
+    removeDiscount();
+    selectedDoctorOffer.value = null;
+    toast.info(
+      "Esta oferta de médico no tiene un descuento configurado.",
+    );
+  }
+};
+
+// Espejo exacto de validateAndApplyDoctorDiscount para Recipe
+const validateAndApplyPrescriptionDiscount = () => {
+  if (activePrescriptionOffers.value.length === 0) {
+    return;
+  }
+
+  if (!prescriptionFile.value) {
+    if (selectedDiscountType.value === "Recipe") {
+      removeDiscount();
+    }
+    return;
+  }
+
+  const offer = activePrescriptionOffers.value[0];
+  const porcentaje = parseFloat(offer.discount_percentage || 0);
+
+  if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "recipe",
+      name: "Recipe médica",
+      id: offer.id,
+    });
+  } else {
+    removeDiscount();
   }
 };
 
@@ -480,10 +550,16 @@ const validateAndApplyCompanyDiscount = () => {
 
   const porcentaje = parseFloat(offer.current_discount || 0);
   if (porcentaje > 0) {
+    applyDiscount(porcentaje, {
+      type: "company",
+      name: offer.title,
+      id: offer.id,
+    });
     toast.success(
       `Descuento de empresa ${porcentaje}% habilitado para esta orden.`,
     );
   } else {
+    removeDiscount();
     selectedCompanyId.value = null;
     toast.info(
       `Esta empresa no cuenta con un descuento activo para el periodo actual.`,
@@ -533,30 +609,31 @@ const validateAndApplyCompanyDiscount = () => {
   }
 };*/
 
+// Precio Final = Original * (1 - Max(DescuentoGlobal, DescuentoIndividual) / 100)
+// Usado por Médico, Recipe y Empresa. Evita doble descuento.
 const applyDiscount = (percentage, source) => {
   orderItems.value = orderItems.value.map((item) => {
-    // Exclude expiration or pack items from global discounts
     if (item.discount_type === "expiration" || item.pack_id) {
       return item;
     }
-
-    if (!item.originalPrice) {
-      item.originalPrice = item.price;
-      item.originalPriceBs = item.price_bs;
-      item.originalPriceCop = item.price_cop;
-    }
-
-    const discountFactor = 1 - percentage / 100;
-
+    const origUsd = item.originalPrice ?? item.original_price_usd ?? item.price;
+    const origBs = item.originalPriceBs ?? item.original_price_bs ?? item.price_bs;
+    const origCop = item.originalPriceCop ?? item.original_price_cop ?? item.price_cop;
+    const productPct = parseFloat(item.discount_percentage || 0);
+    const bestPct = Math.max(percentage, productPct);
+    const discountFactor = bestPct > 0 ? 1 - bestPct / 100 : 1;
     return {
       ...item,
-      price: item.originalPrice * discountFactor,
-      price_bs: item.originalPriceBs * discountFactor,
-      price_cop: item.originalPriceCop * discountFactor,
+      originalPrice: origUsd,
+      originalPriceBs: origBs,
+      originalPriceCop: origCop,
+      price: origUsd * discountFactor,
+      price_bs: origBs * discountFactor,
+      price_cop: origCop * discountFactor,
       discountApplied: true,
-      discountSource: source.type,
-      discountSourceId: source.id,
-      appliedDiscountPercentage: percentage,
+      discountSource: bestPct === productPct ? (item.discount_type || "individual") : source.type,
+      discountSourceId: bestPct === productPct ? item.discount_source_id : source.id,
+      appliedDiscountPercentage: bestPct,
     };
   });
 };
@@ -568,19 +645,24 @@ const removeDiscount = () => {
       return item;
     }
 
-    if (item.originalPrice) {
-      return {
-        ...item,
-        price: item.originalPrice,
-        price_bs: item.originalPriceBs,
-        price_cop: item.originalPriceCop,
-        discountApplied: false,
-        discountSource: null,
-        discountSourceId: null,
-        appliedDiscountPercentage: 0,
-      };
-    }
-    return item;
+    // Restaurar al precio del backend (con descuento individual/categoría si aplica)
+    // Misma lógica que Médico: no perder el descuento base del producto
+    const origUsd = item.original_price_usd ?? item.originalPrice ?? item.price;
+    const origBs = item.original_price_bs ?? item.originalPriceBs ?? item.price_bs;
+    const origCop = item.original_price_cop ?? item.originalPriceCop ?? item.price_cop;
+    const productPct = parseFloat(item.discount_percentage || 0);
+    const factor = productPct > 0 ? 1 - productPct / 100 : 1;
+
+    return {
+      ...item,
+      price: origUsd * factor,
+      price_bs: origBs * factor,
+      price_cop: origCop * factor,
+      discountApplied: false,
+      discountSource: null,
+      discountSourceId: null,
+      appliedDiscountPercentage: 0,
+    };
   });
 };
 
@@ -590,22 +672,17 @@ const removeDiscount = () => {
 watch(selectedDiscountType, (newValue) => {
   if (newValue !== "Medico") {
     selectedDoctorOffer.value = null;
-    // Ensure we don't accidentally remove subscription/company discount if we just added one?
-    // But here we switch types, so yes, clear others.
-    // Since applyDiscount overwrites based on orderItems map logic using originalPrice, it should be fine to "remove" first
-    // effectively resetting.
-    if (selectedDiscountType.value === "Medico") removeDiscount();
+    removeDiscount();
   }
   if (newValue !== "Recipe") {
     prescriptionFile.value = null;
-    if (selectedDiscountType.value === "Recipe") removeDiscount();
+    removeDiscount();
   }
   if (newValue !== "Empresa") {
     selectedCompanyId.value = null;
-    if (selectedDiscountType.value === "Empresa") removeDiscount();
+    removeDiscount();
   }
 
-  // Explicit removal when clearing type (newValue is null)
   if (!newValue) {
     removeDiscount();
   }
@@ -626,6 +703,22 @@ watch(
       clearTimeout(discountValidationTimer);
       discountValidationTimer = setTimeout(() => {
         validateAndApplyCompanyDiscount();
+      }, 300);
+    }
+    if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+      clearTimeout(discountValidationTimer);
+      discountValidationTimer = setTimeout(() => {
+        validateAndApplyDoctorDiscount();
+      }, 300);
+    }
+    if (
+      selectedDiscountType.value === "Recipe" &&
+      prescriptionFile.value &&
+      activePrescriptionOffers.value.length > 0
+    ) {
+      clearTimeout(discountValidationTimer);
+      discountValidationTimer = setTimeout(() => {
+        validateAndApplyPrescriptionDiscount();
       }, 300);
     }
   },
@@ -1363,17 +1456,10 @@ const totalOrderAmountWithspecialTaxAmount = computed(() => {
   return base;
 });
 
+// Monto Total = suma de totales de cada fila (Precio con Descuento + IVA)
+// El descuento ya está aplicado en el Precio Base de cada producto
 const totalOrderAmount = computed(() => {
-  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
-  let discountToSubtract = 0;
-  if (selectedDiscountType.value === "Empresa") {
-    discountToSubtract = totalCompanyDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Medico") {
-    discountToSubtract = totalDoctorDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Recipe") {
-    discountToSubtract = totalRecipeDiscountAmount.value;
-  }
-  return baseTotal - discountToSubtract;
+  return totalProductsAmount.value + totalIVAAmount.value;
 });
 
 const totalOrderAmountSinDiscount = computed(() => {
@@ -1792,6 +1878,20 @@ const addProductToOrder = async ({
       const itemToAdd = formatOrderItemForFrontend(backendOrderItem);
       orderItems.value.push(itemToAdd);
       toast.success(`"${itemToAdd.title}" agregado a la orden.`);
+    }
+
+    // Si hay descuento global activo, aplicar al producto recién agregado (igual que Médico)
+    if (
+      selectedDiscountType.value === "Medico" &&
+      selectedDoctorOffer.value
+    ) {
+      validateAndApplyDoctorDiscount();
+    } else if (
+      selectedDiscountType.value === "Recipe" &&
+      prescriptionFile.value &&
+      activePrescriptionOffers.value.length > 0
+    ) {
+      validateAndApplyPrescriptionDiscount();
     }
   } catch (error) {
     console.error(
@@ -2237,39 +2337,48 @@ const handleBuysCompletion = async (
     const taxRateValue = isTaxable ? 0.16 : 0;
     const taxMultiplier = isTaxable ? 1.16 : 1;
 
-      // 1. Determine Base Price in Current Currency
-      let finalPrice = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
-      let finalPriceBeforeDiscount = getItemPriceByCurrency(item,selectedDisplayCurrency.value);
-
-      // 2. Determine Discount Details
+      // getItemPriceByCurrency devuelve item.price/price_bs/price_cop (ya modificados por applyDiscount si aplica)
+      let finalPrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+      let finalPriceBeforeDiscount = finalPrice;
       let dType = null;
       let dPercent = 0;
       let dSourceId = null;
 
-      const productPct = parseFloat(item.discount_percentage || 0);
-
-      const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
-
-      // Determine Winner
-      if (globalPct > productPct) {
-        // Global Wins
-        dType = currentTypeName;
-        dPercent = globalPct;
-        dSourceId = currentSourceId;
-      } else if (productPct > 0) {
-        // Product Discount Wins (Expiration, Individual, or Category)
-        dType = item.discount_type || "individual"; // Fallback
-        dPercent = productPct;
-        dSourceId = item.discount_source_id;
-      }
-
-      // 3. Apply Discount to Price
-      // If Global Won, we need to calculate price reduction on the fly
-      // If Expiration Won, the 'price' coming from item might already be discounted if it was fetched that way,
-      // BUT formatOrderItemForFrontend usually sets price based on calculation.
-      // safely re-calculate:
-      if (dPercent > 0) {
-        finalPrice = finalPriceBeforeDiscount * (1 - dPercent / 100);
+      // Si applyDiscount ya modificó el item, NO recalcular: el precio ya está correcto
+      if (item.discountApplied) {
+        dType = item.discountSource || item.discount_type;
+        dPercent = parseFloat(item.appliedDiscountPercentage || 0);
+        dSourceId = item.discountSourceId || item.discount_source_id;
+        const orig = selectedDisplayCurrency.value === "BS"
+          ? (item.originalPriceBs ?? item.original_price_bs)
+          : selectedDisplayCurrency.value === "COP"
+            ? (item.originalPriceCop ?? item.original_price_cop)
+            : (item.originalPrice ?? item.original_price_usd);
+        if (orig != null) finalPriceBeforeDiscount = orig;
+      } else {
+        const productPct = parseFloat(item.discount_percentage || 0);
+        const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
+        if (globalPct > productPct) {
+          dType = currentTypeName;
+          dPercent = globalPct;
+          dSourceId = currentSourceId;
+          const basePrice = selectedDisplayCurrency.value === "BS"
+            ? (item.original_price_bs ?? item.originalPriceBs ?? item.basePrice)
+            : selectedDisplayCurrency.value === "COP"
+              ? (item.original_price_cop ?? item.originalPriceCop ?? item.basePrice)
+              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice);
+          finalPriceBeforeDiscount = basePrice;
+          finalPrice = basePrice * (1 - dPercent / 100);
+        } else if (productPct > 0) {
+          dType = item.discount_type || "individual";
+          dPercent = productPct;
+          dSourceId = item.discount_source_id;
+          finalPriceBeforeDiscount = (selectedDisplayCurrency.value === "BS"
+            ? (item.original_price_bs ?? item.originalPriceBs)
+            : selectedDisplayCurrency.value === "COP"
+              ? (item.original_price_cop ?? item.originalPriceCop)
+              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice)) ?? finalPrice;
+        }
       }
       
       const ivaAmount = finalPrice * taxRateValue;

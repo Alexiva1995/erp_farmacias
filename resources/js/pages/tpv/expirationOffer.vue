@@ -5,6 +5,7 @@ import ExpirationCreateOffer from "@/components/dialogs/ExpirationOfferModal.vue
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { ref, onMounted, watch } from "vue";
 
 // Datos y estado
 // ... (imports)
@@ -187,8 +188,26 @@ const handleClearFiltersExpirationOffer = () => {
   filterSearchQueryExpirationsOffer.value = "";
   filterStatusExpirationsOffer.value = "";
   filterMonthsExpirationsOffer.value = "";
+  pageExpirations.value = 1;
   fetchExpirationOffers();
 };
+
+// Watcher: al cambiar filtros, buscar automáticamente (sin botón Buscar)
+let searchDebounceTimer;
+watch(
+  [
+    () => filterSearchQueryExpirationsOffer.value,
+    () => filterStatusExpirationsOffer.value,
+    () => filterMonthsExpirationsOffer.value,
+  ],
+  () => {
+    pageExpirations.value = 1;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      fetchExpirationOffers();
+    }, 300);
+  }
+);
 
 // Cargar datos iniciales
 onMounted(() => {
@@ -202,11 +221,9 @@ onMounted(() => {
       v-model:search-query="filterSearchQueryExpirationsOffer"
       v-model:status="filterStatusExpirationsOffer"
       v-model:months="filterMonthsExpirationsOffer"
-      :loading="loadingExpirations"
       :add-offer-loading="isLoadingDialogData"
       @clear="handleClearFiltersExpirationOffer"
       @add-expiration-offer="openCreateOfferModal"
-      @search="fetchExpirationOffers"
     />
 
     <VCard title="Ofertas por Caducidad">

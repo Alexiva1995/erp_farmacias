@@ -47,7 +47,7 @@ class ProductQueryService
             $query->whereNull('group_id');
         }
 
-        if (isset($filters['is_active'])) {
+        if (isset($filters['is_active']) && empty($filters['productId'])) {
             $query->where('is_deleted', !$filters['is_active']);
         }
 
@@ -58,8 +58,11 @@ class ProductQueryService
             });
         }
 
-        if (!empty($filters['q'])) {
-            $searchTerm = $filters['q'];
+        // Si hay productId, priorizar búsqueda directa por ID (omitir filtro q para evitar conflictos)
+        if (!empty($filters['productId'])) {
+            $query->where('products.id', (int) $filters['productId']);
+        } elseif (!empty($filters['q'])) {
+            $searchTerm = trim($filters['q']);
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
@@ -67,30 +70,46 @@ class ProductQueryService
                 if ($isStrictSearch) {
                     // Búsqueda estricta: usar REGEXP con límites de palabra para coincidencias exactas
                     // Esto evita que "loratadina" coincida con "desloratadina"
-                    // Usamos una expresión que busca la palabra completa delimitada por espacios o al inicio/final
                     $escapedTerm = preg_quote($searchTerm, '/');
-                    // Buscar palabra completa: al inicio del string, al final, o con espacios/caracteres no alfanuméricos alrededor
-                    // Usamos una expresión que funciona en MySQL 5.7+ y 8.0+
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
                     $subQuery->whereRaw("name REGEXP ?", [$pattern])
                         ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
                         ->orWhere('barcode', '=', $searchTerm)
                         ->orWhere('id', '=', $searchTerm);
                 } else {
-                    // Búsqueda normal: permite coincidencias parciales
-                    $searchPattern = "%{$searchTerm}%";
-                    $words = explode(' ', trim($searchTerm));
-                    foreach ($words as $word) {
-                        $wordPattern = "%{$word}%";
-                        $subQuery->where(function ($wordQuery) use ($wordPattern, $searchTerm) {
-                            $wordQuery->where('name', 'like', $wordPattern)
-                                ->orWhere('active_ingredient', 'like', $wordPattern)
-                                ->orWhere('barcode', 'like', $wordPattern)
-                                ->orWhere('id', 'like', $wordPattern)
-                                ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
-                                    $labQuery->where('name', 'like', $wordPattern);
-                                });
-                        });
+                    // Búsqueda normal: permite coincidencias parciales por nombre e ID exacto
+                    // Si el término completo es numérico: priorizar búsqueda por ID exacto
+                    $isNumericSearch = ctype_digit($searchTerm);
+                    if ($isNumericSearch) {
+                        $productId = (int) $searchTerm;
+                        $subQuery->where('id', '=', $productId)
+                            ->orWhere('name', 'like', "%{$searchTerm}%")
+                            ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
+                            ->orWhere('barcode', 'like', "%{$searchTerm}%")
+                            ->orWhereHas('laboratory', function ($labQuery) use ($searchTerm) {
+                                $labQuery->where('name', 'like', "%{$searchTerm}%");
+                            });
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        $words = array_filter(array_map('trim', $words));
+                        foreach ($words as $word) {
+                            if (empty($word)) continue;
+                            $wordPattern = "%{$word}%";
+                            $subQuery->where(function ($wordQuery) use ($wordPattern, $word) {
+                                // Para palabras numéricas: ID exacto; para el resto: LIKE
+                                $wordQuery->where('name', 'like', $wordPattern)
+                                    ->orWhere('active_ingredient', 'like', $wordPattern)
+                                    ->orWhere('barcode', 'like', $wordPattern)
+                                    ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
+                                        $labQuery->where('name', 'like', $wordPattern);
+                                    });
+                                if (ctype_digit($word)) {
+                                    $wordQuery->orWhere('id', '=', (int) $word);
+                                } else {
+                                    $wordQuery->orWhere('id', 'like', $wordPattern);
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -236,6 +255,7 @@ class ProductQueryService
 
         $filters = [
             'q' => $request->q,
+            'productId' => $request->productId ?? $request->product_id ?? $request->id,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'groupId' => $request->groupId,
@@ -246,8 +266,7 @@ class ProductQueryService
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            // 'is_active' => true // Column Removed
-            'is_active' => true // kept for filter mapping only, but maps to is_deleted=0 above
+            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
