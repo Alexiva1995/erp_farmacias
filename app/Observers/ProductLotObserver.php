@@ -18,9 +18,12 @@ class ProductLotObserver
         // Esto evita crear movimientos duplicados cuando se ordena una factura
         // (handleInvoiceMovement crea los movimientos con invoice_id)
         $recentMovement = \App\Models\InventoryMovement::where('product_id', $productLot->product_id)
-            ->where('product_lot_id', $productLot->id)
             ->where('movement_type', 'purchase')
             ->where('created_at', '>=', now()->subMinutes(2))
+            ->where(function ($query) use ($productLot) {
+                $query->where('product_lot_id', $productLot->id)
+                    ->orWhereNull('product_lot_id');
+            })
             ->exists();
 
         if (!$recentMovement) {
@@ -47,7 +50,7 @@ class ProductLotObserver
                 ->where('movement_type', 'sale')
                 ->where(function ($query) use ($productLot) {
                     $query->where('product_lot_id', $productLot->id)
-                          ->orWhereNull('product_lot_id');
+                        ->orWhereNull('product_lot_id');
                 })
                 ->where('created_at', '>=', now()->subMinutes(2))
                 ->exists();
@@ -209,7 +212,7 @@ class ProductLotObserver
             $productDistribution = \App\Models\ProductDistribution::where('product_count_id', $recentProductCount->id)
                 ->where('product_lot_id', $productLot->id)
                 ->first();
-            
+
             // Si existe el ProductDistribution o el ProductCount es reciente, asumimos que viene del inventario cíclico
             if ($productDistribution || $recentProductCount->updated_at >= now()->subMinutes(2)) {
                 $isFromInventoryCycle = true;

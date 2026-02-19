@@ -616,14 +616,23 @@ class OrderActionService
         ];
         $orderRate = $rates[$orderCurrency] ?? 1;
 
+
+
         $sumInOrderCurrency = 0;
         foreach ($payments as $p) {
             $amount = (float) ($p['amount'] ?? 0);
             $currency = strtoupper($p['currency'] ?? 'USD');
             $rate = $rates[$currency] ?? 1;
             // Convertir a moneda de la orden: amount en X -> USD -> orden
-            $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
-            $sumInOrderCurrency += $amountInOrderCurrency;
+           // $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
+           // $sumInOrderCurrency += $amountInOrderCurrency;
+           if ($currency === $orderCurrency) {
+                $sumInOrderCurrency += $amount;
+            } else {
+                $amountInBase = ($currency === 'USD') ? $amount : ($amount / $rate);
+                $sumInOrderCurrency += $amountInBase * $orderRate;
+            }
+
         }
 
         if ($sumInOrderCurrency < ($orderTotal - $tolerance)) {
