@@ -96,9 +96,9 @@ class EmployeeRepository
   public function update(Employee $employee, array $data): bool
   {
     $username = $data['name'] . " " . $data["last_name"];
-    $role = $data['role'];
+    $role = $data['role'] ?? $employee->user?->role_id;
     $email = $data['email'];
-    $role_id = Role::find($role)->id;
+    $role_id = $role ? Role::find($role)?->id ?? $employee->user?->role_id : $employee->user?->role_id;
 
     $userData = [
       'username' => $username,
@@ -112,9 +112,7 @@ class EmployeeRepository
 
     $employee->user()->update($userData);
 
-    unset($role);
-    unset($email);
-    unset($data['password']);
+    unset($role, $email, $data['password'], $data['role']);
 
     $employee->update($data);
 
@@ -199,7 +197,10 @@ class EmployeeRepository
       Storage::disk($disk)->delete($currentPath);
     }
 
-    return $file->store($folder, $disk);
+    $extension = $file->getClientOriginalExtension() ?: $file->guessExtension();
+    $filename = time() . '_' . uniqid() . ($extension ? '.' . $extension : '');
+
+    return $file->storeAs($folder, $filename, $disk);
   }
 
   public function downloadDocument(string $path): Exception|StreamedResponse

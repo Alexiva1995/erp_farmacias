@@ -378,7 +378,7 @@ Route::prefix('rrhh')->group(function () {
         Route::get('/{employee}/vouchers', [EmployeeController::class, 'getVouchers']);
         Route::post('/{employee}/voucher', [EmployeeController::class, 'storeVoucher']);
         Route::delete('/{employee}', [EmployeeController::class, 'deleteEmployee']);
-        Route::put('/{employee}/documents', [EmployeeController::class, 'storeDocuments']);
+        Route::post('/{employee}/documents', [EmployeeController::class, 'storeDocuments']);
         Route::get('/{employee}/download/{file}', [EmployeeController::class, 'downloadDocument']);
         Route::delete('/vouchers/{voucher}', [EmployeeController::class, 'deleteVoucher']);
         Route::put('/{employee}', [EmployeeController::class, 'update']);

@@ -90,6 +90,13 @@ class EmployeeController extends Controller
     public function storeDocuments(Employee $employee, StoreEmployeeDocumentsRequest $request)
     {
         $data = $request->validated();
+        // PHP no parsea multipart/form-data en PUT, por eso usamos POST.
+        // Asegurar que los archivos se incluyan explícitamente:
+        foreach (['photo', 'rif', 'residence_letter', 'cv'] as $key) {
+            if ($request->hasFile($key)) {
+                $data[$key] = $request->file($key);
+            }
+        }
         $results = $this->employeeServices->storeDocuments($employee, $data);
         
         // Recargar los datos actualizados del empleado

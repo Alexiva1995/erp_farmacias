@@ -39,7 +39,7 @@ class UpdateEmployeeRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($user_id),
             ],
             'password' => 'nullable|string|min:3',
-            'role' => 'required|integer|exists:roles,id',
+            'role' => 'nullable|integer|exists:roles,id',
             'total_package_usd' => 'nullable|numeric|min:0',
         ];
     }

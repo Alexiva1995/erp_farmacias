@@ -1,5 +1,6 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
+import defaultAvatarImg from "@images/avatars/avatar-1.png";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
@@ -12,6 +13,53 @@ const { isAdmin } = useAuthStore();
 const loading = ref(false);
 const employee = ref({ user: { role: {} } });
 const roles = ref([]);
+const isEditing = ref(false);
+const photoInput = ref(null);
+const photoUploading = ref(false);
+const photoLoadFailed = ref(false);
+
+const triggerPhotoInput = () => {
+  photoInput.value?.click();
+};
+
+const onPhotoChange = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // Validación cliente: formato y tamaño (2MB)
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+  if (!validTypes.includes(file.type)) {
+    Swal.fire({ icon: 'error', title: 'Formato no válido', text: 'Use JPG o PNG.' });
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    Swal.fire({ icon: 'error', title: 'Archivo muy grande', text: 'Máximo 2MB.' });
+    event.target.value = '';
+    return;
+  }
+
+  const previousPreview = photoPreview.value;
+  const objectUrl = URL.createObjectURL(file);
+  photoPreview.value = objectUrl;
+  photo.value = file;
+  photoUploading.value = true;
+
+  try {
+    const ok = await handleUpdateEmployeeDocument(true);
+    if (ok) {
+      photoPreview.value = null;
+    } else {
+      photoPreview.value = previousPreview;
+    }
+  } catch {
+    photoPreview.value = previousPreview;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    photoUploading.value = false;
+  }
+  event.target.value = '';
+};
 
 const defaultPerformanceData = {
   salesMetrics: {
@@ -37,6 +85,7 @@ const photoPreview = ref(null);
 
 const activeTab = ref("profile");
 const showEditDialog = ref(false);
+const activeView = ref("performance"); // "performance" o "salary"
 
 // Nómina: conceptos predefinidos (solo visual) e historial
 const paymentHistory = ref([]);
@@ -85,23 +134,64 @@ const employeeInitials = computed(() => {
   return (name.charAt(0) + lastName.charAt(0)).toUpperCase();
 });
 
+/** URL base del backend para resolver rutas relativas (ej: http://farmacia-vue.test) */
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+
+/**
+ * Resuelve la URL de la imagen: si es relativa, antepone API_BASE_URL.
+ * Si es absoluta (http/https), la usa tal cual.
+ */
+const resolveImageUrl = (urlOrPath) => {
+  if (!urlOrPath || typeof urlOrPath !== 'string') return null;
+  const s = urlOrPath.trim();
+  if (!s || s.toLowerCase() === 'null' || s === ' NULL') return null;
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  const base = API_BASE_URL || '';
+  const path = s.startsWith('/') ? s : `/${s}`;
+  return base ? `${base}${path}` : path;
+};
+
+/**
+ * Obtiene la URL visualizable de la foto del empleado.
+ * Prioriza data.photo_url; si no, construye desde data.photo.
+ * Devuelve null si no hay imagen válida (fallback a iniciales).
+ */
 const employeePhotoUrl = computed(() => {
-  const photoPath = employee.value?.photo;
-  if (!photoPath) return null;
-  const normalized = String(photoPath).trim();
-  if (!normalized || normalized.toLowerCase() === 'null') return null;
-  const timestamp = new Date().getTime();
-  return `/storage/${normalized}?t=${timestamp}`;
+  const emp = employee.value;
+  if (!emp) return null;
+  const url = resolveImageUrl(emp.photo_url) ?? resolveImageUrl(emp.photo ? `/storage/${emp.photo}` : null);
+  return url ? `${url}?t=${Date.now()}` : null;
 });
+
+/** Imagen por defecto cuando no hay foto o falla la carga */
+const defaultAvatar = defaultAvatarImg;
+
+/** URL a mostrar: foto, fallback por error, o imagen por defecto */
+const avatarDisplaySrc = computed(() => {
+  if (photoLoadFailed.value || !employeePhotoUrl.value) return defaultAvatar;
+  return employeePhotoUrl.value;
+});
+
+/**
+ * Extrae el objeto empleado de la respuesta API de forma segura.
+ * Soporta profile: response.data.data y storeDocuments: response.data.data.data
+ */
+const getEmployeeFromResponse = (response) => {
+  const d = response?.data?.data;
+  if (!d || typeof d !== 'object') return null;
+  if (d.data && typeof d.data === 'object' && 'id' in d.data) return d.data;
+  return d;
+};
 
 // Methods
 const fetchEmployee = async () => {
   try {
     const response = await axios.get(`/api/rrhh/employees/${route.params.id}`);
 
-    // Validar respuesta
-    if (response.data && response.data.data) {
-      employee.value = response.data.data;
+    // Validar respuesta (profile: employee en data.data)
+    const emp = getEmployeeFromResponse(response) ?? response?.data?.data;
+    if (emp && emp.id) {
+      employee.value = emp;
     } else {
       employee.value = { 
         id: route.params.id,
@@ -297,6 +387,42 @@ const handleEditEmployee = () => { showEditDialog.value = true; };
 const handleCloseEditDialog = () => { showEditDialog.value = false; };
 const handleRefreshTable = async () => { fetchEmployee(); };
 
+const toggleEditMode = () => {
+  isEditing.value = !isEditing.value;
+};
+
+const saveProfileChanges = async () => {
+  try {
+    loading.value = true;
+    const roleId = employee.value.user?.role_id ?? employee.value.user?.role?.id;
+    const response = await axios.put(`/api/rrhh/employees/${employee.value.id}`, {
+      name: employee.value.name,
+      last_name: employee.value.last_name,
+      identification: employee.value.identification,
+      email: employee.value.user?.email,
+      role: roleId,
+    });
+    
+    if (response.data.status || response.data.success) {
+      await Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Perfil actualizado correctamente",
+      });
+      isEditing.value = false;
+      await fetchEmployee();
+    }
+  } catch (error) {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.response?.data?.message || "No se pudo actualizar el perfil",
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
 const fetchPayments = async () => {
   if (!employee.value?.id) return;
   payrollLoading.value = true;
@@ -363,17 +489,6 @@ const formatVes = (value) => {
   return Number.isFinite(n) ? n.toLocaleString('es-VE', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Bs.S' : '—';
 };
 
-const handlePhotoPreview = (file) => {
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      photoPreview.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  } else {
-    photoPreview.value = null;
-  }
-};
 
 const handleDownloadFile = async (file) => {
   try {
@@ -394,15 +509,15 @@ const handleDownloadFile = async (file) => {
   }
 };
 
-const handleUpdateEmployeeDocument = async () => {
-  // Validar que el empleado existe
+  const handleUpdateEmployeeDocument = async (photoOnly = false) => {
+    // Validar que el empleado existe
   if (!employee.value || !employee.value.id) {
     Swal.fire({
       icon: "error",
       title: "Error",
       text: "No se encontró información del empleado. Por favor recargue la página.",
     });
-    return;
+    return false;
   }
 
   if (!photo.value && !residenceLetter.value && !rif.value && !cv.value) {
@@ -411,7 +526,7 @@ const handleUpdateEmployeeDocument = async () => {
       title: "Advertencia",
       text: "Por favor seleccione al menos un archivo para actualizar",
     });
-    return;
+    return false;
   }
 
   const normalizeFile = (value) => {
@@ -421,7 +536,6 @@ const handleUpdateEmployeeDocument = async () => {
   };
 
   const formData = new FormData();
-  formData.append('_method', 'PUT');
 
   const photoFile = normalizeFile(photo.value);
   const residenceLetterFile = normalizeFile(residenceLetter.value);
@@ -435,33 +549,56 @@ const handleUpdateEmployeeDocument = async () => {
 
   try {
     loading.value = true;
-    const response = await axios.post(`/api/rrhh/employees/${employee.value.id}/documents`, formData);
+    const response = await axios.post(
+      `/api/rrhh/employees/${employee.value.id}/documents`,
+      formData,
+      {
+        transformRequest: [(data, headers) => {
+          if (data instanceof FormData) {
+            delete headers['Content-Type'];
+          }
+          return data;
+        }],
+      }
+    );
 
-    if (response.data.status || response.data.success) {
-      await Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Documentos actualizados correctamente",
-      });
+    if (response.data?.status === 'success' || response.data?.success) {
+      if (photoOnly) {
+        Swal.fire({
+          icon: "success",
+          title: "Foto actualizada",
+          text: "La foto de perfil se ha guardado correctamente",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } else {
+        await Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Documentos actualizados correctamente",
+        });
+      }
       
-      // Limpiar los archivos y preview
+      // Sincronización reactiva: actualizar employee con la respuesta (photo_url) inmediatamente
+      const updatedEmployee = getEmployeeFromResponse(response);
+      if (updatedEmployee && (updatedEmployee.photo_url ?? updatedEmployee.photo)) {
+        employee.value = { ...employee.value, ...updatedEmployee };
+      }
+      // Recargar empleado para persistencia tras F5
+      await fetchEmployee();
+      
+      // Limpiar después de recargar (para que employeePhotoUrl muestre la nueva imagen)
       photo.value = null;
       residenceLetter.value = null;
       rif.value = null;
       cv.value = null;
-      photoPreview.value = null;
-      
-      // Usar los datos actualizados del backend si vienen en la respuesta
-      if (response.data?.data?.data) {
-        employee.value = response.data.data.data;
-      } else {
-        // Si no vienen datos, recargar manualmente
-        await fetchEmployee();
-      }
+      if (!photoOnly) photoPreview.value = null;
+      return true;
     } else {
       throw new Error(response.data.message || 'Error al actualizar documentos');
     }
   } catch (error) {
+    console.error('Error updating documents:', error);
     let errorMessage = "No se pudieron actualizar los documentos";
     
     if (error.response?.data?.message) {
@@ -477,10 +614,28 @@ const handleUpdateEmployeeDocument = async () => {
       title: "Error",
       text: errorMessage,
     });
+    return false;
   } finally {
     loading.value = false;
   }
 };
+
+// Sincronizar role_id desde role cuando el empleado se carga (por si la API devuelve solo el objeto role)
+watch(
+  () => employee.value?.id,
+  () => { photoLoadFailed.value = false; },
+  { immediate: false }
+);
+
+watch(
+  () => employee.value?.user,
+  (user) => {
+    if (user?.role?.id && user.role_id == null) {
+      user.role_id = user.role.id;
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 watch(activeTab, (tab) => {
   if (tab === 'salary' && employee.value?.id) fetchPayments();
@@ -513,113 +668,305 @@ onMounted(async () => {
 
     <VRow>
       <VCol cols="12" md="3">
-        <VCard class="pb-4">
-          <VCardText class="text-center pt-6">
-            <div class="position-relative d-inline-block mb-4">
-              <VAvatar
-                size="120"
-                variant="tonal"
-                rounded="circle"
-                class="elevation-2"
-                :image="photoPreview ? photoPreview : '/storage/' + employee.photo"
-              />
-              <VBtn
-                v-if="isAdmin"
-                icon="tabler-camera"
-                size="x-small"
-                color="primary"
-                class="position-absolute bottom-0 right-0"
-                @click="activeTab = 'documents'"
-              />
-            </div>
+        <!-- Botones de Navegación -->
+        <div class="d-flex flex-column gap-2 mb-3">
+          <VBtn
+            :color="activeView === 'performance' ? 'primary' : 'secondary'"
+            :variant="activeView === 'performance' ? 'flat' : 'tonal'"
+            block
+            prepend-icon="tabler-chart-bar"
+            @click="activeView = 'performance'"
+          >
+            Resumen de Desempeño
+          </VBtn>
+          <VBtn
+            :color="activeView === 'salary' ? 'primary' : 'secondary'"
+            :variant="activeView === 'salary' ? 'flat' : 'tonal'"
+            block
+            prepend-icon="tabler-wallet"
+            @click="activeView = 'salary'"
+          >
+            Gestión Salarial
+          </VBtn>
+        </div>
 
-            <h3 class="text-h4 font-weight-bold">
-              {{ employee.name }} {{ employee.last_name }}
-              <VIcon 
-                v-if="isAdmin" 
-                icon="tabler-pencil" 
-                size="18" 
-                color="primary" 
-                class="cursor-pointer ml-1"
-                @click="handleEditEmployee"
+        <VCard class="pb-3">
+          <VCardText class="text-center pt-4">
+            <div class="position-relative d-inline-block mb-3">
+              <input
+                ref="photoInput"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png"
+                class="d-none"
+                @change="onPhotoChange"
               />
-            </h3>
-            
-            <VChip
-              :color="employee.is_active ? 'success' : 'error'"
-              variant="tonal"
-              size="small"
-              class="mt-2 mb-4"
-            >
-              {{ employee.is_active ? 'Activo' : 'Inactivo' }}
-            </VChip>
-
-            <VDivider />
-
-            <VList nav density="comfortable" class="text-left mt-2">
-              <VListItem
-                :active="activeTab === 'profile'"
-                @click="activeTab = 'profile'"
-                prepend-icon="tabler-layout-dashboard"
-                title="Rendimiento y Perfil"
-              />
-              <VListItem
-                :active="activeTab === 'documents'"
-                @click="activeTab = 'documents'"
-                prepend-icon="tabler-files"
-                title="Documentos"
-              />
-              <VListItem
-                :active="activeTab === 'salary'"
-                @click="activeTab = 'salary'"
-                prepend-icon="tabler-wallet"
-                title="Salarios"
-              />
-            </VList>
-
-            <div class="text-left px-4 mt-4">
-              <div class="text-overline text-disabled mb-1">IDENTIFICACIÓN</div>
-              <div class="text-body-1 text-high-emphasis mb-3">{{ employee?.identification ?? '—' }}</div>
-
-              <div class="text-overline text-disabled mb-1">CORREO</div>
-              <div class="text-body-1 text-high-emphasis mb-3">{{ employee?.user?.email ?? '—' }}</div>
-
-              <div class="text-overline text-disabled mb-1">ROL</div>
-              <div class="text-body-1 font-weight-bold text-primary d-flex align-center">
-                <VIcon icon="tabler-shield-check" size="20" class="mr-2" />
-                {{ translatedRole }}
+              <div class="avatar-wrapper position-relative">
+                <VAvatar
+                  size="100"
+                  variant="tonal"
+                  rounded="circle"
+                  class="elevation-2"
+                >
+                  <img
+                    v-if="photoPreview"
+                    :src="photoPreview"
+                    alt=""
+                    class="v-avatar__img"
+                  >
+                  <img
+                    v-else-if="employeePhotoUrl || photoLoadFailed"
+                    :src="avatarDisplaySrc"
+                    alt=""
+                    class="v-avatar__img"
+                    @error="photoLoadFailed = true"
+                  >
+                  <template v-else>
+                    {{ employeeInitials }}
+                  </template>
+                </VAvatar>
+                <!-- Overlay "Subiendo..." durante la carga -->
+                <div
+                  v-if="photoUploading"
+                  class="avatar-upload-overlay"
+                >
+                  <VProgressCircular indeterminate color="white" size="32" width="3" />
+                  <span class="text-caption text-white font-weight-medium">Subiendo...</span>
+                </div>
+              </div>
+              <div
+                v-if="isAdmin && !photoUploading"
+                class="avatar-camera-badge"
+                @click="triggerPhotoInput"
+              >
+                <VIcon icon="tabler-camera" size="18" color="white" />
               </div>
             </div>
 
-            <VBtn
-              v-if="isAdmin"
-              color="error"
-              variant="tonal"
-              block
-              class="mt-6 px-4"
-              @click="handleDeleteEmployee"
-            >
-              Eliminar cuenta
-            </VBtn>
+            <div class="mb-3">
+              <div v-if="!isEditing">
+                <h3 class="text-h5 font-weight-bold mb-1">
+                  {{ employee.name }} {{ employee.last_name }}
+                </h3>
+                <VChip
+                  :color="employee.is_active ? 'success' : 'error'"
+                  variant="tonal"
+                  size="small"
+                  class="mb-2"
+                >
+                  {{ employee.is_active ? 'Activo' : 'Inactivo' }}
+                </VChip>
+              </div>
+              <div v-else>
+                <VTextField
+                  v-model="employee.name"
+                  label="Nombre"
+                  density="compact"
+                  class="mb-2"
+                />
+                <VTextField
+                  v-model="employee.last_name"
+                  label="Apellido"
+                  density="compact"
+                  class="mb-2"
+                />
+              </div>
+            </div>
 
-            <VBtn
-              v-if="isAdmin"
-              color="warning"
-              variant="tonal"
-              block
-              class="mt-3 px-4"
-              :disabled="!employee || !employee.id"
-              @click="handleReset2FA"
-            >
-              Reiniciar 2FA
-            </VBtn>
+            <VDivider class="my-3" />
+
+            <div class="text-left px-2">
+              <div class="mb-3">
+                <div class="text-caption text-disabled mb-1">IDENTIFICACIÓN</div>
+                <div v-if="!isEditing" class="text-body-2 text-high-emphasis">
+                  {{ employee?.identification ?? '—' }}
+                </div>
+                <VTextField
+                  v-else
+                  v-model="employee.identification"
+                  label="Cédula"
+                  density="compact"
+                  hide-details
+                />
+              </div>
+
+              <div class="mb-3">
+                <div class="text-caption text-disabled mb-1">CORREO</div>
+                <div v-if="!isEditing" class="text-body-2 text-high-emphasis">
+                  {{ employee?.user?.email ?? '—' }}
+                </div>
+                <VTextField
+                  v-else
+                  v-model="employee.user.email"
+                  label="Email"
+                  density="compact"
+                  hide-details
+                />
+              </div>
+
+              <div class="mb-3">
+                <div class="text-caption text-disabled mb-1">ROL</div>
+                <div v-if="!isEditing" class="text-body-2 font-weight-medium text-primary d-flex align-center">
+                  <VIcon icon="tabler-shield-check" size="16" class="mr-1" />
+                  {{ translatedRole }}
+                </div>
+                <VSelect
+                  v-else
+                  v-model="employee.user.role_id"
+                  :items="roles"
+                  item-title="name"
+                  item-value="id"
+                  label="Rol"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="tabler-shield-check"
+                />
+              </div>
+            </div>
+
+            <VDivider class="my-3" />
+
+            <!-- Botones de Acción -->
+            <div class="d-flex flex-column gap-2">
+              <VBtn
+                v-if="isAdmin"
+                :color="isEditing ? 'success' : 'primary'"
+                :variant="isEditing ? 'flat' : 'tonal'"
+                block
+                size="small"
+                :prepend-icon="isEditing ? 'tabler-check' : 'tabler-pencil'"
+                @click="isEditing ? saveProfileChanges() : toggleEditMode()"
+                :loading="loading"
+              >
+                {{ isEditing ? 'Guardar Cambios' : 'Editar Perfil' }}
+              </VBtn>
+
+              <VBtn
+                v-if="isAdmin && isEditing"
+                color="secondary"
+                variant="tonal"
+                block
+                size="small"
+                prepend-icon="tabler-x"
+                @click="toggleEditMode()"
+              >
+                Cancelar
+              </VBtn>
+
+              <VBtn
+                v-if="isAdmin"
+                color="warning"
+                variant="tonal"
+                block
+                size="small"
+                prepend-icon="tabler-refresh"
+                :disabled="!employee || !employee.id"
+                @click="handleReset2FA"
+              >
+                Reiniciar 2FA
+              </VBtn>
+
+              <VBtn
+                v-if="isAdmin"
+                color="error"
+                variant="tonal"
+                block
+                size="small"
+                prepend-icon="tabler-trash"
+                @click="handleDeleteEmployee"
+              >
+                Eliminar cuenta
+              </VBtn>
+            </div>
+
+            <!-- Sección de Documentos -->
+            <VDivider class="my-3" />
+            <div class="text-left">
+              <div class="text-caption text-disabled mb-2">DOCUMENTOS</div>
+              <div class="d-flex flex-column gap-1">
+                <div class="d-flex align-center justify-between">
+                  <span class="text-body-2">Identificación</span>
+                  <VBtn
+                    v-if="employee.residence_letter"
+                    icon="tabler-download"
+                    size="x-small"
+                    variant="text"
+                    @click="handleDownloadFile('residence_letter')"
+                  />
+                </div>
+                <div class="d-flex align-center justify-between">
+                  <span class="text-body-2">RIF</span>
+                  <VBtn
+                    v-if="employee.rif"
+                    icon="tabler-download"
+                    size="x-small"
+                    variant="text"
+                    @click="handleDownloadFile('rif')"
+                  />
+                </div>
+                <div class="d-flex align-center justify-between">
+                  <span class="text-body-2">CV</span>
+                  <VBtn
+                    v-if="employee.cv"
+                    icon="tabler-download"
+                    size="x-small"
+                    variant="text"
+                    @click="handleDownloadFile('cv')"
+                  />
+                </div>
+              </div>
+              
+              <div v-if="isAdmin" class="mt-2">
+                <VFileInput
+                  v-model="residenceLetter"
+                  label="Subir Identificación"
+                  accept=".pdf"
+                  density="compact"
+                  hide-details
+                  prepend-icon="tabler-upload"
+                  @change="(file) => {
+                    if (file) {
+                      handleUpdateEmployeeDocument();
+                    }
+                  }"
+                />
+                <VFileInput
+                  v-model="rif"
+                  label="Subir RIF"
+                  accept=".pdf"
+                  density="compact"
+                  hide-details
+                  prepend-icon="tabler-upload"
+                  class="mt-1"
+                  @change="(file) => {
+                    if (file) {
+                      handleUpdateEmployeeDocument();
+                    }
+                  }"
+                />
+                <VFileInput
+                  v-model="cv"
+                  label="Subir CV"
+                  accept=".pdf"
+                  density="compact"
+                  hide-details
+                  prepend-icon="tabler-upload"
+                  class="mt-1"
+                  @change="(file) => {
+                    if (file) {
+                      handleUpdateEmployeeDocument();
+                    }
+                  }"
+                />
+              </div>
+            </div>
           </VCardText>
         </VCard>
       </VCol>
 
       <VCol cols="12" md="9">
         
-        <div v-if="activeTab === 'profile'">
+        <!-- Vista de Resumen de Desempeño -->
+        <div v-if="activeView === 'performance'">
           <h2 class="text-h5 mb-4 font-weight-bold">Dashboard de Rendimiento Avanzado</h2>
           
           <!-- KPIs Principales -->
@@ -790,7 +1137,7 @@ onMounted(async () => {
               <VCard variant="tonal" color="error" height="180">
                 <VCardTitle class="text-subtitle-1">Control de Inventario</VCardTitle>
                 <VDivider />
-                <VCardText class="text-center d-flex flex-column justify-center" style="height: 100px;">
+                <VCardText class="text-center d-flex flex-column justify-center" style="block-size: 100px;">
                   <VAvatar color="white" variant="tonal" class="mb-3">
                     <VIcon icon="tabler-package" color="error" />
                   </VAvatar>
@@ -811,7 +1158,7 @@ onMounted(async () => {
               <VCard>
                 <VCardTitle class="text-subtitle-1">Top 10 Productos por Unidades</VCardTitle>
                 <VDivider />
-                <VCardText style="max-height: 300px; overflow-y: auto;">
+                <VCardText style="max-block-size: 300px; overflow-y: auto;">
                   <VList density="compact">
                     <VListItem v-for="(product, i) in performanceData.rankings.topProductsByUnits" :key="i">
                       <template #prepend>
@@ -835,7 +1182,7 @@ onMounted(async () => {
               <VCard>
                 <VCardTitle class="text-subtitle-1">Top 10 Productos por Monto</VCardTitle>
                 <VDivider />
-                <VCardText style="max-height: 300px; overflow-y: auto;">
+                <VCardText style="max-block-size: 300px; overflow-y: auto;">
                   <VList density="compact">
                     <VListItem v-for="(product, i) in performanceData.rankings.topProductsByAmount" :key="i">
                       <template #prepend>
@@ -910,254 +1257,154 @@ onMounted(async () => {
           </VRow>
         </div>
 
-        <VCard v-if="activeTab === 'documents'">
-          <VCardTitle>Expediente Digital</VCardTitle>
-          <VDivider />
-          <VCardText>
-            <div v-if="isAdmin" class="d-flex flex-column ga-4">
-              <!-- Foto de Perfil -->
-              <div class="d-flex align-center ga-4">
-                <VAvatar 
-                  :image="photoPreview || employeePhotoUrl" 
-                  size="80"
-                  class="elevation-2"
-                >
-                  {{ employeeInitials }}
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <VFileInput 
-                    v-model="photo" 
-                    label="Actualizar Foto de Perfil" 
-                    accept="image/*" 
-                    variant="outlined" 
-                    prepend-icon="tabler-camera"
-                    @update:model-value="handlePhotoPreview"
-                  />
-                </div>
-              </div>
-
-              <!-- Documentos -->
-              <div class="d-flex flex-column ga-3">
-                <!-- Identificación -->
-                <div class="d-flex align-center ga-2">
-                  <VFileInput 
-                    v-model="residenceLetter" 
-                    label="Identificación / Carta de Residencia (PDF)" 
-                    accept=".pdf" 
-                    variant="outlined" 
-                    prepend-icon="tabler-id"
-                    class="flex-grow-1"
-                  />
-                  <VBtn 
-                    v-if="employee.residence_letter"
-                    icon="tabler-search" 
-                    variant="tonal" 
-                    size="small"
-                    @click="handleDownloadFile('residence_letter')"
-                    title="Descargar Documento"
-                  />
-                </div>
-
-                <!-- RIF -->
-                <div class="d-flex align-center ga-2">
-                  <VFileInput 
-                    v-model="rif" 
-                    label="RIF (PDF)" 
-                    accept=".pdf" 
-                    variant="outlined" 
-                    prepend-icon="tabler-file-certificate"
-                    class="flex-grow-1"
-                  />
-                  <VBtn 
-                    v-if="employee.rif"
-                    icon="tabler-search" 
-                    variant="tonal" 
-                    size="small"
-                    @click="handleDownloadFile('rif')"
-                    title="Descargar RIF"
-                  />
-                </div>
-
-                <!-- CV -->
-                <div class="d-flex align-center ga-2">
-                  <VFileInput 
-                    v-model="cv" 
-                    label="Currículum Vitae (PDF)" 
-                    accept=".pdf" 
-                    variant="outlined" 
-                    prepend-icon="tabler-file-text"
-                    class="flex-grow-1"
-                  />
-                  <VBtn 
-                    v-if="employee.cv"
-                    icon="tabler-search" 
-                    variant="tonal" 
-                    size="small"
-                    @click="handleDownloadFile('cv')"
-                    title="Descargar CV"
-                  />
-                </div>
-              </div>
-
-              <VBtn 
-                color="primary" 
-                @click="handleUpdateEmployeeDocument" 
-                block 
-                :disabled="!employee || !employee.id"
-                :loading="loading"
-              >
-                Guardar Cambios
-              </VBtn>
-            </div>
-            <div v-else class="d-flex flex-column ga-2">
-              <VBtn variant="tonal" prepend-icon="tabler-download" @click="handleDownloadFile('residence_letter')" :disabled="!employee.residence_letter">Descargar Documento</VBtn>
-              <VBtn variant="tonal" prepend-icon="tabler-download" @click="handleDownloadFile('rif')" :disabled="!employee.rif">Descargar RIF</VBtn>
-              <VBtn variant="tonal" prepend-icon="tabler-download" @click="handleDownloadFile('cv')" :disabled="!employee.cv">Descargar CV</VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-
-        <!-- Conceptos predefinidos: solo paquete editable; el resto se distribuye según el mes (solo visual, no se cierra nómina aquí) -->
-        <VCard v-if="activeTab === 'salary'">
-          <VCardTitle class="d-flex align-center gap-2">
-            <VIcon icon="tabler-list" />
-            Conceptos predefinidos
-          </VCardTitle>
-          <VDivider />
-          <VCardText v-if="payrollLoading">
-            <VProgressLinear indeterminate color="primary" />
-          </VCardText>
-          <VCardText v-else>
-            <p class="text-body-2 text-medium-emphasis mb-3">
-              El único valor editable es el <strong>paquete total</strong>. Los demás conceptos se distribuyen según ese mes (consumo salud y deuda anterior). Solo visual; aquí no se cierra nómina.
-            </p>
-            <VRow dense>
-              <VCol cols="12">
-                <div class="d-flex align-stretch">
-                  <VTextField
-                    v-model.number="paymentForm.total_package_usd"
-                    label="Paquete total (USD)"
-                    type="number"
-                    min="0"
-                    step="0.01"
+        <!-- Vista de Gestión Salarial -->
+        <div v-else-if="activeView === 'salary'">
+          <h2 class="text-h5 mb-4 font-weight-bold">Gestión Salarial</h2>
+          
+          <!-- Conceptos predefinidos: solo paquete editable; el resto se distribuye según el mes (solo visual, no se cierra nómina aquí) -->
+          <VCard>
+            <VCardTitle class="d-flex align-center gap-2">
+              <VIcon icon="tabler-list" />
+              Conceptos predefinidos
+            </VCardTitle>
+            <VDivider />
+            <VCardText v-if="payrollLoading">
+              <VProgressLinear indeterminate color="primary" />
+            </VCardText>
+            <VCardText v-else>
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                El único valor editable es el <strong>paquete total</strong>. Los demás conceptos se distribuyen según ese mes (consumo salud y deuda anterior). Solo visual; aquí no se cierra nómina.
+              </p>
+              <VRow dense>
+                <VCol cols="12">
+                  <div class="d-flex align-stretch">
+                    <VTextField
+                      v-model.number="paymentForm.total_package_usd"
+                      label="Paquete total (USD)"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      variant="outlined"
+                      density="comfortable"
+                      placeholder="Ej. 200"
+                      hide-details
+                      class="flex-grow-1"
+                    />
+                    <VBtn
+                      v-if="isAdmin"
+                      color="primary"
+                      variant="flat"
+                      :loading="savingPackage"
+                      @click="savePackage"
+                      class="ml-2"
+                      height="48"
+                    >
+                      Guardar paquete en perfil
+                    </VBtn>
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="4" md="2">
+                  <VSelect
+                    v-model.number="paymentForm.month"
+                    :items="Array.from({ length: 12 }, (_, i) => ({ title: monthNames[i], value: i + 1 }))"
+                    label="Mes"
                     variant="outlined"
                     density="comfortable"
-                    placeholder="Ej. 200"
-                    hide-details
-                    class="flex-grow-1"
                   />
-                  <VBtn
-                    v-if="isAdmin"
-                    color="primary"
-                    variant="flat"
-                    :loading="savingPackage"
-                    @click="savePackage"
-                    class="ml-2"
-                    height="48"
-                  >
-                    Guardar paquete en perfil
+                </VCol>
+                <VCol cols="12" sm="4" md="2">
+                  <VTextField
+                    v-model.number="paymentForm.year"
+                    label="Año"
+                    type="number"
+                    min="2020"
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </VCol>
+                <VCol cols="12" sm="4" md="2" class="d-flex align-end">
+                  <VBtn variant="tonal" color="secondary" @click="fetchPayments">
+                    Actualizar distribución
                   </VBtn>
-                </div>
-              </VCol>
-              <VCol cols="12" sm="4" md="2">
-                <VSelect
-                  v-model.number="paymentForm.month"
-                  :items="Array.from({ length: 12 }, (_, i) => ({ title: monthNames[i], value: i + 1 }))"
-                  label="Mes"
-                  variant="outlined"
-                  density="comfortable"
-                />
-              </VCol>
-              <VCol cols="12" sm="4" md="2">
-                <VTextField
-                  v-model.number="paymentForm.year"
-                  label="Año"
-                  type="number"
-                  min="2020"
-                  variant="outlined"
-                  density="comfortable"
-                />
-              </VCol>
-              <VCol cols="12" sm="4" md="2" class="d-flex align-end">
-                <VBtn variant="tonal" color="secondary" @click="fetchPayments">
-                  Actualizar distribución
-                </VBtn>
-              </VCol>
-            </VRow>
-            <VCard v-if="distribution" variant="tonal" class="mt-4" density="comfortable">
-              <VCardTitle class="text-subtitle-2">
-                Distribución para {{ formatPeriod(distribution.year, distribution.month) }}
-              </VCardTitle>
-              <VCardText>
-                <VList density="compact">
-                  <VListItem
-                    v-for="(c, i) in distribution.concepts"
-                    :key="i"
-                    class="px-0"
-                  >
-                    <template #prepend>
-                      <VIcon v-if="c.fixed" icon="tabler-lock" size="18" class="text-medium-emphasis mr-2" />
-                      <VIcon v-else icon="tabler-calculator" size="18" class="text-medium-emphasis mr-2" />
-                    </template>
-                    <VListItemTitle>{{ c.name }}</VListItemTitle>
-                    <template #append>
-                      <span class="font-weight-medium text-high-emphasis">{{ formatCurrency(c.amount) }}</span>
-                    </template>
-                  </VListItem>
-                  <VDivider class="my-2" />
-                  <VListItem class="px-0">
-                    <VListItemTitle class="font-weight-bold">Total a cobrar (Salario + Bono + Incentivo)</VListItemTitle>
-                    <template #append>
-                      <span class="font-weight-bold text-primary text-high-emphasis">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
-                    </template>
-                  </VListItem>
-                </VList>
-              </VCardText>
-            </VCard>
-            <p v-else-if="paymentForm.total_package_usd != null && paymentForm.total_package_usd > 0" class="text-medium-emphasis mt-4 mb-3">
-              Seleccione mes y año para ver la distribución.
-            </p>
-            <p v-else class="text-medium-emphasis mt-4 mb-3">
-              Defina el paquete total y seleccione mes y año para ver cómo se distribuyen los conceptos.
-            </p>
-          </VCardText>
-        </VCard>
+                </VCol>
+              </VRow>
+              <VCard v-if="distribution" variant="tonal" class="mt-4" density="comfortable">
+                <VCardTitle class="text-subtitle-2">
+                  Distribución para {{ formatPeriod(distribution.year, distribution.month) }}
+                </VCardTitle>
+                <VCardText>
+                  <VList density="compact">
+                    <VListItem
+                      v-for="(c, i) in distribution.concepts"
+                      :key="i"
+                      class="px-0"
+                    >
+                      <template #prepend>
+                        <VIcon v-if="c.fixed" icon="tabler-lock" size="18" class="text-medium-emphasis mr-2" />
+                        <VIcon v-else icon="tabler-calculator" size="18" class="text-medium-emphasis mr-2" />
+                      </template>
+                      <VListItemTitle>{{ c.name }}</VListItemTitle>
+                      <template #append>
+                        <span class="font-weight-medium text-high-emphasis">{{ formatCurrency(c.amount) }}</span>
+                      </template>
+                    </VListItem>
+                    <VDivider class="my-2" />
+                    <VListItem class="px-0">
+                      <VListItemTitle class="font-weight-bold">Total a cobrar (Salario + Bono + Incentivo)</VListItemTitle>
+                      <template #append>
+                        <span class="font-weight-bold text-primary text-high-emphasis">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
+                      </template>
+                    </VListItem>
+                  </VList>
+                </VCardText>
+              </VCard>
+              <p v-else-if="paymentForm.total_package_usd != null && paymentForm.total_package_usd > 0" class="text-medium-emphasis mt-4 mb-3">
+                Seleccione mes y año para ver la distribución.
+              </p>
+              <p v-else class="text-medium-emphasis mt-4 mb-3">
+                Defina el paquete total y seleccione mes y año para ver cómo se distribuyen los conceptos.
+              </p>
+            </VCardText>
+          </VCard>
 
-        <!-- Historial de pagos: sin acciones, columnas obligatorias, orden descendente -->
-        <VCard v-if="activeTab === 'salary' && !payrollLoading" class="mt-4">
-          <VCardTitle class="d-flex align-center gap-2">
-            <VIcon icon="tabler-history" />
-            Historial de pagos
-          </VCardTitle>
-          <VDivider />
-          <VCardText>
-            <VTable v-if="paymentHistory.length > 0">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th class="text-right">Salario Básico Mensual</th>
-                  <th class="text-right">Cestaticket Socialista de Ley</th>
-                  <th class="text-right">Asistencia Social de Salud (Art. 105 LOTTT)</th>
-                  <th class="text-right">Gratificación Extraordinaria por Rendimiento</th>
-                  <th class="text-right">Total Pagado (USD)</th>
-                  <th class="text-right">Total Pagado (VES)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in paymentHistory" :key="row.id">
-                  <td class="text-high-emphasis">{{ formatFecha(row.fecha) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.salario_base) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.bono_alimentacion) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.beneficio_salud) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.incentivo_metas) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatCurrency(row.total_pagado_usd) }}</td>
-                  <td class="text-right text-high-emphasis">{{ formatVes(row.total_pagado_ves) }}</td>
-                </tr>
-              </tbody>
-            </VTable>
-            <p v-else class="text-medium-emphasis mb-0">No hay pagos procesados.</p>
-          </VCardText>
-        </VCard>
+          <!-- Historial de pagos: sin acciones, columnas obligatorias, orden descendente -->
+          <VCard v-if="!payrollLoading" class="mt-4">
+            <VCardTitle class="d-flex align-center gap-2">
+              <VIcon icon="tabler-history" />
+              Historial de pagos
+            </VCardTitle>
+            <VDivider />
+            <VCardText>
+              <VTable v-if="paymentHistory.length > 0">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th class="text-right">Salario Básico Mensual</th>
+                    <th class="text-right">Cestaticket Socialista de Ley</th>
+                    <th class="text-right">Asistencia Social de Salud (Art. 105 LOTTT)</th>
+                    <th class="text-right">Gratificación Extraordinaria por Rendimiento</th>
+                    <th class="text-right">Total Pagado (USD)</th>
+                    <th class="text-right">Total Pagado (VES)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in paymentHistory" :key="row.id">
+                    <td class="text-high-emphasis">{{ formatFecha(row.fecha) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.salario_base) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.bono_alimentacion) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.beneficio_salud) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.incentivo_metas) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.total_pagado_usd) }}</td>
+                    <td class="text-right text-high-emphasis">{{ formatVes(row.total_pagado_ves) }}</td>
+                  </tr>
+                </tbody>
+              </VTable>
+              <p v-else class="text-medium-emphasis mb-0">No hay pagos procesados.</p>
+            </VCardText>
+          </VCard>
+        </div>
+
+
 
       </VCol>
     </VRow>
@@ -1167,4 +1414,98 @@ onMounted(async () => {
 
 <style scoped>
 .cursor-pointer { cursor: pointer; }
+
+.avatar-wrapper {
+  display: inline-block;
+}
+
+.avatar-wrapper .v-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.avatar-camera-badge {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--v-theme-primary));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.2s ease;
+}
+.avatar-camera-badge:hover {
+  opacity: 0.9;
+}
+
+/* Estilos para la card izquierda compacta */
+.compact-card .v-card-text {
+  padding: 1rem !important;
+}
+
+.compact-field .v-field {
+  font-size: 0.875rem !important;
+}
+
+/* Estilos para los botones de navegación */
+.nav-btn {
+  transition: all 0.2s ease;
+}
+
+.nav-btn.active {
+  box-shadow: 0 4px 8px rgba(var(--v-theme-primary), 0.2);
+}
+
+/* Estilos para la sección de documentos */
+.document-item {
+  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-block: 0.5rem;
+  padding-inline: 0;
+}
+
+.document-item:last-child {
+  border-block-end: none;
+}
+
+/* Estilos responsivos */
+@media (max-width: 960px) {
+  .v-col-md-3 {
+    margin-block-end: 1.5rem;
+  }
+
+  .nav-btn {
+    font-size: 0.875rem;
+    padding-block: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .v-avatar {
+    block-size: 80px !important;
+    inline-size: 80px !important;
+  }
+
+  .text-h5 {
+    font-size: 1.25rem !important;
+  }
+}
 </style>

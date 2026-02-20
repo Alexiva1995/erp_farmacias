@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,6 +26,24 @@ class Employee extends Model
         "total_package_usd",
         "saldo_deuda",
     ];
+
+    protected $appends = ['photo_url'];
+
+    protected function photo(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value && trim($value) !== '' && strtolower(trim($value)) !== 'null' ? $value : null,
+        );
+    }
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        $path = $this->photo;
+        if (!$path || trim($path) === '' || strtolower(trim($path)) === 'null') {
+            return null;
+        }
+        return Storage::url($path);
+    }
 
     /**
      * =================================================================================================
