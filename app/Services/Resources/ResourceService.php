@@ -68,15 +68,13 @@ class ResourceService
      */
     public function getExchangeRate(string $currencyCode): float
     {
-        $cacheKey = "resources.exchangeRate_{$currencyCode}";
-        // $cachedRate = Cache::remember($cacheKey, now()->addDay(), function () use ($currencyCode) {
-        $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
-        if ($exchangeRate) {
-            return (float) $exchangeRate->rate;
-        }
-        return 1.0;
-        // });
-        return $cachedRate;
+        return Cache::remember("resources.exchange_rate.{$currencyCode}", now()->addHours(1), function () use ($currencyCode) {
+            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+            if ($exchangeRate) {
+                return (float) $exchangeRate->rate;
+            }
+            return 1.0;
+        });
     }
 
     /**
@@ -84,9 +82,9 @@ class ResourceService
      */
     public function getAllExchangeRate(): Collection
     {
-      //  return Cache::remember('resources.all_exchange_rates', now()->addDay(), function () {
+        return Cache::remember('resources.all_exchange_rates', now()->addHours(1), function () {
             return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
-       // });
+        });
     }
 
 
@@ -95,17 +93,14 @@ class ResourceService
      */
     public function getProductByBarcode(string $barcode): Product
     {
-        $cacheKey = "product.barcode.{$barcode}";
-        //   $product = Cache::remember($cacheKey, now()->addDay(), function () use ($barcode) {
         $foundProduct = Product::where('barcode', $barcode)->first();
         if (!$foundProduct) {
             throw new ModelNotFoundException("Producto con código de barras '{$barcode}' no encontrado.");
         }
-        return $foundProduct;
-        // });
-        $product->loadMissing('laboratory');
 
-        return $product;
+        $foundProduct->loadMissing('laboratory');
+
+        return $foundProduct;
     }
 
     public function loadProductDetails(Product $product): Product
@@ -114,7 +109,7 @@ class ResourceService
             'laboratory',
         ]);
 
-         if (!$product) {
+        if (!$product) {
             throw new ModelNotFoundException("Producto no encontrado.");
         }
         $product->loadSum('lots', 'quantity');
