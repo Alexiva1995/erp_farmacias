@@ -71,9 +71,10 @@ class CashClosureActionService
                 // Lógica de asignación de tasa
                 $exchangeRateValue = 1.0000; // Valor base para USD
 
-                if ($info['currency'] !== 'USD') {
-                    // Para BS o COP, extrae el valor de la tabla. 
-                    // Si no existe, por seguridad se asigna 1.0000 o el valor que prefieras por defecto.
+                if ($info['currency'] === 'BS') {
+                    // Para BS usamos la tasa EUR (bolívares por euro)
+                    $exchangeRateValue = $rates['EUR'] ?? 1.0000;
+                } elseif ($info['currency'] !== 'USD') {
                     $exchangeRateValue = $rates[$info['currency']] ?? 1.0000;
                 }
 
@@ -331,7 +332,7 @@ class CashClosureActionService
         }
 
         $rates = $this->getFormattedRates();
-        $bsRate = $rates['BS'] ?? 1;
+        $bsRate = $rates['EUR'] ?? 1; // BS se convierte usando tasa EUR
         $copRate = $rates['COP'] ?? 1;
 
         $sellerSummary = CashClosing::query()

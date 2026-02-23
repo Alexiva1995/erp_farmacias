@@ -1,6 +1,6 @@
 <script setup>
-import { ref,computed  } from 'vue';
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { computed } from "vue";
 
 const props = defineProps({
   cashClosureData: {
@@ -16,7 +16,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['requestCloseCash']);
+const emit = defineEmits(["requestCloseCash"]);
 
 const isColorDark = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -26,9 +26,7 @@ const isColorDark = (hex) => {
   return luminance < 0.8;
 };
 
-const menuOptions = [
-  { title: 'Cerrar Caja', value: 'closed_cash' },
-];
+const menuOptions = [{ title: "Cerrar Caja", value: "closed_cash" }];
 
 const processedCashData = computed(() => {
   const data = props.cashClosureData;
@@ -39,22 +37,23 @@ const processedCashData = computed(() => {
   const totalCopInUSD = parseFloat(data.total_cop_in_usd) || 0;
   const totalCredits = parseFloat(data.usd_credit) || 0;
 
-  const grandTotal = totalUsd + data.total_bs_in_usd + data.total_cop_in_usd + totalCredits;
+  const grandTotal =
+    totalUsd + data.total_bs_in_usd + data.total_cop_in_usd + totalCredits;
 
- if (grandTotal === 0 || isNaN(grandTotal)) {
+  if (grandTotal === 0 || isNaN(grandTotal)) {
     return {
       hasData: false,
       items: [
         {
-          status: 'Sin porcentajes',
-          fullStatus: 'Sin porcentajes',
+          status: "Sin porcentajes",
+          fullStatus: "Sin porcentajes",
           amount: 0,
           amountUSD: 0,
-          icon: 'tabler-circle-off',
-          barColor: '#D9D9D9',
+          icon: "tabler-circle-off",
+          barColor: "#D9D9D9",
           percentage: 100,
-          textColorClass: 'text-black',
-          rounded: 'rounded-lg',
+          textColorClass: "text-black",
+          rounded: "rounded-lg",
         },
       ],
       grandTotal: 0,
@@ -67,69 +66,70 @@ const processedCashData = computed(() => {
   };
 
   const colors = {
-    usd: '#D9D9D9',    
-    bs: '#7F77E3',    
-    cop: '#33CCCC',     
-    credits: '#343B42', 
+    usd: "#D9D9D9",
+    bs: "#7F77E3",
+    cop: "#33CCCC",
+    credits: "#343B42",
   };
 
   const cashItems = [
     {
-      status: 'USD',
-      currency: 'USD',
-      fullStatus: 'Total USD',
+      status: "USD",
+      currency: "USD",
+      fullStatus: "Total USD",
       amount: totalUsd,
       amountUSD: totalUsd,
-      icon: 'tabler-currency-dollar',
+      icon: "tabler-currency-dollar",
       barColor: colors.usd,
     },
     {
-      status: 'BS',
-      currency: 'BS',
-      fullStatus: 'Total BS',
+      status: "BS",
+      currency: "BS",
+      fullStatus: "Total BS",
       amount: totalBs,
       amountUSD: totalBsInUSD,
-      icon: 'tabler-cash',
+      icon: "tabler-cash",
       barColor: colors.bs,
     },
     {
-      status: 'COP',
-      currency: 'COP',
-      fullStatus: 'Total COP',
+      status: "COP",
+      currency: "COP",
+      fullStatus: "Total COP",
       amount: totalCop,
       amountUSD: totalCopInUSD,
-      icon: 'tabler-coin',
+      icon: "tabler-coin",
       barColor: colors.cop,
     },
     {
-      status: 'Créd.',
-      currency: 'USD',
-      fullStatus: 'Total Créditos',
+      status: "Créd.",
+      currency: "USD",
+      fullStatus: "Total Créditos",
       amount: totalCredits,
       amountUSD: totalCredits,
-      icon: 'tabler-credit-card',
+      icon: "tabler-credit-card",
       barColor: colors.credits,
     },
   ];
-
 
   const hadleCurrency = (value) => {
     if (grandTotal === 0) return 0;
     return (value / grandTotal) * 100;
   };
 
-  cashItems.forEach(item => {
+  cashItems.forEach((item) => {
     item.percentage = calculatePercentage(item.amountUSD);
     item.text = item.status;
-    item.textColorClass = isColorDark(item.barColor) ? 'text-white' : 'text-black';
+    item.textColorClass = isColorDark(item.barColor)
+      ? "text-white"
+      : "text-black";
   });
 
-  const visibleItems = cashItems.filter(item => item.percentage > 0);
+  const visibleItems = cashItems.filter((item) => item.percentage > 0);
   if (visibleItems.length > 0) {
-    visibleItems[0].rounded = 'rounded-e-0 rounded-lg';
-    visibleItems[visibleItems.length - 1].rounded = 'rounded-s-0 rounded-lg';
+    visibleItems[0].rounded = "rounded-e-0 rounded-lg";
+    visibleItems[visibleItems.length - 1].rounded = "rounded-s-0 rounded-lg";
     for (let i = 1; i < visibleItems.length - 1; i++) {
-      visibleItems[i].rounded = 'rounded-0';
+      visibleItems[i].rounded = "rounded-0";
     }
   }
 
@@ -140,10 +140,9 @@ const processedCashData = computed(() => {
   };
 });
 
-
 const handleMenuClick = (optionValue) => {
-  if (optionValue === 'closed_cash') {
-    emit('requestCloseCash');
+  if (optionValue === "closed_cash") {
+    emit("requestCloseCash");
   }
 };
 </script>
@@ -152,12 +151,7 @@ const handleMenuClick = (optionValue) => {
     <VCardItem>
       <VCardTitle>Resumen de Caja</VCardTitle>
       <template #append>
-        <VBtn
-          icon
-          variant="text"
-          size="small"
-          color="default"
-        >
+        <VBtn icon variant="text" size="small" color="default">
           <VIcon size="24" icon="tabler-dots-vertical" />
           <VMenu activator="parent">
             <VList>
@@ -176,11 +170,7 @@ const handleMenuClick = (optionValue) => {
     </VCardItem>
 
     <VCardText>
-      <VProgressLinear
-        :model-value="100"
-        height="46"
-        class="mb-6 rounded-sm"
-      >
+      <VProgressLinear :model-value="100" height="46" class="mb-6 rounded-sm">
         <template #default>
           <div class="d-flex w-100 h-100">
             <div
@@ -195,7 +185,10 @@ const handleMenuClick = (optionValue) => {
               }"
               :class="processedCashData.items[0].rounded"
             >
-              <span class="text-sm font-weight-medium" :class="processedCashData.items[0].textColorClass">
+              <span
+                class="text-sm font-weight-medium"
+                :class="processedCashData.items[0].textColorClass"
+              >
                 {{ processedCashData.items[0].status }}
               </span>
             </div>
@@ -214,7 +207,11 @@ const handleMenuClick = (optionValue) => {
                 }"
                 :class="[item.rounded]"
               >
-                <span v-if="item.percentage > 0" class="text-sm font-weight-medium" :class="item.textColorClass">
+                <span
+                  v-if="item.percentage > 0"
+                  class="text-sm font-weight-medium"
+                  :class="item.textColorClass"
+                >
                   {{ item.percentage.toFixed(1) }}% {{ item.status }}
                 </span>
               </div>
@@ -230,12 +227,18 @@ const handleMenuClick = (optionValue) => {
           class="d-flex align-center justify-space-between py-2"
         >
           <div class="d-flex align-center gap-x-2">
-            <VIcon :icon="item.icon" :style="{ color: item.barColor }" size="24" />
-            <span class="text-body-1 text-high-emphasis">{{ item.fullStatus }}</span>
+            <VIcon
+              :icon="item.icon"
+              :style="{ color: item.barColor }"
+              size="24"
+            />
+            <span class="text-body-1 text-high-emphasis">{{
+              item.fullStatus
+            }}</span>
           </div>
           <div class="d-flex align-center gap-x-4">
             <span class="text-body-1 text-high-emphasis">
-              {{formatCurrency(item.amount, item.currency)}}
+              {{ formatCurrency(item.amount, item.currency) }}
             </span>
           </div>
         </div>

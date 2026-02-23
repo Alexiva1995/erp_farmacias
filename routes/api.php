@@ -530,6 +530,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/store", [ExchangeRateController::class, "store"]);
             Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
             Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
+            Route::get("/consultOneEUR", [ExchangeRateController::class, "consultOneEUR"]);
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
