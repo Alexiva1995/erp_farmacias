@@ -494,6 +494,8 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("suppliers-ia-order-assistant")->group(function () {
         Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
         Route::get("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "getProductosMarcados"]);
+        Route::patch("/products-without-supplier/{id}/toggle-scarce", [SuppliersIaOrderAssistantController::class, "toggleScarce"]);
+        Route::post("/direct-order", [SuppliersIaOrderAssistantController::class, "directOrder"]);
         Route::prefix("generate-order")->group(function () {
             Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
             Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);

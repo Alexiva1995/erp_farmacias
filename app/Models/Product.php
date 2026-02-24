@@ -47,6 +47,7 @@ class Product extends Model
         'sales_average',
         'cycle_id',
         'is_ordered',
+        'is_scarce',
         'is_deleted',
         'is_active',
         'stock',
@@ -65,6 +66,7 @@ class Product extends Model
         'is_deleted' => 'boolean',
         'sale_price' => 'float',
         'is_ordered' => 'boolean',
+        'is_scarce' => 'boolean',
     ];
 
 

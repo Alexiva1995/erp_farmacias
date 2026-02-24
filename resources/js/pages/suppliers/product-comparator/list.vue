@@ -6,12 +6,12 @@ import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProduct
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
-import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
 import ProductsWithoutSupplierComparatorFilter from "@/components/ProductsWithoutSupplierComparatorFilter.vue";
+import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
+import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 
 const supplierConnections = ref([]);
@@ -73,13 +73,13 @@ const orderByProductsWithoutSupplier = ref();
 const selectedProductFromTop = ref(null);
 
 //variables para el flitro de productos sin proveedor
-const con_descuento= ref(true);// Fallas , Execeso o All
+const con_descuento = ref(true); // Fallas , Execeso o All
 const selectedLaboratory = ref();
-const selectedGroup= ref();
-const tipo_de_vista= ref(false);// grupo o individual
-const tipo_de_filtracion= ref("sales");// promedio o ventas
-const lapso_de_tiempo= ref("3 month");// tiempo
-const stock= ref("all");// Fallas , Execeso o All
+const selectedGroup = ref();
+const tipo_de_vista = ref(false); // grupo o individual
+const tipo_de_filtracion = ref("sales"); // promedio o ventas
+const lapso_de_tiempo = ref("3 month"); // tiempo
+const stock = ref("fallas"); // Fallas , Execeso o All
 const laboratoriesProductsWithoutSupplier = ref([]);
 
 const handleClearFilters = () => {
@@ -94,6 +94,11 @@ const handleClearFilters = () => {
 
 const handleSelectProductFromTop = (product) => {
   selectedProductFromTop.value = product;
+
+  if (product.cheapest_barcode) {
+    filterSearchQuery.value = product.cheapest_barcode;
+  }
+
   toast.success(
     `Seleccionado: ${product.name}. Ahora busque el proveedor equivalente arriba.`,
   );
@@ -329,16 +334,16 @@ const fetchProductsWithoutSupplier = async () => {
     loadingProductsWithoutSupplier.value = true;
 
     const params = {
-      "laboratoryId": selectedLaboratory.value,
-      "groups": selectedGroup.value,
+      laboratoryId: selectedLaboratory.value,
+      groups: selectedGroup.value,
       //"tipo_vista": tipo_de_vista.value,
-      "tipo_filtracion": tipo_de_filtracion.value,
-      "lapso_de_tiempo": lapso_de_tiempo.value,
-      "stock": stock.value,
-      "page": pageProductsWithoutSupplier.value,
-      "itemsPerPage": itemsPerPageProductsWithoutSupplier.value,
-      "sortBy": sortByProductsWithoutSupplier.value,
-      "orderBy": orderByProductsWithoutSupplier.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      stock: stock.value,
+      page: pageProductsWithoutSupplier.value,
+      itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
+      sortBy: sortByProductsWithoutSupplier.value,
+      orderBy: orderByProductsWithoutSupplier.value,
     };
 
     const { data } = await axios.get(
@@ -539,7 +544,7 @@ const handleAddItemToAutoOrder = async (product) => {
     const { data, message } = response.data;
     toast.success(data || `Se añadieron ${product.quantity} productos.`);
     if (message && message.warning) {
-        toast.warning(message.warning, { timeout: 8000 });
+      toast.warning(message.warning, { timeout: 8000 });
     }
     selectedProductFromTop.value = null;
     fetchProductsWithoutSupplier();
@@ -583,7 +588,6 @@ const handleDeleteSupplierProducts = async (supplier) => {
   }
 };
 
-
 const handleToggleOrder = async (product) => {
   try {
     const { data } = await axios.patch(`/suppliers/${product.id}/toggle-order`);
@@ -592,12 +596,54 @@ const handleToggleOrder = async (product) => {
       toast.success(data.message || "Estado actualizado correctamente");
       fetchProductsWithoutSupplier();
     }
-
   } catch (error) {
     toast.error("No se pudieron borrar el productos de la lista.");
   }
 };
 
+const handleSaveAnalysis = async ({ item, newValue }) => {
+  try {
+    toast.info("Enviando pedido directo...");
+    const response = await axios.post(
+      "/suppliers-ia-order-assistant/direct-order",
+      {
+        productId: item.id,
+        quantity: newValue,
+      },
+    );
+
+    if (response.data.status === "success") {
+      toast.success(response.data.message || "Pedido añadido correctamente.");
+      fetchProductsWithoutSupplier();
+      fetchProducts();
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error(
+      error.response?.data?.message || "Error al procesar el pedido directo.",
+    );
+  }
+};
+
+const handleMarkScarce = async (item) => {
+  try {
+    const response = await axios.patch(
+      `/suppliers-ia-order-assistant/products-without-supplier/${item.id}/toggle-scarce`,
+    );
+
+    if (response.data.status === "success") {
+      toast.success(response.data.message);
+      // Actualizar el estado local para reflejar el cambio sin recargar todo si es posible
+      const found = listProductsWithoutSupplier.value.find(
+        (p) => p.id === item.id,
+      );
+      if (found) found.is_scarce = response.data.data.is_scarce;
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error("Error al actualizar estado de escasez.");
+  }
+};
 
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;
@@ -681,52 +727,53 @@ const updateProductsWithoutSupplierOptions = (options) => {
 
       <VTabsWindowItem value="products">
         <div class="mb-6">
-              <ProductComparisionProductsTable
-          :products="products"
-          :loading="loadingProducts"
-          :total-products="productsTotal"
-          :items-per-page="productsItemPerPage"
-          :page="productsPage"
-          :quantity-errors="quantityErrors"
-          :enable-usd-amount-col="enableUsdAmountCol"
-          :enable-discount-col="enableDiscountCol"
-          :search-query="filterSearchQuery"
-          @update:search-query="filterSearchQuery = $event"
-          :is-strict-search="isStrictSearch"
-          @update:is-strict-search="isStrictSearch = $event"
-          @update:options="updateProductsTableOptions"
-          @send-product="handleAddItemToAutoOrder"
-        />
+          <ProductComparisionProductsTable
+            :products="products"
+            :loading="loadingProducts"
+            :total-products="productsTotal"
+            :items-per-page="productsItemPerPage"
+            :page="productsPage"
+            :quantity-errors="quantityErrors"
+            :enable-usd-amount-col="enableUsdAmountCol"
+            :enable-discount-col="enableDiscountCol"
+            :search-query="filterSearchQuery"
+            @update:search-query="filterSearchQuery = $event"
+            :is-strict-search="isStrictSearch"
+            @update:is-strict-search="isStrictSearch = $event"
+            @update:options="updateProductsTableOptions"
+            @send-product="handleAddItemToAutoOrder"
+          />
         </div>
 
-          <ProductsWithoutSupplierComparatorFilter
-            v-model:selectConDescuento="con_descuento"
-            v-model:selectedLaboratory="selectedLaboratory"
-            v-model:selectedGroup="selectedGroup"
-            v-model:tipo_de_vista="tipo_de_vista"
-            v-model:tipo_de_filtracion="tipo_de_filtracion"
-            v-model:lapso_de_tiempo="lapso_de_tiempo"
-            v-model:stock="stock"
-            :groups="groups"
-            :laboratories="laboratoriesProductsWithoutSupplier"
-            :tipo_de_filtracion="tipo_de_filtracion"
-            :tipo_de_vista="tipo_de_vista"
-            :lapso_de_tiempo="lapso_de_tiempo"
-            :stock="stock"
-            @clear="handleClearFilters"
-          />
-          <ProductsWithoutSupplierComparatorTable
-            v-model="selectedProductFromTop"
-            :products="listProductsWithoutSupplier"
-            :loading="loadingProductsWithoutSupplier"
-            :total-products="totalProductsWithoutSupplier"
-            :items-per-page="itemsPerPageProductsWithoutSupplier"
-            :page="pageProductsWithoutSupplier"
-            @update:options="updateProductsWithoutSupplierOptions"
-            @select-product="handleSelectProductFromTop"
-            @delete="handleToggleOrder"
-          />
-        
+        <ProductsWithoutSupplierComparatorFilter
+          v-model:selectConDescuento="con_descuento"
+          v-model:selectedLaboratory="selectedLaboratory"
+          v-model:selectedGroup="selectedGroup"
+          v-model:tipo_de_vista="tipo_de_vista"
+          v-model:tipo_de_filtracion="tipo_de_filtracion"
+          v-model:lapso_de_tiempo="lapso_de_tiempo"
+          v-model:stock="stock"
+          :groups="groups"
+          :laboratories="laboratoriesProductsWithoutSupplier"
+          :tipo_de_filtracion="tipo_de_filtracion"
+          :tipo_de_vista="tipo_de_vista"
+          :lapso_de_tiempo="lapso_de_tiempo"
+          :stock="stock"
+          @clear="handleClearFilters"
+        />
+        <ProductsWithoutSupplierComparatorTable
+          v-model="selectedProductFromTop"
+          :products="listProductsWithoutSupplier"
+          :loading="loadingProductsWithoutSupplier"
+          :total-products="totalProductsWithoutSupplier"
+          :items-per-page="itemsPerPageProductsWithoutSupplier"
+          :page="pageProductsWithoutSupplier"
+          @update:options="updateProductsWithoutSupplierOptions"
+          @select-product="handleSelectProductFromTop"
+          @delete="handleToggleOrder"
+          @save-analysis="handleSaveAnalysis"
+          @mark-scarce="handleMarkScarce"
+        />
       </VTabsWindowItem>
     </VTabsWindow>
   </div>

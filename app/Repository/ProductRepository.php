@@ -355,6 +355,26 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND aod.status = 0
             ) AS totalQuantityInAutoOrder'),
+            DB::raw('(
+                SELECT ps.barcode_match
+                FROM product_suppliers ps
+                WHERE ps.product_id = products.id
+                  AND ps.barcode_match IS NOT NULL
+                  AND ps.barcode_match != \'\'
+                  AND ps.unit_cost > 0
+                ORDER BY ps.unit_cost ASC
+                LIMIT 1
+            ) AS cheapest_barcode'),
+            'products.is_scarce',
+            'products.unit_cost as current_unit_cost',
+            DB::raw('(
+                SELECT ps.unit_cost_usd
+                FROM product_suppliers ps
+                WHERE ps.product_id = products.id
+                  AND ps.unit_cost > 0
+                ORDER BY ps.unit_cost ASC
+                LIMIT 1
+            ) AS cheapest_unit_cost'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -591,6 +611,26 @@ class ProductRepository
                 AND aod.status = 0
                 )' : '') .
                 ') AS solicitar'),
+            DB::raw('(
+                SELECT ps.barcode_match
+                FROM product_suppliers ps
+                WHERE ps.product_id = products.id
+                  AND ps.barcode_match IS NOT NULL
+                  AND ps.barcode_match != \'\'
+                  AND ps.unit_cost > 0
+                ORDER BY ps.unit_cost ASC
+                LIMIT 1
+            ) AS cheapest_barcode'),
+            'products.is_scarce',
+            'products.unit_cost as current_unit_cost',
+            DB::raw('(
+                SELECT ps.unit_cost_usd
+                FROM product_suppliers ps
+                WHERE ps.product_id = products.id
+                  AND ps.unit_cost > 0
+                ORDER BY ps.unit_cost ASC
+                LIMIT 1
+            ) AS cheapest_unit_cost'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
