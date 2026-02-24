@@ -27,7 +27,7 @@ class ExchangeRateController extends Controller
         if ($request->data->id == null) {
 
             $this->exchangeRate->store($request->data->all());
-            return response()->json("Se ha creado la tasa de cambio COP");
+            return response()->json("Tasa de cambio procesada");
         } else {
             $this->exchangeRate->updateBCVDollar($request->data->all());
             return response()->json("Tasa de cambio actualizado");
