@@ -11,9 +11,11 @@ interface ExchangeRate
 
     public function consultAll(): Collection;
 
-    public function consultOneCOP(): Model | null;
+    public function consultOneCOP(): Model|null;
 
-    public function consultOneBCV(): Model | null;
+    public function consultOneBCV(): Model|null;
+
+    public function consultOneEUR(): Model|null;
 
     public function updateBCVDollar(array $data): Model;
 

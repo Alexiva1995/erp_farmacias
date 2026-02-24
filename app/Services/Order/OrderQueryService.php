@@ -151,7 +151,7 @@ class OrderQueryService
     private function getBaseQueryProduct(array $filters = []): QueryBuilder
     {
         $resourceService = app(\App\Services\Resources\ResourceService::class);
-        $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
+        $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
         $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
 
         // 1. Consulta de PRODUCTOS
@@ -231,8 +231,8 @@ class OrderQueryService
                 DB::raw('0 as is_colombian_origin'),
                 DB::raw('0 as psychotropic'),
                 DB::raw("'' as laboratory_name"),
-                DB::raw("product_packs.pack_config as pack_config"), 
-            DB::raw("'pack' as item_type"),
+                DB::raw("product_packs.pack_config as pack_config"),
+                DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
                 'product_packs.max_quantity as valid_stock_sum',
                 DB::raw('NULL as discount_percentage'),
@@ -499,7 +499,7 @@ class OrderQueryService
         // Siempre ordenar primero por item_type para que los packs aparezcan primero
         // Usamos CASE para que 'pack' = 0 y 'product' = 1, así los packs van primero
         $query->orderByRaw("CASE WHEN item_type = 'pack' THEN 0 ELSE 1 END ASC");
-        
+
         // Si no hay orden especificado, ordenamos por el nombre normalizado
         if (empty($sortBy)) {
             return $query->orderBy('name', 'asc');

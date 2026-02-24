@@ -20,31 +20,33 @@ class UpdateExchangeRate extends Command
      *
      * @var string
      */
-    protected $description = 'Comando para actualizar valor del dolar BCV';
+    protected $description = 'Comando para actualizar valor del dolar BCV y el Euro en BS';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        //$exchangeRate = new ExchangeRate;
-        //$id = null;
-        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-        //$this->info($response[0]['promedio']);
-        $data = [
-            "currency_code" => "USD",
-            "rate"          => $response[0]['promedio'],
-            "source"        => null,
-        ];
+        // ── Dólar BCV → BS ──────────────────────────────────────────────────
+        $responseBCV = Http::get('https://ve.dolarapi.com/v1/dolares');
 
-        ExchangeRate::create($data);
-        $this->info("The BCV exchange rate has been created");
-        /*if ($exchangeRate->where("currency_code", "USD")->first()) {
-            $this->info("Existe un valor BCV");
-            $this->info("The BCV exchange rate has been update");
-        } else {
-            ExchangeRate::create($data);
-            $this->info("The BCV exchange rate has been created");
-        }*/
+        ExchangeRate::updateOrCreate(
+            ['currency_code' => 'BS'],
+            ['rate' => $responseBCV[0]['promedio'], 'source' => null]
+        );
+
+        $this->info("Dólar BCV actualizado: {$responseBCV[0]['promedio']} BS");
+
+        // ── Euro → BS (via EUR/VES) ──────────────────────────────────────────
+        $responseEUR = Http::get('https://open.er-api.com/v6/latest/EUR');
+
+        $eurToVes = $responseEUR->json('rates.VES');
+
+        ExchangeRate::updateOrCreate(
+            ['currency_code' => 'EUR'],
+            ['rate' => $eurToVes, 'source' => null]
+        );
+
+        $this->info("Euro actualizado: {$eurToVes} BS");
     }
 }

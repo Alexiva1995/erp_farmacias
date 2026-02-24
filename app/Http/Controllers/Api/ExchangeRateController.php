@@ -13,7 +13,8 @@ class ExchangeRateController extends Controller
 
     public function __construct(
         protected ExchangeRate $exchangeRate
-    ) {}
+    ) {
+    }
 
     public function consultAll(Request $request)
     {
@@ -24,16 +25,15 @@ class ExchangeRateController extends Controller
     {
         // puede ser que se requiera hacer lo mismo como el valor del dolar
         if ($request->data->id == null) {
-            
+
             $this->exchangeRate->store($request->data->all());
             return response()->json("Se ha creado la tasa de cambio COP");
-        }
-        else {
+        } else {
             $this->exchangeRate->updateBCVDollar($request->data->all());
             return response()->json("Tasa de cambio actualizado");
         }
-        
-        
+
+
     }
 
     public function apiDollar()
@@ -53,32 +53,36 @@ class ExchangeRateController extends Controller
         return $this->exchangeRate->consultOneBCV();
     }
 
+    public function consultOneEUR()
+    {
+        return $this->exchangeRate->consultOneEUR();
+    }
+
     public function updateBCVDollar(Request $request)
     {
         $response = Http::get('https://ve.dolarapi.com/v1/dolares');
 
-        
 
-        if($request->exchange_id == null) {
+
+        if ($request->exchange_id == null) {
             $data = [
                 "currency_code" => "BS",
-                "rate"          => $response[0]['promedio'],
-                "source"        => null,
+                "rate" => $response[0]['promedio'],
+                "source" => null,
             ];
             $this->exchangeRate->store($data);
             return response()->json($data);
-        }
-        else {
+        } else {
             $data = [
-                "id"   => $request->exchange_id,
+                "id" => $request->exchange_id,
                 "currency_code" => "BS",
-                "rate"          => $response[0]['promedio'],
-                "source"        => null,
+                "rate" => $response[0]['promedio'],
+                "source" => null,
             ];
-            
+
             $this->exchangeRate->updateBCVDollar($data);
             return response()->json($data);
-            
+
         }
     }
 }

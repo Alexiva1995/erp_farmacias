@@ -19,18 +19,22 @@ class TraceabilityQueryService
     {
 
         $query = InventoryMovement::query()->with([
-            'user.employee', 
-            'order.seller.employee', 
-            'order', 
+            'user.employee',
+            'order.seller.employee',
+            'order',
             'invoice.supplier',
-            'supplier', 
+            'supplier',
             'product'
         ]);
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->input('q')}%";
-            $query->whereHas('product', function ($product) use ($request, $searchTerm) {
-                $product->where('id', 'like', $searchTerm);
+            $query->whereHas('product', function ($product) use ($searchTerm) {
+                $product->where('id', 'like', $searchTerm)
+                    ->orWhere('name', 'like', $searchTerm)
+                    ->orWhereHas('laboratory', function ($laboratory) use ($searchTerm) {
+                        $laboratory->where('name', 'like', $searchTerm);
+                    });
             });
         }
 
@@ -65,19 +69,22 @@ class TraceabilityQueryService
 
 
         $query = InventoryMovement::query()->with([
-            'user.employee', 
-            'order.seller.employee', 
-            'order', 
+            'user.employee',
+            'order.seller.employee',
+            'order',
             'invoice.supplier',
-            'supplier', 
+            'supplier',
             'product'
         ]);
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->input('q')}%";
-            $query->whereHas('product', function ($product) use ($request, $searchTerm) {
-                // $product->where('id', 'like', $searchTerm);
-                $product->where('name', 'like', $searchTerm);
+            $query->whereHas('product', function ($product) use ($searchTerm) {
+                $product->where('id', 'like', $searchTerm)
+                    ->orWhere('name', 'like', $searchTerm)
+                    ->orWhereHas('laboratory', function ($laboratory) use ($searchTerm) {
+                        $laboratory->where('name', 'like', $searchTerm);
+                    });
             });
         }
 

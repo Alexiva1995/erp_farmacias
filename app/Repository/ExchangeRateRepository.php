@@ -15,16 +15,22 @@ class ExchangeRateRepository
         return $exhange;
     }
 
-    public function consultOneCOP(): Model | null
+    public function consultOneCOP(): Model|null
     {
         $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
 
         return $exhange;
     }
 
-    public function consultOneBCV(): Model | null
+    public function consultOneBCV(): Model|null
     {
         $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS')->first();
+        return $exhange;
+    }
+
+    public function consultOneEUR(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'EUR')->first();
         return $exhange;
     }
 
@@ -47,7 +53,7 @@ class ExchangeRateRepository
     }
 
 
-    
+
 
     public function editProduct(array $data): Model
     {
