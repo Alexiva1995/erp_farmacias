@@ -31,7 +31,7 @@ watch(
     if (newVal !== localSearch.value) {
       localSearch.value = newVal;
     }
-  }
+  },
 );
 
 const rows = reactive({});
@@ -67,18 +67,15 @@ const allHeaders = [
 
 const headers = computed(() =>
   allHeaders.filter((h) => {
-    if (props.enableDiscountCol) {
-      if (["unit_cost_usd", "unit_cost_bs"].includes(h.key)) return false;
+    // Si Divisas ($) está activo, ocultar columnas de BS, y viceversa
+    if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
+    if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
 
-      if (props.enableUsdAmountCol && h.key === "final_cost_bs") return false;
-      if (!props.enableUsdAmountCol && h.key === "final_cost_usd") return false;
-    } else {
-      if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
-      if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
-    }
+    // Las columnas con descuento (%) solo se muestran si enableDiscountCol es true
+    if (h.key.includes("final_cost") && !props.enableDiscountCol) return false;
 
     return true;
-  })
+  }),
 );
 </script>
 

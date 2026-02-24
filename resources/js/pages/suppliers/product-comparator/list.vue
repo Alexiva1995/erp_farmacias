@@ -56,7 +56,7 @@ const productsTotal = ref(0);
 const sortOptions = ref([]);
 
 const enableUsdAmountCol = ref(true);
-const enableDiscountCol = ref(true);
+const enableDiscountCol = ref(false);
 
 const isDeleteDialogVisible = ref(false);
 
@@ -97,6 +97,10 @@ const handleSelectProductFromTop = (product) => {
 
   if (product.cheapest_barcode) {
     filterSearchQuery.value = product.cheapest_barcode;
+  } else if (product.barcode) {
+    filterSearchQuery.value = product.barcode;
+  } else {
+    filterSearchQuery.value = String(product.id);
   }
 
   toast.success(

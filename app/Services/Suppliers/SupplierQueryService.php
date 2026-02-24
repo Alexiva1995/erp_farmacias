@@ -566,11 +566,11 @@ class SupplierQueryService
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
 
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
-
                 if ($isStrictSearch) {
                     $query->where(function ($q) use ($search) {
                         $q->where('product_suppliers.name', '=', $search)
                             ->orWhere('product_suppliers.id', '=', $search)
+                            ->orWhere('product_suppliers.product_id', '=', $search)
                             ->orWhere('product_suppliers.barcode_match', '=', $search);
                     });
                 } else {
@@ -579,7 +579,12 @@ class SupplierQueryService
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('product_suppliers.name', 'like', "%{$word}%")
                                 ->orWhere('product_suppliers.active_ingredient', 'like', "%{$word}%")
-                                ->orWhere('product_suppliers.laboratory', 'like', "%{$word}%");
+                                ->orWhere('product_suppliers.laboratory', 'like', "%{$word}%")
+                                ->orWhere('product_suppliers.barcode_match', 'like', "%{$word}%");
+
+                            if (is_numeric($word)) {
+                                $wordQuery->orWhere('product_suppliers.product_id', '=', $word);
+                            }
                         });
                     }
                 }
