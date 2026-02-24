@@ -23,17 +23,33 @@ class ExchangeRateController extends Controller
 
     public function store(ExchangeRateCreateRequest $request)
     {
-        // puede ser que se requiera hacer lo mismo como el valor del dolar
-        if ($request->data->id == null) {
+        $data = $request->data->all();
 
-            $this->exchangeRate->store($request->data->all());
-            return response()->json("Tasa de cambio procesada");
-        } else {
-            $this->exchangeRate->updateBCVDollar($request->data->all());
-            return response()->json("Tasa de cambio actualizado");
+        // Si el rate viene vacío o es null, buscamos el valor de la API correspondiente
+        if (!isset($data['rate']) || $data['rate'] === null || $data['rate'] === '') {
+            $currency = $data['currency_code'];
+            $rate = null;
+
+            if ($currency === 'BS') {
+                $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/dolares/oficial');
+                $rate = $response->json('promedio');
+            } elseif ($currency === 'COP') {
+                $response = \Illuminate\Support\Facades\Http::get('https://co.dolarapi.com/v1/trm');
+                $rate = $response->json('valor');
+            } elseif ($currency === 'EUR') {
+                $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/euros/oficial');
+                $rate = $response->json('promedio');
+            }
+
+            if ($rate) {
+                $data['rate'] = $rate;
+            } else {
+                return response()->json("No se pudo obtener la tasa desde el API automáticamente.", 422);
+            }
         }
 
-
+        $this->exchangeRate->store($data);
+        return response()->json("Tasa de cambio procesada");
     }
 
     public function apiDollar()
