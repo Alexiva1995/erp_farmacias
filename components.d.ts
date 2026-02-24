@@ -182,6 +182,7 @@ declare module 'vue' {
     LotteryTable: typeof import('./resources/js/components/LotteryTable.vue')['default']
     MonthlyCashClosingTable: typeof import('./resources/js/components/MonthlyCashClosingTable.vue')['default']
     MonthlyCashModal: typeof import('./resources/js/components/dialogs/MonthlyCashModal.vue')['default']
+    MonthlyPerformanceCard: typeof import('./resources/js/components/MonthlyPerformanceCard.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     MyCleaningActivitiesFilters: typeof import('./resources/js/components/MyCleaningActivitiesFilters.vue')['default']
     MyCleaningActivitiesTable: typeof import('./resources/js/components/MyCleaningActivitiesTable.vue')['default']
@@ -327,6 +328,5 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
-    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

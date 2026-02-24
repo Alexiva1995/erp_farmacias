@@ -66,27 +66,28 @@ class CashClosureActionService
 
         foreach ($metrics as $field => $info) {
             $amount = $cashClosure->$field;
-            
+
             if ($amount > 0) {
                 // Lógica de asignación de tasa
                 $exchangeRateValue = 1.0000; // Valor base para USD
 
-                if ($info['currency'] !== 'USD') {
-                    // Para BS o COP, extrae el valor de la tabla. 
-                    // Si no existe, por seguridad se asigna 1.0000 o el valor que prefieras por defecto.
+                if ($info['currency'] === 'BS') {
+                    // Para BS usamos la tasa EUR (bolívares por euro)
+                    $exchangeRateValue = $rates['EUR'] ?? 1.0000;
+                } elseif ($info['currency'] !== 'USD') {
                     $exchangeRateValue = $rates[$info['currency']] ?? 1.0000;
                 }
 
                 Transaction::create([
-                    'user_id'          => $cashClosure->seller_id,
-                    'category_id'      => null,
-                    'description'      => "Cierre de caja #" . $cashClosure->id,
-                    'currency'         => $info['currency'],
-                    'type'             => $info['type'],
-                    'amount'           => $amount,
-                    'movement_type'    => 'IN',
+                    'user_id' => $cashClosure->seller_id,
+                    'category_id' => null,
+                    'description' => "Cierre de caja #" . $cashClosure->id,
+                    'currency' => $info['currency'],
+                    'type' => $info['type'],
+                    'amount' => $amount,
+                    'movement_type' => 'IN',
                     'transaction_date' => Carbon::now(),
-                    'exchange_rate'    => $exchangeRateValue, // Nuevo campo decimal
+                    'exchange_rate' => $exchangeRateValue, // Nuevo campo decimal
                 ]);
             }
         }
@@ -97,7 +98,6 @@ class CashClosureActionService
         $sellerId = Auth::id();
         $cashClosing = CashClosing::where('seller_id', $sellerId)
             ->where('status', CashClosing::OPEN)
-            ->with('orders.details.product')
             ->first();
 
         return $cashClosing;
@@ -187,7 +187,7 @@ class CashClosureActionService
                 'total_usd' => $cashClosings->sum('total_usd') + $cashClosings->sum('usd_credit'),
                 'total_cop' => $cashClosings->sum('total_cop'),
                 'total_bs' => $cashClosings->sum('total_bs'),
-                'bs_card'     => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
+                'bs_card' => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
                 'bs_mobile' => $cashClosings->sum('bs_mobile'),
                 'usd_delivered' => $cashClosings->sum('usd_delivered'),
                 'cop_delivered' => $cashClosings->sum('cop_delivered'),
@@ -332,7 +332,7 @@ class CashClosureActionService
         }
 
         $rates = $this->getFormattedRates();
-        $bsRate = $rates['BS'] ?? 1;
+        $bsRate = $rates['EUR'] ?? 1; // BS se convierte usando tasa EUR
         $copRate = $rates['COP'] ?? 1;
 
         $sellerSummary = CashClosing::query()

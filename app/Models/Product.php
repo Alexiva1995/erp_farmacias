@@ -367,7 +367,7 @@ class Product extends Model
     protected function priceBs(): Attribute
     {
         return Attribute::make(
-            get: fn() => round($this->sale_price * $this->getServiceExchangeRate('BS'), 2),
+            get: fn() => round($this->sale_price * $this->getServiceExchangeRate('EUR'), 2),
         );
     }
 

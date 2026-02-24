@@ -11,7 +11,9 @@ use Illuminate\Http\Request;
 class ExchangeRateServices implements ExchangeRate
 {
 
-    public function __construct(protected ExchangeRateRepository $exchangeRateRepository) {}
+    public function __construct(protected ExchangeRateRepository $exchangeRateRepository)
+    {
+    }
 
     public function consultAll(): Collection
     {
@@ -23,14 +25,19 @@ class ExchangeRateServices implements ExchangeRate
         return $this->exchangeRateRepository->store($data);
     }
 
-    public function consultOneCOP(): Model | null
+    public function consultOneCOP(): Model|null
     {
         return $this->exchangeRateRepository->consultOneCOP();
     }
 
-    public function consultOneBCV(): Model | null
+    public function consultOneBCV(): Model|null
     {
         return $this->exchangeRateRepository->consultOneBCV();
+    }
+
+    public function consultOneEUR(): Model|null
+    {
+        return $this->exchangeRateRepository->consultOneEUR();
     }
 
     public function updateBCVDollar(array $data): Model
@@ -44,7 +51,7 @@ class ExchangeRateServices implements ExchangeRate
         return $this->ExchangeRateRepository->consultById($id);
     }
 
-    
+
 
     public function editProduct(array $data): Model
     {
