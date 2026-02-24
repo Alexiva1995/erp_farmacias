@@ -586,4 +586,58 @@ class SuppliersIaOrderAssistantController extends Controller
         }
     }
 
+    public function toggleScarce(Request $request, $id)
+    {
+        $product = ModelsProduct::findOrFail($id);
+        $product->update([
+            'is_scarce' => !$product->is_scarce,
+        ]);
+
+        return ApiResponse::success(["is_scarce" => $product->is_scarce], "Estado actualizado");
+    }
+
+    public function directOrder(Request $request)
+    {
+        $request->validate([
+            'productId' => 'required',
+            'quantity' => 'required|numeric|min:1',
+        ]);
+
+        $productId = $request->productId;
+        $quantity = $request->quantity;
+
+        // Buscar el proveedor mas barato con barcode
+        $cheapestProvider = \App\Models\ProductSupplier::where('product_id', $productId)
+            ->whereNotNull('barcode_match')
+            ->where('barcode_match', '!=', '')
+            ->where('unit_cost', '>', 0)
+            ->orderBy('unit_cost', 'asc')
+            ->first();
+
+        if (!$cheapestProvider) {
+            return ApiResponse::error("No se encontró un proveedor con código de barras para este producto.");
+        }
+
+        $queryService = app(\App\Services\Suppliers\SupplierQueryService::class);
+
+        $mockRequest = new Request();
+        $mockRequest->replace([
+            'productId' => $cheapestProvider->id,
+            'main_product_id' => $productId,
+            'quantity' => $quantity,
+            'discount' => false
+        ]);
+
+        $results = $queryService->addProductToOrder($mockRequest);
+
+        if ($results['success']) {
+            return ApiResponse::success(
+                ['warning' => $results['warning']],
+                'Producto añadido al pedido directamente'
+            );
+        }
+
+        return ApiResponse::error('No se pudo procesar el pedido directo');
+    }
+
 }
