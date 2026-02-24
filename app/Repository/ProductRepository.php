@@ -311,6 +311,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            'barcode',
             "sales_average",
             "sale_price",
             "unit_cost",
@@ -361,8 +362,8 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                   AND ps.barcode_match IS NOT NULL
                   AND ps.barcode_match != \'\'
-                  AND ps.unit_cost > 0
-                ORDER BY ps.unit_cost ASC
+                  AND ps.unit_cost_usd > 0
+                ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
             'products.is_scarce',
@@ -371,8 +372,10 @@ class ProductRepository
                 SELECT ps.unit_cost_usd
                 FROM product_suppliers ps
                 WHERE ps.product_id = products.id
-                  AND ps.unit_cost > 0
-                ORDER BY ps.unit_cost ASC
+                  AND ps.barcode_match IS NOT NULL
+                  AND ps.barcode_match != \'\'
+                  AND ps.unit_cost_usd > 0
+                ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_unit_cost'),
         ];
@@ -545,6 +548,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            'barcode',
             "sales_average",
             "sale_price",
             "unit_cost",
@@ -617,8 +621,8 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                   AND ps.barcode_match IS NOT NULL
                   AND ps.barcode_match != \'\'
-                  AND ps.unit_cost > 0
-                ORDER BY ps.unit_cost ASC
+                  AND ps.unit_cost_usd > 0
+                ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
             'products.is_scarce',
@@ -627,8 +631,10 @@ class ProductRepository
                 SELECT ps.unit_cost_usd
                 FROM product_suppliers ps
                 WHERE ps.product_id = products.id
-                  AND ps.unit_cost > 0
-                ORDER BY ps.unit_cost ASC
+                  AND ps.barcode_match IS NOT NULL
+                  AND ps.barcode_match != \'\'
+                  AND ps.unit_cost_usd > 0
+                ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_unit_cost'),
         ];
@@ -783,6 +789,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            'barcode',
             "is_ordered",
             "sales_average",
             "sale_price",
@@ -974,6 +981,7 @@ class ProductRepository
             'stock',
             'group_id',
             'laboratory_id',
+            'barcode',
             "is_ordered",
             "sales_average",
             "sale_price",

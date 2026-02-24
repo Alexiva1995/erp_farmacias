@@ -610,8 +610,8 @@ class SuppliersIaOrderAssistantController extends Controller
         $cheapestProvider = \App\Models\ProductSupplier::where('product_id', $productId)
             ->whereNotNull('barcode_match')
             ->where('barcode_match', '!=', '')
-            ->where('unit_cost', '>', 0)
-            ->orderBy('unit_cost', 'asc')
+            ->where('unit_cost_usd', '>', 0)
+            ->orderBy('unit_cost_usd', 'asc')
             ->first();
 
         if (!$cheapestProvider) {
