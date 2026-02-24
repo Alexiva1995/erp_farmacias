@@ -42,7 +42,10 @@ class ExchangeRateRepository
 
     public function store(array $data): Model
     {
-        return ExchangeRate::create($data);
+        return ExchangeRate::updateOrCreate(
+            ['currency_code' => $data['currency_code']],
+            $data
+        );
     }
 
     /*
