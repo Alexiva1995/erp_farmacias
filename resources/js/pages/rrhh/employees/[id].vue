@@ -119,6 +119,22 @@ const translatedRole = computed(() => {
   return roleMap[normalized] ?? roleName;
 });
 
+const roleItems = computed(() =>
+  roles.value.map((role) => ({
+    title:
+      role.name === 'Admin'
+        ? 'Administrador'
+        : role.name === 'Employee'
+        ? 'Empleado'
+        : role.name === 'Supervisor'
+        ? 'Supervisor'
+        : role.name === 'HR' || role.name === 'Hr'
+        ? 'Recursos Humanos'
+        : role.name,
+    value: Number(role.id),
+  }))
+);
+
 const fetchRoles = async () => {
   try {
     const response = await axios.get('/api/roles');
@@ -812,9 +828,9 @@ onMounted(async () => {
                 <VSelect
                   v-else
                   v-model="employee.user.role_id"
-                  :items="roles"
-                  item-title="name"
-                  item-value="id"
+                  :items="roleItems"
+                  item-title="title"
+                  item-value="value"
                   label="Rol"
                   density="compact"
                   hide-details
