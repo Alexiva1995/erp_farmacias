@@ -24,15 +24,14 @@ const euros = ref();
 
 const sudmitPesos = async () => {
   let data = {
-    id: props.idPesos,
     currency_code: "COP",
-    rate: parseFloat(pesos.value),
+    rate: pesos.value ? parseFloat(pesos.value) : null,
   };
 
   try {
     const response = await axios.post("/finances/exchange-rates/store", data);
 
-    Swal.fire("Se ha actualizado el peso");
+    Swal.fire("Tasa de peso procesada");
     console.log(response);
     setTimeout(() => {
       emit("refresh");
@@ -45,15 +44,14 @@ const sudmitPesos = async () => {
 
 const submitEuros = async () => {
   let data = {
-    id: props.idEuros,
     currency_code: "EUR",
-    rate: parseFloat(euros.value),
+    rate: euros.value ? parseFloat(euros.value) : null,
   };
 
   try {
     const response = await axios.post("/finances/exchange-rates/store", data);
 
-    Swal.fire("Se ha actualizado el euro");
+    Swal.fire("Tasa de euro procesada");
     console.log(response);
     setTimeout(() => {
       emit("refresh");
@@ -65,18 +63,16 @@ const submitEuros = async () => {
 };
 
 const updateBCVDollar = async () => {
+  // Si no hay valor ingresado, usamos el store unificado para que el backend busque la tasa BS
   let data = {
-    exchange_id: props.idDollar,
     currency_code: "BS",
+    rate: null,
   };
 
   try {
-    const response = await axios.post(
-      "/finances/exchange-rates/updateBCVDollar",
-      data,
-    );
+    const response = await axios.post("/finances/exchange-rates/store", data);
 
-    Swal.fire("Se ha actualizado el dolar BCV");
+    Swal.fire("Tasa de dolar BCV actualizada");
     console.log(response);
     setTimeout(() => {
       emit("refresh");

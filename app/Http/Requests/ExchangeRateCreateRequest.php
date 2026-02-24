@@ -28,16 +28,16 @@ class ExchangeRateCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "currency_code"  =>    "required",
-            "rate"           =>    "required|numeric",
+            "currency_code" => "required",
+            "rate" => "nullable|numeric",
         ];
     }
 
     public function menssages()
     {
         return [
-            "currency_code.required"   =>   "the currency code is required",
-            "rate.required"            =>   "the rate is required",
+            "currency_code.required" => "the currency code is required",
+            "rate.required" => "the rate is required",
 
         ];
     }
@@ -57,10 +57,10 @@ class ExchangeRateCreateRequest extends FormRequest
     protected function passedValidation()
     {
         $this->data = ExchangeRateCreateData::from([
-            "id"             => $this->id,
-            "currency_code"  => $this->currency_code,
-            "rate"           => $this->rate,
-            "source"         => $this->source,
+            "id" => $this->id,
+            "currency_code" => $this->currency_code,
+            "rate" => $this->rate,
+            "source" => $this->source,
         ]);
     }
 }
