@@ -38,7 +38,7 @@ const fetchEmployeeLaboratories = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -74,10 +74,12 @@ const fetchEmployees = async () => {
       params: { itemsPerPage: 1000, active: true },
     });
 
-    employees.value = response.data.data.map((emp) => ({
-      title: `${emp.name} ${emp.last_name}`,
-      value: emp.id,
-    }));
+    employees.value = response.data.data
+      .filter((emp) => emp.role_id === 3)
+      .map((emp) => ({
+        title: `${emp.name} ${emp.last_name}`,
+        value: emp.id,
+      }));
   } catch (error) {
     console.error("Error al obtener empleados:", error);
     toast.error("Error al cargar los empleados.");
@@ -91,7 +93,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchEmployeeLaboratories(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery, selectedLaboratory], () => {
@@ -141,7 +143,7 @@ const handleDeleteAssignment = async (employeeId, laboratoryId) => {
   if (result.isConfirmed) {
     try {
       await axios.delete(
-        `/employee-laboratories/${employeeId}/${laboratoryId}`
+        `/employee-laboratories/${employeeId}/${laboratoryId}`,
       );
       toast.success("Asignación eliminada con éxito.");
       fetchEmployeeLaboratories();
@@ -185,7 +187,7 @@ const handleSaveAssignment = async (assignmentData) => {
 
     const isEditMode = !!currentEmployee.value.employee_id;
     toast.success(
-      `Laboratorios ${isEditMode ? "actualizados" : "asignados"} con éxito`
+      `Laboratorios ${isEditMode ? "actualizados" : "asignados"} con éxito`,
     );
 
     isDialogVisible.value = false;
