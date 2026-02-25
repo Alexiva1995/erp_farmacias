@@ -52,7 +52,7 @@ async function storeProfitability() {
 
     <VDialog v-model="dialog" max-width="600px">
       <VCard class="shadow-lg bg-white" style="padding: 2em">
-        <h3>Asignar rentabilidad!</h3>
+        <h3>Asignar rentabilidad</h3>
 
         <VNumberInput
           v-model="percentage"

@@ -93,7 +93,7 @@ const loadSavedSort = () => {
       const parsedSort = JSON.parse(saved);
       const isValidSort = sortOptions.find(
         (option) =>
-          option.key === parsedSort.key && option.order === parsedSort.order
+          option.key === parsedSort.key && option.order === parsedSort.order,
       );
       if (isValidSort) {
         selectedSort.value = parsedSort;
@@ -136,7 +136,7 @@ const getSelectedSortTitle = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.title : null;
 };
@@ -146,7 +146,7 @@ const getSelectedSortIcon = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.icon : null;
 };
@@ -174,7 +174,7 @@ watch(
       loadSavedSort();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>
 
@@ -314,7 +314,7 @@ watch(
         prepend-icon="tabler-plus"
         @click="emit('add-profitability')"
       >
-        Asignar Rentabilidad
+        Asignar Rentabilidad!
       </VBtn>
     </VCardActions>
   </VCard>

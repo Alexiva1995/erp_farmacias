@@ -985,11 +985,6 @@ class PendingPaymentsController extends Controller
             'user_id' => $payment->payment_by,
             'has_invoice' => true,
             'is_deductible' => true,
-            'iva' => $iva ?? false,
-            'status' => 'Approved',
-            'exchange_rate' => $exchangeRate,
-            'exempt_amount' => $exemptAmount,
-            'taxable_base' => $taxableBase,
             'tax_amount' => $taxAmount,
             'total_usd' => $totalUSD,
             'invoice_number' => $invoice->invoice_number,
@@ -1192,15 +1187,21 @@ class PendingPaymentsController extends Controller
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
-            // CRÉDITO FISCAL: Gastos con IVA (campo iva = 1)
-            $expensesWithIva = Expense::where('iva', 1)
+            // CRÉDITO FISCAL: Gastos con IVA (campo tax_amount > 0)
+            $expensesWithIva = Expense::where('tax_amount', '>', 0)
                 ->whereBetween('expense_date', [$startDate, $endDate])
                 ->get();
 
-            // Calcular 16% del amount_bs para cada gasto con IVA (en bolívares)
+            // Calcular crédito fiscal directo desde tax_amount (o 16% del amount si es BS)
             $creditoFiscal = 0;
             foreach ($expensesWithIva as $expense) {
-                $creditoFiscal += $expense->amount_bs * 0.16;
+                // Si ya tenemos tax_amount guardado, lo usamos.
+                // Si no, y es BS, calculamos el 16%
+                if ($expense->tax_amount > 0) {
+                    $creditoFiscal += $expense->tax_amount;
+                } elseif ($expense->currency === 'BS' || $expense->currency === 'VES') {
+                    $creditoFiscal += $expense->amount * 0.16;
+                }
             }
 
             return ApiResponse::success([
@@ -1211,7 +1212,7 @@ class PendingPaymentsController extends Controller
                 'credito_fiscal' => round($creditoFiscal, 2),
                 'detalle_credito' => [
                     'total_expenses_with_iva' => $expensesWithIva->count(),
-                    'total_amount_expenses' => $expensesWithIva->sum('amount_bs'),
+                    'total_amount_expenses' => $expensesWithIva->sum('amount'), // Usar amount general
                     'iva_calculated' => round($creditoFiscal, 2)
                 ]
             ], 'Crédito fiscal obtenido exitosamente');
@@ -1236,9 +1237,9 @@ class PendingPaymentsController extends Controller
             $page = $request->page ?? 1;
             $itemsPerPage = $request->itemsPerPage ?? 10;
 
-            // Query para gastos con IVA
+            // Query para gastos con IVA (usando tax_amount > 0)
             $query = Expense::with(['category'])
-                ->where('iva', 1)
+                ->where('tax_amount', '>', 0)
                 ->whereBetween('expense_date', [$startDate, $endDate])
                 ->orderBy('expense_date', 'desc')
                 ->orderBy('id', 'desc');
@@ -1256,21 +1257,24 @@ class PendingPaymentsController extends Controller
 
             // Formatear los registros para el frontend
             $formattedRecords = $records->map(function ($expense) {
-                // Calcular el IVA (16% del amount_bs en lugar de amount_usd)
-                $ivaAmount = $expense->amount_bs * 0.16;
+                // Usar tax_amount directamente si existe, si no calcular 16% del amount si es BS
+                $ivaAmount = $expense->tax_amount > 0 ? $expense->tax_amount : (($expense->currency === 'BS' || $expense->currency === 'VES') ? $expense->amount * 0.16 : 0);
+
+                // Determinar monto en BS para mostrar (si la moneda es BS usar amount, si no usar 0 o calcular)
+                $amountBs = ($expense->currency === 'BS' || $expense->currency === 'VES') ? $expense->amount : 0;
 
                 return [
                     'id' => $expense->id,
                     'name' => $expense->name,
                     'category_name' => $expense->category->name ?? 'Sin categoría',
-                    'amount_bs' => (float) $expense->amount_bs,
-                    'amount_usd' => (float) $expense->amount_usd,
+                    'amount_bs' => (float) $amountBs,
+                    'amount_usd' => (float) $expense->total_usd,
                     'currency' => $expense->currency,
                     'expense_date' => $expense->expense_date,
                     'is_deductible' => (bool) $expense->is_deductible,
                     'has_invoice' => (bool) $expense->has_invoice,
                     'iva_amount' => round($ivaAmount, 2),
-                    'exempt_amount' => 0, // Los gastos generalmente no tienen exención
+                    'exempt_amount' => (float) ($expense->exempt_amount ?? 0),
 
                     // Campos para la tabla (algunos pueden ser null)
                     'supplier_name' => $expense->supplier_name ?? $expense->name,
@@ -1283,7 +1287,7 @@ class PendingPaymentsController extends Controller
                 ];
             });
 
-            // Calcular totales para la página actual usando amount_bs
+            // Calcular totales para la página actual
             $pageTotals = [
                 'total_amount' => $formattedRecords->sum('amount_bs'),
                 'total_iva' => $formattedRecords->sum('iva_amount'),

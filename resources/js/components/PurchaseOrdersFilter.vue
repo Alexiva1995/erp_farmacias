@@ -11,26 +11,29 @@ const emit = defineEmits(["update:selectedSupplier", "clear"]);
 <template>
   <VCard class="mb-6">
     <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="4">
-          <VAutocomplete
+      <VRow align="center">
+        <VCol cols="12" md="12">
+          <AppAutocomplete
             :model-value="props.selectedSupplier"
             :items="props.suppliers"
             :loading="props.loading"
-            label="Proveedor"
-            placeholder="Escribe para buscar un proveedor"
+            placeholder="Seleccionar un proveedor"
             item-title="name"
             item-value="id"
             clearable
+            hide-details="auto"
             @update:model-value="emit('update:selectedSupplier', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-            Limpiar Filtros
-          </VBtn>
-        </VCol>
       </VRow>
     </VCardText>
+
+    <VDivider />
+
+    <VCardActions class="pa-4 px-6">
+      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+        Limpiar Filtros
+      </VBtn>
+    </VCardActions>
   </VCard>
 </template>

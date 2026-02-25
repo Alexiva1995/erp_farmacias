@@ -138,6 +138,11 @@ const availableYears = computed(() => {
   return years;
 });
 
+const handleClear = () => {
+  selectedYear.value = new Date().getFullYear();
+  fetchIslrData();
+};
+
 onMounted(() => {
   fetchIslrData();
 });
@@ -145,52 +150,52 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Header con acciones -->
-    <VRow class="mb-4">
-      <VCol cols="12" md="6">
-        <h2 class="text-h4 font-weight-bold">Resumen ISLR</h2>
-        <p class="text-body-2 text-medium-emphasis mt-1">
-          Renta bruta y deducciones aplicadas
-        </p>
-      </VCol>
-      <VCol cols="12" md="6" class="d-flex justify-end align-center">
-        <VSelect
-          v-model="selectedYear"
-          :items="availableYears"
-          label="Año"
-          variant="outlined"
-          density="compact"
-          style="max-width: 120px"
-          class="mr-2"
-          @update:model-value="handleYearChange"
-        />
+    <!-- Card de Filtros -->
+    <VCard class="mb-6">
+      <VCardText>
+        <VRow>
+          <VCol cols="12" sm="6" md="6">
+            <VSelect
+              v-model="selectedYear"
+              :items="availableYears"
+              placeholder="Seleccione el año fiscal"
+              variant="outlined"
+              density="comfortable"
+              label="Estado de Stock"
+              @update:model-value="handleYearChange"
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="6" class="d-flex align-center">
+            <p class="text-body-2 text-medium-emphasis mb-0">
+              <VIcon size="18" class="mr-1" color="primary"
+                >mdi-information-outline</VIcon
+              >
+              Seleccione el año fiscal para visualizar el desglose de renta
+              bruta e impuestos.
+            </p>
+          </VCol>
+        </VRow>
+      </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
+        <VBtn color="secondary" variant="outlined" @click="handleClear">
+          Limpiar Filtros
+        </VBtn>
+
+        <VSpacer />
+
         <VBtn
           color="primary"
-          variant="outlined"
           prepend-icon="mdi-refresh"
-          class="mr-2"
           :loading="loading"
           @click="handleRefresh"
         >
-          Actualizar
+          Actualizar Datos
         </VBtn>
-        <VMenu>
-          <template #activator="{ props }">
-            <VBtn color="success" v-bind="props" prepend-icon="mdi-download">
-              Exportar
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem @click="handleExport('PDF')">
-              <VListItemTitle>PDF</VListItemTitle>
-            </VListItem>
-            <VListItem @click="handleExport('Excel')">
-              <VListItemTitle>Excel</VListItemTitle>
-            </VListItem>
-          </VList>
-        </VMenu>
-      </VCol>
-    </VRow>
+      </VCardActions>
+    </VCard>
 
     <!-- Unidades Tributarias -->
     <VRow class="mb-4">

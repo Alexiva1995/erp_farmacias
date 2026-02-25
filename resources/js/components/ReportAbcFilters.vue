@@ -30,7 +30,6 @@ const updateFilter = (key, value) => {
             :model-value="props.filters.startDate"
             placeholder="Desde"
             clearable
-            prepend-inner-icon="tabler-calendar"
             @update:model-value="updateFilter('startDate', $event)"
           />
         </VCol>
@@ -39,7 +38,6 @@ const updateFilter = (key, value) => {
             :model-value="props.filters.endDate"
             placeholder="Hasta"
             clearable
-            prepend-inner-icon="tabler-calendar"
             @update:model-value="updateFilter('endDate', $event)"
           />
         </VCol>
@@ -51,7 +49,6 @@ const updateFilter = (key, value) => {
             label="Filtro de Cobertura"
             placeholder="Todas"
             clearable
-            prepend-inner-icon="tabler-activity"
             @update:model-value="updateFilter('coverage_range', $event)"
           />
         </VCol>
@@ -63,7 +60,6 @@ const updateFilter = (key, value) => {
             label="Clase"
             placeholder="Todas"
             clearable
-            prepend-inner-icon="tabler-filter"
             @update:model-value="updateFilter('classification', $event)"
           />
         </VCol>

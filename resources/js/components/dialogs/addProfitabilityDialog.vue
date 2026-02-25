@@ -19,7 +19,7 @@ watch(
   (val) => {
     localPercentage.value = val;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 async function storeProfitability() {
@@ -30,7 +30,9 @@ async function storeProfitability() {
   loading.value = true;
   try {
     await axios.post("/finances/profitability/store", data);
-    toast.success("Rentabilidad asignada correctamente. Se actualizaron los precios de venta de los productos no bloqueados.");
+    toast.success(
+      "Rentabilidad asignada correctamente. Se actualizaron los precios de venta de los productos no bloqueados.",
+    );
     emit("refresh");
     emit("close-modal");
   } catch (error) {
@@ -50,43 +52,75 @@ async function storeProfitability() {
   <VDialog
     :model-value="props.dialog"
     max-width="500px"
+    persistent
     @update:model-value="emit('close-modal')"
   >
-    <VCard title="Asignar rentabilidad">
-      <VCardText>
+    <VCard class="d-flex flex-column">
+      <!-- Header -->
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon icon="tabler-percentage" size="24" color="white" class="me-2" />
+        <span class="text-h5 font-weight-bold text-white"
+          >Asignar rentabilidad</span
+        >
+
+        <VSpacer />
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="emit('close-modal')"
+        >
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
+      </VCardTitle>
+
+      <VDivider />
+
+      <VCardText class="pa-6">
         <VRow>
           <VCol cols="12">
             <AppTextField
               v-model="localPercentage"
-              label="Porcentaje de Rentabilidad"
+              label="Porcentaje de Rentabilidad *"
               placeholder="Ej: 25"
               type="number"
               suffix="%"
               autofocus
+              variant="outlined"
+              density="compact"
             />
+            <p class="text-xs text-medium-emphasis mt-2 d-flex align-center">
+              <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+              Se actualizarán los precios de venta de los productos no
+              bloqueados.
+            </p>
           </VCol>
         </VRow>
       </VCardText>
 
-      <VCardActions class="pa-4">
-        <VSpacer />
+      <VDivider />
+
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           :disabled="loading"
           @click="emit('close-modal')"
+          class="flex-grow-1"
         >
           Cancelar
         </VBtn>
 
         <VBtn
           color="primary"
-          variant="elevated"
+          variant="flat"
           :loading="loading"
-          :disabled="loading"
+          :disabled="loading || !localPercentage"
           @click="storeProfitability"
+          class="flex-grow-1"
         >
-          Guardar
+          Guardar Rentabilidad
         </VBtn>
       </VCardActions>
     </VCard>

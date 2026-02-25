@@ -27,7 +27,7 @@ const calculateCurrentValue = computed(() => {
   const currentYear = new Date().getFullYear();
   const yearsDepreciated = Math.max(
     0,
-    currentYear - formData.value.acquisition_year
+    currentYear - formData.value.acquisition_year,
   );
   const totalDepreciation =
     (formData.value.annual_depreciation_rate / 100) * yearsDepreciated;
@@ -79,7 +79,7 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -97,7 +97,7 @@ watch(
     }
     formErrors.value = {};
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 const closeDialog = () => {
@@ -115,7 +115,7 @@ const submitForm = () => {
     cost: parseFloat(formData.value.cost),
     acquisition_year: parseInt(formData.value.acquisition_year),
     annual_depreciation_rate: parseFloat(
-      formData.value.annual_depreciation_rate
+      formData.value.annual_depreciation_rate,
     ),
   };
 
@@ -133,90 +133,100 @@ const submitForm = () => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <VIcon icon="tabler-sofa" class="mr-3" color="orange" />
-        <span class="text-h5 font-weight-bold">{{
-          isNewFurniture ? "Añadir Nuevo Mobiliario" : "Editar Mobiliario"
-        }}</span>
+      <!-- Header Estilizado -->
+      <VCardTitle class="d-flex align-center pa-4 bg-primary text-white">
+        <VIcon icon="tabler-sofa" size="24" color="white" class="me-2" />
+        <span class="text-h5 font-weight-bold">
+          {{ isNewFurniture ? "Añadir Nuevo Mobiliario" : "Editar Mobiliario" }}
+        </span>
 
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+        <VBtn
+          icon="tabler-x"
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        />
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
           <!-- Información Básica -->
-          <div class="mb-6">
-            <p class="text-h6 font-weight-medium mb-4">Información Básica</p>
-
-            <VRow>
-              <VCol cols="12">
-                <VTextField
-                  v-model="formData.name"
-                  label="Nombre del Mobiliario"
-                  variant="outlined"
-                  placeholder="Ej: Escritorio ejecutivo, Silla ergonómica..."
-                  prepend-inner-icon="tabler-tag"
-                  :error-messages="formErrors.name"
-                />
-              </VCol>
-            </VRow>
-
-            <VRow>
-              <VCol cols="12" md="6">
-                <VTextField
-                  v-model="formData.cost"
-                  label="Costo de Adquisición"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  prefix="$"
-                  variant="outlined"
-                  prepend-inner-icon="tabler-currency-dollar"
-                  :error-messages="formErrors.cost"
-                />
-              </VCol>
-
-              <VCol cols="12" md="6">
-                <VSelect
-                  v-model="formData.acquisition_year"
-                  label="Año de Adquisición"
-                  :items="props.acquisitionYears"
-                  item-title="title"
-                  item-value="value"
-                  variant="outlined"
-                  prepend-inner-icon="tabler-calendar"
-                  :error-messages="formErrors.acquisition_year"
-                />
-              </VCol>
-            </VRow>
-
-            <VRow>
-              <VCol cols="12">
-                <VTextField
-                  v-model="formData.annual_depreciation_rate"
-                  label="Tasa de Depreciación Anual (%)"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  suffix="%"
-                  variant="outlined"
-                  prepend-inner-icon="tabler-trending-down"
-                  placeholder="Ej: 10, 15.5, 20..."
-                  :error-messages="formErrors.annual_depreciation_rate"
-                />
-                <div class="text-caption text-disabled mt-1">
-                  Valores comunes: Mobiliario de oficina (10-20%), Equipos
-                  informáticos (25-33%), Muebles (5-15%)
-                </div>
-              </VCol>
-            </VRow>
+          <div class="text-overline mb-4 text-primary font-weight-bold">
+            Información Básica
           </div>
+
+          <VRow>
+            <VCol cols="12">
+              <VTextField
+                v-model="formData.name"
+                label="Nombre del Mobiliario"
+                variant="outlined"
+                density="compact"
+                placeholder="Ej: Escritorio ejecutivo, Silla ergonómica..."
+                prepend-inner-icon="tabler-tag"
+                :error-messages="formErrors.name"
+                hide-details="auto"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model.number="formData.cost"
+                label="Costo de Adquisición"
+                type="number"
+                step="0.01"
+                min="0"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-currency-dollar"
+                :error-messages="formErrors.cost"
+                hide-details="auto"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6">
+              <VSelect
+                v-model="formData.acquisition_year"
+                label="Año de Adquisición"
+                :items="props.acquisitionYears"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-calendar"
+                :error-messages="formErrors.acquisition_year"
+                hide-details="auto"
+              />
+            </VCol>
+
+            <VCol cols="12">
+              <VTextField
+                v-model.number="formData.annual_depreciation_rate"
+                label="Tasa de Depreciación Anual (%)"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                suffix="%"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-trending-down"
+                placeholder="Ej: 10, 15.5, 20..."
+                :error-messages="formErrors.annual_depreciation_rate"
+                hide-details="auto"
+              />
+              <div class="text-caption text-disabled mt-1 d-flex align-center">
+                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+                Valores comunes: Mobiliario de oficina (10-20%), Equipos
+                informáticos (25-33%)
+              </div>
+            </VCol>
+          </VRow>
 
           <!-- Cálculos y Valor Actual -->
           <template
@@ -226,90 +236,81 @@ const submitForm = () => {
               formData.annual_depreciation_rate
             "
           >
-            <VDivider class="my-6" />
+            <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
+              Cálculos de Valor
+            </div>
 
-            <VSheet
-              color="grey-lighten-4"
-              variant="tonal"
-              rounded="lg"
-              class="pa-6"
-            >
-              <p class="text-h6 font-weight-medium mb-4 d-flex align-center">
-                <VIcon icon="tabler-calculator" class="mr-2" />
-                Cálculos de Valor
-              </p>
-
+            <VCard variant="tonal" color="secondary" class="pa-4 rounded-lg">
               <VRow>
                 <VCol cols="12" md="6">
-                  <VCard variant="outlined">
-                    <VCardText class="text-center">
-                      <div class="text-body-2 text-disabled mb-1">
-                        Costo Original
-                      </div>
-                      <div class="text-h6 font-weight-bold">
-                        {{ formatCurrency(formData.cost) }}
-                      </div>
-                    </VCardText>
+                  <VCard variant="flat" class="text-center pa-2">
+                    <div class="text-caption text-disabled mb-1">
+                      Costo Original
+                    </div>
+                    <div class="text-h6 font-weight-bold">
+                      {{ formatCurrency(formData.cost) }}
+                    </div>
                   </VCard>
                 </VCol>
 
                 <VCol cols="12" md="6">
-                  <VCard variant="outlined" :color="depreciationStatus.color">
-                    <VCardText class="text-center">
-                      <div class="text-body-2 mb-1">Valor Actual</div>
-                      <div class="text-h6 font-weight-bold">
-                        {{ formatCurrency(calculateCurrentValue) }}
-                      </div>
-                      <VChip
-                        :color="depreciationStatus.color"
-                        size="small"
-                        class="mt-2"
-                      >
-                        {{ depreciationStatus.text }}
-                      </VChip>
-                    </VCardText>
+                  <VCard
+                    variant="flat"
+                    class="text-center pa-2"
+                    :color="depreciationStatus.color + '-lighten-5'"
+                  >
+                    <div class="text-caption mb-1">Valor Actual</div>
+                    <div
+                      class="text-h6 font-weight-bold"
+                      :class="`text-${depreciationStatus.color}`"
+                    >
+                      {{ formatCurrency(calculateCurrentValue) }}
+                    </div>
+                    <VChip
+                      :color="depreciationStatus.color"
+                      size="x-small"
+                      label
+                      class="mt-1"
+                    >
+                      {{ depreciationStatus.text }}
+                    </VChip>
                   </VCard>
                 </VCol>
               </VRow>
 
-              <VRow class="mt-4">
-                <VCol cols="12" md="4">
-                  <div class="text-center">
-                    <div class="text-body-2 text-disabled">Años de Uso</div>
-                    <div class="text-h6 font-weight-bold">
-                      {{ new Date().getFullYear() - formData.acquisition_year }}
-                      años
-                    </div>
+              <VRow class="mt-2">
+                <VCol cols="12" md="4" class="text-center border-e">
+                  <div class="text-caption text-disabled">Años de Uso</div>
+                  <div class="text-subtitle-1 font-weight-bold">
+                    {{ new Date().getFullYear() - formData.acquisition_year }}
+                    años
                   </div>
                 </VCol>
 
-                <VCol cols="12" md="4">
-                  <div class="text-center">
-                    <div class="text-body-2 text-disabled">
-                      Depreciación Total
-                    </div>
-                    <div class="text-h6 font-weight-bold text-error">
-                      {{ depreciationInfo.percentage.toFixed(1) }}%
-                    </div>
+                <VCol cols="12" md="4" class="text-center border-e">
+                  <div class="text-caption text-disabled">
+                    Depreciación Total
+                  </div>
+                  <div class="text-subtitle-1 font-weight-bold text-error">
+                    {{ depreciationInfo.percentage.toFixed(1) }}%
                   </div>
                 </VCol>
 
-                <VCol cols="12" md="4">
-                  <div class="text-center">
-                    <div class="text-body-2 text-disabled">
-                      Valor Depreciado
-                    </div>
-                    <div class="text-h6 font-weight-bold text-error">
-                      {{ formatCurrency(depreciationInfo.amount) }}
-                    </div>
+                <VCol cols="12" md="4" class="text-center">
+                  <div class="text-caption text-disabled">Valor Depreciado</div>
+                  <div class="text-subtitle-1 font-weight-bold text-error">
+                    {{ formatCurrency(depreciationInfo.amount) }}
                   </div>
                 </VCol>
               </VRow>
 
               <!-- Gráfico de progreso de depreciación -->
-              <div class="mt-6">
-                <div class="text-body-2 text-disabled mb-2">
-                  Progreso de Depreciación
+              <div class="mt-4">
+                <div
+                  class="d-flex justify-space-between text-caption text-disabled mb-1"
+                >
+                  <span>Progreso de Depreciación</span>
+                  <span>{{ depreciationInfo.percentage.toFixed(1) }}%</span>
                 </div>
                 <VProgressLinear
                   :model-value="depreciationInfo.percentage"
@@ -317,27 +318,20 @@ const submitForm = () => {
                   height="8"
                   rounded
                 />
-                <div
-                  class="d-flex justify-space-between text-caption text-disabled mt-1"
-                >
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
-                </div>
               </div>
-            </VSheet>
+            </VCard>
           </template>
         </VForm>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1"
         >
           Cancelar
         </VBtn>
@@ -345,7 +339,7 @@ const submitForm = () => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
           :disabled="
             !formData.name ||
             !formData.cost ||
@@ -353,7 +347,7 @@ const submitForm = () => {
             !formData.annual_depreciation_rate
           "
         >
-          {{ isNewFurniture ? "Crear" : "Actualizar" }} Mobiliario
+          {{ isNewFurniture ? "Crear" : "Actualizar" }}
         </VBtn>
       </VCardActions>
     </VCard>

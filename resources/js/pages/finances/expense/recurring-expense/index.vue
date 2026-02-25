@@ -1,14 +1,5 @@
 <script setup lang="js">
-import ExpenseFormDialoge from '@/components/dialogs/ExpenseFormDialoge.vue';
-import FiltrosGastoRecurrente from '@/components/FiltrosGastoRecurrente.vue';
-import LoaderComponent from '@/components/LoaderComponent.vue';
-import RecurringExpenseTable from '@/components/RecurringExpenseTable.vue';
-
-import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import pdfGastos from '@/utils/pdfGastos';
 // import Swal from 'sweetalert2';
-import { onMounted, reactive, watch } from 'vue';
 // import { useRouter } from "vue-router";
 
 // const route= useRouter()
@@ -364,7 +355,7 @@ onMounted(async () => {
 </script>
 
 <template>
-<!-- 
+  <!-- 
 <LoaderComponent :loadingApp="statuModule?.loadingApp" />
   <div>
     <FiltrosGastoRecurrente
