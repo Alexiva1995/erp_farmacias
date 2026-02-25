@@ -34,7 +34,7 @@ const assignedGroupName = computed(() => {
 const productsInGroup = computed(() => {
   if (!formData.value.group_id) return [];
   return props.allProducts.filter(
-    (p) => p.group_id === formData.value.group_id && p.id !== formData.value.id
+    (p) => p.group_id === formData.value.group_id && p.id !== formData.value.id,
   );
 });
 async function assignGroup() {
@@ -90,7 +90,7 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -120,7 +120,7 @@ watch(
     imageFile.value = null;
     formErrors.value = {};
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 const lotHeaders = [
@@ -190,11 +190,11 @@ const submitForm = () => {
   >
     <VCard v-if="formData" class="d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
-        <VIcon 
-          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'" 
-          size="24" 
-          color="white" 
-          class="me-2" 
+        <VIcon
+          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'"
+          size="24"
+          color="white"
+          class="me-2"
         />
         <span class="text-h5 font-weight-bold text-white">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
@@ -211,7 +211,13 @@ const submitForm = () => {
         </VChip>
 
         <VSpacer />
-        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -376,16 +382,16 @@ const submitForm = () => {
                     density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
-                    style="height: 40px;"
+                    style="height: 40px"
                   />
                 </VCol>
                 <VCol cols="12" md="3" class="d-flex align-center">
-                  <VBtn 
-                    color="primary" 
-                    @click="assignGroup" 
+                  <VBtn
+                    color="primary"
+                    @click="assignGroup"
                     block
                     variant="flat"
-                    style="height: 40px;"
+                    style="height: 40px"
                   >
                     Asignar
                   </VBtn>
@@ -450,7 +456,7 @@ const submitForm = () => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
@@ -459,7 +465,7 @@ const submitForm = () => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Guardar
         </VBtn>

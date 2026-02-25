@@ -20,7 +20,7 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -37,7 +37,7 @@ watch(
     }
     formErrors.value = {};
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 const closeDialog = () => {
@@ -70,27 +70,40 @@ const submitForm = () => {
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">{{
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+        <VIcon
+          :icon="isNewActivity ? 'tabler-plus' : 'tabler-edit'"
+          size="24"
+          color="white"
+          class="me-2"
+        />
+        <span class="text-h5 font-weight-bold text-white">{{
           isNewActivity ? "Añadir Nueva Actividad" : "Editar Actividad"
         }}</span>
 
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VTextField
                 v-model="formData.activity"
                 label="Nombre de la Actividad"
                 variant="outlined"
+                density="compact"
                 placeholder="Ej: Revisión de Inventario"
                 :error-messages="formErrors.activity"
                 required
@@ -98,12 +111,13 @@ const submitForm = () => {
             </VCol>
           </VRow>
 
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VTextarea
                 v-model="formData.description"
                 label="Descripción"
                 variant="outlined"
+                density="compact"
                 placeholder="Describe la actividad en detalle..."
                 rows="4"
                 :error-messages="formErrors.description"
@@ -111,13 +125,14 @@ const submitForm = () => {
             </VCol>
           </VRow>
 
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VSelect
                 v-model="formData.frequency"
                 label="Frecuencia"
                 :items="props.frequencies"
                 variant="outlined"
+                density="compact"
                 placeholder="Selecciona la frecuencia"
                 :error-messages="formErrors.frequency"
                 required
@@ -129,12 +144,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
@@ -142,9 +158,10 @@ const submitForm = () => {
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
-          {{ isNewActivity ? "Crear" : "Guardar" }}
+          Guardar
         </VBtn>
       </VCardActions>
     </VCard>

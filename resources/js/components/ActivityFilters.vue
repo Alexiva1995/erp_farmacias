@@ -61,7 +61,7 @@ const getSelectedSortTitle = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.title : null;
 };
@@ -71,7 +71,7 @@ const getSelectedSortIcon = () => {
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
+      opt.order === selectedSort.value.order,
   );
   return option ? option.icon : null;
 };
@@ -91,14 +91,13 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard title="Filtros de Actividades" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por actividad o descripción..."
-            prepend-inner-icon="tabler-search"
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
@@ -111,7 +110,6 @@ const handleClear = () => {
             :loading="props.loading"
             label="Frecuencia"
             placeholder="Selecciona una frecuencia"
-            prepend-inner-icon="tabler-calendar-repeat"
             clearable
             @update:model-value="emit('update:selectedFrequency', $event)"
           />
@@ -122,12 +120,7 @@ const handleClear = () => {
     <VDivider />
 
     <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn
-        color="secondary"
-        variant="outlined"
-        prepend-icon="tabler-filter-off"
-        @click="handleClear"
-      >
+      <VBtn color="secondary" variant="outlined" @click="handleClear">
         Limpiar Filtros
       </VBtn>
 

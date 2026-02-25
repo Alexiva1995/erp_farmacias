@@ -13,7 +13,7 @@ const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const dialogTitle = computed(() =>
-  isEditMode.value ? "Editar Laboratorios Asignados" : "Asignar Laboratorios"
+  isEditMode.value ? "Editar Laboratorios Asignados" : "Asignar Laboratorios",
 );
 
 const formData = ref({
@@ -49,7 +49,7 @@ watch(
       editingLaboratory.value = null;
       tempLaboratoryId.value = null;
     }
-  }
+  },
 );
 
 const closeDialog = () => {
@@ -63,12 +63,12 @@ const handleAddLaboratory = () => {
   if (!formData.value.new_laboratory_id) return;
 
   const laboratory = props.laboratories.find(
-    (lab) => lab.value === formData.value.new_laboratory_id
+    (lab) => lab.value === formData.value.new_laboratory_id,
   );
 
   if (laboratory) {
     const exists = formData.value.laboratories.some(
-      (lab) => lab.id === laboratory.value
+      (lab) => lab.id === laboratory.value,
     );
 
     if (!exists) {
@@ -83,7 +83,7 @@ const handleAddLaboratory = () => {
 
 const handleRemoveLaboratory = (laboratoryId) => {
   formData.value.laboratories = formData.value.laboratories.filter(
-    (lab) => lab.id !== laboratoryId
+    (lab) => lab.id !== laboratoryId,
   );
 };
 
@@ -96,12 +96,12 @@ const handleSaveEdit = (oldLaboratoryId) => {
   if (!tempLaboratoryId.value) return;
 
   const newLab = props.laboratories.find(
-    (lab) => lab.value === tempLaboratoryId.value
+    (lab) => lab.value === tempLaboratoryId.value,
   );
 
   if (newLab) {
     const index = formData.value.laboratories.findIndex(
-      (lab) => lab.id === oldLaboratoryId
+      (lab) => lab.id === oldLaboratoryId,
     );
 
     if (index !== -1) {
@@ -137,7 +137,7 @@ const handleSubmit = () => {
 
 const availableLaboratories = computed(() => {
   return props.laboratories.filter(
-    (lab) => !formData.value.laboratories.some((l) => l.id === lab.value)
+    (lab) => !formData.value.laboratories.some((l) => l.id === lab.value),
   );
 });
 
@@ -158,32 +158,50 @@ const getLaboratoryColor = (index) => {
   <VDialog
     :model-value="props.modelValue"
     max-width="700"
+    persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center gap-2 pa-5">
+    <VCard v-if="formData" class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
         <VIcon
           :icon="isEditMode ? 'tabler-edit' : 'tabler-plus'"
           size="24"
-          class="text-primary"
+          color="white"
+          class="me-2"
         />
-        <span class="text-h6">{{ dialogTitle }}</span>
+        <span class="text-h5 font-weight-bold text-white">{{
+          dialogTitle
+        }}</span>
+
+        <VSpacer />
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="pa-5">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="handleSubmit">
           <!-- Select de Empleado -->
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VSelect
                 v-model="formData.employee_id"
                 :items="props.employees"
                 :disabled="isEditMode"
                 label="Empleado *"
+                variant="outlined"
+                density="compact"
                 placeholder="Selecciona un empleado"
-                prepend-inner-icon="tabler-user"
                 :error-messages="props.errors.employee_id"
                 clearable
                 @update:model-value="emit('clear-errors')"
@@ -209,25 +227,29 @@ const getLaboratoryColor = (index) => {
           </VRow>
 
           <!-- Agregar Nuevo Laboratorio -->
-          <VRow class="mt-2">
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <div class="d-flex gap-2">
                 <VSelect
                   v-model="formData.new_laboratory_id"
                   :items="availableLaboratories"
                   label="Agregar Laboratorio"
+                  variant="outlined"
+                  density="compact"
                   placeholder="Selecciona un laboratorio"
-                  prepend-inner-icon="tabler-flask"
                   :disabled="!formData.employee_id"
                   clearable
                   class="flex-grow-1"
                 />
                 <VBtn
                   color="success"
+                  variant="flat"
+                  size="default"
                   :disabled="
                     !formData.new_laboratory_id || !formData.employee_id
                   "
                   @click="handleAddLaboratory"
+                  style="height: 40px"
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
@@ -236,7 +258,7 @@ const getLaboratoryColor = (index) => {
           </VRow>
 
           <!-- Lista de Laboratorios Asignados -->
-          <VRow class="mt-4">
+          <VRow dense class="mt-2">
             <VCol cols="12">
               <div class="d-flex align-center justify-space-between mb-3">
                 <span class="text-subtitle-1 font-weight-medium">
@@ -248,6 +270,7 @@ const getLaboratoryColor = (index) => {
                   "
                   size="small"
                   variant="tonal"
+                  label
                 >
                   {{ formData.laboratories.length }}
                 </VChip>
@@ -258,6 +281,7 @@ const getLaboratoryColor = (index) => {
                 v-if="formData.laboratories.length === 0"
                 type="info"
                 variant="tonal"
+                rounded="lg"
                 class="mb-0"
               >
                 <div class="d-flex align-center gap-2">
@@ -267,20 +291,20 @@ const getLaboratoryColor = (index) => {
               </VAlert>
 
               <!-- Tabla de Laboratorios -->
-              <VCard v-else variant="outlined" class="overflow-hidden">
+              <VCard v-else variant="outlined" class="rounded-lg border">
                 <VList class="pa-0">
                   <template
                     v-for="(laboratory, index) in formData.laboratories"
                     :key="`lab-${laboratory.id}-${index}`"
                   >
-                    <VListItem class="px-4 py-3">
+                    <VListItem class="px-4 py-2">
                       <template #prepend>
                         <VAvatar
                           :color="getLaboratoryColor(index)"
                           variant="tonal"
-                          size="38"
+                          size="32"
                         >
-                          <VIcon icon="tabler-flask" size="20" />
+                          <VIcon icon="tabler-flask" size="18" />
                         </VAvatar>
                       </template>
 
@@ -290,7 +314,7 @@ const getLaboratoryColor = (index) => {
                           v-if="editingLaboratory !== laboratory.id"
                           class="d-flex align-center"
                         >
-                          <span class="text-body-1 font-weight-medium">
+                          <span class="text-body-2 font-weight-medium">
                             {{ laboratory.name }}
                           </span>
                         </div>
@@ -303,7 +327,7 @@ const getLaboratoryColor = (index) => {
                           density="compact"
                           variant="outlined"
                           hide-details
-                          class="mt-1"
+                          class="my-1"
                         />
                       </VListItemTitle>
 
@@ -311,50 +335,58 @@ const getLaboratoryColor = (index) => {
                         <div class="d-flex gap-1">
                           <!-- Botones en modo normal -->
                           <template v-if="editingLaboratory !== laboratory.id">
-                            <IconBtn
-                              size="small"
-                              @click="handleEditLaboratory(laboratory)"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="warning"
+                              @click="handleEditLaboratory(laboratory)"
                             >
-                              <VIcon icon="tabler-edit" size="20" />
+                              <VIcon icon="tabler-edit" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cambiar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleRemoveLaboratory(laboratory.id)"
                             >
-                              <VIcon icon="tabler-trash" size="20" />
+                              <VIcon icon="tabler-trash" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Eliminar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
 
                           <!-- Botones en modo edición -->
                           <template v-else>
-                            <IconBtn
-                              size="small"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="success"
                               @click="handleSaveEdit(laboratory.id)"
                             >
-                              <VIcon icon="tabler-check" size="20" />
+                              <VIcon icon="tabler-check" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Guardar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleCancelEdit"
                             >
-                              <VIcon icon="tabler-x" size="20" />
+                              <VIcon icon="tabler-x" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cancelar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
                         </div>
                       </template>
@@ -370,22 +402,25 @@ const getLaboratoryColor = (index) => {
 
       <VDivider />
 
-      <VCardActions class="pa-5 d-flex gap-3">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
-          class="flex-grow-1"
           @click="closeDialog"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
-          class="flex-grow-1"
+          variant="flat"
           :disabled="
             !formData.employee_id || formData.laboratories.length === 0
           "
           @click="handleSubmit"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           {{ isEditMode ? "Actualizar" : "Guardar" }}
         </VBtn>

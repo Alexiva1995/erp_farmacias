@@ -34,7 +34,7 @@ const assignedGroupName = computed(() => {
 const productsInGroup = computed(() => {
   if (!formData.value.group_id) return [];
   return props.allProducts.filter(
-    (p) => p.group_id === formData.value.group_id && p.id !== formData.value.id
+    (p) => p.group_id === formData.value.group_id && p.id !== formData.value.id,
   );
 });
 async function assignGroup() {
@@ -97,10 +97,10 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true }
+  { deep: true },
 );
 
-  watch(
+watch(
   () => props.product,
   (newProduct) => {
     if (newProduct && Object.keys(newProduct).length > 0) {
@@ -108,7 +108,9 @@ watch(
       // Normalizar valores booleanos/números para los checkboxes
       clonedProduct.iva = clonedProduct.iva ? 1 : 0;
       clonedProduct.psychotropic = clonedProduct.psychotropic ? 1 : 0;
-      clonedProduct.is_colombian_origin = clonedProduct.is_colombian_origin ? 1 : 0;
+      clonedProduct.is_colombian_origin = clonedProduct.is_colombian_origin
+        ? 1
+        : 0;
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -132,7 +134,7 @@ watch(
     imageFile.value = null;
     formErrors.value = {};
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 const lotHeaders = [
@@ -170,10 +172,10 @@ const submitForm = () => {
   // Excluir unit_cost y sale_price del loop, los manejaremos después
   Object.keys(formData.value).forEach((key) => {
     // Saltar unit_cost y sale_price, los manejaremos después
-    if (key === 'unit_cost' || key === 'sale_price') {
+    if (key === "unit_cost" || key === "sale_price") {
       return;
     }
-    
+
     const value = formData.value[key];
     if (
       value !== null &&
@@ -190,10 +192,12 @@ const submitForm = () => {
   }
 
   // Solo enviar unit_cost si tiene un valor válido
-  if (formData.value.unit_cost !== null && 
-      formData.value.unit_cost !== undefined && 
-      formData.value.unit_cost !== "" &&
-      !isNaN(formData.value.unit_cost)) {
+  if (
+    formData.value.unit_cost !== null &&
+    formData.value.unit_cost !== undefined &&
+    formData.value.unit_cost !== "" &&
+    !isNaN(formData.value.unit_cost)
+  ) {
     payload.append("unit_cost", formData.value.unit_cost);
   }
 
@@ -201,10 +205,12 @@ const submitForm = () => {
   // Para otros usuarios, solo enviar si tiene valor válido
   if (authStore.isVendedor || authStore.isSupervisor) {
     payload.append("sale_price", 0);
-  } else if (formData.value.sale_price !== null && 
-             formData.value.sale_price !== undefined && 
-             formData.value.sale_price !== "" &&
-             !isNaN(formData.value.sale_price)) {
+  } else if (
+    formData.value.sale_price !== null &&
+    formData.value.sale_price !== undefined &&
+    formData.value.sale_price !== "" &&
+    !isNaN(formData.value.sale_price)
+  ) {
     payload.append("sale_price", formData.value.sale_price);
   }
 
@@ -223,11 +229,11 @@ const submitForm = () => {
   >
     <VCard v-if="formData" class="d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
-        <VIcon 
-          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'" 
-          size="24" 
-          color="white" 
-          class="me-2" 
+        <VIcon
+          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'"
+          size="24"
+          color="white"
+          class="me-2"
         />
         <span class="text-h5 font-weight-bold text-white">{{
           isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
@@ -244,7 +250,13 @@ const submitForm = () => {
         </VChip>
 
         <VSpacer />
-        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -351,7 +363,7 @@ const submitForm = () => {
               />
             </VCol>
           </VRow>
-          
+
           <!-- Campos de costo y precio solo para edición -->
           <VRow v-if="!isNewProduct" dense class="mb-2">
             <VCol cols="12" md="6">
@@ -413,15 +425,16 @@ const submitForm = () => {
               <p class="text-h6 font-weight-medium mb-1">Grupo de Productos</p>
             </div>
             <VSheet color="grey-100" rounded="lg" class="pa-3">
-
               <div
                 v-if="assignedGroupName"
                 class="d-flex align-center gap-2 mb-3"
               >
-                <span class="text-body-2 font-weight-medium">Grupo Asignado:</span>
-                <VChip 
-                  color="primary" 
-                  label 
+                <span class="text-body-2 font-weight-medium"
+                  >Grupo Asignado:</span
+                >
+                <VChip
+                  color="primary"
+                  label
                   size="small"
                   closable
                   @click:close="removeGroup"
@@ -440,16 +453,16 @@ const submitForm = () => {
                     density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
-                    style="height: 40px;"
+                    style="height: 40px"
                   />
                 </VCol>
                 <VCol cols="12" md="3" class="d-flex align-center">
-                  <VBtn 
-                    color="primary" 
-                    @click="assignGroup" 
-                    block 
+                  <VBtn
+                    color="primary"
+                    @click="assignGroup"
+                    block
                     variant="flat"
-                    style="height: 40px;"
+                    style="height: 40px"
                   >
                     Asignar
                   </VBtn>
@@ -512,7 +525,7 @@ const submitForm = () => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
@@ -521,7 +534,7 @@ const submitForm = () => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Guardar
         </VBtn>
