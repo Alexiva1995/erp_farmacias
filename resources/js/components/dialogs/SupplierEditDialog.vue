@@ -86,21 +86,25 @@ const submitForm = () => {
         ? JSON.stringify(value) !== JSON.stringify(originalValue)
         : value !== originalValue;
 
-
-    if (hasChanged && (key === 'payment_due_type' || key === 'payment_due_reference' || key === 'custom_due_days')) {
-        filteredPayload[key] = value === undefined ? null : value;
-        return;
+    if (
+      hasChanged &&
+      (key === "payment_due_type" ||
+        key === "payment_due_reference" ||
+        key === "custom_due_days")
+    ) {
+      filteredPayload[key] = value === undefined ? null : value;
+      return;
     }
 
     const isFilled = Array.isArray(value)
       ? value.length > 0
       : typeof value === "object" && value !== null
-      ? Object.values(value).some((v) =>
-          Array.isArray(v) ? v.length > 0 : !!v
-        )
-      : typeof value === "boolean"
-      ? true
-      : value !== null && value !== "" && value !== undefined;
+        ? Object.values(value).some((v) =>
+            Array.isArray(v) ? v.length > 0 : !!v,
+          )
+        : typeof value === "boolean"
+          ? true
+          : value !== null && value !== "" && value !== undefined;
 
     if (hasChanged && isFilled) {
       filteredPayload[key] = value;
@@ -120,25 +124,22 @@ const submitForm = () => {
   //   }
   // }
 
+  const currentRef = formData.value.invoice_date_reference;
+  const originalRef = original.invoice_date_reference;
 
-const currentRef = formData.value.invoice_date_reference;
-const originalRef = original.invoice_date_reference;
-
-if (formData.value.payment_due_type === 'invoice_date') {
+  if (formData.value.payment_due_type === "invoice_date") {
     if (currentRef !== originalRef) {
-        filteredPayload.invoice_date_reference = currentRef;
-    } 
-    else if (currentRef !== undefined && currentRef !== null) {
-        filteredPayload.invoice_date_reference = currentRef;
+      filteredPayload.invoice_date_reference = currentRef;
+    } else if (currentRef !== undefined && currentRef !== null) {
+      filteredPayload.invoice_date_reference = currentRef;
     }
-
-}
+  }
 
   if (
     typeof formData.value.order_days === "object" &&
     Object.keys(formData.value.order_days).length > 0 &&
     Object.values(formData.value.order_days).some(
-      (v) => Array.isArray(v) && v.length > 0
+      (v) => Array.isArray(v) && v.length > 0,
     )
   ) {
     filteredPayload.order_days = formData.value.order_days;
@@ -158,7 +159,7 @@ watch(
   (newErrors) => {
     formErrors.value = newErrors || {};
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -168,31 +169,31 @@ watch(
       formData.value = JSON.parse(JSON.stringify(newSupplier));
 
       //if (newSupplier.payment_date && newSupplier.payment_date.type) {
-        //formData.value.supplier_payment_method = newSupplier.payment_date.type;
+      //formData.value.supplier_payment_method = newSupplier.payment_date.type;
 
-        // if (
-        //   newSupplier.payment_date.type === "credit_days" &&
-        //   newSupplier.payment_date.days
-        // ) {
-        //   formData.value.supplier_payment_days = newSupplier.payment_date.days;
-        // }
+      // if (
+      //   newSupplier.payment_date.type === "credit_days" &&
+      //   newSupplier.payment_date.days
+      // ) {
+      //   formData.value.supplier_payment_days = newSupplier.payment_date.days;
+      // }
       // } else if (
       //   newSupplier.payment_methods &&
       //   newSupplier.payment_methods.length > 0
       // ) {
-        // formData.value.supplier_payment_method =
-        //   newSupplier.payment_methods[0].type;
+      // formData.value.supplier_payment_method =
+      //   newSupplier.payment_methods[0].type;
 
-        // if (
-        //   newSupplier.payment_methods[0].type === "credit_days" &&
-        //   newSupplier.payment_methods[0].days
-        // ) {
-          // formData.value.supplier_payment_days =
-          //   newSupplier.payment_methods[0].days;
+      // if (
+      //   newSupplier.payment_methods[0].type === "credit_days" &&
+      //   newSupplier.payment_methods[0].days
+      // ) {
+      // formData.value.supplier_payment_days =
+      //   newSupplier.payment_methods[0].days;
       //   }
       // } else {
-        //formData.value.supplier_payment_method = null;
-        //formData.value.supplier_payment_days = null;
+      //formData.value.supplier_payment_method = null;
+      //formData.value.supplier_payment_days = null;
       //}
 
       const normalized = {};
@@ -221,7 +222,7 @@ watch(
     }
     formErrors.value = {};
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 watch(
@@ -233,7 +234,7 @@ watch(
       }
     });
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 /*watch(
@@ -259,29 +260,47 @@ watch(
     content-class="d-flex"
   >
     <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">{{
-          isNewSupplier ? "Añadir Nuevo Proveedor" : "Editar Proveedor"
-        }}</span>
+      <!-- Header Estilizado -->
+      <VCardTitle class="d-flex align-center pa-4 bg-primary text-white">
+        <VIcon
+          icon="tabler-truck-delivery"
+          size="24"
+          color="white"
+          class="me-2"
+        />
+        <span class="text-h5 font-weight-bold">
+          {{ isNewSupplier ? "Añadir Nuevo Proveedor" : "Editar Proveedor" }}
+        </span>
 
         <VSpacer />
-
-        <VBtn icon variant="text" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+        <VBtn
+          icon="tabler-x"
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        />
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
+          <!-- Información Principal -->
+          <div class="text-overline mb-4 text-primary font-weight-bold">
+            Información Principal
+          </div>
+
           <VRow>
             <VCol cols="12" md="6">
               <VTextField
                 v-model="formData.name"
                 label="Nombre"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-user"
                 :error-messages="formErrors.name"
+                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
@@ -289,10 +308,18 @@ watch(
                 v-model="formData.social_reason"
                 label="Razón Social"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-building"
                 :error-messages="formErrors.social_reason"
+                hide-details="auto"
               />
             </VCol>
           </VRow>
+
+          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
+            Contacto
+          </div>
+
           <VRow>
             <VCol cols="12" md="6">
               <VTextField
@@ -301,7 +328,10 @@ watch(
                 type="tel"
                 prefix="+"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-phone"
                 :error-messages="formErrors.sales_phone"
+                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
@@ -311,215 +341,52 @@ watch(
                 type="tel"
                 prefix="+"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-phone-call"
                 :error-messages="formErrors.collections_phone"
+                hide-details="auto"
               />
             </VCol>
           </VRow>
+
+          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
+            Configuración de Pago
+          </div>
+
           <VRow>
             <VCol cols="12" md="6">
               <VTextField
-                v-model="formData.credit_days"
+                v-model.number="formData.credit_days"
                 label="Días de Crédito"
                 type="number"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-calendar-time"
                 :error-messages="formErrors.credit_days"
+                hide-details="auto"
               />
             </VCol>
-            <VCol
-              cols="12"
-              md="6"
-              class="d-flex align-center flex-wrap gap-x-4"
-            >
+            <VCol cols="12" md="6">
               <VRadioGroup
                 v-model="formData.payment_method"
                 label="Forma de Pago"
+                density="compact"
+                hide-details
               >
-                <VRow>
-                  <VCol
-                    cols="auto"
+                <div class="d-flex gap-x-4">
+                  <VRadio
                     v-for="opcion in opciones"
                     :key="opcion.value"
-                  >
-                    <VRadio :label="opcion.label" :value="opcion.value" />
-                  </VCol>
-                </VRow>
-              </VRadioGroup>
-            </VCol>
-            <!--<VCol
-              cols="12"
-              md="6"
-              class="d-flex align-center flex-wrap gap-x-4"
-            >
-              <VCheckbox
-                v-model="formData.cash_payment"
-                label="Pago de Contado"
-                :true-value="1"
-                :false-value="0"
-              />
-              <VCheckbox
-                v-model="formData.charges_igtf"
-                label="Cobra IGTF"
-                :true-value="1"
-                :false-value="0"
-              />
-            </VCol>-->
-          </VRow>
-          <!--<VRow>
-            <VCol
-              cols="12"
-              md="6"
-              class="d-flex align-center flex-wrap gap-x-4"
-            >
-              <VRadioGroup
-                v-model="formData.payment_method"
-                label="Forma de Pago"
-              >
-                <VRow>
-                  <VCol
-                    cols="auto"
-                    v-for="opcion in opciones"
-                    :key="opcion.value"
-                  >
-                    <VRadio :label="opcion.label" :value="opcion.value" />
-                  </VCol>
-                </VRow>
-              </VRadioGroup>
-            </VCol>
-          </VRow>-->
-
-          <!-- Sección de Métodos de Pago REQUERIDA
-          <VDivider class="my-4" /> -->
-
-          <!-- <VRow>
-            <VCol cols="12">
-              <h6 class="text-subtitle-1 font-weight-medium mb-4">
-                Método de Pago del Proveedor
-                <span class="text-error">*</span>
-              </h6>
-
-              <VRadioGroup
-                v-model="formData.supplier_payment_method"
-                :error-messages="formErrors.supplier_payment_method"
-                required
-              >
-                <VRow>
-                  <VCol
-                    v-for="method in paymentMethodOptions"
-                    :key="method.value"
-                    cols="6"
-                    sm="6"
-                    md="3"
-                    class="pa-2"
-                  >
-                    <VRadio
-                      :label="method.label"
-                      :value="method.value"
-                      density="compact"
-                      color="primary"
-                    />
-                  </VCol>
-                </VRow>
-              </VRadioGroup>
-
-              <div v-if="shouldShowDaysInput" class="mt-4">
-                <VTextField
-                  v-model.number="formData.supplier_payment_days"
-                  label="Días de Crédito"
-                  type="number"
-                  variant="outlined"
-                  min="1"
-                  :error-messages="formErrors.supplier_payment_days"
-                  placeholder="Ej: 30"
-                  density="compact"
-                  style="max-width: 200px"
-                />
-              </div>
-            </VCol>
-          </VRow> -->
-
-          <VDivider class="my-4" />
-
-
-          <VRow>
-            <VCol cols="12" md="12" class="pl-4">
-              <h6 class="text-subtitle-1 font-weight-medium mb-4">
-                Días de Despacho
-              </h6>
-              <VRow no-gutters>
-                <VCol
-                  v-for="dia in dias"
-                  :key="dia.value"
-                  cols="6" 
-                  sm="auto"
-                  class="d-flex align-center pr-4"
-                >
-                  <VCheckbox
-                    v-model="formData.dispatch_days"
-                    :label="dia.label"
-                    :value="dia.value"
-                    hide-details
-                    density="compact"
+                    :label="opcion.label"
+                    :value="opcion.value"
                     color="primary"
                   />
-                </VCol>
-                <div
-                  v-if="formErrors.dispatch_days"
-                  class="text-error text-sm mt-1 pl-4"
-                >
-                  {{ formErrors.dispatch_days[0] }}
                 </div>
-              </VRow>
+              </VRadioGroup>
             </VCol>
           </VRow>
 
-          <VRow v-if="formData.dispatch_days.length">
-            <VCol cols="12" md="12" class="pl-4">
-              <h6
-                class="text-subtitle-1 font-weight-medium mb-4"
-              >
-                Días de Pedido por Despacho
-              </h6>
-              <div
-                v-for="diaDespacho in formData.dispatch_days"
-                :key="diaDespacho"
-                class="mb-4"
-              >
-                <h6 class="text-caption font-weight-medium text-primary mb-4">
-                  Pedidos requeridos para
-                  <strong>{{ diaDespachoLabel(diaDespacho) }}</strong
-                  >:
-                </h6>
-
-                <VRow no-gutters>
-                  <VCol
-                    v-for="diaPedido in dias"
-                    :key="diaPedido.value"
-                    cols="6" 
-                    sm="auto"
-                    class="d-flex align-center pr-4"
-                  >
-                    <VCheckbox
-                      v-model="formData.order_days[diaDespacho]"
-                      :label="diaPedido.label"
-                      :value="diaPedido.value"
-                      hide-details
-                      density="compact"
-                      color="primary"
-                    />
-                  </VCol>
-                </VRow>
-
-                <div
-                  v-if="formErrors.order_days?.[diaDespacho]"
-                  class="text-error text-sm mt-1 pl-4"
-                >
-                  {{ formErrors.order_days[diaDespacho][0] }}
-                </div>
-              </div>
-            </VCol>
-          </VRow>
-
-          <VRow>
+          <VRow class="mt-4">
             <VCol cols="12" md="6">
               <VSelect
                 v-model="formData.payment_due_type"
@@ -530,11 +397,18 @@ watch(
                 ]"
                 label="Fecha Límite de Pago"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-calendar-stats"
                 :error-messages="formErrors.payment_due_type"
+                hide-details="auto"
               />
             </VCol>
 
-            <VCol cols="12" md="6" v-if="formData.payment_due_type === 'invoice_date'">
+            <VCol
+              cols="12"
+              md="6"
+              v-if="formData.payment_due_type === 'invoice_date'"
+            >
               <VSelect
                 v-model="formData.invoice_date_reference"
                 :items="[
@@ -544,21 +418,38 @@ watch(
                 ]"
                 label="Referencia de Fecha de Factura"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-timeline"
                 :error-messages="formErrors.invoice_date_reference"
+                hide-details="auto"
               />
             </VCol>
 
-            <VCol cols="12" md="6" v-if="formData.payment_due_type === 'custom'">
+            <VCol
+              cols="12"
+              md="6"
+              v-if="formData.payment_due_type === 'custom'"
+            >
               <VTextField
-                v-model="formData.custom_due_days"
+                v-model.number="formData.custom_due_days"
                 label="Días personalizados"
                 type="number"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-numbers"
                 :error-messages="formErrors.custom_due_days"
+                hide-details="auto"
               />
             </VCol>
 
-            <VCol cols="12" md="6" v-if="formData.payment_due_type !== 'invoice_date'">
+            <VCol
+              cols="12"
+              md="6"
+              v-if="
+                formData.payment_due_type !== 'invoice_date' &&
+                formData.payment_due_type
+              "
+            >
               <VSelect
                 v-model="formData.payment_due_reference"
                 :items="[
@@ -567,8 +458,91 @@ watch(
                 ]"
                 label="Contar días desde"
                 variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-clock-play"
                 :error-messages="formErrors.payment_due_reference"
+                hide-details="auto"
               />
+            </VCol>
+          </VRow>
+
+          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
+            Logística y Días de Despacho
+          </div>
+
+          <VRow>
+            <VCol cols="12">
+              <VCard variant="tonal" color="secondary" class="pa-4 rounded-lg">
+                <div class="text-subtitle-2 mb-2">
+                  Seleccione los días de despacho:
+                </div>
+                <div class="d-flex flex-wrap gap-x-4">
+                  <VCheckbox
+                    v-for="dia in dias"
+                    :key="dia.value"
+                    v-model="formData.dispatch_days"
+                    :label="dia.label"
+                    :value="dia.value"
+                    hide-details
+                    density="compact"
+                    color="primary"
+                  />
+                </div>
+                <div
+                  v-if="formErrors.dispatch_days"
+                  class="text-error text-caption mt-1"
+                >
+                  {{ formErrors.dispatch_days[0] }}
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <VRow
+            v-if="formData.dispatch_days && formData.dispatch_days.length"
+            class="mt-4"
+          >
+            <VCol cols="12">
+              <div class="text-subtitle-2 mb-4">
+                Días de Pedido por Despacho:
+              </div>
+              <div
+                v-for="diaDespacho in formData.dispatch_days"
+                :key="diaDespacho"
+                class="mb-6"
+              >
+                <div class="d-flex align-center mb-2">
+                  <VIcon
+                    icon="tabler-arrow-right"
+                    size="18"
+                    color="primary"
+                    class="me-2"
+                  />
+                  <span class="text-body-2 font-weight-bold">
+                    Pedidos requeridos para {{ diaDespachoLabel(diaDespacho) }}:
+                  </span>
+                </div>
+
+                <div class="d-flex flex-wrap gap-x-4 ps-6">
+                  <VCheckbox
+                    v-for="diaPedido in dias"
+                    :key="diaPedido.value"
+                    v-model="formData.order_days[diaDespacho]"
+                    :label="diaPedido.label"
+                    :value="diaPedido.value"
+                    hide-details
+                    density="compact"
+                    color="primary"
+                  />
+                </div>
+
+                <div
+                  v-if="formErrors.order_days?.[diaDespacho]"
+                  class="text-error text-caption mt-1 ps-6"
+                >
+                  {{ formErrors.order_days[diaDespacho][0] }}
+                </div>
+              </div>
             </VCol>
           </VRow>
         </VForm>
@@ -576,12 +550,12 @@ watch(
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1"
         >
           Cancelar
         </VBtn>
@@ -589,7 +563,8 @@ watch(
           color="primary"
           variant="flat"
           @click="submitForm"
-          class="flex-grow-1 w-0"
+          class="flex-grow-1"
+          prepend-icon="tabler-device-floppy"
         >
           Guardar
         </VBtn>

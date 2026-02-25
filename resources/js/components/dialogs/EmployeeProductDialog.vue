@@ -13,7 +13,7 @@ const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const dialogTitle = computed(() =>
-  isEditMode.value ? "Editar Productos Asignados" : "Asignar Productos"
+  isEditMode.value ? "Editar Productos Asignados" : "Asignar Productos",
 );
 
 const formData = ref({
@@ -49,7 +49,7 @@ watch(
       editingProduct.value = null;
       tempProductId.value = null;
     }
-  }
+  },
 );
 
 const closeDialog = () => {
@@ -63,12 +63,12 @@ const handleAddProduct = () => {
   if (!formData.value.new_product_id) return;
 
   const product = props.products.find(
-    (prod) => prod.id === formData.value.new_product_id
+    (prod) => prod.id === formData.value.new_product_id,
   );
 
   if (product) {
     const exists = formData.value.products.some(
-      (prod) => prod.id === product.id
+      (prod) => prod.id === product.id,
     );
 
     if (!exists) {
@@ -83,7 +83,7 @@ const handleAddProduct = () => {
 
 const handleRemoveProduct = (productId) => {
   formData.value.products = formData.value.products.filter(
-    (prod) => prod.id !== productId
+    (prod) => prod.id !== productId,
   );
 };
 
@@ -96,12 +96,12 @@ const handleSaveEdit = (oldProductId) => {
   if (!tempProductId.value) return;
 
   const newProd = props.products.find(
-    (prod) => prod.id === tempProductId.value
+    (prod) => prod.id === tempProductId.value,
   );
 
   if (newProd) {
     const index = formData.value.products.findIndex(
-      (prod) => prod.id === oldProductId
+      (prod) => prod.id === oldProductId,
     );
 
     if (index !== -1) {
@@ -138,7 +138,7 @@ const handleSubmit = () => {
 
 const availableProducts = computed(() => {
   return props.products.filter(
-    (prod) => !formData.value.products.some((p) => p.id === prod.id)
+    (prod) => !formData.value.products.some((p) => p.id === prod.id),
   );
 });
 
@@ -174,32 +174,50 @@ const getProductColor = (index) => {
   <VDialog
     :model-value="props.modelValue"
     max-width="700"
+    persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center gap-2 pa-5">
+    <VCard v-if="formData" class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
         <VIcon
           :icon="isEditMode ? 'tabler-edit' : 'tabler-plus'"
           size="24"
-          class="text-success"
+          color="white"
+          class="me-2"
         />
-        <span class="text-h6">{{ dialogTitle }}</span>
+        <span class="text-h5 font-weight-bold text-white">{{
+          dialogTitle
+        }}</span>
+
+        <VSpacer />
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="pa-5">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="handleSubmit">
           <!-- Select de Empleado -->
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VSelect
                 v-model="formData.employee_id"
                 :items="props.employees"
                 :disabled="isEditMode"
                 label="Empleado *"
+                variant="outlined"
+                density="compact"
                 placeholder="Selecciona un empleado"
-                prepend-inner-icon="tabler-user"
                 :error-messages="props.errors.employee_id"
                 clearable
                 @update:model-value="emit('clear-errors')"
@@ -225,7 +243,7 @@ const getProductColor = (index) => {
           </VRow>
 
           <!-- Agregar Nuevo Producto -->
-          <VRow class="mt-2">
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <div class="d-flex gap-2">
                 <VAutocomplete
@@ -234,8 +252,9 @@ const getProductColor = (index) => {
                   item-title="displayLabel"
                   item-value="id"
                   label="Agregar Producto"
+                  variant="outlined"
+                  density="compact"
                   placeholder="Busca un producto"
-                  prepend-inner-icon="tabler-pill"
                   :disabled="!formData.employee_id"
                   clearable
                   class="flex-grow-1"
@@ -250,8 +269,11 @@ const getProductColor = (index) => {
                 </VAutocomplete>
                 <VBtn
                   color="success"
+                  variant="flat"
+                  size="default"
                   :disabled="!formData.new_product_id || !formData.employee_id"
                   @click="handleAddProduct"
+                  style="height: 40px"
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
@@ -260,7 +282,7 @@ const getProductColor = (index) => {
           </VRow>
 
           <!-- Lista de Productos Asignados -->
-          <VRow class="mt-4">
+          <VRow dense class="mt-2">
             <VCol cols="12">
               <div class="d-flex align-center justify-space-between mb-3">
                 <span class="text-subtitle-1 font-weight-medium">
@@ -270,6 +292,7 @@ const getProductColor = (index) => {
                   :color="formData.products.length > 0 ? 'success' : 'default'"
                   size="small"
                   variant="tonal"
+                  label
                 >
                   {{ formData.products.length }}
                 </VChip>
@@ -280,6 +303,7 @@ const getProductColor = (index) => {
                 v-if="formData.products.length === 0"
                 type="info"
                 variant="tonal"
+                rounded="lg"
                 class="mb-0"
               >
                 <div class="d-flex align-center gap-2">
@@ -289,20 +313,20 @@ const getProductColor = (index) => {
               </VAlert>
 
               <!-- Tabla de Productos -->
-              <VCard v-else variant="outlined" class="overflow-hidden">
+              <VCard v-else variant="outlined" class="rounded-lg border">
                 <VList class="pa-0">
                   <template
                     v-for="(product, index) in formData.products"
                     :key="`prod-${product.id}-${index}`"
                   >
-                    <VListItem class="px-4 py-3">
+                    <VListItem class="px-4 py-2">
                       <template #prepend>
                         <VAvatar
                           :color="getProductColor(index)"
                           variant="tonal"
-                          size="38"
+                          size="32"
                         >
-                          <VIcon icon="tabler-pill" size="20" />
+                          <VIcon icon="tabler-pill" size="18" />
                         </VAvatar>
                       </template>
 
@@ -312,10 +336,15 @@ const getProductColor = (index) => {
                           v-if="editingProduct !== product.id"
                           class="d-flex align-center gap-2"
                         >
-                          <VChip size="small" color="primary" variant="tonal">
+                          <VChip
+                            size="small"
+                            color="primary"
+                            variant="tonal"
+                            label
+                          >
                             {{ product.id }}
                           </VChip>
-                          <span class="text-body-1 font-weight-medium">
+                          <span class="text-body-2 font-weight-medium">
                             {{ product.name }}
                           </span>
                         </div>
@@ -330,7 +359,7 @@ const getProductColor = (index) => {
                           density="compact"
                           variant="outlined"
                           hide-details
-                          class="mt-1"
+                          class="my-1"
                         >
                           <template #item="{ props: itemProps, item }">
                             <VListItem v-bind="itemProps">
@@ -346,50 +375,58 @@ const getProductColor = (index) => {
                         <div class="d-flex gap-1">
                           <!-- Botones en modo normal -->
                           <template v-if="editingProduct !== product.id">
-                            <IconBtn
-                              size="small"
-                              @click="handleEditProduct(product)"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="warning"
+                              @click="handleEditProduct(product)"
                             >
-                              <VIcon icon="tabler-edit" size="20" />
+                              <VIcon icon="tabler-edit" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cambiar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleRemoveProduct(product.id)"
                             >
-                              <VIcon icon="tabler-trash" size="20" />
+                              <VIcon icon="tabler-trash" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Eliminar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
 
                           <!-- Botones en modo edición -->
                           <template v-else>
-                            <IconBtn
-                              size="small"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="success"
                               @click="handleSaveEdit(product.id)"
                             >
-                              <VIcon icon="tabler-check" size="20" />
+                              <VIcon icon="tabler-check" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Guardar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleCancelEdit"
                             >
-                              <VIcon icon="tabler-x" size="20" />
+                              <VIcon icon="tabler-x" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cancelar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
                         </div>
                       </template>
@@ -405,20 +442,23 @@ const getProductColor = (index) => {
 
       <VDivider />
 
-      <VCardActions class="pa-5 d-flex gap-3">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
-          class="flex-grow-1"
           @click="closeDialog"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
         <VBtn
-          color="success"
-          class="flex-grow-1"
+          color="primary"
+          variant="flat"
           :disabled="!formData.employee_id || formData.products.length === 0"
           @click="handleSubmit"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           {{ isEditMode ? "Actualizar" : "Guardar" }}
         </VBtn>

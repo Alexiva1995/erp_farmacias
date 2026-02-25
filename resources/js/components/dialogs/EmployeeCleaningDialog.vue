@@ -13,7 +13,7 @@ const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const dialogTitle = computed(() =>
-  isEditMode.value ? "Editar Actividades Asignadas" : "Asignar Actividades"
+  isEditMode.value ? "Editar Actividades Asignadas" : "Asignar Actividades",
 );
 
 const formData = ref({
@@ -58,7 +58,7 @@ watch(
       tempActivityId.value = null;
       tempActivityStatus.value = "Pendiente";
     }
-  }
+  },
 );
 
 const closeDialog = () => {
@@ -73,12 +73,12 @@ const handleAddActivity = () => {
   if (!formData.value.new_activity_id) return;
 
   const activity = props.cleaningActivities.find(
-    (act) => act.value === formData.value.new_activity_id
+    (act) => act.value === formData.value.new_activity_id,
   );
 
   if (activity) {
     const exists = formData.value.activities.some(
-      (act) => act.id === activity.value
+      (act) => act.id === activity.value,
     );
 
     if (!exists) {
@@ -95,7 +95,7 @@ const handleAddActivity = () => {
 
 const handleRemoveActivity = (activityId) => {
   formData.value.activities = formData.value.activities.filter(
-    (act) => act.id !== activityId
+    (act) => act.id !== activityId,
   );
 };
 
@@ -109,12 +109,12 @@ const handleSaveEdit = (oldActivityId) => {
   if (!tempActivityId.value) return;
 
   const newAct = props.cleaningActivities.find(
-    (act) => act.value === tempActivityId.value
+    (act) => act.value === tempActivityId.value,
   );
 
   if (newAct) {
     const index = formData.value.activities.findIndex(
-      (act) => act.id === oldActivityId
+      (act) => act.id === oldActivityId,
     );
 
     if (index !== -1) {
@@ -155,7 +155,7 @@ const handleSubmit = () => {
 
 const availableActivities = computed(() => {
   return props.cleaningActivities.filter(
-    (act) => !formData.value.activities.some((a) => a.id === act.value)
+    (act) => !formData.value.activities.some((a) => a.id === act.value),
   );
 });
 
@@ -194,32 +194,50 @@ const getStatusIcon = (status) => {
   <VDialog
     :model-value="props.modelValue"
     max-width="800"
+    persistent
     @update:model-value="closeDialog"
+    :scrollable="true"
+    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center gap-2 pa-5">
+    <VCard v-if="formData" class="d-flex flex-column">
+      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
         <VIcon
           :icon="isEditMode ? 'tabler-edit' : 'tabler-plus'"
           size="24"
-          class="text-primary"
+          color="white"
+          class="me-2"
         />
-        <span class="text-h6">{{ dialogTitle }}</span>
+        <span class="text-h5 font-weight-bold text-white">{{
+          dialogTitle
+        }}</span>
+
+        <VSpacer />
+        <VBtn
+          icon
+          variant="text"
+          color="white"
+          size="small"
+          @click="closeDialog"
+        >
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="pa-5">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
         <VForm @submit.prevent="handleSubmit">
           <!-- Select de Empleado -->
-          <VRow>
+          <VRow dense class="mb-2">
             <VCol cols="12">
               <VSelect
                 v-model="formData.employee_id"
                 :items="props.employees"
                 :disabled="isEditMode"
                 label="Empleado *"
+                variant="outlined"
+                density="compact"
                 placeholder="Selecciona un empleado"
-                prepend-inner-icon="tabler-user"
                 :error-messages="props.errors.employee_id"
                 clearable
                 @update:model-value="emit('clear-errors')"
@@ -245,14 +263,15 @@ const getStatusIcon = (status) => {
           </VRow>
 
           <!-- Agregar Nueva Actividad -->
-          <VRow class="mt-2">
+          <VRow dense class="mb-2">
             <VCol cols="12" md="6">
               <VSelect
                 v-model="formData.new_activity_id"
                 :items="availableActivities"
                 label="Agregar Actividad"
+                variant="outlined"
+                density="compact"
                 placeholder="Selecciona una actividad"
-                prepend-inner-icon="tabler-checkbox"
                 :disabled="!formData.employee_id"
                 clearable
               />
@@ -262,7 +281,8 @@ const getStatusIcon = (status) => {
                 v-model="formData.new_activity_status"
                 :items="statusOptions"
                 label="Estado"
-                prepend-inner-icon="tabler-flag"
+                variant="outlined"
+                density="compact"
                 :disabled="!formData.employee_id"
               />
             </VCol>
@@ -270,8 +290,10 @@ const getStatusIcon = (status) => {
               <VBtn
                 color="success"
                 block
+                variant="flat"
                 :disabled="!formData.new_activity_id || !formData.employee_id"
                 @click="handleAddActivity"
+                style="height: 40px"
               >
                 <VIcon icon="tabler-plus" />
               </VBtn>
@@ -279,7 +301,7 @@ const getStatusIcon = (status) => {
           </VRow>
 
           <!-- Lista de Actividades Asignadas -->
-          <VRow class="mt-4">
+          <VRow dense class="mt-2">
             <VCol cols="12">
               <div class="d-flex align-center justify-space-between mb-3">
                 <span class="text-subtitle-1 font-weight-medium">
@@ -291,6 +313,7 @@ const getStatusIcon = (status) => {
                   "
                   size="small"
                   variant="tonal"
+                  label
                 >
                   {{ formData.activities.length }}
                 </VChip>
@@ -301,6 +324,7 @@ const getStatusIcon = (status) => {
                 v-if="formData.activities.length === 0"
                 type="info"
                 variant="tonal"
+                rounded="lg"
                 class="mb-0"
               >
                 <div class="d-flex align-center gap-2">
@@ -310,20 +334,20 @@ const getStatusIcon = (status) => {
               </VAlert>
 
               <!-- Tabla de Actividades -->
-              <VCard v-else variant="outlined" class="overflow-hidden">
+              <VCard v-else variant="outlined" class="rounded-lg border">
                 <VList class="pa-0">
                   <template
                     v-for="(activity, index) in formData.activities"
                     :key="`activity-${activity.id}-${index}`"
                   >
-                    <VListItem class="px-4 py-3">
+                    <VListItem class="px-4 py-2">
                       <template #prepend>
                         <VAvatar
                           :color="getActivityColor(index)"
                           variant="tonal"
-                          size="38"
+                          size="32"
                         >
-                          <VIcon icon="tabler-checkbox" size="20" />
+                          <VIcon icon="tabler-checkbox" size="18" />
                         </VAvatar>
                       </template>
 
@@ -333,17 +357,18 @@ const getStatusIcon = (status) => {
                           v-if="editingActivity !== activity.id"
                           class="d-flex align-center justify-space-between"
                         >
-                          <span class="text-body-1 font-weight-medium">
+                          <span class="text-body-2 font-weight-medium">
                             {{ activity.name }}
                           </span>
                           <VChip
                             :color="getStatusColor(activity.status)"
-                            size="small"
+                            size="x-small"
                             variant="tonal"
+                            label
                           >
                             <VIcon
                               :icon="getStatusIcon(activity.status)"
-                              size="14"
+                              size="12"
                               class="me-1"
                             />
                             {{ activity.status }}
@@ -351,7 +376,7 @@ const getStatusIcon = (status) => {
                         </div>
 
                         <!-- Modo edición: mostrar selects -->
-                        <div v-else class="d-flex gap-2">
+                        <div v-else class="d-flex gap-2 my-1">
                           <VSelect
                             v-model="tempActivityId"
                             :items="props.cleaningActivities"
@@ -375,50 +400,58 @@ const getStatusIcon = (status) => {
                         <div class="d-flex gap-1">
                           <!-- Botones en modo normal -->
                           <template v-if="editingActivity !== activity.id">
-                            <IconBtn
-                              size="small"
-                              @click="handleEditActivity(activity)"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="warning"
+                              @click="handleEditActivity(activity)"
                             >
-                              <VIcon icon="tabler-edit" size="20" />
+                              <VIcon icon="tabler-edit" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cambiar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleRemoveActivity(activity.id)"
                             >
-                              <VIcon icon="tabler-trash" size="20" />
+                              <VIcon icon="tabler-trash" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Eliminar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
 
                           <!-- Botones en modo edición -->
                           <template v-else>
-                            <IconBtn
-                              size="small"
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="success"
                               @click="handleSaveEdit(activity.id)"
                             >
-                              <VIcon icon="tabler-check" size="20" />
+                              <VIcon icon="tabler-check" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Guardar
                               </VTooltip>
-                            </IconBtn>
-                            <IconBtn
-                              size="small"
+                            </VBtn>
+                            <VBtn
+                              icon
+                              variant="text"
+                              size="x-small"
                               color="error"
                               @click="handleCancelEdit"
                             >
-                              <VIcon icon="tabler-x" size="20" />
+                              <VIcon icon="tabler-x" size="18" />
                               <VTooltip activator="parent" location="top">
                                 Cancelar
                               </VTooltip>
-                            </IconBtn>
+                            </VBtn>
                           </template>
                         </div>
                       </template>
@@ -434,20 +467,23 @@ const getStatusIcon = (status) => {
 
       <VDivider />
 
-      <VCardActions class="pa-5 d-flex gap-3">
+      <VCardActions class="pa-4 d-flex gap-2">
         <VBtn
           color="secondary"
           variant="outlined"
-          class="flex-grow-1"
           @click="closeDialog"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
-          class="flex-grow-1"
+          variant="flat"
           :disabled="!formData.employee_id || formData.activities.length === 0"
           @click="handleSubmit"
+          class="flex-grow-1"
+          style="flex: 1 1 50%; max-width: 50%"
         >
           {{ isEditMode ? "Actualizar" : "Guardar" }}
         </VBtn>

@@ -36,73 +36,81 @@ const lapsoDeTiempoOpciones = [
 </script>
 
 <template>
-  <VCard title="" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
-      <VRow>
+      <VRow align="center">
         <VCol cols="12" sm="12" md="3">
-          <VAutocomplete
+          <AppAutocomplete
             :items="props.products"
-            label="Productos"
-            placeholder="Escribe para buscar un producto"
+            placeholder="Seleccionar Productos"
             item-title="name"
             item-value="id"
             clearable
-            chips="true"
-            multiple="true"
+            chips
+            multiple
+            hide-details="auto"
             @update:model-value="emit('update:selectProducts', $event)"
           />
         </VCol>
         <VCol cols="12" sm="6" md="3">
-          <VAutocomplete
+          <AppAutocomplete
             :items="props.laboratories"
-            label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
+            placeholder="Seleccionar Laboratorio"
             item-title="name"
             item-value="id"
             clearable
-            chips="true"
-            multiple="true"
+            chips
+            multiple
+            hide-details="auto"
             @update:model-value="emit('update:selectedLaboratory', $event)"
-          >
-          </VAutocomplete>
+          />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
+        <VCol cols="12" sm="6" md="2">
+          <AppSelect
             :model-value="props.tipo_de_filtracion"
-            label="Calcular Por"
+            placeholder="Calcular Por"
             :items="tipoFiltracionOpcion"
+            hide-details="auto"
             @update:model-value="emit('update:tipo_de_filtracion', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
+        <VCol cols="12" sm="6" md="2">
+          <AppSelect
             :model-value="props.lapso_de_tiempo"
-            label="Lapso de tiempo"
+            placeholder="Lapso de tiempo"
             :items="lapsoDeTiempoOpciones"
+            hide-details="auto"
             @update:model-value="emit('update:lapso_de_tiempo', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <v-checkbox
+        <VCol cols="12" sm="6" md="2">
+          <VCheckbox
             :model-value="props.checkColombia"
             label="Colombia"
+            color="primary"
+            density="compact"
+            hide-details
             @update:model-value="emit('update:checkColombia', $event)"
-          ></v-checkbox>
+          />
         </VCol>
       </VRow>
     </VCardText>
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+
+    <VDivider />
+
+    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
 
       <VSpacer />
+
       <VMenu>
         <template #activator="{ props: menuProps }">
           <VBtn
             color="success"
             variant="flat"
-            prepend-icon="tabler-upload"
+            prepend-icon="tabler-file-download"
             v-bind="menuProps"
           >
             Exportar
@@ -111,15 +119,19 @@ const lapsoDeTiempoOpciones = [
         <VList>
           <VListItem @click="emit('export-excel', 'xlsx')">
             <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+              <VIcon
+                icon="tabler-file-spreadsheet"
+                class="me-2"
+                color="success"
+              />
             </template>
             <VListItemTitle class="text-success">Excel</VListItemTitle>
           </VListItem>
           <VListItem @click="emit('export-pdf')">
             <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
+              <VIcon icon="tabler-file-type-pdf" class="me-2" color="error" />
             </template>
-            <VListItemTitle>PDF</VListItemTitle>
+            <VListItemTitle class="text-error">PDF</VListItemTitle>
           </VListItem>
         </VList>
       </VMenu>

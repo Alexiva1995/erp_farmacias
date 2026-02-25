@@ -206,7 +206,6 @@ const calculatedEmployees = computed(() => {
               :items="availableMonths"
               item-title="title"
               item-value="value"
-              label="Mes"
               placeholder="Seleccionar Mes"
               clearable
             />
@@ -215,7 +214,6 @@ const calculatedEmployees = computed(() => {
             <AppSelect
               v-model="selectedYear"
               :items="availableYears"
-              label="Año"
               placeholder="Seleccionar Año"
               clearable
             />

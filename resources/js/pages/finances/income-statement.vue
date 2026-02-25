@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 
 // Estado reactivo
 const loading = ref(false);
@@ -10,9 +10,10 @@ const loadingDetails = ref(false);
 
 // Datos
 const summary = ref({});
-const details = ref({});
-const sales = ref([]);
-const expenses = ref([]);
+const transactions = ref([]);
+const totalItems = ref(0);
+const itemsPerPage = ref(50);
+const page = ref(1);
 
 // Filtros
 const startDate = ref(null);
@@ -40,7 +41,7 @@ const headers = [
   { title: "Utilidad", key: "profit", sortable: true },
 ];
 
-// Cargar resumen
+// Cargar resumen (remains mostly same, but renamed data access if needed)
 const loadSummary = async () => {
   loadingSummary.value = true;
   try {
@@ -49,7 +50,7 @@ const loadSummary = async () => {
     if (endDate.value) params.append("end_date", endDate.value);
 
     const response = await axios.get(
-      `/finances/income-statement/summary?${params}`
+      `/finances/income-statement/summary?${params}`,
     );
 
     if (response.data && response.data.success) {
@@ -57,60 +58,43 @@ const loadSummary = async () => {
     } else {
       toast.error(
         "Error al cargar el resumen: " +
-          (response.data?.message || "Error desconocido")
+          (response.data?.message || "Error desconocido"),
       );
     }
   } catch (error) {
     console.error("Error al cargar resumen:", error);
-    if (error.response?.status === 401) {
-      toast.error("No tienes autorización para acceder a esta información");
-    } else if (error.response?.status === 500) {
-      toast.error(
-        "Error del servidor: " +
-          (error.response.data?.message || "Error interno")
-      );
-    } else {
-      toast.error("Error al cargar el resumen del estado de resultados");
-    }
+    toast.error("Error al cargar el resumen del estado de resultados");
   } finally {
     loadingSummary.value = false;
   }
 };
 
-// Cargar detalles
+// Cargar detalles - PAGINADO
 const loadDetails = async () => {
   loadingDetails.value = true;
   try {
     const params = new URLSearchParams();
     if (startDate.value) params.append("start_date", startDate.value);
     if (endDate.value) params.append("end_date", endDate.value);
+    params.append("page", page.value);
+    params.append("per_page", itemsPerPage.value);
 
     const response = await axios.get(
-      `/finances/income-statement/details?${params}`
+      `/finances/income-statement/details?${params}`,
     );
 
     if (response.data && response.data.success) {
-      details.value = response.data.data;
-      sales.value = response.data.data.sales || [];
-      expenses.value = response.data.data.expenses || [];
+      transactions.value = response.data.data.transactions || [];
+      totalItems.value = response.data.data.pagination?.total || 0;
     } else {
       toast.error(
         "Error al cargar los detalles: " +
-          (response.data?.message || "Error desconocido")
+          (response.data?.message || "Error desconocido"),
       );
     }
   } catch (error) {
     console.error("Error al cargar detalles:", error);
-    if (error.response?.status === 401) {
-      toast.error("No tienes autorización para acceder a esta información");
-    } else if (error.response?.status === 500) {
-      toast.error(
-        "Error del servidor: " +
-          (error.response.data?.message || "Error interno")
-      );
-    } else {
-      toast.error("Error al cargar los detalles del estado de resultados");
-    }
+    toast.error("Error al cargar los detalles del estado de resultados");
   } finally {
     loadingDetails.value = false;
   }
@@ -118,7 +102,15 @@ const loadDetails = async () => {
 
 // Cargar todos los datos
 const loadData = async () => {
+  page.value = 1; // Reset to page 1 on filter change
   await Promise.all([loadSummary(), loadDetails()]);
+};
+
+// Manejar cambios de paginación
+const updateOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  loadDetails(); // Solo cargar detalles al cambiar página
 };
 
 // Aplicar filtros
@@ -174,13 +166,6 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString("es-VE");
 };
 
-// Computed para datos combinados
-const allTransactions = computed(() => {
-  return [...sales.value, ...expenses.value].sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
-  );
-});
-
 // Verificar autenticación
 const getCsrfCookie = async () => {
   try {
@@ -224,7 +209,7 @@ const checkAuth = async () => {
 
 // Lifecycle
 onMounted(() => {
-  loadData();
+  loadSummary();
 });
 
 // Watch para filtros automáticos
@@ -393,18 +378,22 @@ watch([startDate, endDate], () => {
         <div class="d-flex justify-space-between align-center">
           <h2 class="text-h5">Detalles de Transacciones</h2>
           <VChip color="primary" variant="tonal">
-            {{ allTransactions.length }} registros
+            {{ totalItems }} registros en total
           </VChip>
         </div>
       </VCardTitle>
 
       <VCardText>
-        <VDataTable
+        <VDataTableServer
+          v-model:items-per-page="itemsPerPage"
+          v-model:page="page"
           :headers="headers"
-          :items="allTransactions"
+          :items="transactions"
+          :items-length="totalItems"
           :loading="loadingDetails"
           item-key="id"
           class="elevation-1"
+          @update:options="updateOptions"
         >
           <template #item.date="{ item }">
             {{ formatDate(item.date) }}
@@ -445,7 +434,7 @@ watch([startDate, endDate], () => {
               }}
             </span>
           </template>
-        </VDataTable>
+        </VDataTableServer>
       </VCardText>
     </VCard>
   </div>

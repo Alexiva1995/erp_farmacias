@@ -4,14 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderDetail;
 use App\Models\Expense;
-use App\Models\ExpenseCategory;
 use App\Models\ExchangeRate;
-use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -105,14 +101,14 @@ class FinancialStatementController extends Controller
                 ->whereDoesntHave('category', function ($q) {
                     $q->where('name', 'Pagos de Facturas');
                 })
-                ->get(['amount_usd', 'amount_bs']);
+                ->get(['total_usd', 'amount', 'currency']);
 
             $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
-                // Usar amount_usd si está disponible, sino convertir amount_bs
-                if ($expense->amount_usd) {
-                    return round((float) $expense->amount_usd, 2);
+                // Usar total_usd si está disponible, sino convertir amount
+                if ($expense->total_usd > 0) {
+                    return round((float) $expense->total_usd, 2);
                 }
-                return $this->convertToUsd($expense->amount_bs ?? 0, 'Bs', $exchangeRates);
+                return $this->convertToUsd($expense->amount ?? 0, $expense->currency ?? 'Bs', $exchangeRates);
             });
 
             // Calcular utilidad neta
@@ -131,7 +127,7 @@ class FinancialStatementController extends Controller
                     ]
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener el estado de resultados: ' . $e->getMessage()
@@ -181,14 +177,14 @@ class FinancialStatementController extends Controller
                 ->whereDoesntHave('category', function ($q) {
                     $q->where('name', 'Pagos de Facturas');
                 })
-                ->get(['amount_usd', 'amount_bs']);
+                ->get(['total_usd', 'amount', 'currency']);
 
             $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
-                // Usar amount_usd si está disponible, sino convertir amount_bs
-                if ($expense->amount_usd) {
-                    return round((float) $expense->amount_usd, 2);
+                // Usar total_usd si está disponible, sino convertir amount
+                if ($expense->total_usd > 0) {
+                    return round((float) $expense->total_usd, 2);
                 }
-                return $this->convertToUsd($expense->amount_bs ?? 0, 'Bs', $exchangeRates);
+                return $this->convertToUsd($expense->amount ?? 0, $expense->currency ?? 'Bs', $exchangeRates);
             });
 
             // Calcular utilidad neta
@@ -233,7 +229,7 @@ class FinancialStatementController extends Controller
                     ]
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener el resumen: ' . $e->getMessage()
@@ -247,99 +243,153 @@ class FinancialStatementController extends Controller
     public function getDetails(Request $request): JsonResponse
     {
         try {
-            $startDate = $request->input('start_date');
-            $endDate = $request->input('end_date');
-
-            // Si no se proporcionan fechas, usar desde el principio de los tiempos
-            if (!$startDate) {
-                $startDate = '2020-01-01';
-            }
-            if (!$endDate) {
-                $endDate = now()->format('Y-m-d');
-            }
+            $startDate = $request->input('start_date', '2020-01-01');
+            $endDate = $request->input('end_date', now()->format('Y-m-d'));
+            $perPage = $request->input('per_page', 50);
 
             // Obtener tasas de cambio
             $exchangeRates = $this->getExchangeRates();
 
-            // Obtener órdenes completadas
-            $orders = Order::with(['client'])
+            // 1. Crear subconsulta para Órdenes
+            $salesQuery = \Illuminate\Support\Facades\DB::table('orders')
+                ->select([
+                    'id',
+                    'order_date as date',
+                    \Illuminate\Support\Facades\DB::raw("'sale' as type"),
+                    'total_amount as amount',
+                    'currency',
+                    'total_cost as costs',
+                    'total_amount_usd as amount_usd',
+                    'client_id as relation_id',
+                    \Illuminate\Support\Facades\DB::raw("CONCAT('Venta #', id) as description")
+                ])
                 ->where('status', 'Completed')
-                ->whereBetween('order_date', [$startDate, $endDate])
-                ->orderBy('order_date', 'desc')
-                ->get();
+                ->whereBetween('order_date', [$startDate, $endDate]);
 
-            // Obtener gastos
-            $expenses = Expense::with(['category'])
+            // 2. Crear subconsulta para Gastos
+            $expensesQuery = \Illuminate\Support\Facades\DB::table('expenses')
+                ->select([
+                    'id',
+                    'expense_date as date',
+                    \Illuminate\Support\Facades\DB::raw("'expense' as type"),
+                    'amount',
+                    'currency',
+                    \Illuminate\Support\Facades\DB::raw('0 as costs'),
+                    'total_usd as amount_usd',
+                    'category_id as relation_id',
+                    'name as description'
+                ])
                 ->whereBetween('expense_date', [$startDate, $endDate])
-                ->whereDoesntHave('category', function ($q) {
-                    $q->where('name', 'Pagos de Facturas');
-                })
-                ->orderBy('expense_date', 'desc')
-                ->get();
+                ->where(function ($query) {
+                    $query->whereDoesntHave('category', function ($q) {
+                        $q->where('name', 'Pagos de Facturas');
+                    });
+                })->orWhereNull('category_id'); // Fallback for raw DB query consistency
 
-            // Procesar órdenes
-            $processedOrders = $orders->map(function ($order) use ($exchangeRates) {
-                $convertedAmountUsd = $this->convertToUsd($order->total_amount, $order->currency, $exchangeRates);
-                $convertedCostUsd = $this->convertToUsd($order->total_cost ?? 0, $order->currency, $exchangeRates);
-                $convertedUtilityUsd = $convertedAmountUsd - $convertedCostUsd;
+            // Nota: Para usar whereDoesntHave en DB::table, necesitamos una subconsulta o moverlo a Eloquent.
+            // Vamos a refinar la consulta de gastos para que sea compatible con UNION a nivel de DB.
+            $expensesQuery = \Illuminate\Support\Facades\DB::table('expenses')
+                ->select([
+                    'expenses.id',
+                    'expenses.expense_date as date',
+                    \Illuminate\Support\Facades\DB::raw("'expense' as type"),
+                    'expenses.amount',
+                    'expenses.currency',
+                    \Illuminate\Support\Facades\DB::raw('0 as costs'),
+                    'expenses.total_usd as amount_usd',
+                    'expenses.category_id as relation_id',
+                    'expenses.name as description'
+                ])
+                ->leftJoin('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
+                ->whereBetween('expenses.expense_date', [$startDate, $endDate])
+                ->where(function ($q) {
+                    $q->where('expense_categories.name', '!=', 'Pagos de Facturas')
+                        ->orWhereNull('expense_categories.name');
+                });
 
-                return [
-                    'id' => $order->id,
-                    'type' => 'sale',
-                    'date' => $order->order_date,
-                    'description' => 'Venta #' . $order->id,
-                    'client' => $order->client->name ?? 'N/A',
-                    'amount' => $order->total_amount_usd ?? $order->total_amount,
-                    'costs' => $convertedCostUsd,
-                    'profit' => $convertedUtilityUsd,
-                    // Campos adicionales para el frontend
-                    'original_amount' => $order->total_amount,
-                    'original_currency' => $order->currency,
-                    'monto_display' => sprintf('%s %s %.2f', '+', $order->currency, $order->total_amount),
-                    'costos_display' => sprintf('USD %.2f', $convertedCostUsd),
-                    'utilidad_display' => sprintf('%s USD %.2f', ($convertedUtilityUsd >= 0 ? '+' : '-'), abs($convertedUtilityUsd)),
-                ];
-            });
+            // 3. Unir y paginar
+            $combinedQuery = $salesQuery->unionAll($expensesQuery)
+                ->orderBy('date', 'desc');
 
-            // Procesar gastos
-            $processedExpenses = $expenses->map(function ($expense) use ($exchangeRates) {
-                $amountUsd = $expense->amount_usd ?: $this->convertToUsd($expense->amount_bs ?? 0, 'Bs', $exchangeRates);
+            $paginatedData = $combinedQuery->paginate($perPage);
 
-                return [
-                    'id' => $expense->id,
-                    'type' => 'expense',
-                    'date' => $expense->expense_date,
-                    'description' => $expense->name,
-                    'category' => $expense->category->name ?? 'Sin categoría',
-                    'amount' => $amountUsd,
-                    'costs' => 0,
-                    'profit' => -$amountUsd,
-                    // Campos adicionales para el frontend
-                    'original_amount' => $expense->amount_usd ?: $expense->amount_bs,
-                    'original_currency' => $expense->amount_usd ? 'USD' : 'Bs',
-                    'monto_display' => sprintf('%s USD %.2f', '-', $amountUsd),
-                    'costos_display' => 'USD 0.00',
-                    'utilidad_display' => sprintf('-USD %.2f', $amountUsd),
-                ];
-            });
+            // 4. Enriquecer los datos de la página actual con modelos y relaciones
+            $items = collect($paginatedData->items());
 
-            // Combinar y ordenar por fecha
-            $allTransactions = $processedOrders->concat($processedExpenses)
-                ->sortByDesc('date')
-                ->values();
+            // Agrupar por tipo para cargar relaciones eficientemente
+            $saleIds = $items->where('type', 'sale')->pluck('id');
+            $expenseIds = $items->where('type', 'expense')->pluck('id');
+
+            $orderModels = Order::with(['client:id,name'])->whereIn('id', $saleIds)->get()->keyBy('id');
+            $expenseModels = Expense::with(['category:id,name'])->whereIn('id', $expenseIds)->get()->keyBy('id');
+
+            // 5. Mapear resultados finales
+            $processedItems = $items->map(function ($item) use ($orderModels, $expenseModels, $exchangeRates) {
+                if ($item->type === 'sale') {
+                    $order = $orderModels->get($item->id);
+                    if (!$order)
+                        return null;
+
+                    $amountUsd = $item->amount_usd ?: $this->convertToUsd($item->amount, $item->currency, $exchangeRates);
+                    $costUsd = $this->convertToUsd($item->costs, $item->currency, $exchangeRates);
+                    $utilityUsd = $amountUsd - $costUsd;
+
+                    return [
+                        'id' => $item->id,
+                        'type' => 'sale',
+                        'date' => $item->date,
+                        'description' => $item->description,
+                        'client' => $order->client?->name ?? 'N/A',
+                        'amount' => $amountUsd,
+                        'costs' => $costUsd,
+                        'profit' => $utilityUsd,
+                        'original_amount' => $item->amount,
+                        'original_currency' => $item->currency,
+                        'monto_display' => sprintf('+ %s %.2f', $item->currency, $item->amount),
+                        'costos_display' => sprintf('USD %.2f', $costUsd),
+                        'utilidad_display' => sprintf('%s USD %.2f', ($utilityUsd >= 0 ? '+' : '-'), abs($utilityUsd)),
+                    ];
+                } else {
+                    $expense = $expenseModels->get($item->id);
+                    if (!$expense)
+                        return null;
+
+                    $amountUsd = $item->amount_usd ?: $this->convertToUsd($item->amount, $item->currency, $exchangeRates);
+
+                    return [
+                        'id' => $item->id,
+                        'type' => 'expense',
+                        'date' => $item->date,
+                        'description' => $item->description,
+                        'category' => $expense->category?->name ?? 'Sin categoría',
+                        'amount' => $amountUsd,
+                        'costs' => 0,
+                        'profit' => -$amountUsd,
+                        'original_amount' => $item->amount,
+                        'original_currency' => $item->currency ?? 'Bs',
+                        'monto_display' => sprintf('- USD %.2f', $amountUsd),
+                        'costos_display' => 'USD 0.00',
+                        'utilidad_display' => sprintf('- USD %.2f', $amountUsd),
+                    ];
+                }
+            })->filter()->values();
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'sales' => $processedOrders,
-                    'expenses' => $processedExpenses,
-                    'all_transactions' => $allTransactions
+                    'transactions' => $processedItems,
+                    'pagination' => [
+                        'current_page' => $paginatedData->currentPage(),
+                        'last_page' => $paginatedData->lastPage(),
+                        'total' => $paginatedData->total(),
+                        'per_page' => $paginatedData->perPage(),
+                    ]
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al obtener los detalles: ' . $e->getMessage()
+                'message' => 'Error al obtener los detalles: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine()
             ], 500);
         }
     }

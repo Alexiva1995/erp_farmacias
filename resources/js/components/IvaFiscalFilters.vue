@@ -78,15 +78,14 @@ const setYearPreset = () => {
 </script>
 
 <template>
-  <VCard title="Filtros de Período Fiscal" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <!-- Campos de fecha -->
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="startDateModel"
             placeholder="Fecha Inicial"
-            label="Fecha Inicial"
             clearable
             :config="{
               altInput: true,
@@ -103,11 +102,10 @@ const setYearPreset = () => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="6">
           <AppDateTimePicker
             :model-value="endDateModel"
             placeholder="Fecha Final"
-            label="Fecha Final"
             clearable
             :config="{
               altInput: true,

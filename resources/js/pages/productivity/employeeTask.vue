@@ -42,7 +42,7 @@ const fetchEmployeeCleanings = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -84,10 +84,12 @@ const fetchEmployees = async () => {
     const response = await axios.get("/rrhh/employees", {
       params: { itemsPerPage: 1000, active: true },
     });
-    employees.value = response.data.data.map((emp) => ({
-      title: `${emp.name} ${emp.last_name}`,
-      value: emp.id,
-    }));
+    employees.value = response.data.data
+      .filter((emp) => emp.role_id === 3)
+      .map((emp) => ({
+        title: `${emp.name} ${emp.last_name}`,
+        value: emp.id,
+      }));
   } catch (error) {
     console.error("Error al obtener empleados:", error);
     toast.error("Error al cargar los empleados.");
@@ -101,7 +103,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchEmployeeCleanings(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery, selectedStatus], () => {
@@ -151,7 +153,7 @@ const handleDeleteAssignment = async (employeeId, activityId) => {
   if (result.isConfirmed) {
     try {
       await axios.delete(
-        `/employee-cleaning-activities/${employeeId}/${activityId}`
+        `/employee-cleaning-activities/${employeeId}/${activityId}`,
       );
       toast.success("Asignación eliminada con éxito.");
       fetchEmployeeCleanings();
@@ -200,7 +202,7 @@ const handleSaveAssignment = async (assignmentData) => {
 
     const isEditMode = !!currentEmployee.value.employee_id;
     toast.success(
-      `Actividades ${isEditMode ? "actualizadas" : "asignadas"} con éxito`
+      `Actividades ${isEditMode ? "actualizadas" : "asignadas"} con éxito`,
     );
 
     isDialogVisible.value = false;

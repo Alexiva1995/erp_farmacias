@@ -42,8 +42,9 @@ class IslrQueryService
 
         $totalDeductions = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
+            ->whereIn('currency', ['BS', 'VES'])
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->sum('amount_bs');
+            ->sum('amount');
 
         return (float) $totalDeductions;
     }
@@ -63,8 +64,9 @@ class IslrQueryService
         $totalCosts = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('has_invoice', true)
             ->where('is_deductible', null)
+            ->whereIn('currency', ['BS', 'VES'])
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->sum('amount_bs');
+            ->sum('amount');
 
         return (float) $totalCosts;
     }
@@ -94,7 +96,7 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $totalExpensesIva = $expensesWithIva->sum('amount_bs');
+        $totalExpensesIva = $expensesWithIva->whereIn('currency', ['BS', 'VES'])->sum('amount');
 
         $expensesDeductible = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
@@ -103,7 +105,7 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $totalExpensesDeductible = $expensesDeductible->sum('amount_bs');
+        $totalExpensesDeductible = $expensesDeductible->whereIn('currency', ['BS', 'VES'])->sum('amount');
 
         // Renta Bruta ahora es solo el total fiscal
         $grossIncome = $fiscalTotal;
@@ -142,7 +144,7 @@ class IslrQueryService
             ->orderBy('expense_date', 'desc')
             ->get();
 
-        $total = $records->sum('amount_bs');
+        $total = $records->whereIn('currency', ['BS', 'VES'])->sum('amount');
 
         return [
             'total' => $total,
@@ -172,8 +174,9 @@ class IslrQueryService
 
         $monthlyExpensesIva = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('has_invoice', true)
+            ->whereIn('currency', ['BS', 'VES'])
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->selectRaw('MONTH(expense_date) as month, SUM(amount_bs) as total')
+            ->selectRaw('MONTH(expense_date) as month, SUM(amount) as total')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
@@ -182,8 +185,9 @@ class IslrQueryService
 
         $monthlyDeductions = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
+            ->whereIn('currency', ['BS', 'VES'])
             ->whereBetween('expense_date', [$startDate, $endDate])
-            ->selectRaw('MONTH(expense_date) as month, SUM(amount_bs) as total')
+            ->selectRaw('MONTH(expense_date) as month, SUM(amount) as total')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
