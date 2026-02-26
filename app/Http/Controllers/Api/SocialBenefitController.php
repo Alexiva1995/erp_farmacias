@@ -36,20 +36,39 @@ class SocialBenefitController extends Controller
         }
     }
 
-    public function getSettlementData(Employee $employee)
+    public function getSettlementData(Employee $employee, Request $request)
     {
-        \Log::info('Controller', ['employee' => $employee]);
-        $result = $this->socialBenefitServices->getSettlementData($employee);
-        \Log::info('Controller', ['result' => $result]);
+        $overrides = $request->only([
+            'hire_date', 
+            'base_salary_usd', 
+            'additional_deductions_usd',
+            'vacation_deduction_bs',
+            'vacation_bonus_deduction_bs',
+            'earnings_deduction_bs'
+        ]);
+        $result = $this->socialBenefitServices->getSettlementData($employee, $overrides);
 
         return ApiResponse::success($result);
     }
 
     public function fire(Employee $employee, FireEmployeeRequest $request)
     {
-        $data = $request->validated();
-        $result = $this->socialBenefitServices->fire($employee, $data);
+        try {
+            $data = $request->validated();
+            $overrides = $request->get('overrides', []);
+            
+            $result = $this->socialBenefitServices->fire($employee, $data);
 
-        return ApiResponse::success(['status' => $result]);
+            if ($result) {
+                $pdf = $this->socialBenefitServices->generatePdf($employee, $overrides);
+                $filename = 'liquidacion-' . $employee->identification . '.pdf';
+                return $pdf->download($filename);
+            }
+
+            return ApiResponse::error('No se pudo procesar la liquidación del empleado', 422);
+        } catch (\Exception $e) {
+            \Log::error('Erro en liquidación: ' . $e->getMessage());
+            return ApiResponse::error('Error interno: ' . $e->getMessage(), 500);
+        }
     }
 }

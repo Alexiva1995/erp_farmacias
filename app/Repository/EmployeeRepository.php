@@ -6,6 +6,8 @@ use App\Models\Employee;
 use App\Models\EmployeeHealthConsumption;
 use App\Models\EmployeePaymentCalculation;
 use App\Models\ExchangeRate;
+use App\Models\Order;
+use App\Models\Client;
 use App\Models\Role;
 use App\Models\SalaryConcept;
 use App\Models\User;
@@ -26,6 +28,7 @@ class EmployeeRepository
     $active = filter_var($data['active'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
     return Employee::query()
+      ->with('resignation')
       ->select([
         'employees.id as id',
         'name',
@@ -282,7 +285,7 @@ class EmployeeRepository
     $packageOverride = isset($data['total_package_usd']) ? (float) $data['total_package_usd'] : null;
     if ($month !== null && $year !== null) {
       $totalPackageUsd = $packageOverride ?? (float) ($employee->total_package_usd ?? 0);
-      $consumo = $this->getHealthConsumption($employee->id, $year, $month);
+      $consumo = $this->getTotalConsumoFarmacia($employee);
       $saldoAnterior = $this->getSaldoDeudaAnteriorParaMes($employee, $year, $month);
       $calc = $this->computePaymentCalculation($totalPackageUsd, $consumo, $saldoAnterior);
       $result['distribution'] = [
@@ -292,12 +295,12 @@ class EmployeeRepository
         'concepts' => [
           ['name' => 'Salario Básico Mensual', 'amount' => self::SALARIO_BASE, 'fixed' => true],
           ['name' => 'Cestaticket Socialista de Ley', 'amount' => self::BONO_ALIMENTACION, 'fixed' => true],
-          ['name' => 'Asistencia Social de Salud (Art. 105 LOTTT)', 'amount' => $calc['consumo_total_a_descontar'], 'fixed' => false],
+          ['name' => 'Asistencia Social de Salud (Art. 105 LOTTT)', 'amount' => $calc['salud_pagado'], 'fixed' => false],
           ['name' => 'Gratificación Extraordinaria por Rendimiento', 'amount' => $calc['incentivo_metas'], 'fixed' => false],
         ],
         'consumo_farmacia_mes' => $consumo,
         'saldo_deuda_anterior' => $saldoAnterior,
-        'total_a_cobrar' => round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['incentivo_metas'], 2),
+        'total_a_cobrar' => round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['salud_pagado'] + $calc['incentivo_metas'], 2),
       ];
     }
 
@@ -305,15 +308,25 @@ class EmployeeRepository
   }
 
   /**
-   * Obtener consumo a crédito (Beneficio Salud Art. 105 LOTTT) del mes para el empleado.
+   * Calcular el consumo total del empleado en la farmacia como cliente (por cédula).
+   * Suma todas las órdenes completadas del empleado como cliente, sin filtro de mes.
    */
-  public function getHealthConsumption(int $employeeId, int $year, int $month): float
+  private function getTotalConsumoFarmacia(Employee $employee): float
   {
-    $row = EmployeeHealthConsumption::where('employee_id', $employeeId)
-      ->where('year', $year)
-      ->where('month', $month)
-      ->first();
-    return $row ? (float) $row->amount : 0.0;
+    $identification = $employee->identification;
+    if (!$identification) return 0.0;
+
+    $client = Client::where('identification', $identification)->first();
+    if (!$client) return 0.0;
+
+    return (float) Order::where('client_id', $client->id)
+      ->whereMonth('order_date', now()->month)
+      ->whereYear('order_date', now()->year)
+      ->where(function ($q) {
+        $q->where('status', 'Completed')
+          ->orWhereNotNull('completed_at');
+      })
+      ->sum('total_amount_usd');
   }
 
   /**
@@ -352,7 +365,7 @@ class EmployeeRepository
 
     $calc = $this->computePaymentCalculation($totalPackageUsd, $consumoFarmaciaActual, $saldoDeudaAnterior);
 
-    $totalPagadoUsd = round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['incentivo_metas'], 2);
+    $totalPagadoUsd = round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['salud_pagado'] + $calc['incentivo_metas'], 2);
     $bcv = ExchangeRate::where('currency_code', 'BS')->orderByDesc('updated_at')->first();
     $exchangeRateVes = $bcv ? (float) $bcv->rate : null;
     $totalPagadoVes = $exchangeRateVes !== null ? round($totalPagadoUsd * $exchangeRateVes, 2) : null;
@@ -407,12 +420,17 @@ class EmployeeRepository
     $disponibleParaIncentivo = $totalPackageUsd - self::SALARIO_BASE - self::BONO_ALIMENTACION;
     $consumoTotalADescontar = $consumoFarmaciaActual + $saldoDeudaAnterior;
 
-    if ($disponibleParaIncentivo >= $consumoTotalADescontar) {
-      $incentivoMetas = $disponibleParaIncentivo - $consumoTotalADescontar;
+    // La salud pagada este mes no puede superar lo disponible
+    $saludPagado = min($consumoTotalADescontar, max(0, $disponibleParaIncentivo));
+    $restanteParaIncentivo = $disponibleParaIncentivo - $saludPagado;
+
+    if ($restanteParaIncentivo > 0) {
+      $incentivoMetas = $restanteParaIncentivo;
       $nuevoSaldoDeuda = 0.0;
     } else {
       $incentivoMetas = 0.0;
-      $nuevoSaldoDeuda = $consumoTotalADescontar - $disponibleParaIncentivo;
+      // Excedente que no se pudo cubrir pasa al siguiente mes
+      $nuevoSaldoDeuda = $consumoTotalADescontar - max(0, $disponibleParaIncentivo);
     }
 
     return [
@@ -420,6 +438,7 @@ class EmployeeRepository
       'bono_alimentacion' => self::BONO_ALIMENTACION,
       'disponible_para_incentivo' => round($disponibleParaIncentivo, 2),
       'consumo_total_a_descontar' => round($consumoTotalADescontar, 2),
+      'salud_pagado' => round($saludPagado, 2),
       'incentivo_metas' => round($incentivoMetas, 2),
       'nuevo_saldo_deuda' => round($nuevoSaldoDeuda, 2),
     ];

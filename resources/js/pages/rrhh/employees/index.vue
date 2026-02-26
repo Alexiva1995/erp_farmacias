@@ -101,45 +101,58 @@ const fetchCurrency = async () => {
 onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
 
 const handleGenerateResignation = async (employee) => {
-
   try {
-    // Verificar si ya existe una renuncia para este empleado
-    const url = `/api/rrhh/resignations/employee/${employee.id}/edit`;
+    const resignation = employee.resignation;
 
-    const response = await axios.get(url);
-
-    if (response.data.success && response.data.data) {
-      // Ya existe una renuncia, abrir en modo edición
-
+    if (resignation) {
+      // Si existe, abrir en modo edición
       selectedEmployeeForResignation.value = employee;
-      existingResignationData.value = response.data.data;
+      existingResignationData.value = {
+        ...resignation,
+        start_date: resignation.start_date ? resignation.start_date.split('T')[0] : null,
+        effective_date: resignation.effective_date ? resignation.effective_date.split('T')[0] : null,
+        request_date: resignation.request_date ? resignation.request_date.split('T')[0] : null,
+      };
       isEditingResignation.value = true;
       showResignationDialog.value = true;
-
-      toast.info(
-        "Se encontró una renuncia existente. Se abrirá en modo de edición."
-      );
-    } else {
-      // No existe renuncia, crear nueva
-
-      selectedEmployeeForResignation.value = employee;
-      existingResignationData.value = null;
-      isEditingResignation.value = false;
-      showResignationDialog.value = true;
+      return;
     }
   } catch (error) {
+    console.error("Error al preparar edición de renuncia:", error);
+  }
 
-    // Si hay error (probablemente 404), significa que no existe renuncia
-    if (error.response?.status === 404) {
+  // Si no existe, crear nueva
+  selectedEmployeeForResignation.value = employee;
+  existingResignationData.value = null;
+  isEditingResignation.value = false;
+  showResignationDialog.value = true;
+};
 
-      selectedEmployeeForResignation.value = employee;
-      existingResignationData.value = null;
-      isEditingResignation.value = false;
-      showResignationDialog.value = true;
-    } else {
+const handleDownloadResignation = async (employee) => {
+  if (!employee.resignation?.id) {
+    toast.error("No se encontró una renuncia para descargar");
+    return;
+  }
 
-      toast.error("Error al verificar renuncias existentes");
-    }
+  try {
+    const downloadUrl = `/api/rrhh/resignations/${employee.resignation.id}/download-pdf`;
+    
+    toast.info("Descargando carta de renuncia...");
+    
+    const { data } = await axios.get(downloadUrl, { responseType: 'blob' });
+    
+    const blob = new Blob([data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `carta-renuncia-${employee.identification}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    toast.error("Error al descargar la carta de renuncia");
+    console.error(error);
   }
 };
 
@@ -221,6 +234,7 @@ watch(
       @edit-employee="handleEditEmployee"
       @delete-employee="handleDeleteEmployee"
       @generate-resignation="handleGenerateResignation"
+      @download-resignation="handleDownloadResignation"
       @reset-2fa="handleReset2FA"
     />
   </div>

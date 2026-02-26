@@ -9,6 +9,7 @@ interface SocialBenefit
 {
   public function index(array $data): LengthAwarePaginator;
   public function payment(Employee $employee, array $data): bool;
-  public function getSettlementData(Employee $employee): array;
+  public function getSettlementData(Employee $employee, array $overrides = []): array;
   public function fire(Employee $employee, array $data): bool;
+  public function generatePdf(Employee $employee, array $overrides = []): \Barryvdh\DomPDF\PDF;
 }

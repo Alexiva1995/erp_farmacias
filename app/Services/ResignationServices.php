@@ -137,9 +137,14 @@ class ResignationServices implements Resignation
      */
     public function generatePdfData($resignationData): array
     {
+        $id = $resignationData['employee_identification'];
+        // Limpiar identificación y aplicar formato V- con puntos de mil
+        $numericId = preg_replace('/[^0-9]/', '', $id);
+        $formattedId = 'V-' . number_format((int)$numericId, 0, ',', '.');
+
         return [
             'employee_name' => $resignationData['employee_name'],
-            'employee_identification' => $resignationData['employee_identification'],
+            'employee_identification' => $formattedId,
             'employee_position' => $resignationData['employee_position'] ?? 'empleado',
             'start_date_formatted' => $this->formatDate($resignationData['start_date']),
             'effective_date_formatted' => $this->formatDate($resignationData['effective_date']),

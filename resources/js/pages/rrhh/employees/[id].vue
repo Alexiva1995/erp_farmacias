@@ -63,8 +63,8 @@ const onPhotoChange = async (event) => {
 
 const defaultPerformanceData = {
   salesMetrics: {
-    historical: { totalAmount: 0, totalUnits: 0, ticketAverage: 0, unitsAverage: 0, totalOrders: 0 },
-    currentMonth: { totalAmount: 0, totalUnits: 0, ticketAverage: 0, unitsAverage: 0, totalOrders: 0 },
+    historical: { totalAmount: 0, totalUnits: 0, ticketAverage: 0, unitsAverage: 0, totalOrders: 0, ordersWithSingleProduct: 0 },
+    currentMonth: { totalAmount: 0, totalUnits: 0, ticketAverage: 0, unitsAverage: 0, totalOrders: 0, ordersWithSingleProduct: 0 },
   },
   profitabilityMetrics: {
     historical: { upsellRate: 0, avgOrderTime: 0, returnRate: 0 },
@@ -80,6 +80,22 @@ const defaultPerformanceData = {
 };
 
 const performanceData = ref(structuredClone ? structuredClone(defaultPerformanceData) : JSON.parse(JSON.stringify(defaultPerformanceData)));
+
+const crossSellingRate = computed(() => {
+  const salesData = performanceData.value.salesMetrics.currentMonth;
+  
+  if (!salesData.totalOrders || salesData.totalOrders === 0) return 0;
+  
+  // Cross-selling: porcentaje de órdenes que venden más de un producto
+  // Si ordersWithSingleProduct no existe o es inválido, asumimos 0
+  const ordersWithSingleProduct = salesData.ordersWithSingleProduct || 0;
+  const ordersWithMultipleProducts = salesData.totalOrders - ordersWithSingleProduct;
+  
+  // Validar que no sea negativo
+  const validMultipleOrders = Math.max(0, ordersWithMultipleProducts);
+  
+  return (validMultipleOrders / salesData.totalOrders) * 100;
+});
 
 const photoPreview = ref(null);
 
@@ -236,30 +252,32 @@ const fetchPerformanceData = async () => {
     performanceData.value = {
       ...fallback,
       ...(data ?? {}),
-      salesMetrics: {
-        ...fallback.salesMetrics,
-        ...(data?.salesMetrics ?? {}),
-        historical: {
-          ...fallback.salesMetrics.historical,
-          ...(data?.salesMetrics?.historical ?? {}),
-        },
-        currentMonth: {
-          ...fallback.salesMetrics.currentMonth,
-          ...(data?.salesMetrics?.currentMonth ?? {}),
-        },
+    salesMetrics: {
+      ...fallback.salesMetrics,
+      ...(data?.salesMetrics ?? {}),
+      historical: {
+        ...fallback.salesMetrics.historical,
+        ...(data?.salesMetrics?.historical ?? {}),
       },
-      profitabilityMetrics: {
-        ...fallback.profitabilityMetrics,
-        ...(data?.profitabilityMetrics ?? {}),
-        historical: {
-          ...fallback.profitabilityMetrics.historical,
-          ...(data?.profitabilityMetrics?.historical ?? {}),
-        },
-        currentMonth: {
-          ...fallback.profitabilityMetrics.currentMonth,
-          ...(data?.profitabilityMetrics?.currentMonth ?? {}),
-        },
+      currentMonth: {
+        ...fallback.salesMetrics.currentMonth,
+        ...(data?.salesMetrics?.currentMonth ?? {}),
+        ordersWithSingleProduct: Math.max(0, data?.salesMetrics?.currentMonth?.ordersWithSingleProduct ?? 0),
       },
+    },
+    profitabilityMetrics: {
+      ...fallback.profitabilityMetrics,
+      ...(data?.profitabilityMetrics ?? {}),
+      historical: {
+        ...fallback.profitabilityMetrics.historical,
+        ...(data?.profitabilityMetrics?.historical ?? {}),
+      },
+      currentMonth: {
+        ...fallback.profitabilityMetrics.currentMonth,
+        ...(data?.profitabilityMetrics?.currentMonth ?? {}),
+        ordersWithSingleProduct: data?.salesMetrics?.currentMonth?.ordersWithSingleProduct ?? 0,
+      },
+    },
       rankings: {
         ...fallback.rankings,
         ...(data?.rankings ?? {}),
@@ -443,9 +461,10 @@ const fetchPayments = async () => {
   if (!employee.value?.id) return;
   payrollLoading.value = true;
   try {
+    const now = new Date();
     const params = {
-      month: paymentForm.value.month,
-      year: paymentForm.value.year,
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
     };
     const pkg = paymentForm.value.total_package_usd ?? payrollEmployee.value.total_package_usd;
     if (pkg != null && pkg !== '') params.total_package_usd = Number(pkg);
@@ -653,11 +672,8 @@ watch(
   { immediate: true, deep: true }
 );
 
-watch(activeTab, (tab) => {
-  if (tab === 'salary' && employee.value?.id) fetchPayments();
-});
-watch([() => paymentForm.value.month, () => paymentForm.value.year], () => {
-  if (activeTab.value === 'salary' && employee.value?.id) fetchPayments();
+watch(activeView, (view) => {
+  if (view === 'salary' && employee.value?.id) fetchPayments();
 });
 
 // Lifecycle
@@ -1114,27 +1130,27 @@ onMounted(async () => {
                       <VAvatar color="success" variant="tonal" class="mb-2">
                         <VIcon icon="tabler-trending-up" />
                       </VAvatar>
-                      <div class="text-h5 font-weight-bold text-success">{{ performanceData.profitabilityMetrics.currentMonth.upsellRate }}%</div>
+                      <div class="text-h5 font-weight-bold text-success">{{ crossSellingRate.toFixed(2) }}%</div>
                       <div class="text-caption">Cross-selling</div>
                     </div>
                     </VCol>
                     <VCol cols="6">
-                      <div class="text-center mb-3">
-                        <VAvatar color="warning" variant="tonal" class="mb-2">
-                          <VIcon icon="tabler-clock" />
-                        </VAvatar>
-                        <div class="text-h5 font-weight-bold text-warning">{{ performanceData.profitabilityMetrics.currentMonth.avgOrderTime }}m</div>
-                        <div class="text-caption">Tiempo Orden</div>
-                      </div>
+                    <div class="text-center mb-3">
+                      <VAvatar color="warning" variant="tonal" class="mb-2">
+                        <VIcon icon="tabler-clock" />
+                      </VAvatar>
+                      <div class="text-h5 font-weight-bold text-warning">{{ performanceData.profitabilityMetrics.currentMonth.avgOrderTime.toFixed(2) }}m</div>
+                      <div class="text-caption">Tiempo Orden</div>
+                    </div>
                     </VCol>
                     <VCol cols="12">
-                      <div class="text-center">
-                        <VAvatar color="error" variant="tonal" class="mb-2">
-                          <VIcon icon="tabler-arrow-back-up" />
-                        </VAvatar>
-                        <div class="text-h5 font-weight-bold text-error">{{ performanceData.profitabilityMetrics.currentMonth.returnRate }}%</div>
-                        <div class="text-caption">Devoluciones</div>
-                      </div>
+                    <div class="text-center">
+                      <VAvatar color="error" variant="tonal" class="mb-2">
+                        <VIcon icon="tabler-arrow-back-up" />
+                      </VAvatar>
+                      <div class="text-h5 font-weight-bold text-error">{{ performanceData.profitabilityMetrics.currentMonth.returnRate.toFixed(2) }}%</div>
+                      <div class="text-caption">Devoluciones</div>
+                    </div>
                     </VCol>
                   </VRow>
                 </VCardText>
@@ -1280,7 +1296,7 @@ onMounted(async () => {
             </VCardText>
             <VCardText v-else>
               <p class="text-body-2 text-medium-emphasis mb-3">
-                El único valor editable es el <strong>paquete total</strong>. Los demás conceptos se distribuyen según ese mes (consumo salud y deuda anterior). Solo visual; aquí no se cierra nómina.
+                El <strong>paquete total</strong> se guarda en el perfil del empleado y puedes editarlo cuando sea necesario. La <strong>Asistencia Social de Salud</strong> se calcula automáticamente según el consumo acumulado del empleado en la farmacia.
               </p>
               <VRow dense>
                 <VCol cols="12">
@@ -1310,34 +1326,10 @@ onMounted(async () => {
                     </VBtn>
                   </div>
                 </VCol>
-                <VCol cols="12" sm="4" md="2">
-                  <VSelect
-                    v-model.number="paymentForm.month"
-                    :items="Array.from({ length: 12 }, (_, i) => ({ title: monthNames[i], value: i + 1 }))"
-                    label="Mes"
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </VCol>
-                <VCol cols="12" sm="4" md="2">
-                  <VTextField
-                    v-model.number="paymentForm.year"
-                    label="Año"
-                    type="number"
-                    min="2020"
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </VCol>
-                <VCol cols="12" sm="4" md="2" class="d-flex align-end">
-                  <VBtn variant="tonal" color="secondary" @click="fetchPayments">
-                    Actualizar distribución
-                  </VBtn>
-                </VCol>
               </VRow>
               <VCard v-if="distribution" variant="tonal" class="mt-4" density="comfortable">
                 <VCardTitle class="text-subtitle-2">
-                  Distribución para {{ formatPeriod(distribution.year, distribution.month) }}
+                  Distribución de Conceptos
                 </VCardTitle>
                 <VCardText>
                   <VList density="compact">

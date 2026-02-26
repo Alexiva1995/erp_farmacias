@@ -4,6 +4,7 @@
 namespace App\Repository;
 
 use App\Models\Employee;
+use App\Models\EmployeeSettlement;
 use App\Models\ExchangeRate;
 use App\Models\Expense;
 use App\Models\Payslip;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SocialBenefitRepository
 {
@@ -24,9 +26,19 @@ class SocialBenefitRepository
    */
   private function calculateActiveYears($createdAt): float
   {
-    $startDate = Carbon::parse($createdAt);
+    $startDate = $this->parseDate($createdAt);
     $currentDate = Carbon::now();
     return $startDate->diffInYears($currentDate, true); // true para obtener valor decimal
+  }
+
+  /**
+   * Calcular años de antigüedad entre dos fechas específicas
+   */
+  private function getDetailedSeniorityYears($startDate, $endDate): float
+  {
+    $start = $this->parseDate($startDate);
+    $end = $this->parseDate($endDate);
+    return $start->diffInYears($end, true);
   }
 
   /**
@@ -185,16 +197,31 @@ class SocialBenefitRepository
     }
   }
 
-  public function getSettlementData(Employee $employee): array
+  public function getSettlementData(Employee $employee, array $overrides = []): array
   {
     $currency = round(ExchangeRate::orderByDesc('created_at')
       ->where('currency_code', 'BS')
       ->value('rate') ?? 1, 2);
-    Log::info('Repository', ['currency' => $currency]);
+    Log::info('Repository', ['currency' => $currency, 'overrides' => $overrides]);
 
-    // Calcular años de antigüedad usando Carbon (compatible cross-platform)
-    $activeYears = $this->calculateActiveYears($employee->created_at);
-    $currentDate = $this->getCurrentDateForMySQL();
+    // Obtener datos de renuncia si existen
+    $resignation = $employee->resignation;
+
+    // Prioridad para Fecha de Ingreso: Override > Renuncia > Sistema
+    $hireDate = isset($overrides['hire_date']) && !empty($overrides['hire_date']) 
+      ? $this->parseDate($overrides['hire_date']) 
+      : ($resignation?->start_date ?? $employee->created_at);
+
+    // Calcular años de antigüedad usando Carbon
+    $activeYears = $this->calculateActiveYears($hireDate);
+    
+    // Prioridad para Fecha de Egreso/Cálculos: Override > Renuncia (effective_date) > Hoy
+    $resignationDateStr = isset($overrides['resignation_date']) && !empty($overrides['resignation_date'])
+      ? $this->parseDate($overrides['resignation_date'])->format('Y-m-d')
+      : ($resignation?->effective_date?->format('Y-m-d') ?? now()->format('Y-m-d'));
+    
+    $currentDate = $resignationDateStr; 
+    $hireDateForSql = $hireDate->format('Y-m-d');
 
     $settlement = Employee::query()
       ->select([
@@ -209,7 +236,7 @@ class SocialBenefitRepository
               ELSE 1
             END
         * {$currency}, 2), 0) as amount"),
-        DB::raw("DATEDIFF('{$currentDate}', employees.created_at) / 365.25 AS active_years")
+        DB::raw("DATEDIFF('{$currentDate}', '{$hireDateForSql}') / 365.25 AS active_years")
       ])
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
@@ -231,11 +258,25 @@ class SocialBenefitRepository
 
     // Calcular salario promedio usando los últimos 6 salarios en Bolívares
     $averageSalaryData = $this->calculateAverageSalaryForBenefits($employee);
+    
+    // Si se proporciona un salario base manual en USD, sobrescribir
+    if (isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0) {
+        $manualMonthlyBs = $overrides['base_salary_usd'] * $currency;
+        $manualQuincenalBs = $manualMonthlyBs / 2;
+        
+        $averageSalaryData = [
+            'average_salary' => round($manualMonthlyBs, 2),
+            'salaries_count' => 6, // Simulamos 6 para que el cálculo sea consistente
+            'last_salaries' => [],
+            'calculation_details' => "Salario manual ingresado: {$overrides['base_salary_usd']} USD × {$currency} BS = " . number_format($manualMonthlyBs, 2) . " BS mensual."
+        ];
+    }
+
     Log::info('Repository', ['average_salary_data' => $averageSalaryData]);
 
     // Usar el salario promedio si está disponible, sino usar el amount calculado
     $baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
-    $dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30);
+    $dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30, 2);
 
     // Calcular salario integral según fórmula: Salario Diario + [(30 × Salario Diario) ÷ 360] + [(15 × Salario Diario) ÷ 360]
     $integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
@@ -246,7 +287,8 @@ class SocialBenefitRepository
       'dailyWage' => $dailyWage,
       'baseSalary' => $baseSalary,
       'integralSalary' => $integralSalary,
-      'averageSalaryData' => $averageSalaryData
+      'averageSalaryData' => $averageSalaryData,
+      'hireDate' => $hireDate->toDateString()
     ]);
 
     $sub = DB::table('employees')
@@ -274,10 +316,23 @@ class SocialBenefitRepository
 
     Log::info('Repository', ['deductions' => $deductions]);
 
+    // Aplicar overrides a las deducciones automáticas si se proporcionan
+    $vacationDeduction = isset($overrides['vacation_deduction_bs']) && $overrides['vacation_deduction_bs'] !== null
+        ? (float)$overrides['vacation_deduction_bs']
+        : (float)($deductions->vacation_voucher ?? 0);
+
+    $vacationBonusDeduction = isset($overrides['vacation_bonus_deduction_bs']) && $overrides['vacation_bonus_deduction_bs'] !== null
+        ? (float)$overrides['vacation_bonus_deduction_bs']
+        : (float)($deductions->vacation_bonus_voucher ?? 0);
+
+    $earningsDeduction = isset($overrides['earnings_deduction_bs']) && $overrides['earnings_deduction_bs'] !== null
+        ? (float)$overrides['earnings_deduction_bs']
+        : (float)($deductions->earnings_voucher ?? 0);
+
     // NUEVAS FÓRMULAS SEGÚN CORRECCIONES DEL JEFE
 
     // Calcular meses de antigüedad para regla especial de prestaciones sociales
-    $monthsOfService = $employee->created_at->diffInMonths(Carbon::now());
+    $monthsOfService = $hireDate->diffInMonths(Carbon::now());
 
     // PRESTACIONES SOCIALES: Regla especial para menos de 6 meses
     if ($monthsOfService < 6) {
@@ -337,9 +392,9 @@ class SocialBenefitRepository
       'totalSettlementAmount' => $totalSettlementAmount,
     ]);
 
-    $totalDeductions = round((float) $deductions->vacation_voucher
-      + (float) $deductions->vacation_bonus_voucher
-      + (float) $deductions->earnings_voucher, 2);
+    $totalDeductions = round($vacationDeduction
+      + $vacationBonusDeduction
+      + $earningsDeduction, 2);
 
     Log::info('Repository', [
       'totalDeductions' => $totalDeductions,
@@ -350,13 +405,20 @@ class SocialBenefitRepository
 
     // Prevenir montos negativos - si las deducciones son mayores que el total, usar 0
     $finalUsd = max(0, round($totalSettlementUsd - $totalDeductionsUsd, 2));
-    $startDate = $employee->created_at->format('d/m/Y');
+    
+    // Si hay deducciones manuales adicionales en USD, restarlas
+    if (isset($overrides['additional_deductions_usd']) && !empty($overrides['additional_deductions_usd'])) {
+        $finalUsd = max(0, $finalUsd - (float)$overrides['additional_deductions_usd']);
+    }
+
+    $resignationDateFormatted = $this->parseDate($resignationDateStr)->format('d/m/Y');
+    $hireDateFormatted = $hireDate->format('d/m/Y');
 
     Log::info('Repository', [
       'totalSettlementUsd' => $totalSettlementUsd,
       'totalDeductionsUsd' => $totalDeductionsUsd,
       'finalUsd' => $finalUsd,
-      'startDate' => $startDate,
+      'startDate' => $hireDateFormatted,
       'employee resignation date' => $employee->resignation?->effective_date,
     ]);
 
@@ -377,14 +439,14 @@ class SocialBenefitRepository
       'total_settlement_days' => $socialBenefitsDays + $vacationVoucherDays + $vacBonusVoucherDays + $earningsVoucherDays,
       'total_settlement_amount' => $totalSettlementAmount,
       'total_settlement_usd' => $totalSettlementUsd,
-      'vacation_voucher_deduction' => (float) $deductions->vacation_voucher,
-      'vacation_bonus_voucher_deduction' => (float) $deductions->vacation_bonus_voucher,
-      'earnings_voucher_deduction' => (float) $deductions->earnings_voucher,
+      'vacation_voucher_deduction' => $vacationDeduction,
+      'vacation_bonus_voucher_deduction' => $vacationBonusDeduction,
+      'earnings_voucher_deduction' => $earningsDeduction,
       'total_deductions' => $totalDeductions,
       'total_deductions_usd' => $totalDeductionsUsd,
       'final_usd' => $finalUsd,
-      'resignation_date' => $employee->resignation?->effective_date,
-      'starting_date' => $startDate,
+      'resignation_date' => $resignationDateFormatted,
+      'starting_date' => $hireDateFormatted,
       'base_salary' => $baseSalary,
       'average_salary' => $averageSalaryData['average_salary'],
       'average_salary_count' => $averageSalaryData['salaries_count'],
@@ -395,116 +457,107 @@ class SocialBenefitRepository
 
   public function fire(Employee $employee, array $data): bool
   {
-    try {
-      // Verificar que el empleado esté activo
-      if (!$employee->is_active) {
-        Log::error('Repository', ['error' => 'Employee is already inactive', 'employee_id' => $employee->id]);
-        throw new \Exception('El empleado ya está inactivo');
+    return DB::transaction(function () use ($employee, $data) {
+      try {
+        $settlement = $this->getSettlementData($employee, $data['overrides'] ?? []);
+
+        $percentage = (float) ($data['percentage'] ?? 100);
+        $total = round((float) $data['total'], 2);
+
+        // Verificar que existan las tasas de cambio
+        $cop_exchange_rate = ExchangeRate::orderByDesc('created_at')
+          ->where('currency_code', 'COP')
+          ->first();
+
+        $bs_exchange_rate = ExchangeRate::orderByDesc('created_at')
+          ->where('currency_code', 'BS')
+          ->first();
+
+        if (!$bs_exchange_rate) {
+          throw new \Exception('No se encontró la tasa de cambio BS');
+        }
+
+        $total_bs = round($total * $bs_exchange_rate->rate, 2);
+        $currency = $data['currency'];
+        $count = $data['count'];
+        $payed = $data['payed'];
+
+        Expense::create([
+          'name' => "Despido de empleado ID: {$employee->id}",
+          'category_id' => 1,
+          'amount' => $payed,
+          'total_usd' => abs($total),
+          'currency' => $currency,
+          'conversion_rate' => $bs_exchange_rate->rate,
+          'expense_date' => now(),
+          'user_id' => Auth::user()?->id ?? 1,
+          'count' => $count,
+          'is_deductible' => true,
+          'status' => Expense::STATUS_APPROVED
+        ]);
+
+        $type = match ($count) {
+          'Efectivo' => 'CASH',
+          'Tarjeta' => 'CARD',
+          'Pago móvil' => 'MOBILE',
+          'Transferencia' => 'TRANSFER',
+          'Binance' => 'BINANCE',
+          'Paypal' => 'PAYPAL'
+        };
+
+        $exchange_rate_id = $currency === 'BS'
+          ? $bs_exchange_rate->id
+          : ($currency === 'COP'
+            ? $cop_exchange_rate->id
+            : null);
+
+        Transaction::create([
+          'user_id' => Auth::user()?->id ?? 1,
+          'category_id' => 1,
+          'exchange_rate_id' => $exchange_rate_id,
+          'description' => "Despido de empleado ID: {$employee->id}",
+          'currency' => $currency,
+          'type' => $type,
+          'amount' => $payed,
+          'movement_type' => 'OUT',
+          'transaction_date' => now()
+        ]);
+
+        EmployeeSettlement::create([
+          'employee_id' => $employee->id,
+          'currency' => $settlement['currency'],
+          'social_benefits_days' => $settlement['social_benefits_days'],
+          'social_benefits_amount' => $settlement['social_benefits_amount'],
+          'vacation_voucher_days' => $settlement['vacation_voucher_days'],
+          'vacation_voucher_amount' => $settlement['vacation_voucher_amount'],
+          'vacation_bonus_voucher_days' => $settlement['vacation_bonus_voucher_days'],
+          'vacation_bonus_voucher_amount' => $settlement['vacation_bonus_voucher_amount'],
+          'earnings_voucher_days' => $settlement['earnings_voucher_days'],
+          'earnings_voucher_amount' => $settlement['earnings_voucher_amount'],
+          'total_settlement' => $settlement['total_settlement_amount'],
+          'vacation_voucher_deduction' => $settlement['vacation_voucher_deduction'],
+          'vacation_bonus_voucher_deduction' => $settlement['vacation_bonus_voucher_deduction'],
+          'earnings_voucher_deduction' => $settlement['earnings_voucher_deduction'],
+          'total_deduction' => $settlement['total_deductions'],
+          'subtotal' => $settlement['final_usd'],
+          'percentage' => $percentage,
+          'total' => $total,
+        ]);
+
+        // Actualizar estado del empleado al final (si todo sale bien)
+        $employee->update(['is_active' => false]);
+        
+        Log::info('Repository', ['employee_fired_successfully' => $employee->id]);
+        return true;
+      } catch (\Exception $e) {
+        Log::error('Repository', [
+          'error' => $e->getMessage(),
+          'employee_id' => $employee->id,
+          'data' => $data
+        ]);
+        throw $e;
       }
-
-      // Actualizar estado del empleado
-      $employee->update(['is_active' => false]);
-      Log::info('Repository', ['employee_deactivated' => $employee->id]);
-
-      $settlement = $this->getSettlementData($employee);
-
-      $percentage = (float) ($data['percentage'] ?? 100);
-      $total = round((float) $data['total'], 2);
-
-      // Verificar que existan las tasas de cambio
-      $cop_exchange_rate = ExchangeRate::orderByDesc('created_at')
-        ->where('currency_code', 'COP')
-        ->first();
-
-      $bs_exchange_rate = ExchangeRate::orderByDesc('created_at')
-        ->where('currency_code', 'BS')
-        ->first();
-
-      if (!$bs_exchange_rate) {
-        Log::error('Repository', ['error' => 'BS exchange rate not found']);
-        throw new \Exception('No se encontró la tasa de cambio BS');
-      }
-
-      $total_bs = round($total * $bs_exchange_rate->rate, 2);
-      $currency = $data['currency'];
-      $count = $data['count'];
-      $payed = $data['payed'];
-
-      Expense::create([
-        'name' => "Despido de empleado ID: {$employee->id}",
-        'category_id' => 1,
-        'amount' => $payed,
-        'amount_usd' => abs($total),
-        'amount_bs' => abs($total_bs),
-        'currency' => $currency,
-        'expense_date' => now(),
-        'user_id' => Auth::user()?->id ?? 1,
-        'count' => $count,
-        'is_deductible' => true,
-        'type_of_expense' => 'Normal'
-      ]);
-
-      $type = match ($count) {
-        'Efectivo' => 'CASH',
-        'Tarjeta' => 'CARD',
-        'Pago móvil' => 'MOBILE',
-        'Transferencia' => 'TRANSFER',
-        'Binance' => 'BINANCE',
-        'Paypal' => 'PAYPAL'
-      };
-
-      $exchange_rate_id = $currency === 'BS'
-        ? $bs_exchange_rate->id
-        : ($currency === 'COP'
-          ? $cop_exchange_rate->id
-          : null);
-
-      Transaction::create([
-        'user_id' => Auth::user()?->id ?? 1,
-        'category_id' => 1,
-        'exchange_rate_id' => $exchange_rate_id,
-        'description' => "Despido de empleado ID: {$employee->id}",
-        'currency' => $currency,
-        'type' => $type,
-        'amount' => $payed,
-        'movement_type' => 'OUT',
-        'transaction_date' => now()
-      ]);
-
-      $employee->settlement()->create([
-        'currency' => $settlement['currency'],
-        'social_benefits_days' => $settlement['social_benefits_days'],
-        'social_benefits_amount' => $settlement['social_benefits_amount'],
-        'vacation_voucher_days' => $settlement['vacation_voucher_days'],
-        'vacation_voucher_amount' => $settlement['vacation_voucher_amount'],
-        'vacation_bonus_voucher_days' => $settlement['vacation_bonus_voucher_days'],
-        'vacation_bonus_voucher_amount' => $settlement['vacation_bonus_voucher_amount'],
-        'earnings_voucher_days' => $settlement['earnings_voucher_days'],
-        'earnings_voucher_amount' => $settlement['earnings_voucher_amount'],
-        'total_settlement' => $settlement['total_settlement_amount'],
-        'vacation_voucher_deduction' => $settlement['vacation_voucher_deduction'],
-        'vacation_bonus_voucher_deduction' => $settlement['vacation_bonus_voucher_deduction'],
-        'earnings_voucher_deduction' => $settlement['earnings_voucher_deduction'],
-        'total_deduction' => $settlement['total_deductions'],
-        'subtotal' => $settlement['final_usd'],
-        'percentage' => $percentage,
-        'total' => $total,
-      ]);
-
-      Log::info('Repository', ['employee_fired_successfully' => $employee->id]);
-      return true;
-    } catch (\Exception $e) {
-      Log::error('Repository', [
-        'error' => $e->getMessage(),
-        'employee_id' => $employee->id,
-        'data' => $data
-      ]);
-
-      // Revertir el cambio de estado si falló el proceso
-      $employee->update(['is_active' => true]);
-
-      throw $e;
-    }
+    });
   }
 
   /**
@@ -639,5 +692,79 @@ class SocialBenefitRepository
         number_format($averageQuincenal, 2) . " Bs. × 2 = " .
         number_format($averageMonthly, 2) . " Bs."
     ];
+  }
+
+  public function generatePdf(Employee $employee, array $overrides = []): \Barryvdh\DomPDF\PDF
+  {
+    $data = $this->getSettlementData($employee, $overrides);
+
+    $pdfData = [
+      'name' => $employee->name,
+      'last_name' => $employee->last_name,
+      'identification' => $employee->identification,
+      'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
+      'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
+      'starting_date' => $data['starting_date'],
+      'resignation_date' => $data['resignation_date'],
+      'active_years' => $data['active_years'],
+      'detailed_seniority' => $this->getDetailedSeniority($data['starting_date'], $data['resignation_date']),
+      'base_salary' => $data['base_salary'],
+      'integral_salary' => $data['integral_salary'],
+      'social_benefits_days' => $data['social_benefits_days'],
+      'social_benefits_amount' => $data['social_benefits_amount'],
+      'vacation_voucher_days' => $data['vacation_voucher_days'],
+      'vacation_voucher_amount' => $data['vacation_voucher_amount'],
+      'vacation_bonus_voucher_days' => $data['vacation_bonus_voucher_days'],
+      'vacation_bonus_voucher_amount' => $data['vacation_bonus_voucher_amount'],
+      'earnings_voucher_days' => $data['earnings_voucher_days'],
+      'earnings_voucher_amount' => $data['earnings_voucher_amount'],
+      'total_settlement_amount' => $data['total_settlement_amount'],
+      'vacation_voucher_deduction' => $data['vacation_voucher_deduction'],
+      'vacation_bonus_voucher_deduction' => $data['vacation_bonus_voucher_deduction'],
+      'earnings_voucher_deduction' => $data['earnings_voucher_deduction'],
+      'total_deductions' => $data['total_deductions'],
+      'final_usd' => $data['final_usd'],
+      'currency' => $data['currency'],
+    ];
+
+    // Incluir deducciones adicionales en el PDF si existen
+    if (isset($overrides['additional_deductions_usd']) && $overrides['additional_deductions_usd'] > 0) {
+        $pdfData['additional_deductions_bs'] = $overrides['additional_deductions_usd'] * $data['currency'];
+    }
+
+    return Pdf::loadView('pdf.settlement', $pdfData);
+  }
+
+  /**
+   * Obtener antigüedad detallada en formato string
+   */
+  private function getDetailedSeniority($startDate, $endDate): string
+  {
+    $start = $this->parseDate($startDate);
+    $end = $this->parseDate($endDate);
+    $diff = $start->diff($end);
+
+    $parts = [];
+    if ($diff->y > 0) $parts[] = $diff->y . ($diff->y == 1 ? ' año' : ' años');
+    if ($diff->m > 0) $parts[] = $diff->m . ($diff->m == 1 ? ' mes' : ' meses');
+    if ($diff->d > 0) $parts[] = $diff->d . ($diff->d == 1 ? ' día' : ' días');
+
+    if (empty($parts)) return '0 días';
+
+    $last = array_pop($parts);
+    return count($parts) > 0 ? implode(', ', $parts) . ' y ' . $last : $last;
+  }
+
+  private function parseDate($date)
+  {
+    if ($date instanceof Carbon) return $date;
+    
+    // Intentar formato DD/MM/YYYY
+    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
+      return Carbon::createFromFormat('d/m/Y', $date);
+    }
+    
+    // Por defecto Carbon::parse
+    return Carbon::parse($date);
   }
 }
