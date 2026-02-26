@@ -1042,69 +1042,60 @@ onMounted(async () => {
           </VRow>
 
           <!-- KPIs Históricos -->
+          <h3 class="text-subtitle-1 font-weight-bold mb-3">
+            <VIcon icon="tabler-history" class="mr-2" />
+            Datos Históricos Acumulados
+          </h3>
           <VRow class="mb-4">
-            <VCol cols="12">
-              <VCard>
-                <VCardTitle class="text-subtitle-1">
-                  <VIcon icon="tabler-history" class="mr-2" />
-                  Datos Históricos Acumulados
-                </VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VRow>
-                    <VCol cols="12" sm="6" md="3">
-                      <VCard variant="tonal" color="primary" height="100">
-                        <VCardText class="d-flex align-center justify-center text-center">
-                          <div>
-                            <VAvatar color="primary" variant="tonal" class="mb-2">
-                              <VIcon icon="tabler-cash-bank" />
-                            </VAvatar>
-                            <div class="text-h6 font-weight-bold">{{ performanceData.salesMetrics.historical.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                            <div class="text-caption">Ventas Hist.</div>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="6" md="3">
-                      <VCard variant="tonal" color="success" height="100">
-                        <VCardText class="d-flex align-center justify-center text-center">
-                          <div>
-                            <VAvatar color="success" variant="tonal" class="mb-2">
-                              <VIcon icon="tabler-stack" />
-                            </VAvatar>
-                            <div class="text-h6 font-weight-bold">{{ performanceData.salesMetrics.historical.totalUnits.toLocaleString() }}</div>
-                            <div class="text-caption">Unidades Hist.</div>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="6" md="3">
-                      <VCard variant="tonal" color="warning" height="100">
-                        <VCardText class="d-flex align-center justify-center text-center">
-                          <div>
-                            <VAvatar color="warning" variant="tonal" class="mb-2">
-                              <VIcon icon="tabler-chart-bar" />
-                            </VAvatar>
-                            <div class="text-h6 font-weight-bold">{{ performanceData.salesMetrics.historical.ticketAverage.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                            <div class="text-caption">Ticket Hist.</div>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="6" md="3">
-                      <VCard variant="tonal" color="info" height="100">
-                        <VCardText class="d-flex align-center justify-center text-center">
-                          <div>
-                            <VAvatar color="info" variant="tonal" class="mb-2">
-                              <VIcon icon="tabler-chart-dots-3" />
-                            </VAvatar>
-                            <div class="text-h6 font-weight-bold">{{ performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }}</div>
-                            <div class="text-caption">Unds. Hist.</div>
-                          </div>
-                        </VCardText>
-                      </VCard>
-                    </VCol>
-                  </VRow>
+            <VCol cols="12" sm="6" md="3">
+              <VCard color="primary" theme="dark" height="120">
+                <VCardText class="d-flex align-center justify-center text-center">
+                  <div>
+                    <VAvatar color="white" variant="tonal" class="mb-2">
+                      <VIcon icon="tabler-cash-bank" color="white" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
+                    <div class="text-caption">Ventas Totales</div>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VCard variant="tonal" color="success" height="120">
+                <VCardText class="d-flex align-center justify-center text-center">
+                  <div>
+                    <VAvatar color="success" variant="tonal" class="mb-2">
+                      <VIcon icon="tabler-stack" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.totalUnits.toLocaleString() }}</div>
+                    <div class="text-caption">Unidades Totales</div>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VCard variant="tonal" color="warning" height="120">
+                <VCardText class="d-flex align-center justify-center text-center">
+                  <div>
+                    <VAvatar color="warning" variant="tonal" class="mb-2">
+                      <VIcon icon="tabler-receipt" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.ticketAverage.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
+                    <div class="text-caption">Ticket Prom. Hist.</div>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VCard variant="tonal" color="info" height="120">
+                <VCardText class="d-flex align-center justify-center text-center">
+                  <div>
+                    <VAvatar color="info" variant="tonal" class="mb-2">
+                      <VIcon icon="tabler-box-multiple" />
+                    </VAvatar>
+                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }}</div>
+                    <div class="text-caption">Unds. Prom. Hist.</div>
+                  </div>
                 </VCardText>
               </VCard>
             </VCol>
@@ -1119,13 +1110,13 @@ onMounted(async () => {
                 <VCardText>
                   <VRow>
                     <VCol cols="6">
-                      <div class="text-center mb-3">
-                        <VAvatar color="success" variant="tonal" class="mb-2">
-                          <VIcon icon="tabler-trending-up" />
-                        </VAvatar>
-                        <div class="text-h5 font-weight-bold text-success">{{ performanceData.profitabilityMetrics.currentMonth.upsellRate }}%</div>
-                        <div class="text-caption">UP-selling</div>
-                      </div>
+                    <div class="text-center mb-3">
+                      <VAvatar color="success" variant="tonal" class="mb-2">
+                        <VIcon icon="tabler-trending-up" />
+                      </VAvatar>
+                      <div class="text-h5 font-weight-bold text-success">{{ performanceData.profitabilityMetrics.currentMonth.upsellRate }}%</div>
+                      <div class="text-caption">Cross-selling</div>
+                    </div>
                     </VCol>
                     <VCol cols="6">
                       <div class="text-center mb-3">
@@ -1174,7 +1165,7 @@ onMounted(async () => {
               <VCard>
                 <VCardTitle class="text-subtitle-1">Top 10 Productos por Unidades</VCardTitle>
                 <VDivider />
-                <VCardText style="max-block-size: 300px; overflow-y: auto;">
+                <VCardText>
                   <VList density="compact">
                     <VListItem v-for="(product, i) in performanceData.rankings.topProductsByUnits" :key="i">
                       <template #prepend>
@@ -1198,7 +1189,7 @@ onMounted(async () => {
               <VCard>
                 <VCardTitle class="text-subtitle-1">Top 10 Productos por Monto</VCardTitle>
                 <VDivider />
-                <VCardText style="max-block-size: 300px; overflow-y: auto;">
+                <VCardText>
                   <VList density="compact">
                     <VListItem v-for="(product, i) in performanceData.rankings.topProductsByAmount" :key="i">
                       <template #prepend>
@@ -1436,38 +1427,39 @@ onMounted(async () => {
 }
 
 .avatar-wrapper .v-avatar__img {
-  width: 100%;
-  height: 100%;
+  block-size: 100%;
+  inline-size: 100%;
   object-fit: cover;
 }
 
 .avatar-upload-overlay {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 60%);
   gap: 4px;
+  inset: 0;
 }
 
 .avatar-camera-badge {
   position: absolute;
-  inset-block-end: 0;
-  inset-inline-end: 0;
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(var(--v-theme-primary));
   border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  block-size: 32px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 20%);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  inline-size: 32px;
+  inset-block-end: 0;
+  inset-inline-end: 0;
   transition: opacity 0.2s ease;
 }
+
 .avatar-camera-badge:hover {
   opacity: 0.9;
 }
