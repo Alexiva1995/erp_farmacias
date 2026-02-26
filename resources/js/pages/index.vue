@@ -152,7 +152,7 @@
               <div class="d-flex justify-space-between align-center mb-2">
                 <span class="text-body-1">Total Acumulado</span>
                 <span class="text-h4 font-weight-bold text-success">
-                  {{ formatCurrency(totalIncomeData.total_income) }}
+                  {{ formatCurrency(totalIncomeData?.total_income || 0) }}
                 </span>
               </div>
             </div>
@@ -172,7 +172,7 @@
                   <span class="text-body-2">Ventas Gravadas</span>
                 </div>
                 <span class="text-body-1 font-weight-medium">
-                  {{ formatCurrency(totalIncomeData.taxable_amount) }}
+                  {{ formatCurrency(totalIncomeData?.taxable_amount || 0) }}
                 </span>
               </div>
 
@@ -187,22 +187,23 @@
                   <span class="text-body-2">Ventas Exentas</span>
                 </div>
                 <span class="text-body-1 font-weight-medium">
-                  {{ formatCurrency(totalIncomeData.exempt_amount) }}
+                  {{ formatCurrency(totalIncomeData?.exempt_amount || 0) }}
                 </span>
               </div>
             </div>
 
             <VProgressLinear
-              :model-value="totalIncomeData.taxable_percentage || 0"
+              :model-value="totalIncomeData?.taxable_percentage || 0"
               color="success"
               height="8"
               rounded
               class="mb-2"
             />
             <div class="text-caption text-medium-emphasis">
-              {{ (totalIncomeData.taxable_percentage || 0).toFixed(0) }}%
+              {{ (totalIncomeData?.taxable_percentage || 0).toFixed(0) }}%
               Gravadas |
-              {{ (totalIncomeData.exempt_percentage || 0).toFixed(0) }}% Exentas
+              {{ (totalIncomeData?.exempt_percentage || 0).toFixed(0) }}%
+              Exentas
             </div>
           </VCardText>
         </VCard>
@@ -221,7 +222,11 @@
               <div class="d-flex justify-space-between align-center mb-2">
                 <span class="text-body-1">Total Deducible</span>
                 <span class="text-h4 font-weight-bold text-warning">
-                  {{ formatCurrency(deductibleExpensesData.total_deductible) }}
+                  {{
+                    formatCurrency(
+                      deductibleExpensesData?.total_deductible || 0,
+                    )
+                  }}
                 </span>
               </div>
             </div>
@@ -231,7 +236,7 @@
             <!-- Lista de Gastos Deducibles -->
             <VList density="compact" class="pa-0">
               <VListItem
-                v-for="category in deductibleExpensesData.categories"
+                v-for="category in deductibleExpensesData?.categories || []"
                 :key="category.category_id"
                 class="px-0 mb-2"
               >
@@ -246,7 +251,7 @@
               </VListItem>
 
               <VListItem
-                v-if="deductibleExpensesData.categories.length === 0"
+                v-if="!deductibleExpensesData?.categories?.length"
                 class="px-0"
               >
                 <VListItemTitle
@@ -285,7 +290,7 @@
                         Ingresos Totales
                       </div>
                       <div class="text-h4 font-weight-bold text-success mb-2">
-                        {{ formatCurrency(revenueStats.total_income) }}
+                        {{ formatCurrency(revenueStats?.total_income || 0) }}
                       </div>
                       <VChip size="small" color="success" variant="tonal">
                         <VIcon
@@ -308,7 +313,7 @@
                         Gastos Totales
                       </div>
                       <div class="text-h4 font-weight-bold text-warning mb-2">
-                        {{ formatCurrency(revenueStats.total_expenses) }}
+                        {{ formatCurrency(revenueStats?.total_expenses || 0) }}
                       </div>
                       <VChip size="small" color="warning" variant="tonal">
                         <VIcon icon="tabler-receipt" size="14" class="mr-1" />
@@ -361,7 +366,7 @@
                 <span class="text-h5 font-weight-bold text-error">
                   {{
                     formatCurrency(
-                      nonDeductibleExpensesData.total_non_deductible
+                      nonDeductibleExpensesData?.total_non_deductible || 0,
                     )
                   }}
                 </span>
@@ -372,7 +377,7 @@
 
             <VList density="compact" class="pa-0 bg-transparent">
               <VListItem
-                v-for="category in nonDeductibleExpensesData.categories"
+                v-for="category in nonDeductibleExpensesData?.categories || []"
                 :key="category.category_id"
                 class="px-0 mb-2"
               >
@@ -387,7 +392,7 @@
               </VListItem>
 
               <VListItem
-                v-if="nonDeductibleExpensesData.categories.length === 0"
+                v-if="!nonDeductibleExpensesData?.categories?.length"
                 class="px-0"
               >
                 <VListItemTitle
@@ -601,7 +606,14 @@ const fetchIslrData = async () => {
     const { data } = await axios.get("/islr/summary", {
       params: { year: selectedYear.value },
     });
-    islrData.value = data.data;
+    islrData.value = data.data || {
+      gross_income: 0,
+      deductions: 0,
+      net_income: 0,
+      ibg: 0,
+      costs: 0,
+      year: selectedYear.value,
+    };
 
     await fetchTaxUnit();
   } catch (error) {
@@ -626,7 +638,13 @@ const fetchTotalIncome = async () => {
     const { data } = await axios.get("/dashboard/total-income", {
       params: { year: selectedYear.value },
     });
-    totalIncomeData.value = data.data;
+    totalIncomeData.value = data.data || {
+      total_income: 0,
+      exempt_amount: 0,
+      taxable_amount: 0,
+      exempt_percentage: 0,
+      taxable_percentage: 0,
+    };
   } catch (error) {
     console.error("Error al cargar ingresos totales:", error);
   }
@@ -637,7 +655,10 @@ const fetchDeductibleExpenses = async () => {
     const { data } = await axios.get("/dashboard/deductible-expenses", {
       params: { year: selectedYear.value },
     });
-    deductibleExpensesData.value = data.data;
+    deductibleExpensesData.value = data.data || {
+      total_deductible: 0,
+      categories: [],
+    };
   } catch (error) {
     console.error("Error al cargar gastos deducibles:", error);
   }
@@ -648,7 +669,11 @@ const fetchRevenueStats = async () => {
     const { data } = await axios.get("/dashboard/revenue-report", {
       params: { year: selectedYear.value },
     });
-    revenueStats.value = data.data.summary;
+    revenueStats.value = data.data?.summary || {
+      total_income: 0,
+      total_expenses: 0,
+      net_revenue: 0,
+    };
   } catch (error) {
     console.error("Error al cargar estadísticas de ingresos:", error);
   }
@@ -659,7 +684,10 @@ const fetchNonDeductibleExpenses = async () => {
     const { data } = await axios.get("/dashboard/non-deductible-expenses", {
       params: { year: selectedYear.value },
     });
-    nonDeductibleExpensesData.value = data.data;
+    nonDeductibleExpensesData.value = data.data || {
+      total_non_deductible: 0,
+      categories: [],
+    };
   } catch (error) {
     console.error("Error al cargar gastos no deducibles:", error);
   }
@@ -707,7 +735,7 @@ const createDeclaration = async () => {
   } catch (error) {
     console.error("Error al crear declaración:", error);
     toast.error(
-      error.response?.data?.message || "Error al crear la declaración"
+      error.response?.data?.message || "Error al crear la declaración",
     );
   } finally {
     savingDeclaration.value = false;
