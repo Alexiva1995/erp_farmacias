@@ -101,6 +101,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/productsAll', [ProductController::class, 'getProducts']);
     Route::get('/products/autocomplete', [ProductController::class, 'forAutocomplete']);
     Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
+    Route::get('/products/{product}/stock', [ProductController::class, 'getStock']);
     Route::patch('/products/incomplete/{product}', [ProductController::class, 'updateIncomplete']);
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::post('/products', [ProductController::class, 'store']);
@@ -186,6 +187,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
             Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
             Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
+            Route::delete('{sourceType}/{id}', [InventoryCycleController::class, 'deleteCount']);
         });
         Route::prefix("statistics")->group(function () {
             Route::get("/", [InventoryCycleController::class, "getCountStatistics"])->name("inventory.statistics");

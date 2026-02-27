@@ -6,6 +6,8 @@ use App\Models\Employee;
 use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\ProductCount;
+use App\Models\SaleCount;
+use App\Models\InvoiceCount;
 use App\Models\CleaningActivityExecution;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -101,27 +103,27 @@ class EmployeePerformanceQueryService
 
     private function calculateSales(int $userId, int $month, int $year): float
     {
-        return (float) Order::where('seller_id', $userId)
+        return round((float) Order::where('seller_id', $userId)
             ->whereMonth('order_date', $month)
             ->whereYear('order_date', $year)
             ->where('status', 'Completed')
-            ->sum('total_amount_usd');
+            ->sum('total_amount_usd'), 2);
     }
 
     private function calculateGrowth(int $userId, float $currentSales, int $prevMonth, int $prevYear): float
     {
-        $salesPrev = Order::where('seller_id', $userId)
+        $salesPrev = (float) Order::where('seller_id', $userId)
             ->whereMonth('order_date', $prevMonth)
             ->whereYear('order_date', $prevYear)
+            ->where('status', 'Completed')
             ->sum('total_amount_usd');
 
         if ($salesPrev > 0) {
-            return (($currentSales - $salesPrev) / $salesPrev) * 100;
-        } elseif ($currentSales > 0) {
-            return 100;
+            return round((($currentSales - $salesPrev) / $salesPrev) * 100, 2);
         }
 
-        return 0;
+        // Si el mes pasado no hubo ventas, el crecimiento es 0% según requerimiento de usuario
+        return 0.0;
     }
 
     private function calculateOrderDependentMetrics(Employee $employee, int $month, int $year): array
@@ -168,14 +170,41 @@ class EmployeePerformanceQueryService
 
     private function calculateInventoryMetrics(int $userId, int $month, int $year): array
     {
+        // 1. Conteos de Cíclicos
         $productCounts = ProductCount::where('user_id', $userId)
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
             ->get();
 
+        // 2. Conteos de Ventas
+        $saleCounts = SaleCount::where('user_id', $userId)
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->get();
+
+        // 3. Conteos de Facturas
+        $invoiceCounts = InvoiceCount::where('user_id', $userId)
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->get();
+
+        // Unificamos el total de conteos realizados
+        $totalCounted = $productCounts->count() + $saleCounts->count() + $invoiceCounts->count();
+
+        // Lógica de "Error": Cuando el usuario reportó discrepancia pero el admin corrigió (correction_difference > 0)
+        // O cuando la discrepancia inicial fue desmentida por el admin (discrepancy inicial != 0, approved, discrefancy final = 0)
+        $errors = 0;
+
+        // Solo ProductCount tiene correction_difference actualmente
+        foreach ($productCounts as $count) {
+            if ($count->status === 'approved' && $count->correction_difference > 0) {
+                $errors++;
+            }
+        }
+
         return [
-            'inventory_counted' => $productCounts->count(),
-            'inventory_errors' => $productCounts->sum('correction_difference'),
+            'inventory_counted' => $totalCounted,
+            'inventory_errors' => $errors,
         ];
     }
 

@@ -57,22 +57,6 @@ const fetchEmployeeProducts = async () => {
   }
 };
 
-// Función para obtener los productos
-const fetchProducts = async () => {
-  try {
-    const response = await axios.get("/products", {
-      params: { itemsPerPage: 10000 }, // Obtener todos los productos
-    });
-    // Guardar los productos con su estructura original para VAutocomplete
-    console.log(response);
-
-    products.value = response.data.data;
-  } catch (error) {
-    console.error("Error al obtener productos:", error);
-    toast.error("Error al cargar los productos.");
-  }
-};
-
 // Función para obtener los empleados
 const fetchEmployees = async () => {
   try {
@@ -107,7 +91,6 @@ watch([searchQuery, selectedProduct], () => {
 });
 
 onMounted(() => {
-  fetchProducts();
   fetchEmployees();
   fetchEmployeeProducts();
 });

@@ -1,5 +1,39 @@
 <script setup>
-import { ref } from "vue";
+import axios from "@/plugins/axios";
+import { ref, watch } from "vue";
+
+const searchProduct = ref("");
+const remoteProducts = ref([]);
+const isSearching = ref(false);
+
+const loadRemoteProducts = async (query = "") => {
+  if (query.length < 2 && !/^\d+$/.test(query)) {
+    remoteProducts.value = [];
+    return;
+  }
+  isSearching.value = true;
+  try {
+    const response = await axios.get("/products", {
+      params: { q: query, itemsPerPage: 50 },
+    });
+    remoteProducts.value = response.data.data.map((p) => ({
+      title: `${p.id} - ${p.name}`,
+      value: p.id,
+    }));
+  } catch (error) {
+    console.error("Error buscando productos:", error);
+  } finally {
+    isSearching.value = false;
+  }
+};
+
+let searchDebounce;
+watch(searchProduct, (val) => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    loadRemoteProducts(val);
+  }, 400);
+});
 
 const props = defineProps({
   searchQuery: String,
@@ -103,7 +137,7 @@ const handleClear = () => {
         <VCol cols="12" sm="6" md="6">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por nombre de empleado..."
+            placeholder="Buscar empleado por nombre..."
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
@@ -112,13 +146,15 @@ const handleClear = () => {
         <VCol cols="12" sm="6" md="6">
           <VAutocomplete
             :model-value="props.selectedProduct"
-            :items="props.products"
-            item-title="name"
-            item-value="id"
-            :loading="props.loading"
-            label="Producto"
-            placeholder="Filtrar por producto"
+            v-model:search="searchProduct"
+            :items="remoteProducts"
+            :loading="isSearching || props.loading"
+            item-title="title"
+            item-value="value"
+            label="Filtrar por Producto"
+            placeholder="Escriba ID o nombre del producto..."
             clearable
+            :no-filter="true"
             @update:model-value="emit('update:selectedProduct', $event)"
           />
         </VCol>

@@ -198,6 +198,7 @@ class InventoryCycleActionService
         $finalDiscrepancy = $finalQuantity - $productCount->system_quantity;
 
         $product = $productCount->product;
+        $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {
             foreach ($data['updated_lots'] as $lotData) {
@@ -206,17 +207,12 @@ class InventoryCycleActionService
                 if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
                     $updateData = ['quantity' => $lotData['quantity']];
                     
-                    // Actualizar lot_number si se proporciona
                     if (isset($lotData['lot_number'])) {
                         $updateData['lot_number'] = $lotData['lot_number'];
                     }
-                    
-                    // Actualizar expiration_date si se proporciona
                     if (isset($lotData['expiration_date'])) {
                         $updateData['expiration_date'] = $lotData['expiration_date'];
                     }
-                    
-                    // Actualizar location si se proporciona
                     if (isset($lotData['location'])) {
                         $updateData['location'] = $lotData['location'];
                     }
@@ -225,12 +221,13 @@ class InventoryCycleActionService
 
                     ProductDistribution::create([
                         'product_count_id' => $productCount->id,
-                        'product_lot_id' => $lotToUpdate->id,
-                        'quantity' => $lotData['quantity'],
+                        'product_lot_id'   => $lotToUpdate->id,
+                        'quantity'         => $lotData['quantity'],
                     ]);
+                    $distributionsCreated = true;
                 } else {
                     Log::warning('Se intentó actualizar un lote no encontrado o no perteneciente al producto.', [
-                        'lot_data' => $lotData,
+                        'lot_data'   => $lotData,
                         'product_id' => $product->id,
                     ]);
                 }
@@ -242,49 +239,62 @@ class InventoryCycleActionService
                 ->where('unit_cost', '>', 0)
                 ->get();
 
-            $newLotUnitCost = 0;
-
-            if ($existingLotsWithCost->isNotEmpty()) {
-                $newLotUnitCost = $existingLotsWithCost->avg('unit_cost');
-            } else {
-                $newLotUnitCost = $product->unit_price ?? 0;
-            }
-
-            $newLotUnitCost = round($newLotUnitCost, 2);
+            $newLotUnitCost = $existingLotsWithCost->isNotEmpty()
+                ? round($existingLotsWithCost->avg('unit_cost'), 2)
+                : ($product->unit_price ?? 0);
 
             foreach ($data['new_lots'] as $lotData) {
                 $newLot = ProductLot::create([
-                    'product_id' => $product->id,
-                    'lot_number' => $lotData['lot_number'],
+                    'product_id'      => $product->id,
+                    'lot_number'      => $lotData['lot_number'],
                     'expiration_date' => $lotData['expiration_date'],
-                    'quantity' => $lotData['quantity'],
-                    'unit_cost' => $newLotUnitCost,
-                    'supplier_id' => null,
+                    'quantity'        => $lotData['quantity'],
+                    'unit_cost'       => $newLotUnitCost,
+                    'supplier_id'     => null,
                 ]);
 
                 ProductDistribution::create([
                     'product_count_id' => $productCount->id,
-                    'product_lot_id' => $newLot->id,
-                    'quantity' => $newLot->quantity,
+                    'product_lot_id'   => $newLot->id,
+                    'quantity'         => $newLot->quantity,
                 ]);
+                $distributionsCreated = true;
             }
         }
 
-        $productCount->counted_quantity = $finalQuantity;
-        $productCount->discrepancy = $finalDiscrepancy;
-        $productCount->status = 'approved';
-        $productCount->supervisor_id = Auth::id();
-        $productCount->correction_difference = $isCorrection ? abs($productCount->getOriginal('counted_quantity') - $finalQuantity) : 0;
+        // Si no se creó ninguna distribución, el conteo físico coincide con el sistema.
+        // Se comporta igual que discrepancia=0 al momento del registro:
+        // forzar discrepancia a 0 y crear movimiento de verificación.
+        if (!$distributionsCreated) {
+            $realCurrentStock = (int) $product->lots()->sum('quantity');
+            $finalQuantity    = $realCurrentStock;
+            $finalDiscrepancy = 0;
+            
+            // También actualizamos el system_quantity en el registro para que la discrepancia sea 0 real.
+            $productCount->system_quantity = $realCurrentStock;
+            
+            $this->createVerificationMovement($product, $realCurrentStock, now());
+        }
+
+        $productCount->counted_quantity    = $finalQuantity;
+        $productCount->discrepancy         = $finalDiscrepancy;
+        $productCount->status              = 'approved';
+        $productCount->supervisor_id       = Auth::id();
+        $productCount->correction_difference = $isCorrection
+            ? abs($productCount->getOriginal('counted_quantity') - $finalQuantity)
+            : 0;
         $productCount->save();
 
         $productCount->load(['product', 'user', 'distributions.productLot']);
 
-        $message = "Ajuste de inventario aplicado exitosamente a '{$productCount->product->name}'.";
+        $message = $finalDiscrepancy == 0
+            ? "Conteo verificado: lo contado coincide con el sistema para '{$productCount->product->name}'. No se realizó ajuste."
+            : "Ajuste de inventario aplicado exitosamente a '{$productCount->product->name}'.";
 
         return [
             'success' => true,
             'message' => $message,
-            'data' => $productCount
+            'data'    => $productCount
         ];
     }
 
@@ -483,34 +493,23 @@ class InventoryCycleActionService
         $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $invoiceCount->counted_quantity;
         $finalDiscrepancy = $finalQuantity - $invoiceCount->system_quantity;
         $product = $invoiceCount->product;
+        $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {
             foreach ($data['updated_lots'] as $lotData) {
                 $lotToUpdate = ProductLot::find($lotData['id']);
                 if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
                     $updateData = ['quantity' => $lotData['quantity']];
-                    
-                    // Actualizar lot_number si se proporciona
-                    if (isset($lotData['lot_number'])) {
-                        $updateData['lot_number'] = $lotData['lot_number'];
-                    }
-                    
-                    // Actualizar expiration_date si se proporciona
-                    if (isset($lotData['expiration_date'])) {
-                        $updateData['expiration_date'] = $lotData['expiration_date'];
-                    }
-                    
-                    // Actualizar location si se proporciona
-                    if (isset($lotData['location'])) {
-                        $updateData['location'] = $lotData['location'];
-                    }
-                    
+                    if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
+                    if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
+                    if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
                     $lotToUpdate->update($updateData);
                     InvoiceCountDistribution::create([
                         'invoice_count_id' => $invoiceCount->id,
-                        'product_lot_id' => $lotToUpdate->id,
-                        'quantity' => $lotData['quantity'],
+                        'product_lot_id'   => $lotToUpdate->id,
+                        'quantity'         => $lotData['quantity'],
                     ]);
+                    $distributionsCreated = true;
                 }
             }
         }
@@ -521,30 +520,44 @@ class InventoryCycleActionService
 
             foreach ($data['new_lots'] as $lotData) {
                 $newLot = ProductLot::create([
-                    'product_id' => $product->id,
-                    'lot_number' => $lotData['lot_number'],
+                    'product_id'      => $product->id,
+                    'lot_number'      => $lotData['lot_number'],
                     'expiration_date' => $lotData['expiration_date'],
-                    'location' => $lotData['location'] ?? null,
-                    'quantity' => $lotData['quantity'],
-                    'unit_cost' => $newLotUnitCost,
-                    'supplier_id' => null,
+                    'location'        => $lotData['location'] ?? null,
+                    'quantity'        => $lotData['quantity'],
+                    'unit_cost'       => $newLotUnitCost,
+                    'supplier_id'     => null,
                 ]);
                 InvoiceCountDistribution::create([
                     'invoice_count_id' => $invoiceCount->id,
-                    'product_lot_id' => $newLot->id,
-                    'quantity' => $newLot->quantity,
+                    'product_lot_id'   => $newLot->id,
+                    'quantity'         => $newLot->quantity,
                 ]);
+                $distributionsCreated = true;
             }
         }
 
+        if (!$distributionsCreated) {
+            $realCurrentStock = (int) $product->lots()->sum('quantity');
+            $finalQuantity    = $realCurrentStock;
+            $finalDiscrepancy = 0;
+            
+            $invoiceCount->system_quantity = $realCurrentStock;
+            
+            $this->createVerificationMovement($product, $realCurrentStock, now());
+        }
+
         $invoiceCount->counted_quantity = $finalQuantity;
-        $invoiceCount->discrepancy = $finalDiscrepancy;
-        $invoiceCount->status = 'approved';
-        $invoiceCount->supervisor_id = Auth::id();
+        $invoiceCount->discrepancy      = $finalDiscrepancy;
+        $invoiceCount->status           = 'approved';
+        $invoiceCount->supervisor_id    = Auth::id();
         $invoiceCount->save();
 
         $invoiceCount->load(['product', 'user', 'distributions.productLot']);
-        return ['success' => true, 'message' => "Ajuste de factura para '{$product->name}' aplicado.", 'data' => $invoiceCount];
+        $message = $finalDiscrepancy == 0
+            ? "Conteo de factura verificado: coincide con sistema para '{$product->name}'. No se realizó ajuste."
+            : "Ajuste de factura para '{$product->name}' aplicado.";
+        return ['success' => true, 'message' => $message, 'data' => $invoiceCount];
     }
 
     private function rejectInvoiceCount(InvoiceCount $invoiceCount): array
@@ -675,34 +688,23 @@ class InventoryCycleActionService
         $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $saleCount->counted_quantity;
         $finalDiscrepancy = $finalQuantity - $saleCount->system_quantity;
         $product = $saleCount->product;
+        $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {
             foreach ($data['updated_lots'] as $lotData) {
                 $lotToUpdate = ProductLot::find($lotData['id']);
                 if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
                     $updateData = ['quantity' => $lotData['quantity']];
-                    
-                    // Actualizar lot_number si se proporciona
-                    if (isset($lotData['lot_number'])) {
-                        $updateData['lot_number'] = $lotData['lot_number'];
-                    }
-                    
-                    // Actualizar expiration_date si se proporciona
-                    if (isset($lotData['expiration_date'])) {
-                        $updateData['expiration_date'] = $lotData['expiration_date'];
-                    }
-                    
-                    // Actualizar location si se proporciona
-                    if (isset($lotData['location'])) {
-                        $updateData['location'] = $lotData['location'];
-                    }
-                    
+                    if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
+                    if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
+                    if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
                     $lotToUpdate->update($updateData);
                     SaleCountDistribution::create([
-                        'sale_count_id' => $saleCount->id,
+                        'sale_count_id'  => $saleCount->id,
                         'product_lot_id' => $lotToUpdate->id,
-                        'quantity' => $lotData['quantity'],
+                        'quantity'       => $lotData['quantity'],
                     ]);
+                    $distributionsCreated = true;
                 }
             }
         }
@@ -713,30 +715,44 @@ class InventoryCycleActionService
 
             foreach ($data['new_lots'] as $lotData) {
                 $newLot = ProductLot::create([
-                    'product_id' => $product->id,
-                    'lot_number' => $lotData['lot_number'],
+                    'product_id'      => $product->id,
+                    'lot_number'      => $lotData['lot_number'],
                     'expiration_date' => $lotData['expiration_date'],
-                    'location' => $lotData['location'] ?? null,
-                    'quantity' => $lotData['quantity'],
-                    'unit_cost' => $newLotUnitCost,
-                    'supplier_id' => null,
+                    'location'        => $lotData['location'] ?? null,
+                    'quantity'        => $lotData['quantity'],
+                    'unit_cost'       => $newLotUnitCost,
+                    'supplier_id'     => null,
                 ]);
                 SaleCountDistribution::create([
-                    'sale_count_id' => $saleCount->id,
+                    'sale_count_id'  => $saleCount->id,
                     'product_lot_id' => $newLot->id,
-                    'quantity' => $newLot->quantity,
+                    'quantity'       => $newLot->quantity,
                 ]);
+                $distributionsCreated = true;
             }
         }
 
+        if (!$distributionsCreated) {
+            $realCurrentStock = (int) $product->lots()->sum('quantity');
+            $finalQuantity    = $realCurrentStock;
+            $finalDiscrepancy = 0;
+            
+            $saleCount->system_quantity = $realCurrentStock;
+            
+            $this->createVerificationMovement($product, $realCurrentStock, now());
+        }
+
         $saleCount->counted_quantity = $finalQuantity;
-        $saleCount->discrepancy = $finalDiscrepancy;
-        $saleCount->status = 'approved';
-        $saleCount->supervisor_id = Auth::id();
+        $saleCount->discrepancy      = $finalDiscrepancy;
+        $saleCount->status           = 'approved';
+        $saleCount->supervisor_id    = Auth::id();
         $saleCount->save();
 
         $saleCount->load(['product', 'user', 'distributions.productLot']);
-        return ['success' => true, 'message' => "Ajuste de punto de venta para '{$product->name}' aplicado.", 'data' => $saleCount];
+        $message = $finalDiscrepancy == 0
+            ? "Conteo de punto de venta verificado: coincide con sistema para '{$product->name}'. No se realizó ajuste."
+            : "Ajuste de punto de venta para '{$product->name}' aplicado.";
+        return ['success' => true, 'message' => $message, 'data' => $saleCount];
     }
 
 

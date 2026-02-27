@@ -28,15 +28,21 @@ class EmployeeCleaningActivityActionService
             $syncData = [];
             foreach ($validated['activities'] as $activity) {
                 $syncData[$activity['activity_id']] = [
-                    'status' => $activity['status'],
+                    'status' => 'Pendiente', // Forzamos pendiente siempre al asignar
                     'assigned_date' => $activity['assigned_date'] ?? now(),
-                    'completed_date' => $activity['completed_date'] ?? null,
+                    'completed_date' => null,
                     'notes' => $activity['notes'] ?? null,
                 ];
             }
 
             // Sync reemplaza todas las asignaciones con las nuevas
             $employee->cleaningActivities()->sync($syncData);
+
+            // Disparar generación automática de ejecuciones (calendario)
+            // Llamamos al comando programáticamente para este empleado
+            \Illuminate\Support\Facades\Artisan::call('cleaning:generate-executions', [
+                '--days' => 30, // Generar un mes por adelantado
+            ]);
 
             DB::commit();
             return true;

@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->integer('counted_quantity');
             $table->integer('system_quantity');
             $table->integer('discrepancy')->comment('counted_quantity - system_quantity');
+            $table->integer('correction_difference')->default(0);
             $table->enum('type', ['cash', 'invoice']);
             $table->enum('status', ['pending', 'approved', 'rejected', 'recount'])->default('pending');
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();

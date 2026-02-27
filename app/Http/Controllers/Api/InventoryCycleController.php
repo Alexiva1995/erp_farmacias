@@ -10,12 +10,19 @@ use App\Models\ProductCount;
 use App\Models\SaleCount;
 use App\Services\InventoryCycle\InventoryCycleQueryService;
 use App\Services\InventoryCycle\InventoryCycleActionService;
+use App\Models\InventoryMovement;
+use App\Models\ProductLot;
+use App\Models\ProductDistribution;
+use App\Models\InvoiceCountDistribution;
+use App\Models\SaleCountDistribution;
+use App\Models\InventoryCycle;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
 
 class InventoryCycleController extends Controller
 {
@@ -736,5 +743,77 @@ class InventoryCycleController extends Controller
         $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
 
         return $totals;
+    }
+
+    public function deleteCount($sourceType, $id)
+    {
+        return DB::transaction(function () use ($sourceType, $id) {
+            try {
+                $modelClass = null;
+                $distClass = null;
+                $distKey = null;
+
+                switch ($sourceType) {
+                    case 'product_count':
+                        $modelClass = \App\Models\ProductCount::class;
+                        $distClass = \App\Models\ProductDistribution::class;
+                        $distKey = 'product_count_id';
+                        break;
+                    case 'invoice_count':
+                        $modelClass = \App\Models\InvoiceCount::class;
+                        $distClass = \App\Models\InvoiceCountDistribution::class;
+                        $distKey = 'invoice_count_id';
+                        break;
+                    case 'sale_count':
+                        $modelClass = \App\Models\SaleCount::class;
+                        $distClass = \App\Models\SaleCountDistribution::class;
+                        $distKey = 'sale_count_id';
+                        break;
+                    default:
+                        return response()->json(['success' => false, 'message' => 'Tipo de fuente no válido.'], 400);
+                }
+
+                $record = $modelClass::findOrFail($id);
+
+                // Verificar si tiene distribuciones (trazabilidad directa)
+                $hasDistributions = $distClass::where($distKey, $id)->exists();
+
+                // Verificar movimientos de inventario cercanos en el tiempo
+                $hasMovements = InventoryMovement::where('product_id', $record->product_id)
+                    ->whereIn('movement_type', ['adjustment', 'loss'])
+                    ->whereBetween('created_at', [
+                        Carbon::parse($record->updated_at)->subSeconds(30),
+                        Carbon::parse($record->updated_at)->addSeconds(30)
+                    ])
+                    ->exists();
+
+                if ($hasDistributions || $hasMovements) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se puede eliminar: este registro tiene movimientos de trazabilidad asociados.'
+                    ], 422);
+                }
+
+                // Finalmente borrar el registro del conteo
+                $record->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Registro eliminado correctamente.'
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Error eliminando registro de cierre:', [
+                    'sourceType' => $sourceType,
+                    'id' => $id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al eliminar el registro: ' . $e->getMessage()
+                ], 500);
+            }
+        });
     }
 }

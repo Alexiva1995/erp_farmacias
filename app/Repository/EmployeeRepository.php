@@ -40,10 +40,12 @@ class EmployeeRepository
       ])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
       ->when(!empty($search), function ($query) use ($search) {
-        $query->orWhere('name', 'like', "%$search%")
-          ->orWhere('last_name', 'like', "%$search%")
-          ->orWhere('users.email', 'like', "%$search%")
-          ->orWhere('identification', 'like', "%$search%");
+        $query->where(function ($q) use ($search) {
+          $q->where('name', 'like', "%$search%")
+            ->orWhere('last_name', 'like', "%$search%")
+            ->orWhere('users.email', 'like', "%$search%")
+            ->orWhere('identification', 'like', "%$search%");
+        });
       })
       ->when(auth()->user()->role_id === 3, function ($query) {
         $query->where('employees.user_id', auth()->id());
