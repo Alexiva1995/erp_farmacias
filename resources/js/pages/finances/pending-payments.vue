@@ -598,78 +598,7 @@ onMounted(async () => {
         Pagos Pendientes
       </VCardTitle>
       <VCardText>
-        <!-- Tarjetas de Monedas -->
-        <VRow>
-          <VCol cols="12" sm="6" md="4">
-            <VCard flat class="h-100 pa-4">
-              <VCardText class="text-center pa-0">
-                <div class="text-h5 font-weight-medium text-error">
-                  {{ formatCurrency(totalsByCurrency.bs.amount, "Bs") }}
-                </div>
-                <div class="text-caption text-medium-emphasis mt-2">
-                  Deuda Bs
-                </div>
-                <VDivider class="my-2" />
-                <div class="text-caption text-medium-emphasis">
-                  {{ totalsByCurrency.bs.count }} factura{{
-                    totalsByCurrency.bs.count !== 1 ? "s" : ""
-                  }}
-                  • ≈
-                  {{
-                    formatCurrency(totalsByCurrency.bs.total_usd || 0, "USD")
-                  }}
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-
-          <VCol cols="12" sm="6" md="4">
-            <VCard flat class="h-100 pa-4">
-              <VCardText class="text-center pa-0">
-                <div class="text-h5 font-weight-medium text-info">
-                  {{ formatCurrency(totalsByCurrency.usd.amount, "USD") }}
-                </div>
-                <div class="text-caption text-medium-emphasis mt-2">
-                  Deuda USD
-                </div>
-                <VDivider class="my-2" />
-                <div class="text-caption text-medium-emphasis">
-                  {{ totalsByCurrency.usd.count }} factura{{
-                    totalsByCurrency.usd.count !== 1 ? "s" : ""
-                  }}
-                  • Total:
-                  {{ formatCurrency(totalsByCurrency.usd_converted, "USD") }}
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-
-          <VCol cols="12" sm="6" md="4">
-            <VCard flat class="h-100 pa-4">
-              <VCardText class="text-center pa-0">
-                <div class="text-h5 font-weight-medium text-secondary">
-                  {{ formatCurrency(totalsByCurrency.cop.amount, "COP") }}
-                </div>
-                <div class="text-caption text-medium-emphasis mt-2">
-                  Deuda COP
-                </div>
-                <VDivider class="my-2" />
-                <div class="text-caption text-medium-emphasis">
-                  {{ totalsByCurrency.cop.count }} factura{{
-                    totalsByCurrency.cop.count !== 1 ? "s" : ""
-                  }}
-                  • ≈
-                  {{
-                    formatCurrency(totalsByCurrency.cop.total_usd || 0, "USD")
-                  }}
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </VRow>
-
         <!-- Filtros integrados -->
-        <VDivider class="my-4 mb-8" />
         <VRow>
           <VCol cols="12" sm="6" md="2">
             <AppTextField

@@ -43,14 +43,11 @@ const headers = [
 ];
 
 const formatCurrency = (amount) => {
-  if (!amount || amount === 0) return "$0.00";
-
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
+  const number = parseFloat(amount) || 0;
+  return "Bs. " + number.toLocaleString("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  });
 };
 
 const formatDate = (dateString) => {
@@ -62,17 +59,8 @@ const formatDate = (dateString) => {
   });
 };
 
-// Calcular el monto imponible (Total - IVA - Exento)
-// Para gastos, el imponible sería el monto base antes del IVA
-const calculateImponible = (item) => {
-  // Si tenemos el monto del gasto y el IVA es 16%, calculamos el imponible
-  const totalAmount = parseFloat(item.amount_usd) || 0;
-  const ivaAmount = parseFloat(item.iva_amount) || 0;
-  const exemptAmount = parseFloat(item.exempt_amount) || 0;
-
-  // Imponible = Total - IVA - Exento
-  return Math.max(0, totalAmount - ivaAmount - exemptAmount);
-};
+// Calcular el monto imponible (removido por uso directo de BD)
+// const calculateImponible = ...
 
 // Obtener color para el tipo de gasto
 const getExpenseTypeColor = (item) => {
@@ -166,14 +154,6 @@ const getCategoryChipColor = (categoryName) => {
           <span class="text-body-1 font-weight-medium text-high-emphasis">
             {{ item.supplier_business_name || item.supplier_name || "N/A" }}
           </span>
-          <VChip
-            :color="getExpenseStatus(item).color"
-            variant="tonal"
-            size="x-small"
-            class="mt-1 align-self-start"
-          >
-            {{ getExpenseStatus(item).text }}
-          </VChip>
         </div>
       </template>
 
@@ -191,7 +171,7 @@ const getCategoryChipColor = (categoryName) => {
       <template #item.imponible="{ item }">
         <div class="text-end">
           <span class="font-weight-medium">
-            {{ formatCurrency(calculateImponible(item)) }}
+            {{ formatCurrency(item.taxable_base) }}
           </span>
         </div>
       </template>

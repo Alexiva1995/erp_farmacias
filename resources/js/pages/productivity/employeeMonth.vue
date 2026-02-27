@@ -13,6 +13,7 @@ const selectedYear = ref(currentYear);
 
 // Sort State
 const selectedSort = ref({ key: "total", order: "desc" });
+const isLocked = ref(false);
 
 const sortOptions = [
   {
@@ -96,9 +97,24 @@ const fetchEmployees = async () => {
     });
     if (response.data && response.data.status) {
       employees.value = response.data.data;
+      isLocked.value = response.data.data.some(e => e.is_locked);
     }
   } catch (error) {
     console.error("Error fetching employee performance:", error);
+  }
+};
+
+const handleLockMonth = async () => {
+  try {
+    const response = await axios.post("/api/rrhh/employee-performance/lock", {
+      month: selectedMonth.value,
+      year: selectedYear.value,
+    });
+    if (response.data && response.data.status) {
+      await fetchEmployees();
+    }
+  } catch (error) {
+    console.error("Error locking month:", error);
   }
 };
 
@@ -114,65 +130,15 @@ const calculatedEmployees = computed(() => {
   const data = employees.value;
   if (!data.length) return [];
 
-  /* Leaders (Max Values) */
-  const maxSales = Math.max(...data.map((e) => e.sales)) || 1;
-  const maxGrowth = Math.max(...data.map((e) => e.growth)) || 1;
-  const maxExpirations = Math.max(...data.map((e) => e.expirations)) || 1;
-  const maxInventoryCount =
-    Math.max(...data.map((e) => e.inventory_counted)) || 1;
-  const maxPremium = Math.max(...data.map((e) => e.premium_products)) || 1;
-  const maxCleaningCompleted =
-    Math.max(...data.map((e) => e.cleaning_completed)) || 1;
-  const maxStrategy = Math.max(...data.map((e) => e.strategy_sales)) || 1;
-
   const processed = data.map((e) => {
-    /* SCORING LOGIC */
-    const salesScore = (e.sales / maxSales) * 25;
-    const growthScore = (e.growth / maxGrowth) * 15;
-    const expirationScore = (e.expirations / maxExpirations) * 15;
-
-    // Inventory
-    const inventoryBase = (e.inventory_counted / maxInventoryCount) * 10;
-    const inventoryPenalty = e.inventory_errors * 0.01;
-    const inventoryScore = Math.max(0, inventoryBase - inventoryPenalty);
-
-    const premiumScore = (e.premium_products / maxPremium) * 10;
-    const invoiceScore =
-      (e.score_loaded || 0) +
-      (e.score_registered || 0) +
-      (e.score_ordered || 0);
-    const cleaningScore = (e.cleaning_completed / maxCleaningCompleted) * 5;
-    const strategyScore = (e.strategy_sales / maxStrategy) * 5;
-
-    const totalScore =
-      salesScore +
-      growthScore +
-      expirationScore +
-      inventoryScore +
-      premiumScore +
-      invoiceScore +
-      cleaningScore +
-      strategyScore;
-
     return {
       ...e,
-      scores: {
-        sales: salesScore,
-        growth: growthScore,
-        expiration: expirationScore,
-        inventory: inventoryScore,
-        premium: premiumScore,
-        invoice: invoiceScore,
-        cleaning: cleaningScore,
-        strategy: strategyScore,
-        total: totalScore,
-      },
       // Helper for sorting
-      inventory_score: inventoryScore,
+      inventory_score: e.scores?.inventory || 0,
     };
   });
 
-  // Dynamic Sorting
+// Dynamic Sorting
   return processed.sort((a, b) => {
     const key = selectedSort.value.key;
     const order = selectedSort.value.order === "asc" ? 1 : -1;
@@ -193,76 +159,141 @@ const calculatedEmployees = computed(() => {
     return 0;
   });
 });
+const formatNumber = (num) =>
+  new Intl.NumberFormat("es-VE", { maximumFractionDigits: 2 }).format(num);
+
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("es-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
 </script>
 
 <template>
   <VContainer fluid>
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow>
-          <VCol cols="12" sm="6" md="6">
-            <AppSelect
-              v-model="selectedMonth"
-              :items="availableMonths"
-              item-title="title"
-              item-value="value"
-              placeholder="Seleccionar Mes"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <AppSelect
-              v-model="selectedYear"
-              :items="availableYears"
-              placeholder="Seleccionar Año"
-              clearable
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
+    <!-- Header Summary / Leaderboard -->
+    <VRow v-if="calculatedEmployees.length" class="mb-6">
+      <VCol cols="12" md="4">
+        <VCard color="warning" class="text-white h-100 d-flex align-center shadow-lg">
+          <VCardText class="d-flex align-center gap-4 w-100">
+            <VAvatar size="64" class="leader-podium-avatar" border="2px solid white">
+              <VImg v-if="calculatedEmployees[0].photo" :src="calculatedEmployees[0].photo" />
+              <div v-else class="text-h4">{{ calculatedEmployees[0].name.charAt(0) }}</div>
+            </VAvatar>
+            <div>
+              <div class="text-overline opacity-80">Líder del Mes</div>
+              <div class="text-h5 font-weight-black">{{ calculatedEmployees[0].name }} {{ calculatedEmployees[0].last_name }}</div>
+              <div class="text-h4 font-weight-bold">{{ formatNumber(calculatedEmployees[0].scores.total) }} pts</div>
+            </div>
+            <VSpacer />
+            <VIcon icon="tabler-trophy" size="48" class="opacity-30" />
+          </VCardText>
+        </VCard>
+      </VCol>
 
-      <VDivider />
+      <VCol cols="12" md="8">
+        <VCard class="h-100">
+          <VCardText class="d-flex align-center h-100">
+            <VRow class="w-100 text-center">
+              <VCol cols="3">
+                <div class="text-overline mb-1">Total Ventas</div>
+                <div class="text-h6 font-weight-bold">{{ formatCurrency(calculatedEmployees.reduce((acc, e) => acc + e.sales, 0)) }}</div>
+              </VCol>
+              <VCol cols="3">
+                <div class="text-overline mb-1">Crecimiento Prom.</div>
+                <div class="text-h6 font-weight-bold text-success">{{ formatNumber(calculatedEmployees.reduce((acc, e) => acc + e.growth, 0) / calculatedEmployees.length) }}%</div>
+              </VCol>
+              <VCol cols="3">
+                <div class="text-overline mb-1">Vencimientos</div>
+                <div class="text-h6 font-weight-bold text-error">{{ calculatedEmployees.reduce((acc, e) => acc + e.expirations, 0) }}</div>
+              </VCol>
+              <VCol cols="3">
+                <div class="text-overline mb-1">Conteos Inv.</div>
+                <div class="text-h6 font-weight-bold text-info">{{ calculatedEmployees.reduce((acc, e) => acc + e.inventory_counted, 0) }}</div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
 
-      <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-        <VBtn color="secondary" variant="outlined" @click="handleClear">
-          Limpiar Filtros
-        </VBtn>
+    <VCard class="mb-6 border">
+      <VCardText class="pa-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="d-flex align-center gap-4 flex-grow-1 flex-md-grow-0">
+            <VIcon icon="tabler-filter" color="secondary" />
+            <span class="text-h6 font-weight-bold">Filtros de Análisis</span>
+          </div>
 
-        <VMenu>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              @click="handleSortClick(option)"
+          <div class="d-flex align-center flex-wrap gap-3 flex-grow-1 flex-md-grow-0">
+            <div style="inline-size: 180px;">
+              <AppSelect
+                v-model="selectedMonth"
+                :items="availableMonths"
+                item-title="title"
+                item-value="value"
+                placeholder="Mes"
+                prepend-inner-icon="tabler-calendar"
+              />
+            </div>
+            <div style="inline-size: 140px;">
+              <AppSelect
+                v-model="selectedYear"
+                :items="availableYears"
+                placeholder="Año"
+                prepend-inner-icon="tabler-calendar-event"
+              />
+            </div>
+            
+            <VBtn color="secondary" variant="tonal" @click="handleClear" icon="tabler-refresh" />
+          </div>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-3">
+            <VBtn 
+              v-if="!isLocked"
+              color="error" 
+              variant="elevated" 
+              prepend-icon="tabler-lock"
+              @click="handleLockMonth"
             >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="selectedSort.key === option.key"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
+              Cerrar Mes
+            </VBtn>
+            <VChip v-else color="success" variant="elevated" prepend-icon="tabler-lock-check">
+              Mes Cerrado (Histórico)
+            </VChip>
 
-        <VChip
-          v-if="selectedSort.key !== 'total'"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click="selectedSort = { key: 'total', order: 'desc' }"
-        >
-          <VIcon icon="tabler-sort-descending" size="14" class="me-1" />
-          Orden Personalizado
-        </VChip>
-      </VCardActions>
+            <VMenu>
+              <template #activator="{ props }">
+                <VBtn v-bind="props" color="primary" variant="outlined" prepend-icon="tabler-sort-descending">
+                  Ordenar por: {{ sortOptions.find(o => o.key === selectedSort.key)?.title }}
+                </VBtn>
+              </template>
+              <VList>
+                <VListItem
+                  v-for="(option, index) in sortOptions"
+                  :key="index"
+                  @click="handleSortClick(option)"
+                >
+                  <template #prepend>
+                    <VIcon :icon="option.icon" size="20" class="me-2" />
+                  </template>
+                  <VListItemTitle>{{ option.title }}</VListItemTitle>
+                  <template #append>
+                    <VIcon
+                      v-if="selectedSort.key === option.key"
+                      icon="tabler-check"
+                      size="16"
+                      color="primary"
+                    />
+                  </template>
+                </VListItem>
+              </VList>
+            </VMenu>
+          </div>
+        </div>
+      </VCardText>
     </VCard>
     <EmployeeMonthTable :items="calculatedEmployees" />
   </VContainer>

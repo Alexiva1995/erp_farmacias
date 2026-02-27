@@ -26,6 +26,7 @@ const fiscalData = ref([]);
 const totalRecords = ref(0);
 const page = ref(1);
 const itemsPerPage = ref(10);
+const sortBy = ref([]);
 const tableLoading = ref(false);
 
 // Estados para la tabla de crédito fiscal
@@ -73,7 +74,7 @@ const fetchDebitoFiscal = async () => {
     if (startDate.value) params.start_date = startDate.value;
     if (endDate.value) params.end_date = endDate.value;
 
-    const response = await axios.get("/tpv/debito-fiscal", { params });
+    const response = await axios.get("/debito-fiscal", { params });
 
     if (response.data.status === "success") {
       const data = response.data.data;
@@ -98,10 +99,15 @@ const fetchFiscalHistoryData = async () => {
       itemsPerPage: itemsPerPage.value,
     };
 
+    if (sortBy.value && sortBy.value.length > 0) {
+      params.sortBy = sortBy.value[0].key;
+      params.orderBy = sortBy.value[0].order;
+    }
+
     if (startDate.value) params.start_date = startDate.value;
     if (endDate.value) params.end_date = endDate.value;
 
-    const response = await axios.get("/tpv/fiscal-history", { params });
+    const response = await axios.get("/fiscal-history", { params });
 
     if (response.data.status === "success") {
       const data = response.data.data;
@@ -165,13 +171,11 @@ const fetchAllData = async () => {
 
 // Función para formatear moneda venezolana (Bolívares)
 const formatCurrency = (amount) => {
-  const formatter = new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "VES",
+  const number = parseFloat(amount) || 0;
+  return "Bs. " + number.toLocaleString("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return formatter.format(amount);
 };
 
 // Formatear fecha para mostrar
@@ -236,10 +240,12 @@ const handleClearFilter = () => {
   fetchAllData();
 };
 
-// Manejar cambios en la tabla de débito fiscal
 const handleTableOptionsUpdate = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
+  if (options.sortBy) {
+    sortBy.value = options.sortBy;
+  }
 
   // Solo recargar datos de la tabla de débito
   fetchFiscalHistoryData();
@@ -335,7 +341,7 @@ onMounted(() => {
               <VCard variant="tonal" color="warning" class="h-100">
                 <VCardText
                   class="text-center d-flex flex-column"
-                  style="min-height: 180px"
+                  style="min-block-size: 180px;"
                 >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon
@@ -367,7 +373,7 @@ onMounted(() => {
                       color="warning"
                       size="x-small"
                       variant="outlined"
-                      style="visibility: hidden"
+                      style="visibility: hidden;"
                     >
                       0 órdenes
                     </VChip>
@@ -381,7 +387,7 @@ onMounted(() => {
               <VCard variant="tonal" color="info" class="h-100">
                 <VCardText
                   class="text-center d-flex flex-column"
-                  style="min-height: 180px"
+                  style="min-block-size: 180px;"
                 >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon
@@ -414,7 +420,7 @@ onMounted(() => {
                       color="info"
                       size="x-small"
                       variant="outlined"
-                      style="visibility: hidden"
+                      style="visibility: hidden;"
                     >
                       0 gastos
                     </VChip>
@@ -432,7 +438,7 @@ onMounted(() => {
               >
                 <VCardText
                   class="text-center d-flex flex-column"
-                  style="min-height: 180px"
+                  style="min-block-size: 180px;"
                 >
                   <div class="d-flex align-center justify-center mb-2">
                     <VIcon :icon="getIvaStatus.icon" size="28" class="me-2" />
@@ -467,7 +473,7 @@ onMounted(() => {
                       color="transparent"
                       size="x-small"
                       variant="outlined"
-                      style="visibility: hidden"
+                      style="visibility: hidden;"
                     >
                       Placeholder
                     </VChip>
@@ -478,7 +484,7 @@ onMounted(() => {
                 <div
                   v-if="ivaAPagar < 0"
                   class="position-absolute"
-                  style="top: 10px; right: 10px"
+                  style="inset-block-start: 10px; inset-inline-end: 10px;"
                 >
                   <VChip color="success" size="x-small" variant="flat">
                     Saldo a favor

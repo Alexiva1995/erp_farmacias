@@ -78,21 +78,20 @@ class PendingPaymentsController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            // Ampliar consulta: Todas las facturas no pagadas (status_payment != 1 o nulo)
+            // Independientemente de su status (pending, loaded, to_order, ordered, etc.)
             $query = Invoice::with(['supplier'])
-                ->whereIn('status', ['pending', 'loaded', 'to_order'])
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 1);
                 });
 
-            // ORDENAMIENTO FIJO: Ignorar parámetros de ordenamiento del frontend
-            // Prioridad: to_order primero, luego pending, ordenados por fecha de pago
-            $query->orderByRaw('CASE 
-                WHEN status = "to_order" THEN 0 
-                WHEN status = "pending" THEN 1 
-                ELSE 2 
-            END')
-                ->orderBy('payment_date', 'asc');
+            // Filtrar desde el año en curso (2026) en adelante por defecto
+            $currentYearStart = Carbon::now()->startOfYear();
+            $query->whereDate('payment_date', '>=', $currentYearStart);
+
+            // ORDENAMIENTO: Prioridad por fecha de pago
+            $query->orderBy('payment_date', 'asc');
 
             if ($request->filled('supplier_id')) {
                 $query->where('supplier_id', $request->supplier_id);
@@ -718,12 +717,11 @@ class PendingPaymentsController extends Controller
     public function getStatistics(): JsonResponse
     {
         try {
-            $baseQuery = Invoice::whereIn('status', ['pending', 'loaded', 'to_order'])
-                ->whereNotNull('payment_date')
-                ->where(function ($q) {
+            $baseQuery = Invoice::where(function ($q) {
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 1);
-                });
+                })
+                ->whereDate('payment_date', '>=', Carbon::now()->startOfYear());
 
             $totalPending = $baseQuery->count();
             $totalAmount = $baseQuery->sum('total_amount');
@@ -746,22 +744,21 @@ class PendingPaymentsController extends Controller
             })->values();
 
             $bySupplier = Invoice::with('supplier')
-                ->whereIn('status', ['pending', 'loaded', 'to_order'])
-                ->whereNotNull('payment_date')
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 1);
                 })
+                ->whereDate('payment_date', '>=', Carbon::now()->startOfYear())
                 ->select('supplier_id', DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
                 ->groupBy('supplier_id')
                 ->get();
 
             // Calcular facturas vencidas
-            $overdueInvoices = Invoice::whereIn('status', ['pending', 'loaded', 'to_order'])
-                ->where(function ($q) {
+            $overdueInvoices = Invoice::where(function ($q) {
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 1);
                 })
+                ->whereDate('payment_date', '>=', Carbon::now()->startOfYear())
                 ->where(function ($q) {
                     $q->whereDate('payment_date', '<', Carbon::now())
                         ->orWhereDate('exp_date', '<', Carbon::now());
@@ -1187,20 +1184,39 @@ class PendingPaymentsController extends Controller
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
-            // CRÉDITO FISCAL: Gastos con IVA (campo tax_amount > 0)
+            // CRÉDITO FISCAL: Gastos con IVA (manuales, no de facturas pagadas)
             $expensesWithIva = Expense::where('tax_amount', '>', 0)
+                ->where('has_invoice', false)
                 ->whereBetween('expense_date', [$startDate, $endDate])
                 ->get();
 
-            // Calcular crédito fiscal directo desde tax_amount (o 16% del amount si es BS)
+            // CRÉDITO FISCAL: Facturas de proveedores con IVA
+            $invoicesWithIva = Invoice::where('tax_amount', '>', 0)
+                ->whereBetween('created_invoice_date', [$startDate, $endDate])
+                ->get();
+
             $creditoFiscal = 0;
+            $totalAmount = 0;
+
             foreach ($expensesWithIva as $expense) {
-                // Si ya tenemos tax_amount guardado, lo usamos.
-                // Si no, y es BS, calculamos el 16%
                 if ($expense->tax_amount > 0) {
                     $creditoFiscal += $expense->tax_amount;
                 } elseif ($expense->currency === 'BS' || $expense->currency === 'VES') {
                     $creditoFiscal += $expense->amount * 0.16;
+                }
+                $totalAmount += $expense->amount;
+            }
+
+            $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
+            $currentBcvRate = $bcvRate ? $bcvRate->rate : 1;
+
+            foreach ($invoicesWithIva as $invoice) {
+                if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                    $creditoFiscal += ($invoice->tax_amount / $invoice->exchange_rate) * $currentBcvRate;
+                    $totalAmount += ($invoice->total_amount / $invoice->exchange_rate) * $currentBcvRate;
+                } else {
+                    $creditoFiscal += $invoice->tax_amount;
+                    $totalAmount += $invoice->total_amount;
                 }
             }
 
@@ -1211,8 +1227,8 @@ class PendingPaymentsController extends Controller
                 ],
                 'credito_fiscal' => round($creditoFiscal, 2),
                 'detalle_credito' => [
-                    'total_expenses_with_iva' => $expensesWithIva->count(),
-                    'total_amount_expenses' => $expensesWithIva->sum('amount'), // Usar amount general
+                    'total_expenses_with_iva' => $expensesWithIva->count() + $invoicesWithIva->count(),
+                    'total_amount_expenses' => round($totalAmount, 2),
                     'iva_calculated' => round($creditoFiscal, 2)
                 ]
             ], 'Crédito fiscal obtenido exitosamente');
@@ -1237,36 +1253,29 @@ class PendingPaymentsController extends Controller
             $page = $request->page ?? 1;
             $itemsPerPage = $request->itemsPerPage ?? 10;
 
-            // Query para gastos con IVA (usando tax_amount > 0)
-            $query = Expense::with(['category'])
+            // Gastos manuales con IVA
+            $expensesQuery = Expense::with(['category'])
                 ->where('tax_amount', '>', 0)
+                ->where('has_invoice', false)
                 ->whereBetween('expense_date', [$startDate, $endDate])
-                ->orderBy('expense_date', 'desc')
-                ->orderBy('id', 'desc');
-
-            // Clonar query para el conteo total
-            $totalQuery = clone $query;
-            $totalRecords = $totalQuery->count();
-
-            // Aplicar paginación
-            $offset = ($page - 1) * $itemsPerPage;
-            $records = $query
-                ->skip($offset)
-                ->take($itemsPerPage)
                 ->get();
 
-            // Formatear los registros para el frontend
-            $formattedRecords = $records->map(function ($expense) {
-                // Usar tax_amount directamente si existe, si no calcular 16% del amount si es BS
-                $ivaAmount = $expense->tax_amount > 0 ? $expense->tax_amount : (($expense->currency === 'BS' || $expense->currency === 'VES') ? $expense->amount * 0.16 : 0);
+            // Facturas de proveedores
+            $invoicesQuery = Invoice::with(['supplier'])
+                ->where('tax_amount', '>', 0)
+                ->whereBetween('created_invoice_date', [$startDate, $endDate])
+                ->get();
 
-                // Determinar monto en BS para mostrar (si la moneda es BS usar amount, si no usar 0 o calcular)
+            $formattedExpenses = $expensesQuery->map(function ($expense) {
+                $ivaAmount = $expense->tax_amount > 0 ? $expense->tax_amount : (($expense->currency === 'BS' || $expense->currency === 'VES') ? $expense->amount * 0.16 : 0);
                 $amountBs = ($expense->currency === 'BS' || $expense->currency === 'VES') ? $expense->amount : 0;
 
                 return [
-                    'id' => $expense->id,
+                    'id' => 'E' . $expense->id,
+                    'original_id' => $expense->id,
+                    'type' => 'expense',
                     'name' => $expense->name,
-                    'category_name' => $expense->category->name ?? 'Sin categoría',
+                    'category_name' => $expense->category->name ?? 'Gastos Manuales',
                     'amount_bs' => (float) $amountBs,
                     'amount_usd' => (float) $expense->total_usd,
                     'currency' => $expense->currency,
@@ -1275,42 +1284,80 @@ class PendingPaymentsController extends Controller
                     'has_invoice' => (bool) $expense->has_invoice,
                     'iva_amount' => round($ivaAmount, 2),
                     'exempt_amount' => (float) ($expense->exempt_amount ?? 0),
-
-                    // Campos para la tabla (algunos pueden ser null)
+                    'taxable_base' => (float) ($expense->taxable_base ?? ($amountBs - round($ivaAmount, 2) - (float) ($expense->exempt_amount ?? 0))),
                     'supplier_name' => $expense->supplier_name ?? $expense->name,
                     'supplier_rif' => $expense->supplier_rif ?? null,
                     'supplier_business_name' => $expense->supplier_business_name ?? $expense->name,
                     'invoice_number' => $expense->invoice_number ?? 'N/A',
-
                     'created_at' => $expense->created_at,
-                    'updated_at' => $expense->updated_at
+                    'updated_at' => $expense->updated_at,
+                    'sort_date' => $expense->expense_date,
                 ];
             });
 
-            // Calcular totales para la página actual
+            $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
+            $currentBcvRate = $bcvRate ? $bcvRate->rate : 1;
+
+            $formattedInvoices = $invoicesQuery->map(function ($invoice) use ($currentBcvRate) {
+                if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                    $ivaAmountBs = ($invoice->tax_amount / $invoice->exchange_rate) * $currentBcvRate;
+                    $amountBs = ($invoice->total_amount / $invoice->exchange_rate) * $currentBcvRate;
+                    $exemptAmountBs = ($invoice->exempt_amount / $invoice->exchange_rate) * $currentBcvRate;
+                } else {
+                    $ivaAmountBs = $invoice->currency === 'Bs' ? $invoice->tax_amount : 0;
+                    $amountBs = $invoice->currency === 'Bs' ? $invoice->total_amount : 0;
+                    $exemptAmountBs = $invoice->currency === 'Bs' ? $invoice->exempt_amount : 0;
+                }
+
+                $supplier = $invoice->supplier;
+
+                return [
+                    'id' => 'I' . $invoice->id,
+                    'original_id' => $invoice->id,
+                    'type' => 'invoice',
+                    'name' => "Factura Proveedor #{$invoice->invoice_number}",
+                    'category_name' => 'Facturas de Proveedores',
+                    'amount_bs' => (float) $amountBs,
+                    'amount_usd' => (float) $invoice->total_usd,
+                    'currency' => $invoice->currency,
+                    'expense_date' => $invoice->created_invoice_date,
+                    'is_deductible' => true,
+                    'has_invoice' => true,
+                    'iva_amount' => round($ivaAmountBs, 2),
+                    'exempt_amount' => (float) $exemptAmountBs,
+                    'taxable_base' => (float) ($invoice->taxable_base ?? ($amountBs - round($ivaAmountBs, 2) - $exemptAmountBs)),
+                    'supplier_name' => $supplier ? $supplier->name : 'N/A',
+                    'supplier_rif' => $supplier ? $supplier->rif : 'N/A',
+                    'supplier_business_name' => $supplier ? $supplier->business_name : 'N/A',
+                    'invoice_number' => $invoice->invoice_number,
+                    'created_at' => $invoice->created_at,
+                    'updated_at' => $invoice->updated_at,
+                    'sort_date' => $invoice->created_invoice_date,
+                ];
+            });
+
+            $allRecords = $formattedExpenses->concat($formattedInvoices)->sortByDesc(function ($item) {
+                return $item['sort_date'] . '_' . $item['id'];
+            })->values();
+
+            $totalRecords = $allRecords->count();
+            $offset = ($page - 1) * $itemsPerPage;
+            $itemsForPage = $allRecords->slice($offset, $itemsPerPage)->values();
+
             $pageTotals = [
-                'total_amount' => $formattedRecords->sum('amount_bs'),
-                'total_iva' => $formattedRecords->sum('iva_amount'),
-                'total_expenses' => $formattedRecords->count()
+                'total_amount' => $itemsForPage->sum('amount_bs'),
+                'total_iva' => $itemsForPage->sum('iva_amount'),
+                'total_expenses' => $itemsForPage->count()
             ];
 
-            Log::info('Registros de gastos con IVA obtenidos:', [
-                'periodo' => [$startDate, $endDate],
-                'page' => $page,
-                'items_per_page' => $itemsPerPage,
-                'total_records' => $totalRecords,
-                'records_in_page' => $formattedRecords->count(),
-                'page_totals' => $pageTotals
-            ]);
-
             return ApiResponse::success([
-                'data' => $formattedRecords->toArray(),
+                'data' => $itemsForPage->toArray(),
                 'pagination' => [
                     'current_page' => $page,
                     'per_page' => $itemsPerPage,
                     'total' => $totalRecords,
                     'last_page' => ceil($totalRecords / $itemsPerPage),
-                    'from' => $offset + 1,
+                    'from' => $totalRecords > 0 ? $offset + 1 : 0,
                     'to' => min($offset + $itemsPerPage, $totalRecords)
                 ],
                 'totals' => $pageTotals,
@@ -1318,7 +1365,7 @@ class PendingPaymentsController extends Controller
                     'start_date' => $startDate,
                     'end_date' => $endDate
                 ]
-            ], 'Registros de gastos con IVA obtenidos exitosamente');
+            ], 'Registros de crédito fiscal combinados exitosamente');
         } catch (\Exception $e) {
             Log::error('Error al obtener registros de gastos: ' . $e->getMessage());
             return ApiResponse::error('Error al obtener registros de gastos: ' . $e->getMessage(), 500);

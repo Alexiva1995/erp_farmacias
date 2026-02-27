@@ -17,8 +17,8 @@ const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
+const startDate = ref(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
+const endDate = ref(new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]);
 const origins = ref([]);
 const historyNameToEdit = ref("");
 const historyIdToEdit = ref(null);
@@ -114,8 +114,8 @@ const handleShowDetailHistory = (history) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  startDate.value = null;
-  endDate.value = null;
+  startDate.value = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+  endDate.value = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0];
   sortBy.value = undefined;
   orderBy.value = undefined;
 };

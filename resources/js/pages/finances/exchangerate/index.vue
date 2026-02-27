@@ -5,18 +5,22 @@ import axios from "@/plugins/axios";
 const dollar = ref(0);
 const pesos = ref(0);
 const euros = ref(0);
+const copc = ref(0);
 
 const idDollar = ref(null);
 const idPesos = ref(null);
 const idEuros = ref(null);
+const idCopc = ref(null);
 
 const dateUpdateDollar = ref("");
 const dateUpdatePesos = ref("");
 const dateUpdateEuros = ref("");
+const dateUpdateCopc = ref("");
 
 const dateColorDollar = ref("success");
 const dateColorPesos = ref("success");
 const dateColorEuros = ref("success");
+const dateColorCopc = ref("success");
 
 const getDollarBCV = async () => {
   try {
@@ -101,10 +105,39 @@ const getEUR = async () => {
   }
 };
 
+const getCOPC = async () => {
+  try {
+    const response = await axios.get("/finances/exchange-rates/consultOneCOPC");
+    if (!response.data) return;
+
+    const fechaRecibida = new Date(response.data.updated_at);
+    const hoy = new Date();
+
+    const esHoy =
+      fechaRecibida.getFullYear() === hoy.getFullYear() &&
+      fechaRecibida.getMonth() === hoy.getMonth() &&
+      fechaRecibida.getDate() === hoy.getDate();
+
+    let fecha = fechaRecibida.toLocaleDateString("es-VE", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    copc.value = parseFloat(response.data.rate);
+    idCopc.value = response.data.id;
+    dateColorCopc.value = esHoy ? "success" : "warning";
+    dateUpdateCopc.value = fecha;
+  } catch (error) {
+    console.error("Hubo un error al obtener la tasa COPC:", error);
+  }
+};
+
 function refresh() {
   getCOP();
   getDollarBCV();
   getEUR();
+  getCOPC();
 }
 
 onMounted(() => {
@@ -126,6 +159,10 @@ onMounted(() => {
     :dateColorDollar="dateColorDollar"
     :dateColorPesos="dateColorPesos"
     :dateColorEuros="dateColorEuros"
+    :copc="copc"
+    :idCopc="idCopc"
+    :dateUpdateCopc="dateUpdateCopc"
+    :dateColorCopc="dateColorCopc"
     @refresh="refresh"
   />
 </template>

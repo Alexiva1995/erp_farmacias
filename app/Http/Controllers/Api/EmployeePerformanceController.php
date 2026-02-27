@@ -48,6 +48,34 @@ class EmployeePerformanceController extends Controller
     }
 
     /**
+     * Lock/Snapshot the performance data for a given month and year.
+     */
+    public function lockMonth(Request $request)
+    {
+        $request->validate([
+            'month' => 'required|integer|between:1,12',
+            'year' => 'required|integer',
+        ]);
+
+        try {
+            $success = $this->performanceQueryService->captureSnapshot(
+                $request->month,
+                $request->year
+            );
+
+            return response()->json([
+                'status' => $success,
+                'message' => $success ? 'Mes cerrado y datos persistidos exitosamente' : 'Error al cerrar el mes',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al cerrar el mes: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get performance data for a specific employee.
      */
     public function getPerformance(Employee $employee)

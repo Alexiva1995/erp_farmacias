@@ -542,6 +542,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
             Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
             Route::get("/consultOneEUR", [ExchangeRateController::class, "consultOneEUR"]);
+            Route::get("/consultOneCOPC", [ExchangeRateController::class, "consultOneCOPC"]);
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
@@ -677,6 +678,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     Route::prefix('employee-performance')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'index']);
+        Route::post('/lock', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'lockMonth']);
     });
 
     Route::prefix('my-cleaning-activities')->group(function () {

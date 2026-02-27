@@ -55,6 +55,7 @@ const setMonthPreset = () => {
 
   emit("update:startDate", startOfMonth.toISOString().split("T")[0]);
   emit("update:endDate", endOfMonth.toISOString().split("T")[0]);
+  setTimeout(() => emit("apply-filter"), 100);
 };
 
 const setQuarterPreset = () => {
@@ -65,6 +66,7 @@ const setQuarterPreset = () => {
 
   emit("update:startDate", startOfQuarter.toISOString().split("T")[0]);
   emit("update:endDate", endOfQuarter.toISOString().split("T")[0]);
+  setTimeout(() => emit("apply-filter"), 100);
 };
 
 const setYearPreset = () => {
@@ -74,6 +76,7 @@ const setYearPreset = () => {
 
   emit("update:startDate", startOfYear.toISOString().split("T")[0]);
   emit("update:endDate", endOfYear.toISOString().split("T")[0]);
+  setTimeout(() => emit("apply-filter"), 100);
 };
 </script>
 
@@ -139,7 +142,7 @@ const setYearPreset = () => {
             <span class="text-body-2">
               <strong>Período seleccionado:</strong>
               {{
-                new Date(startDate).toLocaleDateString("es-CO", {
+                new Date(startDate).toLocaleDateString("es-VE", {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
