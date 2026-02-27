@@ -33,9 +33,6 @@ class ExchangeRateController extends Controller
             if ($currency === 'BS') {
                 $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/dolares/oficial');
                 $rate = $response->json('promedio');
-            } elseif ($currency === 'COP') {
-                $response = \Illuminate\Support\Facades\Http::get('https://co.dolarapi.com/v1/trm');
-                $rate = $response->json('valor');
             } elseif ($currency === 'EUR') {
                 $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/euros/oficial');
                 $rate = $response->json('promedio');

@@ -23,9 +23,18 @@ const pesos = ref();
 const euros = ref();
 
 const sudmitPesos = async () => {
+  if (!pesos.value) {
+    Swal.fire({
+      icon: "info",
+      title: "Actualización Manual Requerida",
+      text: "Para COP (Pesos Colombianos), es necesario ingresar el valor manualmente en el campo.",
+    });
+    return;
+  }
+
   let data = {
     currency_code: "COP",
-    rate: pesos.value ? parseFloat(pesos.value) : null,
+    rate: parseFloat(pesos.value),
   };
 
   try {

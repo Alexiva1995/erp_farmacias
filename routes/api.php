@@ -61,6 +61,7 @@ use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
 use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
+use App\Http\Controllers\Api\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -305,10 +306,12 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
 
     // Rutas del Dashboard
-
-
-
-
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);
+        Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
+        Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']);
+        Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+    });
     // Rutas de Trazabilidad
     Route::prefix("sales/report")->controller(TraceabilityController::class)->group(function () {
         Route::get("/", "index")->name("api.sales.report.index");

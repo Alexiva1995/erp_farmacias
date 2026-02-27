@@ -49,14 +49,6 @@ class UpdateExchangeRate extends Command
 
         $this->info("Euro actualizado: {$eurToVes} BS");
 
-        // ── Dólar COP → USD ──────────────────────────────────────────────────
-        $responseCOP = Http::get('https://co.dolarapi.com/v1/trm');
-
-        ExchangeRate::updateOrCreate(
-            ['currency_code' => 'COP'],
-            ['rate' => $responseCOP->json('valor'), 'source' => null]
-        );
-
-        $this->info("Dólar COP actualizado: {$responseCOP->json('valor')}");
+        $this->info("Euro actualizado: {$eurToVes} BS");
     }
 }
