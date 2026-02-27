@@ -25,6 +25,7 @@ class EmployeeSettlement extends Model
         'percentage',
         'total',
         'employee_id',
+        'signed_document_path',
     ];
 
     public function employee()

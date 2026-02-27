@@ -5,9 +5,9 @@ use App\Http\Controllers\Api\CleaningActivityController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeCleaningActivityController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\EmployeeLaboratoryController;
 use App\Http\Controllers\Api\EmployeePerformanceController;
 use App\Http\Controllers\Api\IslrController;
-use App\Http\Controllers\Api\EmployeeLaboratoryController;
 use App\Http\Controllers\Api\EmployeeProductController;
 use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\FurnitureController;
@@ -391,6 +391,9 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/employees', [SocialBenefitController::class, 'index']);
             Route::post('/employees/{employee}/payment', [SocialBenefitController::class, 'payment']);
             Route::get('/employees/{employee}/settlement-data', [SocialBenefitController::class, 'getSettlementData']);
+            Route::get('/employees/{employee}/download-settlement', [SocialBenefitController::class, 'downloadSettlement']);
+            Route::post('/employees/{employee}/upload-signed-settlement', [SocialBenefitController::class, 'uploadSignedSettlement']);
+            Route::get('/employees/{employee}/download-signed-settlement', [SocialBenefitController::class, 'downloadSignedSettlement']);
             Route::post('/employees/{employee}/fire', [SocialBenefitController::class, 'fire']);
         });
 
@@ -407,6 +410,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     Route::get('/roles', [RoleController::class, 'list']);
+    Route::apiResource('employee-laboratories', EmployeeLaboratoryController::class);
 
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);

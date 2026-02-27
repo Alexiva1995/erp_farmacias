@@ -71,4 +71,66 @@ class SocialBenefitController extends Controller
             return ApiResponse::error('Error interno: ' . $e->getMessage(), 500);
         }
     }
+
+    public function downloadSettlement(Employee $employee)
+    {
+        try {
+            $pdf = $this->socialBenefitServices->generatePdf($employee);
+            $filename = 'liquidacion-' . $employee->identification . '.pdf';
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            return ApiResponse::error('No se pudo generar el documento de liquidación: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function uploadSignedSettlement(Employee $employee, Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            ]);
+
+            $settlement = $employee->settlement;
+            if (!$settlement) {
+                return ApiResponse::error('No se encontró un registro de liquidación para este empleado.', 404);
+            }
+
+            if ($request->hasFile('file')) {
+                // Eliminar archivo anterior si existe
+                if ($settlement->signed_document_path && \Storage::disk('public')->exists($settlement->signed_document_path)) {
+                    \Storage::disk('public')->delete($settlement->signed_document_path);
+                }
+
+                $file = $request->file('file');
+                $filename = 'signed_settlement_' . $employee->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('settlements/signed', $filename, 'public');
+
+                $settlement->update(['signed_document_path' => $path]);
+
+                return ApiResponse::success(['path' => $path], 'Documento firmado subido correctamente');
+            }
+
+            return ApiResponse::error('No se recibió ningún archivo', 400);
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al subir documento: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function downloadSignedSettlement(Employee $employee)
+    {
+        try {
+            $settlement = $employee->settlement;
+            if (!$settlement || !$settlement->signed_document_path) {
+                return ApiResponse::error('No hay un documento firmado registrado.', 404);
+            }
+
+            if (!\Storage::disk('public')->exists($settlement->signed_document_path)) {
+                return ApiResponse::error('El archivo físico no existe en el servidor.', 404);
+            }
+
+            return \Storage::disk('public')->download($settlement->signed_document_path);
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al descargar documento: ' . $e->getMessage(), 500);
+        }
+    }
 }

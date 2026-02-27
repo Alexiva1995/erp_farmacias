@@ -64,6 +64,85 @@ const handleCloseFireDialog = () => {
   selectedEmployee.value = {};
 };
 
+const handleDownloadSettlement = async (employee) => {
+  try {
+    const response = await axios.get(
+      `/rrhh/social-benefits/employees/${employee.id}/download-settlement`,
+      { responseType: "blob" }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `liquidacion-${employee.identification}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Liquidación descargada con éxito");
+  } catch (error) {
+    toast.error("No se pudo descargar la liquidación");
+  }
+};
+
+const selectedEmployeeForUpload = ref(null);
+const fileInput = ref(null);
+
+const handleUploadSignedSettlement = (employee) => {
+  selectedEmployeeForUpload.value = employee;
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const onFileSelected = async (event) => {
+  const file = event.target.files[0];
+  if (!file || !selectedEmployeeForUpload.value) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    loading.value = true;
+    await axios.post(`/rrhh/social-benefits/employees/${selectedEmployeeForUpload.value.id}/upload-signed-settlement`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    toast.success('Documento firmado subido con éxito');
+    fetchEmployees();
+  } catch (error) {
+    toast.error('Error al subir el documento firmado');
+  } finally {
+    loading.value = false;
+    // Limpiar input para permitir subir el mismo archivo si es necesario
+    if (fileInput.value) fileInput.value.value = '';
+    selectedEmployeeForUpload.value = null;
+  }
+};
+
+const handleDownloadSignedSettlement = async (employee) => {
+  try {
+    const response = await axios.get(
+      `/rrhh/social-benefits/employees/${employee.id}/download-signed-settlement`,
+      { responseType: "blob" }
+    );
+    
+    // Obtener extensión del Content-Type o del path si fuera posible, por defecto pdf
+    const contentType = response.headers['content-type'];
+    const extension = contentType?.includes('image') ? (contentType.includes('png') ? 'png' : 'jpg') : 'pdf';
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `liquidacion-firmada-${employee.identification}.${extension}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Documento firmado descargado con éxito");
+  } catch (error) {
+    toast.error("No se pudo descargar el documento firmado");
+  }
+};
+
 onMounted(() => Promise.all([fetchCurrency(), fetchEmployees()]));
 
 let debounceTimer;
@@ -77,7 +156,14 @@ watch(
 );
 </script>
 <template>
-  <div>
+  <VContainer fluid>
+    <input
+      type="file"
+      ref="fileInput"
+      class="d-none"
+      accept="application/pdf,image/*"
+      @change="onFileSelected"
+    />
     <SocialBenefitsEmployeeFilter
       v-model:search="search"
       @clear="handleClearFilters"
@@ -97,6 +183,9 @@ watch(
       :total="totalEmployees"
       :employees="employees"
       @fire-employee="handleShowFireEmployeeDialog"
+      @download-settlement="handleDownloadSettlement"
+      @upload-signed="handleUploadSignedSettlement"
+      @download-signed="handleDownloadSignedSettlement"
     />
-  </div>
+  </VContainer>
 </template>

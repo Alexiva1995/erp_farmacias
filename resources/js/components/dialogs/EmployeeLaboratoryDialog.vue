@@ -125,14 +125,11 @@ const handleCancelEdit = () => {
 };
 
 const handleSubmit = () => {
-  if (!formData.value.employee_id) return;
-
-  const dataToSend = {
+  const payload = {
     employee_id: formData.value.employee_id,
     laboratory_ids: formData.value.laboratories.map((lab) => lab.id),
   };
-
-  emit("save", dataToSend);
+  emit("save", payload);
 };
 
 const availableLaboratories = computed(() => {
@@ -157,246 +154,168 @@ const getLaboratoryColor = (index) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700"
+    max-width="600"
     persistent
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
+    <VCard v-if="formData" class="rounded-lg overflow-hidden border shadow-lg bg-surface">
+      <!-- Header Estándar del Sistema -->
+      <VCardTitle class="pa-4 d-flex align-center bg-primary">
         <VIcon
           :icon="isEditMode ? 'tabler-edit' : 'tabler-plus'"
           size="24"
           color="white"
-          class="me-2"
+          class="me-3"
         />
-        <span class="text-h5 font-weight-bold text-white">{{
-          dialogTitle
-        }}</span>
+        <span class="text-h5 font-weight-bold text-white">{{ dialogTitle }}</span>
 
         <VSpacer />
+
         <VBtn
-          icon
+          icon="tabler-x"
           variant="text"
           color="white"
           size="small"
           @click="closeDialog"
-        >
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+        />
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="pa-6">
         <VForm @submit.prevent="handleSubmit">
-          <!-- Select de Empleado -->
-          <VRow dense class="mb-2">
-            <VCol cols="12">
-              <VSelect
-                v-model="formData.employee_id"
-                :items="props.employees"
-                :disabled="isEditMode"
-                label="Empleado *"
-                variant="outlined"
-                density="compact"
-                placeholder="Selecciona un empleado"
-                :error-messages="props.errors.employee_id"
-                clearable
-                @update:model-value="emit('clear-errors')"
-              >
-                <template #selection="{ item }">
-                  <div class="d-flex align-center gap-2">
-                    <VAvatar size="24" color="primary" variant="tonal">
-                      <span class="text-xs">
-                        {{
-                          item.title
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .substring(0, 2)
-                        }}
-                      </span>
-                    </VAvatar>
-                    <span>{{ item.title }}</span>
-                  </div>
-                </template>
-              </VSelect>
-            </VCol>
-          </VRow>
+          <!-- Sección de Empleado -->
+          <div class="mb-4">
+            <VSelect
+              v-model="formData.employee_id"
+              :items="props.employees"
+              :disabled="isEditMode"
+              label="Empleado *"
+              variant="outlined"
+              density="compact"
+              placeholder="Selecciona un empleado"
+              :error-messages="props.errors.employee_id"
+              class="rounded-lg"
+              @update:model-value="emit('clear-errors')"
+            >
+              <template #selection="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar size="24" color="primary" variant="tonal">
+                    <span class="text-xs font-weight-bold">
+                      {{ item.title.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() }}
+                    </span>
+                  </VAvatar>
+                  <span class="text-body-2">{{ item.title }}</span>
+                </div>
+              </template>
+            </VSelect>
+          </div>
 
-          <!-- Agregar Nuevo Laboratorio -->
-          <VRow dense class="mb-2">
-            <VCol cols="12">
-              <div class="d-flex gap-2">
-                <VSelect
-                  v-model="formData.new_laboratory_id"
-                  :items="availableLaboratories"
-                  label="Agregar Laboratorio"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="Selecciona un laboratorio"
-                  :disabled="!formData.employee_id"
-                  clearable
-                  class="flex-grow-1"
-                />
-                <VBtn
-                  color="success"
-                  variant="flat"
-                  size="default"
-                  :disabled="
-                    !formData.new_laboratory_id || !formData.employee_id
-                  "
-                  @click="handleAddLaboratory"
-                  style="height: 40px"
-                >
-                  <VIcon icon="tabler-plus" />
-                </VBtn>
-              </div>
-            </VCol>
-          </VRow>
+          <VDivider class="mb-5" />
+
+          <!-- Sección de Asignación -->
+          <div class="text-subtitle-1 font-weight-bold mb-3">
+            Asignación de Laboratorios
+          </div>
+
+          <div class="d-flex gap-2 mb-4">
+            <VSelect
+              v-model="formData.new_laboratory_id"
+              :items="availableLaboratories"
+              label="Agregar Laboratorio"
+              variant="outlined"
+              density="compact"
+              placeholder="Selecciona un laboratorio"
+              :disabled="!formData.employee_id"
+              class="flex-grow-1"
+              clearable
+            />
+            <VBtn
+              color="success"
+              variant="flat"
+              height="40"
+              :disabled="!formData.new_laboratory_id || !formData.employee_id"
+              @click="handleAddLaboratory"
+            >
+              <VIcon icon="tabler-plus" />
+            </VBtn>
+          </div>
 
           <!-- Lista de Laboratorios Asignados -->
-          <VRow dense class="mt-2">
-            <VCol cols="12">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <span class="text-subtitle-1 font-weight-medium">
-                  Laboratorios Asignados
-                </span>
-                <VChip
-                  :color="
-                    formData.laboratories.length > 0 ? 'primary' : 'default'
-                  "
-                  size="small"
-                  variant="tonal"
-                  label
-                >
-                  {{ formData.laboratories.length }}
-                </VChip>
-              </div>
+          <VCard variant="outlined" class="rounded-lg border">
+            <div v-if="formData.laboratories.length === 0" class="pa-6 d-flex flex-column align-center justify-center text-center">
+              <VIcon icon="tabler-flask-off" size="40" class="text-disabled mb-2" />
+              <div class="text-body-2 text-disabled">No hay laboratorios asignados</div>
+            </div>
 
-              <!-- Mensaje cuando no hay laboratorios -->
-              <VAlert
-                v-if="formData.laboratories.length === 0"
-                type="info"
-                variant="tonal"
-                rounded="lg"
-                class="mb-0"
-              >
-                <div class="d-flex align-center gap-2">
-                  <VIcon icon="tabler-info-circle" />
-                  <span>No hay laboratorios asignados</span>
-                </div>
-              </VAlert>
-
-              <!-- Tabla de Laboratorios -->
-              <VCard v-else variant="outlined" class="rounded-lg border">
-                <VList class="pa-0">
-                  <template
-                    v-for="(laboratory, index) in formData.laboratories"
-                    :key="`lab-${laboratory.id}-${index}`"
-                  >
-                    <VListItem class="px-4 py-2">
-                      <template #prepend>
-                        <VAvatar
-                          :color="getLaboratoryColor(index)"
-                          variant="tonal"
-                          size="32"
-                        >
-                          <VIcon icon="tabler-flask" size="18" />
-                        </VAvatar>
-                      </template>
-
-                      <VListItemTitle>
-                        <!-- Modo normal: mostrar nombre -->
-                        <div
-                          v-if="editingLaboratory !== laboratory.id"
-                          class="d-flex align-center"
-                        >
-                          <span class="text-body-2 font-weight-medium">
-                            {{ laboratory.name }}
-                          </span>
-                        </div>
-
-                        <!-- Modo edición: mostrar select -->
-                        <VSelect
-                          v-else
-                          v-model="tempLaboratoryId"
-                          :items="props.laboratories"
-                          density="compact"
-                          variant="outlined"
-                          hide-details
-                          class="my-1"
-                        />
-                      </VListItemTitle>
-
-                      <template #append>
-                        <div class="d-flex gap-1">
-                          <!-- Botones en modo normal -->
-                          <template v-if="editingLaboratory !== laboratory.id">
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="warning"
-                              @click="handleEditLaboratory(laboratory)"
-                            >
-                              <VIcon icon="tabler-edit" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Cambiar
-                              </VTooltip>
-                            </VBtn>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="error"
-                              @click="handleRemoveLaboratory(laboratory.id)"
-                            >
-                              <VIcon icon="tabler-trash" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Eliminar
-                              </VTooltip>
-                            </VBtn>
-                          </template>
-
-                          <!-- Botones en modo edición -->
-                          <template v-else>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="success"
-                              @click="handleSaveEdit(laboratory.id)"
-                            >
-                              <VIcon icon="tabler-check" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Guardar
-                              </VTooltip>
-                            </VBtn>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="error"
-                              @click="handleCancelEdit"
-                            >
-                              <VIcon icon="tabler-x" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Cancelar
-                              </VTooltip>
-                            </VBtn>
-                          </template>
-                        </div>
-                      </template>
-                    </VListItem>
-                    <VDivider v-if="index < formData.laboratories.length - 1" />
+            <VList v-else class="pa-0" density="compact">
+              <template v-for="(laboratory, index) in formData.laboratories" :key="laboratory.id">
+                <VListItem class="py-2">
+                  <template #prepend>
+                    <VAvatar
+                      :color="getLaboratoryColor(index)"
+                      variant="tonal"
+                      size="32"
+                      class="me-3"
+                    >
+                      <VIcon icon="tabler-flask" size="18" />
+                    </VAvatar>
                   </template>
-                </VList>
-              </VCard>
-            </VCol>
-          </VRow>
+
+                  <VListItemTitle>
+                    <div v-if="editingLaboratory !== laboratory.id" class="text-body-2 font-weight-medium">
+                      {{ laboratory.name }}
+                    </div>
+                    <VSelect
+                      v-else
+                      v-model="tempLaboratoryId"
+                      :items="props.laboratories"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      autofocus
+                    />
+                  </VListItemTitle>
+
+                  <template #append>
+                    <div class="d-flex gap-1">
+                      <template v-if="editingLaboratory !== laboratory.id">
+                        <VBtn
+                          icon="tabler-edit"
+                          variant="text"
+                          size="x-small"
+                          color="primary"
+                          @click="handleEditLaboratory(laboratory)"
+                        />
+                        <VBtn
+                          icon="tabler-trash"
+                          variant="text"
+                          size="x-small"
+                          color="error"
+                          @click="handleRemoveLaboratory(laboratory.id)"
+                        />
+                      </template>
+                      <template v-else>
+                        <VBtn
+                          icon="tabler-check"
+                          variant="text"
+                          size="x-small"
+                          color="success"
+                          @click="handleSaveEdit(laboratory.id)"
+                        />
+                        <VBtn
+                          icon="tabler-x"
+                          variant="text"
+                          size="x-small"
+                          color="error"
+                          @click="handleCancelEdit"
+                        />
+                      </template>
+                    </div>
+                  </template>
+                </VListItem>
+                <VDivider v-if="index < formData.laboratories.length - 1" />
+              </template>
+            </VList>
+          </VCard>
         </VForm>
       </VCardText>
 
@@ -408,23 +327,27 @@ const getLaboratoryColor = (index) => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="inline-size: 50%;"
         >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          :disabled="
-            !formData.employee_id || formData.laboratories.length === 0
-          "
+          :disabled="!formData.employee_id || formData.laboratories.length === 0"
           @click="handleSubmit"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="inline-size: 50%;"
         >
-          {{ isEditMode ? "Actualizar" : "Guardar" }}
+          {{ isEditMode ? 'Actualizar' : 'Guardar' }}
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.border {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
+}
+</style>

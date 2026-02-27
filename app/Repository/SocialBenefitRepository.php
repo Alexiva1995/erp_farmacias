@@ -88,14 +88,16 @@ class SocialBenefitRepository
                     FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25)
                   ELSE 0
                 END) AS earnings_voucher"),
-
-        // Información de pagos anuales
+        DB::raw("MAX(es.created_at) as settlement_date"),
+        DB::raw("MAX(es.signed_document_path) as signed_document_path")
       ])
+      ->join('resignations as r', 'r.employee_id', '=', 'employees.id')
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
       ->leftJoin('roles', 'roles.id', '=', 'users.role_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'users.id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->where('employees.is_active', true)
+      ->leftJoin('employee_settlements as es', 'es.employee_id', '=', 'employees.id')
+      ->whereNull('r.deleted_at')
       ->whereNull('employees.deleted_at')
       ->where(function ($query) use ($search) {
         $query->where('employees.name', 'LIKE', "%{$search}%")
@@ -113,6 +115,7 @@ class SocialBenefitRepository
         'roles.name',
         'employees.created_at'
       )
+      ->orderBy('employees.id', 'DESC')
       ->paginate($perPage);
   }
 
@@ -696,40 +699,83 @@ class SocialBenefitRepository
 
   public function generatePdf(Employee $employee, array $overrides = []): \Barryvdh\DomPDF\PDF
   {
-    $data = $this->getSettlementData($employee, $overrides);
+    // Intentar obtener datos guardados de la liquidación si ya fue procesada
+    $savedSettlement = $employee->settlement;
+    $resignation = $employee->resignation;
 
-    $pdfData = [
-      'name' => $employee->name,
-      'last_name' => $employee->last_name,
-      'identification' => $employee->identification,
-      'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
-      'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
-      'starting_date' => $data['starting_date'],
-      'resignation_date' => $data['resignation_date'],
-      'active_years' => $data['active_years'],
-      'detailed_seniority' => $this->getDetailedSeniority($data['starting_date'], $data['resignation_date']),
-      'base_salary' => $data['base_salary'],
-      'integral_salary' => $data['integral_salary'],
-      'social_benefits_days' => $data['social_benefits_days'],
-      'social_benefits_amount' => $data['social_benefits_amount'],
-      'vacation_voucher_days' => $data['vacation_voucher_days'],
-      'vacation_voucher_amount' => $data['vacation_voucher_amount'],
-      'vacation_bonus_voucher_days' => $data['vacation_bonus_voucher_days'],
-      'vacation_bonus_voucher_amount' => $data['vacation_bonus_voucher_amount'],
-      'earnings_voucher_days' => $data['earnings_voucher_days'],
-      'earnings_voucher_amount' => $data['earnings_voucher_amount'],
-      'total_settlement_amount' => $data['total_settlement_amount'],
-      'vacation_voucher_deduction' => $data['vacation_voucher_deduction'],
-      'vacation_bonus_voucher_deduction' => $data['vacation_bonus_voucher_deduction'],
-      'earnings_voucher_deduction' => $data['earnings_voucher_deduction'],
-      'total_deductions' => $data['total_deductions'],
-      'final_usd' => $data['final_usd'],
-      'currency' => $data['currency'],
-    ];
+    if ($savedSettlement) {
+      $pdfData = [
+        'name' => $employee->name,
+        'last_name' => $employee->last_name,
+        'identification' => $employee->identification,
+        'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
+        'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
+        'starting_date' => $resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y'),
+        'resignation_date' => $resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y'),
+        'active_years' => 0, // Se calculará abajo si es necesario para el string
+        'detailed_seniority' => '', // Se calculará abajo
+        'base_salary' => 0, // No guardado explícitamente como "base", pero integral sí
+        'integral_salary' => $savedSettlement->total_settlement > 0 ? round($savedSettlement->social_benefits_amount / ($savedSettlement->social_benefits_days ?: 1), 2) : 0,
+        'social_benefits_days' => $savedSettlement->social_benefits_days,
+        'social_benefits_amount' => $savedSettlement->social_benefits_amount,
+        'vacation_voucher_days' => $savedSettlement->vacation_voucher_days,
+        'vacation_voucher_amount' => $savedSettlement->vacation_voucher_amount,
+        'vacation_bonus_voucher_days' => $savedSettlement->vacation_bonus_voucher_days,
+        'vacation_bonus_voucher_amount' => $savedSettlement->vacation_bonus_voucher_amount,
+        'earnings_voucher_days' => $savedSettlement->earnings_voucher_days,
+        'earnings_voucher_amount' => $savedSettlement->earnings_voucher_amount,
+        'total_settlement_amount' => $savedSettlement->total_settlement,
+        'vacation_voucher_deduction' => $savedSettlement->vacation_voucher_deduction,
+        'vacation_bonus_voucher_deduction' => $savedSettlement->vacation_bonus_voucher_deduction,
+        'earnings_voucher_deduction' => $savedSettlement->earnings_voucher_deduction,
+        'total_deductions' => $savedSettlement->total_deduction,
+        'final_usd' => $savedSettlement->total,
+        'currency' => $savedSettlement->currency,
+      ];
 
-    // Incluir deducciones adicionales en el PDF si existen
+      // Re-calcular antigüedad para el PDF usando las fechas almacenadas
+      $start = $resignation?->start_date ?? $employee->created_at;
+      $end = $resignation?->effective_date ?? $savedSettlement->created_at;
+      $pdfData['active_years'] = $this->calculateActiveYears($start);
+      $pdfData['detailed_seniority'] = $this->getDetailedSeniority($start, $end);
+      
+    } else {
+      // Si no hay datos guardados, proceder con el recálculo (comportamiento original)
+      $data = $this->getSettlementData($employee, $overrides);
+
+      $pdfData = [
+        'name' => $employee->name,
+        'last_name' => $employee->last_name,
+        'identification' => $employee->identification,
+        'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
+        'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
+        'starting_date' => $data['starting_date'],
+        'resignation_date' => $data['resignation_date'],
+        'active_years' => $data['active_years'],
+        'detailed_seniority' => $this->getDetailedSeniority($data['starting_date'], $data['resignation_date']),
+        'base_salary' => $data['base_salary'],
+        'integral_salary' => $data['integral_salary'],
+        'social_benefits_days' => $data['social_benefits_days'],
+        'social_benefits_amount' => $data['social_benefits_amount'],
+        'vacation_voucher_days' => $data['vacation_voucher_days'],
+        'vacation_voucher_amount' => $data['vacation_voucher_amount'],
+        'vacation_bonus_voucher_days' => $data['vacation_bonus_voucher_days'],
+        'vacation_bonus_voucher_amount' => $data['vacation_bonus_voucher_amount'],
+        'earnings_voucher_days' => $data['earnings_voucher_days'],
+        'earnings_voucher_amount' => $data['earnings_voucher_amount'],
+        'total_settlement_amount' => $data['total_settlement_amount'],
+        'vacation_voucher_deduction' => $data['vacation_voucher_deduction'],
+        'vacation_bonus_voucher_deduction' => $data['vacation_bonus_voucher_deduction'],
+        'earnings_voucher_deduction' => $data['earnings_voucher_deduction'],
+        'total_deductions' => $data['total_deductions'],
+        'final_usd' => $data['final_usd'],
+        'currency' => $data['currency'],
+      ];
+    }
+
+    // Incluir deducciones adicionales en el PDF si existen (solo en recálculo o si se pasan por parámetro)
     if (isset($overrides['additional_deductions_usd']) && $overrides['additional_deductions_usd'] > 0) {
-        $pdfData['additional_deductions_bs'] = $overrides['additional_deductions_usd'] * $data['currency'];
+        $pdfData['additional_deductions_bs'] = $overrides['additional_deductions_usd'] * $pdfData['currency'];
     }
 
     return Pdf::loadView('pdf.settlement', $pdfData);

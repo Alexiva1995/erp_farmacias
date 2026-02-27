@@ -15,8 +15,10 @@ class EmployeeLaboratoryQueryService
      */
     public function getFilteredEmployeeLaboratories(array $data): LengthAwarePaginator
     {
-        $query = Employee::with(['laboratories'])
-            ->withCount('laboratories');
+        $query = Employee::query()
+            ->with(['laboratories'])
+            ->withCount('laboratories')
+            ->where('employees.is_active', true);
 
         // Búsqueda por nombre de empleado
         if (!empty($data['q'])) {
