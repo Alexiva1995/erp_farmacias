@@ -27,27 +27,29 @@ const availableYears = computed(() => {
 });
 
 const series = computed(() => {
-  const monthlyData = revenueData.value.monthly_data;
+  const monthlyData = revenueData.value?.monthly_data || [];
 
   return {
     bar: [
       {
         name: "Ingresos",
-        data: monthlyData.map((item) => Math.round(item.income)),
+        data: monthlyData.map((item) => Math.round(item.income || 0)),
       },
       {
         name: "Gastos",
-        data: monthlyData.map((item) => Math.round(-item.expenses)),
+        data: monthlyData.map((item) => Math.round(-item.expenses || 0)),
       },
     ],
     line: [
       {
         name: "Mes Anterior",
-        data: monthlyData.slice(0, -1).map((item) => Math.round(item.net)),
+        data: (monthlyData.length > 0 ? monthlyData.slice(0, -1) : []).map(
+          (item) => Math.round(item.net || 0),
+        ),
       },
       {
         name: "Mes Actual",
-        data: monthlyData.map((item) => Math.round(item.net)),
+        data: monthlyData.map((item) => Math.round(item.net || 0)),
       },
     ],
   };
@@ -72,11 +74,11 @@ const chartOptions = computed(() => {
     variableTheme["high-emphasis-opacity"]
   })`;
   const borderColor = `rgba(${hexToRgb(
-    String(variableTheme["border-color"])
+    String(variableTheme["border-color"]),
   )},${variableTheme["border-opacity"]})`;
 
-  const categories = revenueData.value.monthly_data.map(
-    (item) => item.month_name
+  const categories = (revenueData.value?.monthly_data || []).map(
+    (item) => item.month_name || "",
   );
 
   return {
@@ -228,7 +230,15 @@ const fetchRevenueReport = async () => {
     const { data } = await axios.get("/dashboard/revenue-report", {
       params: { year: selectedYear.value },
     });
-    revenueData.value = data.data;
+    revenueData.value = data.data || {
+      monthly_data: [],
+      summary: {
+        total_income: 0,
+        total_expenses: 0,
+        net_revenue: 0,
+        year: selectedYear.value,
+      },
+    };
   } catch (error) {
     console.error("Error al cargar revenue report:", error);
   } finally {
@@ -258,7 +268,8 @@ onMounted(() => {
           <h6 class="text-h5 mb-sm-n8">Reporte de Ingresos</h6>
 
           <VueApexCharts
-            v-if="!loading && series.bar.length > 0"
+            v-if="!loading && series.bar && series.bar.length > 0"
+            :key="`bar-${selectedYear}-${series.bar[0].data.length}`"
             :options="chartOptions.bar"
             :series="series.bar"
             height="365"
@@ -294,14 +305,14 @@ onMounted(() => {
 
           <div class="d-flex flex-column my-8">
             <h5 class="font-weight-medium text-h3">
-              {{ formatCurrency(revenueData.summary.net_revenue) }}
+              {{ formatCurrency(revenueData?.summary?.net_revenue || 0) }}
             </h5>
             <p class="mb-0">
               <span class="text-high-emphasis font-weight-medium me-1"
                 >Ingresos:</span
               >
               <span>{{
-                formatCurrency(revenueData.summary.total_income)
+                formatCurrency(revenueData?.summary?.total_income || 0)
               }}</span>
             </p>
             <p class="mb-0">
@@ -309,13 +320,14 @@ onMounted(() => {
                 >Gastos:</span
               >
               <span>{{
-                formatCurrency(revenueData.summary.total_expenses)
+                formatCurrency(revenueData?.summary?.total_expenses || 0)
               }}</span>
             </p>
           </div>
 
           <VueApexCharts
-            v-if="!loading && series.line.length > 0"
+            v-if="!loading && series.line && series.line.length > 0"
+            :key="`line-${selectedYear}-${series.line[0].data.length}`"
             :options="chartOptions.line"
             :series="series.line"
             height="100"
