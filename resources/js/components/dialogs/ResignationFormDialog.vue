@@ -1,7 +1,7 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
 import axios from "axios";
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -22,6 +22,7 @@ const resignationType = ref("");
 const effectiveDate = ref("");
 const requestDate = ref(new Date().toISOString().split("T")[0]);
 const employeePosition = ref("");
+const hireDate = ref("");
 const showDuplicateConfirm = ref(false);
 const duplicateResignationData = ref(null);
 
@@ -32,8 +33,11 @@ const resignationTypes = [
 
 // Watcher para pre-llenar campos cuando se está editando
 watch(
-  [() => props.isEdit, () => props.existingResignation],
-  ([isEdit, existingResignation]) => {
+  [() => props.isEdit, () => props.existingResignation, () => props.selectedEmployee],
+  ([isEdit, existingResignation, selectedEmployee]) => {
+    if (selectedEmployee) {
+      hireDate.value = selectedEmployee.created_at?.split("T")[0] || ""; // Fallback si no hay hire_date explícito
+    }
     if (isEdit && existingResignation) {
       resignationType.value = existingResignation.resignation_type || "";
       effectiveDate.value = existingResignation.effective_date || "";
@@ -41,6 +45,9 @@ watch(
         existingResignation.request_date ||
         new Date().toISOString().split("T")[0];
       employeePosition.value = existingResignation.employee_position || "";
+      if (existingResignation.start_date) {
+        hireDate.value = existingResignation.start_date;
+      }
     }
   },
   { immediate: true }
@@ -56,7 +63,7 @@ const resetForm = () => {
   resignationType.value = "";
   effectiveDate.value = "";
   requestDate.value = new Date().toISOString().split("T")[0];
-  employeePosition.value = ""; // Reset del nuevo campo
+  employeePosition.value = ""; 
   loading.value = false;
 };
 
@@ -70,17 +77,9 @@ const validateForm = () => {
   if (!effectiveDate.value) {
     errors.value.effectiveDate =
       "Debe seleccionar la fecha efectiva de renuncia";
-  } else {
-    const effective = new Date(effectiveDate.value);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (effective < today) {
-      errors.value.effectiveDate =
-        "La fecha efectiva no puede ser anterior a hoy";
-    }
   }
 
+  // Se elimina la restricción de fecha mínima pedida por el usuario
   return Object.keys(errors.value).length === 0;
 };
 
@@ -98,8 +97,8 @@ const generateResignation = async () => {
       employee_identification: props.selectedEmployee.identification,
       employee_email: props.selectedEmployee.email,
       employee_status: props.selectedEmployee.is_active ? "Activo" : "Inactivo",
-      employee_position: employeePosition.value || "empleado", // Campo opcional con valor por defecto
-      start_date: new Date().toISOString().split("T")[0], // Fecha actual como fecha de inicio
+      employee_position: employeePosition.value || "empleado", 
+      start_date: hireDate.value, 
       resignation_type: resignationType.value,
       effective_date: effectiveDate.value,
     };
@@ -200,9 +199,8 @@ const formatDate = (dateString) => {
 };
 
 // Calcular fecha mínima (hoy)
-const minDate = computed(() => {
-  return new Date().toISOString().split("T")[0];
-});
+// Se elimina minDate para permitir fechas efectivas pasadas
+const minDate = null;
 
 // Calcular fecha máxima (1 año desde hoy)
 const maxDate = computed(() => {
@@ -221,10 +219,17 @@ const maxDate = computed(() => {
     :scrollable="true"
     content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <VIcon icon="tabler-file-text" class="me-2" color="warning" />
-        <span class="headline">Generar Carta de Renuncia</span>
+    <VCard class="resignation-card">
+      <VCardTitle class="d-flex align-center pa-6">
+        <div class="d-flex align-center">
+          <VAvatar color="warning" variant="tonal" rounded size="40" class="me-3">
+            <VIcon icon="tabler-file-text" size="24" />
+          </VAvatar>
+          <div>
+            <div class="text-h6 font-weight-bold">Generar Carta de Renuncia</div>
+            <div class="text-caption text-medium-emphasis">Complete los detalles para generar el documento PDF</div>
+          </div>
+        </div>
         <VSpacer />
         <VBtn icon variant="text" @click="closeDialog" :disabled="loading">
           <VIcon>tabler-x</VIcon>
@@ -233,62 +238,35 @@ const maxDate = computed(() => {
 
       <VDivider />
 
-      <VContainer v-if="props.selectedEmployee">
+      <VContainer v-if="props.selectedEmployee" class="pa-6">
         <!-- Información del Empleado -->
-        <VCard variant="outlined" class="mb-4">
-          <VCardTitle class="text-h6 pa-4 pb-2">
-            <VIcon icon="tabler-user" class="me-2" />
-            Información del Empleado
-          </VCardTitle>
-          <VCardText class="pt-0">
+        <VCard variant="tonal" border class="mb-6">
+          <VCardText class="pa-4">
+            <div class="d-flex align-center mb-4">
+              <VIcon icon="tabler-user-circle" class="me-2" color="primary" />
+              <span class="text-subtitle-1 font-weight-bold">Datos del Empleado</span>
+            </div>
             <VRow>
-              <VCol cols="12" sm="6">
-                <div class="text-body-2 text-medium-emphasis">
-                  Nombre Completo
-                </div>
-                <div class="text-body-1 font-weight-medium">
-                  {{ props.selectedEmployee.name }}
-                  {{ props.selectedEmployee.last_name }}
-                </div>
+              <VCol cols="12" sm="6" class="py-1">
+                <div class="text-caption text-medium-emphasis">Nombre Completo</div>
+                <div class="text-body-1 font-weight-medium">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</div>
               </VCol>
-              <VCol cols="12" sm="6">
-                <div class="text-body-2 text-medium-emphasis">
-                  Identificación
-                </div>
-                <div class="text-body-1 font-weight-medium">
-                  {{ props.selectedEmployee.identification }}
-                </div>
+              <VCol cols="12" sm="6" class="py-1">
+                <div class="text-caption text-medium-emphasis">Identificación</div>
+                <div class="text-body-1 font-weight-medium">{{ props.selectedEmployee.identification }}</div>
               </VCol>
-              <VCol cols="12" sm="6">
-                <div class="text-body-2 text-medium-emphasis">
-                  Correo Electrónico
-                </div>
-                <div class="text-body-1 font-weight-medium">
-                  {{ props.selectedEmployee.email }}
-                </div>
-              </VCol>
-              <VCol cols="12" sm="6">
-                <div class="text-body-2 text-medium-emphasis">Estado</div>
-                <div class="text-body-1 font-weight-medium">
-                  <VChip
-                    :color="
-                      props.selectedEmployee.is_active ? 'success' : 'error'
-                    "
-                    size="small"
-                  >
-                    {{
-                      props.selectedEmployee.is_active ? "Activo" : "Inactivo"
-                    }}
-                  </VChip>
-                </div>
-              </VCol>
-              <VCol cols="12">
-                <div class="text-body-2 text-medium-emphasis">
-                  Fecha de Registro
-                </div>
-                <div class="text-body-1 font-weight-medium">
-                  {{ formatDate(new Date().toISOString().split("T")[0]) }}
-                </div>
+              <VCol cols="12" sm="6" class="py-1">
+                <div class="text-caption text-medium-emphasis">Fecha de Ingreso</div>
+                <VTextField
+                  v-model="hireDate"
+                  type="date"
+                  variant="underlined"
+                  density="compact"
+                  hide-details
+                  class="mt-n1"
+                  :readonly="false"
+                  prepend-inner-icon="tabler-calendar"
+                />
               </VCol>
             </VRow>
           </VCardText>
@@ -306,6 +284,7 @@ const maxDate = computed(() => {
                 :error-messages="errors.resignationType"
                 :disabled="loading"
                 required
+                prepend-inner-icon="tabler-category"
               />
             </VCol>
 
@@ -359,13 +338,13 @@ const maxDate = computed(() => {
                 label="Fecha Efectiva de Renuncia *"
                 type="date"
                 variant="outlined"
-                :min="minDate"
                 :max="maxDate"
                 :error-messages="errors.effectiveDate"
                 :disabled="loading"
                 required
-                hint="Fecha en que el empleado dejará de trabajar"
+                hint="Puede ser anterior al día de hoy si se requiere"
                 persistent-hint
+                prepend-inner-icon="tabler-calendar-event"
               />
             </VCol>
           </VRow>
@@ -497,7 +476,7 @@ const maxDate = computed(() => {
 }
 
 .v-dialog .v-card {
-  max-height: 90vh;
+  max-block-size: 90vh;
   overflow-y: auto;
 }
 

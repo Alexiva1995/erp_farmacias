@@ -19,6 +19,7 @@ class FireEmployeeRequest extends FormRequest
       'currency' => 'required|in:USD,BS,COP',
       'count' => 'required|in:Efectivo,Tarjeta,Pago móvil,Transferencia,Binance,Paypal',
       'payed' => 'required|decimal:0,2|min:1.0',
+      'overrides' => 'nullable|array',
     ];
   }
 

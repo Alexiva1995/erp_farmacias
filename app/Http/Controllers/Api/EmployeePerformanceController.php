@@ -9,6 +9,9 @@ use App\Models\Order;
 use App\Models\SaleCount;
 use App\Models\OrderDetail;
 use App\Models\Employee;
+use App\Models\InvoiceCount;
+use App\Models\ProductCount;
+use App\Models\InventoryCycle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -123,6 +126,26 @@ class EmployeePerformanceController extends Controller
             // Datos de inventario
             $inventoryCounts = $this->getInventoryCounts($employee->user_id);
 
+            // Calcular métricas de rentabilidad reales
+            $profitability = $this->getProfitabilityMetrics($employee->user_id, $currentMonth, $currentYear);
+
+            // Calcular órdenes con un solo producto (para Cross-selling)
+            $currentMonthSingleProductOrders = 0;
+            foreach ($currentMonthOrders as $order) {
+                $uniqueCount = OrderDetail::where('order_id', $order->id)->distinct('product_id')->count();
+                if ($uniqueCount === 1) {
+                    $currentMonthSingleProductOrders++;
+                }
+            }
+
+            $historicalSingleProductOrders = 0;
+            foreach ($historicalOrders as $order) {
+                $uniqueCount = OrderDetail::where('order_id', $order->id)->distinct('product_id')->count();
+                if ($uniqueCount === 1) {
+                    $historicalSingleProductOrders++;
+                }
+            }
+
             return ApiResponse::success([
                 'salesMetrics' => [
                     'currentMonth' => [
@@ -130,28 +153,19 @@ class EmployeePerformanceController extends Controller
                         'totalUnits' => $currentMonthUnits,
                         'ticketAverage' => $currentMonthTicketAvg,
                         'unitsAverage' => $currentMonthUnitsAvg,
-                        'totalOrders' => $currentMonthOrders->count()
+                        'totalOrders' => $currentMonthOrders->count(),
+                        'ordersWithSingleProduct' => $currentMonthSingleProductOrders
                     ],
                     'historical' => [
-                        'totalAmount' => $historicalTotal,    // ← Acumulado desde 2026
-                        'totalUnits' => $historicalUnits,      // ← Acumulado desde 2026
+                        'totalAmount' => $historicalTotal,
+                        'totalUnits' => $historicalUnits,
                         'ticketAverage' => $historicalTicketAvg,
                         'unitsAverage' => $historicalUnitsAvg,
-                        'totalOrders' => $historicalOrders->count()
+                        'totalOrders' => $historicalOrders->count(),
+                        'ordersWithSingleProduct' => $historicalSingleProductOrders
                     ]
                 ],
-                'profitabilityMetrics' => [
-                    'currentMonth' => [
-                        'upsellRate' => 0,
-                        'avgOrderTime' => 0,
-                        'returnRate' => 0
-                    ],
-                    'historical' => [
-                        'upsellRate' => 0,
-                        'avgOrderTime' => 0,
-                        'returnRate' => 0
-                    ]
-                ],
+                'profitabilityMetrics' => $profitability,
                 'rankings' => $rankings,
                 'inventoryCounts' => $inventoryCounts
             ]);
@@ -500,14 +514,39 @@ class EmployeePerformanceController extends Controller
 
     private function getInventoryCounts($userId)
     {
-        $totalCounts = SaleCount::where('user_id', $userId)->count();
-        $discrepancies = SaleCount::where('user_id', $userId)
-            ->where('discrepancy', '!=', 0)
-            ->count();
+        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+
+        if (!$activeCycleId) {
+            return [
+                'total' => 0,
+                'discrepancies' => 0
+            ];
+        }
+
+        // 1. Conteos desde Ventas (SaleCount)
+        $saleCounts = SaleCount::where('user_id', $userId)
+            ->where('cycle_id', $activeCycleId)
+            ->get();
+        $totalSaleCounts = $saleCounts->count();
+        $saleDiscrepancies = $saleCounts->where('discrepancy', '!=', 0)->count();
+
+        // 2. Conteos desde Facturas (InvoiceCount)
+        $invoiceCounts = InvoiceCount::where('user_id', $userId)
+            ->where('cycle_id', $activeCycleId)
+            ->get();
+        $totalInvoiceCounts = $invoiceCounts->count();
+        $invoiceDiscrepancies = $invoiceCounts->where('discrepancy', '!=', 0)->count();
+
+        // 3. Conteos Normales/Cíclicos (ProductCount)
+        $productCounts = ProductCount::where('user_id', $userId)
+            ->where('cycle_id', $activeCycleId)
+            ->get();
+        $totalProductCounts = $productCounts->count();
+        $productDiscrepancies = $productCounts->where('discrepancy', '!=', 0)->count();
 
         return [
-            'total' => $totalCounts,
-            'discrepancies' => $discrepancies
+            'total' => $totalSaleCounts + $totalInvoiceCounts + $totalProductCounts,
+            'discrepancies' => $saleDiscrepancies + $invoiceDiscrepancies + $productDiscrepancies
         ];
     }
 }

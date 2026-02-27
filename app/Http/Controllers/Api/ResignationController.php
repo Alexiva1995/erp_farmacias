@@ -30,13 +30,8 @@ class ResignationController extends Controller
             ]);
             $resignationData = $request->all();
 
-            // Validación adicional para fecha efectiva
-            if (isset($resignationData['request_date']) && $resignationData['request_date'] && $resignationData['effective_date'] < $resignationData['request_date']) {
-                return response()->json([
-                    'message' => 'La fecha efectiva no puede ser anterior a la fecha de solicitud',
-                    'errors' => ['effective_date' => ['La fecha efectiva no puede ser anterior a la fecha de solicitud']]
-                ], 422);
-            }
+            // Eliminada la restricción de fecha efectiva anterior a solicitud
+
 
             // Obtener email del usuario si no viene en request
             if (empty($resignationData['employee_email'])) {

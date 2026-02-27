@@ -26,13 +26,18 @@ class SocialBenefitServices implements SocialBenefit
     return $this->socialBenefitRepository->payment($employee, $data);
   }
 
-  public function getSettlementData(Employee $employee): array
+  public function getSettlementData(Employee $employee, array $overrides = []): array
   {
-    return $this->socialBenefitRepository->getSettlementData($employee);
+    return $this->socialBenefitRepository->getSettlementData($employee, $overrides);
   }
 
   public function fire(Employee $employee, array $data): bool
   {
     return $this->socialBenefitRepository->fire($employee, $data);
+  }
+
+  public function generatePdf(Employee $employee, array $overrides = []): \Barryvdh\DomPDF\PDF
+  {
+    return $this->socialBenefitRepository->generatePdf($employee, $overrides);
   }
 }
