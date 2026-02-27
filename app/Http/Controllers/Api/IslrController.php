@@ -94,7 +94,7 @@ class IslrController extends Controller
                     'message' => 'No hay unidad tributaria configurada'
                 ],
                 'message' => 'No se encontró unidad tributaria activa.'
-            ], 404);
+            ]);
         }
 
         return response()->json([
@@ -142,7 +142,7 @@ class IslrController extends Controller
             return response()->json([
                 'data' => null,
                 'message' => "No se encontró declaración para el año {$year}."
-            ], 404);
+            ]);
         }
 
         return response()->json([
