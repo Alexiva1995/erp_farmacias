@@ -789,222 +789,199 @@ onMounted(() => {
     persistent
     @update:model-value="closeModal"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between">
-        <span>Procesar Pago</span>
-        <VBtn icon="tabler-x" variant="text" size="small" @click="closeModal" />
+    <VCard class="pa-2">
+      <VCardTitle class="d-flex align-center justify-space-between pb-4">
+        <div class="d-flex align-center">
+          <VAvatar color="primary" variant="tonal" rounded size="40" class="me-3">
+            <VIcon icon="tabler-credit-card" size="24" />
+          </VAvatar>
+          <div>
+            <div class="text-h6 font-weight-bold">Procesar Pago</div>
+            <div class="text-caption text-medium-emphasis">{{ invoices.length }} factura(s) seleccionada(s)</div>
+          </div>
+        </div>
+        <VBtn icon="tabler-x" variant="text" color="secondary" @click="closeModal" />
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText>
-        <!-- Información de facturas seleccionadas -->
+      <VCardText class="pt-6">
         <VRow>
-          <VCol cols="12">
-            <VCard>
-              <VAlert type="info" variant="tonal" class="mb-4">
-                <div class="d-flex align-center">
-                  <VIcon icon="tabler-receipt" class="me-2" />
-                  Facturas a Pagar
-                </div>
-                <div class="text-caption text-medium-emphasis mb-2">
-                  {{ invoices.length }} factura(s) seleccionada(s) para pago
-                </div>
-                <VRow>
-                  <VCol
+          <!-- Resumen de Facturas -->
+          <VCol cols="12" lg="4">
+            <VCard variant="outlined" class="border-opacity-25 h-100">
+              <VCardItem class="pb-2">
+                <template #prepend>
+                  <VIcon icon="tabler-receipt" color="primary" class="me-2" />
+                </template>
+                <VCardTitle class="text-subtitle-1 font-weight-bold">Detalle de Facturas</VCardTitle>
+              </VCardItem>
+              
+              <VCardText>
+                <VList lines="one" class="bg-transparent pa-0">
+                  <VListItem
                     v-for="invoice in invoices"
                     :key="invoice.id"
-                    cols="4"
-                    class="my-0 py-0 pb-2 pt-1"
+                    class="px-0 py-1"
                   >
-                    <strong>#{{ invoice.invoice_number }}</strong> -
-                    {{ formatWithoutCurrency(invoice.total_amount) }}
-                    {{ invoice.currency }}
-                  </VCol>
-                </VRow>
-              </VAlert>
+                    <template #prepend>
+                      <VIcon icon="tabler-hash" size="14" class="me-1 text-medium-emphasis" />
+                    </template>
+                    <VListItemTitle class="text-body-2">
+                      {{ invoice.invoice_number }}
+                    </VListItemTitle>
+                    <template #append>
+                      <div class="text-body-2 font-weight-medium">
+                        {{ formatWithoutCurrency(invoice.total_amount) }} <span class="text-caption text-medium-emphasis">{{ invoice.currency }}</span>
+                      </div>
+                    </template>
+                  </VListItem>
+                </VList>
+
+                <VDivider class="my-3 border-opacity-25" />
+
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption text-medium-emphasis">Total Referencia</span>
+                  <span class="text-h6 font-weight-bold text-primary">
+                    {{ formatCurrency(totalInUSD, "USD") }}
+                  </span>
+                </div>
+                <div class="d-flex justify-end">
+                  <span class="text-caption text-medium-emphasis">
+                    ≈ {{ formatWithoutCurrency(totalInBS) }} Bs
+                  </span>
+                </div>
+              </VCardText>
             </VCard>
           </VCol>
+
+          <!-- Formulario Principal -->
+          <VCol cols="12" lg="8">
+            <VForm @submit.prevent="processPayment">
+              <VRow>
+                <!-- Moneda y Método -->
+                <VCol cols="12" md="6">
+                  <VSelect
+                    v-model="form.payment_currency"
+                    :items="currencies"
+                    item-title="label"
+                    item-value="value"
+                    label="Moneda de Pago"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.payment_currency"
+                    prepend-inner-icon="tabler-currency"
+                    @update:model-value="setDefaultAmount"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VSelect
+                    v-model="form.payment_method"
+                    :items="availablePaymentMethods"
+                    item-title="label"
+                    item-value="value"
+                    label="Método de Pago"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.payment_method"
+                    prepend-inner-icon="tabler-wallet"
+                  />
+                </VCol>
+
+                <!-- Monto y Referencia -->
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model.number="form.payment_amount"
+                    label="Monto a Pagar"
+                    type="number"
+                    variant="outlined"
+                    density="comfortable"
+                    step="0.01"
+                    :color="amountFieldState === 'success' ? 'success' : amountFieldState === 'error' ? 'error' : 'primary'"
+                    :error-messages="amountFieldState === 'error' ? errors.payment_amount : []"
+                    prepend-inner-icon="tabler-cash"
+                    @input="validateAmountRealtime"
+                  >
+                    <template #append-inner>
+                      <VIcon v-if="amountFieldState === 'success'" icon="tabler-check" color="success" />
+                    </template>
+                  </VTextField>
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.reference"
+                    label="Referencia / Confirmación"
+                    variant="outlined"
+                    density="comfortable"
+                    placeholder="Nro. de Comprobante"
+                    prepend-inner-icon="tabler-id"
+                  />
+                </VCol>
+
+                <!-- Fecha y Archivo -->
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.payment_date"
+                    label="Fecha de Ejecución"
+                    type="date"
+                    variant="outlined"
+                    density="comfortable"
+                    prepend-inner-icon="tabler-calendar"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <VFileInput
+                    label="Soporte de Pago (Opcional)"
+                    accept="image/*"
+                    variant="outlined"
+                    density="comfortable"
+                    prepend-inner-icon="tabler-upload"
+                    :loading="uploading"
+                    @change="handleFileUpload($event.target.files[0])"
+                  />
+                </VCol>
+              </VRow>
+
+              <!-- Resumen dinámico del Ahorro -->
+              <VCard variant="tonal" color="success" class="mt-4 border-none shadow-none">
+                <VCardText class="d-flex align-center justify-space-between py-3 px-4">
+                  <div class="d-flex align-center">
+                    <VAvatar color="white" size="32" class="me-3">
+                      <VIcon icon="tabler-trending-down" color="success" size="18" />
+                    </VAvatar>
+                    <span class="text-body-2 font-weight-medium">Porcentaje de Ahorro Detectado</span>
+                  </div>
+                  <div class="text-h6 font-weight-bold">
+                    {{ savingsPercentage }}%
+                  </div>
+                </VCardText>
+              </VCard>
+            </VForm>
+          </VCol>
         </VRow>
-
-        <!-- Formulario de pago -->
-        <VForm @submit.prevent="processPayment">
-          <!-- CORRECCIÓN ISSUE #2: Mostrar monto de referencia en USD -->
-          <VRow>
-            <VCol cols="12">
-              <VAlert type="info" variant="outlined" class="mb-4">
-                <template #title>
-                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-currency-dollar" class="me-2" />
-                    Monto de Referencia de la Factura
-                  </div>
-                </template>
-                <div class="text-center">
-                  <div class="text-h4 font-weight-bold text-primary mb-2">
-                    {{ formatCurrency(totalInUSD, "USD") }} |
-                    {{ formatWithoutCurrency(totalInBS) }} Bs
-                  </div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    Este es el monto de la factura en USD. Puede pagar más o
-                    menos según su conveniencia.
-                  </div>
-                </div>
-              </VAlert>
-            </VCol>
-          </VRow>
-
-          <VRow>
-            <VCol cols="12" md="4">
-              <VSelect
-                v-model="form.payment_currency"
-                :items="currencies"
-                item-title="label"
-                item-value="value"
-                label="Moneda de Pago"
-                :error-messages="errors.payment_currency"
-                @update:model-value="setDefaultAmount"
-                required
-                :return-object="false"
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VSelect
-                v-model="form.payment_method"
-                :items="availablePaymentMethods"
-                item-title="label"
-                item-value="value"
-                label="Método de Pago"
-                :error-messages="errors.payment_method"
-                required
-                :return-object="false"
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model.number="form.payment_amount"
-                label="Monto a Pagar"
-                type="number"
-                step="0.01"
-                min="0"
-                :error-messages="
-                  amountFieldState === 'error' ? errors.payment_amount : []
-                "
-                :success-messages="[]"
-                :color="
-                  amountFieldState === 'success'
-                    ? 'success'
-                    : amountFieldState === 'error'
-                    ? 'error'
-                    : 'primary'
-                "
-                :prepend-inner-icon="amountFieldState === 'error' ? '❌' : '💲'"
-                persistent-hint
-                @input="validateAmountRealtime"
-                @blur="validateAmountRealtime"
-                required
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="form.reference"
-                label="Referencia de Pago"
-                placeholder="Número de referencia bancaria/transferencia"
-                :error-messages="errors.reference"
-                prepend-inner-icon="tabler-receipt"
-                hint="Opcional: Número de referencia del pago bancario"
-                persistent-hint
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="form.payment_date"
-                label="Fecha de Pago"
-                type="date"
-                :error-messages="errors.payment_date"
-                required
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VFileInput
-                label="Comprobante de Pago"
-                accept="image/*"
-                :loading="uploading"
-                @change="handleFileUpload($event.target.files[0])"
-                prepend-icon="tabler-upload"
-              />
-            </VCol>
-          </VRow>
-
-          <!-- Información simplificada del pago -->
-          <VRow>
-            <VCol cols="12">
-              <VAlert type="info" variant="tonal" class="mb-4">
-                <template #title>
-                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-info-circle" class="me-2" />
-                    Información del Pago
-                  </div>
-                </template>
-
-                <VRow>
-                  <VCol cols="12" md="4">
-                    <div class="text-center pa-3 bg-primary-lighten-5 rounded">
-                      <div class="text-h6 font-weight-bold text-primary">
-                        {{ formatCurrency(originalAmountUSD, "USD") }}
-                      </div>
-                      <div class="text-caption text-medium-emphasis">
-                        Monto Original de la Factura
-                      </div>
-                    </div>
-                  </VCol>
-
-                  <VCol cols="12" md="4">
-                    <div class="text-center pa-3 bg-success-lighten-5 rounded">
-                      <div class="text-h6 font-weight-bold text-success">
-                        {{ formatCurrency(paidAmountUSD, "USD") }}
-                      </div>
-                    </div>
-                  </VCol>
-
-                  <VCol cols="12" md="4">
-                    <div class="text-center pa-3 bg-warning-lighten-5 rounded">
-                      <div class="text-h6 font-weight-bold text-warning">
-                        {{ savingsPercentage }}%
-                      </div>
-                      <div class="text-caption text-medium-emphasis">
-                        % de Ahorro
-                      </div>
-                    </div>
-                  </VCol>
-                </VRow>
-              </VAlert>
-            </VCol>
-          </VRow>
-
-          <!-- Resumen de pago -->
-        </VForm>
       </VCardText>
 
-      <VDivider />
+      <VDivider class="mt-4" />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 bg-var-theme-background">
         <VBtn
-          variant="outlined"
+          variant="text"
           color="secondary"
+          class="flex-1"
           @click="closeModal"
           :disabled="loading"
-          class="flex-grow-1 w-0 mr-4"
         >
-          Cancelar
+          Descartar
         </VBtn>
         <VBtn
           color="primary"
+          variant="elevated"
+          class="flex-1 shadow-none"
           @click="processPayment"
           :loading="loading || uploading"
           :disabled="selectedInvoices.length === 0 || !isFormValid"
-          class="flex-grow-1 w-0"
         >
-          Procesar Pago
+          Confirmar y Procesar
         </VBtn>
       </VCardActions>
     </VCard>

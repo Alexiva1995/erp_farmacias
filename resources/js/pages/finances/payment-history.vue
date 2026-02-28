@@ -81,17 +81,8 @@
 
           <!-- Proveedor -->
           <template #item.supplier="{ item }">
-            <div class="d-flex align-center">
-              <VAvatar size="32" class="me-3" color="primary" variant="tonal">
-                <span class="text-sm font-weight-medium">
-                  {{ getSupplierInitials(item.invoices?.[0]?.supplier?.name) }}
-                </span>
-              </VAvatar>
-              <div>
-                <div class="text-body-2 font-weight-medium">
-                  {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
-                </div>
-              </div>
+            <div class="text-body-2 font-weight-medium">
+              {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
             </div>
           </template>
 
@@ -346,7 +337,7 @@
               <div>
                 <div class="text-body-2 text-medium-emphasis mb-3">Notas</div>
                 <VCard variant="flat" class="border pa-4 rounded-lg">
-                  <div class="text-body-2" style="white-space: pre-line">
+                  <div class="text-body-2" style="white-space: pre-line;">
                     {{ selectedPayment.notes }}
                   </div>
                 </VCard>

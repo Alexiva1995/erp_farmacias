@@ -466,10 +466,9 @@ class PendingPaymentsController extends Controller
 
             DB::beginTransaction();
 
-            // 3. Filtrar facturas válidas para pago
+            // 3. Filtrar facturas válidas para pago (cualquiera no pagada completamente)
             $invoices = $invoices->filter(function ($invoice) {
-                return in_array($invoice->status, ['pending', 'loaded', 'to_order']) &&
-                    (is_null($invoice->status_payment) || $invoice->status_payment !== 1);
+                return (is_null($invoice->status_payment) || $invoice->status_payment !== 1);
             });
 
             if ($invoices->isEmpty()) {
