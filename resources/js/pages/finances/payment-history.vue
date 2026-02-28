@@ -89,7 +89,7 @@
           <!-- Monto -->
           <template #item.amount="{ item }">
             <div class="text-body-2 font-weight-medium">
-              {{ formatWithoutCurrency(item.amount) }}
+              {{ formatNumber(item.amount, normalizeCurrencyCode(item.currency) === 'COP' ? 0 : 2) }}
             </div>
             <div
               v-if="item.currency === 'BS'"
@@ -166,185 +166,148 @@
       </VCardText>
     </VCard>
 
-    <!-- Modal de Detalles del Pago -->
-    <VDialog v-model="showPaymentModal" max-width="600" persistent scrollable>
-      <VCard class="overflow-hidden">
-        <!-- Header minimalista -->
-        <VCardTitle
-          class="d-flex justify-space-between align-center px-6 pt-6 pb-4"
-        >
+    <VDialog v-model="showPaymentModal" max-width="1000" persistent scrollable>
+      <VCard class="pa-2">
+        <VCardTitle class="d-flex align-center justify-space-between pb-4">
           <div class="d-flex align-center">
-            <VIcon icon="tabler-receipt" size="24" class="me-3 text-primary" />
-            <span class="text-h6 font-weight-medium">Detalles del Pago</span>
+            <VAvatar color="primary" variant="tonal" rounded size="40" class="me-3">
+              <VIcon icon="tabler-receipt" size="24" />
+            </VAvatar>
+            <div>
+              <div class="text-h6 font-weight-bold">Detalles del Pago</div>
+              <div class="text-caption text-medium-emphasis">
+                Referencia: {{ selectedPayment?.reference || 'N/A' }} | {{ formatDate(selectedPayment?.payment_date) }}
+              </div>
+            </div>
           </div>
-          <VBtn
-            icon
-            variant="text"
-            size="small"
-            @click="showPaymentModal = false"
-            class="text-medium-emphasis"
-          >
-            <VIcon icon="tabler-x" size="20" />
-          </VBtn>
+          <VBtn icon="tabler-x" variant="text" color="secondary" @click="showPaymentModal = false" />
         </VCardTitle>
 
         <VDivider />
 
-        <VCardText v-if="selectedPayment" class="pa-0">
-          <!-- Información principal en tarjetas compactas -->
-          <div class="pa-6">
-            <div class="mb-6">
-              <div class="text-body-2 text-medium-emphasis mb-3">
-                Información Principal
-              </div>
-              <VRow>
-                <VCol cols="12" md="6" class="mb-4 mb-md-0">
-                  <VCard variant="flat" class="border pa-4 rounded-lg">
-                    <div class="text-body-2 text-medium-emphasis mb-1">
-                      Monto del Pago
-                    </div>
-                    <div class="text-h5 font-weight-medium text-primary mb-1">
-                      {{
-                        formatCurrency(
-                          selectedPayment.amount,
-                          selectedPayment.currency
-                        )
-                      }}
-                    </div>
-                    <div class="text-body-2 text-success">
-                      USD {{ formatNumber(selectedPayment.amount_usd) }}
-                    </div>
-                  </VCard>
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VCard variant="flat" class="border pa-4 rounded-lg">
-                    <div class="text-body-2 text-medium-emphasis mb-1">
-                      Fecha de Pago
-                    </div>
-                    <div class="text-body-1 font-weight-medium">
-                      {{ formatDate(selectedPayment.payment_date) }}
-                    </div>
-                    <div class="d-flex align-center mt-2">
-                      <div class="text-body-2 text-medium-emphasis">
-                        {{ selectedPayment.reference || "Sin referencia" }}
-                      </div>
-                    </div>
-                  </VCard>
-                </VCol>
-              </VRow>
-            </div>
+        <VCardText v-if="selectedPayment" class="pt-6 px-4">
+          <VRow>
+            <!-- Panel Izquierdo: Resumen Financiero -->
+            <VCol cols="12" md="5">
+              <VCard variant="tonal" color="primary" class="border-none mb-4 rounded-lg overflow-hidden">
+                <VCardText class="pa-5">
+                  <div class="text-overline mb-1 opacity-70">Monto del Pago</div>
+                  <div class="text-h4 font-weight-black mb-1">
+                    {{ formatCurrency(selectedPayment.amount, selectedPayment.currency) }}
+                  </div>
+                  <div class="text-subtitle-2 opacity-90 d-flex align-center">
+                    <VIcon icon="tabler-currency-dollar" size="16" class="me-1" />
+                    USD {{ formatNumber(selectedPayment.amount_usd) }}
+                  </div>
+                </VCardText>
+              </VCard>
 
-            <!-- Detalles adicionales en grid compacto -->
-            <div class="mb-6">
-              <div class="text-body-2 text-medium-emphasis mb-3">
-                Información Adicional
-              </div>
-              <VRow>
-                <VCol cols="6" class="mb-3">
-                  <div class="text-body-2 text-medium-emphasis mb-1">
-                    Registrado por
+              <VCard v-if="savingsPercentage > 0" variant="tonal" color="success" class="border-none rounded-lg overflow-hidden">
+                <VCardText class="pa-5 d-flex align-center">
+                  <VAvatar color="white" size="40" class="me-4 elevation-1">
+                    <VIcon icon="tabler-trending-down" color="success" size="22" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-h5 font-weight-bold">{{ savingsPercentage }}%</div>
+                    <div class="text-caption font-weight-medium">Porcentaje de Ahorro Detectado</div>
                   </div>
-                  <div class="d-flex align-center">
-                    <VIcon
-                      icon="tabler-user"
-                      size="16"
-                      class="me-2 text-medium-emphasis"
-                    />
-                    <span class="text-body-1">
-                      {{ selectedPayment.user?.name || "Sistema" }}
-                    </span>
-                  </div>
-                </VCol>
-                <VCol cols="6" class="mb-3">
-                  <div class="text-body-2 text-medium-emphasis mb-1">
-                    Moneda
-                  </div>
-                  <div class="d-flex align-center">
-                    <VChip
-                      size="small"
-                      :color="getCurrencyColor(selectedPayment.currency)"
-                      variant="tonal"
-                    >
-                      {{ selectedPayment.currency }}
-                    </VChip>
-                  </div>
-                </VCol>
-              </VRow>
-            </div>
+                </VCardText>
+              </VCard>
+              <VCard v-else variant="tonal" color="info" class="border-none rounded-lg overflow-hidden">
+                <VCardText class="pa-5 d-flex align-center">
+                  <VAvatar color="white" size="40" class="me-4 elevation-1">
+                    <VIcon icon="tabler-check" color="info" size="22" />
+                  </VAvatar>
+                  <div class="text-caption font-weight-medium">Pago completo sin descuentos adicionales</div>
+                </VCardText>
+              </VCard>
 
-            <!-- Facturas pagadas -->
-            <div class="mb-6">
-              <div class="d-flex justify-space-between align-center mb-3">
-                <div class="text-body-2 text-medium-emphasis">
-                  Facturas Pagadas ({{ selectedPayment.invoices?.length || 0 }})
+              <!-- Información de Registro -->
+              <div class="mt-6 px-2">
+                <div class="d-flex align-center mb-3">
+                  <VIcon icon="tabler-user" size="18" class="me-3 text-medium-emphasis" />
+                  <div>
+                    <div class="text-caption text-medium-emphasis">Registrado por</div>
+                    <div class="text-body-2 font-weight-medium">{{ selectedPayment.user?.name || "Sistema" }}</div>
+                  </div>
+                </div>
+                <div class="d-flex align-center mb-3">
+                  <VIcon icon="tabler-wallet" size="18" class="me-3 text-medium-emphasis" />
+                  <div>
+                    <div class="text-caption text-medium-emphasis">Método de Pago</div>
+                    <div class="text-body-2 font-weight-medium text-capitalize">{{ selectedPayment.method || 'Transferencia / Otro' }}</div>
+                  </div>
                 </div>
               </div>
-              <VCard variant="flat" class="border rounded-lg">
-                <VTable class="rounded-lg">
-                  <thead>
-                    <tr>
-                      <th class="text-body-2 font-weight-medium">Factura</th>
-                      <th class="text-body-2 font-weight-medium">Proveedor</th>
-                      <th class="text-body-2 font-weight-medium">
-                        Monto Original
-                      </th>
-                      <th class="text-body-2 font-weight-medium">Moneda</th>
-                      <th class="text-body-2 font-weight-medium">Monto USD</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="invoice in selectedPayment.invoices"
-                      :key="invoice.id"
-                      class="text-body-2"
-                    >
-                      <td>
-                        <div class="d-flex align-center">
-                          <div class="font-weight-medium">
-                            {{ invoice.invoice_number }}
-                          </div>
-                        </div>
-                      </td>
-                      <td class="text-medium-emphasis">
-                        {{ invoice.supplier?.name }}
-                      </td>
-                      <td class="text-medium-emphasis">
-                        {{ formatNumber(invoice.total_amount) }}
-                      </td>
-                      <td>
-                        <VChip
-                          size="x-small"
-                          :color="getCurrencyColor(invoice.currency)"
-                          variant="tonal"
-                          class="ms-2"
-                        >
-                          {{ invoice.currency }}
-                        </VChip>
-                      </td>
-                      <td>
-                        <span class="font-weight-medium text-success">
-                          {{ formatNumber(invoice.total_usd) }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </VTable>
-              </VCard>
-            </div>
+            </VCol>
 
-            <!-- Notas -->
-            <template v-if="selectedPayment.notes">
-              <div>
-                <div class="text-body-2 text-medium-emphasis mb-3">Notas</div>
-                <VCard variant="flat" class="border pa-4 rounded-lg">
-                  <div class="text-body-2" style="white-space: pre-line;">
-                    {{ selectedPayment.notes }}
-                  </div>
-                </VCard>
+            <!-- Panel Derecho: Listado de Facturas -->
+            <VCol cols="12" md="7">
+              <div class="text-body-2 font-weight-bold text-uppercase letter-spacing-1 mb-3 text-medium-emphasis px-1">
+                Facturas Asociadas
               </div>
-            </template>
-          </div>
+              <VCard variant="outlined" class="border-opacity-25 rounded-lg overflow-hidden">
+                <VList lines="two" class="pa-0">
+                  <VListItem
+                    v-for="invoice in selectedPayment.invoices"
+                    :key="invoice.id"
+                    class="border-b last:border-0 border-opacity-10 py-3"
+                  >
+                    <template #prepend>
+                      <VAvatar color="secondary" variant="tonal" rounded size="36">
+                        <VIcon icon="tabler-hash" size="20" />
+                      </VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-bold text-body-1">
+                      #{{ invoice.invoice_number }}
+                    </VListItemTitle>
+                    <VListItemSubtitle class="text-caption mt-1">
+                      {{ invoice.supplier?.name }}
+                    </VListItemSubtitle>
+                    <template #append>
+                      <div class="text-end">
+                        <div class="text-body-1 font-weight-bold">
+                          {{ formatNumber(invoice.total_amount, normalizeCurrencyCode(invoice.currency) === 'COP' ? 0 : 2) }} <span class="text-caption text-disabled">{{ normalizeCurrencyCode(invoice.currency) }}</span>
+                        </div>
+                        <div class="text-caption text-success font-weight-medium">
+                          USD {{ formatNumber(invoice.total_usd) }}
+                        </div>
+                      </div>
+                    </template>
+                  </VListItem>
+                </VList>
+                
+                <VCardText class="bg-var-theme-background-soft px-4 py-3 d-flex justify-space-between align-center">
+                  <span class="text-caption font-weight-bold">TOTAL FACTURADO (REF. USD)</span>
+                  <span class="text-body-1 font-weight-black">USD {{ formatNumber(selectedPayment.invoice_total_usd) }}</span>
+                </VCardText>
+              </VCard>
+
+              <!-- Notas -->
+              <div v-if="selectedPayment.notes" class="mt-6">
+                <div class="text-body-2 font-weight-bold text-uppercase letter-spacing-1 mb-2 text-medium-emphasis px-1">Notas</div>
+                <div class="pa-4 bg-var-theme-background rounded-lg border text-body-2 italic text-medium-emphasis">
+                  "{{ selectedPayment.notes }}"
+                </div>
+              </div>
+            </VCol>
+          </VRow>
         </VCardText>
+
+        <VDivider class="mt-4" />
+
+        <VCardActions class="pa-4">
+          <VSpacer />
+          <VBtn 
+            block 
+            variant="tonal" 
+            color="secondary" 
+            class="px-8 rounded-lg font-weight-bold" 
+            @click="showPaymentModal = false"
+          >
+            Cerrar Ventana
+          </VBtn>
+        </VCardActions>
       </VCard>
     </VDialog>
 
@@ -372,7 +335,7 @@
 
 <script setup>
 import axios from "axios";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 // Estado reactivo
 const loading = ref(false);
@@ -387,6 +350,22 @@ const showPaymentModal = ref(false);
 const showReceiptModal = ref(false);
 const selectedPayment = ref(null);
 const receiptUrl = ref("");
+
+// Cálculo de ahorro para el pago seleccionado
+const savingsPercentage = computed(() => {
+  if (!selectedPayment.value) return 0;
+  
+  const paidUSD = parseFloat(selectedPayment.value.amount_usd) || 0;
+  const invoiceTotalUSD = parseFloat(selectedPayment.value.invoice_total_usd) || 0;
+  
+  if (invoiceTotalUSD <= 0) return 0;
+  
+  const savingsUSD = invoiceTotalUSD - paidUSD;
+  const percentage = (savingsUSD / invoiceTotalUSD) * 100;
+  
+  // Limitar a 0 si pagó de más, redondear a 2 decimales
+  return Math.max(0, Math.round(percentage * 100) / 100);
+});
 
 // Headers de la tabla
 const headers = [
@@ -513,32 +492,43 @@ const formatWithoutCurrency = (amount) => {
 const formatCurrency = (amount, currency) => {
   if (!amount) return "N/A";
 
-  // Redondear a 2 decimales
-  const roundedAmount = Math.round(amount * 100) / 100;
-
   // Normalizar código de moneda
   const normalizedCurrency = normalizeCurrencyCode(currency);
+  
+  // Redondear según la moneda (COP no usa decimales)
+  let roundedAmount;
+  if (normalizedCurrency === "COP") {
+    roundedAmount = Math.round(amount);
+  } else {
+    roundedAmount = Math.round(amount * 100) / 100;
+  }
 
   try {
     const formatter = new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: normalizedCurrency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: normalizedCurrency === "COP" ? 0 : 2,
+      maximumFractionDigits: normalizedCurrency === "COP" ? 0 : 2,
     });
 
-    return formatter.format(roundedAmount);
+    let formatted = formatter.format(roundedAmount);
+    
+    // Forzar USD en lugar de US$ o similar
+    if (normalizedCurrency === "USD") {
+      formatted = "USD " + formatNumber(roundedAmount);
+    }
+    
+    return formatted;
   } catch (error) {
-    // Si falla el formateo, devolver formato simple con moneda normalizada
-    return `${roundedAmount} ${normalizedCurrency}`;
+    return `${formatNumber(roundedAmount, normalizedCurrency === "COP" ? 0 : 2)} ${normalizedCurrency}`;
   }
 };
 
-const formatNumber = (number) => {
-  if (!number) return "0.00";
+const formatNumber = (number, decimals = 2) => {
+  if (number === null || number === undefined) return "0.00";
   return new Intl.NumberFormat("es-ES", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(number);
 };
 
@@ -586,6 +576,7 @@ const normalizeCurrencyCode = (currency) => {
     Bs: "VES", // Bolívares venezolanos (minúscula)
     VES: "VES", // Ya está correcto
     USD: "USD", // Dólares americanos
+    USS: "USD", // Corrección de error común
     COP: "COP", // Pesos colombianos
   };
 
