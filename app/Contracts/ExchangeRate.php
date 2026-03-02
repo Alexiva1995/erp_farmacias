@@ -17,6 +17,8 @@ interface ExchangeRate
 
     public function consultOneEUR(): Model|null;
 
+    public function consultOneCOPC(): Model|null;
+
     public function updateBCVDollar(array $data): Model;
 
     public function store(array $data): Model;

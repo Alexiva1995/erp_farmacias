@@ -46,6 +46,7 @@ const headers = [
   { title: "Usuario", key: "user.name", sortable: true },
   { title: "Supervisión", key: "supervisor.name", sortable: true },
   { title: "Monto", key: "amount", align: "end", sortable: true },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
 /*const formatCurrency = (value) => {
@@ -55,6 +56,10 @@ const headers = [
     minimumFractionDigits: 0,
   }).format(value);
 };*/
+
+const handleDelete = (item) => {
+  emit("delete", item);
+};
 </script>
 
 <template>
@@ -98,7 +103,7 @@ const headers = [
       </template>
 
       <template #item.product.name="{ item }">
-        <span class="font-weight-medium text-truncate d-inline-block" style="max-width: 320px;" :title="item.product.name">
+        <span class="font-weight-medium text-truncate d-inline-block" style="max-inline-size: 320px;" :title="item.product.name">
           {{ item.product.name }}
         </span>
       </template>
@@ -115,6 +120,25 @@ const headers = [
 
       <template #item.supervisor.name="{ item }">
         <span>{{ formatEmployeeName(item.supervisor) }}</span>
+      </template>
+
+      <template #item.actions="{ item }">
+        <VTooltip v-if="can('manage', 'admin')" :text="item.hasTraceability ? 'Tiene movimientos en trazabilidad' : 'Eliminar registro'">
+          <template #activator="{ props }">
+            <span v-bind="props">
+              <VBtn
+                icon
+                variant="text"
+                :color="item.hasTraceability ? 'default' : 'error'"
+                size="small"
+                :disabled="item.hasTraceability"
+                @click="handleDelete(item)"
+              >
+                <VIcon icon="tabler-trash" />
+              </VBtn>
+            </span>
+          </template>
+        </VTooltip>
       </template>
     </VDataTableServer>
   </VCard>

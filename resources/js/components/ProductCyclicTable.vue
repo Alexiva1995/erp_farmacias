@@ -1,5 +1,4 @@
 <script setup>
-import Swal from "sweetalert2";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -12,8 +11,7 @@ const props = defineProps({
 const emits = defineEmits([
   "update:options",
   "product-click",
-  "approve-product",
-  "reject-product",
+  "verify-product",
 ]);
 
 const headers = [
@@ -31,76 +29,8 @@ const headers = [
   { title: "Accion", key: "actions", sortable: false, align: "center" },
 ];
 
-const emitProductClick = (product) => {
-  emits("product-click", product);
-};
-
-const handleApproveProduct = async (product) => {
-  const userName = product.user?.email || "un usuario";
-
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `Vas a aprobar el conteo del producto "${product.product.name}" realizado por ${userName}.`,
-    icon: "question",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Aprobar",
-    confirmButtonColor: "#28a745",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    emits("approve-product", product);
-  }
-};
-
-const handleRejectProduct = async (product) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: `Vas a rechazar el conteo del producto "${product.product.name}" y abrir el modal de corrección.`,
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Abrir Corrección",
-    confirmButtonColor: "#dc3545",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    emits("reject-product", product);
-  }
+const handleVerifyProduct = (product) => {
+  emits("verify-product", product);
 };
 </script>
 
@@ -125,7 +55,7 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.product.name="{ item }">
-        <div class="d-flex align-start gap-x-4" style="max-width: 300px; width: 100%;">
+        <div class="d-flex align-start gap-x-4" style=" inline-size: 100%;max-inline-size: 300px;">
           <VAvatar
             v-if="item.product?.photo_url"
             size="38"
@@ -134,14 +64,14 @@ const handleRejectProduct = async (product) => {
             :image="item.product.photo_url"
             style="flex-shrink: 0;"
           />
-          <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
+          <div class="d-flex flex-column" style=" flex: 1;min-inline-size: 0; overflow-wrap: break-word; word-wrap: break-word;">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{
                 'text-primary': item.product.psychotropic == 1,
                 'text-warning font-weight-bold': item.product.psychotropic == 1 || item.product.psychotropic === true
               }"
-              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; white-space: normal;"
+              style=" line-height: 1.4; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               {{ item.product.name?.toUpperCase() || "N/A" }}
               <span v-if="item.product.iva == 1"> (G)</span>
@@ -150,7 +80,7 @@ const handleRejectProduct = async (product) => {
             <span
               v-if="item.product.laboratory?.name"
               class="text-sm text-disabled d-flex align-center gap-1"
-              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;"
+              style=" line-height: 1.3; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               <VIcon icon="tabler-building" size="14" />
               {{ item.product.laboratory.name }}
@@ -172,19 +102,10 @@ const handleRejectProduct = async (product) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex justify-center gap-2">
-          <IconBtn @click="handleApproveProduct(item)" size="small" color="success">
-            <VIcon icon="tabler-check" />
-            <VTooltip activator="parent" location="top">
-              Aprobar
-            </VTooltip>
-          </IconBtn>
-
-          <IconBtn @click="handleRejectProduct(item)" size="small" color="error">
-            <VIcon icon="tabler-x" />
-            <VTooltip activator="parent" location="top">
-              Rechazar
-            </VTooltip>
+        <div class="d-flex justify-center">
+          <IconBtn @click="handleVerifyProduct(item)" size="small" color="primary">
+            <VIcon icon="tabler-clipboard-check" />
+            <VTooltip activator="parent" location="top">Verificar conteo</VTooltip>
           </IconBtn>
         </div>
       </template>
@@ -194,20 +115,19 @@ const handleRejectProduct = async (product) => {
 
 <style scoped>
 ::deep(.v-data-table td:nth-child(2)) {
+  overflow: hidden !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
+  overflow-wrap: break-word !important;
+  padding-block: 12px !important;
+  vertical-align: top !important;
   white-space: normal !important;
   word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 300px !important;
-  width: 300px !important;
-  vertical-align: top !important;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
-  overflow: hidden !important;
 }
 
 ::deep(.v-data-table th:nth-child(2)) {
-  max-width: 300px !important;
-  width: 300px !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
   white-space: normal !important;
 }
 

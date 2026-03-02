@@ -143,6 +143,13 @@ class ProductController extends Controller
         return Excel::download(new ProductsExport($query), $fileName);
     }
 
+    public function getStock(Product $product): JsonResponse
+    {
+        return response()->json([
+            'stock' => (int) $product->lots()->sum('quantity')
+        ]);
+    }
+
     public function getProductAll(Request $request)
     {
         $query = Product::query();

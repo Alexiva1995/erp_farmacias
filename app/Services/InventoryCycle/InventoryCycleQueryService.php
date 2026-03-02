@@ -42,58 +42,82 @@ class InventoryCycleQueryService
     private function buildDiscrepanciesUnionQuery(?int $cycleId = null, bool $includePending = false)
     {
         $productCounts = ProductCount::query()
+            ->from('product_counts as pc')
             ->select([
-                'id',
-                'cycle_id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'counted_quantity',
-                'system_quantity',
-                'discrepancy',
-                'status',
-                'created_at',
-                'updated_at',
+                'pc.id',
+                'pc.cycle_id',
+                'pc.product_id',
+                'pc.user_id',
+                'pc.supervisor_id',
+                'pc.counted_quantity',
+                'pc.system_quantity',
+                'pc.discrepancy',
+                'pc.status',
+                'pc.created_at',
+                'pc.updated_at',
                 DB::raw("'product_count' as source_type"),
+                DB::raw("EXISTS(
+                    SELECT 1 FROM product_distributions WHERE product_count_id = pc.id
+                    UNION
+                    SELECT 1 FROM inventory_movements WHERE product_id = pc.product_id 
+                    AND movement_type IN ('adjustment', 'loss')
+                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, pc.updated_at)) < 30
+                ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
-            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+            ->when(!$includePending, fn ($q) => $q->where('pc.status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('pc.cycle_id', $cycleId));
 
         $invoiceCounts = InvoiceCount::query()
+            ->from('invoices_counts as ic')
             ->select([
-                'id',
-                'cycle_id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'counted_quantity',
-                'system_quantity',
-                'discrepancy',
-                'status',
-                'created_at',
-                'updated_at',
+                'ic.id',
+                'ic.cycle_id',
+                'ic.product_id',
+                'ic.user_id',
+                'ic.supervisor_id',
+                'ic.counted_quantity',
+                'ic.system_quantity',
+                'ic.discrepancy',
+                'ic.status',
+                'ic.created_at',
+                'ic.updated_at',
                 DB::raw("'invoice_count' as source_type"),
+                DB::raw("EXISTS(
+                    SELECT 1 FROM invoice_count_distributions WHERE invoice_count_id = ic.id
+                    UNION
+                    SELECT 1 FROM inventory_movements WHERE product_id = ic.product_id 
+                    AND movement_type IN ('adjustment', 'loss')
+                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, ic.updated_at)) < 30
+                ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
-            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+            ->when(!$includePending, fn ($q) => $q->where('ic.status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('ic.cycle_id', $cycleId));
 
         $saleCounts = SaleCount::query()
+            ->from('sales_counts as sc')
             ->select([
-                'id',
-                'cycle_id',
-                'product_id',
-                'user_id',
-                'supervisor_id',
-                'counted_quantity',
-                'system_quantity',
-                'discrepancy',
-                'status',
-                'created_at',
-                'updated_at',
+                'sc.id',
+                'sc.cycle_id',
+                'sc.product_id',
+                'sc.user_id',
+                'sc.supervisor_id',
+                'sc.counted_quantity',
+                'sc.system_quantity',
+                'sc.discrepancy',
+                'sc.status',
+                'sc.created_at',
+                'sc.updated_at',
                 DB::raw("'sale_count' as source_type"),
+                DB::raw("EXISTS(
+                    SELECT 1 FROM sale_count_distributions WHERE sale_count_id = sc.id
+                    UNION
+                    SELECT 1 FROM inventory_movements WHERE product_id = sc.product_id 
+                    AND movement_type IN ('adjustment', 'loss')
+                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, sc.updated_at)) < 30
+                ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('status', '!=', 'pending'))
-            ->when($cycleId, fn ($q) => $q->where('cycle_id', $cycleId));
+            ->when(!$includePending, fn ($q) => $q->where('sc.status', '!=', 'pending'))
+            ->when($cycleId, fn ($q) => $q->where('sc.cycle_id', $cycleId));
 
         return $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);
     }

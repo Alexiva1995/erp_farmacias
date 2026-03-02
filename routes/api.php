@@ -102,6 +102,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/productsAll', [ProductController::class, 'getProducts']);
     Route::get('/products/autocomplete', [ProductController::class, 'forAutocomplete']);
     Route::put('/products/{product}', [ProductController::class, 'updateProducts']);
+    Route::get('/products/{product}/stock', [ProductController::class, 'getStock']);
     Route::patch('/products/incomplete/{product}', [ProductController::class, 'updateIncomplete']);
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::post('/products', [ProductController::class, 'store']);
@@ -187,6 +188,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('{product}', [InventoryCycleController::class, 'storeProductCount']);
             Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
             Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
+            Route::delete('{sourceType}/{id}', [InventoryCycleController::class, 'deleteCount']);
         });
         Route::prefix("statistics")->group(function () {
             Route::get("/", [InventoryCycleController::class, "getCountStatistics"])->name("inventory.statistics");
@@ -540,6 +542,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/consultOneCOP", [ExchangeRateController::class, "consultOneCOP"]);
             Route::get("/consultOneBCV", [ExchangeRateController::class, "consultOneBCV"]);
             Route::get("/consultOneEUR", [ExchangeRateController::class, "consultOneEUR"]);
+            Route::get("/consultOneCOPC", [ExchangeRateController::class, "consultOneCOPC"]);
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
@@ -569,6 +572,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix('transactions')->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
+            Route::get('/wallets', [TransactionController::class, 'getWallets']);
         });
 
         Route::prefix('payslips')->group(function () {
@@ -675,6 +679,7 @@ Route::middleware("auth:sanctum")->group(function () {
 
     Route::prefix('employee-performance')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'index']);
+        Route::post('/lock', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'lockMonth']);
     });
 
     Route::prefix('my-cleaning-activities')->group(function () {

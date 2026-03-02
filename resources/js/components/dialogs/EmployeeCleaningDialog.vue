@@ -27,11 +27,7 @@ const editingActivity = ref(null);
 const tempActivityId = ref(null);
 const tempActivityStatus = ref("Pendiente");
 
-const statusOptions = [
-  { title: "Pendiente", value: "Pendiente" },
-  { title: "Completada", value: "Completada" },
-  { title: "Cancelada", value: "Cancelada" },
-];
+// Eliminamos statusOptions ya que la asignación es automática
 
 watch(
   () => props.modelValue,
@@ -85,10 +81,9 @@ const handleAddActivity = () => {
       formData.value.activities.push({
         id: activity.value,
         name: activity.title,
-        status: formData.value.new_activity_status,
+        status: "Pendiente",
       });
       formData.value.new_activity_id = null;
-      formData.value.new_activity_status = "Pendiente";
     }
   }
 };
@@ -122,7 +117,7 @@ const handleSaveEdit = (oldActivityId) => {
       updatedActivities[index] = {
         id: newAct.value,
         name: newAct.title,
-        status: tempActivityStatus.value,
+        status: "Pendiente",
       };
       formData.value.activities = updatedActivities;
     }
@@ -130,7 +125,6 @@ const handleSaveEdit = (oldActivityId) => {
 
   editingActivity.value = null;
   tempActivityId.value = null;
-  tempActivityStatus.value = "Pendiente";
 };
 
 const handleCancelEdit = () => {
@@ -225,7 +219,7 @@ const getStatusIcon = (status) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VForm @submit.prevent="handleSubmit">
           <!-- Select de Empleado -->
           <VRow dense class="mb-2">
@@ -235,8 +229,6 @@ const getStatusIcon = (status) => {
                 :items="props.employees"
                 :disabled="isEditMode"
                 label="Empleado *"
-                variant="outlined"
-                density="compact"
                 placeholder="Selecciona un empleado"
                 :error-messages="props.errors.employee_id"
                 clearable
@@ -264,39 +256,28 @@ const getStatusIcon = (status) => {
 
           <!-- Agregar Nueva Actividad -->
           <VRow dense class="mb-2">
-            <VCol cols="12" md="6">
-              <VSelect
-                v-model="formData.new_activity_id"
-                :items="availableActivities"
-                label="Agregar Actividad"
-                variant="outlined"
-                density="compact"
-                placeholder="Selecciona una actividad"
-                :disabled="!formData.employee_id"
-                clearable
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VSelect
-                v-model="formData.new_activity_status"
-                :items="statusOptions"
-                label="Estado"
-                variant="outlined"
-                density="compact"
-                :disabled="!formData.employee_id"
-              />
-            </VCol>
-            <VCol cols="12" md="2" class="d-flex align-center">
-              <VBtn
-                color="success"
-                block
-                variant="flat"
-                :disabled="!formData.new_activity_id || !formData.employee_id"
-                @click="handleAddActivity"
-                style="height: 40px"
-              >
-                <VIcon icon="tabler-plus" />
-              </VBtn>
+            <VCol cols="12">
+              <div class="d-flex gap-2">
+                <VSelect
+                  v-model="formData.new_activity_id"
+                  :items="availableActivities"
+                  label="Agregar Actividad"
+                  placeholder="Selecciona una actividad para asignar"
+                  :disabled="!formData.employee_id"
+                  clearable
+                  class="flex-grow-1"
+                />
+                <VBtn
+                  color="success"
+                  variant="flat"
+                  size="default"
+                  :disabled="!formData.new_activity_id || !formData.employee_id"
+                  @click="handleAddActivity"
+                  style="block-size: 40px;"
+                >
+                  <VIcon icon="tabler-plus" />
+                </VBtn>
+              </div>
             </VCol>
           </VRow>
 
@@ -380,18 +361,8 @@ const getStatusIcon = (status) => {
                           <VSelect
                             v-model="tempActivityId"
                             :items="props.cleaningActivities"
-                            density="compact"
-                            variant="outlined"
                             hide-details
                             class="flex-grow-1"
-                          />
-                          <VSelect
-                            v-model="tempActivityStatus"
-                            :items="statusOptions"
-                            density="compact"
-                            variant="outlined"
-                            hide-details
-                            style="max-width: 150px"
                           />
                         </div>
                       </VListItemTitle>
@@ -473,7 +444,7 @@ const getStatusIcon = (status) => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -483,7 +454,7 @@ const getStatusIcon = (status) => {
           :disabled="!formData.employee_id || formData.activities.length === 0"
           @click="handleSubmit"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           {{ isEditMode ? "Actualizar" : "Guardar" }}
         </VBtn>

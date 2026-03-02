@@ -1,11 +1,11 @@
 <script setup>
+import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   employee: { type: Object, default: () => ({}) },
   employees: { type: Array, default: () => [] },
-  products: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
 });
 
@@ -24,13 +24,54 @@ const formData = ref({
 
 const editingProduct = ref(null);
 const tempProductId = ref(null);
+const searchProduct = ref("");
+const remoteProducts = ref([]);
+const isSearching = ref(false);
+
+// Cargar productos remotos filtrando por ID o Nombre
+const loadRemoteProducts = async (query = "") => {
+  // Si es número, buscar desde el primer dígito. Si es texto, esperar a 2 caracteres.
+  const isNumeric = /^\d+$/.test(query);
+  if (query.length < (isNumeric ? 1 : 2)) {
+     remoteProducts.value = [];
+     return;
+  }
+  
+  isSearching.value = true;
+  try {
+    const response = await axios.get("/products", {
+      params: { q: query, itemsPerPage: 50 },
+    });
+    const products = response.data.data;
+    const uniqueMap = new Map();
+    products.forEach(p => {
+      uniqueMap.set(p.id, {
+        ...p,
+        displayLabel: `${p.id} - ${p.name}`
+      });
+    });
+    remoteProducts.value = Array.from(uniqueMap.values());
+  } catch (error) {
+    console.error("Error buscando productos:", error);
+  } finally {
+    isSearching.value = false;
+  }
+};
+
+let searchDebounce;
+watch(searchProduct, (val) => {
+  if (!val) return;
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    loadRemoteProducts(val);
+  }, 400);
+});
 
 watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
       if (isEditMode.value) {
-        // Modo edición: cargar datos del empleado
         formData.value = {
           employee_id: props.employee.employee_id,
           products: props.employee.products
@@ -39,7 +80,6 @@ watch(
           new_product_id: null,
         };
       } else {
-        // Modo creación: limpiar formulario
         formData.value = {
           employee_id: null,
           products: [],
@@ -48,6 +88,7 @@ watch(
       }
       editingProduct.value = null;
       tempProductId.value = null;
+      remoteProducts.value = [];
     }
   },
 );
@@ -62,7 +103,7 @@ const closeDialog = () => {
 const handleAddProduct = () => {
   if (!formData.value.new_product_id) return;
 
-  const product = props.products.find(
+  const product = remoteProducts.value.find(
     (prod) => prod.id === formData.value.new_product_id,
   );
 
@@ -90,12 +131,19 @@ const handleRemoveProduct = (productId) => {
 const handleEditProduct = (product) => {
   editingProduct.value = product.id;
   tempProductId.value = product.id;
+  // Preparar lista de edición con el producto actual
+  remoteProducts.value = []; // Limpiar antes de añadir
+  remoteProducts.value.push({ 
+    id: product.id, 
+    name: product.name, 
+    displayLabel: `${product.id} - ${product.name}` 
+  });
 };
 
 const handleSaveEdit = (oldProductId) => {
   if (!tempProductId.value) return;
 
-  const newProd = props.products.find(
+  const newProd = remoteProducts.value.find(
     (prod) => prod.id === tempProductId.value,
   );
 
@@ -105,7 +153,6 @@ const handleSaveEdit = (oldProductId) => {
     );
 
     if (index !== -1) {
-      // Crear nuevo array con el producto reemplazado
       const updatedProds = [...formData.value.products];
       updatedProds[index] = {
         id: newProd.id,
@@ -132,29 +179,13 @@ const handleSubmit = () => {
     product_ids: formData.value.products.map((prod) => prod.id),
   };
 
-  console.log("Datos preparados para enviar:", dataToSend);
   emit("save", dataToSend);
 };
 
-const availableProducts = computed(() => {
-  return props.products.filter(
+const availableProductsWithId = computed(() => {
+  return remoteProducts.value.filter(
     (prod) => !formData.value.products.some((p) => p.id === prod.id),
   );
-});
-
-// Computed para formatear productos con ID
-const productsWithIdLabel = computed(() => {
-  return props.products.map((product) => ({
-    ...product,
-    displayLabel: `${product.id} - ${product.name}`,
-  }));
-});
-
-const availableProductsWithId = computed(() => {
-  return availableProducts.value.map((product) => ({
-    ...product,
-    displayLabel: `${product.id} - ${product.name}`,
-  }));
 });
 
 const getProductColor = (index) => {
@@ -205,7 +236,7 @@ const getProductColor = (index) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VForm @submit.prevent="handleSubmit">
           <!-- Select de Empleado -->
           <VRow dense class="mb-2">
@@ -215,8 +246,6 @@ const getProductColor = (index) => {
                 :items="props.employees"
                 :disabled="isEditMode"
                 label="Empleado *"
-                variant="outlined"
-                density="compact"
                 placeholder="Selecciona un empleado"
                 :error-messages="props.errors.employee_id"
                 clearable
@@ -248,32 +277,25 @@ const getProductColor = (index) => {
               <div class="d-flex gap-2">
                 <VAutocomplete
                   v-model="formData.new_product_id"
+                  v-model:search="searchProduct"
                   :items="availableProductsWithId"
+                  :loading="isSearching"
                   item-title="displayLabel"
                   item-value="id"
                   label="Agregar Producto"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="Busca un producto"
+                  placeholder="Escriba ID o nombre del producto..."
                   :disabled="!formData.employee_id"
                   clearable
                   class="flex-grow-1"
-                >
-                  <template #item="{ props: itemProps, item }">
-                    <VListItem v-bind="itemProps">
-                      <VListItemTitle>
-                        {{ item.raw.name }}
-                      </VListItemTitle>
-                    </VListItem>
-                  </template>
-                </VAutocomplete>
+                  :no-filter="true"
+                />
                 <VBtn
                   color="success"
                   variant="flat"
                   size="default"
                   :disabled="!formData.new_product_id || !formData.employee_id"
                   @click="handleAddProduct"
-                  style="height: 40px"
+                  style="block-size: 40px;"
                 >
                   <VIcon icon="tabler-plus" />
                 </VBtn>
@@ -353,22 +375,15 @@ const getProductColor = (index) => {
                         <VAutocomplete
                           v-else
                           v-model="tempProductId"
-                          :items="productsWithIdLabel"
+                          v-model:search="searchProduct"
+                          :items="remoteProducts"
+                          :loading="isSearching"
                           item-title="displayLabel"
                           item-value="id"
-                          density="compact"
-                          variant="outlined"
                           hide-details
                           class="my-1"
-                        >
-                          <template #item="{ props: itemProps, item }">
-                            <VListItem v-bind="itemProps">
-                              <VListItemTitle>
-                                {{ item.raw.name }}
-                              </VListItemTitle>
-                            </VListItem>
-                          </template>
-                        </VAutocomplete>
+                          :no-filter="true"
+                        />
                       </VListItemTitle>
 
                       <template #append>
@@ -448,7 +463,7 @@ const getProductColor = (index) => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -458,7 +473,7 @@ const getProductColor = (index) => {
           :disabled="!formData.employee_id || formData.products.length === 0"
           @click="handleSubmit"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           {{ isEditMode ? "Actualizar" : "Guardar" }}
         </VBtn>

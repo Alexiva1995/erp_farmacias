@@ -34,6 +34,12 @@ class ExchangeRateRepository
         return $exhange;
     }
 
+    public function consultOneCOPC(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COPC')->first();
+        return $exhange;
+    }
+
     public function updateBCVDollar(array $data): Model
     {
         ExchangeRate::where("id", "=", $data["id"])->update($data);

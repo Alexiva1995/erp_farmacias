@@ -25,7 +25,7 @@ class StoreEmployeeCleaningActivityRequest extends FormRequest
             'employee_id' => 'required|integer|exists:employees,id',
             'activities' => 'required|array|min:1',
             'activities.*.activity_id' => 'required|integer|exists:cleaning_activities,id|distinct',
-            'activities.*.status' => 'required|in:Pendiente,Completada,Cancelada',
+            'activities.*.status' => 'nullable|in:Pendiente,Completada,Cancelada',
             'activities.*.assigned_date' => 'nullable|date',
             'activities.*.completed_date' => 'nullable|date|after_or_equal:activities.*.assigned_date',
             'activities.*.notes' => 'nullable|string|max:500',

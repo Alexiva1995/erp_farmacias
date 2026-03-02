@@ -15,7 +15,8 @@ class EmployeeProductQueryService
      */
     public function getFilteredEmployeeProducts(array $data): LengthAwarePaginator
     {
-        $query = Employee::with(['products'])
+        $query = Employee::where('is_active', true)
+            ->with(['products'])
             ->withCount('products');
 
         // Búsqueda por nombre de empleado
@@ -82,7 +83,7 @@ class EmployeeProductQueryService
      */
     public function getAssignmentStats(): array
     {
-        $employees = Employee::withCount('products')->get();
+        $employees = Employee::where('is_active', true)->withCount('products')->get();
 
         $employeesWithProds = $employees->filter(fn($emp) => $emp->products_count > 0);
         $employeesWithoutProds = $employees->filter(fn($emp) => $emp->products_count === 0);

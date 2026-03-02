@@ -15,12 +15,13 @@ class EmployeeCleaningActivityQueryService
      */
     public function getFilteredEmployeeActivities(array $data): LengthAwarePaginator
     {
-        $query = Employee::with([
-            'cleaningActivities' => function ($query) {
-                $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
-                    ->orderBy('activity', 'asc');
-            }
-        ])
+        $query = Employee::where('is_active', true)
+            ->with([
+                'cleaningActivities' => function ($query) {
+                    $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+                        ->orderBy('activity', 'asc');
+                }
+            ])
             ->withCount('cleaningActivities');
 
         // Búsqueda por nombre de empleado
@@ -132,13 +133,13 @@ class EmployeeCleaningActivityQueryService
      */
     public function getAssignmentStats(): array
     {
-        $employees = Employee::withCount('cleaningActivities')->get();
+        $employees = Employee::where('is_active', true)->withCount('cleaningActivities')->get();
 
         $employeesWithActivities = $employees->filter(fn($emp) => $emp->cleaning_activities_count > 0);
         $employeesWithoutActivities = $employees->filter(fn($emp) => $emp->cleaning_activities_count === 0);
 
         // Estadísticas por estado
-        $activitiesByStatus = Employee::with([
+        $activitiesByStatus = Employee::where('is_active', true)->with([
             'cleaningActivities' => function ($query) {
                 $query->withPivot('status');
             }
@@ -346,8 +347,11 @@ class EmployeeCleaningActivityQueryService
     }
     public function getSupervisorExecutions(array $data): LengthAwarePaginator
     {
-        // Obtener ejecuciones con empleado y actividad relacionados
+        // Obtener ejecuciones con empleado y actividad relacionados (solo empleados activos)
         $query = \App\Models\CleaningActivityExecution::with(['employee', 'cleaningActivity', 'approvedBy'])
+            ->whereHas('employee', function($q) {
+                $q->where('is_active', true);
+            })
             ->whereIn('status', ['Procesada', 'Completada', 'Vencida', 'Cancelada']); // Mostrar procesadas y completadas
 
         // Búsqueda por nombre de empleado o actividad
@@ -442,14 +446,18 @@ class EmployeeCleaningActivityQueryService
      */
     public function getSupervisorStats(): array
     {
-        $pending = \App\Models\CleaningActivityExecution::where('status', 'Procesada')->count();
-        $approved = \App\Models\CleaningActivityExecution::where('status', 'Completada')->count();
-        $rejected = \App\Models\CleaningActivityExecution::whereNotNull('rejection_reason')->count();
-        $overdue = \App\Models\CleaningActivityExecution::where('status', 'Vencida')->count();
-        $cancelled = \App\Models\CleaningActivityExecution::where('status', 'Cancelada')->count();
+        $baseQuery = \App\Models\CleaningActivityExecution::whereHas('employee', function($q) {
+            $q->where('is_active', true);
+        });
+
+        $pending = (clone $baseQuery)->where('status', 'Procesada')->count();
+        $approved = (clone $baseQuery)->where('status', 'Completada')->count();
+        $rejected = (clone $baseQuery)->whereNotNull('rejection_reason')->count();
+        $overdue = (clone $baseQuery)->where('status', 'Vencida')->count();
+        $cancelled = (clone $baseQuery)->where('status', 'Cancelada')->count();
 
         // Actividades procesadas hoy
-        $todayProcessed = \App\Models\CleaningActivityExecution::where('status', 'Procesada')
+        $todayProcessed = (clone $baseQuery)->where('status', 'Procesada')
             ->whereDate('completed_date', today())
             ->count();
 

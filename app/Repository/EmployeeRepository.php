@@ -40,10 +40,12 @@ class EmployeeRepository
       ])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
       ->when(!empty($search), function ($query) use ($search) {
-        $query->orWhere('name', 'like', "%$search%")
-          ->orWhere('last_name', 'like', "%$search%")
-          ->orWhere('users.email', 'like', "%$search%")
-          ->orWhere('identification', 'like', "%$search%");
+        $query->where(function ($q) use ($search) {
+          $q->where('name', 'like', "%$search%")
+            ->orWhere('last_name', 'like', "%$search%")
+            ->orWhere('users.email', 'like', "%$search%")
+            ->orWhere('identification', 'like', "%$search%");
+        });
       })
       ->when(auth()->user()->role_id === 3, function ($query) {
         $query->where('employees.user_id', auth()->id());
@@ -250,9 +252,13 @@ class EmployeeRepository
   public function getPayments(Employee $employee, array $data): array
   {
     $employee->refresh();
+    
+    // Si la columna 'fortnight' no existe en la BD, la quitamos del order by.
+    // Usamos el id de mayor a menor como forma alternativa de ordenamiento secundario
     $history = EmployeePaymentCalculation::where('employee_id', $employee->id)
       ->orderByDesc('year')
       ->orderByDesc('month')
+      ->orderByDesc('id')
       ->limit(24)
       ->get();
 
@@ -266,10 +272,11 @@ class EmployeeRepository
         'id' => $row->id,
         'year' => $row->year,
         'month' => $row->month,
-        'fecha' => sprintf('%04d-%02d-01', $row->year, $row->month),
+        'fortnight' => $row->fortnight,
+        'fecha' => sprintf('%04d-%02d-%02d', $row->year, $row->month, $row->fortnight == 1 ? 15 : 30),
         'salario_base' => $row->salario_base,
         'bono_alimentacion' => $row->bono_alimentacion,
-        'beneficio_salud' => $row->consumo_total_a_descontar,
+        'beneficio_salud' => $row->beneficio_salud ?? $row->consumo_total_a_descontar,
         'consumo_farmacia_actual' => $row->consumo_farmacia_actual,
         'saldo_deuda_anterior' => $row->saldo_deuda_anterior,
         'incentivo_metas' => $row->incentivo_metas,
@@ -280,31 +287,43 @@ class EmployeeRepository
       ])->values()->all(),
     ];
 
-    $month = isset($data['month']) ? (int) $data['month'] : null;
-    $year = isset($data['year']) ? (int) $data['year'] : null;
     $packageOverride = isset($data['total_package_usd']) ? (float) $data['total_package_usd'] : null;
-    if ($month !== null && $year !== null) {
-      $totalPackageUsd = $packageOverride ?? (float) ($employee->total_package_usd ?? 0);
-      $consumo = $this->getTotalConsumoFarmacia($employee);
-      $saldoAnterior = $this->getSaldoDeudaAnteriorParaMes($employee, $year, $month);
-      $calc = $this->computePaymentCalculation($totalPackageUsd, $consumo, $saldoAnterior);
-      $result['distribution'] = [
-        'month' => $month,
-        'year' => $year,
-        'total_package_usd' => $totalPackageUsd,
-        'concepts' => [
-          ['name' => 'Salario Básico Mensual', 'amount' => self::SALARIO_BASE, 'fixed' => true],
-          ['name' => 'Cestaticket Socialista de Ley', 'amount' => self::BONO_ALIMENTACION, 'fixed' => true],
-          ['name' => 'Asistencia Social de Salud (Art. 105 LOTTT)', 'amount' => $calc['salud_pagado'], 'fixed' => false],
-          ['name' => 'Gratificación Extraordinaria por Rendimiento', 'amount' => $calc['incentivo_metas'], 'fixed' => false],
-        ],
-        'consumo_farmacia_mes' => $consumo,
-        'saldo_deuda_anterior' => $saldoAnterior,
-        'total_a_cobrar' => round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['salud_pagado'] + $calc['incentivo_metas'], 2),
-      ];
-    }
+    $totalPackageUsd = $packageOverride ?? (float) ($employee->total_package_usd ?? 0);
+    $salarioBase = $this->getEmployeeSalarioBase($employee);
+    $bonoAlimentacion = self::BONO_ALIMENTACION;
+    
+    // Obtener consumo del mes actual para visualización
+    $consumoSaludReintegro = $this->getTotalConsumoFarmacia($employee);
+
+    // Para la vista global, calculamos la capacidad mensual tras fijos y salud
+    // No puede exceder el sobrante del paquete
+    $maximoParaVariable = max(0, $totalPackageUsd - $salarioBase - $bonoAlimentacion);
+    $saludLimitado = min($consumoSaludReintegro, $maximoParaVariable);
+    $disponibleParaOtros = max(0, $maximoParaVariable - $saludLimitado);
+
+    $result['distribution'] = [
+      'month' => (int) now()->month,
+      'year' => (int) now()->year,
+      'total_package_usd' => $totalPackageUsd,
+      'concepts' => [
+        ['name' => 'Salario Básico Mensual', 'amount' => $salarioBase, 'fixed' => true],
+        ['name' => 'Bono de Alimentación', 'amount' => $bonoAlimentacion, 'fixed' => true],
+        ['name' => 'Asistencia Social de Salud (Art. 105 LOTTT)', 'amount' => $saludLimitado, 'fixed' => false], // Visualización mes actual
+        ['name' => 'Bono Extraordinario de Rendimiento', 'amount' => $disponibleParaOtros, 'fixed' => false],
+      ],
+      'total_a_cobrar' => $totalPackageUsd,
+    ];
 
     return $result;
+  }
+
+  private function getEmployeeSalarioBase(Employee $employee): float
+  {
+      $concept = SalaryConcept::where('name', 'Salario Básico Mensual')->first();
+      if (!$concept || !$employee->user) return 40.00;
+
+      $detail = $employee->user->salaries()->where('salary_concept_id', $concept->id)->first();
+      return $detail ? (float) $detail->amount : 40.00;
   }
 
   /**
@@ -357,46 +376,56 @@ class EmployeeRepository
 
     $year = (int) ($data['year'] ?? now()->year);
     $month = (int) ($data['month'] ?? now()->month);
+    $fortnight = isset($data['fortnight']) ? (int) $data['fortnight'] : (now()->day <= 15 ? 1 : 2);
 
     $consumoFarmaciaActual = isset($data['consumo_farmacia_actual'])
       ? (float) $data['consumo_farmacia_actual']
-      : $this->getHealthConsumption($employee->id, $year, $month);
-    $saldoDeudaAnterior = (float) ($employee->saldo_deuda ?? 0);
+      : $this->getTotalConsumoFarmacia($employee);
 
-    $calc = $this->computePaymentCalculation($totalPackageUsd, $consumoFarmaciaActual, $saldoDeudaAnterior);
+    $saldoDeudaAnterior = $this->getSaldoDeudaAnteriorParaMes($employee, $year, $month);
+    $salarioBase = $this->getEmployeeSalarioBase($employee);
 
-    $totalPagadoUsd = round(self::SALARIO_BASE + self::BONO_ALIMENTACION + $calc['salud_pagado'] + $calc['incentivo_metas'], 2);
+    $calc = $this->computePaymentCalculation($totalPackageUsd, $consumoFarmaciaActual, $saldoDeudaAnterior, $salarioBase, $fortnight);
+
+    $totalPagadoUsd = round($calc['total_quincena'], 2);
     $bcv = ExchangeRate::where('currency_code', 'BS')->orderByDesc('updated_at')->first();
     $exchangeRateVes = $bcv ? (float) $bcv->rate : null;
-    $totalPagadoVes = $exchangeRateVes !== null ? round($totalPagadoUsd * $exchangeRateVes, 2) : null;
+    $totalPagadoVes = $exchangeRateVes !== null ? round($totalPagadoUsd * $exchangeRateVes, 2) : 0;
 
     $record = EmployeePaymentCalculation::create([
       'employee_id' => $employee->id,
       'year' => $year,
       'month' => $month,
+      'fortnight' => $fortnight,
       'total_package_usd' => $totalPackageUsd,
-      'salario_base' => self::SALARIO_BASE,
-      'bono_alimentacion' => self::BONO_ALIMENTACION,
+      'salario_base' => $calc['salario_base'],
+      'bono_alimentacion' => $calc['bono_alimentacion'],
       'consumo_farmacia_actual' => $consumoFarmaciaActual,
       'saldo_deuda_anterior' => $saldoDeudaAnterior,
-      'disponible_para_incentivo' => $calc['disponible_para_incentivo'],
-      'consumo_total_a_descontar' => $calc['consumo_total_a_descontar'],
+      'disponible_para_incentivo' => $calc['disponible_para_incentivo'] ?? 0,
+      'consumo_total_a_descontar' => $calc['consumo_total_a_descontar'] ?? 0,
+      'beneficio_salud' => $calc['salud_pagado'],
       'incentivo_metas' => $calc['incentivo_metas'],
       'nuevo_saldo_deuda' => $calc['nuevo_saldo_deuda'],
+      'deduccion_ivss' => $calc['deduccion_ivss'],
+      'deduccion_rpe' => $calc['deduccion_rpe'],
+      'deduccion_faov' => $calc['deduccion_faov'],
       'exchange_rate_ves' => $exchangeRateVes,
       'total_pagado_usd' => $totalPagadoUsd,
       'total_pagado_ves' => $totalPagadoVes,
     ]);
 
-    $employee->update(['saldo_deuda' => $calc['nuevo_saldo_deuda']]);
+    if ($fortnight == 2) {
+      $employee->update(['saldo_deuda' => $calc['nuevo_saldo_deuda']]);
+    }
 
     return [
       'calculation' => array_merge($calc, [
         'id' => $record->id,
         'year' => $year,
         'month' => $month,
+        'fortnight' => $fortnight,
         'consumo_farmacia_actual' => $consumoFarmaciaActual,
-        'consumo_excedio_package' => $record->consumo_excedio_package,
         'exchange_rate_ves' => $exchangeRateVes,
         'total_pagado_usd' => $totalPagadoUsd,
         'total_pagado_ves' => $totalPagadoVes,
@@ -408,39 +437,130 @@ class EmployeeRepository
     ];
   }
 
-  /**
-   * Reglas de negocio:
-   * disponible_para_incentivo = total_package_usd - salario_base - bono_alimentacion
-   * consumo_total_a_descontar = consumo_farmacia_actual + saldo_deuda_anterior
-   * Si disponible >= consumo_total -> incentivo = disponible - consumo_total, nuevo_saldo = 0
-   * Si disponible < consumo_total -> incentivo = 0, nuevo_saldo = consumo_total - disponible
-   */
-  private function computePaymentCalculation(float $totalPackageUsd, float $consumoFarmaciaActual, float $saldoDeudaAnterior): array
+  private function computePaymentCalculation(float $totalPackageUsd, float $consumoFarmaciaActual, float $saldoDeudaAnterior, float $salarioBase, int $fortnight): array
   {
-    $disponibleParaIncentivo = $totalPackageUsd - self::SALARIO_BASE - self::BONO_ALIMENTACION;
+    $salarioQuincena = round($salarioBase / 2, 2);
+    
+    // Deducciones legales (solo 1ra quincena)
+    $deduccionIvss = round($salarioBase * 0.04, 2);
+    $deduccionRpe = round($salarioBase * 0.005, 2);
+    $deduccionFaov = round($salarioBase * 0.01, 2);
+
+    $bonoAlimentacion = self::BONO_ALIMENTACION;
+    
+    // Solo en 2da quincena aplica la regla del excedente del paquete
+    $disponibleParaIncentivo = $totalPackageUsd - $salarioBase - $bonoAlimentacion;
     $consumoTotalADescontar = $consumoFarmaciaActual + $saldoDeudaAnterior;
 
-    // La salud pagada este mes no puede superar lo disponible
-    $saludPagado = min($consumoTotalADescontar, max(0, $disponibleParaIncentivo));
-    $restanteParaIncentivo = $disponibleParaIncentivo - $saludPagado;
+    $saludPagado = 0;
+    $incentivoMetas = 0;
+    $nuevoSaldoDeuda = $saldoDeudaAnterior; 
 
-    if ($restanteParaIncentivo > 0) {
-      $incentivoMetas = $restanteParaIncentivo;
-      $nuevoSaldoDeuda = 0.0;
+    if ($fortnight == 2) {
+      $saludPagado = min($consumoTotalADescontar, max(0, $disponibleParaIncentivo));
+      $restanteParaIncentivo = $disponibleParaIncentivo - $saludPagado;
+
+      if ($restanteParaIncentivo > 0) {
+        $incentivoMetas = $restanteParaIncentivo;
+        $nuevoSaldoDeuda = 0.0;
+      } else {
+        $incentivoMetas = 0.0;
+        $nuevoSaldoDeuda = $consumoTotalADescontar - max(0, $disponibleParaIncentivo);
+      }
+    }
+
+    if ($fortnight == 1) {
+      $totalQuincena = $salarioQuincena - $deduccionIvss - $deduccionRpe - $deduccionFaov;
     } else {
-      $incentivoMetas = 0.0;
-      // Excedente que no se pudo cubrir pasa al siguiente mes
-      $nuevoSaldoDeuda = $consumoTotalADescontar - max(0, $disponibleParaIncentivo);
+      $totalQuincena = $salarioQuincena + $bonoAlimentacion + $saludPagado + $incentivoMetas;
     }
 
     return [
-      'salario_base' => self::SALARIO_BASE,
-      'bono_alimentacion' => self::BONO_ALIMENTACION,
-      'disponible_para_incentivo' => round($disponibleParaIncentivo, 2),
-      'consumo_total_a_descontar' => round($consumoTotalADescontar, 2),
+      'salario_base' => $salarioQuincena,
+      'bono_alimentacion' => $fortnight == 2 ? $bonoAlimentacion : 0,
+      'disponible_para_incentivo' => $fortnight == 2 ? round($disponibleParaIncentivo, 2) : 0,
+      'consumo_total_a_descontar' => $fortnight == 2 ? round($consumoTotalADescontar, 2) : 0,
       'salud_pagado' => round($saludPagado, 2),
       'incentivo_metas' => round($incentivoMetas, 2),
       'nuevo_saldo_deuda' => round($nuevoSaldoDeuda, 2),
+      'deduccion_ivss' => $fortnight == 1 ? $deduccionIvss : 0,
+      'deduccion_rpe' => $fortnight == 1 ? $deduccionRpe : 0,
+      'deduccion_faov' => $fortnight == 1 ? $deduccionFaov : 0,
+      'total_quincena' => round($totalQuincena, 2)
     ];
   }
+
+  public function syncSalaryConcepts(Employee $employee, float $totalPackage): void
+  {
+    if (!$employee->user) return;
+
+    // 1. Salario Básico Mensual 
+    $baseConcept = SalaryConcept::firstOrCreate(
+      ['name' => 'Salario Básico Mensual'],
+      ['type' => 'salary', 'frequency' => 'monthly']
+    );
+    $existingBase = $employee->user->salaries()->where('salary_concept_id', $baseConcept->id)->first();
+    $salarioBase = $existingBase ? (float) $existingBase->amount : 40.00;
+
+    $employee->user->salaries()->updateOrCreate(
+      ['salary_concept_id' => $baseConcept->id],
+      ['amount' => $salarioBase]
+    );
+
+    // 2. Bono de Alimentación (Fixed $40)
+    $foodConcept = SalaryConcept::firstOrCreate(
+      ['name' => 'Bono de Alimentación'],
+      ['type' => 'salary', 'frequency' => 'monthly']
+    );
+    $employee->user->salaries()->updateOrCreate(
+      ['salary_concept_id' => $foodConcept->id],
+      ['amount' => 40.00]
+    );
+
+    // 3. Asistencia Social de Salud (Variable, 0 por defecto)
+    $healthConcept = SalaryConcept::firstOrCreate(
+      ['name' => 'Asistencia Social de Salud (Art. 105 LOTTT)'],
+      ['type' => 'salary', 'frequency' => 'monthly']
+    );
+    $employee->user->salaries()->updateOrCreate(
+      ['salary_concept_id' => $healthConcept->id],
+      ['amount' => 0.00]
+    );
+
+    // 4. Bono Extraordinario de Rendimiento (Variable, 0 por defecto)
+    $bonusConcept = SalaryConcept::firstOrCreate(
+      ['name' => 'Bono Extraordinario de Rendimiento'],
+      ['type' => 'salary', 'frequency' => 'monthly']
+    );
+    $employee->user->salaries()->updateOrCreate(
+      ['salary_concept_id' => $bonusConcept->id],
+      ['amount' => 0.00]
+    );
+
+    // Limpieza de nombres antiguos y dinámicos obsoletos
+    $dynamicNames = [
+        'Performance Bonus', 
+        'Salario Base',
+        'Gratificación Extraordinaria', 
+        'Gratificación Extraordinaria por Rendimiento'
+    ];
+    $dynamicIds = SalaryConcept::whereIn('name', $dynamicNames)->pluck('id');
+    if ($dynamicIds->isNotEmpty()) {
+      $employee->user->salaries()->whereIn('salary_concept_id', $dynamicIds)->delete();
+    }
+  }
+
+  public function updatePayrollSettings(Employee $employee, array $data): array
+  {
+    $employee->update(array_filter($data));
+    
+    if (isset($data['total_package_usd'])) {
+      $this->syncSalaryConcepts($employee, (float) $data['total_package_usd']);
+    }
+
+    // El método profile devuelve un modelo Employee, lo convertimos a array
+    $profile = $this->profile($employee);
+    return $profile ? $profile->toArray() : [];
+  }
 }
+

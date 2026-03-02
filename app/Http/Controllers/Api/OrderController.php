@@ -371,20 +371,29 @@ class OrderController extends Controller
             $request->validate([
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
-                'page' => 'integer|min:1',
-                'itemsPerPage' => 'integer|min:1|max:100'
+                'page' => 'nullable|integer',
+                'itemsPerPage' => 'nullable|integer',
+                'sortBy' => 'nullable|string',
+                'orderBy' => 'nullable|string'
             ]);
 
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
             $page = $request->page ?? 1;
             $itemsPerPage = $request->itemsPerPage ?? 10;
+            if ($itemsPerPage == -1) {
+                $itemsPerPage = 1000; // Limite si pide "Todas"
+            }
+            $sortBy = $request->sortBy ?? 'invoice_date';
+            $orderBy = $request->orderBy ?? 'desc';
 
             $fiscalData = $this->orderQueryService->getFiscalHistoryRecords(
                 $startDate,
                 $endDate,
                 $page,
-                $itemsPerPage
+                $itemsPerPage,
+                $sortBy,
+                $orderBy
             );
 
             return ApiResponse::success($fiscalData, 'Registros de fiscal history obtenidos exitosamente');

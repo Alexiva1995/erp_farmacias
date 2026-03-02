@@ -45,14 +45,11 @@ const headers = [
 ];
 
 const formatCurrency = (amount) => {
-  if (!amount || amount === 0) return "$0.00";
-
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
+  const number = parseFloat(amount) || 0;
+  return "Bs. " + number.toLocaleString("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  });
 };
 
 const formatDate = (dateString) => {
@@ -64,13 +61,8 @@ const formatDate = (dateString) => {
   });
 };
 
-// Calcular el monto imponible (Total - IVA - Exento)
-const calculateImponible = (item) => {
-  const total = parseFloat(item.total_amount) || 0;
-  const iva = parseFloat(item.iva_amount) || 0;
-  const exento = parseFloat(item.exempt_amount) || 0;
-  return total - iva - exento;
-};
+// Calcular el monto imponible (eliminado por venir del backend)
+// const calculateImponible... (eliminado)
 
 // Obtener color para el monto de IVA
 const getIvaColor = (ivaAmount) => {
@@ -143,14 +135,6 @@ const getFacturaStatus = (item) => {
           <span class="text-body-1 font-weight-medium text-high-emphasis">
             {{ item.business_name }}
           </span>
-          <VChip
-            :color="getFacturaStatus(item).color"
-            variant="tonal"
-            size="x-small"
-            class="mt-1 align-self-start"
-          >
-            {{ getFacturaStatus(item).text }}
-          </VChip>
         </div>
       </template>
 
@@ -168,7 +152,7 @@ const getFacturaStatus = (item) => {
       <template #item.imponible="{ item }">
         <div class="text-end">
           <span class="font-weight-medium">
-            {{ formatCurrency(calculateImponible(item)) }}
+            {{ formatCurrency(item.taxable_base) }}
           </span>
         </div>
       </template>

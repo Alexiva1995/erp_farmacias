@@ -71,6 +71,11 @@ class ExchangeRateController extends Controller
         return $this->exchangeRate->consultOneEUR();
     }
 
+    public function consultOneCOPC()
+    {
+        return $this->exchangeRate->consultOneCOPC();
+    }
+
     public function updateBCVDollar(Request $request)
     {
         $response = Http::get('https://ve.dolarapi.com/v1/dolares');

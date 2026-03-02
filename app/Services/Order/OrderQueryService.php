@@ -622,21 +622,30 @@ class OrderQueryService
                 'records' => $fiscalRecords
             ];
 
-        } catch (\Exception $e) {
+         } catch (\Exception $e) {
             Log::error('Error en getDebitoFiscal: ' . $e->getMessage());
             throw $e;
         }
     }
-    public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10): array
+    public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10, string $sortBy = 'invoice_date', string $orderBy = 'desc'): array
     {
         try {
             // Query base para fiscal_history con IVA
             $query = DB::table('fiscal_history')
                 ->whereNotNull('iva_amount')
                 ->where('iva_amount', '>', 0)
-                ->whereBetween('invoice_date', [$startDate, $endDate])
-                ->orderBy('invoice_date', 'desc')
-                ->orderBy('order_id', 'desc');
+                ->whereBetween('invoice_date', [$startDate, $endDate]);
+
+            // Aplicar ordenamiento dinámico
+            $validSortColumns = ['order_id', 'invoice_number', 'identification', 'business_name', 'exempt_amount', 'taxable_base', 'iva_amount', 'total_amount', 'invoice_date'];
+            $sort = in_array($sortBy, $validSortColumns) ? $sortBy : 'invoice_date';
+            $direction = in_array(strtolower($orderBy), ['asc', 'desc']) ? $orderBy : 'desc';
+
+            $query->orderBy($sort, $direction);
+
+            if ($sort !== 'invoice_date') {
+                $query->orderBy('invoice_date', 'desc');
+            }
 
             // Clonar query para el conteo total
             $totalQuery = clone $query;
@@ -659,6 +668,7 @@ class OrderQueryService
                     'business_name' => $record->business_name,
                     'address' => $record->address,
                     'exempt_amount' => (float) $record->exempt_amount,
+                    'taxable_base' => (float) ($record->taxable_base ?? ($record->total_amount - $record->iva_amount - $record->exempt_amount)),
                     'iva_amount' => (float) $record->iva_amount,
                     'total_amount' => (float) $record->total_amount,
                     'invoice_date' => $record->invoice_date,

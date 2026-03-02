@@ -2,9 +2,9 @@
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import Swal from "sweetalert2";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { formatCurrency } from "@/utils/currencyFormatter";
 
 const counts = ref([]);
 const totalCounts = ref(0);
@@ -69,6 +69,8 @@ const fetchData = async () => {
         employee_name: item.supervisor_employee_name,
         employee_last_name: item.supervisor_employee_last_name
       },
+      sourceType: item.source_type,
+      hasTraceability: Number(item.has_traceability) === 1,
     }));
     totalCounts.value = response.data.total || 0;
     
@@ -268,6 +270,32 @@ const formatDate = (dateString) => {
     day: "numeric",
   });
 };
+
+const handleDeleteItem = async (item) => {
+  const result = await Swal.fire({
+    title: "¿Eliminar este registro?",
+    text: "Este registro parece ser un error y no tiene movimientos de trazabilidad asociados. ¿Deseas eliminarlo de la lista de cierre?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    loading.value = true;
+    await axios.delete(`/inventory/count/${item.sourceType}/${item.id}`);
+    toast.success("Registro eliminado y stock revertido exitosamente.");
+    await fetchData();
+  } catch (error) {
+    console.error("Error al eliminar el registro:", error);
+    toast.error(error.response?.data?.message || "No se pudo eliminar el registro.");
+  } finally {
+    loading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -384,6 +412,7 @@ const formatDate = (dateString) => {
           :items-per-page="itemsPerPage"
           :page="page"
           @update:options="updateTableOptions"
+          @delete="handleDeleteItem"
         />
       </VCol>
     </VRow>

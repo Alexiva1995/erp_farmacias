@@ -63,12 +63,28 @@ class IslrQueryService
 
         $totalCosts = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('has_invoice', true)
-            ->where('is_deductible', null)
+            ->where(function($q) {
+                $q->whereNull('is_deductible')->orWhere('is_deductible', false);
+            })
             ->whereIn('currency', ['BS', 'VES'])
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->sum('amount');
 
-        return (float) $totalCosts;
+        $invoices = \App\Models\Invoice::whereHas('supplier', function($q) {
+            $q->where('name', '!=', 'INFORMAL');
+        })->whereBetween('created_invoice_date', [$startDate, $endDate])->get();
+
+        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first();
+        $currentBcvRate = $bcvRate ? $bcvRate->rate : 1;
+
+        $invoicesTotal = $invoices->sum(function($invoice) use ($currentBcvRate) {
+            if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                return ($invoice->total_amount / $invoice->exchange_rate) * $currentBcvRate;
+            }
+            return $invoice->currency === 'Bs' ? $invoice->total_amount : 0;
+        });
+
+        return (float) ($totalCosts + $invoicesTotal);
     }
 
     /**
@@ -182,6 +198,27 @@ class IslrQueryService
             ->get()
             ->pluck('total', 'month')
             ->toArray();
+
+        $invoices = \App\Models\Invoice::whereHas('supplier', function($q) {
+            $q->where('name', '!=', 'INFORMAL');
+        })->whereBetween('created_invoice_date', [$startDate, $endDate])->get();
+
+        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first();
+        $currentBcvRate = $bcvRate ? $bcvRate->rate : 1;
+
+        foreach ($invoices as $invoice) {
+            $month = Carbon::parse($invoice->created_invoice_date)->month;
+            $amount = 0;
+            if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                $amount = ($invoice->total_amount / $invoice->exchange_rate) * $currentBcvRate;
+            } elseif ($invoice->currency === 'Bs') {
+                $amount = $invoice->total_amount;
+            }
+            if (!isset($monthlyExpensesIva[$month])) {
+                $monthlyExpensesIva[$month] = 0;
+            }
+            $monthlyExpensesIva[$month] += $amount;
+        }
 
         $monthlyDeductions = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)

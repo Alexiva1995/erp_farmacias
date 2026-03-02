@@ -1,6 +1,6 @@
 <script setup>
-import InventoryCorrectionModal from "@/components/dialogs/InventoryCorrectionModal.vue";
 import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
+import VerifyCountModal from "@/components/dialogs/VerifyCountModal.vue";
 import InventoryCycleFilters from "@/components/InventoryCycleFilters.vue";
 import InvoiceCyclicTable from "@/components/InvoiceCyclicTable.vue";
 import ProductCyclicTable from "@/components/ProductCyclicTable.vue";
@@ -25,14 +25,14 @@ const {
   loading: productLoading,
   options: productOptions,
   updateTableOptions: updateProductOptions,
-  showCorrectionModal: showProductCorrectionModal,
-  selectedItemForCorrection: productForCorrection,
+  showVerifyModal: showProductVerifyModal,
+  itemForVerification: productForVerification,
   showLotDistributionModal: showProductLotModal,
   itemForLotDistribution: productForLotDistribution,
   targetQuantityForDistribution: productTargetQuantity,
-  handleApproveItem: handleApproveProduct,
-  handleRejectItem: handleRejectProduct,
-  handleCorrectionProcessed: handleProductCorrection,
+  handleVerifyItem: handleVerifyProduct,
+  onVerifyNoDiscrepancy: onProductVerifyNone,
+  onVerifyWithDiscrepancy: onProductVerifyDiff,
   handleLotsDistributed: handleProductLots,
 } = useCyclicTable("/products", filters);
 
@@ -42,14 +42,14 @@ const {
   loading: invoiceLoading,
   options: invoiceOptions,
   updateTableOptions: updateInvoiceOptions,
-  showCorrectionModal: showInvoiceCorrectionModal,
-  selectedItemForCorrection: invoiceForCorrection,
+  showVerifyModal: showInvoiceVerifyModal,
+  itemForVerification: invoiceForVerification,
   showLotDistributionModal: showInvoiceLotModal,
   itemForLotDistribution: invoiceForLotDistribution,
   targetQuantityForDistribution: invoiceTargetQuantity,
-  handleApproveItem: handleApproveInvoice,
-  handleRejectItem: handleRejectInvoice,
-  handleCorrectionProcessed: handleInvoiceCorrection,
+  handleVerifyItem: handleVerifyInvoice,
+  onVerifyNoDiscrepancy: onInvoiceVerifyNone,
+  onVerifyWithDiscrepancy: onInvoiceVerifyDiff,
   handleLotsDistributed: handleInvoiceLots,
 } = useCyclicTable("inventory/count/invoices", filters);
 
@@ -59,14 +59,14 @@ const {
   loading: saleLoading,
   options: saleOptions,
   updateTableOptions: updateSaleOptions,
-  showCorrectionModal: showSaleCorrectionModal,
-  selectedItemForCorrection: saleForCorrection,
+  showVerifyModal: showSaleVerifyModal,
+  itemForVerification: saleForVerification,
   showLotDistributionModal: showSaleLotModal,
   itemForLotDistribution: saleForLotDistribution,
   targetQuantityForDistribution: saleTargetQuantity,
-  handleApproveItem: handleApproveSale,
-  handleRejectItem: handleRejectSale,
-  handleCorrectionProcessed: handleSaleCorrection,
+  handleVerifyItem: handleVerifySale,
+  onVerifyNoDiscrepancy: onSaleVerifyNone,
+  onVerifyWithDiscrepancy: onSaleVerifyDiff,
   handleLotsDistributed: handleSaleLots,
 } = useCyclicTable("inventory/count/sale", filters);
 
@@ -82,8 +82,7 @@ const fetchSelectOptions = async () => {
       axios.get("/inventory/cycle/users-with-counts")
     ]);
     laboratories.value = labResponse.data || [];
-    
-    // Formatear usuarios con nombre completo
+
     if (usersResponse.data && Array.isArray(usersResponse.data)) {
       users.value = usersResponse.data.map(user => ({
         ...user,
@@ -153,8 +152,7 @@ const handleExport = async (format) => {
           :items-per-page="productOptions.itemsPerPage"
           :page="productOptions.page"
           @update:options="updateProductOptions"
-          @approve-product="handleApproveProduct"
-          @reject-product="handleRejectProduct"
+          @verify-product="handleVerifyProduct"
         />
       </VCol>
 
@@ -166,8 +164,7 @@ const handleExport = async (format) => {
           :items-per-page="invoiceOptions.itemsPerPage"
           :page="invoiceOptions.page"
           @update:options="updateInvoiceOptions"
-          @approve-product="handleApproveInvoice"
-          @reject-product="handleRejectInvoice"
+          @verify-product="handleVerifyInvoice"
         />
       </VCol>
 
@@ -179,16 +176,17 @@ const handleExport = async (format) => {
           :items-per-page="saleOptions.itemsPerPage"
           :page="saleOptions.page"
           @update:options="updateSaleOptions"
-          @approve-product="handleApproveSale"
-          @reject-product="handleRejectSale"
+          @verify-product="handleVerifySale"
         />
       </VCol>
     </VRow>
 
-    <InventoryCorrectionModal
-      v-model="showProductCorrectionModal"
-      :product="productForCorrection"
-      @correction-processed="handleProductCorrection"
+    <!-- Modales de Verificación -->
+    <VerifyCountModal
+      v-model="showProductVerifyModal"
+      :count-record="productForVerification"
+      @verify-no-discrepancy="onProductVerifyNone"
+      @verify-with-discrepancy="onProductVerifyDiff"
     />
     <LotDistributionModal
       v-model="showProductLotModal"
@@ -199,10 +197,11 @@ const handleExport = async (format) => {
       @save="handleProductLots"
     />
 
-    <InventoryCorrectionModal
-      v-model="showInvoiceCorrectionModal"
-      :product="invoiceForCorrection"
-      @correction-processed="handleInvoiceCorrection"
+    <VerifyCountModal
+      v-model="showInvoiceVerifyModal"
+      :count-record="invoiceForVerification"
+      @verify-no-discrepancy="onInvoiceVerifyNone"
+      @verify-with-discrepancy="onInvoiceVerifyDiff"
     />
     <LotDistributionModal
       v-model="showInvoiceLotModal"
@@ -213,10 +212,11 @@ const handleExport = async (format) => {
       @save="handleInvoiceLots"
     />
 
-    <InventoryCorrectionModal
-      v-model="showSaleCorrectionModal"
-      :product="saleForCorrection"
-      @correction-processed="handleSaleCorrection"
+    <VerifyCountModal
+      v-model="showSaleVerifyModal"
+      :count-record="saleForVerification"
+      @verify-no-discrepancy="onSaleVerifyNone"
+      @verify-with-discrepancy="onSaleVerifyDiff"
     />
     <LotDistributionModal
       v-model="showSaleLotModal"

@@ -11,6 +11,7 @@ class EmployeePaymentCalculation extends Model
         'employee_id',
         'year',
         'month',
+        'fortnight',
         'total_package_usd',
         'salario_base',
         'bono_alimentacion',
@@ -23,6 +24,10 @@ class EmployeePaymentCalculation extends Model
         'exchange_rate_ves',
         'total_pagado_usd',
         'total_pagado_ves',
+        'deduccion_ivss',
+        'deduccion_rpe',
+        'deduccion_faov',
+        'beneficio_salud',
     ];
 
     protected function casts(): array
@@ -40,6 +45,11 @@ class EmployeePaymentCalculation extends Model
             'exchange_rate_ves' => 'decimal:4',
             'total_pagado_usd' => 'decimal:2',
             'total_pagado_ves' => 'decimal:2',
+            'fortnight' => 'integer',
+            'deduccion_ivss' => 'decimal:2',
+            'deduccion_rpe' => 'decimal:2',
+            'deduccion_faov' => 'decimal:2',
+            'beneficio_salud' => 'decimal:2',
         ];
     }
 
