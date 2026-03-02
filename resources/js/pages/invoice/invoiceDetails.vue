@@ -2017,6 +2017,7 @@ const detailsHeaders = computed(() => {
           :errors="productFormErrors"
           @save="handleSaveProduct"
           @clear-errors="productFormErrors = {}"
+          @laboratory-created="fetchProductSelectOptions"
         />
       </template>
     </div>
