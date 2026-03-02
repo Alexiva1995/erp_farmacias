@@ -17,13 +17,49 @@ const props = defineProps({
   errors: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
+const emit = defineEmits([
+  "update:modelValue",
+  "save",
+  "clearErrors",
+  "laboratory-created",
+]);
 
 const formData = ref({});
 const imageFile = ref(null);
 const formErrors = ref({});
 
+const isLabDialogVisible = ref(false);
+const newLabName = ref("");
+const isSavingLab = ref(false);
+
 const groupInput = ref(null);
+
+const createLaboratory = async () => {
+  if (!newLabName.value.trim()) return;
+
+  isSavingLab.value = true;
+  try {
+    const response = await axios.post("/laboratories", {
+      name: newLabName.value,
+    });
+
+    toast.success("Laboratorio creado con éxito");
+    emit("laboratory-created", response.data.laboratory);
+    formData.value.laboratory_id = response.data.laboratory.id;
+    isLabDialogVisible.value = false;
+    newLabName.value = "";
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      toast.error(
+        error.response.data.errors?.name?.[0] || "Error de validación",
+      );
+    } else {
+      toast.error("Error al crear el laboratorio");
+    }
+  } finally {
+    isSavingLab.value = false;
+  }
+};
 
 const isNewProduct = computed(() => !formData.value.id);
 
@@ -297,7 +333,18 @@ const submitForm = () => {
                 density="compact"
                 clearable
                 :error-messages="formErrors.laboratory_id"
-              />
+              >
+                <template #append>
+                  <VBtn
+                    icon="tabler-plus"
+                    variant="tonal"
+                    color="primary"
+                    size="32"
+                    @click="isLabDialogVisible = true"
+                    title="Crear nuevo laboratorio"
+                  />
+                </template>
+              </VSelect>
             </VCol>
             <VCol cols="12" md="4">
               <VSelect
@@ -535,6 +582,45 @@ const submitForm = () => {
           @click="submitForm"
           class="flex-grow-1"
           style="flex: 1 1 50%; max-width: 50%"
+        >
+          Guardar
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
+
+  <!-- Diálogo para crear Laboratorio -->
+  <VDialog v-model="isLabDialogVisible" max-width="400px">
+    <VCard>
+      <VCardTitle class="bg-primary text-white pa-4">
+        <span>Nuevo Laboratorio</span>
+      </VCardTitle>
+      <VCardText class="pa-4">
+        <VTextField
+          v-model="newLabName"
+          label="Nombre del Laboratorio"
+          variant="outlined"
+          density="compact"
+          autofocus
+          @keydown.enter="createLaboratory"
+          hide-details="auto"
+        />
+      </VCardText>
+      <VCardActions class="pa-4">
+        <VSpacer />
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          @click="isLabDialogVisible = false"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          @click="createLaboratory"
+          :loading="isSavingLab"
+          :disabled="!newLabName.trim()"
         >
           Guardar
         </VBtn>
