@@ -4,7 +4,15 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed, defineEmits, defineProps, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  defineEmits,
+  defineProps,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 
 const chipColor = "primary";
 
@@ -161,7 +169,7 @@ const continueButtonText = computed(() => {
 
 const isTransferMethod = (method) =>
   ["bank_transfer", "bank_transfer_bs", "mobile_payment", "card"].includes(
-    method
+    method,
   );
 
 // Función para verificar si un método es de efectivo (permite vuelto)
@@ -175,17 +183,17 @@ const requiresReference = (method, currency) => {
   if (isCashMethod(method)) {
     return false;
   }
-  
+
   // Crédito en USD: no requiere referencia
   if (isCredit(method) && currency === "USD") {
     return false;
   }
-  
+
   // Saldo: no requiere referencia
   if (method === "balance") {
     return false;
   }
-  
+
   // Todos los demás métodos (transferencia, pago móvil, tarjeta, binance, paypal, etc.) requieren referencia
   return true;
 };
@@ -194,10 +202,12 @@ function roundToTwoDecimalPlaces(num) {
   return Number(Math.round(num + "e+2") + "e-2");
 }
 
-
 //funcion de sujeto pasivo especial-esta menu(configuracion)
 const appliesSpecialTax = computed(() => {
-  return props.isSpecialTaxpayer && (props.selectedCurrency === 'USD' || props.selectedCurrency === 'COP');
+  return (
+    props.isSpecialTaxpayer &&
+    (props.selectedCurrency === "USD" || props.selectedCurrency === "COP")
+  );
 });
 
 const specialTaxAmount = computed(() => {
@@ -208,7 +218,6 @@ const specialTaxAmount = computed(() => {
   }
   return tax;
 });
-
 
 const getPaymentMethodLabel = (methodValue, currency) => {
   if (methodValue === "balance") {
@@ -306,13 +315,13 @@ const fetchExchangeRates = async () => {
       if (formattedRates["COP"] && formattedRates["BS"]) {
         formattedRates["COP"]["BS"] = parseFloat(
           (formattedRates["COP"]["USD"] * formattedRates["USD"]["BS"]).toFixed(
-            9
-          )
+            9,
+          ),
         );
         formattedRates["BS"]["COP"] = parseFloat(
           (formattedRates["BS"]["USD"] * formattedRates["USD"]["COP"]).toFixed(
-            9
-          )
+            9,
+          ),
         );
       }
     });
@@ -397,7 +406,7 @@ const getConvertedRemainingAmount = (currency) => {
 
   if (!rate) {
     console.warn(
-      `No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`
+      `No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`,
     );
     return 0;
   }
@@ -410,7 +419,7 @@ const getPlaceholderText = (index, payment) => {
   const convertedRemaining = getConvertedRemainingAmount(payment.currency);
   return `Monto restante: ${formatCurrency(
     convertedRemaining,
-    payment.currency
+    payment.currency,
   )}`;
 };
 
@@ -450,11 +459,11 @@ const canAddPaymentBlock = computed(() => {
 // Función para verificar si hay pagos con referencias faltantes
 const hasMissingReferences = () => {
   // Solo verificar pagos que tienen método asignado y monto confirmado
-  return payments.value.some(payment => {
+  return payments.value.some((payment) => {
     if (!payment.method) return false;
     if (!payment.amount || payment.amount <= 0) return false; // Solo verificar si el monto está confirmado
     if (requiresReference(payment.method, payment.currency)) {
-      const hasReference = payment.reference && payment.reference.trim() !== '';
+      const hasReference = payment.reference && payment.reference.trim() !== "";
       return !hasReference;
     }
     return false;
@@ -464,22 +473,23 @@ const hasMissingReferences = () => {
 const closeModal = () => {
   // Validar referencias antes de cerrar
   if (hasMissingReferences()) {
-    toast.error("Por favor complete todas las referencias de pago antes de cerrar.");
+    toast.error(
+      "Por favor complete todas las referencias de pago antes de cerrar.",
+    );
     return;
   }
-  
+
   emit("update:isDialogVisible", false);
   emit("modal-closed");
   resetProgress();
 };
 
 const handleCompletePurchase = () => {
-
   const baseCurrency = props.selectedCurrency;
   const missingRates = [];
   if (issubmitting.value) return;
 
-  payments.value.forEach(p => {
+  payments.value.forEach((p) => {
     if (p.amount > 0 && p.currency && p.currency !== baseCurrency) {
       const rate = exchangeRates.value?.[p.currency]?.[baseCurrency];
       if (!rate || rate === 0) {
@@ -490,17 +500,21 @@ const handleCompletePurchase = () => {
 
   if (missingRates.length > 0) {
     const uniqueMissing = [...new Set(missingRates)]; // Eliminar duplicados
-    toast.error(`No se puede finalizar. Faltan tasas de cambio para convertir: ${uniqueMissing.join(', ')}.`);
+    toast.error(
+      `No se puede finalizar. Faltan tasas de cambio para convertir: ${uniqueMissing.join(", ")}.`,
+    );
     fetchExchangeRates();
     return;
   }
 
   // Validar referencias antes de continuar
   if (hasMissingReferences()) {
-    toast.error("Por favor complete todas las referencias de pago antes de continuar.");
+    toast.error(
+      "Por favor complete todas las referencias de pago antes de continuar.",
+    );
     return;
   }
-  
+
   payments.value.forEach((p, index) => {
     if (p.method === "balance") {
       return;
@@ -521,7 +535,7 @@ const handleCompletePurchase = () => {
           amountToAssign = amountToAssign * rate;
         } else {
           console.warn(
-            `Advertencia: No se encontró tasa de cambio de ${baseCurrency} a ${targetCurrency}. No se pudo asignar automáticamente el monto.`
+            `Advertencia: No se encontró tasa de cambio de ${baseCurrency} a ${targetCurrency}. No se pudo asignar automáticamente el monto.`,
           );
           return; // No se puede asignar, se detiene este pago.
         }
@@ -571,7 +585,7 @@ const handleCompletePurchase = () => {
 
     if (totalPaidAmountNonCash.value > totalToPayCalculated + tolerance) {
       toast.error(
-        "El monto total de los pagos no en efectivo (Transferencia, Binance, PayPal, etc.) excede el monto total de la compra. Estos métodos no generan vuelto."
+        "El monto total de los pagos no en efectivo (Transferencia, Binance, PayPal, etc.) excede el monto total de la compra. Estos métodos no generan vuelto.",
       );
       return;
     }
@@ -581,18 +595,18 @@ const handleCompletePurchase = () => {
     }
     if (finalRemainingAmount < 0) {
       const excessFromNonCash = roundToTwoDecimalPlaces(
-        totalPaidAmountNonCash.value - totalToPayCalculated
+        totalPaidAmountNonCash.value - totalToPayCalculated,
       );
       if (excessFromNonCash > tolerance && !showChangeAmount.value) {
         toast.error(
-          "El excedente fue generado por un pago no en efectivo. No se permite vuelto."
+          "El excedente fue generado por un pago no en efectivo. No se permite vuelto.",
         );
         return;
       }
 
       if (!showChangeAmount.value) {
         toast.error(
-          "El monto total pagado excede el monto de la compra. El vuelto solo se puede generar con pagos en efectivo (USD o COP)."
+          "El monto total pagado excede el monto de la compra. El vuelto solo se puede generar con pagos en efectivo (USD o COP).",
         );
         return;
       }
@@ -600,7 +614,7 @@ const handleCompletePurchase = () => {
 
     if (finalRemainingAmount > 0) {
       toast.error(
-        "El monto total no ha sido cubierto. Agrega más pagos para continuar."
+        "El monto total no ha sido cubierto. Agrega más pagos para continuar.",
       );
       return;
     }
@@ -608,10 +622,10 @@ const handleCompletePurchase = () => {
     const invalidPayment = payments.value.find((p) => {
       // Ignorar pagos sin método
       if (!p.method) return false;
-      
+
       // Ignorar pagos que están en modo edición (inputs activos)
       if (p._isInputActive || p._isReferenceActive) return false;
-      
+
       // Ignorar saldo (se maneja diferente)
       if (p.method === "balance") {
         return false;
@@ -623,27 +637,31 @@ const handleCompletePurchase = () => {
           return true; // Falta monto
         }
       }
-      
+
       // Validar referencia si es requerida (solo si el monto ya está confirmado)
       if (requiresReference(p.method, p.currency)) {
-        if (!p.reference || p.reference.trim() === '') {
+        if (!p.reference || p.reference.trim() === "") {
           return true; // Falta referencia
         }
       }
-      
+
       return false;
     });
 
     if (invalidPayment) {
       // Mensaje más específico según qué falta
-      let errorMessage = "Por favor, revisa y completa los campos de todos los pagos.";
-      
+      let errorMessage =
+        "Por favor, revisa y completa los campos de todos los pagos.";
+
       if (!invalidPayment.amount || Number(invalidPayment.amount) <= 0) {
         errorMessage = `El método "${getPaymentMethodLabel(invalidPayment.method, invalidPayment.currency)}" no tiene un monto válido.`;
-      } else if (requiresReference(invalidPayment.method, invalidPayment.currency) && (!invalidPayment.reference || invalidPayment.reference.trim() === '')) {
+      } else if (
+        requiresReference(invalidPayment.method, invalidPayment.currency) &&
+        (!invalidPayment.reference || invalidPayment.reference.trim() === "")
+      ) {
         errorMessage = `El método "${getPaymentMethodLabel(invalidPayment.method, invalidPayment.currency)}" requiere una referencia.`;
       }
-      
+
       toast.error(errorMessage);
       return;
     }
@@ -651,32 +669,37 @@ const handleCompletePurchase = () => {
 
   if (currentProgress.value < 100) {
     try {
-    issubmitting.value = true;
+      issubmitting.value = true;
 
-    currentStageIndex.value++;
-    if (currentStageIndex.value < progressStages.length) {
-      currentProgress.value = progressStages[currentStageIndex.value];
-    }else{
-      currentProgress.value = 100;
-    }
-
-    const validPayments = payments.value.filter(p => p.amount > 0 && p.method !== null);
-     emit(
-      "purchase-completed",
-      props.orderData.id,
-      validPayments,
-      hasCreditPayment.value,
-      changeAmountInCOP.value,
-      changeAmountInUSD.value,
-      {
-        invoice_switch: invoiceSwitch.value,
-        spe: props.orderData?.client?.is_spe || false,
+      currentStageIndex.value++;
+      if (currentStageIndex.value < progressStages.length) {
+        currentProgress.value = progressStages[currentStageIndex.value];
+      } else {
+        currentProgress.value = 100;
       }
-    );
+
+      const validPayments = payments.value.filter(
+        (p) => p.amount > 0 && p.method !== null,
+      );
+      emit(
+        "purchase-completed",
+        props.orderData.id,
+        validPayments,
+        hasCreditPayment.value,
+        changeAmountInCOP.value,
+        changeAmountInUSD.value,
+        {
+          invoice_switch: invoiceSwitch.value,
+          spe:
+            selectedCurrencyTab.value !== "BS" ||
+            props.orderData?.client?.is_spe ||
+            false,
+        },
+      );
     } catch (error) {
       console.error("Error al completar la compra:", error);
       toast.error("Hubo un problema al procesar el pago. Intente de nuevo.");
-      issubmitting.value = false; 
+      issubmitting.value = false;
     }
   }
 };
@@ -701,7 +724,7 @@ const resetProgress = () => {
       _amountError: false,
     },
   ];
-  invoiceSwitch.value = false;
+  invoiceSwitch.value = props.selectedCurrency !== "BS";
   // ELIMINAR: speSwitch.value = false;
 };
 
@@ -733,30 +756,34 @@ watch(
       fetchExchangeRates();
       // Establecer la pestaña inicial a la moneda del pedido
       selectedCurrencyTab.value = props.selectedCurrency;
-      payments.value = [{
-         method: null,
-        amount: null,
-        reference: null,
-        currency: props.selectedCurrency,
-        debounceTimeout: null,
-        inputAmount: null,
-        _isEditing: false,
-        _isInputActive: false,
-        _isReferenceActive: false,
-        _referenceError: false,
-        _amountConfirmed: false,
-        _amountError: false,
-      }];
+      payments.value = [
+        {
+          method: null,
+          amount: null,
+          reference: null,
+          currency: props.selectedCurrency,
+          debounceTimeout: null,
+          inputAmount: null,
+          _isEditing: false,
+          _isInputActive: false,
+          _isReferenceActive: false,
+          _referenceError: false,
+          _amountConfirmed: false,
+          _amountError: false,
+        },
+      ];
     }
-  }
+  },
 );
 
 // Watch para actualizar el monto restante cuando cambia la pestaña
 watch(
   () => selectedCurrencyTab.value,
-  () => {
-    // El monto restante se actualiza automáticamente a través del computed
-  }
+  (newCurrency) => {
+    // El switch se ajusta automáticamente según la moneda:
+    // Habilitado para USD/COP (monedas distintas a BS), Deshabilitado para BS.
+    invoiceSwitch.value = newCurrency !== "BS";
+  },
 );
 
 const getProductPriceSinIva = (product, currency) => {
@@ -790,7 +817,7 @@ const getProductPrice = (product, currency) => {
 
   // Apply visual discount
   if (activeDiscountDisplay.value != null) {
-      basePrice = basePrice * getDiscountFactor(product);
+    basePrice = basePrice * getDiscountFactor(product);
   }
 
   // Calcular el IVA con descuento SPE si aplica
@@ -951,19 +978,19 @@ const changeAmount = computed(() => {
     const totalToPayRounded = roundUpToNearestHundred(totalToPay);
     return Math.max(
       0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPayRounded)
+      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPayRounded),
     );
   } else {
     return Math.max(
       0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPay)
+      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPay),
     );
   }
 });
 
 const changeAmountInUSD = computed(() => {
   const cashPaymentsInUSD = payments.value.filter(
-    (p) => p.method === "cash_usd" && p.currency === "USD"
+    (p) => p.method === "cash_usd" && p.currency === "USD",
   );
 
   if (cashPaymentsInUSD.length === 0) {
@@ -982,7 +1009,7 @@ const changeAmountInUSD = computed(() => {
     const rate = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
     if (!rate) {
       console.error(
-        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
+        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`,
       );
       return 0;
     }
@@ -1013,7 +1040,7 @@ const showChangeAmount = computed(() => {
   const hasRelevantCashPayment = payments.value.some(
     (payment) =>
       (payment.method === "cash_usd" && payment.currency === "USD") ||
-      (payment.method === "cash_cop" && payment.currency === "COP")
+      (payment.method === "cash_cop" && payment.currency === "COP"),
   );
   return hasRelevantCashPayment && changeAmount.value > 0;
 });
@@ -1038,7 +1065,7 @@ watch(
 
       if (!rateToUSD) {
         toast.error(
-          `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`
+          `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`,
         );
         payments.value[0].method = null;
         return;
@@ -1056,7 +1083,7 @@ watch(
       payments.value[0].currency = props.selectedCurrency;
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 const updateDebouncedAmount = (payment, newValue) => {
@@ -1103,7 +1130,7 @@ const activeDiscountDisplay = computed(() => {
 
 // Computed para verificar si un pago está configurado (tiene monto)
 const isPaymentConfigured = (payment) => {
-  if (payment.method === 'balance') {
+  if (payment.method === "balance") {
     return payment.amount > 0;
   }
   if (isCredit(payment.method)) {
@@ -1114,7 +1141,7 @@ const isPaymentConfigured = (payment) => {
 
 // Computed para obtener el monto formateado de un pago
 const getPaymentAmount = (payment) => {
-  if (payment.method === 'balance') {
+  if (payment.method === "balance") {
     return payment.amount || 0;
   }
   if (isCredit(payment.method)) {
@@ -1135,29 +1162,33 @@ const configuredPayments = computed(() => {
       amount: getPaymentAmount(payment),
       label: getPaymentMethodLabel(payment.method, payment.currency),
     }))
-    .filter(p => p.isConfigured);
+    .filter((p) => p.isConfigured);
 });
 
 // Computed para obtener pagos válidos para el ticket (con método y monto > 0)
 const validPaymentsForTicket = computed(() => {
-  return payments.value.filter(payment => {
+  return payments.value.filter((payment) => {
     // Filtrar pagos que tengan método válido (no null, no undefined)
-    if (!payment.method || payment.method === null || payment.method === undefined) {
+    if (
+      !payment.method ||
+      payment.method === null ||
+      payment.method === undefined
+    ) {
       return false;
     }
-    
+
     // Verificar que el label del método no sea "N/A"
     const methodLabel = getPaymentMethodLabel(payment.method, payment.currency);
-    if (methodLabel === 'N/A') {
+    if (methodLabel === "N/A") {
       return false;
     }
-    
+
     // Filtrar pagos con monto válido (> 0)
     const amount = Number(payment.amount) || 0;
     if (amount <= 0) {
       return false;
     }
-    
+
     return true;
   });
 });
@@ -1165,13 +1196,13 @@ const validPaymentsForTicket = computed(() => {
 // Función para seleccionar un método de pago desde el lado izquierdo
 const selectPaymentMethod = (methodValue, currency = null) => {
   const targetCurrency = currency || props.selectedCurrency;
-  
+
   // Validar que haya monto restante
   if (remainingAmount.value <= 0) {
     toast.error("El monto total ya ha sido cubierto.");
     return;
   }
-  
+
   // Siempre crear un nuevo pago al final (orden cronológico)
   const newPayment = {
     method: methodValue,
@@ -1187,12 +1218,12 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     _amountConfirmed: false,
     _amountError: false,
   };
-  
+
   payments.value.push(newPayment);
   const availablePayment = payments.value[payments.value.length - 1];
-  
+
   // Si es balance o crédito, asignar el monto automáticamente
-  if (methodValue === 'balance') {
+  if (methodValue === "balance") {
     const clientBalance = props.orderData.client?.balance || 0;
     if (clientBalance <= 0) {
       toast.error("El cliente no tiene saldo disponible.");
@@ -1224,19 +1255,21 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     availablePayment._isReferenceActive = false; // Crédito en USD no requiere referencia
   } else {
     // Para otros métodos, dejar el input vacío para que el usuario escriba
-    availablePayment.inputAmount = '';
+    availablePayment.inputAmount = "";
     availablePayment.amount = null; // No confirmar hasta que el usuario lo haga
     availablePayment._isInputActive = true;
     // Usar nextTick para asegurar que el DOM esté actualizado
     nextTick(() => {
       const paymentIndex = payments.value.indexOf(availablePayment);
-      const input = document.querySelector(`.payment-input[data-payment-index="${paymentIndex}"]`);
+      const input = document.querySelector(
+        `.payment-input[data-payment-index="${paymentIndex}"]`,
+      );
       if (input) {
         input.focus();
       }
     });
   }
-  
+
   // Inicializar referencia según si requiere o no
   if (!requiresReference(methodValue, targetCurrency)) {
     availablePayment.reference = null;
@@ -1246,32 +1279,43 @@ const selectPaymentMethod = (methodValue, currency = null) => {
 // Función para confirmar el monto (onBlur o Enter o Check)
 const confirmPaymentAmount = (payment) => {
   // Solo confirmar si el input está activo y tiene valor
-  if (payment._isInputActive && payment.inputAmount !== null && payment.inputAmount !== '' && payment.inputAmount !== undefined) {
+  if (
+    payment._isInputActive &&
+    payment.inputAmount !== null &&
+    payment.inputAmount !== "" &&
+    payment.inputAmount !== undefined
+  ) {
     const numValue = parseFloat(payment.inputAmount);
     if (!isNaN(numValue) && numValue > 0) {
       // Validación: métodos no-efectivo no pueden exceder el monto restante
       if (!isCashMethod(payment.method)) {
         // Si se está editando, sumar el monto anterior al restante para validar correctamente
         const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency = getConvertedRemainingAmount(payment.currency);
-        
+        let remainingInPaymentCurrency = getConvertedRemainingAmount(
+          payment.currency,
+        );
+
         // Si hay un monto anterior, sumarlo al restante para obtener el restante real
         if (previousAmount > 0) {
           if (payment.currency === props.selectedCurrency) {
             remainingInPaymentCurrency += previousAmount;
           } else {
             // Convertir el monto anterior a la moneda base y luego a la moneda del pago
-            const rateToBase = exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment = exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
+            const rateToBase =
+              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+            const rateToPayment =
+              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
             if (rateToBase && rateToPayment) {
               const previousInBase = previousAmount * rateToBase;
               remainingInPaymentCurrency += previousInBase * rateToPayment;
             }
           }
         }
-        
+
         if (numValue > remainingInPaymentCurrency) {
-          toast.error(`El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`);
+          toast.error(
+            `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`,
+          );
           payment._amountError = true;
           return;
         }
@@ -1281,7 +1325,7 @@ const confirmPaymentAmount = (payment) => {
       payment.inputAmount = numValue.toString();
       payment._previousAmount = undefined; // Limpiar el monto anterior guardado
       payment._amountError = false;
-      
+
       // Si requiere referencia, mantener el bloque activo y activar el input de referencia automáticamente
       if (requiresReference(payment.method, payment.currency)) {
         // Mantener _isInputActive = true para que se muestre el bloque de inputs
@@ -1291,7 +1335,9 @@ const confirmPaymentAmount = (payment) => {
         payment._amountConfirmed = true;
         nextTick(() => {
           const paymentIndex = payments.value.indexOf(payment);
-          const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
+          const referenceInput = document.querySelector(
+            `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
+          );
           if (referenceInput) {
             referenceInput.focus();
             referenceInput.select();
@@ -1309,7 +1355,10 @@ const confirmPaymentAmount = (payment) => {
       payment._amountError = true;
       toast.error("Por favor ingrese un monto válido.");
     }
-  } else if (payment._isInputActive && (!payment.inputAmount || payment.inputAmount === '')) {
+  } else if (
+    payment._isInputActive &&
+    (!payment.inputAmount || payment.inputAmount === "")
+  ) {
     // Si el input está activo pero vacío, restaurar el valor anterior si existe
     if (payment._previousAmount !== undefined) {
       payment.inputAmount = payment._previousAmount.toString();
@@ -1330,7 +1379,9 @@ const confirmPaymentComplete = (payment) => {
       payment._amountError = true;
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const input = document.querySelector(`.payment-input[data-payment-index="${paymentIndex}"]`);
+        const input = document.querySelector(
+          `.payment-input[data-payment-index="${paymentIndex}"]`,
+        );
         if (input) {
           input.focus();
         }
@@ -1338,17 +1389,19 @@ const confirmPaymentComplete = (payment) => {
     }
     return;
   }
-  
+
   // Validar referencia si es requerida
   if (requiresReference(payment.method, payment.currency)) {
-    if (!payment.reference || payment.reference.trim() === '') {
+    if (!payment.reference || payment.reference.trim() === "") {
       toast.error("Por favor ingrese la referencia del pago.");
       payment._referenceError = true;
       // Activar el input de referencia para que el usuario pueda escribir
       payment._isReferenceActive = true;
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
+        const referenceInput = document.querySelector(
+          `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
+        );
         if (referenceInput) {
           referenceInput.focus();
         }
@@ -1357,7 +1410,7 @@ const confirmPaymentComplete = (payment) => {
     }
     payment._referenceError = false;
   }
-  
+
   // Si todo está bien, desactivar inputs y limpiar estados
   payment._isInputActive = false;
   payment._isReferenceActive = false;
@@ -1365,7 +1418,7 @@ const confirmPaymentComplete = (payment) => {
   payment._amountError = false;
   payment._amountConfirmed = false;
   payment._previousAmount = undefined;
-  
+
   // El monto restante se actualizará automáticamente porque payment.amount ya está actualizado
 };
 
@@ -1373,40 +1426,50 @@ const confirmPaymentComplete = (payment) => {
 const handlePaymentEnter = (event, payment) => {
   // Prevenir el comportamiento por defecto del Enter
   event.preventDefault();
-  
+
   // Primero confirmar el monto
-  if (payment.inputAmount !== null && payment.inputAmount !== '' && payment.inputAmount !== undefined) {
+  if (
+    payment.inputAmount !== null &&
+    payment.inputAmount !== "" &&
+    payment.inputAmount !== undefined
+  ) {
     const numValue = parseFloat(payment.inputAmount);
     if (!isNaN(numValue) && numValue > 0) {
       // Validación: métodos no-efectivo no pueden exceder el monto restante
       if (!isCashMethod(payment.method)) {
         const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency = getConvertedRemainingAmount(payment.currency);
-        
+        let remainingInPaymentCurrency = getConvertedRemainingAmount(
+          payment.currency,
+        );
+
         if (previousAmount > 0) {
           if (payment.currency === props.selectedCurrency) {
             remainingInPaymentCurrency += previousAmount;
           } else {
-            const rateToBase = exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment = exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
+            const rateToBase =
+              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+            const rateToPayment =
+              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
             if (rateToBase && rateToPayment) {
               const previousInBase = previousAmount * rateToBase;
               remainingInPaymentCurrency += previousInBase * rateToPayment;
             }
           }
         }
-        
+
         if (numValue > remainingInPaymentCurrency) {
-          toast.error(`El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`);
+          toast.error(
+            `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`,
+          );
           return;
         }
       }
-      
+
       // Confirmar el monto
       payment.amount = numValue;
       payment.inputAmount = numValue.toString();
       payment._previousAmount = undefined;
-      
+
       // Si requiere referencia, mantener el bloque activo y activar el input de referencia automáticamente
       if (requiresReference(payment.method, payment.currency)) {
         // Mantener _isInputActive = true para que se muestre el bloque de inputs
@@ -1414,7 +1477,9 @@ const handlePaymentEnter = (event, payment) => {
         payment._amountConfirmed = true; // Marcar que el monto ya está confirmado
         nextTick(() => {
           const paymentIndex = payments.value.indexOf(payment);
-          const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
+          const referenceInput = document.querySelector(
+            `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
+          );
           if (referenceInput) {
             referenceInput.focus();
             referenceInput.select();
@@ -1441,7 +1506,9 @@ const handlePaymentTab = (payment) => {
     payment._isReferenceActive = true;
     nextTick(() => {
       const paymentIndex = payments.value.indexOf(payment);
-      const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
+      const referenceInput = document.querySelector(
+        `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
+      );
       if (referenceInput) referenceInput.focus();
     });
   }
@@ -1451,29 +1518,31 @@ const handlePaymentTab = (payment) => {
 const editPaymentAmount = (payment) => {
   // Activar modo edición
   payment._isInputActive = true;
-  payment.inputAmount = payment.amount ? payment.amount.toString() : '';
-  
+  payment.inputAmount = payment.amount ? payment.amount.toString() : "";
+
   // Guardar el monto anterior para validación (necesario para calcular el restante correctamente)
   payment._previousAmount = payment.amount;
-  
+
   // Resetear el estado de confirmación para permitir editar
   payment._amountConfirmed = false;
-  
+
   // Si requiere referencia, también activar el input de referencia para poder editarla
   if (requiresReference(payment.method, payment.currency)) {
     payment._isReferenceActive = true;
   } else {
     payment._isReferenceActive = false;
   }
-  
+
   // Limpiar errores
   payment._referenceError = false;
   payment._amountError = false;
-  
+
   // Usar nextTick para asegurar que el DOM esté actualizado y poner foco en el input de Monto
   nextTick(() => {
     const paymentIndex = payments.value.indexOf(payment);
-    const input = document.querySelector(`.payment-input[data-payment-index="${paymentIndex}"]`);
+    const input = document.querySelector(
+      `.payment-input[data-payment-index="${paymentIndex}"]`,
+    );
     if (input) {
       input.focus();
       input.select();
@@ -1485,20 +1554,20 @@ const editPaymentAmount = (payment) => {
 const updatePaymentAmountLive = (payment, value) => {
   // Permitir solo números y punto decimal, pero sin restricciones que bloqueen la escritura
   // Permitir múltiples puntos pero solo procesar el primero
-  let cleanValue = value.replace(/[^0-9.]/g, '');
-  
+  let cleanValue = value.replace(/[^0-9.]/g, "");
+
   // Si hay más de un punto, mantener solo el primero
-  const firstDotIndex = cleanValue.indexOf('.');
+  const firstDotIndex = cleanValue.indexOf(".");
   if (firstDotIndex !== -1) {
     const beforeDot = cleanValue.substring(0, firstDotIndex + 1);
-    const afterDot = cleanValue.substring(firstDotIndex + 1).replace(/\./g, '');
+    const afterDot = cleanValue.substring(firstDotIndex + 1).replace(/\./g, "");
     cleanValue = beforeDot + afterDot;
   }
-  
+
   // Solo actualizar el inputAmount mientras el usuario escribe
   // NO actualizar payment.amount hasta que se confirme (Check o onBlur)
   payment.inputAmount = cleanValue;
-  
+
   // Guardar el monto anterior para restaurarlo si se cancela
   if (payment._previousAmount === undefined) {
     payment._previousAmount = payment.amount;
@@ -1508,35 +1577,36 @@ const updatePaymentAmountLive = (payment, value) => {
 // Función para eliminar un pago del resumen (solo el último método agregado)
 const removePaymentFromSummary = (paymentIndex) => {
   // Obtener todos los pagos con método asignado
-  const paymentsWithMethod = payments.value.filter(p => p.method);
-  
+  const paymentsWithMethod = payments.value.filter((p) => p.method);
+
   if (paymentsWithMethod.length === 0) {
     return;
   }
-  
+
   // Encontrar el último pago con método (el más reciente)
-  const lastPaymentWithMethod = paymentsWithMethod[paymentsWithMethod.length - 1];
+  const lastPaymentWithMethod =
+    paymentsWithMethod[paymentsWithMethod.length - 1];
   const lastPaymentIndex = payments.value.indexOf(lastPaymentWithMethod);
-  
+
   // Solo permitir eliminar el último método agregado
   if (paymentIndex !== lastPaymentIndex) {
     toast.error("Solo se puede eliminar el último método de pago agregado.");
     return;
   }
-  
+
   const payment = payments.value[paymentIndex];
-  
+
   // Limpiar timeouts
   if (payment.debounceTimeout) {
     clearTimeout(payment.debounceTimeout);
   }
-  
+
   // Guardar el monto antes de eliminar para actualizar el restante
   const amountToRestore = payment.amount || 0;
-  
+
   // Eliminar el pago del array (no solo limpiar, sino remover completamente)
   payments.value.splice(paymentIndex, 1);
-  
+
   // El monto restante se actualiza automáticamente a través del computed
   // ya que el pago fue removido del array
 };
@@ -1544,45 +1614,47 @@ const removePaymentFromSummary = (paymentIndex) => {
 // Función para obtener el icono del método de pago
 const getPaymentMethodIcon = (methodValue) => {
   const icons = {
-    'cash_bs': 'tabler-cash',
-    'cash_cop': 'tabler-cash',
-    'cash_usd': 'tabler-cash',
-    'mobile_payment': 'tabler-device-mobile',
-    'bank_transfer': 'tabler-transfer',
-    'bank_transfer_bs': 'tabler-transfer',
-    'debit_card': 'tabler-credit-card',
-    'credit_card': 'tabler-credit-card',
-    'binance': 'tabler-currency-bitcoin',
-    'paypal': 'tabler-brand-paypal',
-    'credit': 'tabler-file-invoice',
-    'balance': 'tabler-wallet',
+    cash_bs: "tabler-cash",
+    cash_cop: "tabler-cash",
+    cash_usd: "tabler-cash",
+    mobile_payment: "tabler-device-mobile",
+    bank_transfer: "tabler-transfer",
+    bank_transfer_bs: "tabler-transfer",
+    debit_card: "tabler-credit-card",
+    credit_card: "tabler-credit-card",
+    binance: "tabler-currency-bitcoin",
+    paypal: "tabler-brand-paypal",
+    credit: "tabler-file-invoice",
+    balance: "tabler-wallet",
   };
-  return icons[methodValue] || 'tabler-wallet';
+  return icons[methodValue] || "tabler-wallet";
 };
 
 // Computed para verificar si un método está activo (tiene monto configurado)
 const isPaymentMethodActive = (methodValue, currency) => {
-  return payments.value.some(p => 
-    p.method === methodValue && 
-    p.currency === currency && 
-    (p.amount > 0 || p._isInputActive)
+  return payments.value.some(
+    (p) =>
+      p.method === methodValue &&
+      p.currency === currency &&
+      (p.amount > 0 || p._isInputActive),
   );
 };
 
 // Computed para verificar si un método ya fue agregado para una moneda (para deshabilitar)
 const isPaymentMethodAdded = (methodValue, currency) => {
-  return payments.value.some(p => 
-    p.method === methodValue && 
-    p.currency === currency
+  return payments.value.some(
+    (p) => p.method === methodValue && p.currency === currency,
   );
 };
 
 // Función para verificar si un pago es el último agregado (para habilitar/deshabilitar botón eliminar)
 const isLastPaymentAdded = (payment) => {
-  const paymentsWithMethod = payments.value.filter(p => p.method);
+  const paymentsWithMethod = payments.value.filter((p) => p.method);
   if (paymentsWithMethod.length === 0) return false;
   const lastPayment = paymentsWithMethod[paymentsWithMethod.length - 1];
-  return payments.value.indexOf(payment) === payments.value.indexOf(lastPayment);
+  return (
+    payments.value.indexOf(payment) === payments.value.indexOf(lastPayment)
+  );
 };
 
 // Función para obtener métodos disponibles para una moneda
@@ -1590,8 +1662,8 @@ const getAvailableMethodsForCurrency = (currency) => {
   const methods = paymentMethodsByCurrency[currency] || [];
   return methods.filter((m) => {
     // El método 'credit' está disponible en USD
-    if (m.value === 'balance') {
-      return currency === 'USD' && props.orderData.client?.balance > 0;
+    if (m.value === "balance") {
+      return currency === "USD" && props.orderData.client?.balance > 0;
     }
     return true;
   });
@@ -1604,7 +1676,13 @@ const getAvailableMethodsForCurrency = (currency) => {
         <span class="text-h5 font-weight-bold pr-1">Compra </span>
         <VSwitch v-model="invoiceSwitch" />
         <VSpacer />
-        <VBtn icon variant="text"  @click="currentProgress === 0 ? closeModal() : handleCancelAfterTicket()">
+        <VBtn
+          icon
+          variant="text"
+          @click="
+            currentProgress === 0 ? closeModal() : handleCancelAfterTicket()
+          "
+        >
           <VIcon>tabler-x</VIcon>
         </VBtn>
       </VCardTitle>
@@ -1615,18 +1693,26 @@ const getAvailableMethodsForCurrency = (currency) => {
           <p class="mt-4">Cargando tasas de cambio. Por favor, espere...</p>
         </div>
 
-        <div v-else class="d-flex gap-4" style="min-height: 500px;">
+        <div v-else class="d-flex gap-4" style="min-height: 500px">
           <!-- COLUMNA IZQUIERDA: Productos (Arriba) y Métodos de Pago (Abajo) -->
-          <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
+          <div class="flex-grow-1" style="flex: 1; overflow-y: auto">
             <div class="pa-4">
               <!-- Lista de Productos (Arriba - Expandida por defecto) -->
-              <VExpansionPanels v-model="productsPanelExpanded" variant="accordion" class="mb-4">
+              <VExpansionPanels
+                v-model="productsPanelExpanded"
+                variant="accordion"
+                class="mb-4"
+              >
                 <VExpansionPanel>
                   <VExpansionPanelTitle>
-                    <div class="d-flex align-center justify-space-between w-100">
+                    <div
+                      class="d-flex align-center justify-space-between w-100"
+                    >
                       <div class="d-flex align-center">
                         <VIcon icon="tabler-package" class="me-2" size="20" />
-                        <span class="font-weight-medium text-body-1">Ver detalle de productos</span>
+                        <span class="font-weight-medium text-body-1"
+                          >Ver detalle de productos</span
+                        >
                       </div>
                       <VChip
                         label
@@ -1636,7 +1722,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                         size="small"
                         class="ms-auto me-2"
                       >
-                        <span class="font-weight-medium">{{ totalSelectedQuantity }} productos</span>
+                        <span class="font-weight-medium"
+                          >{{ totalSelectedQuantity }} productos</span
+                        >
                       </VChip>
                     </div>
                   </VExpansionPanelTitle>
@@ -1662,9 +1750,16 @@ const getAvailableMethodsForCurrency = (currency) => {
                               >
                                 {{ product.title }}
                               </span>
-                              <span class="text-sm" style="color: rgba(0, 0, 0, 0.6)">
+                              <span
+                                class="text-sm"
+                                style="color: rgba(0, 0, 0, 0.6)"
+                              >
                                 {{ product.active_ingredient }}
-                                {{ product.laboratory ? `- ${product.laboratory}` : "" }}
+                                {{
+                                  product.laboratory
+                                    ? `- ${product.laboratory}`
+                                    : ""
+                                }}
                                 {{ product.selectedQuantity }} x
                               </span>
                             </div>
@@ -1675,9 +1770,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                                 formatCurrency(
                                   getProductPriceSinIva(
                                     product,
-                                    props.selectedCurrency
+                                    props.selectedCurrency,
                                   ) * product.selectedQuantity,
-                                  props.selectedCurrency
+                                  props.selectedCurrency,
                                 )
                               }}
                             </span>
@@ -1687,7 +1782,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                               {{
                                 formatCurrency(
                                   getIva(product, props.selectedCurrency),
-                                  props.selectedCurrency
+                                  props.selectedCurrency,
                                 )
                               }}
                             </span>
@@ -1702,17 +1797,22 @@ const getAvailableMethodsForCurrency = (currency) => {
                                   formatCurrency(
                                     getProductPriceSinDescuento(
                                       product,
-                                      props.selectedCurrency
+                                      props.selectedCurrency,
                                     ),
-                                    props.selectedCurrency
+                                    props.selectedCurrency,
                                   )
                                 }}
                               </span>
-                              <span class="text-body-1 font-weight-bold text-black">
+                              <span
+                                class="text-body-1 font-weight-bold text-black"
+                              >
                                 {{
                                   formatCurrency(
-                                    getProductPrice(product, props.selectedCurrency),
-                                    props.selectedCurrency
+                                    getProductPrice(
+                                      product,
+                                      props.selectedCurrency,
+                                    ),
+                                    props.selectedCurrency,
                                   )
                                 }}
                               </span>
@@ -1731,7 +1831,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                   <VIcon icon="tabler-credit-card" class="me-2" size="20" />
                   <p class="font-weight-medium text-h6 mb-0">Métodos de Pago</p>
                 </div>
-                
+
                 <!-- Pestañas de Monedas -->
                 <VTabs v-model="selectedCurrencyTab" class="mb-3">
                   <VTab
@@ -1754,29 +1854,52 @@ const getAvailableMethodsForCurrency = (currency) => {
                     <!-- Métodos de pago para esta moneda -->
                     <div class="d-flex flex-wrap gap-2 mt-2">
                       <VBtn
-                        v-for="method in getAvailableMethodsForCurrency(currency.value)"
+                        v-for="method in getAvailableMethodsForCurrency(
+                          currency.value,
+                        )"
                         :key="method.value"
                         :class="[
                           'payment-method-btn',
-                          { 
-                            'payment-method-btn--active': isPaymentMethodActive(method.value, currency.value),
-                            'payment-method-btn--added': isPaymentMethodAdded(method.value, currency.value)
-                          }
+                          {
+                            'payment-method-btn--active': isPaymentMethodActive(
+                              method.value,
+                              currency.value,
+                            ),
+                            'payment-method-btn--added': isPaymentMethodAdded(
+                              method.value,
+                              currency.value,
+                            ),
+                          },
                         ]"
-                        :variant="isPaymentMethodActive(method.value, currency.value) ? 'flat' : 'outlined'"
-                        :color="isPaymentMethodActive(method.value, currency.value) ? 'primary' : 'default'"
-                        :disabled="remainingAmount <= 0 || isPaymentMethodAdded(method.value, currency.value)"
-                        @click="selectPaymentMethod(method.value, currency.value)"
+                        :variant="
+                          isPaymentMethodActive(method.value, currency.value)
+                            ? 'flat'
+                            : 'outlined'
+                        "
+                        :color="
+                          isPaymentMethodActive(method.value, currency.value)
+                            ? 'primary'
+                            : 'default'
+                        "
+                        :disabled="
+                          remainingAmount <= 0 ||
+                          isPaymentMethodAdded(method.value, currency.value)
+                        "
+                        @click="
+                          selectPaymentMethod(method.value, currency.value)
+                        "
                         size="small"
                       >
-                        <VIcon 
-                          :icon="getPaymentMethodIcon(method.value)" 
+                        <VIcon
+                          :icon="getPaymentMethodIcon(method.value)"
                           size="18"
                           class="me-1"
                         />
                         {{ method.label }}
                         <VIcon
-                          v-if="isPaymentMethodActive(method.value, currency.value)"
+                          v-if="
+                            isPaymentMethodActive(method.value, currency.value)
+                          "
                           icon="tabler-check"
                           size="16"
                           class="ms-1"
@@ -1790,17 +1913,33 @@ const getAvailableMethodsForCurrency = (currency) => {
           </div>
 
           <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
-          <div style="width: 400px; position: sticky; top: 0; align-self: flex-start; max-height: calc(100vh - 200px); display: flex; flex-direction: column;">
-            <VCard variant="outlined" class="flex-grow-1" style="display: flex; flex-direction: column;">
-              <VCardText style="flex: 1; overflow-y: auto;">
+          <div
+            style="
+              width: 400px;
+              position: sticky;
+              top: 0;
+              align-self: flex-start;
+              max-height: calc(100vh - 200px);
+              display: flex;
+              flex-direction: column;
+            "
+          >
+            <VCard
+              variant="outlined"
+              class="flex-grow-1"
+              style="display: flex; flex-direction: column"
+            >
+              <VCardText style="flex: 1; overflow-y: auto">
                 <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
-                
+
                 <!-- Descuentos -->
                 <div
                   v-if="activeDiscountDisplay"
                   class="d-flex justify-space-between mb-2"
                 >
-                  <span class="text-body-1">{{ activeDiscountDisplay.label }}:</span>
+                  <span class="text-body-1"
+                    >{{ activeDiscountDisplay.label }}:</span
+                  >
                   <span class="text-body-1 font-weight-medium text-error">
                     - {{ activeDiscountDisplay.formatted }}
                   </span>
@@ -1812,7 +1951,13 @@ const getAvailableMethodsForCurrency = (currency) => {
                 >
                   <span class="text-body-1">Descuento Vencimiento:</span>
                   <span class="text-body-1 font-weight-medium text-error">
-                    - {{ formatCurrency(expirationDiscountTotal, props.selectedCurrency) }}
+                    -
+                    {{
+                      formatCurrency(
+                        expirationDiscountTotal,
+                        props.selectedCurrency,
+                      )
+                    }}
                   </span>
                 </div>
 
@@ -1822,7 +1967,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                 >
                   <span class="text-body-1">Recargo SPE (3%):</span>
                   <span class="text-body-1 font-weight-medium">
-                    {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
+                    {{
+                      formatCurrency(specialTaxAmount, props.selectedCurrency)
+                    }}
                   </span>
                 </div>
 
@@ -1832,96 +1979,145 @@ const getAvailableMethodsForCurrency = (currency) => {
                 <div class="d-flex justify-space-between mb-3">
                   <span class="text-h6 font-weight-bold">Total Compra:</span>
                   <span class="text-h6 font-weight-bold">
-                    {{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}
+                    {{
+                      formatCurrency(
+                        roundedTotalAmountToPay,
+                        props.selectedCurrency,
+                      )
+                    }}
                   </span>
                 </div>
 
                 <!-- Lista de Pagos con Inputs Integrados (Tipo Recibo) -->
-                <div v-if="payments.filter(p => p.method).length > 0" class="mb-3">
+                <div
+                  v-if="payments.filter((p) => p.method).length > 0"
+                  class="mb-3"
+                >
                   <div
-                    v-for="(payment, idx) in payments.filter(p => p.method)"
+                    v-for="(payment, idx) in payments.filter((p) => p.method)"
                     :key="idx"
                     class="d-flex justify-space-between align-center mb-3 payment-row"
-                    style="min-height: 32px;"
+                    style="min-height: 32px"
                   >
                     <span class="text-body-1">
-                      {{ getPaymentMethodLabel(payment.method, payment.currency) }}:
+                      {{
+                        getPaymentMethodLabel(payment.method, payment.currency)
+                      }}:
                     </span>
-                    
+
                     <!-- Input activo (cuando _isInputActive es true) -->
                     <div
                       v-if="payment._isInputActive"
                       class="d-flex align-center gap-2 fade-in"
-                      style="flex: 0 0 auto;"
+                      style="flex: 0 0 auto"
                     >
                       <input
-                        :ref="el => { 
-                          if (el && payment._isInputActive && !payment._isReferenceActive && !payment._amountConfirmed) {
-                            nextTick(() => {
-                              el.focus();
-                            });
+                        :ref="
+                          (el) => {
+                            if (
+                              el &&
+                              payment._isInputActive &&
+                              !payment._isReferenceActive &&
+                              !payment._amountConfirmed
+                            ) {
+                              nextTick(() => {
+                                el.focus();
+                              });
+                            }
                           }
-                        }"
+                        "
                         :value="payment.inputAmount || ''"
-                        @input="updatePaymentAmountLive(payment, $event.target.value)"
+                        @input="
+                          updatePaymentAmountLive(payment, $event.target.value)
+                        "
                         @keydown.enter="handlePaymentEnter($event, payment)"
                         @keyup.tab="handlePaymentTab(payment)"
                         @blur="confirmPaymentAmount(payment)"
-                        @focus="$event.target.style.borderBottomColor = 'rgb(var(--v-theme-primary))'"
+                        @focus="
+                          $event.target.style.borderBottomColor =
+                            'rgb(var(--v-theme-primary))'
+                        "
                         :readonly="payment._amountConfirmed"
                         type="text"
                         inputmode="decimal"
                         class="payment-input"
                         :data-payment-index="payments.indexOf(payment)"
-                        :placeholder="formatCurrency(getConvertedRemainingAmount(payment.currency), payment.currency)"
+                        :placeholder="
+                          formatCurrency(
+                            getConvertedRemainingAmount(payment.currency),
+                            payment.currency,
+                          )
+                        "
                         :style="{
                           border: 'none',
-                          borderBottom: payment._amountError ? '2px solid rgb(var(--v-theme-error))' : '1px solid rgba(0, 0, 0, 0.42)',
-                          background: payment._amountConfirmed ? 'rgba(0, 0, 0, 0.04)' : 'rgba(0, 0, 0, 0.02)',
+                          borderBottom: payment._amountError
+                            ? '2px solid rgb(var(--v-theme-error))'
+                            : '1px solid rgba(0, 0, 0, 0.42)',
+                          background: payment._amountConfirmed
+                            ? 'rgba(0, 0, 0, 0.04)'
+                            : 'rgba(0, 0, 0, 0.02)',
                           padding: '4px 8px',
                           width: '120px',
                           textAlign: 'right',
                           fontSize: '14px',
                           transition: 'all 0.2s ease',
-                          cursor: payment._amountConfirmed ? 'default' : 'text'
+                          cursor: payment._amountConfirmed ? 'default' : 'text',
                         }"
                       />
-                      <span class="text-caption text-medium-emphasis">{{ payment.currency }}</span>
-                      
+                      <span class="text-caption text-medium-emphasis">{{
+                        payment.currency
+                      }}</span>
+
                       <!-- Input de Referencia (si es requerido) -->
                       <input
-                        v-if="requiresReference(payment.method, payment.currency) && payment._isReferenceActive"
-                        :ref="el => { 
-                          if (el && payment._isReferenceActive) {
-                            nextTick(() => {
-                              el.focus();
-                            });
+                        v-if="
+                          requiresReference(payment.method, payment.currency) &&
+                          payment._isReferenceActive
+                        "
+                        :ref="
+                          (el) => {
+                            if (el && payment._isReferenceActive) {
+                              nextTick(() => {
+                                el.focus();
+                              });
+                            }
                           }
-                        }"
+                        "
                         :value="payment.reference || ''"
-                        @input="payment.reference = $event.target.value; payment._referenceError = false"
+                        @input="
+                          payment.reference = $event.target.value;
+                          payment._referenceError = false;
+                        "
                         @keydown.enter.prevent="confirmPaymentComplete(payment)"
                         @blur="
-                          if (payment.reference && payment.reference.trim() !== '') {
+                          if (
+                            payment.reference &&
+                            payment.reference.trim() !== ''
+                          ) {
                             payment._referenceError = false;
                           }
                         "
-                        @focus="$event.target.style.borderBottomColor = 'rgb(var(--v-theme-primary))'"
+                        @focus="
+                          $event.target.style.borderBottomColor =
+                            'rgb(var(--v-theme-primary))'
+                        "
                         type="text"
                         class="payment-reference-input"
                         :data-payment-index="payments.indexOf(payment)"
                         placeholder="Referencia"
                         :style="{
                           border: 'none',
-                          borderBottom: payment._referenceError ? '2px solid rgb(var(--v-theme-error))' : '1px solid rgba(0, 0, 0, 0.42)',
+                          borderBottom: payment._referenceError
+                            ? '2px solid rgb(var(--v-theme-error))'
+                            : '1px solid rgba(0, 0, 0, 0.42)',
                           background: 'rgba(0, 0, 0, 0.02)',
                           padding: '4px 8px',
                           width: '90px',
                           fontSize: '13px',
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.2s ease',
                         }"
                       />
-                      
+
                       <VBtn
                         icon
                         variant="text"
@@ -1930,7 +2126,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                         @click="confirmPaymentComplete(payment)"
                       >
                         <VIcon icon="tabler-check" size="16" />
-                        <VTooltip activator="parent" location="top">Confirmar</VTooltip>
+                        <VTooltip activator="parent" location="top"
+                          >Confirmar</VTooltip
+                        >
                       </VBtn>
                       <VBtn
                         icon
@@ -1938,24 +2136,35 @@ const getAvailableMethodsForCurrency = (currency) => {
                         size="x-small"
                         color="error"
                         :disabled="!isLastPaymentAdded(payment)"
-                        @click="removePaymentFromSummary(payments.indexOf(payment))"
+                        @click="
+                          removePaymentFromSummary(payments.indexOf(payment))
+                        "
                       >
                         <VIcon icon="tabler-x" size="16" />
                         <VTooltip activator="parent" location="top">
-                          {{ isLastPaymentAdded(payment) ? 'Eliminar' : 'Solo se puede eliminar el último método agregado' }}
+                          {{
+                            isLastPaymentAdded(payment)
+                              ? "Eliminar"
+                              : "Solo se puede eliminar el último método agregado"
+                          }}
                         </VTooltip>
                       </VBtn>
                     </div>
-                    
+
                     <!-- Texto fijo con icono de editar (cuando _isInputActive es false) -->
                     <div
                       v-else
                       class="d-flex flex-column align-end gap-1 fade-in"
-                      style="flex: 0 0 auto;"
+                      style="flex: 0 0 auto"
                     >
                       <div class="d-flex align-center gap-2">
                         <span class="text-body-1 font-weight-medium text-error">
-                          -{{ formatCurrency(payment.amount || 0, payment.currency) }}
+                          -{{
+                            formatCurrency(
+                              payment.amount || 0,
+                              payment.currency,
+                            )
+                          }}
                         </span>
                         <VBtn
                           icon
@@ -1965,7 +2174,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                           @click="editPaymentAmount(payment)"
                         >
                           <VIcon icon="tabler-pencil" size="16" />
-                          <VTooltip activator="parent" location="top">Editar</VTooltip>
+                          <VTooltip activator="parent" location="top"
+                            >Editar</VTooltip
+                          >
                         </VBtn>
                         <VBtn
                           icon
@@ -1973,19 +2184,28 @@ const getAvailableMethodsForCurrency = (currency) => {
                           size="x-small"
                           color="error"
                           :disabled="!isLastPaymentAdded(payment)"
-                          @click="removePaymentFromSummary(payments.indexOf(payment))"
+                          @click="
+                            removePaymentFromSummary(payments.indexOf(payment))
+                          "
                         >
                           <VIcon icon="tabler-x" size="16" />
                           <VTooltip activator="parent" location="top">
-                            {{ isLastPaymentAdded(payment) ? 'Eliminar' : 'Solo se puede eliminar el último método agregado' }}
+                            {{
+                              isLastPaymentAdded(payment)
+                                ? "Eliminar"
+                                : "Solo se puede eliminar el último método agregado"
+                            }}
                           </VTooltip>
                         </VBtn>
                       </div>
                       <!-- Mostrar referencia si existe y es requerida -->
                       <div
-                        v-if="requiresReference(payment.method, payment.currency) && payment.reference"
+                        v-if="
+                          requiresReference(payment.method, payment.currency) &&
+                          payment.reference
+                        "
                         class="text-caption text-medium-emphasis"
-                        style="font-size: 11px;"
+                        style="font-size: 11px"
                       >
                         Ref: {{ payment.reference }}
                       </div>
@@ -2000,9 +2220,16 @@ const getAvailableMethodsForCurrency = (currency) => {
                   <span class="text-h6 font-weight-bold">Restante:</span>
                   <span
                     class="text-h6 font-weight-bold"
-                    :class="remainingAmount <= 0 ? 'text-success' : 'text-error'"
+                    :class="
+                      remainingAmount <= 0 ? 'text-success' : 'text-error'
+                    "
                   >
-                    {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
+                    {{
+                      formatCurrency(
+                        getConvertedRemainingAmount(selectedCurrencyTab),
+                        selectedCurrencyTab,
+                      )
+                    }}
                   </span>
                 </div>
 
@@ -2011,7 +2238,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                   v-if="showChangeAmount"
                   class="d-flex justify-space-between mb-4"
                 >
-                  <span class="text-body-1 font-weight-medium">Monto Devuelto:</span>
+                  <span class="text-body-1 font-weight-medium"
+                    >Monto Devuelto:</span
+                  >
                   <span class="text-body-1 font-weight-bold text-success">
                     {{ formatCurrency(changeAmountInCOP, "COP") }}
                   </span>
@@ -2030,12 +2259,21 @@ const getAvailableMethodsForCurrency = (currency) => {
                   Cancelar
                 </VBtn>
                 <VBtn
-                  :style="remainingAmount <= 0 && !hasMissingReferences() ? 'background-color: #28C76F; color: white;' : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'"
+                  :style="
+                    remainingAmount <= 0 && !hasMissingReferences()
+                      ? 'background-color: #28C76F; color: white;'
+                      : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'
+                  "
                   variant="flat"
                   @click="handleCompletePurchase"
                   :loading="issubmitting || props.isExternalLoading"
                   block
-                  :disabled="issubmitting || props.isExternalLoading || (currentProgress === 0 && (remainingAmount > 0.01 || hasMissingReferences()))"
+                  :disabled="
+                    issubmitting ||
+                    props.isExternalLoading ||
+                    (currentProgress === 0 &&
+                      (remainingAmount > 0.01 || hasMissingReferences()))
+                  "
                 >
                   {{ continueButtonText }}
                 </VBtn>
@@ -2069,9 +2307,11 @@ const getAvailableMethodsForCurrency = (currency) => {
                         } else {
                           basePrice = product.price || 0;
                         }
-                        return sum + basePrice * taxRate * product.selectedQuantity;
+                        return (
+                          sum + basePrice * taxRate * product.selectedQuantity
+                        );
                       }, 0),
-                      props.selectedCurrency
+                      props.selectedCurrency,
                     )
                   }}
                 </span>
@@ -2081,7 +2321,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                 <span class="text-body-2 text-success-darken-2"
                   >Descuento SPE (75%):</span
                 >
-                <span class="text-body-2 font-weight-bold text-success-darken-2">
+                <span
+                  class="text-body-2 font-weight-bold text-success-darken-2"
+                >
                   -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
                 </span>
               </div>
@@ -2092,13 +2334,15 @@ const getAvailableMethodsForCurrency = (currency) => {
                 <span class="text-body-2 font-weight-medium"
                   >IVA Final a pagar:</span
                 >
-                <span class="text-body-2 font-weight-bold text-success-darken-2">
+                <span
+                  class="text-body-2 font-weight-bold text-success-darken-2"
+                >
                   {{
                     formatCurrency(
                       props.orderProducts.reduce((sum, product) => {
                         return sum + getIva(product, props.selectedCurrency);
                       }, 0),
-                      props.selectedCurrency
+                      props.selectedCurrency,
                     )
                   }}
                 </span>
@@ -2143,7 +2387,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                     }
                     return sum + basePrice * taxRate * product.selectedQuantity;
                   }, 0),
-                  props.selectedCurrency
+                  props.selectedCurrency,
                 )
               }}
             </span>
@@ -2170,7 +2414,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                   props.orderProducts.reduce((sum, product) => {
                     return sum + getIva(product, props.selectedCurrency);
                   }, 0),
-                  props.selectedCurrency
+                  props.selectedCurrency,
                 )
               }}
             </span>
@@ -2188,7 +2432,7 @@ const getAvailableMethodsForCurrency = (currency) => {
       <!-- Ticket de impresión (sin cambios mayores) -->
       <VCardText v-else-if="currentProgress === 100">
         <div class="d-flex justify-center">
-          <div style="width: '50%'">
+          <div style="width: &quot;50%&quot;">
             <div class="text-center">
               <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
             </div>
@@ -2232,7 +2476,7 @@ const getAvailableMethodsForCurrency = (currency) => {
               </span>
             </div>
 
-            <div 
+            <div
               v-if="validPaymentsForTicket.length > 0"
               class="d-flex flex-wrap justify-space-between"
             >
@@ -2285,7 +2529,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                         {{
                           formatCurrency(
                             getProductPrice(product, props.selectedCurrency),
-                            props.selectedCurrency
+                            props.selectedCurrency,
                           )
                         }}
                       </span>
@@ -2299,9 +2543,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                           formatCurrency(
                             getProductPriceSinDescuento(
                               product,
-                              props.selectedCurrency
+                              props.selectedCurrency,
                             ),
-                            props.selectedCurrency
+                            props.selectedCurrency,
                           )
                         }}
                       </span>
@@ -2335,19 +2579,18 @@ const getAvailableMethodsForCurrency = (currency) => {
                 {{
                   formatCurrency(
                     expirationDiscountTotal,
-                    props.selectedCurrency
+                    props.selectedCurrency,
                   )
                 }}
               </p>
             </div>
-
 
             <div
               v-if="appliesSpecialTax"
               class="d-flex flex-wrap justify-space-between"
             >
               <p class="text-h6 font-weight-medium mt-2 mb-0">
-                 Recargo Sujeto Pasivo Especial (3%):
+                Recargo Sujeto Pasivo Especial (3%):
               </p>
               <p class="text-h6 font-weight-medium mt-2 mb-0">
                 {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
@@ -2360,7 +2603,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                 {{
                   formatCurrency(
                     roundedTotalAmountToPay,
-                    props.selectedCurrency
+                    props.selectedCurrency,
                   )
                 }}
               </p>
@@ -2379,7 +2622,7 @@ const getAvailableMethodsForCurrency = (currency) => {
               </p>
             </div>
 
-            <div 
+            <div
               v-if="validPaymentsForTicket.length > 0"
               class="d-flex flex-wrap justify-space-between"
             >
@@ -2391,7 +2634,9 @@ const getAvailableMethodsForCurrency = (currency) => {
                   class="font-weight-bold my-1"
                 >
                   <span>
-                    {{ getPaymentMethodLabel(payment.method, payment.currency) }}: 
+                    {{
+                      getPaymentMethodLabel(payment.method, payment.currency)
+                    }}:
                     {{ formatCurrency(payment.amount || 0, payment.currency) }}
                   </span>
                 </p>
@@ -2407,7 +2652,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                 {{
                   formatCurrency(
                     roundedTotalAmountToPay,
-                    props.selectedCurrency
+                    props.selectedCurrency,
                   )
                 }}
               </p>
@@ -2428,7 +2673,7 @@ const getAvailableMethodsForCurrency = (currency) => {
             </p>
           </div>
         </div>
-        
+
         <!-- Botones de Imprimir y Cancelar después del ticket -->
         <VDivider class="my-4" />
         <VCardActions class="pa-4 d-flex flex-column gap-2">
