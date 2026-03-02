@@ -9,135 +9,71 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionRepository
 {
-public function getAll(array $data): array
-{
-    $perPage = $data['per_page'];
-    $startDate = $data['start_date'];
-    $endDate = $data['end_date'];
-    $currency = $data['currency'];
-    $detailed = $data['detailed'];
-    $option = substr($data['option'], 0, strpos($data['option'], '_'));
-    $currentPage = $data['page'] ?? 1;
+    public function getAll(array $data): array
+    {
+        $perPage     = $data['per_page'] ?? 10; 
+        $startDate   = $data['start_date'];
+        $endDate     = $data['end_date'];
+        $currency    = $data['currency'];
+        $detailed    = $data['detailed'];
+        $option      = $data['option'] ? substr($data['option'], 0, strpos($data['option'], '_')) : null;
+        $currentPage = $data['page'] ?? 1;
 
-    $baseQuery = Transaction::query()
-        ->leftJoin('users', 'users.id', '=', 'transactions.user_id')
-        ->leftJoin('expense_categories', 'expense_categories.id', '=', 'transactions.category_id')
-        ->when(
-            $currency,
-            fn($q, $cur) => $q->where('transactions.currency', $cur)
-        )
-        ->when(
-            $detailed && $option,
-            fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
-        )
-        ->orderByDesc('transaction_date')
-        ->orderByDesc('id');
+        $datesQuery = Transaction::query()
+            ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
+            ->when(
+                $detailed && $option,
+                fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
+            )
+            ->when(
+                $startDate && $endDate,
+                fn($q) => $q->whereBetween('transactions.transaction_date', [$startDate, $endDate])
+            )
+            ->select('transaction_date')
+            ->distinct()
+            ->orderByDesc('transaction_date');
 
-    $previousTotal = 0.00;
+        $paginatedDates = $datesQuery->paginate($perPage, ['*'], 'page', $currentPage);
+        $activeDates    = $paginatedDates->pluck('transaction_date')->toArray();
 
-    if ($startDate) {
-        $previousTotal = $this->calculateTotalUsdBefore($currency, $startDate);
-    } elseif ($currentPage > 1) {
-        $previousIds = (clone $baseQuery)
-            ->orderBy('transactions.transaction_date', 'desc')
-            ->orderBy('transactions.id', 'desc')
-            ->limit(($currentPage - 1) * $perPage)
-            ->pluck('transactions.id');
-
-        if ($previousIds->isNotEmpty()) {
-            $previousTotal = $this->calculateTotalUsdBefore($currency, null, $previousIds->toArray());
+        if (empty($activeDates)) {
+            return [
+                'paginator' => $paginatedDates,
+                'previous_total_usd' => 0
+            ];
         }
+
+        $results = Transaction::query()
+            ->leftJoin('users', 'users.id', '=', 'transactions.user_id')
+            ->leftJoin('expense_categories', 'expense_categories.id', '=', 'transactions.category_id')
+            ->whereIn('transactions.transaction_date', $activeDates)
+            ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
+            ->when(
+                $detailed && $option,
+                fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
+            )
+            ->select([
+                'transactions.*',
+                'users.username as user_name',
+                'expense_categories.name as category_name',
+            ])
+            ->orderByDesc('transactions.transaction_date')
+            ->orderByDesc('transactions.id')
+            ->get();
+
+        $results->transform(function ($transaction) {
+            $enum = TransactionType::tryFrom($transaction->type);
+            $transaction->type = $enum?->label() ?? $transaction->type;
+            return $transaction;
+        });
+
+        $paginatedDates->setCollection($results);
+
+        return [
+            'paginator' => $paginatedDates,
+            'previous_total_usd' => 0 
+        ];
     }
-
-    $results = (clone $baseQuery)
-        ->when(
-            $startDate && $endDate,
-            fn($q) => $q->whereBetween('transactions.transaction_date', [$startDate, $endDate])
-        )
-        ->select([
-            'transactions.*',
-            'users.username as user_name',
-            'expense_categories.name as category_name',
-        ])
-        ->orderByDesc('transactions.transaction_date')
-        ->orderByDesc('transactions.id')
-        ->paginate($perPage);
-
-    $openingBalances = ['USD' => 0, 'COP' => 0, 'BS' => 0];
-
-    if ($startDate) {
-        $openingBalances = $this->calculateOpeningBalances($currency, $startDate);
-    } elseif ($currentPage > 1) {
-        $currentPageFirstId = $results->getCollection()->first()?->id;
-
-        if ($currentPageFirstId) {
-            $openingBalances = $this->calculateOpeningBalances($currency, null, [$currentPageFirstId]);
-        }
-    }
-
-    // ========== CORRECCIÓN: CALCULAR BALANCE EN ORDEN CRONOLÓGICO ==========
-    
-    // 1. Obtener todas las transacciones en orden CRONOLÓGICO (ASCENDENTE) para calcular balance
-    $allTransactionsQuery = Transaction::query()
-        ->when(
-            $currency,
-            fn($q, $cur) => $q->where('transactions.currency', $cur)
-        )
-        ->when(
-            $detailed && $option,
-            fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
-        );
-
-    if ($startDate && $endDate) {
-        $allTransactionsQuery->whereBetween('transactions.transaction_date', [$startDate, $endDate]);
-    }
-
-    $allTransactions = $allTransactionsQuery
-        ->orderBy('transactions.transaction_date', 'asc')
-        ->orderBy('transactions.id', 'asc')
-        ->get(['id', 'currency', 'amount', 'movement_type']);
-
-    // 2. Calcular balances por moneda en orden cronológico
-    $balancesByTransactionId = [];
-    $runningBalances = ['USD' => 0, 'COP' => 0, 'BS' => 0];
-    
-    // Aplicar balances iniciales (openingBalances)
-    $runningBalances['USD'] = $openingBalances['USD'];
-    $runningBalances['COP'] = $openingBalances['COP'];
-    $runningBalances['BS'] = $openingBalances['BS'];
-
-    foreach ($allTransactions as $transaction) {
-        $currency = $transaction->currency;
-        
-        if ($transaction->movement_type === 'IN') {
-            $runningBalances[$currency] += (float) $transaction->amount;
-        } else {
-            $runningBalances[$currency] -= (float) $transaction->amount;
-        }
-        
-        $balancesByTransactionId[$transaction->id] = $runningBalances[$currency];
-    }
-
-    // 3. Asignar balances a las transacciones paginadas
-    $results->getCollection()->transform(function ($transaction) use ($balancesByTransactionId) {
-        // Asignar el balance calculado
-        $transaction->balance = $balancesByTransactionId[$transaction->id] ?? 0;
-        
-        // Convertir tipo a etiqueta
-        $enum = TransactionType::tryFrom($transaction->type);
-        $transaction->type = $enum?->label() ?? $transaction->type;
-
-        return $transaction;
-    });
-    // ========== FIN DE CORRECCIÓN ==========
-
-    $results->appends($data)->withPath(request()->url());
-
-    return [
-        'paginator' => $results,
-        'previous_total_usd' => $previousTotal
-    ];
-}
 
     public function getByType(array $data): array
     {
@@ -262,6 +198,72 @@ public function getAll(array $data): array
             'USD' => $results->get('USD', 0.0),
             'COP' => $results->get('COP', 0.0),
             'BS' => $results->get('BS', 0.0),
+        ];
+    }
+
+
+    public function getWallets(array $data): array
+    {
+        $startDate = $data['start_date'] ?? null;
+        $endDate   = $data['end_date']   ?? null;
+
+        $rows = Transaction::query()
+            ->selectRaw("
+                currency,
+                type,
+                SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE 0 END) as total_in,
+                SUM(CASE WHEN movement_type = 'OUT' THEN amount ELSE 0 END) as total_out,
+                SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE -amount END) as balance,
+                COUNT(*) as transactions_count,
+                AVG(COALESCE(exchange_rate,1)) as avg_rate
+            ")
+            ->when($startDate && $endDate, fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
+            ->groupBy('currency', 'type')
+            ->orderBy('currency')
+            ->orderBy('type')
+            ->get();
+
+        $currencyOrder = ['USD', 'BS', 'COP'];
+        $sections = [];
+        $totalUsd = 0.0;
+
+        foreach ($rows as $row) {
+            $currency   = $row->currency;
+            $method     = strtoupper($row->type);
+            $balance    = (float) $row->balance;
+            $avgRate    = (float) ($row->avg_rate ?: 1);
+            $balanceUsd = $currency === 'USD' ? $balance : round($balance / $avgRate, 2);
+
+            if (!isset($sections[$currency])) {
+                $sections[$currency] = ['currency' => $currency, 'section_total' => 0.0, 'wallets' => []];
+            }
+
+            $sections[$currency]['wallets'][] = [
+                'key'                => $method . '_' . $currency,
+                'currency'           => $currency,
+                'method'             => $method,
+                'balance'            => round($balance, 2),
+                'total_in'           => round((float) $row->total_in,  2),
+                'total_out'          => round((float) $row->total_out, 2),
+                'transactions_count' => (int) $row->transactions_count,
+                'balance_usd'        => $balanceUsd,
+            ];
+
+            $sections[$currency]['section_total'] += $balance;
+            $totalUsd += $balanceUsd;
+        }
+
+        $orderedSections = [];
+        foreach ($currencyOrder as $c) {
+            if (isset($sections[$c])) {
+                $sections[$c]['section_total'] = round($sections[$c]['section_total'], 2);
+                $orderedSections[] = $sections[$c];
+            }
+        }
+
+        return [
+            'sections'  => $orderedSections,
+            'total_usd' => round($totalUsd, 2),
         ];
     }
 

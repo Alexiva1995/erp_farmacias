@@ -1,200 +1,64 @@
 <script setup>
+import CashWallets from '@/components/CashWallets.vue';
+
 const props = defineProps({
-  stats: { type: Object, default: () => {} },
-  dateRange: { type: String, default: "" },
-  dataDetailed: { type: Boolean, default: false },
-  selectedCurrency: { type: String, default: "" },
-  selectedOption: { type: String, default: "" },
+  stats:            { type: Object,  default: () => ({}) },
+  wallets:          { type: Object,  default: () => ({ sections: [], total_usd: 0 }) },
+  walletsLoading:   { type: Boolean, default: false },
+  dateRange:        { type: String,  default: '' },
+  dataDetailed:     { type: Boolean, default: false },
+  selectedCurrency: { type: String,  default: '' },
+  selectedOption:   { type: String,  default: '' },
 });
 
 const emit = defineEmits([
-  "update:dateRange",
-  "update:dataDetailed",
-  "update:selectedCurrency",
-  "update:selectedTab",
-  "update:selectedOption",
-  "clear",
+  'update:dateRange',
+  'update:dataDetailed',
+  'update:selectedCurrency',
+  'update:selectedTab',
+  'update:selectedOption',
+  'clear',
 ]);
 
 const options = {
-  BS: [
-    {
-      title: "Efectivo",
-      value: "CASH_BS",
-    },
-    {
-      title: "Tarjeta",
-      value: "CARD_BS",
-    },
-    {
-      title: "Pago móvil",
-      value: "MOBILE_BS",
-    },
-    {
-      title: "Transferencia",
-      value: "TRANSFER_BS",
-    },
+  BS:  [
+    { title: 'Efectivo',      value: 'CASH_BS'     },
+    { title: 'Tarjeta',       value: 'CARD_BS'     },
+    { title: 'Pago móvil',    value: 'MOBILE_BS'   },
+    { title: 'Transferencia', value: 'TRANSFER_BS'  },
   ],
   COP: [
-    {
-      title: "Efectivo",
-      value: "CASH_COP",
-    },
-    {
-      title: "Transferencia",
-      value: "TRANSFER_COP",
-    },
+    { title: 'Efectivo',      value: 'CASH_COP'    },
+    { title: 'Transferencia', value: 'TRANSFER_COP' },
   ],
   USD: [
-    {
-      title: "Efectivo",
-      value: "CASH_USD",
-    },
-    {
-      title: "Binance",
-      value: "BINANCE_USD",
-    },
-    {
-      title: "PayPal",
-      value: "PAYPAL_USD",
-    },
-    {
-      title: "Crédito",
-      value: "CREDIT_USD",
-    },
+    { title: 'Efectivo',      value: 'CASH_USD'    },
+    { title: 'Binance',       value: 'BINANCE_USD'  },
+    { title: 'PayPal',        value: 'PAYPAL_USD'   },
+    { title: 'Crédito',       value: 'CREDIT_USD'   },
   ],
 };
 
-function toggleCurrency(cur) {
-  emit("update:selectedCurrency", props.selectedCurrency === cur ? "" : cur);
-
-  if (props.selectedCurrency === cur) {
-    emit("update:selectedOption", "");
-    emit("update:dataDetailed", false);
-    return;
-  }
-
-  if (cur) {
-    const first =
-      cur === "USD"
-        ? options.USD[0].value
-        : cur === "BS"
-        ? options.BS[0].value
-        : options.COP[0].value;
-
-    emit("update:selectedOption", first);
-  }
+function handleWalletSelect({ currency, option }) {
+  emit('update:selectedCurrency', currency);
+  emit('update:selectedOption', option);
+  emit('update:dataDetailed', true);
 }
 </script>
 
 <template>
-  <VRow class="mb-4">
-    <VCol md="3" @click="toggleCurrency('USD')">
-      <VCard
-        class="cursor-pointer"
-        :class="
-          selectedCurrency === 'USD' &&
-          'border-opacity-50 border-warning border-lg pa-0 ma-0'
-        "
-      >
-        <VCardText>
-          <h5 class="text-h3">
-            {{
-              Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats.total_usd ?? 0
-              )
-            }}
-          </h5>
-          <div class="text-sm">
-            {{ `USD - ${dateRange != null ? "mensual" : "total"}` }}
-          </div>
-        </VCardText>
-        <SparklineCard :stats="props.stats['USD'] || []" color="warning" />
-      </VCard>
-    </VCol>
-    <VCol md="3" @click="toggleCurrency('COP')">
-      <VCard
-        class="cursor-pointer"
-        :class="
-          selectedCurrency === 'COP' &&
-          'border-opacity-50 border-primary border-lg pa-0 ma-0'
-        "
-      >
-        <VCardText>
-          <h5 class="text-h3">
-            {{
-              Intl.NumberFormat("es", {
-                notation: "standard",
-                maximumFractionDigits: 0,
-              }).format(props.stats.total_cop ?? 0)
-            }}
-          </h5>
-          <div class="text-sm">
-            {{ `Pesos (COP) - ${dateRange != null ? "mensual" : "total"}` }}
-          </div>
-        </VCardText>
-        <SparklineCard :stats="props.stats['COP'] || []" color="primary" />
-      </VCard>
-    </VCol>
-    <VCol md="3" @click="toggleCurrency('BS')">
-      <VCard
-        class="cursor-pointer"
-        :class="
-          selectedCurrency === 'BS' &&
-          'border-opacity-50 border-error border-lg pa-0 ma-0'
-        "
-      >
-        <VCardText>
-          <h5 class="text-h3">
-            {{
-              Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats.total_bs ?? 0
-              )
-            }}
-          </h5>
-          <div class="text-sm">
-            {{ `Bolívares (BS) - ${dateRange != null ? "mensual" : "total"}` }}
-          </div>
-        </VCardText>
-        <SparklineCard
-          :title="
-            Intl.NumberFormat('en', { notation: 'standard' }).format(
-              props.stats.total_bs
-            )
-          "
-          :description="`Bolivares (BS) - ${
-            dateRange != null ? 'mensual' : 'total'
-          }`"
-          :stats="props.stats['BS'] || []"
-          color="error"
-        />
-      </VCard>
-    </VCol>
+  <!-- Panel de wallets vivas -->
+  <CashWallets
+    :sections="wallets.sections"
+    :total-usd="wallets.total_usd"
+    :loading="walletsLoading"
+    :date-filtered="!!dateRange"
+    :selected-currency="selectedCurrency"
+    :selected-option="selectedOption"
+    @select="handleWalletSelect"
+    class="mb-2"
+  />
 
-    <VCol md="3">
-      <VCard>
-        <VCardText class="d-flex flex-column align-center justify-center">
-          <VAvatar
-            density="compact"
-            :rounded="lg"
-            variant="tonal"
-            class="text-success"
-            size="60"
-          >
-            <VIcon icon="tabler-currency-dollar" size="40"></VIcon>
-          </VAvatar>
-          <h5 class="text-h3 pt-2 mb-2">
-            {{
-              Intl.NumberFormat("es", { notation: "standard" }).format(
-                props.stats["total_value"] ?? 0
-              )
-            }}
-          </h5>
-          <div class="text-body-1">Total en USD</div>
-        </VCardText>
-      </VCard>
-    </VCol>
-  </VRow>
   <VCard class="mb-4">
     <VCardText>
       <VCardTitle>Flujo de caja</VCardTitle>

@@ -45,4 +45,15 @@ class TransactionController extends Controller
         $results = $this->transaction->getByType($data);
         return ApiResponse::success($results);
     }
+
+    public function getWallets(Request $request)
+    {
+        $data = [
+            'start_date' => $request->start_date,
+            'end_date'   => $request->end_date,
+        ];
+
+        $results = $this->transaction->getWallets($data);
+        return ApiResponse::success($results);
+    }
 }

@@ -572,6 +572,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix('transactions')->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
+            Route::get('/wallets', [TransactionController::class, 'getWallets']);
         });
 
         Route::prefix('payslips')->group(function () {
