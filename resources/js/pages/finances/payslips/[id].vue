@@ -121,6 +121,12 @@ const formatCurrency = (amount) => {
   }).format(newAmount) + " " + symbol;
 };
 
+const formatRate = (rate) => {
+  return Math.round(Number(rate) || 0)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
 const formatIdentification = (id) => {
   if (!id) return '-';
   const num = String(id).replace(/\D/g, '');
@@ -261,9 +267,9 @@ watch(tab, () => {
       <div class="text-right d-none d-md-block">
         <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio ({{ selectedPayslip?.currency_code }})</p>
         <div class="d-flex align-center justify-end">
-          <span class="text-h4 font-weight-black text-primary me-2">1.00 {{ tab === 'full' ? 'COP' : 'USD' }}</span>
+          <span class="text-h4 font-weight-black text-primary me-2">1.00 USD</span>
           <VIcon icon="tabler-arrows-right-left" size="20" class="text-disabled me-2" />
-          <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</span>
+          <span class="text-h4 font-weight-black text-success">{{ formatRate(selectedPayslip?.exchange_rate) }} {{ selectedPayslip?.currency_code }}</span>
         </div>
         <p class="text-caption text-disabled mt-1">* Tasa utilizada para esta nómina</p>
       </div>
@@ -318,7 +324,7 @@ watch(tab, () => {
             </VAvatar>
             <div>
               <p class="text-caption text-disabled mb-0 font-weight-medium">Tasa Ref.</p>
-              <h5 class="text-h5 font-weight-bold">1 {{ tab === 'full' ? 'COP' : 'USD' }} = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
+              <h5 class="text-h5 font-weight-bold">1 USD = {{ formatRate(selectedPayslip?.exchange_rate) }} {{ selectedPayslip?.currency_code }}</h5>
             </div>
           </VCardText>
         </VCard>
