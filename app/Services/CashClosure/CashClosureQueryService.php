@@ -208,6 +208,11 @@ class CashClosureQueryService
     }
     public function getFilteredQueryMonthly(Request $request): Collection
     {
+        // Obtener tasas de cambio para conversión correcta a USD
+        $rates = DB::table('exchange_rates')->pluck('rate', 'currency_code');
+        $copRate = (float)($rates['COP'] ?? 1);
+        $bsRate  = (float)($rates['EUR'] ?? 1); // BS usa tasa EUR
+
         $query = $this->getBaseQueryMonthly();
 
         $query->select(
@@ -233,31 +238,36 @@ class CashClosureQueryService
         foreach ($summaries as $summary) {
 
             $endDate = Carbon::create($summary->year, $summary->month)->endOfMonth();
-
-            //$monthName = Carbon::create($summary->year, $summary->month, 1)->monthName;
             $monthName = $endDate->monthName;
-            $totalAmountRaw = $summary->amount_usd_month + $summary->amount_bs_month + $summary->amount_cop_month;
-            $daysClosed = $summary->days_closed;
 
-            $dailyAverageRaw = ($daysClosed > 0) ? ($summary->total_sales_month / $daysClosed) : 0;
+            $usd   = (float) $summary->amount_usd_month;
+            $bs    = (float) $summary->amount_bs_month;
+            $cop   = (float) $summary->amount_cop_month;
+
+            // Convertir cada moneda a USD antes de sumar (corrección crítica)
+            $bsInUsd  = $bsRate  > 0 ? $bs  / $bsRate  : 0;
+            $copInUsd = $copRate > 0 ? $cop / $copRate : 0;
+            $totalUsdEquivalent = round($usd + $bsInUsd + $copInUsd, 2);
+
+            $daysClosed = $summary->days_closed;
+            $dailyAverageRaw = ($daysClosed > 0) ? ((float)$summary->total_sales_month / $daysClosed) : 0;
             $dailyClosureIds = array_map('intval', explode(',', $summary->daily_closure_ids));
 
             $object = new \stdClass();
-            $object->closing_date = $endDate->format('Y-m-d');
+            $object->closing_date  = $endDate->format('Y-m-d');
+            $object->created_at    = $endDate->format('Y-m-d');
+            $object->period        = ucfirst($monthName) . ' ' . $summary->year;
 
-            $object->created_at = $endDate->format('Y-m-d');
-            $object->period = ucfirst($monthName) . ' ' . $summary->year;
+            $object->amount_usd    = number_format($usd,  2, ',', '.');
+            $object->amount_bs     = number_format($bs,   2, ',', '.');
+            $object->amount_cop    = number_format($cop,   0, ',', '.');
 
-            $object->amount_usd = number_format($summary->amount_usd_month, 2, ",", ".");
-            $object->amount_bs = number_format($summary->amount_bs_month, 2, ",", ".");
-            $object->amount_cop = number_format($summary->amount_cop_month, 0, ",", ".");
-            $object->total_amount_raw = $totalAmountRaw;
-            $object->total_amount = number_format($totalAmountRaw, 2, ",", ".");
+            // Total unificado en USD equivalente (suma correcta)
+            $object->total_usd_equivalent = number_format($totalUsdEquivalent, 2, ',', '.');
 
-            $object->days_closed = $daysClosed;
+            $object->days_closed       = $daysClosed;
             $object->daily_average_raw = $dailyAverageRaw;
-            $object->daily_average = number_format($dailyAverageRaw, 2, ",", ".");
-
+            $object->daily_average     = number_format($dailyAverageRaw, 2, ',', '.');
             $object->daily_closure_ids = $dailyClosureIds;
 
             $data->push($object);
