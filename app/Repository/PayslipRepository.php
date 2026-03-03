@@ -203,7 +203,7 @@ class PayslipRepository
     DB::statement(
       'UPDATE payslips
          SET total = (
-               SELECT COALESCE(SUM(amount), 0)
+               SELECT COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)
                FROM payslip_details
                WHERE payslip_id = payslips.id
              ),
