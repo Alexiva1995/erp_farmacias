@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
-const tab = ref("legal");
+const tab = ref(route.query.tab || "legal");
 const loading = ref(false);
 const showDialog = ref(false);
 const payrollId = route.params.id;
@@ -81,18 +81,34 @@ const alwaysShow = [
 
 const headers = computed(() => {
   let list = fullHeaders.value;
-  if (tab.value === "legal")
+  if (tab.value === "legal") {
     list = list.filter((h) => alwaysShow.includes(h.key));
+  } else if (tab.value === "full") {
+    // Para la nómina completa, solo mostramos lo solicitado: paquete base y comida
+    const fullModeKeys = [
+      "employee_full_name",
+      "identification",
+      "salary_to_pay_voucher",
+      "food_voucher",
+      "total",
+    ];
+    list = list.filter((h) => fullModeKeys.includes(h.key)).map(h => {
+      if (h.key === 'salary_to_pay_voucher') return { ...h, title: 'Salario Base (Interno)' };
+      return h;
+    });
+  }
   
   return list;
 });
 
 const formatCurrency = (amount) => {
   const newAmount = Number(amount) || 0;
+  const symbol = selectedPayslip.value?.currency_code || (tab.value === 'legal' ? 'Bs.' : '$');
+  
   return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(newAmount) + (tab.value === "legal" ? " Bs." : " $");
+  }).format(newAmount) + " " + symbol;
 };
 
 const formatIdentification = (id) => {
@@ -104,48 +120,67 @@ const formatIdentification = (id) => {
 
 const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
-  return rows.map(r => ({
-    ...r,
-    employee_full_name: `${r.name || ''} ${r.last_name || ''}`.trim() || 'Desconocido',
-    positive_vouchers: (Number(r.salary_to_pay_voucher) || 0) + 
-                       (Number(r.food_voucher) || 0) + 
-                       (Number(r.health_support_voucher) || 0) + 
-                       (Number(r.performance_voucher) || 0) + 
-                       (Number(r.transportation_voucher) || 0) + 
-                       (Number(r.invoice_voucher) || 0) + 
-                       (Number(r.sales_voucher) || 0) + 
-                       (Number(r.sales_growth_voucher) || 0) + 
-                       (Number(r.assigned_products_voucher) || 0) + 
-                       (Number(r.earnings_voucher) || 0) + 
-                       (Number(r.vacation_bonus_voucher) || 0) + 
-                       (Number(r.vacation_voucher) || 0) + 
-                       (Number(r.family_support_voucher) || 0),
-    negative_vouchers: (Number(r.social_security_voucher) || 0) + 
-                       (Number(r.employment_voucher) || 0) + 
-                       (Number(r.housing_property_benefits_voucher) || 0) + 
-                       (Number(r.days_not_worked_voucher) || 0) + 
-                       (Number(r.loans_voucher) || 0) + 
-                       (Number(r.settlement_voucher) || 0),
-    total: ((Number(r.salary_to_pay_voucher) || 0) + 
-            (Number(r.food_voucher) || 0) + 
-            (Number(r.health_support_voucher) || 0) + 
-            (Number(r.performance_voucher) || 0) + 
-            (Number(r.transportation_voucher) || 0) + 
-            (Number(r.invoice_voucher) || 0) + 
-            (Number(r.sales_voucher) || 0) + 
-            (Number(r.sales_growth_voucher) || 0) + 
-            (Number(r.assigned_products_voucher) || 0) + 
-            (Number(r.earnings_voucher) || 0) + 
-            (Number(r.vacation_bonus_voucher) || 0) + 
-            (Number(r.vacation_voucher) || 0) + 
-            (Number(r.family_support_voucher) || 0)) +
-           ((Number(r.social_security_voucher) || 0) + 
-            (Number(r.employment_voucher) || 0) + 
-            (Number(r.housing_property_benefits_voucher) || 0) + 
-            (Number(r.days_not_worked_voucher) || 0) + 
-            (Number(r.loans_voucher) || 0) + 
-            (Number(r.settlement_voucher) || 0))
-  }));
+  return rows.map(r => {
+    const isFull = tab.value === 'full';
+    
+    // Si es modo full, aplicamos el cálculo especial solicitado:
+    // (Total Package - Food Voucher) / 2
+    const foodVoucher = Number(r.food_voucher) || 0;
+    const totalPackage = Number(r.total_package_usd) || 0;
+    
+    const calculatedSalary = isFull 
+      ? Math.round(((totalPackage - foodVoucher) / 2) * 100) / 100
+      : Number(r.salary_to_pay_voucher) || 0;
+
+    const data = {
+      ...r,
+      employee_full_name: `${r.name || ''} ${r.last_name || ''}`.trim() || 'Desconocido',
+      salary_to_pay_voucher: calculatedSalary,
+    };
+
+    if (isFull) {
+      // En modo full, solo mostramos salario base y comida según el requerimiento
+      data.positive_vouchers = calculatedSalary + foodVoucher;
+      data.negative_vouchers = 0;
+      data.total = data.positive_vouchers;
+      
+      // Limpiamos otros conceptos para que no sumen accidentalmente en otros cálculos
+      const otherKeys = [
+        'health_support_voucher', 'performance_voucher', 'transportation_voucher',
+        'invoice_voucher', 'sales_voucher', 'sales_growth_voucher',
+        'assigned_products_voucher', 'earnings_voucher', 'vacation_bonus_voucher',
+        'vacation_voucher', 'family_support_voucher', 'social_security_voucher',
+        'employment_voucher', 'housing_property_benefits_voucher',
+        'days_not_worked_voucher', 'loans_voucher', 'settlement_voucher'
+      ];
+      otherKeys.forEach(k => data[k] = 0);
+    } else {
+      data.positive_vouchers = (Number(r.salary_to_pay_voucher) || 0) + 
+                         foodVoucher + 
+                         (Number(r.health_support_voucher) || 0) + 
+                         (Number(r.performance_voucher) || 0) + 
+                         (Number(r.transportation_voucher) || 0) + 
+                         (Number(r.invoice_voucher) || 0) + 
+                         (Number(r.sales_voucher) || 0) + 
+                         (Number(r.sales_growth_voucher) || 0) + 
+                         (Number(r.assigned_products_voucher) || 0) + 
+                         (Number(r.earnings_voucher) || 0) + 
+                         (Number(r.vacation_bonus_voucher) || 0) + 
+                         (Number(r.vacation_voucher) || 0) + 
+                         (Number(r.family_support_voucher) || 0);
+      
+      data.negative_vouchers = (Number(r.social_security_voucher) || 0) + 
+                         (Number(r.employment_voucher) || 0) + 
+                         (Number(r.housing_property_benefits_voucher) || 0) + 
+                         (Number(r.days_not_worked_voucher) || 0) + 
+                         (Number(r.loans_voucher) || 0) + 
+                         (Number(r.settlement_voucher) || 0);
+      
+      data.total = data.positive_vouchers - data.negative_vouchers;
+    }
+
+    return data;
+  });
 });
 
 const totals = computed(() => {
@@ -174,7 +209,10 @@ const handleShowEditFormDialog = (item) => {
   selectedEmployee.value = item;
 };
 
-watch(tab, () => fetchPayslip());
+watch(tab, () => {
+  // No permitimos cambiar de pestaña manualmente si no es por URL
+  // fetchPayslip(); 
+});
 </script>
 
 <template>
@@ -209,11 +247,11 @@ watch(tab, () => fetchPayslip());
       </div>
       
       <div class="text-right d-none d-md-block">
-        <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio</p>
+        <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio ({{ selectedPayslip?.currency_code }})</p>
         <div class="d-flex align-center justify-end">
           <span class="text-h4 font-weight-black text-primary me-2">1.00 $</span>
           <VIcon icon="tabler-arrows-right-left" size="20" class="text-disabled me-2" />
-          <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} Bs.</span>
+          <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</span>
         </div>
         <p class="text-caption text-disabled mt-1">* Tasa utilizada para esta nómina</p>
       </div>
@@ -268,7 +306,7 @@ watch(tab, () => fetchPayslip());
             </VAvatar>
             <div>
               <p class="text-caption text-disabled mb-0 font-weight-medium">Tasa Ref.</p>
-              <h5 class="text-h5 font-weight-bold">1 $ = {{ selectedPayslip?.exchange_rate }} Bs.</h5>
+              <h5 class="text-h5 font-weight-bold">1 $ = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
             </div>
           </VCardText>
         </VCard>
@@ -283,17 +321,7 @@ watch(tab, () => fetchPayslip());
     />
 
     <VCard class="main-table-card shadow-sm border-0 glass-morphism">
-      <VTabs v-model="tab" color="primary" align-tabs="start" class="px-4 pt-2">
-        <VTab value="legal">
-          <VIcon icon="tabler-building-bank" class="me-2" size="18" />
-          Nómina Legal (Bs.)
-        </VTab>
-        <VTab value="full">
-          <VIcon icon="tabler-file-analytics" class="me-2" size="18" />
-          Nómina Completa (USD)
-        </VTab>
-      </VTabs>
-      <VDivider />
+      <VDivider v-if="false" />
 
 
       <VCardText class="pa-0">

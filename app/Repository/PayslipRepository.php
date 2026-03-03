@@ -68,7 +68,7 @@ class PayslipRepository
       ]);
     }
 
-    $payslip->update(['total' => $payslip->details()->sum('amount')]);
+    $payslip->update(['total' => $payslip->details()->where('amount', '>', 0)->sum('amount')]);
 
     return true;
   }
@@ -276,7 +276,8 @@ class PayslipRepository
 
   public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $type === 'full' ? 1 : $payslip->exchange_rate;
+    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+    $currency = $type === 'full' ? $cop_rate : $payslip->exchange_rate;
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;
@@ -288,6 +289,7 @@ class PayslipRepository
       'employees.last_name',
       'employees.identification',
       'roles.name            as role',
+      'employees.total_package_usd',
       DB::raw((int) $isDec . '  as is_december'),
       DB::raw("MAX(TIMESTAMPDIFF(YEAR, employees.created_at, '{$payslip->payslip_date}')) AS active_years"),
     ];
@@ -370,7 +372,8 @@ class PayslipRepository
       'date' => $payslip->payslip_date,
       'status' => $payslip->status,
       'period' => $period,
-      'exchange_rate' => $payslip->exchange_rate
+      'exchange_rate' => $type === 'full' ? (\App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0) : $payslip->exchange_rate,
+      'currency_code' => $type === 'full' ? 'COP' : 'Bs.'
     ];
   }
 

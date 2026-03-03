@@ -63,15 +63,28 @@ const emit = defineEmits([
         <span v-else>-</span>
       </template>
       <template #item.actions="{ item }">
-        <!-- Ver nómina (Ojo Azul) -->
-        <VTooltip text="Ver Nómina" location="top">
+        <!-- Ver nómina Legal (Ojo Azul) -->
+        <VTooltip text="Ver Nómina Legal" location="top">
           <template #activator="{ props }">
             <VBtn
               v-bind="props"
-              :href="'/finances/payslips/' + item.id"
+              :href="'/finances/payslips/' + item.id + '?tab=legal'"
               icon="tabler-eye"
               variant="text"
               color="info"
+            />
+          </template>
+        </VTooltip>
+
+        <!-- Ver nómina Completa (Ojo Naranja) -->
+        <VTooltip text="Ver Nómina Completa" location="top">
+          <template #activator="{ props }">
+            <VBtn
+              v-bind="props"
+              :href="'/finances/payslips/' + item.id + '?tab=full'"
+              icon="tabler-eye"
+              variant="text"
+              color="warning"
             />
           </template>
         </VTooltip>
