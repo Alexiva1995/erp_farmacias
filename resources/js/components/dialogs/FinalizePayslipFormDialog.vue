@@ -153,14 +153,6 @@ watch(
         </VRow>
 
         <VRow>
-          <VCol cols="12">
-            <div class="d-flex align-center mb-4">
-              <VIcon icon="tabler-settings" class="me-2 text-primary" size="20" />
-              <span class="text-subtitle-2 font-weight-bold">Configuración del Pago</span>
-              <VDivider class="ms-4" />
-            </div>
-          </VCol>
-
           <VCol cols="12" sm="6">
             <p class="text-caption font-weight-medium mb-1 ms-1">Moneda</p>
             <VSelect
