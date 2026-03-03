@@ -8,6 +8,9 @@ use App\Http\Requests\StoreEmployeeDocumentsRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\StoreEmployeeVoucherRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
+use App\Http\Requests\UpdatePayrollSettingsRequest;
+use App\Http\Resources\EmployeeResource;
+use App\Http\Resources\VoucherResource;
 use App\Models\Employee;
 use App\Models\UsersSalaryDetails;
 use App\Services\EmployeeServices;
@@ -22,7 +25,11 @@ class EmployeeController extends Controller
     public function list(Request $request)
     {
         $data = $request->all();
-        return $this->employeeServices->list($data);
+        $results = $this->employeeServices->list($data);
+        return response()->json([
+            'data' => EmployeeResource::collection($results),
+            'total' => $results->total()
+        ]);
     }
 
     public function store(StoreEmployeeRequest $request)
@@ -42,7 +49,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validated();
         $result = $this->employeeServices->update($employee, $validated);
-        return ApiResponse::success(['status' => $result]);
+        return new EmployeeResource($employee->fresh());
     }
 
     public function profile(Employee $employee)
@@ -53,7 +60,7 @@ class EmployeeController extends Controller
             return ApiResponse::error();
         }
 
-        return ApiResponse::success($data);
+        return new EmployeeResource($data);
     }
 
     public function storeVoucher(Employee $employee, StoreEmployeeVoucherRequest $request)
@@ -66,7 +73,10 @@ class EmployeeController extends Controller
     public function getVouchers(Employee $employee)
     {
         $results = $this->employeeServices->getVouchers($employee);
-        return ApiResponse::success(['data' => $results->items(), 'total' => $results->total()]);
+        return response()->json([
+            'data' => VoucherResource::collection($results),
+            'total' => $results->total()
+        ]);
     }
 
     public function deleteVoucher(UsersSalaryDetails $voucher)
@@ -157,12 +167,9 @@ class EmployeeController extends Controller
         return ApiResponse::success(['message' => 'Consumo salud registrado.']);
     }
 
-    public function updatePayrollSettings(Employee $employee, Request $request)
+    public function updatePayrollSettings(Employee $employee, UpdatePayrollSettingsRequest $request)
     {
-        $data = $request->validate([
-            'total_package_usd' => 'nullable|numeric|min:0',
-        ]);
-        $employee->update(array_filter($data));
-        return ApiResponse::success($this->employeeServices->profile($employee));
+        $result = $this->employeeServices->updatePayrollSettings($employee, $request->validated());
+        return ApiResponse::success(new EmployeeResource($employee->fresh()));
     }
 }

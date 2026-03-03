@@ -8,12 +8,7 @@ use Illuminate\Console\Command;
 
 class GeneratePayslip extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:generate-payslip {--pay-food-voucher : Pagar bono de alimentacion}';
+    protected $signature = 'app:generate-payslip';
 
     /**
      * The console command description.
@@ -28,8 +23,7 @@ class GeneratePayslip extends Command
     public function handle(PayslipServices $payslipServices)
     {
         $targetDate = Carbon::today();
-        $payFoodVoucher = $this->option('pay-food-voucher');
-        $payslipServices->generate($targetDate, $payFoodVoucher);
+        $payslipServices->generate($targetDate);
 
         $date = $targetDate->toDateString();
         $this->info("Payslip ($date) generated successfully.");

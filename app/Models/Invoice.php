@@ -32,7 +32,7 @@ class Invoice extends Model
         'loaded_by',
         'ordered_by',
         'created_invoice_date',
-        'status_payment',
+        'retention_generated',
     ];
 
     /**
@@ -40,6 +40,7 @@ class Invoice extends Model
      */
     protected $casts = [
         'is_indexed' => 'boolean',
+        'retention_generated' => 'boolean',
         'exp_date' => 'date',
         'payment_date' => 'date',
         'received_date' => 'date',
@@ -163,6 +164,11 @@ class Invoice extends Model
     {
         return $this->returns()->sum('quantity');
     }
+    public function retention(): BelongsTo
+    {
+        return $this->belongsTo(Retention::class);
+    }
+
     public function getOutstandingDebtAttribute(): float
     {
         // Suma de pagos registrados

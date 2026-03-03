@@ -10,5 +10,7 @@ class GeneralSetting extends Model
     protected $fillable = [
         'fiscal_mode',
         'special_taxpayer_status',
+        'rif',
+        'address',
     ];
 }

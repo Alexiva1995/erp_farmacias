@@ -18,8 +18,9 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Contracts\Employee as EmployeeContract;
 
-class EmployeeRepository
+class EmployeeRepository implements EmployeeContract
 {
   public function list(array $data): LengthAwarePaginator
   {
@@ -167,7 +168,7 @@ class EmployeeRepository
     return true;
   }
 
-  public function storeDocuments(Employee $employee, array $data)
+  public function storeDocuments(Employee $employee, array $data): bool
   {
     $toUpdate = [];
 
@@ -208,8 +209,18 @@ class EmployeeRepository
     return $file->storeAs($folder, $filename, $disk);
   }
 
-  public function downloadDocument(string $path): Exception|StreamedResponse
+  public function downloadDocument(Employee $employee, string $file): Exception|StreamedResponse
   {
+    $validFiles = ['rif', 'residence_letter', 'cv'];
+    if (!in_array($file, $validFiles)) {
+      throw new Exception('Documento inválido');
+    }
+
+    $path = $employee->$file;
+    if (empty($path)) {
+      throw new Exception('El archivo no existe');
+    }
+
     if (!Storage::disk('public')->exists($path)) {
       throw new Exception('File not found');
     }
@@ -494,17 +505,15 @@ class EmployeeRepository
   {
     if (!$employee->user) return;
 
-    // 1. Salario Básico Mensual 
+    // 1. Salario Básico Mensual (Fixed $40)
     $baseConcept = SalaryConcept::firstOrCreate(
       ['name' => 'Salario Básico Mensual'],
       ['type' => 'salary', 'frequency' => 'monthly']
     );
-    $existingBase = $employee->user->salaries()->where('salary_concept_id', $baseConcept->id)->first();
-    $salarioBase = $existingBase ? (float) $existingBase->amount : 40.00;
 
     $employee->user->salaries()->updateOrCreate(
       ['salary_concept_id' => $baseConcept->id],
-      ['amount' => $salarioBase]
+      ['amount' => 40.00]
     );
 
     // 2. Bono de Alimentación (Fixed $40)
@@ -537,6 +546,24 @@ class EmployeeRepository
       ['amount' => 0.00]
     );
 
+    // 5. Deducciones Legales (Placeholders con monto 0, el cálculo lo hace la nómina)
+    $legals = [
+      ['name' => 'IVSS (4%)', 'type' => 'deduction'],
+      ['name' => 'RPE - Paro Forzoso (0.5%)', 'type' => 'deduction'],
+      ['name' => 'FAOV (1%)', 'type' => 'deduction'],
+    ];
+
+    foreach ($legals as $legal) {
+      $concept = SalaryConcept::firstOrCreate(
+        ['name' => $legal['name']],
+        ['type' => $legal['type'], 'frequency' => 'fortnight']
+      );
+      $employee->user->salaries()->updateOrCreate(
+        ['salary_concept_id' => $concept->id],
+        ['amount' => 0.00]
+      );
+    }
+
     // Limpieza de nombres antiguos y dinámicos obsoletos
     $dynamicNames = [
         'Performance Bonus', 
@@ -558,9 +585,8 @@ class EmployeeRepository
       $this->syncSalaryConcepts($employee, (float) $data['total_package_usd']);
     }
 
-    // El método profile devuelve un modelo Employee, lo convertimos a array
-    $profile = $this->profile($employee);
-    return $profile ? $profile->toArray() : [];
+    // El método profile devuelve un modelo Employee
+    return $this->profile($employee)?->toArray() ?? [];
   }
 }
 

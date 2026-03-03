@@ -686,7 +686,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
         Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
+    Route::prefix('retentions')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
+        Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
+        Route::get('/download', [\App\Http\Controllers\Api\RetentionController::class, 'downloadPdf']);
+    });
 });
+
 
 Route::prefix('supervisor')->group(function () {
     Route::get('/cleaning-executions', [EmployeeCleaningActivityController::class, 'supervisorExecutions']);

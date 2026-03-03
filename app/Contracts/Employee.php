@@ -30,4 +30,5 @@ interface Employee
   public function runPaymentCalculation(MEmployee $employee, array $data): array;
 
   public function setHealthConsumption(MEmployee $employee, int $year, int $month, float $amount): void;
+  public function updatePayrollSettings(MEmployee $employee, array $data): array;
 }

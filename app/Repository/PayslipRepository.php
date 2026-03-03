@@ -73,19 +73,60 @@ class PayslipRepository
     return true;
   }
 
-  public function getEligibleSalaryDetails(bool $payFoodVoucher = false)
+  public function getEligibleSalaryDetails(Carbon $date): Collection
   {
-    $query = UsersSalaryDetails::query()
-      ->join('salary_concepts as c', 'c.id', '=', 'users_salary_details.salary_concept_id')
-      ->join('employees as e', 'e.user_id', '=', 'users_salary_details.user_id')
-      ->where('e.is_active', true)
-      ->select('users_salary_details.id', 'users_salary_details.amount');
+    $isFirstFortnight = $date->day <= 15;
+    $employees = Employee::where('is_active', true)->with('user.salaries.concept')->get();
+    $details = collect();
 
-    if (!$payFoodVoucher) {
-      $query->where('c.name', '!=', 'Bono de alimentación');
+    foreach ($employees as $employee) {
+      if (!$employee->user) continue;
+
+      $salaries = $employee->user->salaries;
+      $baseSalary = (float)($salaries->where('concept.name', 'Salario Básico Mensual')->first()?->amount ?? 40.00);
+      $foodVoucher = (float)($salaries->where('concept.name', 'Bono de Alimentación')->first()?->amount ?? 40.00);
+      $healthAid = (float)($salaries->where('concept.name', 'Asistencia Social de Salud (Art. 105 LOTTT)')->first()?->amount ?? 0.00);
+      $extraBonus = (float)($salaries->where('concept.name', 'Bono Extraordinario de Rendimiento')->first()?->amount ?? 0.00);
+      $package = (float)($employee->total_package_usd ?? 0);
+
+      // 1. Salario Base (50% cada quincena)
+      $details->push($this->createTempDetail($employee, 'Salario Básico Mensual', round($baseSalary / 2, 2)));
+
+      // 2. Deducciones Legales (Se calculan sobre el salario base COMPLETO pero se restan en la quincena)
+      // IVSS 4%, RPE 0.5%, FAOV 1%
+      $details->push($this->createTempDetail($employee, 'IVSS (4%)', -round($baseSalary * 0.04, 2)));
+      $details->push($this->createTempDetail($employee, 'RPE - Paro Forzoso (0.5%)', -round($baseSalary * 0.005, 2)));
+      $details->push($this->createTempDetail($employee, 'FAOV (1%)', -round($baseSalary * 0.01, 2)));
+
+      if (!$isFirstFortnight) {
+        // SEGUNDA QUINCENA
+        // 3. Bono de Alimentación (100% en 2da quincena)
+        $details->push($this->createTempDetail($employee, 'Bono de Alimentación', round($foodVoucher, 2)));
+
+        // 4. Ayuda de Salud (Se usa el cálculo dinámico guardado)
+        $details->push($this->createTempDetail($employee, 'Asistencia Social de Salud (Art. 105 LOTTT)', round($healthAid, 2)));
+
+        // 5. Bono Extraordinario de Rendimiento (Cálculo dinámico para completar el paquete)
+        // El paquete es lo que debe ganar el empleado al mes.
+        // Sumamos lo que ya tiene: Base + Alimentación + Salud
+        $subtotal = $baseSalary + $foodVoucher + $healthAid;
+        $calculatedExtra = max(0, $package - $subtotal);
+        
+        $details->push($this->createTempDetail($employee, 'Bono Extraordinario de Rendimiento', round($calculatedExtra, 2)));
+      }
     }
 
-    return $query->get();
+    return $details;
+  }
+
+  private function createTempDetail(Employee $employee, string $conceptName, float $amount): object
+  {
+    $salaryDetail = $employee->user->salaries->where('concept.name', $conceptName)->first();
+    return (object)[
+      'id' => $salaryDetail?->id ?? 0,
+      'amount' => $amount,
+      'name' => $conceptName // Auxiliar para debug
+    ];
   }
 
   public function updateDetails(Payslip $payslip, array $details): bool

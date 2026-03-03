@@ -28,6 +28,7 @@ class Supplier extends Model
     protected $fillable = [
         'name',
         'social_reason',
+        'rif',
         'sales_phone',
         'collections_phone',
         'credit_days',

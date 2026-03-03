@@ -49,6 +49,7 @@ declare module 'vue' {
     CashClosureTicke: typeof import('./resources/js/components/CashClosureTicke.vue')['default']
     CashoutFilters: typeof import('./resources/js/components/CashoutFilters.vue')['default']
     CashSummary: typeof import('./resources/js/components/CashSummary.vue')['default']
+    CashWallets: typeof import('./resources/js/components/CashWallets.vue')['default']
     CategoryOfferFilters: typeof import('./resources/js/components/CategoryOfferFilters.vue')['default']
     CategoryOfferModal: typeof import('./resources/js/components/dialogs/CategoryOfferModal.vue')['default']
     CategoryOfferTable: typeof import('./resources/js/components/CategoryOfferTable.vue')['default']
@@ -328,6 +329,7 @@ declare module 'vue' {
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
+    VerifyCountModal: typeof import('./resources/js/components/dialogs/VerifyCountModal.vue')['default']
     VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }

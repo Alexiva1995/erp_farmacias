@@ -73,13 +73,9 @@ class PayslipController extends Controller
         return ApiResponse::success(['status' => $results]);
     }
 
-    public function store(Request $request)
+    public function store()
     {
-        $payFoodVoucher = $request->boolean('pay_food_voucher');
-
-        Artisan::call('app:generate-payslip', [
-            '--pay-food-voucher' => $payFoodVoucher
-        ]);
+        Artisan::call('app:generate-payslip');
 
         return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
     }

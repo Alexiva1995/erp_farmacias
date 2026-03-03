@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('invoices', function (Blueprint $column) {
+            $column->boolean('retention_generated')->default(false)->after('tax_amount');
         });
     }
 
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('products');
+        Schema::table('invoices', function (Blueprint $column) {
+            $column->dropColumn('retention_generated');
+        });
     }
 };

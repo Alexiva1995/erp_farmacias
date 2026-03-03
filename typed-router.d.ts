@@ -49,6 +49,7 @@ declare module 'vue-router/auto-routes' {
     'finances-pending-payments': RouteRecordInfo<'finances-pending-payments', '/finances/pending-payments', Record<never, never>, Record<never, never>>,
     'finances-profitability': RouteRecordInfo<'finances-profitability', '/finances/profitability', Record<never, never>, Record<never, never>>,
     'fiscal-history': RouteRecordInfo<'fiscal-history', '/fiscal/history', Record<never, never>, Record<never, never>>,
+    'fiscal-retenciones': RouteRecordInfo<'fiscal-retenciones', '/fiscal/retenciones', Record<never, never>, Record<never, never>>,
     'furnitures-list': RouteRecordInfo<'furnitures-list', '/furnitures/list', Record<never, never>, Record<never, never>>,
     'inventory-expirations': RouteRecordInfo<'inventory-expirations', '/inventory/expirations', Record<never, never>, Record<never, never>>,
     'inventory-group-products': RouteRecordInfo<'inventory-group-products', '/inventory/groupProducts', Record<never, never>, Record<never, never>>,
