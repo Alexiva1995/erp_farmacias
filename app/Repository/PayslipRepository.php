@@ -243,7 +243,7 @@ class PayslipRepository
       'employees.identification',
       'roles.name            as role',
       DB::raw((int) $isDec . '  as is_december'),
-      DB::raw('MAX(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE())) AS active_years'),
+      DB::raw("MAX(TIMESTAMPDIFF(YEAR, employees.created_at, '{$payslip->payslip_date}')) AS active_years"),
     ];
 
     $add = function (array $cols) use (&$select) {
@@ -273,19 +273,19 @@ class PayslipRepository
       DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Alimentación'        THEN pd.amount * {$currency} ELSE 0 END), 2) AS food_voucher"),
       DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Transporte'           THEN pd.amount * {$currency} ELSE 0 END), 2) AS transportation_voucher"),
       DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Rendimiento'          THEN pd.amount * {$currency} ELSE 0 END), 2) AS performance_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Base'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS base_salary_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Facturas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS invoice_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ventas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ayuda familiar'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS family_support_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Productos Asignados'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS assigned_products_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Crecimiento de Ventas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_growth_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Base'                 THEN ROUND((pd.amount * {$currency}) / 2, 2) ELSE 0 END), 2) AS salary_to_pay_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Seguro Social'                THEN pd.amount * {$currency} ELSE 0 END), 2) AS social_security_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN pd.amount * {$currency} ELSE 0 END), 2) AS base_salary_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Facturas'             THEN pd.amount * {$currency} ELSE 0 END), 2) AS invoice_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ventas'               THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ayuda familiar'       THEN pd.amount * {$currency} ELSE 0 END), 2) AS family_support_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Productos Asignados'  THEN pd.amount * {$currency} ELSE 0 END), 2) AS assigned_products_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Crecimiento de Ventas' THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_growth_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN ROUND((pd.amount * {$currency}), 2) ELSE 0 END), 2) AS salary_to_pay_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'IVSS (4%)'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS social_security_voucher"),
       DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestamos'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS loans_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Dias no trabajados'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS days_not_worked_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Liquidacion'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS settlement_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestacional de Empleo'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS employment_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestación Vivienda y Hacienda'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS housing_property_benefits_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Dias no trabajados'           THEN pd.amount * {$currency} ELSE 0 END), 2) AS days_not_worked_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Liquidacion'                  THEN pd.amount * {$currency} ELSE 0 END), 2) AS settlement_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'RPE - Paro Forzoso (0.5%)'     THEN pd.amount * {$currency} ELSE 0 END), 2) AS employment_voucher"),
+      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'FAOV (1%)'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS housing_property_benefits_voucher"),
     ]);
     DB::statement('SET @row := 0');
 
@@ -346,7 +346,15 @@ class PayslipRepository
       ->leftJoin('employees', 'employees.user_id', '=', 'users.id')
       ->where('payslips.id', $payslip->id)
       ->where('employees.id', $employee->id)
-      ->whereIn('sc.name', ['Bono de Alimentación', 'Salario Base'])
+      ->whereIn('sc.name', [
+        'Bono de Alimentación', 
+        'Salario Básico Mensual', 
+        'Asistencia Social de Salud (Art. 105 LOTTT)',
+        'Bono Extraordinario de Rendimiento',
+        'IVSS (4%)',
+        'RPE - Paro Forzoso (0.5%)',
+        'FAOV (1%)'
+      ])
       ->get()
       ->toArray();
 

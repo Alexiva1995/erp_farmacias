@@ -156,7 +156,7 @@ watch(
               control-variant="hidden"
               density="comfortable"
               hide-details="auto"
-              style="width: 200px"
+              style="inline-size: 200px;"
               :error="!!rowsErrors[item.id]"
               :error-messages="rowsErrors[item.id]"
             />
@@ -210,3 +210,11 @@ watch(
     </VCard>
   </VDialog>
 </template>
+<style scoped>
+.headline {
+  background: linear-gradient(135deg, #7367f0 0%, #ce93d8 100%);
+  background-clip: text;
+  font-size: 1.25rem;
+  -webkit-text-fill-color: transparent;
+}
+</style>

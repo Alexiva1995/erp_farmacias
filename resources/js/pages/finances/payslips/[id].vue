@@ -30,76 +30,36 @@ const fetchPayslip = async () => {
 onMounted(fetchPayslip);
 
 const fullHeaders = [
-  // { title: "ID", key: "id", sortable: false },
-  { title: "Nombre del Trabajador", key: "name", sortable: false },
-  { title: "Cédula", key: "identification", sortable: false },
-  // { title: "Cargo", key: "role", sortable: false },
-  { title: "Salario Mensual", key: "base_salary_voucher", sortable: false },
-  { title: "Sueldo a Pagar", key: "salary_to_pay_voucher", sortable: false },
-  { title: "Bono de alimentación", key: "food_voucher", sortable: false },
-  {
-    title: "Bono de Transporte",
-    key: "transportation_voucher",
-    sortable: false,
-  },
-  { title: "Bono de Rendimiento", key: "performance_voucher", sortable: false },
-  { title: "Bono de Facturas", key: "invoice_voucher", sortable: false },
-  { title: "Bono de Ventas", key: "sales_voucher", sortable: false },
-  {
-    title: "Bono de Crecimiento de Ventas",
-    key: "sales_growth_voucher",
-    sortable: false,
-  },
-  {
-    title: "Bono de Productos Asignados",
-    key: "assigned_products_voucher",
-    sortable: false,
-  },
-  { title: "Utilidades", key: "earnings_voucher", sortable: false },
-  {
-    title: "Bono de Vacacional",
-    key: "vacation_bonus_voucher",
-    sortable: false,
-  },
-  { title: "Vacaciones", key: "vacation_voucher", sortable: false },
-  {
-    title: "Bono de Ayuda Familiar",
-    key: "family_support_voucher",
-    sortable: false,
-  },
-  { title: "Sueldo + Asignaciones", key: "positive_vouchers", sortable: false },
-  {
-    title: "Seguro Social 4%",
-    key: "social_security_voucher",
-    sortable: false,
-  },
-  {
-    title: "Prestacional de Empleo",
-    key: "employment_voucher",
-    sortable: false,
-  },
-  {
-    title: "Prest. Vivienda y Habitat",
-    key: "housing_property_benefits_voucher",
-    sortable: false,
-  },
-  {
-    title: "Dias NO Trabajados",
-    key: "days_not_worked_voucher",
-    sortable: false,
-  },
-  { title: "Prestamos", key: "loans_voucher", sortable: false },
-  { title: "Liquidación", key: "settlement_voucher", sortable: false },
-  { title: "Total Deducciones", key: "negative_vouchers", sortable: false },
-  { title: "NETO A PAGAR", key: "total", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "Trabajador", key: "name", sortable: true, align: 'start' },
+  { title: "Identificación", key: "identification", sortable: true },
+  { title: "Salario (Ref)", key: "base_salary_voucher", sortable: true, align: 'end' },
+  { title: "Sueldo Base", key: "salary_to_pay_voucher", sortable: true, align: 'end' },
+  { title: "Bono Alim.", key: "food_voucher", sortable: true, align: 'end' },
+  { title: "Transp.", key: "transportation_voucher", sortable: true, align: 'end' },
+  { title: "Rendim.", key: "performance_voucher", sortable: true, align: 'end' },
+  { title: "Facturas", key: "invoice_voucher", sortable: true, align: 'end' },
+  { title: "Ventas", key: "sales_voucher", sortable: true, align: 'end' },
+  { title: "Crecim.", key: "sales_growth_voucher", sortable: true, align: 'end' },
+  { title: "Prods.", key: "assigned_products_voucher", sortable: true, align: 'end' },
+  { title: "Utilidades", key: "earnings_voucher", sortable: true, align: 'end' },
+  { title: "B. Vac.", key: "vacation_bonus_voucher", sortable: true, align: 'end' },
+  { title: "Vac.", key: "vacation_voucher", sortable: true, align: 'end' },
+  { title: "Ayuda Fam.", key: "family_support_voucher", sortable: true, align: 'end' },
+  { title: "Asignaciones", key: "positive_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-success' },
+  { title: "IVSS/Deduc.", key: "social_security_voucher", sortable: true, align: 'end' },
+  { title: "RPE", key: "employment_voucher", sortable: true, align: 'end' },
+  { title: "FAOV", key: "housing_property_benefits_voucher", sortable: true, align: 'end' },
+  { title: "Inasist.", key: "days_not_worked_voucher", sortable: true, align: 'end' },
+  { title: "Préstamos", key: "loans_voucher", sortable: true, align: 'end' },
+  { title: "Liq.", key: "settlement_voucher", sortable: true, align: 'end' },
+  { title: "Deducciones", key: "negative_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-error' },
+  { title: "NETO", key: "total", sortable: true, align: 'end', class: 'font-weight-black text-primary' },
+  { title: "Acciones", key: "actions", sortable: false, align: 'center' },
 ];
 
 const alwaysShow = [
-  "id",
   "name",
   "identification",
-  "role",
   "base_salary_voucher",
   "salary_to_pay_voucher",
   "food_voucher",
@@ -107,7 +67,6 @@ const alwaysShow = [
   "social_security_voucher",
   "employment_voucher",
   "housing_property_benefits_voucher",
-  "days_not_worked_voucher",
   "negative_vouchers",
   "total",
   "actions",
@@ -123,217 +82,76 @@ const headers = computed(() => {
   return list;
 });
 
-const formatBs = (amount) => {
-  const newAmount = toNum(amount);
-
-  return (
-    new Intl.NumberFormat("es-VE", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(newAmount) + (tab.value === "legal" ? " Bs." : " $")
-  );
-};
-
-const toNum = (v) => {
-  const n = v >> 0;
-  return n === n ? n : Number(v) || 0;
-};
-
-const calcVouchers = (
-  food,
-  transport,
-  perf,
-  inv,
-  sales,
-  salesGr,
-  assProd,
-  earn,
-  vacBonus,
-  vac,
-  fam,
-  salary,
-  social,
-  employ,
-  housing,
-  daysOff,
-  loans,
-  settlement
-) => {
-  const pos =
-    toNum(food) +
-    toNum(transport) +
-    toNum(perf) +
-    toNum(inv) +
-    toNum(sales) +
-    toNum(salesGr) +
-    toNum(assProd) +
-    toNum(earn) +
-    toNum(vacBonus) +
-    toNum(vac) +
-    toNum(fam) +
-    toNum(salary);
-  const neg =
-    toNum(social) +
-    toNum(employ) +
-    toNum(housing) +
-    toNum(daysOff) +
-    toNum(loans) +
-    toNum(settlement);
-
-  return {
-    positive: Math.round(pos * 100) / 100,
-    negative: Math.round(neg * 100) / 100,
-  };
+const formatCurrency = (amount) => {
+  const newAmount = Number(amount) || 0;
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(newAmount) + (tab.value === "legal" ? " Bs." : " $");
 };
 
 const employeesWithVouchers = computed(() => {
-  const rows = selectedPayslip.value?.results;
-  if (!rows) return [];
-
-  const isDecember = new Date().getMonth() === 11;
-  const out = [];
-
-  rows.forEach((r) => {
-    let salary = 0,
-      food = 0,
-      transport = 0,
-      perf = 0,
-      inv = 0,
-      sales = 0,
-      salesGr = 0,
-      assProd = 0,
-      earn = 0,
-      vacBonus = 0,
-      vac = 0,
-      fam = 0,
-      positive = 0,
-      social = 0,
-      employ = 0,
-      housing = 0,
-      daysOff = 0,
-      loans = 0,
-      settlement = 0,
-      negative = 0,
-      final = 0;
-
-    if (isDecember) earn += toNum(r.earnings_voucher);
-    if (r.active_years >= 2) {
-      vacBonus += toNum(r.vacation_bonus_voucher);
-      vac += toNum(r.vacation_voucher);
-    }
-
-    const { positive: pos, negative: neg } = calcVouchers(
-      r.food_voucher,
-      tab.value === "legal" ? 0 : r.transportation_voucher,
-      tab.value === "legal" ? 0 : r.performance_voucher,
-      tab.value === "legal" ? 0 : r.invoice_voucher,
-      tab.value === "legal" ? 0 : r.sales_voucher,
-      tab.value === "legal" ? 0 : r.sales_growth_voucher,
-      tab.value === "legal" ? 0 : r.assigned_products_voucher,
-      tab.value !== "legal" && isDecember ? r.earnings_voucher : 0,
-      tab.value !== "legal" && r.active_years >= 2
-        ? r.vacation_bonus_voucher
-        : 0,
-      tab.value !== "legal" && r.active_years >= 2 ? r.vacation_voucher : 0,
-      tab.value === "legal" ? 0 : r.family_support_voucher,
-      r.salary_to_pay_voucher,
-      r.social_security_voucher,
-      r.employment_voucher,
-      r.housing_property_benefits_voucher,
-      r.days_not_worked_voucher,
-      tab.value === "legal" ? 0 : r.loans_voucher,
-      tab.value === "legal" ? 0 : r.settlement_voucher
-    );
-
-    salary += toNum(r.salary_to_pay_voucher);
-    food += toNum(r.food_voucher);
-    transport += toNum(r.transportation_voucher);
-    perf += toNum(r.performance_voucher);
-    inv += toNum(r.invoice_voucher);
-    sales += toNum(r.sales_voucher);
-    salesGr += toNum(r.sales_growth_voucher);
-    assProd += toNum(r.assigned_products_voucher);
-    fam += toNum(r.family_support_voucher);
-    positive += pos;
-    social += toNum(r.social_security_voucher);
-    employ += toNum(r.employment_voucher);
-    housing += toNum(r.housing_property_benefits_voucher);
-    daysOff += toNum(r.days_not_worked_voucher);
-    loans += toNum(r.loans_voucher);
-    settlement += toNum(r.settlement_voucher);
-    negative += neg;
-    final += toNum(pos - neg);
-
-    const employee = {
-      salary_to_pay_voucher: salary,
-      food_voucher: food,
-      transportation_voucher: transport,
-      performance_voucher: perf,
-      invoice_voucher: inv,
-      sales_voucher: sales,
-      sales_growth_voucher: salesGr,
-      assigned_products_voucher: assProd,
-      earnings_voucher: earn,
-      vacation_bonus_voucher: vacBonus,
-      vacation_voucher: vac,
-      family_support_voucher: fam,
-      positive_vouchers: positive,
-      employment_voucher: employ,
-      housing_property_benefits_voucher: housing,
-      days_not_worked_voucher: daysOff,
-      social_security_voucher: social,
-      loans_voucher: loans,
-      settlement_voucher: settlement,
-      negative_vouchers: negative,
-      total: final,
-      name: r.name,
-      last_name: r.last_name,
-      identification: r.identification,
-      role: r.role,
-      employee_id: r.employee_id,
-      base_salary_voucher: r.base_salary_voucher,
-    };
-
-    out.push(employee);
-  });
-
-  return out;
+  const rows = selectedPayslip.value?.results || [];
+  return rows.map(r => ({
+    ...r,
+    positive_vouchers: (Number(r.salary_to_pay_voucher) || 0) + 
+                       (Number(r.food_voucher) || 0) + 
+                       (Number(r.transportation_voucher) || 0) + 
+                       (Number(r.performance_voucher) || 0) + 
+                       (Number(r.invoice_voucher) || 0) + 
+                       (Number(r.sales_voucher) || 0) + 
+                       (Number(r.sales_growth_voucher) || 0) + 
+                       (Number(r.assigned_products_voucher) || 0) + 
+                       (Number(r.earnings_voucher) || 0) + 
+                       (Number(r.vacation_bonus_voucher) || 0) + 
+                       (Number(r.vacation_voucher) || 0) + 
+                       (Number(r.family_support_voucher) || 0),
+    negative_vouchers: (Number(r.social_security_voucher) || 0) + 
+                       (Number(r.employment_voucher) || 0) + 
+                       (Number(r.housing_property_benefits_voucher) || 0) + 
+                       (Number(r.days_not_worked_voucher) || 0) + 
+                       (Number(r.loans_voucher) || 0) + 
+                       (Number(r.settlement_voucher) || 0),
+    total: ((Number(r.salary_to_pay_voucher) || 0) + 
+            (Number(r.food_voucher) || 0) + 
+            (Number(r.transportation_voucher) || 0) + 
+            (Number(r.performance_voucher) || 0) + 
+            (Number(r.invoice_voucher) || 0) + 
+            (Number(r.sales_voucher) || 0) + 
+            (Number(r.sales_growth_voucher) || 0) + 
+            (Number(r.assigned_products_voucher) || 0) + 
+            (Number(r.earnings_voucher) || 0) + 
+            (Number(r.vacation_bonus_voucher) || 0) + 
+            (Number(r.vacation_voucher) || 0) + 
+            (Number(r.family_support_voucher) || 0)) - 
+           ((Number(r.social_security_voucher) || 0) + 
+            (Number(r.employment_voucher) || 0) + 
+            (Number(r.housing_property_benefits_voucher) || 0) + 
+            (Number(r.days_not_worked_voucher) || 0) + 
+            (Number(r.loans_voucher) || 0) + 
+            (Number(r.settlement_voucher) || 0))
+  }));
 });
 
 const totals = computed(() => {
-  const empty = {
-    salary_to_pay_voucher: 0,
-    food_voucher: 0,
-    transportation_voucher: 0,
-    performance_voucher: 0,
-    invoice_voucher: 0,
-    sales_voucher: 0,
-    sales_growth_voucher: 0,
-    assigned_products_voucher: 0,
-    earnings_voucher: 0,
-    vacation_bonus_voucher: 0,
-    vacation_voucher: 0,
-    family_support_voucher: 0,
-    positive_vouchers: 0,
-    employment_voucher: 0,
-    housing_property_benefits_voucher: 0,
-    days_not_worked_voucher: 0,
-    social_security_voucher: 0,
-    loans_voucher: 0,
-    settlement_voucher: 0,
-    negative_vouchers: 0,
-    total: 0,
-  };
+  const keys = [
+    'salary_to_pay_voucher', 'food_voucher', 'transportation_voucher', 
+    'performance_voucher', 'invoice_voucher', 'sales_voucher', 
+    'sales_growth_voucher', 'assigned_products_voucher', 'earnings_voucher', 
+    'vacation_bonus_voucher', 'vacation_voucher', 'family_support_voucher', 
+    'positive_vouchers', 'social_security_voucher', 'employment_voucher', 
+    'housing_property_benefits_voucher', 'days_not_worked_voucher', 
+    'loans_voucher', 'settlement_voucher', 'negative_vouchers', 'total'
+  ];
 
-  return employeesWithVouchers.value.reduce(
-    (acc, row) => {
-      Object.keys(acc).forEach((k) => {
-        acc[k] += row[k] || 0;
-      });
-      return acc;
-    },
-    { ...empty }
-  );
+  const res = {};
+  keys.forEach(k => res[k] = 0);
+
+  employeesWithVouchers.value.forEach(row => {
+    keys.forEach(k => res[k] += Number(row[k]) || 0);
+  });
+
+  return res;
 });
 
 const handleShowEditFormDialog = (item) => {
@@ -345,16 +163,82 @@ watch(tab, () => fetchPayslip());
 </script>
 
 <template>
-  <div>
-    <VCard>
-      <VCardText>
-        <VRow class="ma-1">
-          <h5 class="text-h5 font-weight-bold">
-            {{ selectedPayslip?.name }} {{ selectedPayslip?.date }}
-          </h5>
-        </VRow>
-      </VCardText>
-    </VCard>
+  <div class="payroll-details-page">
+    <!-- Header Section -->
+    <div class="d-flex align-center justify-space-between mb-6">
+      <div>
+        <h3 class="text-h3 font-weight-bold gradient-text mb-1">
+          {{ selectedPayslip?.name || 'Cargando Nómina...' }}
+        </h3>
+        <p class="text-subtitle-1 text-disabled d-flex align-center">
+          <VIcon icon="tabler-calendar" size="18" class="me-2" />
+          Periodo: {{ selectedPayslip?.period }}
+        </p>
+      </div>
+      <VChip
+        :color="selectedPayslip?.status === 1 ? 'success' : 'warning'"
+        variant="elevated"
+        class="text-uppercase font-weight-black"
+      >
+        {{ selectedPayslip?.status === 1 ? 'Finalizada' : 'Pendiente' }}
+      </VChip>
+    </div>
+
+    <!-- Stats Cards -->
+    <VRow class="mb-6">
+      <VCol cols="12" sm="6" md="3">
+        <VCard class="stats-card glass-morphism overflow-hidden">
+          <VCardText class="d-flex align-center">
+            <VAvatar color="primary" variant="tonal" size="48" class="me-4">
+              <VIcon icon="tabler-cash" />
+            </VAvatar>
+            <div>
+              <p class="text-caption text-disabled mb-0 font-weight-medium">Total Asignaciones</p>
+              <h5 class="text-h5 font-weight-bold text-success">{{ formatCurrency(totals.positive_vouchers) }}</h5>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="6" md="3">
+        <VCard class="stats-card glass-morphism overflow-hidden">
+          <VCardText class="d-flex align-center">
+            <VAvatar color="error" variant="tonal" size="48" class="me-4">
+              <VIcon icon="tabler-minus" />
+            </VAvatar>
+            <div>
+              <p class="text-caption text-disabled mb-0 font-weight-medium">Total Deducciones</p>
+              <h5 class="text-h5 font-weight-bold text-error">{{ formatCurrency(totals.negative_vouchers) }}</h5>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="6" md="3">
+        <VCard class="stats-card glass-morphism overflow-hidden highlight-card">
+          <VCardText class="d-flex align-center">
+            <VAvatar color="success" variant="tonal" size="48" class="me-4">
+              <VIcon icon="tabler-wallet" />
+            </VAvatar>
+            <div>
+              <p class="text-caption text-disabled mb-0 font-weight-medium">Neto a Pagar</p>
+              <h5 class="text-h5 font-weight-black text-primary">{{ formatCurrency(totals.total) }}</h5>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="6" md="3">
+        <VCard class="stats-card glass-morphism overflow-hidden">
+          <VCardText class="d-flex align-center">
+            <VAvatar color="info" variant="tonal" size="48" class="me-4">
+              <VIcon icon="tabler-chart-arrows" />
+            </VAvatar>
+            <div>
+              <p class="text-caption text-disabled mb-0 font-weight-medium">Tasa Ref.</p>
+              <h5 class="text-h5 font-weight-bold">1 $ = {{ selectedPayslip?.exchange_rate }} Bs.</h5>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
 
     <ShowSalaryFormDialog
       v-model="showDialog"
@@ -363,306 +247,131 @@ watch(tab, () => fetchPayslip());
       @refresh-table="fetchPayslip"
     />
 
-    <VCard class="mt-2">
-      <VCardText>
-        <VTabs v-model="tab">
-          <VTab value="legal">Legal</VTab>
-          <VTab value="full">Completo</VTab>
-        </VTabs>
+    <VCard class="main-table-card shadow-sm border-0 glass-morphism">
+      <VTabs v-model="tab" color="primary" align-tabs="start" class="px-4 pt-2">
+        <VTab value="legal">
+          <VIcon icon="tabler-building-bank" class="me-2" size="18" />
+          Nómina Legal (Bs.)
+        </VTab>
+        <VTab value="full">
+          <VIcon icon="tabler-file-analytics" class="me-2" size="18" />
+          Nómina Completa (USD)
+        </VTab>
+      </VTabs>
+      <VDivider />
 
-        <VTabsWindow v-model="tab">
-          <VTabsWindowItem value="legal">
-            <VDataTable
-              :headers="headers"
-              :items="employeesWithVouchers"
-              :loading="loading"
-              :hide-default-footer="true"
-              class="mt-8"
-            >
-              <template #item.name="{ item }">
-                <span>{{ item.name }} {{ item.last_name }}</span>
-              </template>
-              <template #item.base_salary_voucher="{ item }">
-                <span>{{ formatBs(item.base_salary_voucher) }}</span>
-              </template>
-              <template #item.salary_to_pay_voucher="{ item }">
-                <span>{{ formatBs(item.salary_to_pay_voucher) }}</span>
-              </template>
-              <template #item.food_voucher="{ item }">
-                <span>{{ formatBs(item.food_voucher) }}</span>
-              </template>
-              <template #item.positive_vouchers="{ item }">
-                <span>{{ formatBs(item.positive_vouchers) }}</span>
-              </template>
-              <template #item.employment_voucher="{ item }">
-                <span>{{ formatBs(item.employment_voucher) }}</span>
-              </template>
-              <template #item.housing_property_benefits_voucher="{ item }">
-                <span>{{
-                  formatBs(item.housing_property_benefits_voucher)
-                }}</span>
-              </template>
-              <template #item.days_not_worked_voucher="{ item }">
-                <span>{{ formatBs(item.days_not_worked_voucher) }}</span>
-              </template>
-              <template #item.negative_vouchers="{ item }">
-                <span>{{ formatBs(item.negative_vouchers) }}</span>
-              </template>
-              <template #item.total="{ item }">
-                <span>{{ formatBs(item.total) }}</span>
-              </template>
-              <template #item.actions="{ item }">
-                <VTooltip text="Editar Salario" location="top">
-                  <template
-                    v-if="selectedPayslip.status === 0"
-                    #activator="{ props }"
-                  >
-                    <IconBtn
-                      v-bind="props"
-                      @click="handleShowEditFormDialog(item)"
-                    >
-                      <VIcon icon="tabler-pencil" />
-                    </IconBtn>
-                  </template>
-                </VTooltip>
-              </template>
+      <VCardText class="pa-0">
+        <VDataTable
+          :headers="headers"
+          :items="employeesWithVouchers"
+          :loading="loading"
+          :hide-default-footer="true"
+          class="payroll-table"
+        >
+          <template #item.name="{ item }">
+            <div class="d-flex align-center py-2">
+              <VAvatar size="32" color="primary" variant="tonal" class="me-3 font-weight-bold text-uppercase" style="font-size: 0.7rem;">
+                {{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}
+              </VAvatar>
+              <div>
+                <p class="mb-0 font-weight-bold text-high-emphasis">{{ item.name }} {{ item.last_name }}</p>
+                <p class="mb-0 text-caption text-disabled">{{ item.role }}</p>
+              </div>
+            </div>
+          </template>
 
-              <template #body.append>
-                <tr class="font-weight-bold">
-                  <td :colspan="6" class="text-right">
-                    {{ formatBs(totals.salary_to_pay_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.food_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.positive_vouchers) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.social_security_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.employment_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.housing_property_benefits_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.days_not_worked_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.negative_vouchers) }}
-                  </td>
-                  <td class="text-right">{{ formatBs(totals.total) }}</td>
-                  <td></td>
-                </tr>
-                <tr class="font-weight-bold">
-                  <td colspan="4" class="text-right">Total Sueldos:</td>
-                  <td colspan="4" class="text-right">
-                    {{ formatBs(totals.positive_vouchers) }}
-                  </td>
+          <template v-for="header in headers" :key="header.key" v-slot:[`item.${header.key}`]="{ value }">
+            <span v-if="!['name', 'identification', 'actions'].includes(header.key)">
+              {{ formatCurrency(value) }}
+            </span>
+            <span v-else-if="header.key === 'identification'">{{ value }}</span>
+          </template>
 
-                  <td colspan="4" class="text-right">Total Deducción:</td>
-                  <td class="text-right">
-                    {{ formatBs(totals.negative_vouchers) }}
-                  </td>
-                  <td class="text-right">{{ formatBs(totals.total) }}</td>
-                </tr>
+          <template #item.actions="{ item }">
+            <div v-if="selectedPayslip.status === 0">
+              <VTooltip text="Editar Salario" location="top">
+                <template #activator="{ props }">
+                  <IconBtn v-bind="props" size="small" color="primary" @click="handleShowEditFormDialog(item)">
+                    <VIcon icon="tabler-pencil" size="20" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
+            </div>
+          </template>
 
-                <tr class="font-weight-bold">
-                  <td colspan="3" class="text-right">
-                    Total a Pagar en Nómina:
-                  </td>
-                  <td colspan="3" class="text-right">
-                    {{ formatBs(totals.total) }}
-                  </td>
-                </tr>
+          <template #body.append>
+            <tr class="footer-totals font-weight-black">
+              <td colspan="2" class="text-right">TOTALES GENERALES</td>
+              <template v-for="header in headers" :key="header.key">
+                <td v-if="!['name', 'identification', 'actions'].includes(header.key)" class="text-right py-4">
+                  {{ formatCurrency(totals[header.key]) }}
+                </td>
               </template>
-            </VDataTable>
-          </VTabsWindowItem>
-          <VTabsWindowItem value="full">
-            <VDataTable
-              :headers="headers"
-              :items="employeesWithVouchers"
-              :loading="loading"
-              :hide-default-footer="true"
-              class="mt-8"
-            >
-              <template #item.name="{ item }">
-                <span>{{ item.name }} {{ item.last_name }}</span>
-              </template>
-              <template #item.base_salary_voucher="{ item }">
-                <span>{{ formatBs(item.base_salary_voucher) }}</span>
-              </template>
-              <template #item.salary_to_pay_voucher="{ item }">
-                <span>{{ formatBs(item.salary_to_pay_voucher) }}</span>
-              </template>
-              <template #item.food_voucher="{ item }">
-                <span>{{ formatBs(item.food_voucher) }}</span>
-              </template>
-              <template #item.transportation_voucher="{ item }">
-                <span>{{ formatBs(item.transportation_voucher) }}</span>
-              </template>
-              <template #item.performance_voucher="{ item }">
-                <span>{{ formatBs(item.performance_voucher) }}</span>
-              </template>
-              <template #item.invoice_voucher="{ item }">
-                <span>{{ formatBs(item.invoice_voucher) }}</span>
-              </template>
-              <template #item.sales_voucher="{ item }">
-                <span>{{ formatBs(item.sales_voucher) }}</span>
-              </template>
-              <template #item.sales_growth_voucher="{ item }">
-                <span>{{ formatBs(item.sales_growth_voucher) }}</span>
-              </template>
-              <template #item.assigned_products_voucher="{ item }">
-                <span>{{ formatBs(item.assigned_products_voucher) }}</span>
-              </template>
-              <template #item.earnings_voucher="{ item }">
-                <span>{{ formatBs(item.earnings_voucher) }}</span>
-              </template>
-              <template #item.vacation_bonus_voucher="{ item }">
-                <span>{{ formatBs(item.vacation_bonus_voucher) }}</span>
-              </template>
-              <template #item.vacation_voucher="{ item }">
-                <span>{{ formatBs(item.vacation_voucher) }}</span>
-              </template>
-              <template #item.family_support_voucher="{ item }">
-                <span>{{ formatBs(item.family_support_voucher) }}</span>
-              </template>
-              <template #item.positive_vouchers="{ item }">
-                <span>{{ formatBs(item.positive_vouchers) }}</span>
-              </template>
-              <template #item.employment_voucher="{ item }">
-                <span>{{ formatBs(item.employment_voucher) }}</span>
-              </template>
-              <template #item.housing_property_benefits_voucher="{ item }">
-                <span>{{
-                  formatBs(item.housing_property_benefits_voucher)
-                }}</span>
-              </template>
-              <template #item.days_not_worked_voucher="{ item }">
-                <span>{{ formatBs(item.days_not_worked_voucher) }}</span>
-              </template>
-              <template #item.loans_voucher="{ item }">
-                <span>{{ formatBs(item.loans_voucher) }}</span>
-              </template>
-              <template #item.settlement_voucher="{ item }">
-                <span>{{ formatBs(item.settlement_voucher) }}</span>
-              </template>
-              <template #item.negative_vouchers="{ item }">
-                <span>{{ formatBs(item.negative_vouchers) }}</span>
-              </template>
-              <template #item.total="{ item }">
-                <span>{{ formatBs(item.total) }}</span>
-              </template>
-              <template #item.actions="{ item }">
-                <VTooltip text="Editar Salario" location="top">
-                  <template
-                    v-if="selectedPayslip.status === 0"
-                    #activator="{ props }"
-                  >
-                    <IconBtn
-                      v-bind="props"
-                      @click="handleShowEditFormDialog(item)"
-                    >
-                      <VIcon icon="tabler-pencil" />
-                    </IconBtn>
-                  </template>
-                </VTooltip>
-              </template>
-
-              <template #body.append>
-                <tr class="font-weight-bold">
-                  <td :colspan="6" class="text-right">
-                    {{ formatBs(totals.salary_to_pay_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.food_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.transportation_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.performance_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.invoice_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.sales_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.sales_growth_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.assigned_products_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.earnings_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.vacation_bonus_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.vacation_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.family_support_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.positive_vouchers) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.social_security_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.employment_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.housing_property_benefits_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.days_not_worked_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.loans_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.settlement_voucher) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatBs(totals.negative_vouchers) }}
-                  </td>
-                  <td class="text-right">{{ formatBs(totals.total) }}</td>
-                  <td></td>
-                </tr>
-                <tr class="font-weight-bold">
-                  <td colspan="14" class="text-right">Total Sueldos:</td>
-                  <td colspan="4" class="text-right">
-                    {{ formatBs(totals.positive_vouchers) }}
-                  </td>
-
-                  <td colspan="6" class="text-right">Total Deducción:</td>
-                  <td class="text-right">
-                    {{ formatBs(totals.negative_vouchers) }}
-                  </td>
-                  <td class="text-right">{{ formatBs(totals.total) }}</td>
-                </tr>
-
-                <tr class="font-weight-bold">
-                  <td colspan="3" class="text-right">
-                    Total a Pagar en Nómina:
-                  </td>
-                  <td colspan="3" class="text-right">
-                    {{ formatBs(totals.total) }}
-                  </td>
-                </tr>
-              </template>
-            </VDataTable>
-          </VTabsWindowItem>
-        </VTabsWindow>
+              <td v-if="selectedPayslip.status === 0"></td>
+            </tr>
+          </template>
+        </VDataTable>
       </VCardText>
     </VCard>
   </div>
 </template>
+
+<style scoped>
+.payroll-details-page {
+  padding: 1.5rem;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #7367f0 0%, #ce93d8 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-morphism {
+  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+  backdrop-filter: blur(10px);
+  background: rgba(var(--v-theme-surface), 0.7) !important;
+}
+
+.stats-card {
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 10%);
+  transform: translateY(-4px);
+}
+
+.highlight-card {
+  border-inline-start: 4px solid rgb(var(--v-theme-primary)) !important;
+}
+
+.main-table-card {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.payroll-table :deep(th) {
+  background: rgba(var(--v-theme-surface), 0.5) !important;
+  color: rgba(var(--v-theme-on-surface), 0.7) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.payroll-table :deep(tr:hover) {
+  background: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.footer-totals {
+  background: rgba(var(--v-theme-surface), 1) !important;
+  border-block-start: 2px solid rgb(var(--v-theme-primary)) !important;
+}
+
+.footer-totals td {
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 0.9rem !important;
+}
+</style>
