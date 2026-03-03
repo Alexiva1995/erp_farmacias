@@ -11,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "close", "refresh-table"]);
 
 const errors = ref({});
+const loading = ref(false); // Estado de carga para el botón
 const payedDisplay = ref(""); // Para el formateo visual con puntos
 const currency = ref(null);
 const count = ref(null);
@@ -53,7 +54,6 @@ const formatCurrency = (amount) => {
 const fetchExchangeRate = async () => {
   try {
     const { data } = await axios.get("/finances/exchange-rates/consultOneBCV");
-
     exchangeRate.value = data.rate;
   } catch (error) {
     toast.error("No se pudo obtener la tasa del día");
@@ -66,11 +66,13 @@ const closeDialog = () => {
   count.value = null;
   exchangeRate.value = null;
   errors.value = {};
+  loading.value = false;
   emit("close");
 };
 
 const submit = async () => {
   errors.value = {};
+  loading.value = true; // Activar spinner
   try {
     const form = new FormData();
     form.append("_method", "PUT");
@@ -99,6 +101,8 @@ const submit = async () => {
     if (error.response?.status === 422) {
       errors.value = error.response.data.errors;
     }
+  } finally {
+    loading.value = false; // Desactivar spinner
   }
 };
 
@@ -218,6 +222,8 @@ watch(
           color="primary"
           variant="flat"
           @click="submit"
+          :loading="loading"
+          :disabled="loading"
           class="flex-grow-1 font-weight-bold rounded-lg ms-3 shadow-sm py-3"
           height="48"
           prepend-icon="tabler-check"
