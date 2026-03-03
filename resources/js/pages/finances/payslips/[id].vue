@@ -103,14 +103,15 @@ const headers = computed(() => {
 
 const formatCurrency = (amount) => {
   const newAmount = Number(amount) || 0;
-  const isCop = selectedPayslip.value?.currency_code === 'COP';
-  const symbol = selectedPayslip.value?.currency_code || (tab.value === 'legal' ? 'Bs.' : 'USD');
+  const currencyCode = selectedPayslip.value?.currency_code;
+  const isCop = currencyCode === 'COP';
+  const symbol = currencyCode || (tab.value === 'legal' ? 'Bs.' : 'USD');
 
   if (isCop) {
     // Formato COP: mil con punto, sin decimales
     return Math.round(newAmount)
       .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " CO";
   }
 
   return new Intl.NumberFormat("es-VE", {
@@ -259,7 +260,7 @@ watch(tab, () => {
       <div class="text-right d-none d-md-block">
         <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio ({{ selectedPayslip?.currency_code }})</p>
         <div class="d-flex align-center justify-end">
-          <span class="text-h4 font-weight-black text-primary me-2">1.00 USD</span>
+          <span class="text-h4 font-weight-black text-primary me-2">1.00 {{ tab === 'full' ? 'CO' : 'USD' }}</span>
           <VIcon icon="tabler-arrows-right-left" size="20" class="text-disabled me-2" />
           <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</span>
         </div>
@@ -316,7 +317,7 @@ watch(tab, () => {
             </VAvatar>
             <div>
               <p class="text-caption text-disabled mb-0 font-weight-medium">Tasa Ref.</p>
-              <h5 class="text-h5 font-weight-bold">1 USD = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
+              <h5 class="text-h5 font-weight-bold">1 {{ tab === 'full' ? 'CO' : 'USD' }} = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
             </div>
           </VCardText>
         </VCard>
