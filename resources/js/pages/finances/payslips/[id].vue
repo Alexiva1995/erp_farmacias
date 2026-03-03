@@ -103,12 +103,13 @@ const headers = computed(() => {
 
 const formatCurrency = (amount) => {
   const newAmount = Number(amount) || 0;
+  const isFullMode = tab.value === 'full';
   const currencyCode = selectedPayslip.value?.currency_code;
-  const isCop = currencyCode === 'COP';
-  const symbol = currencyCode || (tab.value === 'legal' ? 'Bs.' : 'USD');
+  const isCop = isFullMode || currencyCode === 'COP';
+  const symbol = isCop ? 'CO' : (currencyCode || (tab.value === 'legal' ? 'Bs.' : 'USD'));
 
   if (isCop) {
-    // Formato COP: mil con punto, sin decimales
+    // Formato CO: mil con punto, sin decimales
     return Math.round(newAmount)
       .toString()
       .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " CO";
