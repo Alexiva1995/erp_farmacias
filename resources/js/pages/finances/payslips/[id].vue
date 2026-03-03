@@ -123,15 +123,17 @@ const formatIdentification = (id) => {
 const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
   return rows.map(r => {
-    const isFull = tab.value === 'full';
-    
     // Si es modo full, aplicamos el cálculo especial solicitado:
     // (Total Package - Food Voucher) / 2
+    // Nota: Ambos valores ya vienen en la moneda de destino (COP) por el repositorio
     const foodVoucher = Number(r.food_voucher) || 0;
     const totalPackage = Number(r.total_package_usd) || 0;
     
+    const isFull = tab.value === 'full';
+    
+    // Aseguramos que el resultado no sea negativo
     const calculatedSalary = isFull 
-      ? Math.round(((totalPackage - foodVoucher) / 2) * 100) / 100
+      ? Math.max(0, Math.round(((totalPackage - foodVoucher) / 2) * 100) / 100)
       : Number(r.salary_to_pay_voucher) || 0;
 
     const data = {
