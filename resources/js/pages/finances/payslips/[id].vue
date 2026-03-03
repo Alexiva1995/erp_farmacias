@@ -103,12 +103,14 @@ const headers = computed(() => {
 
 const formatCurrency = (amount) => {
   const newAmount = Number(amount) || 0;
+  const isCop = selectedPayslip.value?.currency_code === 'COP';
   const symbol = selectedPayslip.value?.currency_code || (tab.value === 'legal' ? 'Bs.' : '$');
-  
-  return new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(newAmount) + " " + symbol;
+
+  return new Intl.NumberFormat("es-CO", {
+    minimumFractionDigits: isCop ? 0 : 2,
+    maximumFractionDigits: isCop ? 0 : 2,
+    useGrouping: true,
+  }).format(newAmount).replace(/,/g, isCop ? '' : ',') + " " + symbol;
 };
 
 const formatIdentification = (id) => {
