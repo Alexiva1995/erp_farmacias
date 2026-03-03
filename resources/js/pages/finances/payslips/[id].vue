@@ -123,23 +123,23 @@ const formatIdentification = (id) => {
 const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
   return rows.map(r => {
-    // Si es modo full, aplicamos el cálculo especial solicitado:
-    // Salario Base Interno = Paquete Salarial / 2
-    // Nota: El valor ya viene en la moneda de destino (COP) por el repositorio
-    const foodVoucher = Number(r.food_voucher) || 0;
-    const totalPackage = Number(r.total_package_usd) || 0;
-    
     const isFull = tab.value === 'full';
+    const rate = Number(selectedPayslip.value.exchange_rate) || 1;
+    const totalPackageUsd = Number(r.total_package_usd) || 0;
     
-    // Nueva fórmula: Paquete / 2
+    // En modo full, el bono de alimentación se fija en 40 USD (convertido a COP)
+    const foodVoucher = isFull ? (40 * rate) : (Number(r.food_voucher) || 0);
+    
+    // Nueva fórmula: (Paquete USD - 40) / 2 * Tasa COP
     const calculatedSalary = isFull 
-      ? Math.round((totalPackage / 2) * 100) / 100
+      ? Math.round(((totalPackageUsd - 40) / 2) * rate * 100) / 100
       : Number(r.salary_to_pay_voucher) || 0;
 
     const data = {
       ...r,
       employee_full_name: `${r.name || ''} ${r.last_name || ''}`.trim() || 'Desconocido',
       salary_to_pay_voucher: calculatedSalary,
+      food_voucher: foodVoucher,
     };
 
     if (isFull) {
