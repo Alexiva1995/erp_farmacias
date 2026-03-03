@@ -293,13 +293,8 @@ class CashClosureQueryService
     {
 
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
-
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
-                    $sellerQuery->where('username', 'like', $searchTerm);
-                });
-            });
+            $sellerIdParam = $filters['q'];
+            $query->where('seller_id', $sellerIdParam);
         }
 
         if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
@@ -355,5 +350,15 @@ class CashClosureQueryService
         $this->applyFilters($query, $filters);
         $this->applySortingSellerCash($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
         return $query;
+    }
+
+    public function getSellersWithClosures(): Collection
+    {
+        return DB::table('cash_closing')
+            ->join('users', 'cash_closing.seller_id', '=', 'users.id')
+            ->select('users.id', 'users.username')
+            ->distinct()
+            ->orderBy('users.username', 'asc')
+            ->get();
     }
 }

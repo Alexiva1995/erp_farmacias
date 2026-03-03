@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import axios from '@axios';
+import { onMounted, ref } from "vue";
 
 const props = defineProps({
-  searchQuery: String,
+  searchQuery: [String, Number],
   startDate: {
     type: String,
     default: null,
@@ -28,17 +29,40 @@ const emit = defineEmits([
   "update:endDate",
 ]);
 
+const sellers = ref([]);
+const loadingSellers = ref(false);
+
+const fetchSellers = async () => {
+    loadingSellers.value = true;
+    try {
+        const response = await axios.get('/api/finances/cash-closure/sellers');
+        sellers.value = response.data;
+    } catch (error) {
+        console.error("Error cargando vendedores", error);
+    } finally {
+        loadingSellers.value = false;
+    }
+};
+
+onMounted(() => {
+    fetchSellers();
+});
+
 </script>
 
 <template>
-  <VCard title="Filtros" class="mb-6">
+  <VCard class="mb-6">
     <VCardText>
       <VRow>
         <VCol cols="12" sm="6" md="3">
-          <AppTextField
+          <VAutocomplete
             :model-value="props.searchQuery"
-            placeholder="Buscar por Vendedor"
+            :items="sellers"
+            item-title="username"
+            item-value="id"
+            placeholder="Seleccionar Vendedor"
             clearable
+            :loading="loadingSellers"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>

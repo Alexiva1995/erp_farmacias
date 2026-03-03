@@ -189,4 +189,10 @@ class CashClosureController extends Controller
             'data' => $cashClosings
         ]);
     }
+
+    public function getSellersWithClosures()
+    {
+        $sellers = $this->cashClosureQueryService->getSellersWithClosures();
+        return response()->json($sellers);
+    }
 }
