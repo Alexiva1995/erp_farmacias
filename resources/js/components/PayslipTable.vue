@@ -63,32 +63,32 @@ const emit = defineEmits([
         <span v-else>-</span>
       </template>
       <template #item.actions="{ item }">
-        <!-- Ver detalle (Ojo Azul) -->
-        <VTooltip text="Nómina Legal (PDF)" location="top">
+        <!-- Ver nómina (Ojo Azul) -->
+        <VTooltip text="Ver Nómina" location="top">
           <template #activator="{ props }">
-            <IconBtn
+            <VBtn
               v-bind="props"
+              :href="'/finances/payslips/' + item.id"
+              icon="tabler-eye"
+              variant="text"
               color="info"
-              @click="emit('download-pdf', item.id, 'legal')"
-            >
-              <VIcon icon="tabler-eye" />
-            </IconBtn>
+            />
           </template>
         </VTooltip>
 
-        <!-- Ver detalle Completo (Ojo Naranja/Warning) -->
+        <!-- Descargar Nómina Legal (Icono de Archivo) -->
         <VTooltip
           v-if="item.status === 1"
-          text="Nómina Completa (PDF)"
+          text="Descargar Nómina Legal (PDF)"
           location="top"
         >
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
-              color="warning"
-              @click="emit('download-pdf', item.id, 'full')"
+              color="primary"
+              @click="emit('download-pdf', item.id, 'legal')"
             >
-              <VIcon icon="tabler-eye" />
+              <VIcon icon="tabler-file-type-pdf" />
             </IconBtn>
           </template>
         </VTooltip>
