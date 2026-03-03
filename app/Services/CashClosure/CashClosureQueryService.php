@@ -342,6 +342,7 @@ class CashClosureQueryService
     public function getFilteredQuerySellerCash(Request $request): Builder
     {
         $query = $this->getBaseQuerySellerCash();
+        $query->where('total_sales', '>', 0); // Ocultar cierres en cero
         $filters = [
             'q' => $request->q,
             'start_date' => $request->start_date,
@@ -356,6 +357,7 @@ class CashClosureQueryService
     {
         return DB::table('cash_closing')
             ->join('users', 'cash_closing.seller_id', '=', 'users.id')
+            ->where('users.is_active', true) // Solo vendedores activos
             ->select('users.id', 'users.username')
             ->distinct()
             ->orderBy('users.username', 'asc')

@@ -35,8 +35,15 @@ const loadingSellers = ref(false);
 const fetchSellers = async () => {
     loadingSellers.value = true;
     try {
-        const response = await axios.get('/api/finances/cash-closure/sellers');
-        sellers.value = response.data;
+        const response = await axios.get('/finances/cash-closure/sellers');
+        sellers.value = response.data.map(seller => ({
+            ...seller,
+            username: seller.username
+                .replace(/[._]/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ')
+        }));
     } catch (error) {
         console.error("Error cargando vendedores", error);
     } finally {

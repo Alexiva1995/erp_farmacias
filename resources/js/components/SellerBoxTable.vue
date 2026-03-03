@@ -57,7 +57,17 @@ const fmtBs  = (val) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 
           <VAvatar size="30" color="primary" variant="tonal" class="font-weight-bold text-caption">
             {{ (item.seller?.username ?? '?').charAt(0).toUpperCase() }}
           </VAvatar>
-          <span class="font-weight-medium">{{ item.seller?.username ?? '—' }}</span>
+          <span class="font-weight-medium">
+            {{ 
+              item.seller?.username 
+                ? item.seller.username
+                    .replace(/[._]/g, ' ')
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' ')
+                : '—' 
+            }}
+          </span>
         </div>
       </template>
 
