@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modalValue: { type: Boolean, default: false },
@@ -11,10 +11,32 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "close", "refresh-table"]);
 
 const errors = ref({});
-const payed = ref(null);
+const payedDisplay = ref(""); // Para el formateo visual con puntos
 const currency = ref(null);
 const count = ref(null);
 const exchangeRate = ref(1);
+
+const payed = computed({
+  get: () => {
+    // Remove dots for thousands separator and replace comma with dot for decimal
+    return payedDisplay.value.replace(/\./g, "").replace(",", ".");
+  },
+  set: (val) => {
+    if (!val) {
+      payedDisplay.value = "";
+      return;
+    }
+    // Format with thousands separator dots
+    payedDisplay.value = Math.round(val)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+});
+
+const handlePayedInput = (e) => {
+  const val = e.target.value.replace(/\D/g, ""); // Remove non-digits
+  payedDisplay.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add thousands separator
+};
 
 const countsFilterByCurrency = {
   USD: ["Efectivo", "Binance", "Paypal"],
@@ -39,7 +61,7 @@ const fetchExchangeRate = async () => {
 };
 
 const closeDialog = () => {
-  payed.value = null;
+  payedDisplay.value = "";
   currency.value = null;
   count.value = null;
   exchangeRate.value = null;
@@ -54,7 +76,7 @@ const submit = async () => {
     form.append("_method", "PUT");
     form.append("count", count.value);
     form.append("currency", currency.value);
-    form.append("payed", payed.value);
+    form.append("payed", payed.value); // Use the computed value
 
     const { data } = await axios.post(
       `/finances/payslips/${props.selectedPayslip.id}/finalize`,
@@ -74,7 +96,7 @@ const submit = async () => {
   } catch (error) {
     toast.error("Hubo un error al actualizar el estado de la nómina");
 
-    if (error.response.status === 422) {
+    if (error.response?.status === 422) {
       errors.value = error.response.data.errors;
     }
   }
@@ -87,7 +109,7 @@ watch(
       fetchExchangeRate();
       currency.value = 'COP';
       count.value = 'Efectivo';
-      payed.value = props.selectedPayslip.total_full_cop;
+      payed.value = props.selectedPayslip.total_full_cop; // Use the computed setter
     }
   }
 );
@@ -95,7 +117,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modalValue"
-    max-width="600"
+    max-width="500"
     persistent
     @update:model-value="closeDialog"
   >
@@ -107,8 +129,8 @@ watch(
             <VIcon icon="tabler-currency-dollar-off" size="28" />
           </VAvatar>
           <div>
-            <div class="text-h5 font-weight-black text-high-emphasis">Finalizar Pago de Nómina</div>
-            <div class="text-caption text-medium-emphasis">Registrar el desembolso final de salarios</div>
+            <div class="text-h5 font-weight-black text-high-emphasis">Finalizar Pago</div>
+            <div class="text-caption text-medium-emphasis">Registrar desembolso en COP</div>
           </div>
         </div>
         <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
@@ -117,24 +139,15 @@ watch(
       <VDivider />
 
       <VCardText class="pa-6">
-        <!-- Info Cards -->
+        <!-- Info Cards - Only COP -->
         <VRow class="mb-6">
-          <VCol cols="12" sm="6">
-            <VCard flat variant="tonal" color="success" class="rounded-lg pa-4 h-100">
-              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Total Completo (COP)</div>
-              <div class="text-h4 font-weight-black mb-1">
+          <VCol cols="12">
+            <VCard flat variant="tonal" color="success" class="rounded-lg pa-4 text-center">
+              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Monto Total a Pagar (COP)</div>
+              <div class="text-h3 font-weight-black mb-1">
                 {{ formatCurrency(selectedPayslip?.total_full_cop) }}
               </div>
-              <div class="text-caption">Monto sugerido para el pago total</div>
-            </VCard>
-          </VCol>
-          <VCol cols="12" sm="6">
-            <VCard flat variant="tonal" color="primary" class="rounded-lg pa-4 h-100">
-              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Total Legal (USD)</div>
-              <div class="text-h4 font-weight-black mb-1">
-                {{ selectedPayslip?.total }}
-              </div>
-              <div class="text-caption">Monto estipulado en moneda base</div>
+              <div class="text-caption">Basado en Paquete Salarial + Bono</div>
             </VCard>
           </VCol>
         </VRow>
@@ -149,14 +162,12 @@ watch(
           </VCol>
 
           <VCol cols="12" sm="6">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Moneda del Pago</p>
+            <p class="text-caption font-weight-medium mb-1 ms-1">Moneda</p>
             <VSelect
               v-model="currency"
               variant="outlined"
               density="comfortable"
               hide-details="auto"
-              item-title="title"
-              item-value="value"
               placeholder="Seleccione moneda"
               prepend-inner-icon="tabler-cash-banknote"
               :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
@@ -166,7 +177,7 @@ watch(
           </VCol>
 
           <VCol cols="12" sm="6">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Cuenta de Origen</p>
+            <p class="text-caption font-weight-medium mb-1 ms-1">Cuenta</p>
             <VSelect
               v-model="count"
               variant="outlined"
@@ -181,36 +192,33 @@ watch(
           </VCol>
 
           <VCol cols="12">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Monto Efectivo a Pagar</p>
+            <p class="text-caption font-weight-medium mb-1 ms-1">Confirmar Monto (COP)</p>
             <VTextField
-              v-model="payed"
-              label="Monto"
-              type="number"
+              v-model="payedDisplay"
+              placeholder="0"
               variant="outlined"
               density="comfortable"
               hide-details="auto"
               prepend-inner-icon="tabler-coin"
               prefix="+"
-              :step="0.01"
+              suffix="COP"
               :error-messages="errors.payed"
               class="custom-field amount-input"
+              @input="handlePayedInput"
             />
-            <p class="text-caption text-disabled mt-2 ms-1">
-              * Ingrese el monto total que se descontará de la cuenta seleccionada.
-            </p>
           </VCol>
         </VRow>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-6 bg-light">
-        <VSpacer />
+      <VCardActions class="pa-6 bg-light d-flex">
         <VBtn
           color="secondary"
           variant="tonal"
           @click="closeDialog"
-          class="px-8 font-weight-bold rounded-lg"
+          class="flex-grow-1 font-weight-bold rounded-lg py-3"
+          height="48"
         >
           Cancelar
         </VBtn>
@@ -218,10 +226,11 @@ watch(
           color="primary"
           variant="flat"
           @click="submit"
-          class="px-8 font-weight-bold rounded-lg ms-3 shadow-sm"
+          class="flex-grow-1 font-weight-bold rounded-lg ms-3 shadow-sm py-3"
+          height="48"
           prepend-icon="tabler-check"
         >
-          Confirmar Pago
+          Confirmar
         </VBtn>
       </VCardActions>
     </VCard>
@@ -246,6 +255,12 @@ watch(
 .amount-input :deep(.v-field) {
   border: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.amount-input :deep(input) {
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
 }
 
 .bg-light {
