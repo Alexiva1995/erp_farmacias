@@ -104,13 +104,19 @@ const headers = computed(() => {
 const formatCurrency = (amount) => {
   const newAmount = Number(amount) || 0;
   const isCop = selectedPayslip.value?.currency_code === 'COP';
-  const symbol = selectedPayslip.value?.currency_code || (tab.value === 'legal' ? 'Bs.' : '$');
+  const symbol = selectedPayslip.value?.currency_code || (tab.value === 'legal' ? 'Bs.' : 'USD');
 
-  return new Intl.NumberFormat("es-CO", {
-    minimumFractionDigits: isCop ? 0 : 2,
-    maximumFractionDigits: isCop ? 0 : 2,
-    useGrouping: true,
-  }).format(newAmount).replace(/,/g, isCop ? '' : ',') + " " + symbol;
+  if (isCop) {
+    // Formato COP: mil con punto, sin decimales
+    return Math.round(newAmount)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+  }
+
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(newAmount) + " " + symbol;
 };
 
 const formatIdentification = (id) => {
@@ -253,7 +259,7 @@ watch(tab, () => {
       <div class="text-right d-none d-md-block">
         <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio ({{ selectedPayslip?.currency_code }})</p>
         <div class="d-flex align-center justify-end">
-          <span class="text-h4 font-weight-black text-primary me-2">1.00 $</span>
+          <span class="text-h4 font-weight-black text-primary me-2">1.00 USD</span>
           <VIcon icon="tabler-arrows-right-left" size="20" class="text-disabled me-2" />
           <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</span>
         </div>
@@ -310,7 +316,7 @@ watch(tab, () => {
             </VAvatar>
             <div>
               <p class="text-caption text-disabled mb-0 font-weight-medium">Tasa Ref.</p>
-              <h5 class="text-h5 font-weight-bold">1 $ = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
+              <h5 class="text-h5 font-weight-bold">1 USD = {{ selectedPayslip?.exchange_rate }} {{ selectedPayslip?.currency_code }}</h5>
             </div>
           </VCardText>
         </VCard>

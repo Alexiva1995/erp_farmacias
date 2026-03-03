@@ -22,6 +22,22 @@ const emit = defineEmits([
   "download-excel",
   "download-pdf",
 ]);
+
+const formatCurrency = (amount, currencyCode) => {
+  const isCop = currencyCode === 'COP';
+  const symbol = currencyCode || 'USD';
+
+  if (isCop) {
+    return Math.round(amount)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+  }
+
+  return new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount) + " " + symbol;
+};
 </script>
 <template>
   <VCard>
@@ -36,26 +52,12 @@ const emit = defineEmits([
     >
 
       <template #item.total="{ item }">
-        <span
-          >{{
-            Intl.NumberFormat("es-ES", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(item.total)
-          }}
-          $</span
-        >
+        <span>{{ formatCurrency(item.total, item.currency) }}</span>
       </template>
       <template #item.payed="{ item }">
         <span v-if="item.status === 1" class="text-success font-weight-bold">
-          {{
-            Intl.NumberFormat("es-ES", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(item.payed)
-          }}
-          $</span
-        >
+          {{ formatCurrency(item.payed, item.currency) }}
+        </span>
         <span v-else>-</span>
       </template>
       <template #item.currency="{ item }">
