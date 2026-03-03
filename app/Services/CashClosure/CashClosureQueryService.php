@@ -357,7 +357,9 @@ class CashClosureQueryService
     {
         return DB::table('cash_closing')
             ->join('users', 'cash_closing.seller_id', '=', 'users.id')
-            ->where('users.is_active', true) // Solo vendedores activos
+            ->join('employees', 'users.id', '=', 'employees.user_id')
+            ->where('users.is_active', true) 
+            ->where('employees.is_active', true) // Asegurar que el empleado esté activo
             ->select('users.id', 'users.username')
             ->distinct()
             ->orderBy('users.username', 'asc')
