@@ -251,33 +251,34 @@ const hasAnyReference = computed(() => {
 });
 </script>
 <template>
-  <div style=" font-family: monospace; font-size: 14px;inline-size: 100%; line-height: 1.4;">
-    <VCard variant="outlined" class="pa-4 text-start ticket-bold" style="border: 2px solid #000; background: #fff;">
+  <div style=" color: #000; font-family: monospace; font-size: 13px;inline-size: 100%; line-height: 1.3;">
+    <VCard variant="outlined" class="pa-2 text-start ticket-bold" style="border: 1px solid #000; background: #fff;">
       <TicketHeader :logoSrc="logoSrc" />
 
-      <table style="inline-size: 100%; margin-block: 15px; margin-inline: 0;">
+      <table style=" font-size: 13px;inline-size: 100%; margin-block: 8px; margin-inline: 0;">
         <tbody>
           <tr>
-            <td style=" font-size: 15px; font-weight: bold;text-align: start;">
-              <span>Cierre de caja N°: {{ props.cashData.id }}</span>
+            <td style=" font-weight: bold;text-align: start;">
+              Cierre N°: {{ props.cashData.id }}
             </td>
             <td style="text-align: end;">
-              <span>{{ formatDateTime(props.cashData.closing_date, "date") }}</span>
+              {{ formatDateTime(props.cashData.closing_date, "date") }}
             </td>
           </tr>
           <tr>
             <td colspan="2">
-              <hr style="border-block-start: 2px solid #000; margin-block: 8px; margin-inline: 0;" />
+              <hr style="border-block-start: 1px dashed #000; margin-block: 4px; margin-inline: 0;" />
             </td>
           </tr>
           <tr>
             <td style="text-align: start;" colspan="2">
-              <span style=" font-size: 16px;font-weight: bold;">Cajero: {{ props.cashData.seller?.username }}</span>
+              <span style="font-weight: bold;">Cajero: {{ props.cashData.seller?.username }}</span>
             </td>
           </tr>
         </tbody>
       </table>
 
+      <!-- DETALLE DE INGRESOS (VENTAS) -->
       <div v-if="props.cashData.total_usd > 0">
         <SectionDivider :isPdf="props.isPdf" text="INGRESO USD" width="55%" />
         <PaymentTable :payments="usdPayments" />
@@ -290,26 +291,30 @@ const hasAnyReference = computed(() => {
         <SectionDivider :isPdf="props.isPdf" text="INGRESO COP" width="55%" />
         <PaymentTable :payments="copPayments" />
       </div>
+
+      <!-- CRÉDITOS Y PAGOS -->
       <div v-if="props.cashData.usd_credit > 0">
-        <SectionDivider :isPdf="props.isPdf" text="CRÉDITOS" width="45%" />
+        <SectionDivider :isPdf="props.isPdf" text="CRÉDITOS OTORGADOS" width="80%" />
         <PaymentTable :payments="creditAmount" />
       </div>
       <div v-if="totalCreditPayments > 0">
-        <SectionDivider :isPdf="props.isPdf" text="PAGOS A CRÉDITO" width="65%" />
+        <SectionDivider :isPdf="props.isPdf" text="PAGOS DE CRÉDITO" width="75%" />
         <PaymentTable :payments="creditPayments" />
       </div>
+
+      <!-- DETALLE ENTREGA (FÍSICO + DIGITAL) -->
       <div>
-        <SectionDivider :isPdf="props.isPdf" text="DETALLE ENTREGA" width="60%" />
+        <SectionDivider :isPdf="props.isPdf" text="DETALLE DE ENTREGA" width="80%" />
         <PaymentTable :payments="delivery" />
       </div>
       
-      <!-- RESUMEN NETO A ENTREGAR (SÓLO EFECTIVO) -->
-      <div style=" padding: 10px; border: 2px solid #000; margin-block: 20px;">
-        <div style=" font-size: 15px; font-weight: bold; margin-block-end: 5px;text-align: center;">
-          TOTAL EFECTIVO A ENTREGAR
+      <!-- RESUMEN NETO A ENTREGAR (SÓLO EFECTIVO FÍSICO) -->
+      <div style=" padding: 6px; border: 2px dashed #000; margin-block: 15px;">
+        <div style=" font-size: 14px; font-weight: bold; margin-block-end: 2px;text-align: center;">
+          EFECTIVO A ENTREGAR
         </div>
-        <hr style="border-block-start: 1px dashed #000; margin-block-end: 5px;"/>
-        <table style=" font-size: 15px; font-weight: bold;inline-size: 100%;">
+        <hr style="border-block-start: 1px dotted #000; margin-block-end: 4px;"/>
+        <table style=" font-size: 14px; font-weight: bold;inline-size: 100%;">
           <tr>
             <td style="text-align: start;">USD:</td>
             <td style="text-align: end;">{{ formatCurrency(totalEfectivoUsd, 'USD') }}</td>
@@ -326,7 +331,7 @@ const hasAnyReference = computed(() => {
       </div>
 
       <div v-if="hasAnyReference">
-        <SectionDivider :isPdf="props.isPdf" text="REFERENCIAS MÓVILES" width="70%" />
+        <SectionDivider :isPdf="props.isPdf" text="REFERENCIAS MÓVILES" width="85%" />
         <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
         <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
         <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
@@ -347,14 +352,14 @@ const hasAnyReference = computed(() => {
       </div>
 
       <!-- SECCIÓN DE FIRMAS -->
-      <div style="margin-block-start: 50px; text-align: center;">
-         <hr style="border-block-start: 1px solid #000; inline-size: 80%; margin-block: 0; margin-inline: auto;" />
-         <div style="font-weight: bold; margin-block: 5px 30px;">Firma del Cajero</div>
+      <div style="margin-block-start: 30px; text-align: center;">
+         <hr style="border-block-start: 1px dashed #000; inline-size: 80%; margin-block: 0; margin-inline: auto;" />
+         <div style=" font-size: 12px;font-weight: bold; margin-block: 4px 25px;">Firma Cajero</div>
 
-         <hr style="border-block-start: 1px solid #000; inline-size: 80%; margin-block: 0; margin-inline: auto;" />
-         <div style="font-weight: bold; margin-block-start: 5px;">Firma del Supervisor</div>
+         <hr style="border-block-start: 1px dashed #000; inline-size: 80%; margin-block: 0; margin-inline: auto;" />
+         <div style=" font-size: 12px;font-weight: bold; margin-block-start: 4px;">Firma Supervisor</div>
       </div>
-      <div style=" font-size: 12px; margin-block-start: 20px;text-align: center;">
+      <div style=" font-size: 11px; margin-block: 15px 5px;text-align: center;">
         *** FIN DEL REPORTE ***
       </div>
     </VCard>
