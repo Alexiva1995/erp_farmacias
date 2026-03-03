@@ -124,16 +124,16 @@ const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
   return rows.map(r => {
     // Si es modo full, aplicamos el cálculo especial solicitado:
-    // (Total Package - Food Voucher) / 2
-    // Nota: Ambos valores ya vienen en la moneda de destino (COP) por el repositorio
+    // Salario Base Interno = Paquete Salarial / 2
+    // Nota: El valor ya viene en la moneda de destino (COP) por el repositorio
     const foodVoucher = Number(r.food_voucher) || 0;
     const totalPackage = Number(r.total_package_usd) || 0;
     
     const isFull = tab.value === 'full';
     
-    // Aseguramos que el resultado no sea negativo
+    // Nueva fórmula: Paquete / 2
     const calculatedSalary = isFull 
-      ? Math.max(0, Math.round(((totalPackage - foodVoucher) / 2) * 100) / 100)
+      ? Math.round((totalPackage / 2) * 100) / 100
       : Number(r.salary_to_pay_voucher) || 0;
 
     const data = {
