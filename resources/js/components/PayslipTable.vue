@@ -30,7 +30,7 @@ const formatCurrency = (amount, currencyCode) => {
   if (isCop) {
     return Math.round(amount)
       .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " CO";
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
   }
 
   return new Intl.NumberFormat("es-ES", {

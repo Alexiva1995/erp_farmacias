@@ -18,7 +18,15 @@ class PayslipRepository
 {
   public function index(array $data)
   {
+    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+
     $query = Payslip::with('details.salary.concept')
+      ->select('payslips.*')
+      ->addSelect(DB::raw("(
+          SELECT ROUND(SUM(((employees.total_package_usd - 40) / 2 + 40) * {$cop_rate}), 2)
+          FROM employees
+          WHERE employees.is_active = 1
+      ) as total_full_cop"))
       ->orderByDesc('id');
 
     if (isset($data['startDate']) && $data['startDate']) {

@@ -22,6 +22,12 @@ const countsFilterByCurrency = {
   BS: ["Efectivo", "Tarjeta", "Pago móvil", "Transferencia"],
 };
 
+const formatCurrency = (amount) => {
+  return (Number(amount) || 0)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+};
+
 const fetchExchangeRate = async () => {
   try {
     const { data } = await axios.get("/finances/exchange-rates/consultOneBCV");
@@ -75,10 +81,13 @@ const submit = async () => {
 };
 
 watch(
-  () => props.selectedPayslip,
-  () => {
-    if (props.selectedPayslip) {
+  () => props.modalValue,
+  (val) => {
+    if (val && props.selectedPayslip) {
       fetchExchangeRate();
+      currency.value = 'COP';
+      count.value = 'Efectivo';
+      payed.value = props.selectedPayslip.total_full_cop;
     }
   }
 );
@@ -105,24 +114,18 @@ watch(
         <VRow>
           <VCol cols="4">
             <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total</span>
+              <span class="font-weight-medium">Total Legal (USD)</span>
               <VChip color="primary" label
-                >{{ selectedPayslip?.total }} $</VChip
+                >{{ selectedPayslip?.total }} USD</VChip
               >
               <VSpacer />
             </div>
           </VCol>
           <VCol cols="4">
             <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total</span>
-              <VChip color="primary" label
-                >{{
-                  Intl.NumberFormat("es-Ve", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(selectedPayslip?.total * exchangeRate)
-                }}
-                Bs.</VChip
+              <span class="font-weight-medium">Total Completo (COP)</span>
+              <VChip color="success" label
+                >{{ formatCurrency(selectedPayslip?.total_full_cop) }}</VChip
               >
               <VSpacer />
             </div>
