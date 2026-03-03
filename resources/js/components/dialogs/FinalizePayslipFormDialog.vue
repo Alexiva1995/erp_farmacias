@@ -95,112 +95,122 @@ watch(
 <template>
   <VDialog
     :model-value="props.modalValue"
-    max-width="800px"
+    max-width="600"
     persistent
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"> Finalizar nómina </span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+    <VCard class="finalize-payslip-dialog glass-morphism overflow-hidden">
+      <!-- Header -->
+      <VCardTitle class="d-flex align-center justify-space-between pa-6">
+        <div class="d-flex align-center">
+          <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">
+            <VIcon icon="tabler-currency-dollar-off" size="28" />
+          </VAvatar>
+          <div>
+            <div class="text-h5 font-weight-black text-high-emphasis">Finalizar Pago de Nómina</div>
+            <div class="text-caption text-medium-emphasis">Registrar el desembolso final de salarios</div>
+          </div>
+        </div>
+        <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
       </VCardTitle>
+
       <VDivider />
-      <VContainer>
-        <VRow>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total Legal (USD)</span>
-              <VChip color="primary" label
-                >{{ selectedPayslip?.total }} USD</VChip
-              >
-              <VSpacer />
-            </div>
+
+      <VCardText class="pa-6">
+        <!-- Info Cards -->
+        <VRow class="mb-6">
+          <VCol cols="12" sm="6">
+            <VCard flat variant="tonal" color="success" class="rounded-lg pa-4 h-100">
+              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Total Completo (COP)</div>
+              <div class="text-h4 font-weight-black mb-1">
+                {{ formatCurrency(selectedPayslip?.total_full_cop) }}
+              </div>
+              <div class="text-caption">Monto sugerido para el pago total</div>
+            </VCard>
           </VCol>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total Completo (COP)</span>
-              <VChip color="success" label
-                >{{ formatCurrency(selectedPayslip?.total_full_cop) }}</VChip
-              >
-              <VSpacer />
-            </div>
-          </VCol>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Fecha</span>
-              <VChip color="primary" label>{{
-                selectedPayslip?.payslip_date
-              }}</VChip>
-              <VSpacer />
-            </div>
+          <VCol cols="12" sm="6">
+            <VCard flat variant="tonal" color="primary" class="rounded-lg pa-4 h-100">
+              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Total Legal (USD)</div>
+              <div class="text-h4 font-weight-black mb-1">
+                {{ selectedPayslip?.total }}
+              </div>
+              <div class="text-caption">Monto estipulado en moneda base</div>
+            </VCard>
           </VCol>
         </VRow>
 
         <VRow>
-          <VCol cols="6">
+          <VCol cols="12">
+            <div class="d-flex align-center mb-4">
+              <VIcon icon="tabler-settings" class="me-2 text-primary" size="20" />
+              <span class="text-subtitle-2 font-weight-bold">Configuración del Pago</span>
+              <VDivider class="ms-4" />
+            </div>
+          </VCol>
+
+          <VCol cols="12" sm="6">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Moneda del Pago</p>
             <VSelect
               v-model="currency"
-              label="Moneda"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
               item-title="title"
               item-value="value"
-              :items="
-                Object.keys(countsFilterByCurrency).map((currency) => ({
-                  title: currency,
-                  value: currency,
-                }))
-              "
+              placeholder="Seleccione moneda"
+              prepend-inner-icon="tabler-cash-banknote"
+              :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
               :error-messages="errors.currency"
+              class="custom-field"
             />
           </VCol>
-          <VCol cols="6">
+
+          <VCol cols="12" sm="6">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Cuenta de Origen</p>
             <VSelect
               v-model="count"
-              label="Cuenta"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
-              item-title="title"
-              item-value="value"
-              :items="
-                (
-                  countsFilterByCurrency[currency] ?? [
-                    ...new Set(Object.values(countsFilterByCurrency).flat()),
-                  ]
-                ).map((account) => ({
-                  title: account,
-                  value: account,
-                }))
-              "
+              placeholder="Seleccione cuenta"
+              prepend-inner-icon="tabler-wallet"
+              :items="(countsFilterByCurrency[currency] ?? [...new Set(Object.values(countsFilterByCurrency).flat())]).map(a => ({ title: a, value: a }))"
               :error-messages="errors.count"
+              class="custom-field"
             />
           </VCol>
-          <VCol cols="6">
+
+          <VCol cols="12">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Monto Efectivo a Pagar</p>
             <VTextField
               v-model="payed"
-              label="Monto a pagar"
+              label="Monto"
               type="number"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
+              prepend-inner-icon="tabler-coin"
+              prefix="+"
               :step="0.01"
               :error-messages="errors.payed"
+              class="custom-field amount-input"
             />
+            <p class="text-caption text-disabled mt-2 ms-1">
+              * Ingrese el monto total que se descontará de la cuenta seleccionada.
+            </p>
           </VCol>
         </VRow>
-      </VContainer>
+      </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
+
+      <VCardActions class="pa-6 bg-light">
+        <VSpacer />
         <VBtn
           color="secondary"
-          variant="outlined"
+          variant="tonal"
           @click="closeDialog"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
+          class="px-8 font-weight-bold rounded-lg"
         >
           Cancelar
         </VBtn>
@@ -208,12 +218,45 @@ watch(
           color="primary"
           variant="flat"
           @click="submit"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
+          class="px-8 font-weight-bold rounded-lg ms-3 shadow-sm"
+          prepend-icon="tabler-check"
         >
-          Guardar Cambios
+          Confirmar Pago
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.finalize-payslip-dialog {
+  border-radius: 20px !important;
+}
+
+.glass-morphism {
+  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+  backdrop-filter: blur(10px);
+}
+
+.custom-field :deep(.v-field) {
+  border-radius: 12px !important;
+  background-color: rgba(var(--v-theme-surface), 0.5) !important;
+}
+
+.amount-input :deep(.v-field) {
+  border: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
+  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.bg-light {
+  background-color: rgba(var(--v-theme-surface), 0.9) !important;
+}
+
+.opacity-70 {
+  opacity: 0.7;
+}
+
+.shadow-sm {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+}
+</style>
