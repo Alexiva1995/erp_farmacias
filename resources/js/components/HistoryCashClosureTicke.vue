@@ -68,9 +68,12 @@ const getOrderTotal = (order) => {
                 </td>
                 <td style="padding: 10px; border: 1px solid #dee2e6; vertical-align: top;">
                   <div v-for="detail in order.details" :key="detail.id" style=" border-block-end: 1px dashed #eee;margin-block-end: 4px; padding-block-end: 4px;">
-                    <span style="display: inline-block; font-weight: bold; inline-size: 30px;">{{ detail.quantity }}x</span>
-                    <span>{{ detail.product.name }} <span style="color: #888; font-size: 11px;">(ID: {{ detail.product_id }})</span></span>
-                    <span style="float: inline-end;">{{ formatCurrency(parseFloat(detail.price), order.currency.toUpperCase()) }}</span>
+                    <span style="display: inline-block; font-weight: bold; min-inline-size: 30px;">{{ detail.quantity }}x</span>
+                    <span>{{ detail.product.name }} </span>
+                    <span style="color: #444; font-weight: bold;">
+                        - {{ formatCurrency(parseFloat(detail.price), order.currency.toUpperCase()) }}
+                    </span>
+                    <span style="color: #888; font-size: 11px;"> (ID: {{ detail.product_id }})</span>
                   </div>
                 </td>
                 <td style="padding: 10px; border: 1px solid #dee2e6; background-color: #fafbfc; text-align: end; vertical-align: bottom;">
