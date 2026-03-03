@@ -3,7 +3,6 @@ import FinalizePayslipFormDialog from "@/components/dialogs/FinalizePayslipFormD
 import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import pdfPayslipsGenerator from "@/utils/pdfPayslipGenerator";
 import { onMounted, ref, watch } from "vue";
 
 const loading = ref(false);
@@ -95,12 +94,31 @@ const handleDownloadExcel = async (id) => {
 
 const handleDownloadPdf = async (id, type) => {
   try {
-    const { data } = await axios.get(`/finances/payslips/${id}/data/${type}`);
+    const response = await axios.get(`/finances/payslips/${id}/download/pdf`, {
+      params: { type },
+      responseType: 'blob',
+    });
 
-    pdfPayslipsGenerator(data.data, type);
-    toast.success("Se ha descargado la nómina exitosamente");
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+
+    const contentDisposition = response.headers['content-disposition'];
+    let fileName = `nomina_${id}.pdf`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) fileName = match[1];
+    }
+
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success('PDF descargado exitosamente');
   } catch (error) {
-    toast.error("Hubo un error al descargar la nómina");
+    toast.error('Hubo un error al descargar el PDF');
   }
 };
 </script>

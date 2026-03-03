@@ -56,6 +56,7 @@ class PayslipController extends Controller
             'date' => $data['date'],
             'status' => $data['status'],
             'period' => $data['period'],
+            'exchange_rate' => $data['exchange_rate'] ?? null,
         ]);
     }
 
@@ -78,5 +79,23 @@ class PayslipController extends Controller
         Artisan::call('app:generate-payslip');
 
         return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
+    }
+
+    public function downloadPdf(Payslip $payslip, Request $request)
+    {
+        $type = in_array($request->input('type', 'legal'), ['full', 'legal']) ? $request->input('type', 'legal') : 'legal';
+        $data = $this->payslipServices->getData($payslip, $type);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.payslip', [
+            'items'         => $data['items'],
+            'name'          => $data['name'],
+            'period'        => $data['period'],
+            'status'        => $data['status'],
+            'exchange_rate' => $data['exchange_rate'] ?? 1,
+        ])->setPaper('letter', 'landscape');
+
+        $filename = 'nomina_' . str_replace([' ', '/'], '_', $data['name']) . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

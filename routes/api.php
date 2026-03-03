@@ -580,6 +580,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('', [PayslipController::class, 'store']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
+            Route::get('/{payslip}/download/pdf', [PayslipController::class, 'downloadPdf']);
             Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);

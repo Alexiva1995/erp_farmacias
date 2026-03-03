@@ -284,7 +284,7 @@ watch(
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
           <!-- Información Principal -->
           <div class="text-overline mb-4 text-primary font-weight-bold">
@@ -311,6 +311,28 @@ watch(
                 density="compact"
                 prepend-inner-icon="tabler-building"
                 :error-messages="formErrors.social_reason"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.rif"
+                label="RIF"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-id"
+                :error-messages="formErrors.rif"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VTextField
+                v-model="formData.address"
+                label="Dirección"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-map-pin"
+                :error-messages="formErrors.address"
                 hide-details="auto"
               />
             </VCol>

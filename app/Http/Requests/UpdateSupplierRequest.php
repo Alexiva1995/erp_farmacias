@@ -26,6 +26,8 @@ class UpdateSupplierRequest extends FormRequest
         return [
             'name' => 'sometimes|string|max:255',
             'social_reason' => 'sometimes|string|max:255',
+            'rif' => 'sometimes|string|max:20',
+            'address' => 'sometimes|nullable|string',
             'sales_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
             'collections_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
             'credit_days' => 'sometimes|numeric|min:0',

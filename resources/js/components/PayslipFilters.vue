@@ -1,11 +1,14 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { ref } from "vue";
 
 const props = defineProps({
   startDate: { type: [String, null], default: null },
   endDate: { type: [String, null], default: null },
 });
+
+const isGenerating = ref(false);
 
 const emit = defineEmits([
   "update:startDate",
@@ -15,6 +18,7 @@ const emit = defineEmits([
 ]);
 
 const handleManualPayment = async () => {
+  isGenerating.value = true;
   try {
     const { data } = await axios.post("/finances/payslips");
 
@@ -24,6 +28,8 @@ const handleManualPayment = async () => {
   } catch (error) {
     toast.error("Error al generar la nómina manual");
     console.error(error);
+  } finally {
+    isGenerating.value = false;
   }
 };
 </script>
@@ -57,7 +63,12 @@ const handleManualPayment = async () => {
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
-      <VBtn color="primary" @click="handleManualPayment">
+      <VBtn 
+        color="primary" 
+        :loading="isGenerating"
+        :disabled="isGenerating"
+        @click="handleManualPayment"
+      >
         Pagar Nómina Manual
       </VBtn>
     </VCardActions>

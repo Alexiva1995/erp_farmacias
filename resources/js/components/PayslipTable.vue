@@ -10,7 +10,6 @@ const props = defineProps({
 const headers = [
   { title: "ID", key: "id", sortable: false },
   { title: "Fecha", key: "payslip_date", sortable: false },
-  { title: "Estado", key: "status", sortable: false },
   { title: "Total", key: "total", sortable: false },
   { title: "Total Pagado", key: "payed", sortable: false },
   { title: "Moneda", key: "currency", sortable: false },
@@ -35,13 +34,7 @@ const emit = defineEmits([
       :page="props.page"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.status="{ item }">
-        <VBadge
-          :color="item.status ? 'success' : 'error'"
-          :content="item.status ? 'Finalizado' : 'Pendiente'"
-          inline=""
-        />
-      </template>
+
       <template #item.total="{ item }">
         <span
           >{{
@@ -70,60 +63,37 @@ const emit = defineEmits([
         <span v-else>-</span>
       </template>
       <template #item.actions="{ item }">
-        <VTooltip text="Ver nómina" location="top">
-          <template #activator="{ props }">
-            <VBtn
-              :href="'/finances/payslips/' + item.id"
-              v-bind="props"
-              icon="tabler-eye"
-              variant="text"
-              color="info"
-            >
-            </VBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          v-if="item.status === 1"
-          text="Descargar pdf legal"
-          location="top"
-        >
+        <!-- Ver detalle (Ojo Azul) -->
+        <VTooltip text="Nómina Legal (PDF)" location="top">
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
+              color="info"
               @click="emit('download-pdf', item.id, 'legal')"
             >
-              <VIcon icon="tabler-pdf" />
+              <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
         </VTooltip>
+
+        <!-- Ver detalle Completo (Ojo Naranja/Warning) -->
         <VTooltip
           v-if="item.status === 1"
-          text="Descargar pdf completo"
+          text="Nómina Completa (PDF)"
           location="top"
         >
           <template #activator="{ props }">
             <IconBtn
               v-bind="props"
+              color="warning"
               @click="emit('download-pdf', item.id, 'full')"
             >
-              <VIcon icon="tabler-pdf" />
+              <VIcon icon="tabler-eye" />
             </IconBtn>
           </template>
         </VTooltip>
-        <VTooltip
-          v-if="item.status === 1"
-          text="Descargar excel"
-          location="top"
-        >
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="emit('download-excel', item.id, 'excel')"
-            >
-              <VIcon icon="tabler-file" />
-            </IconBtn>
-          </template>
-        </VTooltip>
+
+        <!-- Finalizar -->
         <VTooltip
           v-if="item.status === 0"
           text="Finalizar nómina"

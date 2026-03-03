@@ -29,56 +29,61 @@ const fetchPayslip = async () => {
 };
 onMounted(fetchPayslip);
 
-const fullHeaders = [
-  { title: "Trabajador", key: "name", sortable: true, align: 'start' },
-  { title: "Identificación", key: "identification", sortable: true },
-  { title: "Salario Mensual (Ref)", key: "base_salary_voucher", sortable: true, align: 'end' },
-  { title: "Sueldo Base (Pago)", key: "salary_to_pay_voucher", sortable: true, align: 'end' },
-  { title: "Cesta Ticket", key: "food_voucher", sortable: true, align: 'end' },
-  { title: "Transp.", key: "transportation_voucher", sortable: true, align: 'end' },
-  { title: "Rendim.", key: "performance_voucher", sortable: true, align: 'end' },
-  { title: "Facturas", key: "invoice_voucher", sortable: true, align: 'end' },
-  { title: "Ventas", key: "sales_voucher", sortable: true, align: 'end' },
-  { title: "Crecim.", key: "sales_growth_voucher", sortable: true, align: 'end' },
-  { title: "Prods.", key: "assigned_products_voucher", sortable: true, align: 'end' },
-  { title: "Utilidades", key: "earnings_voucher", sortable: true, align: 'end' },
-  { title: "B. Vac.", key: "vacation_bonus_voucher", sortable: true, align: 'end' },
-  { title: "Vac.", key: "vacation_voucher", sortable: true, align: 'end' },
-  { title: "Ayuda Fam.", key: "family_support_voucher", sortable: true, align: 'end' },
-  { title: "Total Asignaciones", key: "positive_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-success' },
-  { title: "IVSS (4%)", key: "social_security_voucher", sortable: true, align: 'end' },
-  { title: "RPE (0.5%)", key: "employment_voucher", sortable: true, align: 'end' },
-  { title: "FAOV (1%)", key: "housing_property_benefits_voucher", sortable: true, align: 'end' },
-  { title: "Inasist.", key: "days_not_worked_voucher", sortable: true, align: 'end' },
-  { title: "Préstamos", key: "loans_voucher", sortable: true, align: 'end' },
-  { title: "Liq.", key: "settlement_voucher", sortable: true, align: 'end' },
-  { title: "Total Deducciones", key: "negative_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-error' },
-  { title: "NETO A COBRAR", key: "total", sortable: true, align: 'end', class: 'font-weight-black text-primary' },
-  { title: "Acciones", key: "actions", sortable: false, align: 'center' },
-];
+const fullHeaders = computed(() => {
+  const rateMention = selectedPayslip.value?.exchange_rate ? `(${selectedPayslip.value.exchange_rate} Bs.)` : '';
+  return [
+    { title: "Trabajador", key: "employee_full_name", sortable: true, align: 'start' },
+    { title: "Identificación", key: "identification", sortable: true },
+    // Conceptos Salariales
+    { title: `Salario Mensual ${rateMention}`, key: "base_salary_voucher", sortable: true, align: 'end', group: 'salarial' },
+    { title: "Sueldo Base (Pago)", key: "salary_to_pay_voucher", sortable: true, align: 'end', group: 'salarial' },
+    // Conceptos No Salariales (LOTTT)
+    { title: "Cesta Ticket", key: "food_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Asist. Salud", key: "health_support_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Rendim. Extra", key: "performance_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Transp.", key: "transportation_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Facturas", key: "invoice_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Ventas", key: "sales_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Crecim.", key: "sales_growth_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Prods.", key: "assigned_products_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Utilidades", key: "earnings_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "B. Vac.", key: "vacation_bonus_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Vac.", key: "vacation_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    { title: "Ayuda Fam.", key: "family_support_voucher", sortable: true, align: 'end', group: 'no_salarial', class: 'header-no-salarial' },
+    // Totales y Deducciones
+    { title: "Total Asignaciones", key: "positive_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-success' },
+    { title: "IVSS (4%)", key: "social_security_voucher", sortable: true, align: 'end' },
+    { title: "RPE (0.5%)", key: "employment_voucher", sortable: true, align: 'end' },
+    { title: "FAOV (1%)", key: "housing_property_benefits_voucher", sortable: true, align: 'end' },
+    { title: "Inasist.", key: "days_not_worked_voucher", sortable: true, align: 'end' },
+    { title: "Préstamos", key: "loans_voucher", sortable: true, align: 'end' },
+    { title: "Liq.", key: "settlement_voucher", sortable: true, align: 'end' },
+    { title: "Total Deducciones", key: "negative_vouchers", sortable: true, align: 'end', class: 'font-weight-bold text-error' },
+    { title: "NETO A COBRAR", key: "total", sortable: true, align: 'end', class: 'font-weight-black text-primary' },
+  ];
+});
 
 const alwaysShow = [
-  "name",
+  "employee_full_name",
   "identification",
   "base_salary_voucher",
   "salary_to_pay_voucher",
   "food_voucher",
+  "health_support_voucher",
+  "performance_voucher",
   "positive_vouchers",
   "social_security_voucher",
   "employment_voucher",
   "housing_property_benefits_voucher",
   "negative_vouchers",
   "total",
-  "actions",
 ];
 
 const headers = computed(() => {
-  let list = fullHeaders;
+  let list = fullHeaders.value;
   if (tab.value === "legal")
     list = list.filter((h) => alwaysShow.includes(h.key));
-  if (selectedPayslip.value?.status === 1)
-    list = list.filter((h) => h.key !== "actions");
-
+  
   return list;
 });
 
@@ -90,14 +95,23 @@ const formatCurrency = (amount) => {
   }).format(newAmount) + (tab.value === "legal" ? " Bs." : " $");
 };
 
+const formatIdentification = (id) => {
+  if (!id) return '-';
+  const num = String(id).replace(/\D/g, '');
+  const formatted = num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `V-${formatted}`;
+};
+
 const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
   return rows.map(r => ({
     ...r,
+    employee_full_name: `${r.name || ''} ${r.last_name || ''}`.trim() || 'Desconocido',
     positive_vouchers: (Number(r.salary_to_pay_voucher) || 0) + 
                        (Number(r.food_voucher) || 0) + 
-                       (Number(r.transportation_voucher) || 0) + 
+                       (Number(r.health_support_voucher) || 0) + 
                        (Number(r.performance_voucher) || 0) + 
+                       (Number(r.transportation_voucher) || 0) + 
                        (Number(r.invoice_voucher) || 0) + 
                        (Number(r.sales_voucher) || 0) + 
                        (Number(r.sales_growth_voucher) || 0) + 
@@ -114,8 +128,9 @@ const employeesWithVouchers = computed(() => {
                        (Number(r.settlement_voucher) || 0),
     total: ((Number(r.salary_to_pay_voucher) || 0) + 
             (Number(r.food_voucher) || 0) + 
-            (Number(r.transportation_voucher) || 0) + 
+            (Number(r.health_support_voucher) || 0) + 
             (Number(r.performance_voucher) || 0) + 
+            (Number(r.transportation_voucher) || 0) + 
             (Number(r.invoice_voucher) || 0) + 
             (Number(r.sales_voucher) || 0) + 
             (Number(r.sales_growth_voucher) || 0) + 
@@ -123,7 +138,7 @@ const employeesWithVouchers = computed(() => {
             (Number(r.earnings_voucher) || 0) + 
             (Number(r.vacation_bonus_voucher) || 0) + 
             (Number(r.vacation_voucher) || 0) + 
-            (Number(r.family_support_voucher) || 0)) - 
+            (Number(r.family_support_voucher) || 0)) +
            ((Number(r.social_security_voucher) || 0) + 
             (Number(r.employment_voucher) || 0) + 
             (Number(r.housing_property_benefits_voucher) || 0) + 
@@ -135,8 +150,8 @@ const employeesWithVouchers = computed(() => {
 
 const totals = computed(() => {
   const keys = [
-    'salary_to_pay_voucher', 'food_voucher', 'transportation_voucher', 
-    'performance_voucher', 'invoice_voucher', 'sales_voucher', 
+    'salary_to_pay_voucher', 'food_voucher', 'health_support_voucher',
+    'transportation_voucher', 'performance_voucher', 'invoice_voucher', 'sales_voucher', 
     'sales_growth_voucher', 'assigned_products_voucher', 'earnings_voucher', 
     'vacation_bonus_voucher', 'vacation_voucher', 'family_support_voucher', 
     'positive_vouchers', 'social_security_voucher', 'employment_voucher', 
@@ -165,23 +180,43 @@ watch(tab, () => fetchPayslip());
 <template>
   <div class="payroll-details-page">
     <!-- Header Section -->
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h3 class="text-h3 font-weight-bold gradient-text mb-1">
-          {{ selectedPayslip?.name || 'Cargando Nómina...' }}
-        </h3>
-        <p class="text-subtitle-1 text-disabled d-flex align-center">
-          <VIcon icon="tabler-calendar" size="18" class="me-2" />
-          Periodo: {{ selectedPayslip?.period }}
-        </p>
+    <div class="header-glass mb-6 pa-6 d-flex align-center justify-space-between">
+      <div class="d-flex align-center">
+        <VAvatar color="primary" variant="tonal" size="64" class="me-4 rounded-lg">
+          <VIcon icon="tabler-file-spreadsheet" size="36" />
+        </VAvatar>
+        <div>
+          <h2 class="text-h2 font-weight-black text-high-emphasis mb-1">
+            {{ selectedPayslip?.name || 'Cargando...' }}
+          </h2>
+          <div class="d-flex align-center text-subtitle-1 text-medium-emphasis">
+            <span class="d-flex align-center me-4">
+              <VIcon icon="tabler-calendar-event" size="20" class="me-2 text-primary" />
+              {{ selectedPayslip?.period }}
+            </span>
+            <VChip
+              v-if="selectedPayslip?.status !== undefined"
+              :color="selectedPayslip?.status === 1 ? 'success' : 'warning'"
+              variant="flat"
+              size="small"
+              class="font-weight-bold px-4"
+              rounded="pill"
+            >
+              {{ selectedPayslip?.status === 1 ? 'FINALIZADA' : 'PENDIENTE' }}
+            </VChip>
+          </div>
+        </div>
       </div>
-      <VChip
-        :color="selectedPayslip?.status === 1 ? 'success' : 'warning'"
-        variant="elevated"
-        class="text-uppercase font-weight-black"
-      >
-        {{ selectedPayslip?.status === 1 ? 'Finalizada' : 'Pendiente' }}
-      </VChip>
+      
+      <div class="text-right d-none d-md-block">
+        <p class="text-caption text-uppercase font-weight-bold text-disabled mb-1">Tasa de Cambio</p>
+        <div class="d-flex align-center justify-end">
+          <span class="text-h4 font-weight-black text-primary me-2">1.00 $</span>
+          <VIcon icon="tabler-arrows-right-left" size="20" class="text-disabled me-2" />
+          <span class="text-h4 font-weight-black text-success">{{ selectedPayslip?.exchange_rate }} Bs.</span>
+        </div>
+        <p class="text-caption text-disabled mt-1">* Tasa utilizada para esta nómina</p>
+      </div>
     </div>
 
     <!-- Stats Cards -->
@@ -260,54 +295,39 @@ watch(tab, () => fetchPayslip());
       </VTabs>
       <VDivider />
 
+
       <VCardText class="pa-0">
         <VDataTable
           :headers="headers"
           :items="employeesWithVouchers"
           :loading="loading"
           :hide-default-footer="true"
-          class="payroll-table"
+          class="payroll-table mt-4"
         >
-          <template #item.name="{ item }">
-            <div class="d-flex align-center py-2">
-              <VAvatar size="32" color="primary" variant="tonal" class="me-3 font-weight-bold text-uppercase" style="font-size: 0.7rem;">
-                {{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}
-              </VAvatar>
-              <div>
-                <p class="mb-0 font-weight-bold text-high-emphasis">{{ item.name }} {{ item.last_name }}</p>
-                <p class="mb-0 text-caption text-disabled">{{ item.role }}</p>
-              </div>
-            </div>
-          </template>
-
-          <template v-for="header in headers" :key="header.key" v-slot:[`item.${header.key}`]="{ value }">
-            <span v-if="!['name', 'identification', 'actions'].includes(header.key)">
-              {{ formatCurrency(value) }}
+          <template #item.employee_full_name="{ item }">
+            <span class="font-weight-bold text-high-emphasis">
+              {{ item.employee_full_name }}
             </span>
-            <span v-else-if="header.key === 'identification'">{{ value }}</span>
           </template>
 
-          <template #item.actions="{ item }">
-            <div v-if="selectedPayslip.status === 0">
-              <VTooltip text="Editar Salario" location="top">
-                <template #activator="{ props }">
-                  <IconBtn v-bind="props" size="small" color="primary" @click="handleShowEditFormDialog(item)">
-                    <VIcon icon="tabler-pencil" size="20" />
-                  </IconBtn>
-                </template>
-              </VTooltip>
-            </div>
+          <template #item.identification="{ value }">
+            <span class="font-weight-medium text-high-emphasis">
+              {{ formatIdentification(value) }}
+            </span>
+          </template>
+
+          <template v-for="header in headers.filter(h => !['employee_full_name', 'identification'].includes(h.key))" :key="header.key" v-slot:[`item.${header.key}`]="{ value }">
+            {{ formatCurrency(value) }}
           </template>
 
           <template #body.append>
             <tr class="footer-totals font-weight-black">
               <td colspan="2" class="text-right">TOTALES GENERALES</td>
               <template v-for="header in headers" :key="header.key">
-                <td v-if="!['name', 'identification', 'actions'].includes(header.key)" class="text-right py-4">
+                <td v-if="!['employee_full_name', 'identification'].includes(header.key)" class="text-right py-4">
                   {{ formatCurrency(totals[header.key]) }}
                 </td>
               </template>
-              <td v-if="selectedPayslip.status === 0"></td>
             </tr>
           </template>
         </VDataTable>
@@ -373,5 +393,14 @@ watch(tab, () => fetchPayslip());
 .footer-totals td {
   color: rgb(var(--v-theme-primary)) !important;
   font-size: 0.9rem !important;
+}
+
+/* Estilos para grupos de columnas */
+:deep(.header-salarial) {
+  border-block-end: 2px solid rgba(var(--v-theme-info), 0.5) !important;
+}
+
+:deep(.header-no-salarial) {
+  border-block-end: 2px solid rgba(var(--v-theme-warning), 0.5) !important;
 }
 </style>
