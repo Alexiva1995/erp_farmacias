@@ -1,11 +1,9 @@
 <script setup>
-import { defineProps, defineEmits, computed, nextTick } from "vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import TicketHeader from "@/components/TicketHeader.vue";
 import axios from "@/plugins/axios";
-import SectionDivider from "@/components/SectionDivider.vue";
-import { formatDateTime } from "@/utils/formatDateTime";
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDateTime } from "@/utils/formatDateTime";
+import { computed, defineEmits, defineProps, nextTick } from "vue";
 
 const props = defineProps({
   isDialogVisible: {
@@ -269,174 +267,224 @@ const getDividerWidth = (name) => {
 
 </script>
 <template>
-<VDialog v-model="dialogVisible" max-width="700px">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"></span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+  <VDialog v-model="dialogVisible" max-width="950px" scrollable>
+    <VCard class="rounded-xl border shadow-sm">
+      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b">
+        <div class="d-flex align-center gap-3">
+          <VAvatar color="primary" variant="tonal" rounded>
+            <VIcon icon="tabler-truck-delivery" />
+          </VAvatar>
+          <div>
+            <h3 class="text-h6 font-weight-bold mb-0">Detalle de Entregas</h3>
+            <span class="text-caption text-medium-emphasis">Reporte N° {{ props.cashData?.id }} • {{ props.cashData?.created_at ? formatDateTime(props.cashData.created_at, "date") : '' }}</span>
+          </div>
+        </div>
+        <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
-       <VCardText>
-        <div id="delivery-report">
-            <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
 
-    <div class="ticket-header d-flex justify-space-between align-start mt-2">
-        <span class="font-weight-bold tituloAzulPrint"
-          >Cierre Diario N° {{ props.cashData.id }}</span
-        >
-        <div class="text-right d-flex flex-column align-end">
-          <p class="text-black font-weight-regular mb-0 textoPrint">
-            {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}
-          </p>
-        </div>
-      </div>
+      <VCardText class="pa-6" style="background-color: #f8f9fa;">
+        <h4 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center gap-2">
+          <VIcon icon="tabler-users" size="20" color="primary" /> Entregas por Cajero
+        </h4>
 
- <div class="container mt-3">
-            <table v-if="groupedSellers.length > 0" style="width: 100%; border-collapse: separate; border-spacing: 15px 15px;">
-                <tbody>
-                    <tr v-for="(pair, rowIndex) in groupedSellers" :key="rowIndex">
-                        <td 
-                            v-for="(cashGroups, colIndex) in pair" 
-                            :key="colIndex"
-                            :colspan="isSingleSeller ? '2' : '1'" 
-                            :style="{
-                                'vertical-align': 'top', 
-                                'padding': '0',
-                                'width': isSingleSeller ? '100%' : '50%'
-                            }"
-                        >
-                            <div 
-                                class="w-100" 
-                                :style="{ 
-                                    'padding': '5px',
-                                    'width': isSingleSeller ? '80%' : '100%',
-                                    'margin-left': isSingleSeller ? 'auto' : '0',
-                                    'margin-right': isSingleSeller ? 'auto' : '0',
-                                }"
-                            >
-                                <SectionDivider
-                                    :isPdf="true"
-                                    :text="cashGroups.seller_name" 
-                                    :width="getDividerWidth(cashGroups.seller_name)"
-                                    class="center-block"
-                                />
-                                
-                                <table 
-                                    class="table table-sm table-borderless" 
-                                    :class="{
-                                        'w-75 mx-auto center-block': isSingleSeller, 
-                                        'w-100': !isSingleSeller,
-                                    }"
-                                >
-                                    <tbody>
-                                        <tr v-if="cashGroups.total_bs_card_debito > 0">
-                                            <td style="text-align: left"><span>Tarjeta Débito (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card_debito }}</span></td>
-                                        </tr>
-                                         <tr v-if="cashGroups.total_bs_card_credito > 0">
-                                            <td style="text-align: left"><span>Tarjeta Crédito (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card_credito }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_transfer > 0">
-                                            <td style="text-align: left"><span>Trasnferencia (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_transfer }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_mobile > 0">
-                                            <td style="text-align: left"><span>Pago Móvil (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_mobile }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_cop_transfer > 0">
-                                            <td style="text-align: left"><span>Trasnferencia (COP)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_cop_transfer }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_transfer > 0">
-                                            <td style="text-align: left"><span>Trasnferencia (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_transfer }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_paypal > 0">
-                                            <td style="text-align: left"><span>Paypal (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_paypal }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_binance > 0">
-                                            <td style="text-align: left"><span>Binance (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_binance }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_credit > 0">
-                                            <td style="text-align: left"><span>Creditos (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_credit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_cash > 0">
-                                            <td style="text-align: left"><span>Efectivo (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_cash }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_cop_cash > 0">
-                                            <td style="text-align: left"><span>Efectivo (COP)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_cop_cash }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_cash > 0">
-                                            <td style="text-align: left"><span>Efectivo (USD)</span></td>
-                                            <td style="text-align: right"><span>{{formatCurrency(cashGroups.total_usd_cash)}}</span></td>
-                                        </tr>
-
-
-                                        <tr v-if="cashGroups.total_bs_card_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Tarjeta (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_card_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_transfer_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Trasnferencia (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_transfer_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_mobile_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Pago Móvil (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_mobile_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_cop_transfer_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Trasnferencia (COP)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_cop_transfer_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_paypal_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Paypal (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_paypal_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_binance_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Binance (USD)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_usd_binance_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_bs_cash_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Efectivo (Bs)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_bs_cash_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_cop_cash_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Efectivo (COP)</span></td>
-                                            <td style="text-align: right"><span>{{cashGroups.total_cop_cash_paymentCredit }}</span></td>
-                                        </tr>
-                                        <tr v-if="cashGroups.total_usd_cash_paymentCredit > 0">
-                                            <td style="text-align: left"><span>Abono Efectivo (USD)</span></td>
-                                            <td style="text-align: right"><span>{{formatCurrency(cashGroups.total_usd_cash_paymentCredit)}}</span></td>
-                                        </tr>
-
-                                    </tbody>
-                                </table>
-                            </div>
-                        </td>
-                        
-                        <td v-if="pair.length === 1 && !isSingleSeller" style="width: 50%; padding: 0;"></td>
+        <!-- LISTA DE CAJEROS CON ENTREGAS -->
+        <VRow>
+          <VCol cols="12" md="6" v-for="seller in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="seller.seller_id">
+            <VCard variant="outlined" class="bg-white rounded-lg border h-100">
+              <VCardItem class="pa-4 pb-0 border-b">
+                <div class="d-flex justify-space-between align-start mb-3">
+                  <div class="d-flex gap-3 align-center">
+                    <VAvatar color="secondary" size="38" variant="tonal" class="font-weight-bold text-body-1">
+                      {{ seller.seller_name?.substring(0,2).toUpperCase() }}
+                    </VAvatar>
+                    <div style="line-height: 1.2;">
+                      <h5 class="text-subtitle-1 font-weight-bold mb-0 text-capitalize">{{ seller.seller_name }}</h5>
+                      <span class="text-caption text-medium-emphasis">Cajero #{{ seller.seller_id }}</span>
+                    </div>
+                  </div>
+                </div>
+              </VCardItem>
+              
+              <VCardText class="pa-0">
+                <VTable density="compact" class="text-caption bg-transparent w-100 table-sm">
+                  <tbody>
+                    <tr v-if="seller.total_bs_card_debito > 0 || seller.total_bs_card_credito > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Tarjetas (BS):</td>
+                      <td class="text-right py-2 pr-4 text-warning">
+                        {{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito, 'BS') }}
+                      </td>
                     </tr>
-                </tbody>
+                    <tr v-if="seller.total_bs_transfer > 0 || seller.total_bs_mobile > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Transf./Pago Móvil (BS):</td>
+                      <td class="text-right py-2 pr-4 text-warning">
+                        {{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile, 'BS') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_cop_transfer > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Transferencia (COP):</td>
+                      <td class="text-right py-2 pr-4 text-info">
+                        {{ formatCurrency(seller.total_cop_transfer, 'COP') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_usd_transfer > 0 || seller.total_usd_paypal > 0 || seller.total_usd_binance > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Pagos Electrónicos (USD):</td>
+                      <td class="text-right py-2 pr-4 text-success">
+                        {{ formatCurrency(seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance, 'USD') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_usd_credit > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Créditos (USD):</td>
+                      <td class="text-right py-2 pr-4 font-weight-bold font-italic">
+                        {{ formatCurrency(seller.total_usd_credit, 'USD') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_bs_cash > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (BS):</td>
+                      <td class="text-right font-weight-bold py-2 pr-4 text-warning">
+                        {{ formatCurrency(seller.total_bs_cash, 'BS') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_cop_cash > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (COP):</td>
+                      <td class="text-right font-weight-bold py-2 pr-4 text-info">
+                        {{ formatCurrency(seller.total_cop_cash, 'COP') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_usd_cash > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (USD):</td>
+                      <td class="text-right font-weight-bold py-2 pr-4 text-success">
+                        {{ formatCurrency(seller.total_usd_cash, 'USD') }}
+                      </td>
+                    </tr>
+                    <!-- ABONOS (CRÉDITOS PAGADOS) -->
+                    <tr v-if="seller.total_bs_card_paymentCredit > 0 || seller.total_bs_transfer_paymentCredit > 0 || seller.total_bs_mobile_paymentCredit > 0 || seller.total_bs_cash_paymentCredit > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (BS):</td>
+                      <td class="text-right py-2 pr-4 text-warning font-italic">
+                        {{ formatCurrency(seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit, 'BS') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_cop_transfer_paymentCredit > 0 || seller.total_cop_cash_paymentCredit > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (COP):</td>
+                      <td class="text-right py-2 pr-4 text-info font-italic">
+                        {{ formatCurrency(seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit, 'COP') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.total_usd_paypal_paymentCredit > 0 || seller.total_usd_binance_paymentCredit > 0 || seller.total_usd_cash_paymentCredit > 0">
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (USD):</td>
+                      <td class="text-right py-2 pr-4 text-success font-italic">
+                        {{ formatCurrency(seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit, 'USD') }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </VCardText>
+            </VCard>
+          </VCol>
+          
+          <VCol cols="12" v-if="sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0)).length === 0">
+            <VAlert type="info" variant="tonal" class="rounded-lg text-body-2" icon="tabler-info-circle">
+              No hay entregas procesadas en este reporte.
+            </VAlert>
+          </VCol>
+        </VRow>
+
+        <!-- ESTRUCTURA OCULTA EXCLUSIVA PARA EL REPORTE PDF (ESTILO A4) -->
+        <div id="delivery-report" class="d-none">
+          <div style=" padding: 20px; color: #333;font-family: Helvetica, Arial, sans-serif; inline-size: 100%;">
+            <table style="inline-size: 100%; margin-block-end: 20px;">
+              <tr>
+                <td style="inline-size: 50%; text-align: start; vertical-align: top;">
+                  <img :src="BASE64_LOGO_DATA" alt="Logo" style="inline-size: 140px;" />
+                </td>
+                <td style="inline-size: 50%; text-align: end; vertical-align: top;">
+                  <h2 style="margin: 0; color: #2c3e50; font-size: 22px;">Resumen de Entregas</h2>
+                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Reporte Diario N°: <strong>{{ props.cashData.id }}</strong></p>
+                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Fecha: {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}</p>
+                </td>
+              </tr>
             </table>
+
+            <hr style="border: 0; border-block-start: 2px solid #34495e; margin-block-end: 20px;" />
+
+            <div style="margin-block-end: 20px;">
+              <h3 style=" border-block-end: 1px solid #ecf0f1;color: #2c3e50; font-size: 16px; margin-block-end: 15px; padding-block-end: 5px;">Desglose Detallado por Cajero</h3>
+              
+              <table style=" border-collapse: collapse; font-size: 13px;inline-size: 100%;">
+                <thead>
+                  <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: start;">Cajero / Métodos</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">Entrega BS</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">Entrega COP</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">Entrega USD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-for="seller in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="'pdf-' + seller.seller_id">
+                    <tr style="background-color: #f1f3f5;">
+                      <td colspan="4" style=" border: 1px solid #dee2e6; font-weight: bold;padding-block: 8px; padding-inline: 10px;">
+                        Cajero: {{ seller.seller_name }} (#{{ seller.seller_id }})
+                      </td>
+                    </tr>
+                    
+                    <!-- DÉBITO/CRÉDITO -->
+                    <tr v-if="seller.total_bs_card_debito > 0 || seller.total_bs_card_credito > 0">
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; padding-inline-start: 20px;">Tarjetas POS</td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;">{{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito, 'BS') }}</td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;"></td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;"></td>
+                    </tr>
+                    <!-- PREV. TRANSFERENCIAS BS -->
+                    <tr v-if="seller.total_bs_transfer > 0 || seller.total_bs_mobile > 0">
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; padding-inline-start: 20px;">Transf./Pago Móvil</td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;">{{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile, 'BS') }}</td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;"></td>
+                      <td style=" border: 1px solid #dee2e6;padding-block: 8px; padding-inline: 10px; text-align: end;"></td>
+                    </tr>
+                    <!-- EFECTIVO -->
+                    <tr v-if="seller.total_bs_cash > 0 || seller.total_cop_cash > 0 || seller.total_usd_cash > 0">
+                      <td style=" border: 1px solid #dee2e6; font-weight: bold;padding-block: 8px; padding-inline: 10px; padding-inline-start: 20px;">Efectivo Entregado</td>
+                      <td style=" border: 1px solid #dee2e6; font-weight: bold;padding-block: 8px; padding-inline: 10px; text-align: end;">{{ seller.total_bs_cash > 0 ? formatCurrency(seller.total_bs_cash, 'BS') : '' }}</td>
+                      <td style=" border: 1px solid #dee2e6; font-weight: bold;padding-block: 8px; padding-inline: 10px; text-align: end;">{{ seller.total_cop_cash > 0 ? formatCurrency(seller.total_cop_cash, 'COP') : '' }}</td>
+                      <td style=" border: 1px solid #dee2e6; font-weight: bold;padding-block: 8px; padding-inline: 10px; text-align: end;">{{ seller.total_usd_cash > 0 ? formatCurrency(seller.total_usd_cash, 'USD') : '' }}</td>
+                    </tr>
+                    <!-- ABONOS GENERALES -->
+                    <tr style=" background-color: #fafafa;color: #555;" v-if="
+                      seller.total_bs_card_paymentCredit > 0 || seller.total_bs_transfer_paymentCredit > 0 || seller.total_bs_mobile_paymentCredit > 0 || seller.total_bs_cash_paymentCredit > 0 ||
+                      seller.total_cop_transfer_paymentCredit > 0 || seller.total_cop_cash_paymentCredit > 0 ||
+                      seller.total_usd_paypal_paymentCredit > 0 || seller.total_usd_binance_paymentCredit > 0 || seller.total_usd_cash_paymentCredit > 0
+                    ">
+                      <td style=" border: 1px solid #dee2e6; font-style: italic;padding-block: 8px; padding-inline: 10px; padding-inline-start: 20px;">Abonos de Créditos</td>
+                      <td style=" border: 1px solid #dee2e6; font-style: italic;padding-block: 8px; padding-inline: 10px; text-align: end;">
+                        {{ formatCurrency(seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit, 'BS') }}
+                      </td>
+                      <td style=" border: 1px solid #dee2e6; font-style: italic;padding-block: 8px; padding-inline: 10px; text-align: end;">
+                        {{ formatCurrency(seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit, 'COP') }}
+                      </td>
+                      <td style=" border: 1px solid #dee2e6; font-style: italic;padding-block: 8px; padding-inline: 10px; text-align: end;">
+                        {{ formatCurrency(seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit, 'USD') }}
+                      </td>
+                    </tr>
+                  </template>
+
+                  <tr v-if="sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0)).length === 0">
+                    <td colspan="4" style="padding: 20px; border: 1px solid #dee2e6; color: #7f8c8d; text-align: center;">No hay entregas procesadas en este reporte.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style=" border-block-start: 1px solid #ecf0f1; color: #95a5a6; font-size: 11px;margin-block-start: 40px; padding-block-start: 10px; text-align: center;">
+              Reporte de entregas diarias generado automáticamente
+            </div>
+          </div>
         </div>
-        </div>
-       </VCardText>
-      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
-        <VBtn color="secondary" variant="outlined" @click="printReport" class="w-50">
-          Imprimir
-        </VBtn>
-        <VBtn color="primary" variant="flat" @click="downloadReport" class="w-50">
-          Descargar
-        </VBtn>
+      </VCardText>
+      
+      <VDivider />
+      
+      <VCardActions class="pa-4 bg-white d-flex justify-end gap-3 px-6">
+        <VBtn variant="tonal" color="secondary" @click="closeModal" class="px-5 font-weight-medium">Cerrar</VBtn>
+        <VBtn variant="flat" color="primary" @click="downloadReport" prepend-icon="tabler-download" class="px-5 font-weight-medium">Descargar PDF</VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

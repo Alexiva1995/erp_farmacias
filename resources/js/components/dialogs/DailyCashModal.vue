@@ -1,6 +1,4 @@
 <script setup>
-import SectionDivider from "@/components/SectionDivider.vue";
-import TicketHeader from "@/components/TicketHeader.vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
@@ -245,7 +243,9 @@ const getDividerWidth = (name) => {
                   <span class="text-caption font-weight-bold opacity-80">VENTA BRUTA GENERAL</span>
                   <VIcon icon="tabler-sum" color="white" size="20" />
                 </div>
-                <h4 class="text-h5 font-weight-bold text-white mt-2">{{ formatCurrency(props.cashData.total_sales, 'USD') }}</h4>
+                <h4 class="text-h5 font-weight-bold text-white mt-2">
+                  {{ formatCurrency(parseFloat(props.cashData.total_usd || 0) + parseFloat(props.cashData.total_bs_in_usd || 0) + parseFloat(props.cashData.total_cop_in_usd || 0), 'USD') }}
+                </h4>
               </VCardItem>
             </VCard>
           </VCol>
@@ -273,7 +273,7 @@ const getDividerWidth = (name) => {
                     </div>
                   </div>
                   <VChip color="primary" size="small" variant="flat" class="font-weight-bold px-3">
-                     Venta: {{ formatCurrency(closing.total_sales, 'USD') }}
+                     Venta: {{ formatCurrency(parseFloat(closing.total_usd || 0) + parseFloat(closing.total_bs_in_usd || 0) + parseFloat(closing.total_cop_in_usd || 0), 'USD') }}
                   </VChip>
                 </div>
               </VCardItem>
@@ -314,98 +314,90 @@ const getDividerWidth = (name) => {
           </VCol>
         </VRow>
 
-        <!-- ESTRUCTURA OCULTA EXCLUSIVA PARA EL REPORTE PDF / TICKETERA -->
+        <!-- ESTRUCTURA OCULTA PARA EL REPORTE PDF (ESTILO A4 PROFESIONAL) -->
         <div id="daily-cash-report" class="d-none">
-          <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-          <div class="ticket-header d-flex justify-space-between align-start mt-2">
-            <span class="font-weight-bold tituloAzulPrint">Cierre Diario N° {{ props.cashData.id }}</span>
-            <div class="text-right d-flex flex-column align-end">
-              <p class="text-black font-weight-regular mb-0 textoPrint">
-                {{ formatDateTime(props.cashData.created_at, "date") }}
-                {{ formatDateTime(props.cashData.created_at, "time") }}
-              </p>
-            </div>
-          </div>
-          <div class="container mt-3">
-            <div class="w-100">
-              <table v-if="groupedClosings.length > 0" style=" border-collapse: separate; border-spacing: 15px 15px;inline-size: 100%;">
+          <div style=" padding: 20px; color: #333;font-family: Helvetica, Arial, sans-serif; inline-size: 100%;">
+            <table style="inline-size: 100%; margin-block-end: 20px;">
+              <tr>
+                <td style="inline-size: 50%; text-align: start; vertical-align: top;">
+                  <img :src="BASE64_LOGO_DATA" alt="Logo" style="inline-size: 140px;" />
+                </td>
+                <td style="inline-size: 50%; text-align: end; vertical-align: top;">
+                  <h2 style="margin: 0; color: #2c3e50; font-size: 22px;">Resumen Consolidado</h2>
+                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Reporte Diario N°: <strong>{{ props.cashData.id }}</strong></p>
+                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Fecha: {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}</p>
+                </td>
+              </tr>
+            </table>
+
+            <hr style="border: 0; border-block-start: 2px solid #34495e; margin-block-end: 20px;" />
+
+            <!-- TOTALES DEL DÍA -->
+            <div style="margin-block-end: 30px;">
+              <h3 style=" border-block-end: 1px solid #ecf0f1;color: #2c3e50; font-size: 16px; margin-block-end: 15px; padding-block-end: 5px;">Recaudación Diaria General</h3>
+              <table style=" border-collapse: collapse; font-size: 14px;inline-size: 100%;">
+                <thead>
+                  <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Dólares (USD)</th>
+                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Bolívares (BS)</th>
+                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Pesos (COP)</th>
+                    <th style="padding: 12px; border: 1px solid #dee2e6; background-color: #2c3e50; color: white; inline-size: 25%; text-align: end;">TOTAL BRUTO (USD)</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr v-for="(pair, rowIndex) in groupedClosings" :key="rowIndex">
-                    <td
-                      v-for="(cash, colIndex) in pair"
-                      :key="colIndex"
-                      :colspan="isSingleSeller ? '2' : '1'"
-                      :style="{ 'vertical-align': 'top', padding: '0', margin: isSingleSeller ? '0 auto' : '0', width: isSingleSeller ? '80%' : '50%' }"
-                      :class="{ 'mx-auto': isSingleSeller }"
-                    >
-                      <div class="w-100" :style="{ padding: '5px', width: isSingleSeller ? '80%' : '100%', 'margin-left': isSingleSeller ? 'auto' : '0', 'margin-right': isSingleSeller ? 'auto' : '0' }">
-                        <SectionDivider :isPdf="true" :text="cash.seller?.username" :width="getDividerWidth(cash.seller?.username)" class="center-block" />
-                        <table class="table table-sm table-borderless" :class="{ 'w-75 mx-auto center-block': isSingleSeller, 'w-100': !isSingleSeller }">
-                          <tbody>
-                            <tr>
-                              <td class="text-left"><span>ID: {{ cash.id }}</span></td>
-                            </tr>
-                            <tr>
-                              <td class="text-left"><span>USD:</span></td>
-                              <td class="text-right">
-                                <span>{{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0)) }}</span>
-                              </td>
-                              <td class="text-right">
-                                <span>{{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0)) }}</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td class="text-left"><span>BS:</span></td>
-                              <td class="text-right"><span>{{ cash.total_bs }}</span></td>
-                              <td class="text-right"><span>{{ cash.total_bs_in_usd }}</span></td>
-                            </tr>
-                            <tr>
-                              <td class="text-left"><span>COP:</span></td>
-                              <td class="text-right"><span>{{ cash.total_cop }}</span></td>
-                              <td class="text-right"><span>{{ cash.total_cop_in_usd }}</span></td>
-                            </tr>
-                            <tr>
-                              <td class="text-left"><span></span></td>
-                              <td class="text-right fw-bold"><span>TOTAL VENTA</span></td>
-                              <td class="text-right fw-bold"><span>{{ cash.total_sales }}</span></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                  <tr>
+                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_usd, 'USD') }}</strong></td>
+                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_bs, 'BS') }}</strong> <div style=" color: #7f8c8d;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div></td>
+                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_cop, 'COP') }}</strong> <div style=" color: #7f8c8d;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div></td>
+                    <td style="padding: 12px; border: 1px solid #dee2e6; font-size: 16px; text-align: end;"><strong>{{ formatCurrency(parseFloat(props.cashData.total_usd || 0) + parseFloat(props.cashData.total_bs_in_usd || 0) + parseFloat(props.cashData.total_cop_in_usd || 0), 'USD') }}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- DESGLOSE POR VENDEDOR -->
+            <div style="margin-block-end: 20px;">
+              <h3 style=" border-block-end: 1px solid #ecf0f1;color: #2c3e50; font-size: 16px; margin-block-end: 15px; padding-block-end: 5px;">Desglose por Cajeros (#{{ filteredCashClosings.length }})</h3>
+              
+              <table style=" border-collapse: collapse; font-size: 13px;inline-size: 100%;">
+                <thead>
+                  <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: start;">Cajero / Caja #</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">USD</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">BS</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">COP</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; background-color: #e9ecef; text-align: end;">Venta (Eq. USD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="cash in filteredCashClosings" :key="cash.id">
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">
+                      <strong>{{ cash.seller?.username || 'N/A' }}</strong><br>
+                      <span style=" color: #7f8c8d;font-size: 11px;">Corte: #{{ cash.id }}</span>
                     </td>
-                    <td v-if="pair.length === 1 && !isSingleSeller" style=" padding: 0;inline-size: 50%;"></td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">{{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0), 'USD') }}</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">
+                      {{ formatCurrency(cash.total_bs, 'BS') }}<br>
+                      <span style=" color: #95a5a6;font-size: 10px;">{{ formatCurrency(cash.total_bs_in_usd, 'USD') }}</span>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">
+                      {{ formatCurrency(cash.total_cop, 'COP') }}<br>
+                      <span style=" color: #95a5a6;font-size: 10px;">{{ formatCurrency(cash.total_cop_in_usd, 'USD') }}</span>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; background-color: #f8f9fa; font-weight: bold; text-align: end;">
+                      {{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.total_bs_in_usd || 0) + parseFloat(cash.total_cop_in_usd || 0), 'USD') }}
+                    </td>
+                  </tr>
+                  <tr v-if="filteredCashClosings.length === 0">
+                    <td colspan="5" style="padding: 20px; border: 1px solid #dee2e6; color: #7f8c8d; text-align: center;">No hay cajas procesadas en este reporte.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-          </div>
-          <div class="mt-3">
-            <SectionDivider :isPdf="true" text="TOTAL VENTA DIA" width="35%" class="mx-auto center-block" />
-            <div>
-              <table class="table table-borderless table-sm w-75 mx-auto center-block">
-                <tbody>
-                  <tr>
-                    <td class="text-left"><span>USD:</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_usd }}</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_usd }}</span></td>
-                  </tr>
-                  <tr>
-                    <td class="text-left"><span>BS:</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_bs }}</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_bs_in_usd }}</span></td>
-                  </tr>
-                  <tr>
-                    <td class="text-left"><span>COP:</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_cop }}</span></td>
-                    <td class="text-right"><span>{{ props.cashData.total_cop_in_usd }}</span></td>
-                  </tr>
-                  <tr>
-                    <td class="text-start"><span></span></td>
-                    <td class="text-right fw-bold"><span>TOTAL</span></td>
-                    <td class="text-right fw-bold"><span>{{ props.cashData.total_sales }}</span></td>
-                  </tr>
-                </tbody>
-              </table>
+
+            <!-- PIE DE PÁGINA -->
+            <div style=" border-block-start: 1px solid #ecf0f1; color: #95a5a6; font-size: 11px;margin-block-start: 40px; padding-block-start: 10px; text-align: center;">
+              Reporte de consolidación diaria generado automáticamente
             </div>
           </div>
         </div>
@@ -415,7 +407,6 @@ const getDividerWidth = (name) => {
       
       <VCardActions class="pa-4 bg-white d-flex justify-end gap-3 px-6">
         <VBtn variant="tonal" color="secondary" @click="closeModal" class="px-5 font-weight-medium">Cerrar</VBtn>
-        <VBtn variant="outlined" color="primary" @click="printReport" prepend-icon="tabler-printer" class="px-5 font-weight-medium">Imprimir Ticket</VBtn>
         <VBtn variant="flat" color="primary" @click="downloadReport" prepend-icon="tabler-download" class="px-5 font-weight-medium">Descargar PDF</VBtn>
       </VCardActions>
     </VCard>
