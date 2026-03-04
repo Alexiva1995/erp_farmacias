@@ -1,7 +1,6 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
-import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { computed, defineEmits, defineProps, nextTick } from "vue";
 
@@ -116,6 +115,12 @@ const getCurrentTime = () => {
   return new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 };
 
+// Helper para mostrar valores que ya vienen formateados del backend
+const display = (val, currency = "USD") => {
+  if (val === null || val === undefined) return `0,00 ${currency}`;
+  return `${val} ${currency}`;
+};
+
 </script>
 <template>
   <VDialog v-model="dialogVisible" max-width="950px" scrollable>
@@ -146,7 +151,7 @@ const getCurrentTime = () => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL USD</span>
                   <VIcon icon="tabler-currency-dollar" color="success" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold text-success">{{ formatCurrency(props.monthlyCashData.totalSalesUsd, 'USD') }}</h4>
+                <h4 class="text-h6 font-weight-bold text-success">{{ display(props.monthlyCashData.totalSalesUsd, 'USD') }}</h4>
                 <div class="text-caption text-medium-emphasis mt-1">Efectivo + Transf.</div>
               </VCardItem>
             </VCard>
@@ -159,8 +164,8 @@ const getCurrentTime = () => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL BS</span>
                   <VIcon icon="tabler-currency-bolivar" color="warning" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(props.monthlyCashData.totalSalesBs, 'BS') }}</h4>
-                <div class="text-caption text-warning font-weight-medium mt-1">&asymp; {{ formatCurrency(props.monthlyCashData.totalSalesBsInUSD, 'USD') }}</div>
+                <h4 class="text-h6 font-weight-bold">{{ display(props.monthlyCashData.totalSalesBs, 'BS') }}</h4>
+                <div class="text-caption text-warning font-weight-medium mt-1">&asymp; {{ display(props.monthlyCashData.totalSalesBsInUSD, 'USD') }}</div>
               </VCardItem>
             </VCard>
           </VCol>
@@ -172,8 +177,8 @@ const getCurrentTime = () => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL COP</span>
                   <VIcon icon="tabler-currency-peso" color="info" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(props.monthlyCashData.totalSalesCop, 'COP') }}</h4>
-                <div class="text-caption text-info font-weight-medium mt-1">&asymp; {{ formatCurrency(props.monthlyCashData.totalSalesGlobalCopInUsd, 'USD') }}</div>
+                <h4 class="text-h6 font-weight-bold">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</h4>
+                <div class="text-caption text-info font-weight-medium mt-1">&asymp; {{ display(props.monthlyCashData.totalSalesGlobalCopInUsd, 'USD') }}</div>
               </VCardItem>
             </VCard>
           </VCol>
@@ -186,7 +191,7 @@ const getCurrentTime = () => {
                   <VIcon icon="tabler-sum" color="white" size="20" />
                 </div>
                 <h4 class="text-h5 font-weight-bold text-white mt-2">
-                  {{ formatCurrency(props.monthlyCashData.totalSalesGlobal, 'USD') }}
+                  {{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}
                 </h4>
               </VCardItem>
             </VCard>
@@ -215,7 +220,7 @@ const getCurrentTime = () => {
                     </div>
                   </div>
                   <VChip color="primary" size="small" variant="flat" class="font-weight-bold px-3">
-                     Venta: {{ formatCurrency(cashData.total_sales, 'USD') }}
+                     Venta: {{ display(cashData.total_sales, 'USD') }}
                   </VChip>
                 </div>
               </VCardItem>
@@ -226,21 +231,21 @@ const getCurrentTime = () => {
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">USD:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-primary">
-                        {{ formatCurrency(cashData.total_usd, 'USD') }}
+                        {{ display(cashData.total_usd, 'USD') }}
                       </td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">BS:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-warning">
-                        {{ formatCurrency(cashData.total_bs, 'BS') }} 
-                        <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ formatCurrency(cashData.total_bs_in_usd, 'USD') }})</span>
+                        {{ display(cashData.total_bs, 'BS') }} 
+                        <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ display(cashData.total_bs_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">COP:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-info">
-                        {{ formatCurrency(cashData.total_cop, 'COP') }}
-                        <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ formatCurrency(cashData.total_cop_in_usd, 'USD') }})</span>
+                        {{ display(cashData.total_cop, 'COP') }}
+                        <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ display(cashData.total_cop_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
                   </tbody>
@@ -266,7 +271,7 @@ const getCurrentTime = () => {
                 <td style="inline-size: 50%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
               </tr>
               <tr>
-                <td><strong>VENTA TOTAL:</strong> {{ formatCurrency(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
+                <td><strong>VENTA TOTAL:</strong> {{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
                 <td style="text-align: end;"><strong>HORA:</strong> {{ getCurrentTime() }}</td>
               </tr>
             </table>
@@ -288,18 +293,18 @@ const getCurrentTime = () => {
               <template v-for="cashData in props.monthlyCashData.summary" :key="cashData.seller_name">
                 <tr v-if="parseFloat(cashData.total_sales) > 0">
                   <td style="font-size: 8pt;">{{ (cashData.seller_name || 'Sin Nombre').toUpperCase() }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(cashData.total_bs, 'BS') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(cashData.total_cop, 'COP') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(cashData.total_usd, 'USD') }}</td>
-                  <td style="font-size: 8pt; font-weight: bold; text-align: end;">{{ formatCurrency(cashData.total_sales, 'USD') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_bs, 'BS') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_cop, 'COP') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_usd, 'USD') }}</td>
+                  <td style="font-size: 8pt; font-weight: bold; text-align: end;">{{ display(cashData.total_sales, 'USD') }}</td>
                 </tr>
               </template>
               <tr style="background-color: #2c3e50; color: white; font-weight: bold;">
                 <td style="font-size: 9pt;">TOTAL GENERAL</td>
-                <td style="font-size: 9pt; text-align: end;">{{ formatCurrency(props.monthlyCashData.totalSalesBs, 'BS') }}</td>
-                <td style="font-size: 9pt; text-align: end;">{{ formatCurrency(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
-                <td style="font-size: 9pt; text-align: end;">{{ formatCurrency(props.monthlyCashData.totalSalesUsd, 'USD') }}</td>
-                <td style="font-size: 9pt; text-align: end;">{{ formatCurrency(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesBs, 'BS') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesUsd, 'USD') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
               </tr>
             </tbody>
           </table>
