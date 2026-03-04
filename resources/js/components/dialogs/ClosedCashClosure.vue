@@ -1,17 +1,10 @@
 <script setup>
-import { defineProps, defineEmits, computed } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
+import { computed, defineEmits, defineProps, ref } from "vue";
 
 const props = defineProps({
-  isDialogVisible: {
-    type: Boolean,
-    required: true,
-  },
-  cashClosureData: {
-    type: Object,
-    default: () => null,
-  },
+  isDialogVisible: { type: Boolean, required: true },
+  cashClosureData: { type: Object, default: () => null },
 });
 
 const emit = defineEmits(["update:isDialogVisible", "complete-cash-closure"]);
@@ -23,21 +16,63 @@ const dialogVisible = computed({
 
 const sobranteCop = ref(0);
 
+// Totales calculados
 const totalCopConSobrante = computed(() => {
-  const totalOriginal = parseFloat(props.cashClosureData.total_cop) || 0;
+  const totalOriginal = parseFloat(props.cashClosureData?.total_cop) || 0;
   const sobrante = parseFloat(sobranteCop.value) || 0;
   return totalOriginal + sobrante;
 });
 
 const totalEfectivoCopConSobrante = computed(() => {
-  const totalDeliveryCop = parseFloat(props.cashClosureData.cop_delivered) || 0;
+  const totalDeliveryCop = parseFloat(props.cashClosureData?.cop_delivered) || 0;
   const sobrantecOP = parseFloat(sobranteCop.value) || 0;
   return totalDeliveryCop + sobrantecOP;
 });
 
-const closeModal = () => {
-  emit("update:isDialogVisible", false);
-};
+const totalUsd = computed(() => parseFloat(props.cashClosureData?.total_usd) || 0);
+const totalBs  = computed(() => parseFloat(props.cashClosureData?.total_bs)  || 0);
+const totalCredits = computed(() => parseFloat(props.cashClosureData?.usd_credit) || 0);
+
+// Helper para mostrar solo campos > 0
+const show = (val) => parseFloat(val) > 0;
+
+// Bloques de desglose por sección
+const usdFields = computed(() => [
+  { label: 'Binance',            val: props.cashClosureData?.usd_binance },
+  { label: 'Paypal',             val: props.cashClosureData?.usd_paypal },
+  { label: 'Efectivo en USD',    val: props.cashClosureData?.usd_cash },
+  { label: 'Diferencia cambio',  val: props.cashClosureData?.usd_conversion },
+  { label: 'Saldo del cliente',  val: props.cashClosureData?.usd_balance },
+].filter(f => show(f.val)));
+
+const bsFields = computed(() => [
+  { label: 'Efectivo',       val: props.cashClosureData?.bs_cash },
+  { label: 'Pago Móvil',    val: props.cashClosureData?.bs_mobile },
+  { label: 'Transferencia', val: props.cashClosureData?.bs_transfer },
+  { label: 'T. Débito',     val: props.cashClosureData?.bs_card_debito },
+  { label: 'T. Crédito',    val: props.cashClosureData?.bs_card_credit },
+].filter(f => show(f.val)));
+
+const copFields = computed(() => [
+  { label: 'Efectivo COP',       val: props.cashClosureData?.cop_cash },
+  { label: 'Transferencia',     val: props.cashClosureData?.cop_transfer },
+  { label: 'Diferencia cambio', val: props.cashClosureData?.cop_conversion },
+].filter(f => show(f.val)));
+
+const creditFields = computed(() => [
+  { label: 'Créditos',           val: props.cashClosureData?.usd_credit },
+  { label: 'Efectivo USD',       val: props.cashClosureData?.usd_cash_payment_credit },
+  { label: 'Binance',            val: props.cashClosureData?.usd_binance_payment_credit },
+  { label: 'Paypal',             val: props.cashClosureData?.usd_paypal_payment_credit },
+  { label: 'Efectivo BS',        val: props.cashClosureData?.bs_cash_payment_credit },
+  { label: 'Pago Móvil BS',     val: props.cashClosureData?.bs_mobile_payment_credit },
+  { label: 'Transferencia BS',  val: props.cashClosureData?.bs_transfer_payment_credit },
+  { label: 'Tarjetas BS',       val: props.cashClosureData?.bs_card_payment_credit },
+  { label: 'Efectivo COP',       val: props.cashClosureData?.cop_cash_payment_credit },
+  { label: 'Transferencia COP', val: props.cashClosureData?.cop_transfer_payment_credit },
+].filter(f => show(f.val)));
+
+const closeModal = () => emit("update:isDialogVisible", false);
 
 const completeClosure = () => {
   const closureData = {
@@ -49,334 +84,204 @@ const completeClosure = () => {
   emit("complete-cash-closure", [closureData, props.cashClosureData]);
   closeModal();
 };
-
 </script>
+
 <template>
-  <VDialog v-model="dialogVisible">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold pr-1">Cierre de Caja </span>
+  <VDialog v-model="dialogVisible" max-width="780px" scrollable>
+    <VCard class="rounded-xl">
+      <!-- Header -->
+      <VCardTitle class="d-flex align-center px-6 py-4 border-b">
+        <VAvatar color="primary" variant="tonal" rounded class="mr-3">
+          <VIcon icon="tabler-cash-register" />
+        </VAvatar>
+        <div>
+          <h3 class="text-h6 font-weight-bold mb-0">Cierre de Caja</h3>
+          <span class="text-caption text-medium-emphasis">Confirma el resumen antes de cerrar</span>
+        </div>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+        <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
-      <VDivider />
-      <VCardText>
-        <p class="text-h6 font-weight-medium mb-0">
-          Total de USD
-          {{ formatCurrency(parseFloat(props.cashClosureData.total_usd)) }}
-        </p>
 
-        <VRow class="pt-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Binance:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_binance }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Paypal:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_paypal }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Efectivo en USD:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_cash }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Diferencia por cambio:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_conversion }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
+      <VCardText class="pa-6" style="background-color: #f8f9fa;">
 
-         <VRow class="pb-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Saldo del cliente:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_balance }}
-              </span>
-            </div>
-          </VCol>
-         </VRow> 
-        <VDivider />
+        <!-- Sección USD -->
+        <VCard v-if="totalUsd > 0" variant="outlined" class="mb-4 rounded-lg">
+          <VCardItem class="pa-4 pb-2">
+            <template #prepend>
+              <VAvatar color="success" variant="tonal" size="32" rounded>
+                <VIcon icon="tabler-currency-dollar" size="16" />
+              </VAvatar>
+            </template>
+            <VCardTitle class="text-body-1 font-weight-bold">Total USD</VCardTitle>
+            <template #append>
+              <VChip color="success" size="small" variant="flat" class="font-weight-bold">
+                {{ formatCurrency(totalUsd, 'USD') }}
+              </VChip>
+            </template>
+          </VCardItem>
+          <VCardText class="pa-0 px-4 pb-3" v-if="usdFields.length">
+            <VRow dense>
+              <VCol v-for="f in usdFields" :key="f.label" cols="6" sm="4">
+                <div class="d-flex flex-column py-1">
+                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
 
-        <p class="text-h6 font-weight-medium mb-0 pt-2">
-          Total de Bs
-          {{ formatCurrency(parseFloat(props.cashClosureData.total_bs)) }}
-        </p>
+        <!-- Sección BS -->
+        <VCard v-if="totalBs > 0" variant="outlined" class="mb-4 rounded-lg">
+          <VCardItem class="pa-4 pb-2">
+            <template #prepend>
+              <VAvatar color="warning" variant="tonal" size="32" rounded>
+                <VIcon icon="tabler-cash" size="16" />
+              </VAvatar>
+            </template>
+            <VCardTitle class="text-body-1 font-weight-bold">Total Bs</VCardTitle>
+            <template #append>
+              <VChip color="warning" size="small" variant="flat" class="font-weight-bold">
+                {{ formatCurrency(totalBs, 'BS') }}
+              </VChip>
+            </template>
+          </VCardItem>
+          <VCardText class="pa-0 px-4 pb-3" v-if="bsFields.length">
+            <VRow dense>
+              <VCol v-for="f in bsFields" :key="f.label" cols="6" sm="4">
+                <div class="d-flex flex-column py-1">
+                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
 
-        <VRow class="py-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Efectivo:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_cash }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Pago movil:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_mobile }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Transferencia:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_transfer }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">T. Debito:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_card_debito }}
-              </span>
-            </div>
-          </VCol>
-           <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">T. Crédito:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_card_credit }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
-        <VDivider />
-        <p class="text-h6 font-weight-medium mb-0 pt-2">
-          Total de COP
-          {{
-            formatCurrency(parseFloat(totalCopConSobrante), "COP")
-          }}
-        </p>
-
-        <VRow class="py-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Efectivo en COP:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_cash }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Transferencia:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_transfer }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Diferencia por cambio:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                -{{ props.cashClosureData.cop_conversion }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Sobrante en peso:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-               <VTextField
+        <!-- Sección COP -->
+        <VCard variant="outlined" class="mb-4 rounded-lg">
+          <VCardItem class="pa-4 pb-2">
+            <template #prepend>
+              <VAvatar color="info" variant="tonal" size="32" rounded>
+                <VIcon icon="tabler-coin" size="16" />
+              </VAvatar>
+            </template>
+            <VCardTitle class="text-body-1 font-weight-bold">Total COP</VCardTitle>
+            <template #append>
+              <VChip color="info" size="small" variant="flat" class="font-weight-bold">
+                {{ formatCurrency(totalCopConSobrante, 'COP') }}
+              </VChip>
+            </template>
+          </VCardItem>
+          <VCardText class="pa-0 px-4 pb-3">
+            <VRow dense>
+              <VCol v-for="f in copFields" :key="f.label" cols="6" sm="4">
+                <div class="d-flex flex-column py-1">
+                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                </div>
+              </VCol>
+            </VRow>
+            <!-- Sobrante en Peso -->
+            <VRow dense class="mt-1">
+              <VCol cols="12" sm="6">
+                <VCard variant="tonal" color="warning" class="pa-3 rounded-lg">
+                  <div class="d-flex align-center gap-2 mb-2">
+                    <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
+                    <span class="text-caption font-weight-bold text-warning">Sobrante en Peso (COP)</span>
+                  </div>
+                  <VTextField
                     v-model="sobranteCop"
-                    placeholder="Monto Sobrante"
+                    placeholder="0"
                     type="number"
-                    class="p-2"
+                    density="compact"
+                    variant="solo"
+                    bg-color="white"
+                    hide-details
+                    prefix="$"
                   />
-              </span>
-            </div>
-          </VCol>
-        </VRow>
-        <VDivider />
-        <p class="text-h6 font-weight-medium mb-0 pt-2">
-          Total de Créditos
-          {{ formatCurrency(parseFloat(props.cashClosureData.usd_credit)) }}
-        </p>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="6">
+                <div class="d-flex flex-column pa-3 h-100 justify-center">
+                  <span class="text-caption text-medium-emphasis mb-1">Efectivo a entregar (COP)</span>
+                  <span class="text-h6 font-weight-bold text-info">
+                    {{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}
+                  </span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
 
-        <VRow class="pt-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Créditos:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_credit }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
-        <VDivider />
-        <p class="text-h6 font-weight-medium mb-0 pt-2">Abonos de créditos</p>
+        <!-- Sección Créditos (solo si hay) -->
+        <VCard v-if="totalCredits > 0" variant="outlined" class="mb-4 rounded-lg">
+          <VCardItem class="pa-4 pb-2">
+            <template #prepend>
+              <VAvatar color="secondary" variant="tonal" size="32" rounded>
+                <VIcon icon="tabler-credit-card" size="16" />
+              </VAvatar>
+            </template>
+            <VCardTitle class="text-body-1 font-weight-bold">Créditos y Abonos</VCardTitle>
+            <template #append>
+              <VChip color="secondary" size="small" variant="flat" class="font-weight-bold">
+                {{ formatCurrency(totalCredits, 'USD') }}
+              </VChip>
+            </template>
+          </VCardItem>
+          <VCardText class="pa-0 px-4 pb-3" v-if="creditFields.length">
+            <VRow dense>
+              <VCol v-for="f in creditFields" :key="f.label" cols="6" sm="4">
+                <div class="d-flex flex-column py-1">
+                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
 
-        <VRow class="pt-2">
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Efectivo en USD:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_cash_payment_credit }}
-              </span>
+        <!-- Resumen final a entregar -->
+        <VCard variant="flat" color="primary" class="rounded-lg">
+          <VCardText class="pa-4">
+            <div class="d-flex align-center gap-2 mb-3">
+              <VIcon icon="tabler-report-money" color="white" size="20" />
+              <span class="text-body-2 font-weight-bold text-white">RESUMEN A ENTREGAR</span>
             </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Binance:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_binance_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Paypal:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_paypal_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Efectivo:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_cash_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
+            <VRow dense>
+              <VCol cols="12" sm="4" v-if="totalUsd > 0">
+                <div class="d-flex flex-column">
+                  <span class="text-caption text-white opacity-70">Efectivo USD</span>
+                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(parseFloat(cashClosureData?.usd_delivered) || 0, 'USD') }}</span>
+                </div>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <div class="d-flex flex-column">
+                  <span class="text-caption text-white opacity-70">Efectivo COP</span>
+                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}</span>
+                </div>
+              </VCol>
+              <VCol cols="12" sm="4" v-if="totalCredits > 0">
+                <div class="d-flex flex-column">
+                  <span class="text-caption text-white opacity-70">Créditos</span>
+                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalCredits, 'USD') }}</span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCardText>
+        </VCard>
 
-        <VRow>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Pago Movil:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_mobile_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Transferencias:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_transfer_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis">Tarjetas:</span>
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.bs_card_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Efectivo en COP:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_cash_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
-        <VRow class='pb-2'>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Transferencias:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.cop_transfer_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Diferencia por cambio:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                -{{ props.cashClosureData.cop_conversion_payment_credit }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
-
-        <VDivider />
-
-        <VRow class='pt-2'>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Entregar Efectivo en USD:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ props.cashClosureData.usd_delivered }}
-              </span>
-            </div>
-          </VCol>
-          <VCol cols="12" sm="6" md="3">
-            <div class="d-flex flex-column">
-              <span class="text-caption text-medium-emphasis"
-                >Entregar Efectivo en COP:</span
-              >
-              <span class="text-body-1 font-weight-medium text-high-emphasis">
-                {{ totalEfectivoCopConSobrante }}
-              </span>
-            </div>
-          </VCol>
-        </VRow>
       </VCardText>
 
-      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeModal"
-          class="w-50"
-        >
+      <VDivider />
+
+      <VCardActions class="pa-4 d-flex gap-3">
+        <VBtn color="secondary" variant="tonal" @click="closeModal" class="flex-grow-1" size="large">
           Cancelar
         </VBtn>
-        <VBtn color="primary" variant="flat" @click="completeClosure" class="w-50">
-          Completar
+        <VBtn color="error" variant="flat" @click="completeClosure" class="flex-grow-1" size="large"
+          prepend-icon="tabler-lock">
+          Cerrar Caja
         </VBtn>
       </VCardActions>
     </VCard>
