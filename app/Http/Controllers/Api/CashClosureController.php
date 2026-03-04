@@ -12,6 +12,7 @@ use App\Exports\CashClosureExport;
 use App\Http\Requests\CashClosure\CloseCashClosureRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Models\Order;
 
 class CashClosureController extends Controller
 {
