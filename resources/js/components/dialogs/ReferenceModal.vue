@@ -40,16 +40,26 @@ const translateMethod = (methodKey) => {
   return translations[key] || key.replace(/_/g, " ");
 };
 
+// Normalizar moneda a código ISO 4217 válido
+const normalizeCurrency = (code) => {
+  const map = { bs: "VES", "bs.": "VES", cop: "COP", usd: "USD", bolivar: "VES", ves: "VES" };
+  const key = String(code || "").toLowerCase().trim();
+  return map[key] ?? "USD";
+};
+
 const formattedReferences = computed(() => {
   if (!props.reference || !Array.isArray(props.reference)) return [];
-  return props.reference.map(payment => ({
-    ...payment,
-    method_label: translateMethod(payment.method || payment.payment_method),
-    amount_display: new Intl.NumberFormat("es-VE", { 
-      style: "currency", 
-      currency: payment.order_currency || "USD" 
-    }).format(payment.amount || 0)
-  }));
+  return props.reference.map(payment => {
+    const currency = normalizeCurrency(payment.order_currency);
+    return {
+      ...payment,
+      method_label: translateMethod(payment.method || payment.payment_method),
+      amount_display: new Intl.NumberFormat("es-VE", { 
+        style: "currency", 
+        currency
+      }).format(payment.amount || 0)
+    };
+  });
 });
 
 const confirmReference = async (item) => {
