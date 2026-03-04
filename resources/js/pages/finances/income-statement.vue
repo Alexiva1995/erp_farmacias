@@ -143,66 +143,43 @@ watch([startDate, endDate], () => applyFilters());
 
 <template>
   <div class="income-statement-view">
-    <!-- Componente Header -->
-    <div class="d-flex align-center justify-space-between mb-4">
-      <div>
-        <h2 class="text-h4 font-weight-bold d-flex align-center gap-2">
-          <VIcon icon="tabler-chart-bar" color="primary" size="32" />
-          Estado de Resultados
-        </h2>
-        <span class="text-body-2 text-medium-emphasis">
-          Resumen financiero de ingresos, costos y utilidad neta
-        </span>
-      </div>
-    </div>
-
-    <!-- Panel de Filtros Premium -->
-    <VCard variant="outlined" class="mb-6 rounded-lg bg-surface">
-      <VCardText class="pa-4 pb-2">
-        <VRow dense align="center">
-          <VCol cols="12" sm="3" md="4">
-            <VSelect
-              v-model="selectedQuickFilter"
-              :items="quickFilterOptions"
-              label="Filtro Rápido"
-              prepend-inner-icon="tabler-calendar-stats"
-              variant="outlined"
-              density="compact"
-              hide-details
-              @update:model-value="setQuickFilter"
-            />
-          </VCol>
-          <VCol cols="12" sm="4" md="3">
+    <VCard class="mb-6">
+      <VCardText>
+        <VRow>
+          <VCol cols="12" sm="6" md="4">
             <AppDateTimePicker
-              v-model="startDate"
-              label="Desde"
-              density="compact"
+              v-model:model-value="startDate"
+              placeholder="Fecha Desde"
               clearable
-              hide-details
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
             />
           </VCol>
-          <VCol cols="12" sm="4" md="3">
+          <VCol cols="12" sm="6" md="4">
             <AppDateTimePicker
-              v-model="endDate"
-              label="Hasta"
-              density="compact"
+              v-model:model-value="endDate"
+              placeholder="Fecha Hasta"
               clearable
-              hide-details
+              :config="{
+                altInput: true,
+                altFormat: 'Y-m-d',
+                dateFormat: 'Y-m-d',
+              }"
             />
-          </VCol>
-          <VCol cols="12" sm="1" md="2" class="text-right">
-            <VBtn
-              color="secondary"
-              variant="tonal"
-              prepend-icon="tabler-filter-x"
-              class="h-100"
-              @click="clearFilters"
-            >
-              LIMPIAR
-            </VBtn>
           </VCol>
         </VRow>
       </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+        <VBtn color="secondary" variant="outlined" @click="clearFilters">
+          Limpiar Filtros
+        </VBtn>
+      </VCardActions>
     </VCard>
 
     <!-- Tarjetas de Resumen Dinámicas (Skeletons integrados) -->
