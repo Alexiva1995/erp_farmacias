@@ -5,6 +5,16 @@ import { reactive, ref, watch } from "vue";
 
 export function useExpenses() {
   const isDeductible = ref(false);
+  // Pestaña activa: null = Todos, o 'Pending' | 'Approved' | 'Cancelled'
+  const activeTab = ref(null);
+
+  const stats = reactive({
+    totalApproved: 0,
+    totalPending: 0,
+    totalCancelled: 0,
+    topCategory: null,
+    loading: false,
+  });
 
   const modal = reactive({
     statu: false,
@@ -171,6 +181,11 @@ export function useExpenses() {
     actualizarTabla();
   });
 
+  watch(activeTab, () => {
+    page.value = 1;
+    actualizarTabla();
+  });
+
   watch(
     [
       buscardor_filtro,
@@ -223,8 +238,10 @@ export function useExpenses() {
   }
 
   async function consultarGastos() {
+    // Si hay pestaña activa => filtrar por ese status; si no => todos
+    const statusFiltro = activeTab.value ? [activeTab.value] : ["Approved", "Cancelled", "Pending"];
     const DATA = {
-      status,
+      status: statusFiltro,
       buscardor_filtro: buscardor_filtro.value,
       currency: currency.value,
       category_id_filtro: category_id_filtro.value,
@@ -274,6 +291,30 @@ export function useExpenses() {
       toast.error("Error al actualizar la tabla de gastos");
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function consultarStats() {
+    stats.loading = true;
+    try {
+      const [approved, pending, cancelled] = await Promise.all([
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Approved"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Pending"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Cancelled"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+      ]);
+      stats.totalApproved = approved.data?.data?.total ?? 0;
+      stats.totalPending = pending.data?.data?.total ?? 0;
+      stats.totalCancelled = cancelled.data?.data?.total ?? 0;
+    } catch (e) {
+      console.error("Error cargando stats:", e);
+    } finally {
+      stats.loading = false;
     }
   }
 
@@ -507,12 +548,14 @@ export function useExpenses() {
   async function initialize() {
     formulario.user_id = 1;
     await consultarCategorias();
-    await actualizarTabla();
+    await Promise.all([actualizarTabla(), consultarStats()]);
   }
 
   return {
     // States
     isDeductible,
+    activeTab,
+    stats,
     modal,
     statuModule,
     formulario,

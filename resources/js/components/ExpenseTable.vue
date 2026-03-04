@@ -19,31 +19,17 @@ function verImagne(item){
 }
 
 const headers = [
-  { title: 'id', key: 'id', sortable: true,},
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
-  { title: 'Categoria', key: 'category.name', sortable: false },
-  { title: 'Monto', key: 'amount', sortable: true },
-  { title: 'Moneda', key: 'currency', sortable: true },
-  { title: 'Cuenta', key: 'count', sortable: true },
-  { title: 'Deducible', key: 'is_deductible', sortable: false, value: (item) => {
-    if(item.is_deductible==null){
-      return ""
-    }
-    if(item.is_deductible=="1"){
-      return "Si"
-    }
-    if(item.is_deductible=="0"){
-      return "No"
-    }
-  }},
-  { title: 'Usuario', key: 'user.username', sortable: false },
-  { title: 'estado', key: 'status', sortable: false},
-  { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
-    const fechaStr = item.created_at.replace('Z', '');
-    const fecha = dayjs(fechaStr).format('DD/MM/YYYY');
-    return fecha;
-  }},
-  { title: 'Accion', key: 'acciones', sortable: false },
+  { title: 'ID',             key: 'id',            sortable: true },
+  { title: 'Descripción',     key: 'name',          sortable: true },
+  { title: 'Categoría',       key: 'category.name', sortable: false },
+  { title: 'Monto',           key: 'amount',        sortable: true, align: 'end' },
+  { title: 'Moneda',          key: 'currency',      sortable: true, align: 'center' },
+  { title: 'Cuenta/Método',   key: 'count',         sortable: true },
+  { title: 'Deducible',       key: 'is_deductible', sortable: false, align: 'center' },
+  { title: 'Usuario',         key: 'user.username', sortable: false },
+  { title: 'Estado',          key: 'status',        sortable: false, align: 'center' },
+  { title: 'Fecha',           key: 'created_at',    sortable: true },
+  { title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center' },
 ];
 </script>
 <template>
@@ -55,42 +41,133 @@ const headers = [
       :items-length="props.total"
       :loading="loading"
       :page="props.page"
+      hover
+      class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
-      <template #item.id="{ item }"
-        ><span class="font-weight-medium">{{ item.id }}</span></template
-      >
+      <!-- ID -->
+      <template #item.id="{ item }">
+        <span class="font-weight-bold text-primary">#{{ item.id }}</span>
+      </template>
 
-      <template v-slot:item.status="{ item }">
+      <!-- Nombre / Descripción -->
+      <template #item.name="{ item }">
+        <div class="d-flex flex-column">
+          <span class="text-body-1 font-weight-medium text-high-emphasis">
+            {{ item.name }} {{ item.last_name || '' }}
+          </span>
+          <span v-if="item.description" class="text-caption text-medium-emphasis">
+            {{ item.description }}
+          </span>
+        </div>
+      </template>
+
+      <!-- Categoría con Avatar -->
+      <template #item.category.name="{ item }">
+        <div class="d-flex align-center gap-2">
+          <VAvatar
+            size="28"
+            color="primary"
+            variant="tonal"
+          >
+            <VIcon icon="tabler-tag" size="16" />
+          </VAvatar>
+          <span class="text-body-2">{{ item.category?.name || 'S/C' }}</span>
+        </div>
+      </template>
+
+      <!-- Monto Formateado -->
+      <template #item.amount="{ item }">
+        <div class="d-flex flex-column align-end">
+          <span class="text-body-1 font-weight-bold text-error">
+            {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs' : 'COP' }}
+            {{ Number(item.amount).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          </span>
+          <span v-if="item.currency !== 'USD'" class="text-caption text-medium-emphasis">
+            ≈ ${{ Number(item.total_usd || 0).toFixed(2) }}
+          </span>
+        </div>
+      </template>
+
+      <!-- Deducible -->
+      <template #item.is_deductible="{ item }">
+        <VIcon
+          v-if="item.is_deductible == '1'"
+          icon="tabler-check"
+          color="success"
+          size="20"
+        />
+        <VIcon
+          v-else-if="item.is_deductible == '0'"
+          icon="tabler-x"
+          color="error"
+          size="20"
+        />
+        <span v-else>-</span>
+      </template>
+
+      <!-- Estado con Chips Premium -->
+      <template #item.status="{ item }">
         <VChip
+          size="small"
           :color="
             item.status === 'Approved'
               ? 'success'
               : item.status === 'Cancelled'
-              ? 'warning'
-              : 'error'
+              ? 'error'
+              : 'warning'
           "
+          variant="tonal"
+          class="font-weight-bold"
         >
-          <span v-if="item.status === 'Pending'">Pendiente</span>
-          <span v-else-if="item.status === 'Approved'">Aprobado</span>
-          <span v-else-if="item.status === 'Cancelled'">Cancelado</span>
-          <span v-else>{{ item.status }}</span>
+          <template #prepend>
+            <VIcon
+              size="12"
+              start
+              :icon="
+                item.status === 'Approved'
+                  ? 'tabler-circle-check'
+                  : item.status === 'Cancelled'
+                  ? 'tabler-circle-x'
+                  : 'tabler-clock'
+              "
+            />
+          </template>
+          {{ 
+            item.status === 'Pending' ? 'Pendiente' : 
+            item.status === 'Approved' ? 'Aprobado' : 
+            item.status === 'Cancelled' ? 'Cancelado' : item.status 
+          }}
         </VChip>
       </template>
 
-      <!-- <template #item.acciones="{ item }">
-        <IconBtn @click="emit('edit', item.id)"
-          ><VIcon icon="tabler-edit"
-        /></IconBtn>
-        <IconBtn @click="emit('delete', item.id)"
-          ><VIcon icon="tabler-trash"
-        /></IconBtn>
-      </template> -->
+      <!-- Fecha -->
+      <template #item.created_at="{ item }">
+        <span class="text-body-2 text-medium-emphasis">
+          {{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
+        </span>
+      </template>
 
+      <!-- Acciones -->
       <template #item.acciones="{ item }">
-        <IconBtn @click="() => verImagne(item)" :disabled="!item.url_file">
-          <VIcon icon="tabler-photo-search" />
-        </IconBtn>
+        <div class="d-flex align-center justify-center">
+          <IconBtn
+            title="Ver comprobante"
+            @click="() => verImagne(item)"
+            :disabled="!item.url_file"
+            size="small"
+          >
+            <VIcon icon="tabler-eye" :color="item.url_file ? 'primary' : 'grey'" />
+          </IconBtn>
+          
+          <!-- Botón de detalles (Drawer - Futura implementación) -->
+          <IconBtn
+            title="Ver detalles"
+            size="small"
+          >
+            <VIcon icon="tabler-info-circle" color="secondary" />
+          </IconBtn>
+        </div>
       </template>
     </VDataTableServer>
   </VCard>
