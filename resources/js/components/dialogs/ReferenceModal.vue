@@ -42,13 +42,13 @@ const translateMethod = (methodKey) => {
 
 const formattedReferences = computed(() => {
   if (!props.reference || !Array.isArray(props.reference)) return [];
-  return props.reference.map(ref => ({
-    ...ref,
-    method_label: translateMethod(ref.method || ref.payment_method),
+  return props.reference.map(payment => ({
+    ...payment,
+    method_label: translateMethod(payment.method || payment.payment_method),
     amount_display: new Intl.NumberFormat("es-VE", { 
       style: "currency", 
-      currency: ref.order_currency || "USD" 
-    }).format(ref.amount || 0)
+      currency: payment.order_currency || "USD" 
+    }).format(payment.amount || 0)
   }));
 });
 

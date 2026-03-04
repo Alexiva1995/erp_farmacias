@@ -11,10 +11,10 @@ import ClosingModal from "@/components/dialogs/ClosingModal.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
 import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
 import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
-import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
+import ConsolidationReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -56,7 +56,7 @@ const isPrinting = ref(false);
 const viewModalDaily = ref(false);
 const dailyCashData = ref({});
 
-const reference = ref([]);
+const referenceData = ref([]);
 const viewModalReference = ref(false);
 
 const monthlyCashDataSellers = ref(null);
@@ -529,10 +529,13 @@ const referenceDaily = async (daily) => {
       });
     });
 
-    reference.value = allPaymentReferences;
-    const itemDaily = daily;
-    dailyCashData.value = itemDaily;
+    const references = allPaymentReferences;
     viewModalReference.value = true;
+    
+    // Usar nextTick para asegurar que el componente esté montado antes de pasarle datos complejos
+    await nextTick();
+    referenceData.value = references;
+    dailyCashData.value = daily;
   } catch (error) {
     console.error("Error al obtener las referencias del cierre diario:", error);
     toast.error("Error al obtener las referencias del cierre diario.");
@@ -710,9 +713,10 @@ const closingDaily = async (daily) => {
     @close="handleCloseViewModalDaily"
   />
 
-  <ReferenceModal
+  <ConsolidationReferenceModal
+    v-if="viewModalReference"
     v-model:isDialogVisible="viewModalReference"
-    :reference="reference"
+    :reference="referenceData"
     :cashData="dailyCashData"
     @close="handleCloseViewModalReference"
   />
