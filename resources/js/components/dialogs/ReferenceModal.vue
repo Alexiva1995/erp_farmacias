@@ -177,13 +177,12 @@ const closeModal = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4">
-        <VSpacer />
+      <VCardActions class="pa-4 d-flex flex-column gap-2">
         <VBtn
           color="secondary"
           variant="tonal"
           prepend-icon="tabler-printer"
-          class="px-6"
+          class="flex-grow-1 w-100"
           @click="closeModal"
           disabled
         >
@@ -192,7 +191,7 @@ const closeModal = () => {
         <VBtn
           color="primary"
           variant="flat"
-          class="px-8"
+          class="flex-grow-1 w-100"
           @click="closeModal"
         >
           Finalizar Revisión
