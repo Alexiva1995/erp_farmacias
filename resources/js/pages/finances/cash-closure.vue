@@ -56,7 +56,7 @@ const isPrinting = ref(false);
 const viewModalDaily = ref(false);
 const dailyCashData = ref({});
 
-const reference = ref(null);
+const reference = ref([]);
 const viewModalReference = ref(false);
 
 const monthlyCashDataSellers = ref(null);
@@ -480,6 +480,8 @@ const viewDailyCash = async (daily) => {
   }
 };
 
+const loadingRefId = ref(null);
+
 const referenceDaily = async (daily) => {
   try {
     if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
@@ -504,6 +506,7 @@ const referenceDaily = async (daily) => {
           ...method,
           order_id: order.id,
           order_currency: order.currency,
+          seller_name: closing.seller?.username || 'N/A'
         }));
       });
     });
@@ -591,14 +594,33 @@ const closingCashAllSellers = async (cash) => {
   }
 };
 
+const deliveryModalRef = ref(null);
+const dailyCashModalRef = ref(null);
+
 const closingDaily = async (daily) => {
   try {
-    const item = daily;
-    dailyCashData.value = item;
-    viewModalClosing.value = true;
+    dailyCashData.value = daily;
+    
+    // Abrimos los modales internamente y disparamos la impresión
+    // Nota: Necesitaremos exponer las funciones de impresión en los componentes hijos
+    toast.info("Generando reportes de Cierre y Acta...");
+    
+    viewModalDaily.value = true;
+    viewModalDelivery.value = true;
+
+    // Pequeño delay para asegurar que los componentes estén montados
+    setTimeout(async () => {
+      if (dailyCashModalRef.value?.printReport) {
+        await dailyCashModalRef.value.printReport();
+      }
+      if (deliveryModalRef.value?.printReport) {
+        await deliveryModalRef.value.printReport();
+      }
+    }, 500);
+
   } catch (error) {
-    console.error("Error al obtener los cierre", error);
-    toast.error("Error al obtener los cierre.");
+    console.error("Error al procesar la impresión dual:", error);
+    toast.error("Error al generar los reportes.");
   }
 };
 </script>
@@ -637,6 +659,7 @@ const closingDaily = async (daily) => {
     :total-dailyCash="totalDailyCash"
     :items-per-page="itemsPerPageDailyCash"
     :page="pageDailyCash"
+    :loading-id="loadingRefId"
     @update:options="updateTableOptionsDailyCash"
     @view-cash="viewDailyCash"
     @delivery="deliveryDaily"
@@ -663,6 +686,7 @@ const closingDaily = async (daily) => {
   />
 
   <DailyCashModal
+    ref="dailyCashModalRef"
     v-model:isDialogVisible="viewModalDaily"
     :cashData="dailyCashData"
     @close="handleCloseViewModalDaily"
@@ -676,6 +700,7 @@ const closingDaily = async (daily) => {
   />
 
   <DeliveryModal
+    ref="deliveryModalRef"
     v-model:isDialogVisible="viewModalDelivery"
     :cashData="dailyCashData"
     @close="handleCloseViewModalDelivery"
