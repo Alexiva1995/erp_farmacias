@@ -27,6 +27,7 @@ const headers = [
 ];
 
 const translateMethod = (methodKey) => {
+  if (!methodKey) return "Desconocido";
   const translations = {
     CARD: "Tarjeta",
     BANK_TRANSFER: "Transferencia",
@@ -35,17 +36,19 @@ const translateMethod = (methodKey) => {
     PAYPAL: "PayPal",
     MOBILE_PAYMENT: "Pago Móvil",
   };
-  return translations[methodKey.toUpperCase()] || methodKey.toUpperCase().replace(/_/g, " ");
+  const key = String(methodKey).toUpperCase();
+  return translations[key] || key.replace(/_/g, " ");
 };
 
 const formattedReferences = computed(() => {
+  if (!props.reference || !Array.isArray(props.reference)) return [];
   return props.reference.map(ref => ({
     ...ref,
-    method_label: translateMethod(ref.method),
+    method_label: translateMethod(ref.method || ref.payment_method),
     amount_display: new Intl.NumberFormat("es-VE", { 
       style: "currency", 
       currency: ref.order_currency || "USD" 
-    }).format(ref.amount)
+    }).format(ref.amount || 0)
   }));
 });
 

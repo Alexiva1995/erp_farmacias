@@ -493,11 +493,22 @@ const referenceDaily = async (daily) => {
         (order) => order.status === "Completed"
       );
       return completedOrders.flatMap((order) => {
-        if (!order.payment_methods || order.payment_methods.length === 0) {
+        let paymentMethods = order.payment_methods;
+        if (typeof paymentMethods === 'string') {
+          try {
+            paymentMethods = JSON.parse(paymentMethods);
+          } catch (e) {
+            paymentMethods = [];
+          }
+        }
+        if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) {
           return [];
         }
-        const methodsWithReference = order.payment_methods.filter(
+        
+        const methodsWithReference = paymentMethods.filter(
           (method) =>
+            method &&
+            method.reference !== undefined &&
             method.reference !== null &&
             method.reference !== "" &&
             method.reference !== "null"
