@@ -489,11 +489,11 @@ const referenceDaily = async (daily) => {
       return [];
     }
     const allPaymentReferences = daily.cash_closings.flatMap((closing) => {
-      const completedOrders = closing.orders.filter(
-        (order) => order.status === "Completed"
-      );
-      return completedOrders.flatMap((order) => {
+      // Procesar todas las órdenes que tengan pagos, independientemente de su estado para asegurar visibilidad
+      return (closing.orders || []).flatMap((order) => {
         let paymentMethods = order.payment_methods;
+        
+        // Manejar caso donde paymentMethods sea un string JSON
         if (typeof paymentMethods === 'string') {
           try {
             paymentMethods = JSON.parse(paymentMethods);
@@ -501,23 +501,30 @@ const referenceDaily = async (daily) => {
             paymentMethods = [];
           }
         }
-        if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) {
-          return [];
-        }
         
+        // Asegurar que sea un array
+        if (!Array.isArray(paymentMethods)) {
+          paymentMethods = paymentMethods ? [paymentMethods] : [];
+        }
+
+        if (paymentMethods.length === 0) return [];
+        
+        // Filtrar solo métodos que tengan una referencia válida
         const methodsWithReference = paymentMethods.filter(
           (method) =>
             method &&
             method.reference !== undefined &&
             method.reference !== null &&
-            method.reference !== "" &&
-            method.reference !== "null"
+            String(method.reference).trim() !== "" &&
+            String(method.reference).toLowerCase() !== "null"
         );
+
         return methodsWithReference.map((method) => ({
           ...method,
           order_id: order.id,
           order_currency: order.currency,
-          seller_name: closing.seller?.username || 'N/A'
+          seller_name: closing.seller?.username || 'N/A',
+          is_confirmed: method.is_confirmed || false
         }));
       });
     });
