@@ -110,25 +110,29 @@ public function getPaymentMethodsAttribute($value)
 }
 
 
-public function updateTotals()
-{
-    // Sumamos todos los price de los detalles vinculados
-    $newTotal = $this->details()->sum('price');
-    $totalUsd = 0;
-    if (strtoupper($this->currency) === 'USD') {
-        $totalUsd = $newTotal;
-    } else {
-        // Buscamos la tasa de cambio más reciente para la moneda de la orden
-        $exchangeRate = ExchangeRate::where('currency_code', $this->currency)
-            ->latest()
-            ->first();
-        if ($exchangeRate && $exchangeRate->rate > 0) {
-            $totalUsd = $newTotal / $exchangeRate->rate;
+    public function updateTotals()
+    {
+        // Sumamos todos los price de los detalles vinculados
+        $newTotal = $this->details()->sum('price');
+        $totalCost = $this->details()->sum(DB::raw('unit_cost * quantity'));
+        
+        $totalUsd = 0;
+        if (strtoupper($this->currency) === 'USD') {
+            $totalUsd = $newTotal;
+        } else {
+            // Buscamos la tasa de cambio más reciente para la moneda de la orden
+            $exchangeRate = ExchangeRate::where('currency_code', $this->currency)
+                ->latest()
+                ->first();
+            if ($exchangeRate && $exchangeRate->rate > 0) {
+                $totalUsd = $newTotal / $exchangeRate->rate;
+            }
         }
+        
+        $this->update([
+            'total_amount' => $newTotal,
+            'total_amount_usd' => $totalUsd,
+            'total_cost' => $totalCost,
+        ]);
     }
-    $this->update([
-        'total_amount' => $newTotal,
-        'total_amount_usd' => $totalUsd,
-    ]);
-}
 }

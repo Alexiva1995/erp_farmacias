@@ -172,7 +172,7 @@ class OrderActionService
                     $orderItem->quantity = $requestedQuantity;
                     // Pack price handling (usually overridden by caller or pack logic, but keeping existing update logic)
                     $orderItem->price = $unitPriceAtOrder * $requestedQuantity;
-                    $orderItem->unit_cost = $unitPriceAtOrder;
+                    $orderItem->unit_cost = $product->unit_cost; // Costo real, no precio de venta
                     $orderItem->unit_price_usd = $price_usd;
                     $orderItem->save();
                 } else {
@@ -180,7 +180,7 @@ class OrderActionService
                         'product_id' => $validatedData['product_id'],
                         'quantity' => $requestedQuantity,
                         'price' => $unitPriceAtOrder * $requestedQuantity,
-                        'unit_cost' => $unitPriceAtOrder,
+                        'unit_cost' => $product->unit_cost, // Costo real, no precio de venta
                         'unit_price_usd' => $price_usd,
                         'pack_id' => $packId,
                         'product_type' => 'pack',
@@ -334,7 +334,7 @@ class OrderActionService
                     'product_id' => $validatedData['product_id'],
                     'quantity' => $qty,
                     'price' => $calculatedTotalPrice,
-                    'unit_cost' => $finalUnitPrice,
+                    'unit_cost' => $product->unit_cost, // Costo real del producto (siempre en moneda base USD de costos)
                     'unit_price_usd' => $discountPct > 0 ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
                     'pack_id' => null,
                     'product_type' => $rule ? 'offer' : 'normal', // Keep 'offer' if expiration involved, or maybe 'discounted'? Leaving as is for now.
@@ -390,7 +390,7 @@ class OrderActionService
             $targetCurrency = $validatedData['currency'];
             $order->total_amount = $validatedData['total_amount'];
             $order->total_amount_usd = $validatedData['total_amount_usd'];
-            $order->total_cost = $validatedData['total_cost'];
+            // $order->total_cost = $validatedData['total_cost']; // No usar costo del frontend
             $order->currency = $targetCurrency;
             //   dd($targetCurrency);
             $order->save();
@@ -443,9 +443,10 @@ class OrderActionService
                 }
 
                 $item->price = $priceToSet * $item->quantity;
-                $item->unit_cost = $priceToSet;
+                // $item->unit_cost = $priceToSet; // NO sobreescribir el costo real con el precio de venta recalculado
                 $item->save();
             }
+            $order->updateTotals(); // Recalcular costos y totales correctamente en el servidor
             DB::commit();
             return $order;
         } catch (\Exception $e) {
@@ -685,11 +686,11 @@ class OrderActionService
                     }
                     if ($orderId->currency === 'COP') {
                         $detail->price = ceil(($itemData['price'] ?? 0) * $detail->quantity / 100) * 100;
-                        $detail->unit_cost = ceil(($itemData['unit_cost'] ?? 0) / 100) * 100;
+                        // $detail->unit_cost = ceil(($itemData['unit_cost'] ?? 0) / 100) * 100; // No sobreescribir costo real
                         $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) * $detail->quantity / 100) * 100;
                     } else {
                         $detail->price = ($itemData['price'] ?? 0) * $detail->quantity;
-                        $detail->unit_cost = $itemData['unit_cost'] ?? 0;
+                        // $detail->unit_cost = $itemData['unit_cost'] ?? 0; // No sobreescribir costo real
                         $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0) * $detail->quantity;
                     }
                     if (isset($itemData['discount_percentage'])) {
@@ -800,7 +801,7 @@ class OrderActionService
             }
 
             // Recalcular totales desde los detalles en BD (no confiar en el cliente)
-            $orderId->total_amount = $orderId->details->sum('price');
+            $orderId->updateTotals();
             $orderId->total_amount_usd = $orderId->details->sum(function ($d) {
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
