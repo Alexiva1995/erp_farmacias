@@ -5,7 +5,6 @@ namespace App\Services\CashClosure;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\CashClosing;
-use function Amp\Dns\query;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Models\Order;
@@ -21,15 +20,17 @@ class CashClosureQueryService
     private function getBaseQuery(): Builder
     {
         $sellerId = Auth::id();
-        // $sellerId = 2;
-        return CashClosing::query()->where('seller_id', $sellerId)->where('status', CashClosing::CLOSED)
-        ->with([
-            'seller',
-            'orders' => function ($query) {
-                $query->where('status', 'Completed');
-            },
-            'orders.details.product',
-        ]);;
+
+        if (!$sellerId) {
+            return CashClosing::query()->whereRaw('1 = 0');
+        }
+
+        // Sin eager loading de órdenes: la tabla sólo muestra ID y fecha.
+        // Las órdenes se cargan por separado al imprimir/descargar (printCash/downloadCash).
+        return CashClosing::query()
+            ->where('seller_id', $sellerId)
+            ->where('status', CashClosing::CLOSED)
+            ->select(['id', 'closing_date', 'seller_id', 'status']);
     }
 
 
