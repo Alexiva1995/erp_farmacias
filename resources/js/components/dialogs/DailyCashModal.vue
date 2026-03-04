@@ -32,14 +32,43 @@ const closeModal = () => {
   emit("modal-closed");
 };
 
-const filteredCashClosings = computed(() => {
+const processedClosings = computed(() => {
   if (!props.cashData || !props.cashData.cash_closings) {
     return [];
   }
-  return props.cashData.cash_closings.filter(
-    (closing) => closing.total_sales !== "0.00"
-  );
+  return props.cashData.cash_closings
+    .map((closing) => {
+      const bsSum = 
+        parseFloat(closing.bs_cash || 0) + parseFloat(closing.bs_card_debito || 0) + parseFloat(closing.bs_card_credit || 0) +
+        parseFloat(closing.bs_transfer || 0) + parseFloat(closing.bs_mobile || 0) +
+        parseFloat(closing.bs_cash_payment_credit || 0) + parseFloat(closing.bs_card_payment_credit || 0) +
+        parseFloat(closing.bs_transfer_payment_credit || 0) + parseFloat(closing.bs_mobile_payment_credit || 0);
+      
+      const copSum = 
+        parseFloat(closing.cop_cash || 0) + parseFloat(closing.cop_transfer || 0) +
+        parseFloat(closing.cop_cash_payment_credit || 0) + parseFloat(closing.cop_transfer_payment_credit || 0);
+      
+      const usdSum = 
+        parseFloat(closing.usd_cash || 0) + parseFloat(closing.usd_transfer || 0) +
+        parseFloat(closing.usd_paypal || 0) + parseFloat(closing.usd_binance || 0) +
+        parseFloat(closing.usd_credit || 0) +
+        parseFloat(closing.usd_cash_payment_credit || 0) + parseFloat(closing.usd_paypal_payment_credit || 0) +
+        parseFloat(closing.usd_binance_payment_credit || 0) + parseFloat(closing.usd_conversion || 0);
+
+      const totalUsdEq = parseFloat(closing.total_usd || 0) + parseFloat(closing.total_bs_in_usd || 0) + parseFloat(closing.total_cop_in_usd || 0);
+
+      return {
+        ...closing,
+        real_bs: bsSum,
+        real_cop: copSum,
+        real_usd: usdSum,
+        real_total_usd: totalUsdEq
+      };
+    })
+    .filter((c) => c.real_total_usd > 0);
 });
+
+const filteredCashClosings = processedClosings;
 
 const chunkArray = (array, size) => {
   if (!array || !array.length) return [];
@@ -56,6 +85,24 @@ const groupedClosings = computed(() => {
 
 const isSingleSeller = computed(() => {
   return filteredCashClosings.value.length === 1;
+});
+
+const totalBsGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_bs || 0), 0);
+});
+
+const totalCopGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_cop || 0), 0);
+});
+
+const totalUsdGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + (parseFloat(c.total_usd || 0) + parseFloat(c.usd_credit || 0)), 0);
+});
+
+const totalSalesGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => {
+    return acc + (parseFloat(c.total_usd || 0) + parseFloat(c.total_bs_in_usd || 0) + parseFloat(c.total_cop_in_usd || 0));
+  }, 0);
 });
 
 const ticketStyles = `
@@ -204,7 +251,7 @@ const getDividerWidth = (name) => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL USD</span>
                   <VIcon icon="tabler-currency-dollar" color="success" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold text-success">{{ formatCurrency(props.cashData.total_usd, 'USD') }}</h4>
+                <h4 class="text-h6 font-weight-bold text-success">{{ formatCurrency(totalUsdGlobal, 'USD') }}</h4>
                 <div class="text-caption text-medium-emphasis mt-1">Efectivo + Transferencias</div>
               </VCardItem>
             </VCard>
@@ -217,7 +264,7 @@ const getDividerWidth = (name) => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL BS</span>
                   <VIcon icon="tabler-currency-bolivar" color="warning" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(props.cashData.total_bs, 'BS') }}</h4>
+                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(totalBsGlobal, 'BS') }}</h4>
                 <div class="text-caption text-warning font-weight-medium mt-1">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div>
               </VCardItem>
             </VCard>
@@ -230,7 +277,7 @@ const getDividerWidth = (name) => {
                   <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL COP</span>
                   <VIcon icon="tabler-currency-peso" color="info" size="20" />
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(props.cashData.total_cop, 'COP') }}</h4>
+                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(totalCopGlobal, 'COP') }}</h4>
                 <div class="text-caption text-info font-weight-medium mt-1">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div>
               </VCardItem>
             </VCard>
@@ -240,11 +287,11 @@ const getDividerWidth = (name) => {
             <VCard variant="flat" class="bg-primary text-white rounded-lg border-0 shadow-sm h-100">
               <VCardItem class="pa-4">
                 <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold opacity-80">VENTA BRUTA GENERAL</span>
+                  <span class="text-caption font-weight-bold text-white opacity-80">VENTA BRUTA GENERAL</span>
                   <VIcon icon="tabler-sum" color="white" size="20" />
                 </div>
                 <h4 class="text-h5 font-weight-bold text-white mt-2">
-                  {{ formatCurrency(parseFloat(props.cashData.total_usd || 0) + parseFloat(props.cashData.total_bs_in_usd || 0) + parseFloat(props.cashData.total_cop_in_usd || 0), 'USD') }}
+                  {{ formatCurrency(totalSalesGlobal, 'USD') }}
                 </h4>
               </VCardItem>
             </VCard>
@@ -284,20 +331,20 @@ const getDividerWidth = (name) => {
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">USD:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-primary">
-                        {{ formatCurrency(parseFloat(closing.total_usd || 0) + parseFloat(closing.usd_credit || 0), 'USD') }}
+                        {{ formatCurrency(closing.real_usd, 'USD') }}
                       </td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">BS:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-warning">
-                        {{ formatCurrency(closing.total_bs, 'BS') }} 
+                        {{ formatCurrency(closing.real_bs, 'BS') }} 
                         <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ formatCurrency(closing.total_bs_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">COP:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-info">
-                        {{ formatCurrency(closing.total_cop, 'COP') }}
+                        {{ formatCurrency(closing.real_cop, 'COP') }}
                         <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ formatCurrency(closing.total_cop_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
@@ -314,90 +361,89 @@ const getDividerWidth = (name) => {
           </VCol>
         </VRow>
 
-        <!-- ESTRUCTURA OCULTA PARA EL REPORTE PDF (ESTILO A4 PROFESIONAL) -->
+        <!-- ESTRUCTURA OCULTA PARA EL REPORTE PDF (ESTILO A4 PREMIUM) -->
         <div id="daily-cash-report" class="d-none">
-          <div style=" padding: 20px; color: #333;font-family: Helvetica, Arial, sans-serif; inline-size: 100%;">
-            <table style="inline-size: 100%; margin-block-end: 20px;">
+          <div style="padding: 30px; background-color: white; color: #1a202c; font-family: Roboto, Helvetica, Arial, sans-serif;">
+            <!-- Encabezado con Diseño -->
+            <table style=" border-block-end: 2px solid #2d3748;inline-size: 100%; margin-block-end: 25px; padding-block-end: 20px;">
               <tr>
-                <td style="inline-size: 50%; text-align: start; vertical-align: top;">
-                  <img :src="BASE64_LOGO_DATA" alt="Logo" style="inline-size: 140px;" />
+                <td style="inline-size: 50%;">
+                  <img :src="BASE64_LOGO_DATA" alt="Logo" style="inline-size: 160px;" />
                 </td>
-                <td style="inline-size: 50%; text-align: end; vertical-align: top;">
-                  <h2 style="margin: 0; color: #2c3e50; font-size: 22px;">Resumen Consolidado</h2>
-                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Reporte Diario N°: <strong>{{ props.cashData.id }}</strong></p>
-                  <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">Fecha: {{ formatDateTime(props.cashData.created_at, "date") }} {{ formatDateTime(props.cashData.created_at, "time") }}</p>
+                <td style="inline-size: 50%; text-align: end;">
+                  <h1 style="margin: 0; color: #2d3748; font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">Consolidado de Caja</h1>
+                  <p style=" color: #4a5568; font-size: 14px; font-weight: 600;margin-block: 5px; margin-inline: 0;">Reporte N°: <span style="color: #2b6cb0;">{{ props.cashData.id }}</span></p>
+                  <p style="margin: 0; color: #718096; font-size: 12px;">Emisión: {{ formatDateTime(props.cashData.created_at, "all") }}</p>
                 </td>
               </tr>
             </table>
 
-            <hr style="border: 0; border-block-start: 2px solid #34495e; margin-block-end: 20px;" />
+            <!-- Resumen de Totales Estilo Dashboard -->
+            <div style="margin-block-end: 35px;">
+              <h2 style=" border-inline-start: 4px solid #3182ce; color: #2d3748;font-size: 18px; margin-block-end: 20px; padding-inline-start: 10px;">Resumen General del Día</h2>
+              <table style=" border-collapse: separate; border-spacing: 10px 0;inline-size: 100%;">
+                <tr>
+                  <td style=" padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f7fafc;inline-size: 33%; text-align: center;">
+                    <div style=" color: #718096;font-size: 10px; font-weight: bold; text-transform: uppercase;">Total BS</div>
+                    <div style=" color: #2d3748;font-size: 16px; font-weight: bold; margin-block-start: 5px;">{{ formatCurrency(totalBsGlobal, 'BS') }}</div>
+                    <div style=" color: #a0aec0;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div>
+                  </td>
+                  <td style=" padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f7fafc;inline-size: 33%; text-align: center;">
+                    <div style=" color: #718096;font-size: 10px; font-weight: bold; text-transform: uppercase;">Total COP</div>
+                    <div style=" color: #2d3748;font-size: 16px; font-weight: bold; margin-block-start: 5px;">{{ formatCurrency(totalCopGlobal, 'COP') }}</div>
+                    <div style=" color: #a0aec0;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div>
+                  </td>
+                  <td style=" padding: 15px; border-radius: 8px; background-color: #2b6cb0; color: white;inline-size: 34%; text-align: center;">
+                    <div style="font-size: 10px; font-weight: bold; opacity: 0.9; text-transform: uppercase;">Venta Bruta (USD)</div>
+                    <div style="font-size: 20px; font-weight: 900; margin-block-start: 5px;">{{ formatCurrency(totalSalesGlobal, 'USD') }}</div>
+                    <div style="font-size: 10px; opacity: 0.8;">Consolidado Multimoneda</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
 
-            <!-- TOTALES DEL DÍA -->
-            <div style="margin-block-end: 30px;">
-              <h3 style=" border-block-end: 1px solid #ecf0f1;color: #2c3e50; font-size: 16px; margin-block-end: 15px; padding-block-end: 5px;">Recaudación Diaria General</h3>
-              <table style=" border-collapse: collapse; font-size: 14px;inline-size: 100%;">
-                <thead>
-                  <tr style="background-color: #f8f9fa;">
-                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Dólares (USD)</th>
-                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Bolívares (BS)</th>
-                    <th style="padding: 12px; border: 1px solid #dee2e6; inline-size: 25%; text-align: start;">Pesos (COP)</th>
-                    <th style="padding: 12px; border: 1px solid #dee2e6; background-color: #2c3e50; color: white; inline-size: 25%; text-align: end;">TOTAL BRUTO (USD)</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <!-- Listado Detallado de Cajeros -->
+            <div>
+              <h2 style=" border-inline-start: 4px solid #3182ce; color: #2d3748;font-size: 18px; margin-block-end: 20px; padding-inline-start: 10px;">Desglose Detallado por Cajero</h2>
+              <table style=" overflow: hidden; border-radius: 8px; border-collapse: collapse; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 10%);inline-size: 100%;">
+                <thead style="background-color: #2d3748; color: white;">
                   <tr>
-                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_usd, 'USD') }}</strong></td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_bs, 'BS') }}</strong> <div style=" color: #7f8c8d;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div></td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>{{ formatCurrency(props.cashData.total_cop, 'COP') }}</strong> <div style=" color: #7f8c8d;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div></td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6; font-size: 16px; text-align: end;"><strong>{{ formatCurrency(parseFloat(props.cashData.total_usd || 0) + parseFloat(props.cashData.total_bs_in_usd || 0) + parseFloat(props.cashData.total_cop_in_usd || 0), 'USD') }}</strong></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- DESGLOSE POR VENDEDOR -->
-            <div style="margin-block-end: 20px;">
-              <h3 style=" border-block-end: 1px solid #ecf0f1;color: #2c3e50; font-size: 16px; margin-block-end: 15px; padding-block-end: 5px;">Desglose por Cajeros (#{{ filteredCashClosings.length }})</h3>
-              
-              <table style=" border-collapse: collapse; font-size: 13px;inline-size: 100%;">
-                <thead>
-                  <tr style="background-color: #f8f9fa;">
-                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: start;">Cajero / Caja #</th>
-                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">USD</th>
-                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">BS</th>
-                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">COP</th>
-                    <th style="padding: 10px; border: 1px solid #dee2e6; background-color: #e9ecef; text-align: end;">Venta (Eq. USD)</th>
+                    <th style="padding: 15px; font-size: 12px; text-align: start; text-transform: uppercase;">Cajero / Corte</th>
+                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">USD Real</th>
+                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">BS Real</th>
+                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">COP Real</th>
+                    <th style="padding: 15px; background-color: #3182ce; font-size: 12px; text-align: end; text-transform: uppercase;">Venta Eq.</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="cash in filteredCashClosings" :key="cash.id">
-                    <td style="padding: 10px; border: 1px solid #dee2e6;">
-                      <strong>{{ cash.seller?.username || 'N/A' }}</strong><br>
-                      <span style=" color: #7f8c8d;font-size: 11px;">Corte: #{{ cash.id }}</span>
+                  <tr v-for="(cash, index) in filteredCashClosings" :key="cash.id" :style="{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#f7fafc' }">
+                    <td style="padding: 15px; border-block-end: 1px solid #e2e8f0;">
+                      <div style=" color: #2d3748;font-weight: bold;">{{ cash.seller?.username || 'Cajero Desconocido' }}</div>
+                      <div style=" color: #718096;font-size: 10px;">Caja ID: #{{ cash.id }}</div>
                     </td>
-                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">{{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0), 'USD') }}</td>
-                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">
-                      {{ formatCurrency(cash.total_bs, 'BS') }}<br>
-                      <span style=" color: #95a5a6;font-size: 10px;">{{ formatCurrency(cash.total_bs_in_usd, 'USD') }}</span>
+                    <td style="padding: 15px; border-block-end: 1px solid #e2e8f0; color: #2f855a; font-weight: 600; text-align: end;">
+                      {{ formatCurrency(cash.real_usd, 'USD') }}
                     </td>
-                    <td style="padding: 10px; border: 1px solid #dee2e6; text-align: end;">
-                      {{ formatCurrency(cash.total_cop, 'COP') }}<br>
-                      <span style=" color: #95a5a6;font-size: 10px;">{{ formatCurrency(cash.total_cop_in_usd, 'USD') }}</span>
+                    <td style="padding: 15px; border-block-end: 1px solid #e2e8f0; text-align: end;">
+                      <div style=" color: #c05621;font-weight: 600;">{{ formatCurrency(cash.real_bs, 'BS') }}</div>
+                      <div style=" color: #a0aec0;font-size: 9px;">Eq: {{ formatCurrency(cash.total_bs_in_usd, 'USD') }}</div>
                     </td>
-                    <td style="padding: 10px; border: 1px solid #dee2e6; background-color: #f8f9fa; font-weight: bold; text-align: end;">
-                      {{ formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.total_bs_in_usd || 0) + parseFloat(cash.total_cop_in_usd || 0), 'USD') }}
+                    <td style="padding: 15px; border-block-end: 1px solid #e2e8f0; text-align: end;">
+                      <div style=" color: #2c5282;font-weight: 600;">{{ formatCurrency(cash.real_cop, 'COP') }}</div>
+                      <div style=" color: #a0aec0;font-size: 9px;">Eq: {{ formatCurrency(cash.total_cop_in_usd, 'USD') }}</div>
                     </td>
-                  </tr>
-                  <tr v-if="filteredCashClosings.length === 0">
-                    <td colspan="5" style="padding: 20px; border: 1px solid #dee2e6; color: #7f8c8d; text-align: center;">No hay cajas procesadas en este reporte.</td>
+                    <td style="padding: 15px; background-color: rgba(49, 130, 206, 5%); border-block-end: 1px solid #e2e8f0; color: #2b6cb0; font-weight: 800; text-align: end;">
+                      {{ formatCurrency(cash.real_total_usd, 'USD') }}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <!-- PIE DE PÁGINA -->
-            <div style=" border-block-start: 1px solid #ecf0f1; color: #95a5a6; font-size: 11px;margin-block-start: 40px; padding-block-start: 10px; text-align: center;">
-              Reporte de consolidación diaria generado automáticamente
+            <!-- Footer con Notas -->
+            <div style=" padding: 20px; border: 1px dashed #cbd5e0; border-radius: 8px; background-color: #f7fafc; color: #718096; font-size: 11px;margin-block-start: 50px; text-align: center;">
+              <p style="margin: 0; font-weight: bold;">*** Este documento es una constancia digital oficial de cierre de caja ***</p>
+              <p style="margin-block: 5px 0;margin-inline: 0;">Verificado y generado por el sistema de gestión el {{ formatDateTime(new Date(), "all") }}</p>
             </div>
           </div>
         </div>
@@ -405,9 +451,9 @@ const getDividerWidth = (name) => {
       
       <VDivider />
       
-      <VCardActions class="pa-4 bg-white d-flex justify-end gap-3 px-6">
-        <VBtn variant="tonal" color="secondary" @click="closeModal" class="px-5 font-weight-medium">Cerrar</VBtn>
-        <VBtn variant="flat" color="primary" @click="downloadReport" prepend-icon="tabler-download" class="px-5 font-weight-medium">Descargar PDF</VBtn>
+      <VCardActions class="pa-4 bg-white d-flex justify-center gap-3 px-6">
+        <VBtn variant="tonal" color="secondary" @click="closeModal" class="flex-grow-1 font-weight-medium" size="large">Cerrar</VBtn>
+        <VBtn variant="flat" color="primary" @click="downloadReport" prepend-icon="tabler-download" class="flex-grow-1 font-weight-medium" size="large">Descargar Resumen PDF</VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
