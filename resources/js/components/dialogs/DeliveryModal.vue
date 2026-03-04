@@ -34,35 +34,29 @@ const closeModal = () => {
 };
 
 const ticketStyles = `
-.pa-2 { padding: 8px; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-.mb-2 { margin-bottom: 8px; }
-.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
-.center-block { margin-left: auto; margin-right: auto; }
-.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
-.w-75 {width: 75% !important;}
-.w-100 {width: 100% !important;}
-.mx-auto { margin-left: auto !important; margin-right: auto !important; }
-
-.pdf-row-multi {
-width: 100%;
-display: block; 
-}
-.pdf-row-multi:after {
-content: "";
-display: table;
- clear: both;
-}
-.pdf-col-multi {
-float: left;
-width: 48%; 
-box-sizing: border-box;
- padding: 0 5px;
-margin-right: 2%;
-min-height: 1px;
-}
+  body { font-family: 'Roboto', sans-serif; font-size: 10pt; color: #1a1a1a; }
+  .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; }
+  .logo { width: 100px; height: auto; margin-bottom: 5px; }
+  .company-name { font-size: 13pt; font-weight: bold; color: #2c3e50; }
+  .company-rif { font-size: 8pt; color: #7f8c8d; }
+  .document-title { font-size: 11pt; font-weight: bold; margin-top: 8px; text-transform: uppercase; text-align: center; color: #2c3e50; }
+  .info-section { width: 100%; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border: 1px solid #eee; box-sizing: border-box; }
+  .info-table { width: 100%; border-collapse: collapse; }
+  .info-table td { padding: 3px 5px; font-size: 9pt; }
+  .section-header { background: #2c3e50; color: white; font-weight: bold; padding: 6px 10px; margin-top: 15px; font-size: 9pt; text-transform: uppercase; }
+  .data-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+  .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px 10px; font-size: 9pt; }
+  .data-table th { background-color: #f8f9fa; font-weight: bold; text-align: left; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .total-row { font-weight: bold; background: #f1f3f5; }
+  .totals-summary { margin-top: 15px; padding: 10px; background: #fff; border: 2px solid #2c3e50; text-align: right; }
+  .net-amount { font-size: 11pt; font-weight: bold; color: #2c3e50; }
+  .signature-section { margin-top: 40px; width: 100%; }
+  .signature-box { width: 33%; text-align: center; vertical-align: bottom; }
+  .signature-line { border-top: 1px solid #000; margin-top: 45px; padding-top: 5px; font-weight: bold; font-size: 9pt; text-transform: uppercase; }
+  .footer-note { margin-top: 30px; text-align: center; font-size: 8pt; color: #7f8c8d; font-style: italic; border-top: 1px solid #eee; padding-top: 10px; }
+  .d-none { display: none; }
 `;
 
 
@@ -74,10 +68,15 @@ const downloadReport = async () => {
       console.error("No se encontró el contenido del reporte.");
       return;
     }
+
+    // Mostrar temporalmente para que el backend capture el HTML con estilos visibles
+    element.classList.remove("d-none");
     const htmlContent = element.outerHTML;
+    element.classList.add("d-none");
+
     const params = {
-      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
-      filename: "Entregas_Diario",
+      html_content: `<html><head><style>${ticketStyles}</style></head><body>${htmlContent}</body></html>`,
+      filename: "Acta_Entrega_Valores",
     };
 
     const response = await axios.post(
@@ -89,7 +88,7 @@ const downloadReport = async () => {
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
-    let filename = "EntregasDiario.pdf";
+    let filename = `Acta_Entrega_${props.cashData.id}.pdf`;
     link.href = url;
     link.setAttribute("download", filename);
     document.body.appendChild(link);
@@ -173,6 +172,10 @@ const groupedCardTotals = computed(() => {
     const bsMobileAmountCredit = parseFloat(closing.bs_mobile_payment_credit) || 0;
 
 
+    const total_bs = bsCarDebitoAmount + bsCarCreditoAmount + bsTransferAmount + bsMobileAmount + bsCashAmount + bsCardAmountCredit + bsCashAmountCredit + bsTransferAmountCredit + bsMobileAmountCredit;
+    const total_cop = copTransferAmount + copCashAmount + copTransferAmountCredit + copCashAmountCredit;
+    const total_usd = usdTransferAmount + usdPaypalAmount + usdBinanceAmount + usdCashAmount + usdPaypalAmountCredit + usdBinanceAmountCredit + usdCashAmountCredit;
+
     if (!acc[sellerId]) {
       acc[sellerId] = {
         seller_id: sellerId,
@@ -199,6 +202,7 @@ const groupedCardTotals = computed(() => {
          total_usd_cash_paymentCredit: 0,
          total_bs_cash_paymentCredit: 0,
          total_cop_cash_paymentCredit: 0,
+         total_usd_equivalent: 0,
       };
     }
      acc[sellerId].total_bs_card_debito += bsCarDebitoAmount;
@@ -223,6 +227,8 @@ const groupedCardTotals = computed(() => {
      acc[sellerId].total_usd_cash_paymentCredit += usdCashAmountCredit;
      acc[sellerId].total_bs_cash_paymentCredit += bsCashAmountCredit;
      acc[sellerId].total_cop_cash_paymentCredit += copCashAmountCredit;
+
+     acc[sellerId].total_usd_equivalent += total_usd + (total_bs / parseFloat(props.cashData.exchange_rate || 1)) + (total_cop / parseFloat(props.cashData.cop_exchange_rate || 1));
 
     return acc;
   }, {});
@@ -276,10 +282,73 @@ const totalUsdGlobal = computed(() => {
   return sellersArray.value.reduce((acc, s) => acc + (s.total_usd_transfer + s.total_usd_paypal + s.total_usd_binance + s.total_usd_cash + s.total_usd_paypal_paymentCredit + s.total_usd_binance_paymentCredit + s.total_usd_cash_paymentCredit), 0);
 });
 
-const totalUsdEquivalentGlobal = computed(() => {
-  return parseFloat(props.cashData.total_usd || 0) + parseFloat(props.cashData.total_bs_in_usd || 0) + parseFloat(props.cashData.total_cop_in_usd || 0);
+// Desgloses Globales por Método
+const totalPosBsGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_bs_card_debito + s.total_bs_card_credito + s.total_bs_card_paymentCredit), 0);
 });
 
+const totalTransferBsGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_bs_transfer + s.total_bs_mobile + s.total_bs_transfer_paymentCredit + s.total_bs_mobile_paymentCredit), 0);
+});
+
+const totalTransferCopGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_cop_transfer + s.total_cop_transfer_paymentCredit), 0);
+});
+
+const totalTransferUsdGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_usd_transfer + s.total_usd_paypal + s.total_usd_binance + s.total_usd_paypal_paymentCredit + s.total_usd_binance_paymentCredit), 0);
+});
+
+const totalCashBsGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_bs_cash + s.total_bs_cash_paymentCredit), 0);
+});
+
+const totalCashCopGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_cop_cash + s.total_cop_cash_paymentCredit), 0);
+});
+
+const totalCashUsdGlobal = computed(() => {
+  return sellersArray.value.reduce((acc, s) => acc + (s.total_usd_cash + s.total_usd_cash_paymentCredit), 0);
+});
+
+// Equivalentes USD por Método
+const totalPosEquivalentUsd = computed(() => {
+  const bcv = parseFloat(props.cashData.exchange_rate || 1);
+  return totalPosBsGlobal.value / bcv;
+});
+
+const totalTransferEquivalentUsd = computed(() => {
+  const bcv = parseFloat(props.cashData.exchange_rate || 1);
+  const cop = parseFloat(props.cashData.cop_exchange_rate || 1);
+  return totalTransferUsdGlobal.value + (totalTransferBsGlobal.value / bcv) + (totalTransferCopGlobal.value / cop);
+});
+
+const totalCashEquivalentUsd = computed(() => {
+  const bcv = parseFloat(props.cashData.exchange_rate || 1);
+  const cop = parseFloat(props.cashData.cop_exchange_rate || 1);
+  return totalCashUsdGlobal.value + (totalCashBsGlobal.value / bcv) + (totalCashCopGlobal.value / cop);
+});
+
+const totalUsdEquivalentGlobal = computed(() => {
+  const bcv = parseFloat(props.cashData.exchange_rate || 1);
+  const cop = parseFloat(props.cashData.cop_exchange_rate || 1);
+  const totalBs = totalBsGlobal.value;
+  const totalCop = totalCopGlobal.value;
+  const totalUsd = totalUsdGlobal.value;
+
+  return totalUsd + (totalBs / bcv) + (totalCop / cop);
+});
+
+const capitalize = (str) => {
+  if (!str) return '';
+  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+};
+
+const getCurrentTime = () => {
+  return new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+};
+
+defineExpose({ printReport });
 </script>
 <template>
   <VDialog v-model="dialogVisible" max-width="950px" scrollable>
@@ -467,118 +536,124 @@ const totalUsdEquivalentGlobal = computed(() => {
           </VCol>
         </VRow>
 
-        <!-- ESTRUCTURA OCULTA EXCLUSIVA PARA EL REPORTE PDF (ESTILO A4 PREMIUM) -->
+        <!-- ESTRUCTURA OCULTA EXCLUSIVA PARA EL REPORTE PDF (ESTILO SOCIAL BENEFITS COMPACTO) -->
         <div id="delivery-report" class="d-none">
-          <div style="padding: 30px; background-color: white; color: #1a202c; font-family: Roboto, Helvetica, Arial, sans-serif;">
-            <!-- Encabezado con Diseño -->
-            <table style=" border-block-end: 2px solid #2d3748;inline-size: 100%; margin-block-end: 25px; padding-block-end: 20px;">
+          <div class="header">
+            <img :src="BASE64_LOGO_DATA" alt="Logo" class="logo" />
+            <div class="company-name">FARMACIA BARRIO SUCRE 2024 C.A.</div>
+            <div class="company-rif">R.I.F: J-50478962-1</div>
+            <div class="document-title">ACTA DE ENTREGA DE VALORES</div>
+          </div>
+
+          <div class="info-section" style="padding: 5px; margin-block-end: 10px;">
+            <table class="info-table">
               <tr>
-                <td style="inline-size: 50%;">
-                  <img :src="BASE64_LOGO_DATA" alt="Logo" style="inline-size: 160px;" />
-                </td>
-                <td style="inline-size: 50%; text-align: end;">
-                  <h1 style="margin: 0; color: #2d3748; font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">Reporte de Entregas</h1>
-                  <p style=" color: #4a5568; font-size: 14px; font-weight: 600;margin-block: 5px; margin-inline: 0;">Resumen N°: <span style="color: #2b6cb0;">{{ props.cashData.id }}</span></p>
-                  <p style="margin: 0; color: #718096; font-size: 12px;">Emisión: {{ formatDateTime(props.cashData.created_at, "all") }}</p>
-                </td>
+                <td style="inline-size: 40%;"><strong>CORRELATIVO:</strong> #{{ props.cashData.id }}</td>
+                <td style="inline-size: 30%;"><strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS</td>
+                <td style="inline-size: 30%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
+              </tr>
+              <tr>
+                <td><strong>CAJA GUARDADA:</strong> {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
+                <td>COP: {{ props.cashData.cop_exchange_rate }} COP</td>
+                <td style="text-align: end;"><strong>HORA:</strong> {{ getCurrentTime() }}</td>
               </tr>
             </table>
+          </div>
 
-            <!-- Resumen de Totales Estilo Dashboard -->
-            <div style="margin-block-end: 35px;">
-              <h2 style=" border-inline-start: 4px solid #4a5568; color: #2d3748;font-size: 18px; margin-block-end: 20px; padding-inline-start: 10px;">Consolidado de Entrega</h2>
-              <table style=" border-collapse: separate; border-spacing: 10px 0;inline-size: 100%;">
+          <div class="section-header" style=" font-size: 8pt;margin-block-start: 5px; padding-block: 4px; padding-inline: 8px;">DESGLOSE POR PERSONAL</div>
+           <table class="data-table">
+            <thead>
+              <tr>
+                <th style=" padding: 4px;font-size: 8pt;">RESPONSABLE / MÉTODO</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">BS</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">COP</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">USD</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">TOTAL USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(seller, index) in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="'pdf-' + seller.seller_id">
+                <tr class="total-row">
+                  <td colspan="4" style=" padding: 4px;font-size: 9pt;">{{ index + 1 }}. {{ seller.seller_name.toUpperCase() }}</td>
+                  <td style="padding: 4px; font-size: 9pt; text-align: end;">{{ formatCurrency(seller.total_usd_equivalent, 'USD') }}</td>
+                </tr>
+                
+                <!-- POS -->
+                <tr v-if="(seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit) > 0">
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">POS (TD y TC)</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1), 'USD') }}</td>
+                </tr>
+
+                <!-- Transferencia -->
+                <tr v-if="(seller.total_bs_transfer + seller.total_bs_mobile + seller.total_cop_transfer + seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_cop_transfer_paymentCredit + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit) > 0">
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">TRANSFERENCIA (PAGO MÓVIL / BANCOS)</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit, 'BS') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit, 'COP') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit, 'USD') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit) + (seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}</td>
+                </tr>
+
+                <!-- Efectivo -->
+                <tr v-if="(seller.total_bs_cash + seller.total_cop_cash + seller.total_usd_cash + seller.total_bs_cash_paymentCredit + seller.total_cop_cash_paymentCredit + seller.total_usd_cash_paymentCredit) > 0">
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">EN EFECTIVO (FONDO FÍSICO)</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_bs_cash + seller.total_bs_cash_paymentCredit, 'BS') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_cop_cash + seller.total_cop_cash_paymentCredit, 'COP') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_usd_cash + seller.total_usd_cash_paymentCredit, 'USD') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_usd_cash + seller.total_usd_cash_paymentCredit) + (seller.total_bs_cash + seller.total_bs_cash_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_cash + seller.total_cop_cash_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}</td>
+                </tr>
+
                 <tr>
-                  <td style=" padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f7fafc;inline-size: 33%; text-align: center;">
-                    <div style=" color: #718096;font-size: 10px; font-weight: bold; text-transform: uppercase;">BS Entregado</div>
-                    <div style=" color: #2d3748;font-size: 16px; font-weight: bold; margin-block-start: 5px;">{{ formatCurrency(totalBsGlobal, 'BS') }}</div>
-                    <div style=" color: #a0aec0;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div>
-                  </td>
-                  <td style=" padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f7fafc;inline-size: 33%; text-align: center;">
-                    <div style=" color: #718096;font-size: 10px; font-weight: bold; text-transform: uppercase;">COP Entregado</div>
-                    <div style=" color: #2d3748;font-size: 16px; font-weight: bold; margin-block-start: 5px;">{{ formatCurrency(totalCopGlobal, 'COP') }}</div>
-                    <div style=" color: #a0aec0;font-size: 11px;">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div>
-                  </td>
-                  <td style=" padding: 15px; border-radius: 8px; background-color: #4a5568; color: white;inline-size: 34%; text-align: center;">
-                    <div style="font-size: 10px; font-weight: bold; opacity: 0.9; text-transform: uppercase;">Carga Total (USD)</div>
-                    <div style="font-size: 20px; font-weight: 900; margin-block-start: 5px;">{{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</div>
-                    <div style="font-size: 10px; opacity: 0.8;">Cierre de Caja Final</div>
+                  <td colspan="5" style=" padding: 4px;border-block-end: 1px solid #2c3e50; color: #7f8c8d; font-size: 7pt;">
+                    OBSERVACIONES: ____________________________________________________________________________________________________
                   </td>
                 </tr>
-              </table>
-            </div>
+              </template>
 
-            <!-- Listado Detallado por Cajero -->
-            <div style="margin-block-end: 20px;">
-              <h2 style=" border-inline-start: 4px solid #4a5568; color: #2d3748;font-size: 18px; margin-block-end: 20px; padding-inline-start: 10px;">Desglose por Cajero</h2>
-              <table style=" overflow: hidden; border-radius: 8px; border-collapse: collapse; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 10%);inline-size: 100%;">
-                <thead style="background-color: #4a5568; color: white;">
-                  <tr>
-                    <th style="padding: 15px; font-size: 12px; text-align: start; text-transform: uppercase;">Cajero / Métodos</th>
-                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">Entrega BS</th>
-                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">Entrega COP</th>
-                    <th style="padding: 15px; font-size: 12px; text-align: end; text-transform: uppercase;">Entrega USD</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template v-for="(seller, index) in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="'pdf-' + seller.seller_id">
-                    <tr style="background-color: #f1f3f5;">
-                      <td style=" border-block-end: 2px solid #dee2e6; color: #1a202c; font-size: 14px; font-weight: 800;padding-block: 12px; padding-inline: 15px;">
-                        {{ index + 1 }}. {{ seller.seller_name }} <span style=" color: #718096; font-size: 11px;font-weight: 400; margin-inline-start: 10px;">ID: #{{ seller.seller_id }}</span>
-                      </td>
-                      <td style=" border-block-end: 2px solid #dee2e6; color: #c05621; font-weight: 800;padding-block: 12px; padding-inline: 15px; text-align: end;">{{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_cash + seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit, 'BS') }}</td>
-                      <td style=" border-block-end: 2px solid #dee2e6; color: #2c5282; font-weight: 800;padding-block: 12px; padding-inline: 15px; text-align: end;">{{ formatCurrency(seller.total_cop_transfer + seller.total_cop_cash + seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit, 'COP') }}</td>
-                      <td style=" background-color: rgba(43, 108, 176, 5%); border-block-end: 2px solid #dee2e6; color: #2b6cb0; font-weight: 900;padding-block: 12px; padding-inline: 15px; text-align: end;">{{ formatCurrency(seller.total_usd_equivalent, 'USD') }}</td>
-                    </tr>
-                    
-                    <tr v-if="seller.total_bs_card_debito + seller.total_bs_card_credito > 0" style="background-color: white;">
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #4a5568; font-size: 11px;padding-block: 6px; padding-inline: 15px; padding-inline-start: 30px;">&bull; Tarjetas POS (BS)</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #c05621; font-size: 11px;padding-block: 6px; padding-inline: 15px; text-align: end;">{{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito, 'BS') }}</td>
-                      <td style=" border-block-end: 1px solid #edf2f7;padding-block: 6px; padding-inline: 15px;"></td>
-                      <td style=" border-block-end: 1px solid #edf2f7;padding-block: 6px; padding-inline: 15px;"></td>
-                    </tr>
-                    <tr v-if="seller.total_bs_transfer + seller.total_bs_mobile > 0" style="background-color: white;">
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #4a5568; font-size: 11px;padding-block: 6px; padding-inline: 15px; padding-inline-start: 30px;">&bull; Transferencia/Pago Móvil (BS)</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #c05621; font-size: 11px;padding-block: 6px; padding-inline: 15px; text-align: end;">{{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile, 'BS') }}</td>
-                      <td style=" border-block-end: 1px solid #edf2f7;padding-block: 6px; padding-inline: 15px;"></td>
-                      <td style=" border-block-end: 1px solid #edf2f7;padding-block: 6px; padding-inline: 15px;"></td>
-                    </tr>
-                    <tr v-if="seller.total_bs_cash > 0 || seller.total_cop_cash > 0 || seller.total_usd_cash > 0" style="background-color: #fcfcfc;">
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #1a202c; font-size: 11px; font-weight: 600;padding-block: 8px; padding-inline: 15px; padding-inline-start: 30px;">&bull; Efectivo Entregado (Físico)</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #c05621; font-size: 11px; font-weight: 600;padding-block: 8px; padding-inline: 15px; text-align: end;">{{ seller.total_bs_cash > 0 ? formatCurrency(seller.total_bs_cash, 'BS') : '' }}</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #2c5282; font-size: 11px; font-weight: 600;padding-block: 8px; padding-inline: 15px; text-align: end;">{{ seller.total_cop_cash > 0 ? formatCurrency(seller.total_cop_cash, 'COP') : '' }}</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #2f855a; font-size: 11px; font-weight: 600;padding-block: 8px; padding-inline: 15px; text-align: end;">{{ seller.total_usd_cash > 0 ? formatCurrency(seller.total_usd_cash, 'USD') : '' }}</td>
-                    </tr>
-                    <tr v-if="
-                      seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit > 0 ||
-                      seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit > 0 ||
-                      seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit > 0
-                    " style="background-color: #fffaf0;">
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #718096; font-size: 11px; font-style: italic;padding-block: 6px; padding-inline: 15px; padding-inline-start: 30px;">&bull; Abonos de Créditos (Cobradores)</td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #a0522d; font-size: 11px;padding-block: 6px; padding-inline: 15px; text-align: end;">
-                        {{ formatCurrency(seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit, 'BS') }}
-                      </td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #2c5282; font-size: 11px;padding-block: 6px; padding-inline: 15px; text-align: end;">
-                        {{ formatCurrency(seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit, 'COP') }}
-                      </td>
-                      <td style=" border-block-end: 1px solid #edf2f7; color: #2f855a; font-size: 11px;padding-block: 6px; padding-inline: 15px; text-align: end;">
-                        {{ formatCurrency(seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit, 'USD') }}
-                      </td>
-                    </tr>
-                  </template>
+              <!-- TOTAL GENERAL DE TODOS LOS TRABAJADORES (RESUMEN FINAL) -->
+              <tr style="background-color: #2c3e50; color: white; font-weight: bold;">
+                <td style="padding: 6px; font-size: 9pt;">TOTAL GENERAL CONSOLIDADO</td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalBsGlobal, 'BS') }}</td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalCopGlobal, 'COP') }}</td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalUsdGlobal, 'USD') }}</td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
+              </tr>
+              
+              <!-- Detalles del Total General -->
+              <tr style="background-color: #f8f9fa;">
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL POS</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalPosBsGlobal, 'BS') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalPosEquivalentUsd, 'USD') }}</td>
+              </tr>
+              <tr style="background-color: #f8f9fa;">
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL TRANSFERENCIA</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferBsGlobal, 'BS') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferCopGlobal, 'COP') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferUsdGlobal, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalTransferEquivalentUsd, 'USD') }}</td>
+              </tr>
+              <tr style="background-color: #f8f9fa;">
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL EFECTIVO</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashBsGlobal, 'BS') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashCopGlobal, 'COP') }}</td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashUsdGlobal, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalCashEquivalentUsd, 'USD') }}</td>
+              </tr>
+            </tbody>
+          </table>
 
-                  <tr v-if="sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0)).length === 0">
-                    <td colspan="4" style="padding: 30px; background-color: white; color: #718096; font-style: italic; text-align: center;">No se registraron entregas en el presente reporte.</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="signature-section" style="margin-block-start: 50px; text-align: center;">
+            <div style="display: block; border-block-start: 1.5pt solid #000; inline-size: 250px; margin-block: 0; margin-inline: auto; padding-block-start: 8px;">
+              <div style=" color: #000;font-size: 10pt; font-weight: bold;">FIRMA SUPERVISOR</div>
+              <small style=" color: #666;font-size: 8pt;">CONTROL DE TURNO / VERIFICACIÓN</small>
             </div>
+          </div>
 
-            <!-- Footer con Notas -->
-            <div style=" padding: 20px; border: 1px dashed #cbd5e0; border-radius: 8px; background-color: #f7fafc; color: #718096; font-size: 11px;margin-block-start: 50px; text-align: center;">
-              <p style="margin: 0; font-weight: bold;">*** Este documento certifica la recepción y entrega de valores por parte de los cajeros ***</p>
-              <p style="margin-block: 5px 0;margin-inline: 0;">Generado por el sistema de gestión el {{ formatDateTime(new Date(), "all") }}</p>
-            </div>
+          <div class="footer-note" style=" font-size: 7pt;margin-block-start: 15px;">
+            ESTE DOCUMENTO ES UN INSTRUMENTO DE CONTROL INTERNO. HORA CIERRE AUDITABLE.
           </div>
         </div>
       </VCardText>

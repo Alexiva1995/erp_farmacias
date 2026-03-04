@@ -78,14 +78,8 @@ const conciliationAlert = (item) => {
 
       <!-- Entregas con conciliación -->
       <template #item.usd_delivered="{ item }">
-        <div class="d-flex align-center gap-1 justify-end">
+        <div class="text-right">
           <span class="font-weight-medium">{{ fmtUsd(item.usd_delivered) }}</span>
-          <VIcon
-            v-if="conciliationAlert(item)"
-            size="14"
-            :color="conciliationAlert(item)?.color"
-            :icon="conciliationAlert(item)?.color === 'success' ? 'tabler-circle-check' : 'tabler-alert-triangle'"
-          />
         </div>
       </template>
       <template #item.cop_delivered="{ item }">
@@ -113,12 +107,14 @@ const conciliationAlert = (item) => {
           </VTooltip>
           <VTooltip text="Referencias" location="top">
             <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-clipboard-list" size="x-small" variant="tonal" color="secondary" @click="emit('reference', item)" />
-            </template>
-          </VTooltip>
-          <VTooltip text="Imprimir" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-printer" size="x-small" variant="tonal" color="primary" @click="emit('closing-daily', item)" />
+              <VBtn 
+                v-bind="tip" 
+                icon="tabler-clipboard-list" 
+                size="x-small" 
+                variant="tonal" 
+                color="secondary" 
+                @click="emit('reference', item)" 
+              />
             </template>
           </VTooltip>
         </div>

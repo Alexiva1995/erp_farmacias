@@ -601,6 +601,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
             Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
+            Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
         });
 
         Route::prefix("expenses")->group(function () {

@@ -195,4 +195,32 @@ class CashClosureController extends Controller
         $sellers = $this->cashClosureQueryService->getSellersWithClosures();
         return response()->json($sellers);
     }
+
+    public function confirmReference(Request $request)
+    {
+        $request->validate([
+            'order_id' => 'required|exists:orders,id',
+            'reference_code' => 'required|string',
+        ]);
+
+        $order = Order::findOrFail($request->order_id);
+        $paymentMethods = $order->payment_methods;
+        $updated = false;
+
+        foreach ($paymentMethods as &$method) {
+            if (isset($method['reference']) && (string)$method['reference'] === (string)$request->reference_code) {
+                $method['is_confirmed'] = true;
+                $updated = true;
+                break;
+            }
+        }
+
+        if ($updated) {
+            $order->payment_methods = $paymentMethods;
+            $order->save();
+            return response()->json(['message' => 'Referencia confirmada con éxito']);
+        }
+
+        return response()->json(['message' => 'Referencia no encontrada'], 404);
+    }
 }
