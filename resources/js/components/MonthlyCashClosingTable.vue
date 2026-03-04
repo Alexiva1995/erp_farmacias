@@ -7,7 +7,7 @@ const props = defineProps({
   page:              { type: Number, required: true },
 });
 
-const emit = defineEmits(['update:options', 'view-cash', 'seller-cash']);
+const emit = defineEmits(['update:options', 'view-cash']);
 
 const headers = [
   { title: "Período",         key: "period",              sortable: true },
@@ -77,11 +77,6 @@ const headers = [
           <VTooltip text="Ver detalle mensual" location="top">
             <template #activator="{ props: tip }">
               <VBtn v-bind="tip" icon="tabler-eye" size="small" variant="tonal" color="info" @click="emit('view-cash', item)" />
-            </template>
-          </VTooltip>
-          <VTooltip text="Reporte por vendedor" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-clipboard-list" size="small" variant="tonal" color="secondary" @click="emit('seller-cash', item)" />
             </template>
           </VTooltip>
         </div>

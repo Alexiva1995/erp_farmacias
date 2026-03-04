@@ -696,7 +696,6 @@ const closingDaily = async (daily) => {
     :page="pageMonthlyCash"
     @update:options="updateTableOptionsMonthlyCash"
     @view-cash="viewMonthlyCash"
-    @seller-cash="closingCashAllSellers"
   />
 
   <MonthlyCashModal
