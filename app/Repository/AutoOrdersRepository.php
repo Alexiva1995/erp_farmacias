@@ -213,6 +213,8 @@ class AutoOrdersRepository
             'total_orders' => (clone $query)->count(),
             'total_amount' => (clone $query)->sum('total_amount') ?? 0,
             'pending_orders' => (clone $query)->where('status', AutoOrderStatus::PENDING)->count(),
+            'sent_orders' => (clone $query)->where('status', AutoOrderStatus::SENT)->count(),
+            'completed_orders' => (clone $query)->where('status', AutoOrderStatus::COMPLETED)->count(),
         ];
     }
 

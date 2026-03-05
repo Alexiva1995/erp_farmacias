@@ -4,46 +4,16 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { useAuthStore } from "@/stores/auth";
-import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-const currentPurchaseOrder = ref({});
-const purchaseOrders = ref([]);
-const suppliers = ref([]);
-const selectedSupplier = ref(null);
-const loading = ref(false);
+const activeTab = ref(null);
 
-const page = ref(1);
-const itemsPerPage = ref(10);
-const totalPurchaseOrders = ref(0);
-const stats = ref({
-  total_orders: 0,
-  total_amount: 0,
-  pending_orders: 0,
-});
-
-const isManagementDialogVisible = ref(false);
-const { isAdmin } = useAuthStore();
-
-const fetchSuppliers = async () => {
-  try {
-    const response = await axios.get("/available-suppliers");
-    suppliers.value = response.data.data;
-  } catch (error) {
-    console.error("Error al obtener proveedores:", error);
-  }
-};
-
-const fetchStats = async () => {
-  try {
-    const params = { selectedSupplier: selectedSupplier.value };
-    const { data } = await axios.get("/suppliers/purchase-orders/stats", { params });
-    stats.value = data.data;
-  } catch (error) {
-    console.error("Error al obtener estadísticas:", error);
-  }
-};
+const tabItems = [
+  { label: 'Todas',      value: null,    color: 'primary',  icon: 'tabler-list',          totalKey: 'total_orders' },
+  { label: 'Pendientes', value: 0,       color: 'warning',  icon: 'tabler-clock',         totalKey: 'pending_orders' },
+  { label: 'Enviadas',   value: 1,       color: 'info',     icon: 'tabler-send',          totalKey: 'sent_orders' },
+  { label: 'Completadas',value: 2,       color: 'success',  icon: 'tabler-circle-check',   totalKey: 'completed_orders' },
+];
 
 const fetchPurchaseOrders = async () => {
   loading.value = true;
@@ -51,6 +21,7 @@ const fetchPurchaseOrders = async () => {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     selectedSupplier: selectedSupplier.value,
+    status: activeTab.value !== null ? activeTab.value : undefined,
   };
 
   try {
@@ -64,136 +35,22 @@ const fetchPurchaseOrders = async () => {
   }
 };
 
-const handleManage = (purchaseOrder) => {
-  currentPurchaseOrder.value = { ...purchaseOrder };
-  isManagementDialogVisible.value = true;
-};
-
-const handleDeleteOrder = async (id) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "No podrás revertir la eliminación de esta orden de compra.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-    customClass: {
-      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100',
-      cancelButton: 'v-btn v-btn--elevated v-theme--light bg-secondary v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100'
-    }
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await axios.delete(`/suppliers/purchase-orders/${id}`);
-      toast.success("Orden eliminada correctamente.");
-      fetchPurchaseOrders();
-      fetchStats();
-    } catch (error) {
-      toast.error("Error al eliminar la orden.");
-    }
-  }
-};
-
 onMounted(() => {
   fetchSuppliers();
   fetchPurchaseOrders();
   fetchStats();
 });
 
-watch([page, itemsPerPage, selectedSupplier], () => {
+watch([page, itemsPerPage, selectedSupplier, activeTab], () => {
   fetchPurchaseOrders();
   fetchStats();
 });
 
-const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-};
-
-const handleClearFilters = () => {
-  selectedSupplier.value = null;
-};
+// ... resto de métodos ...
 </script>
 
 <template>
   <VContainer fluid class="pa-6">
-    <!-- KPIs Premium (Estilo CashAverage) -->
-    <VRow class="mb-6">
-      <!-- Órdenes Totales -->
-      <VCol cols="12" sm="6" lg="3">
-        <VCard class="kpi-card" elevation="0">
-          <VCardText class="pa-5">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar color="primary" variant="tonal" size="44" rounded>
-                <VIcon icon="tabler-clipboard-list" size="22" />
-              </VAvatar>
-              <VChip color="primary" size="small" variant="tonal" label>
-                Total
-              </VChip>
-            </div>
-            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Totales</div>
-            <div class="text-h4 font-weight-black text-primary">{{ stats.total_orders }}</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Monto Total -->
-      <VCol cols="12" sm="6" lg="3">
-        <VCard class="kpi-card" elevation="0">
-          <VCardText class="pa-5">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar color="success" variant="tonal" size="44" rounded>
-                <VIcon icon="tabler-currency-dollar" size="22" />
-              </VAvatar>
-              <VChip color="success" size="small" variant="tonal" label>
-                Inversión
-              </VChip>
-            </div>
-            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Monto Total (USD)</div>
-            <div class="text-h4 font-weight-black">
-              {{ Number(stats.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Pendientes -->
-      <VCol cols="12" sm="6" lg="3">
-        <VCard class="kpi-card" elevation="0">
-          <VCardText class="pa-5">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar color="warning" variant="tonal" size="44" rounded>
-                <VIcon icon="tabler-alert-circle" size="22" />
-              </VAvatar>
-              <VChip color="warning" size="small" variant="tonal" label>
-                Por Recibir
-              </VChip>
-            </div>
-            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Pendientes</div>
-            <div class="text-h4 font-weight-black text-warning">{{ stats.pending_orders }}</div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Estado General -->
-      <VCol cols="12" sm="6" lg="3">
-        <VCard class="kpi-card" color="info" variant="tonal" elevation="0">
-          <VCardText class="pa-5">
-            <div class="d-flex align-center mb-3">
-              <VAvatar color="info" variant="elevated" size="44" rounded>
-                <VIcon icon="tabler-checkup-list" size="22" class="text-white" />
-              </VAvatar>
-            </div>
-            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Estatus Operativo</div>
-            <div class="text-h6 font-weight-black text-info">
-              {{ stats.pending_orders > 0 ? '📦 Pedidos en camino' : '✅ Todo al día' }}
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
     <!-- Filtros -->
     <PurchaseOrdersFilter
       v-model:selectedSupplier="selectedSupplier"
@@ -201,17 +58,38 @@ const handleClearFilters = () => {
       @clear="handleClearFilters"
     />
 
-    <!-- Tabla con Contenedor Premium -->
-    <VCard elevation="0" class="rounded-lg border overflow-hidden">
-      <VCardItem class="pa-4 pb-2 bg-var-theme-background">
-        <template #prepend>
-          <VAvatar color="primary" variant="tonal" size="38" rounded>
-            <VIcon icon="tabler-list" size="20" />
-          </VAvatar>
-        </template>
-        <VCardTitle class="text-subtitle-1 font-weight-bold">Listado de Órdenes</VCardTitle>
-        <VCardSubtitle class="text-caption">Historial completo de pedidos realizados</VCardSubtitle>
-      </VCardItem>
+    <!-- Tabla con TABS (Estilo Gastos) -->
+    <VCard elevation="0" class="rounded-lg border overflow-hidden mt-6">
+      <VTabs
+        v-model="activeTab"
+        color="primary"
+        class="px-2"
+        align-tabs="start"
+        density="comfortable"
+      >
+        <VTab
+          v-for="tab in tabItems"
+          :key="tab.label"
+          :value="tab.value"
+          class="py-2"
+        >
+          <span class="d-inline-flex align-center gap-2 text-body-2 font-weight-bold">
+            <VIcon :icon="tab.icon" size="18" />
+            {{ tab.label }}
+            <VChip
+              v-if="stats[tab.totalKey] > 0 || tab.value === null"
+              size="x-small"
+              variant="tonal"
+              :color="tab.color"
+              class="font-weight-black"
+            >
+              {{ stats[tab.totalKey] }}
+            </VChip>
+          </span>
+        </VTab>
+      </VTabs>
+      
+      <VDivider />
 
       <PurchaseOrdersTable
         :purchaseOrders="purchaseOrders"

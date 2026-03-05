@@ -274,10 +274,10 @@ export function useExpenses() {
         return { data: [], total: 0 };
       }
       
-      // El backend ahora devuelve un recurso paginado estándar
+      // El backend ahora devuelve un recurso paginado estándar envuelto en ApiResponse
       return {
-        data: respuestaApi.data.data.data,
-        total: respuestaApi.data.data.meta.total
+        data: respuestaApi.data.data,
+        total: respuestaApi.data.meta?.total || respuestaApi.data.data.length
       };
     } catch (error) {
       toast.error("Error al cargar los gastos");
