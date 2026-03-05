@@ -30,11 +30,7 @@ class PurchaseOrderServices implements PurchaseOrder
 
   public function getAll(array $data): LengthAwarePaginator
   {
-    $data["itemsPerPage"] ??= 10;
-
-    $query = $this->baseQuery();
-
-    return $this->autoOrdersRepository->applyFilters($query, $data);
+    return $this->autoOrdersRepository->getAll($data);
   }
 
   public function getHistory(array $data): mixed

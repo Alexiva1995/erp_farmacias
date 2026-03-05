@@ -27,10 +27,6 @@ class AutoOrdersRepository
             )
             ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id')
             ->leftJoin('auto_order_details', 'auto_order_details.order_id', '=', 'auto_orders.id')
-            ->when(
-                $filters['selectedSupplier'] ?? null,
-                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
-            )
             ->groupBy(
                 'auto_orders.id',
                 'auto_orders.status',

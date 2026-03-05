@@ -134,6 +134,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Product::class)
             ->give(ProductServices::class);
 
+        $this->app->when(\App\Services\Reports\IaAssistantReportService::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
+
         $this->app->when(ExpensesController::class)
             ->needs(Expenses::class)
             ->give(ExpensesServices::class);
