@@ -49,9 +49,8 @@ async function generarPedido(page = 1) {
     "page": page
   }
 
-  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`, data)
-
-  return { ...respuestaApi.data }
+  const respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-to-request`, data);
+  return { ...respuestaApi.data };
 }
 
 async function fetchSoloOportunidad(page = 1) {
@@ -63,7 +62,7 @@ async function fetchSoloOportunidad(page = 1) {
     "laboratoryId": laboratoryId.value,
     "page": page
   }
-  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/unique-opportunity-page`, data);
+  const respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/unique-opportunity-page`, data);
   return respuestaApi.data.data;
 }
 
@@ -356,17 +355,15 @@ async function realizarCompra(){
       .filter(p => !idsEnCompra.includes(p.id))
       .map(p => p.id);
 
-    console.log(without_supplier_ids);
+
 
     const DATA = {
       orders,
       without_supplier_ids // Enviamos los IDs para marcarlos en la base de datos
     };
-    console.log("datos enviar => ",orders)
-
-    let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat",DATA)
+    let response = await axios.post("/suppliers-ia-order-assistant/generate-order/creat", DATA);
     
-    if(response.status!=200){
+    if (response.status !== 200) {
       module.loadingApp=false
       toast.error("Error al generar la compra")
       return
@@ -534,14 +531,14 @@ function eliminarItemOrden(payload){
                 v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
                 class="text-lg"
                 align-content="space-between"
-                style="padding-left: 24px; padding-right: 24px"
+                style=" padding-inline: 24px;"
               >
-                <VCol class="" style="font-size: 16px">
+                <VCol class="" style="font-size: 16px;">
                   <span>{{ totalesProveedores.name }}:</span>
                 </VCol>
                 <VCol
                   class="text-end"
-                  style="font-weight: bold; font-size: 16px"
+                  style=" font-size: 16px;font-weight: bold;"
                 >
                   {{ totalesProveedores.total.toFixed(2) }}
                   <VIcon icon="tabler-currency-dollar" />
@@ -555,12 +552,12 @@ function eliminarItemOrden(payload){
               <VRow
                 class="text-lg"
                 align-content="space-between"
-                style="padding-left: 24px; padding-right: 24px"
+                style=" padding-inline: 24px;"
               >
-                <VCol> <span style="font-size: 16px">Total:</span> </VCol>
+                <VCol> <span style="font-size: 16px;">Total:</span> </VCol>
                 <VCol
                   class="text-end"
-                  style="font-weight: bold; font-size: 16px"
+                  style=" font-size: 16px;font-weight: bold;"
                 >
                   {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
                   <VIcon icon="tabler-currency-dollar" />
@@ -572,10 +569,11 @@ function eliminarItemOrden(payload){
             color="primary"
             variant="flat"
             class="w-100"
+            prepend-icon="tabler-shopping-cart-check"
             :disabled="!module.detalleOrder || module.detalleOrder.length === 0"
             @click="confirmarCompra"
           >
-            Generar
+            Confirmar Compra ({{ module.detalleOrder?.length || 0 }} productos)
           </VBtn>
         </VCol>
       </VRow>
