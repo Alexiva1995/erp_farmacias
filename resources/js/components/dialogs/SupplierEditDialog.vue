@@ -411,11 +411,10 @@ watch(
 
       <!-- ── Footer ─────────────────────────────────────────────────── -->
       <VCardActions class="pa-4 gap-3">
-        <VSpacer />
         <VBtn 
           color="secondary" 
           variant="outlined" 
-          style="min-inline-size: 140px;" 
+          class="flex-grow-1"
           @click="closeDialog"
         >
           Cancelar
@@ -423,7 +422,7 @@ watch(
         <VBtn
           color="primary"
           variant="flat"
-          style="min-inline-size: 140px;"
+          class="flex-grow-1"
           prepend-icon="tabler-device-floppy"
           @click="submitForm"
         >

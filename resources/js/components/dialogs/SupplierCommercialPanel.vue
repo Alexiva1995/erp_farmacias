@@ -438,18 +438,17 @@ const close = () => {
         <VBtn 
           variant="outlined" 
           color="secondary" 
-          style="min-inline-size: 150px;"
+          class="flex-grow-1"
           @click="close"
         >
           Cerrar
         </VBtn>
-        <VSpacer />
         <VBtn 
           v-if="activeTab === 0" 
           color="primary" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          style="min-inline-size: 150px;"
+          class="flex-grow-1"
           :loading="loading"
           @click="saveFinances"
         >
@@ -460,7 +459,7 @@ const close = () => {
           color="success" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          style="min-inline-size: 150px;"
+          class="flex-grow-1"
           :loading="loading"
           @click="saveBrands"
         >
@@ -471,7 +470,7 @@ const close = () => {
           color="primary" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          style="min-inline-size: 150px;"
+          class="flex-grow-1"
           :loading="loading"
           @click="saveDiscounts"
         >
