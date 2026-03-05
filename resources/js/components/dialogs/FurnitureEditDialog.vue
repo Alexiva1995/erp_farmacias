@@ -152,7 +152,7 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
           <!-- Información Básica -->
           <div class="text-overline mb-4 text-primary font-weight-bold">
@@ -161,51 +161,42 @@ const submitForm = () => {
 
           <VRow>
             <VCol cols="12">
-              <VTextField
+              <AppTextField
                 v-model="formData.name"
                 label="Nombre del Mobiliario"
-                variant="outlined"
-                density="compact"
                 placeholder="Ej: Escritorio ejecutivo, Silla ergonómica..."
                 prepend-inner-icon="tabler-tag"
                 :error-messages="formErrors.name"
-                hide-details="auto"
               />
             </VCol>
 
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model.number="formData.cost"
                 label="Costo de Adquisición"
                 type="number"
                 step="0.01"
                 min="0"
                 prefix="$"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-currency-dollar"
                 :error-messages="formErrors.cost"
-                hide-details="auto"
               />
             </VCol>
 
             <VCol cols="12" md="6">
-              <VSelect
+              <AppSelect
                 v-model="formData.acquisition_year"
                 label="Año de Adquisición"
                 :items="props.acquisitionYears"
                 item-title="title"
                 item-value="value"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-calendar"
                 :error-messages="formErrors.acquisition_year"
-                hide-details="auto"
               />
             </VCol>
 
             <VCol cols="12">
-              <VTextField
+              <AppTextField
                 v-model.number="formData.annual_depreciation_rate"
                 label="Tasa de Depreciación Anual (%)"
                 type="number"
@@ -213,12 +204,9 @@ const submitForm = () => {
                 min="0"
                 max="100"
                 suffix="%"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-trending-down"
                 placeholder="Ej: 10, 15.5, 20..."
                 :error-messages="formErrors.annual_depreciation_rate"
-                hide-details="auto"
               />
               <div class="text-caption text-disabled mt-1 d-flex align-center">
                 <VIcon icon="tabler-info-circle" size="14" class="me-1" />

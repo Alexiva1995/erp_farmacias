@@ -174,6 +174,8 @@ class AppServiceProvider extends ServiceProvider
             ->needs(SocialBenefit::class)
             ->give(SocialBenefitServices::class);
 
+        $this->app->bind(Transaction::class, TransactionServices::class);
+
         $this->app->bind(
             BalanceRepositoryInterface::class,
             BalanceRepository::class

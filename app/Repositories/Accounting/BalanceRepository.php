@@ -26,8 +26,8 @@ class BalanceRepository implements BalanceRepositoryInterface
 
     public function getAssets(): array
     {
-        // 1. Efectivo (de transacciones)
-        $cashData = $this->transactionContract->getByType(['currency' => 'USD']);
+        // 1. Efectivo (Saldo acumulado de todas las billeteras en USD)
+        $walletsData = $this->transactionContract->getWallets([]);
         
         // 2. Inventario
         $inventoryValue = $this->productQueryService->calculateInventoryValue();
@@ -36,7 +36,7 @@ class BalanceRepository implements BalanceRepositoryInterface
         $furnitureBruto = Furniture::sum('cost');
 
         return [
-            'cash' => $cashData['total_value'] ?? 0,
+            'cash' => $walletsData['total_usd'] ?? 0,
             'inventory' => $inventoryValue,
             'furniture_bruto' => $furnitureBruto,
         ];

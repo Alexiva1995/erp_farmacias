@@ -32,7 +32,7 @@ export const useBalance = () => {
   const fetchBalance = async () => {
     loading.value = true;
     try {
-      const { data } = await axios.get("/balance-general");
+      const { data } = await axios.get("/finances/balance-general");
       Object.assign(balance, data.data);
     } catch (error) {
       console.error("Error al obtener el balance:", error);
