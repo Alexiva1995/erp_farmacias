@@ -6,7 +6,6 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   supplier: { type: Object, default: () => ({}) },
   laboratories: { type: Array, default: () => [] },
-  laboratoryLinks: { type: Array, default: () => [] },
   paymentRules: { type: Array, default: () => [] },
   supplierDiscount: { type: Array, default: () => [] },
   discountRules: { type: Array, default: () => [] },
@@ -17,7 +16,6 @@ const props = defineProps({
 const emit = defineEmits([
   "update:modelValue", 
   "save-payment-rules", 
-  "save-laboratories", 
   "save-discounts", 
   "save-discount-rules",
   "clear-errors"
@@ -29,7 +27,6 @@ const internalErrors = ref({})
 
 // --- ESTADOS LOCALES PARA EDICIÓN ---
 const editablePaymentRules = ref([])
-const editableLaboratories = ref([])
 const editableDiscounts = ref([])
 const editableScaleRules = ref([])
 const tempIdCounter = ref(-1)
@@ -49,7 +46,6 @@ watch(() => props.modelValue, (val) => {
 
 watch([
   () => props.paymentRules,
-  () => props.laboratoryLinks,
   () => props.supplierDiscount,
   () => props.discountRules
 ], () => {
@@ -66,13 +62,6 @@ const syncLocalData = () => {
   // Pronto Pago
   editablePaymentRules.value = props.paymentRules.map(rule => ({ ...rule, _markedForDeletion: false }))
   
-  // Laboratorios
-  editableLaboratories.value = props.laboratoryLinks.map(link => ({
-    ...link,
-    laboratory: link.laboratory ? { ...link.laboratory } : { id: null, name: null },
-    _markedForEdit: false
-  }))
-
   // Descuentos Planos
   editableDiscounts.value = props.supplierDiscount.map(d => ({ ...d, _markedNew: false }))
 
@@ -87,20 +76,6 @@ const addPaymentRule = () => {
 
 const removePaymentRule = (index) => {
   editablePaymentRules.value.splice(index, 1)
-}
-
-// --- LÓGICA DE LABORATORIOS ---
-const addLaboratory = () => {
-  editableLaboratories.value.push({
-    id: tempIdCounter.value--,
-    phone: '',
-    laboratory: { id: null, name: '' },
-    _markedForEdit: true
-  })
-}
-
-const removeLaboratory = (index) => {
-  editableLaboratories.value.splice(index, 1)
 }
 
 // --- LÓGICA DE ESCALAS (Integrada en la misma pestaña de marcas) ---
@@ -140,15 +115,7 @@ const saveFinances = () => {
 }
 
 const saveBrands = async () => {
-  // Primero guardamos laboratorios vinculados
-  const labsData = editableLaboratories.value.map(l => ({
-    id: l.id > 0 ? l.id : undefined,
-    phone: l.phone,
-    laboratory: l.laboratory
-  }))
-  emit('save-laboratories', labsData)
-
-  // Luego guardamos las escalas (solo las nuevas/editadas)
+  // Guardamos las escalas (solo las nuevas/editadas)
   const scalesData = editableScaleRules.value.map(s => ({
     id: s.id > 0 ? s.id : undefined,
     laboratory: s.laboratory,
@@ -308,64 +275,6 @@ const close = () => {
 
           <!-- TAB 2: MARCAS Y ESCALAS -->
           <VWindowItem :value="1">
-            <!-- Sección Laboratorios -->
-            <VCard variant="flat" class="border rounded-lg mb-8">
-              <VCardTitle class="d-flex align-center py-3 px-4 bg-grey-lighten-4">
-                <VIcon icon="tabler-building-factory-2" size="20" class="me-2 text-primary" />
-                <span class="text-subtitle-1 font-weight-bold">Laboratorios Vinculados</span>
-                <VSpacer />
-                <VBtn 
-                  prepend-icon="tabler-link" 
-                  variant="elevated" 
-                  color="primary" 
-                  size="small"
-                  elevation="1"
-                  @click="addLaboratory"
-                >
-                  Vincular
-                </VBtn>
-              </VCardTitle>
-              <VDivider />
-              <VTable class="premium-table">
-                <thead>
-                  <tr>
-                    <th class="text-overline">Laboratorio</th>
-                    <th class="text-overline">Tel. Representante</th>
-                    <th class="text-center text-overline">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(lab, index) in editableLaboratories" :key="index" class="hover-row">
-                    <td style="inline-size: 60%;">
-                      <AppAutocomplete
-                        v-model="lab.laboratory"
-                        :items="laboratories"
-                        item-title="name"
-                        return-object
-                        density="compact"
-                        placeholder="Seleccionar laboratorio..."
-                        hide-details
-                      />
-                    </td>
-                    <td>
-                      <AppTextField
-                        v-model="lab.phone"
-                        density="compact"
-                        placeholder="Ej: 0412-1234567"
-                        hide-details
-                      />
-                    </td>
-                    <td class="text-center">
-                      <VBtn icon="tabler-trash" variant="text" color="error" size="small" @click="removeLaboratory(index)" />
-                    </td>
-                  </tr>
-                  <tr v-if="editableLaboratories.length === 0">
-                    <td colspan="3" class="text-center py-6 text-grey">No hay laboratorios vinculados directamente</td>
-                  </tr>
-                </tbody>
-              </VTable>
-            </VCard>
-
             <!-- Sección Escalas -->
             <VCard variant="flat" class="border rounded-lg">
               <VCardTitle class="d-flex align-center py-3 px-4 bg-green-lighten-5">

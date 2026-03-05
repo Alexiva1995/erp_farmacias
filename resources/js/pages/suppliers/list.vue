@@ -34,7 +34,6 @@ const isConnectionDialogVisible = ref(false);
 const connectionSupplier = ref({});
 
 const laboratories = ref([]);
-const laboratoryLinks = ref([]);
 const pendingInvoices = ref({});
 const discountRules = ref([]);
 const paymentRules = ref([]);
@@ -103,12 +102,6 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(
-    `/suppliers/${currentSupplier.value.id}/laboratories`
-  );
-  laboratoryLinks.value = data.laboratory_links;
-};
 
 const fetchDiscountRules = async () => {
   try {
@@ -285,7 +278,6 @@ const handleCommercialPanel = async (supplier) => {
   try {
     await Promise.all([
       fetchPaymentRules(),
-      fetchLaboratoryLinks(),
       fetchSupplierDiscount(),
       fetchDiscountRules()
     ]);
@@ -310,18 +302,6 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
   }
 };
 
-const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
-  const url = `/suppliers/${currentSupplier.value.id}/laboratories`;
-  try {
-    const payload = { rulesLaboratory: supplierLaboratoryFormData };
-    await axios.post(url, payload);
-    toast.success("Laboratorios guardados con éxito");
-    await fetchLaboratoryLinks();
-  } catch (error) {
-    console.error("Error al guardar laboratorios:", error);
-    toast.error("Error al guardar laboratorios.");
-  }
-};
 
 const handleSaveDiscountRules = async (formData) => {
   const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
@@ -421,14 +401,12 @@ const updateTableOptions = (options) => {
       v-model="isCommercialPanelVisible"
       :supplier="currentSupplier"
       :laboratories="laboratories"
-      :laboratory-links="laboratoryLinks"
-      :payment-rules="paymentRules"
       :supplier-discount="supplierDiscount"
       :discount-rules="discountRules"
       :loading="loading"
       :errors="supplierFormErrors"
       @save-payment-rules="handleSavePaymentRule"
-      @save-laboratories="handleSaveSupplierLaboratory"
+      @save-discounts="handleSaveSupplierDiscount"
       @save-discount-rules="handleSaveDiscountRules"
       @clear-errors="clearFormErrors"
     />
