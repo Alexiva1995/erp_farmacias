@@ -175,6 +175,11 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
+            Log::info("Analizando facturas para persistencia", [
+                'total_recibidas' => count($invoices),
+                'numeros_recibidos' => collect($invoices)->pluck('header.invoice_number')->toArray()
+            ]);
+
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
 
@@ -189,16 +194,23 @@ class SupplierQueryService
                 'primeros_3_productos' => array_slice($uniqueProducts, 0, 3),
             ]);
 
-            $existingInvoiceNumbers = Invoice::whereIn(
-                'invoice_number',
-                collect($invoices)->pluck('header.invoice_number')->filter()->unique()
-            )->pluck('invoice_number')->toArray();
+            $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
+            
+            $existingInvoiceNumbers = Invoice::whereIn('invoice_number', $invoiceNumbersToFilter)
+                ->pluck('invoice_number')
+                ->toArray();
 
             $filteredInvoices = collect($invoices)
                 ->filter(function ($invoice) use ($existingInvoiceNumbers) {
                     $number = $invoice['header']['invoice_number'] ?? null;
-                    return $number && !in_array($number, $existingInvoiceNumbers);
+                    $isNew = $number && !in_array($number, $existingInvoiceNumbers);
+                    if (!$isNew) {
+                        Log::warning("Factura filtrada (ya existe o sin número)", ['number' => $number]);
+                    }
+                    return $isNew;
                 })->values()->toArray();
+
+            Log::info("Facturas tras filtrado", ['total' => count($filteredInvoices)]);
 
             // Procesar productos FUERA de la transacción para evitar rollback si uno falla
             // NO eliminar ningún producto existente

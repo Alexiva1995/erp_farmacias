@@ -227,13 +227,13 @@ class SupplierConnectionService
                 }
 
                 foreach ($invoicesRaw as $invoice) {
-                    $cod_invoice = $invoice['InvoiceCode'] ?? $invoice['fact_num'] ?? null;
+                    $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? null;
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
                         continue;
                     }
 
-                    // Si la factura ya trae los artículos, no llamamos a detalle
+                    // Si la factura ya trae los artículos (caso Cristmedicals y otros)
                     if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
                         $parsed = $this->parseNestedInvoice($invoice, $connection);
                         if (!empty($parsed)) {

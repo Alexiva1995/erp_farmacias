@@ -11,6 +11,7 @@ use App\Http\Requests\CreateExpenseRecurrenceRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use App\Http\Requests\UploadFileInvoiceExpenseRequest;
+use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
