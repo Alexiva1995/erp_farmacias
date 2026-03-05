@@ -280,7 +280,7 @@ class ProductRepository
                 $consulta->orderBy($sortCol, $sortDir);
             }
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("diferencia_product", "DESC");
         }
 
 
@@ -525,7 +525,8 @@ class ProductRepository
             }
             if ($filtros["stock"] == "fallas") {
                 // Ahora unificado: demanda - stock - AO > 0 = falla (puramente matemático)
-                $consulta->havingRaw("solicitar > 0");
+                // Y excepcion: solicitar es 0, y el stock físico también es 0
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -544,7 +545,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
@@ -806,7 +807,8 @@ class ProductRepository
             }
             if ($filtros["stock"] == "fallas") {
                 // Ahora unificado: demanda - stock - AO > 0 = falla puramente matemático
-                $consulta->havingRaw("solicitar > 0");
+                // Y excepcion: solicitar es 0, y el stock físico también es 0
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -825,7 +827,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
@@ -1255,7 +1257,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
