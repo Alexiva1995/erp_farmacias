@@ -10,179 +10,195 @@ const props = defineProps({
 
 const emit = defineEmits([
   "update:options",
+  "manage",
   "delete-purchaseOrder",
-  "show-purchaseOrder",
-  "show-requested-products",
 ]);
 
 const headers = [
-  { title: "Id", key: "id", sortable: false },
+  { title: "Id", key: "id", sortable: false, width: "80px" },
   { title: "Proveedor", key: "supplier_name", sortable: false },
-  { title: "Unidades", key: "total_quantity", sortable: false },
-  { title: "Monto", key: "total_amount", sortable: false },
-  { title: "Estado", key: "status", sortable: false },
-  { title: "Fecha", key: "order_date", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "Unidades", key: "total_quantity", sortable: false, align: "center" },
+  { title: "Monto Total", key: "total_amount", sortable: false },
+  { title: "Estado", key: "status", sortable: false, align: "center" },
+  { title: "Fecha Solicitud", key: "order_date", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
+
+const formatDate = (dateString) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 </script>
 
 <template>
-  <VCard>
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.purchaseOrders"
-      :items-length="props.totalPurchaseOrders"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.id="{ item }">
-        <div class="d-flex align-center">
-          <VAvatar
-            size="32"
-            variant="tonal"
-            color="primary"
-            class="me-2"
-          >
-            <span class="text-xs">#{{ item.id }}</span>
-          </VAvatar>
-        </div>
-      </template>
-
-      <template #item.supplier_name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-body-1 font-weight-bold text-high-emphasis">
-            {{ item.supplier_name }}
-          </span>
-          <span v-if="item.phone" class="text-caption text-secondary">
-            <VIcon icon="tabler-phone" size="12" class="me-1" />
-            {{ item.phone }}
-          </span>
-        </div>
-      </template>
-
-      <template #item.total_quantity="{ item }">
-        <div class="d-flex align-center">
-          <VIcon icon="tabler-box" size="16" class="me-1 text-secondary" />
-          <span class="font-weight-medium">
-            {{ item.total_quantity }} u.
-          </span>
-        </div>
-      </template>
-
-      <template #item.total_amount="{ item }">
-        <span class="font-weight-bold text-primary">{{
-          Intl.NumberFormat("es-VE", {
-            style: "currency",
-            currency: "USD",
-          }).format(item.total_amount)
-        }}</span>
-      </template>
-
-      <template #item.order_date="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-body-2 font-weight-medium">
-            {{ new Date(item.order_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}
-          </span>
-          <span class="text-caption text-secondary">
-            {{ new Date(item.order_date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) }}
-          </span>
-        </div>
-      </template>
-
-      <template #item.status="{ item }">
-        <VChip
-          size="small"
-          :color="item.status ? 'success' : 'warning'"
+  <VDataTableServer
+    v-model:items-per-page="props.itemsPerPage"
+    v-model:page="props.page"
+    :headers="headers"
+    :items="props.purchaseOrders"
+    :items-length="props.totalPurchaseOrders"
+    :loading="props.loading"
+    @update:options="emit('update:options', $event)"
+    hover
+    class="premium-po-table"
+  >
+    <!-- ID de Orden -->
+    <template #item.id="{ item }">
+      <div class="d-flex align-center">
+        <VAvatar
+          size="36"
+          variant="tonal"
+          color="primary"
           class="font-weight-bold"
-          label
         >
-          {{ item.status ? "COMPLETADO" : "PENDIENTE" }}
-        </VChip>
-      </template>
+          <span class="text-caption">#{{ item.id }}</span>
+        </VAvatar>
+      </div>
+    </template>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex align-center gap-1">
-          <VTooltip text="Gestionar Productos" location="top">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                icon
-                size="x-small"
-                variant="tonal"
-                color="primary"
-                @click="emit('show-requested-products', item)"
-              >
-                <VIcon icon="tabler-list-check" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip text="Ver Detalle" location="top">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                icon
-                size="x-small"
-                variant="tonal"
-                color="info"
-                @click="emit('show-purchaseOrder', item)"
-              >
-                <VIcon icon="tabler-eye" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip v-if="props.isAdmin" text="Editar" location="top">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                icon
-                size="x-small"
-                variant="tonal"
-                color="warning"
-                @click="emit('edit-purchaseOrder', item)"
-              >
-                <VIcon icon="tabler-edit" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip v-if="props.isAdmin" text="Eliminar" location="top">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                icon
-                size="x-small"
-                variant="tonal"
-                color="error"
-                @click="emit('delete-purchaseOrder', item.id)"
-              >
-                <VIcon icon="tabler-trash" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
-
-          <VTooltip text="Contactar WhatsApp" location="top">
-            <template #activator="{ props }">
-              <VBtn
-                v-bind="props"
-                icon
-                size="x-small"
-                variant="tonal"
-                color="success"
-                :disabled="!item.phone"
-                :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${item.id}%2A` : undefined"
-                target="_blank"
-              >
-                <VIcon icon="tabler-brand-whatsapp" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
+    <!-- Proveedor -->
+    <template #item.supplier_name="{ item }">
+      <div class="d-flex flex-column py-2">
+        <span class="text-body-2 font-weight-bold text-high-emphasis">
+          {{ item.supplier_name }}
+        </span>
+        <div v-if="item.phone" class="d-flex align-center text-caption text-medium-emphasis mt-1">
+          <VIcon icon="tabler-phone" size="12" class="me-1 text-primary" />
+          {{ item.phone }}
         </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+      </div>
+    </template>
+
+    <!-- Unidades -->
+    <template #item.total_quantity="{ item }">
+      <VChip size="small" variant="flat" color="secondary" class="font-weight-medium">
+        {{ item.total_quantity }} u.
+      </VChip>
+    </template>
+
+    <!-- Monto Total -->
+    <template #item.total_amount="{ item }">
+      <div class="d-flex flex-column">
+        <span class="font-weight-bold text-primary text-body-2">
+          $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+        </span>
+      </div>
+    </template>
+
+    <!-- Estado -->
+    <template #item.status="{ item }">
+      <VChip
+        :color="item.status ? 'success' : 'warning'"
+        size="x-small"
+        label
+        variant="tonal"
+        class="font-weight-bold"
+      >
+        {{ item.status ? "COMPLETADO" : "PENDIENTE" }}
+      </VChip>
+    </template>
+
+    <!-- Fecha -->
+    <template #item.order_date="{ item }">
+      <div class="d-flex flex-column">
+        <span class="text-body-2 font-medium">
+          {{ formatDate(item.order_date) }}
+        </span>
+        <span class="text-xxs text-medium-emphasis">
+          {{ formatTime(item.order_date) }}
+        </span>
+      </div>
+    </template>
+
+    <!-- Acciones -->
+    <template #item.actions="{ item }">
+      <div class="d-flex align-center justify-center gap-2">
+        <VTooltip text="Gestionar Orden" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <VBtn
+              v-bind="tooltipProps"
+              icon
+              size="x-small"
+              variant="flat"
+              color="primary"
+              class="rounded-lg shadow-sm"
+              @click="emit('manage', item)"
+            >
+              <VIcon icon="tabler-settings" size="18" />
+            </VBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip v-if="isAdmin" text="Eliminar Orden" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <VBtn
+              v-bind="tooltipProps"
+              icon
+              size="x-small"
+              variant="tonal"
+              color="error"
+              class="rounded-lg"
+              @click="emit('delete-purchaseOrder', item.id)"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+            </VBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip text="WhatsApp" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <VBtn
+              v-bind="tooltipProps"
+              icon
+              size="x-small"
+              variant="tonal"
+              color="success"
+              class="rounded-lg"
+              :disabled="!item.phone"
+              :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=Hola, envío orden de compra #${item.id}` : undefined"
+              target="_blank"
+            >
+              <VIcon icon="tabler-brand-whatsapp" size="18" />
+            </VBtn>
+          </template>
+        </VTooltip>
+      </div>
+    </template>
+  </VDataTableServer>
 </template>
+
+<style scoped>
+.premium-po-table {
+  border-radius: 0 !important;
+}
+
+.text-xxs {
+  font-size: 0.7rem;
+}
+
+:deep(.v-data-table__th) {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-on-surface), 0.6) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+</style>

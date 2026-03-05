@@ -676,12 +676,38 @@ class SupplierQueryService
             $order->increment("total_quantity", $quantity);
             $order->increment("total_amount", $subtotal);
         } else {
+            // Calcular fecha de entrega tentativa basada en dispatch_days del proveedor
+            $tentativeDate = null;
+            $supplier = $product->supplier;
+            $dispatchDays = $supplier->dispatch_days; // Ej: [1, 3, 5] o ["Monday", ...]
+            
+            if (!empty($dispatchDays) && is_array($dispatchDays)) {
+                $today = now();
+                $minDiff = 8; // Más de una semana
+                foreach ($dispatchDays as $day) {
+                    // Normalizar el día (pueden venir como nombres o números de ISO-8601 1=Mon, 7=Sun)
+                    $targetDay = is_numeric($day) ? (int)$day : date('N', strtotime($day));
+                    $currentDay = (int)$today->format('N');
+                    
+                    $diff = $targetDay - $currentDay;
+                    if ($diff <= 0) $diff += 7; // Próxima semana
+                    
+                    if ($diff < $minDiff) {
+                        $minDiff = $diff;
+                    }
+                }
+                if ($minDiff < 8) {
+                    $tentativeDate = $today->copy()->addDays($minDiff);
+                }
+            }
+
             $payload = [
                 "supplier_id" => $product->supplier_id,
                 "order_date" => now()->today(),
                 "total_items" => 1,
                 "total_quantity" => $quantity,
                 "total_amount" => $subtotal,
+                "tentative_delivery_date" => $tentativeDate,
             ];
             $order = AutoOrder::create($payload);
             $order->details()->create($detailPayload);
@@ -735,7 +761,10 @@ class SupplierQueryService
 
     public function deleteProducts(Supplier $supplier)
     {
-        $supplier->productSuppliers()->delete();
+        // Solo eliminamos productos que NO tengan detalles de órdenes vinculados
+        $supplier->productSuppliers()
+            ->whereDoesntHave('autoOrderDetails')
+            ->delete();
 
         return response()->json(["status" => "ok"]);
     }

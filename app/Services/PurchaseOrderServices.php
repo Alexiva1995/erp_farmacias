@@ -63,4 +63,9 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     return $this->autoOrdersRepository->getStats($data);
   }
+
+  public function confirmSent(AutoOrder $autoOrder): bool
+  {
+    return $this->autoOrdersRepository->confirmSent($autoOrder);
+  }
 }

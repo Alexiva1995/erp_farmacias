@@ -211,4 +211,12 @@ class AutoOrdersRepository
             'pending_orders' => (clone $query)->where('status', 0)->count(),
         ];
     }
+
+    public function confirmSent(AutoOrder $autoOrder): bool
+    {
+        return $autoOrder->update([
+            'sent_at' => now(),
+            'status' => true
+        ]);
+    }
 }

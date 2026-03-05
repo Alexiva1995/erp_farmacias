@@ -172,6 +172,8 @@ class SupplierActionService
     }
     public function deleteProductsOlderThan(string $date)
     {
-        return ProductSupplier::whereDate('updated_at', '<', $date)->delete();
+        return ProductSupplier::whereDate('updated_at', '<', $date)
+            ->whereDoesntHave('autoOrderDetails')
+            ->delete();
     }
 }
