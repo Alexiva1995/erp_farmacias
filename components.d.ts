@@ -302,6 +302,7 @@ declare module 'vue' {
     SupervisorCleaningTable: typeof import('./resources/js/components/SupervisorCleaningTable.vue')['default']
     SupervisorReviewDialog: typeof import('./resources/js/components/dialogs/SupervisorReviewDialog.vue')['default']
     SupplierAssistantReportTable: typeof import('./resources/js/components/SupplierAssistantReportTable.vue')['default']
+    SupplierCommercialPanel: typeof import('./resources/js/components/dialogs/SupplierCommercialPanel.vue')['default']
     SupplierConnectionDialog: typeof import('./resources/js/components/dialogs/SupplierConnectionDialog.vue')['default']
     SupplierConnectionNotifier: typeof import('./resources/js/components/SupplierConnectionNotifier.vue')['default']
     SupplierDiscountEditDialog: typeof import('./resources/js/components/dialogs/SupplierDiscountEditDialog.vue')['default']
