@@ -59,7 +59,7 @@ function rowClass(item) {
           <td class="ps-4 py-2">
             <div class="d-flex flex-column" style="max-inline-size: 150px;">
               <span class="text-body-2 font-weight-bold text-truncate">{{ item.supplier.name }}</span>
-              <span class="text-caption text-disabled text-truncate">Oportunidad Única</span>
+              <span class="text-caption text-error text-truncate font-weight-bold">Precio Elevado</span>
             </div>
           </td>
           <td>
