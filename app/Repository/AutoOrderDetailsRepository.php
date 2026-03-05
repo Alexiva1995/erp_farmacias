@@ -18,6 +18,7 @@ class AutoOrderDetailsRepository
     {
         $results = AutoOrderDetail::where("order_id", $filters["id"])
             ->with(["productSupplier"])
+            ->orderBy("subtotal", "desc")
             ->paginate(10)
             ->through(fn($record) => [...$record->toArray(), "product_name" => $record->productSupplier->name ?? null]);
 
@@ -44,6 +45,7 @@ class AutoOrderDetailsRepository
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->where("auto_order_details.order_id", $id)
+            ->orderBy("auto_order_details.subtotal", "desc")
             ->paginate($perPage);
 
         return $results;

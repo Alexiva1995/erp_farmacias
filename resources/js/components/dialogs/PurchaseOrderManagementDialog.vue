@@ -84,8 +84,7 @@ const fetchDetails = async () => {
     const { data } = await axios.get(`/suppliers/purchase-orders/${props.purchaseOrder.id}`, {
       params: { page: page.value, perPage: itemsPerPage.value },
     });
-    // Ordenar por subtotal de mayor a menor
-    details.value = data.data.sort((a, b) => (b.quantity * b.unit_cost) - (a.quantity * a.unit_cost));
+    details.value = data.data;
     totalDetails.value = data.total;
 
     // Inicializar estado para detección de cambios
