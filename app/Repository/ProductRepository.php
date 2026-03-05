@@ -502,7 +502,7 @@ class ProductRepository
                 // debemos usar las subconsultas enteras o aliadas correctamente, no las variables que desaparecen en count.
                 // afortunadamente Laravel permite usar los alias si la versión de BD lo soporta, o debemos inyectarlas enteras.
                 // Como 'solicitar' es un alias válido solo en el bloque principal, y en la de count() puede romperse el de 'total_sold_completed',
-                // lo expandimos: 'solicitar > 0' O que ventas sean 0 y stock sea 0
+                // lo expandimos: 'solicitar > 0' O que (ventas sean 0 AND stock sea 0 AND AO sea 0)
                 $consulta->havingRaw("(
                     solicitar > 0 OR 
                     ( 
@@ -511,6 +511,8 @@ class ProductRepository
                        WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
                       AND 
                       (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
+                      AND
+                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND aod.status = 0) = 0
                     )
                 )");
             }
@@ -763,6 +765,8 @@ class ProductRepository
                        WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
                       AND 
                       (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
+                      AND
+                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND aod.status = 0) = 0
                     )
                 )");
             }
