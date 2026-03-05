@@ -313,6 +313,7 @@ declare module 'vue' {
     SupplierIaOrderAssistantReportFilter: typeof import('./resources/js/components/SupplierIaOrderAssistantReportFilter.vue')['default']
     SupplierLaboratoryEditDialog: typeof import('./resources/js/components/dialogs/SupplierLaboratoryEditDialog.vue')['default']
     SupplierPendingInvoicesDialog: typeof import('./resources/js/components/dialogs/SupplierPendingInvoicesDialog.vue')['default']
+    SupplierStatsCards: typeof import('./resources/js/components/SupplierStatsCards.vue')['default']
     SupplierTable: typeof import('./resources/js/components/SupplierTable.vue')['default']
     TablePagination: typeof import('./resources/js/@core/components/TablePagination.vue')['default']
     TheCustomizer: typeof import('./resources/js/@core/components/TheCustomizer.vue')['default']

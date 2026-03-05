@@ -490,4 +490,10 @@ class SupplierController extends Controller
     ]);
     return ApiResponse::success("Producto eliminado de la lista");
 }
+
+    public function stats()
+    {
+        $stats = $this->supplierQueryService->getSupplierSummaryStats();
+        return response()->json($stats);
+    }
 }

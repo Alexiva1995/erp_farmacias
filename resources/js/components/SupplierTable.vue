@@ -39,6 +39,7 @@ const headers = [
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -129,9 +130,14 @@ const headers = [
       </template>
 
       <template #item.debt="{ item }">
-        <span class="font-weight-medium">{{
-          item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 })
-        }}</span>
+        <VChip
+          :color="item.debt > 0 ? 'error' : 'success'"
+          label
+          size="small"
+          class="font-weight-bold"
+        >
+          {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
+        </VChip>
       </template>
 
       <template #item.latestScore.score="{ item }">
@@ -145,77 +151,98 @@ const headers = [
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip text="Editar Proveedor" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-supplier', item)">
-              <VIcon icon="tabler-edit" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Conexión API" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              :disabled="checkingApiId === item.id"
-              @click="emit('check-supplier-api', item)"
-            >
+        <div class="d-flex align-center gap-1">
+          <VTooltip text="Ver Conexión" location="top">
+            <template #activator="{ props }">
               <VIcon
-                :icon="
-                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'
-                "
+                v-bind="props"
+                size="12"
+                :color="checkingApiId === item.id ? 'warning' : 'success'"
+                :icon="checkingApiId === item.id ? 'tabler-circle-filled' : 'tabler-circle-filled'"
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Regla de Pronto Pago" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('payment-rule', item)">
-              <VIcon icon="tabler-percentage" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Laboratorios Asociados" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('supplier-laboratory', item)">
-              <VIcon icon="tabler-test-pipe" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Facturas Pendientes" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="emit('supplier-pending-invoices', item)"
-            >
-              <VIcon icon="tabler-credit-card-pay" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Reglas de Descuento" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="emit('supplier-discount-rule', item)"
-            >
-              <VIcon icon="tabler-cash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Descuentos" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('supplier-discount', item)">
-              <VIcon icon="tabler-discount" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Eliminar Proveedor" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-supplier', item.id)">
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
+            </template>
+          </VTooltip>
+
+          <VMenu>
+            <template #activator="{ props }">
+              <IconBtn v-bind="props">
+                <VIcon icon="tabler-dots-vertical" />
+              </IconBtn>
+            </template>
+
+            <VList density="compact">
+              <VListItem @click="emit('edit-supplier', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-edit" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Editar</VListItemTitle>
+              </VListItem>
+
+              <VListItem
+                :disabled="checkingApiId === item.id"
+                @click="emit('check-supplier-api', item)"
+              >
+                <template #prepend>
+                  <VIcon
+                    :icon="checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'"
+                    :class="checkingApiId === item.id ? 'spin-icon' : ''"
+                    size="18"
+                    class="me-2"
+                  />
+                </template>
+                <VListItemTitle>Sincronizar API</VListItemTitle>
+              </VListItem>
+
+              <VListItem @click="emit('payment-rule', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-percentage" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Regla Pronto Pago</VListItemTitle>
+              </VListItem>
+
+              <VListItem @click="emit('supplier-laboratory', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-test-pipe" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Laboratorios</VListItemTitle>
+              </VListItem>
+
+              <VListItem @click="emit('supplier-pending-invoices', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-credit-card-pay" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Facturas Pendientes</VListItemTitle>
+              </VListItem>
+
+              <VListItem @click="emit('supplier-discount-rule', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-cash" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Reglas Descuento</VListItemTitle>
+              </VListItem>
+
+              <VListItem @click="emit('supplier-discount', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-discount" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Descuentos</VListItemTitle>
+              </VListItem>
+
+              <VDivider />
+
+              <VListItem
+                base-color="error"
+                @click="emit('delete-supplier', item.id)"
+              >
+                <template #prepend>
+                  <VIcon icon="tabler-trash" size="18" class="me-2" />
+                </template>
+                <VListItemTitle>Eliminar</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+        </div>
       </template>
     </VDataTableServer>
   </VCard>

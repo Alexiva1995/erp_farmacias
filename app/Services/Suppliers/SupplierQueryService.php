@@ -762,4 +762,37 @@ class SupplierQueryService
     {
         return $supplier->connections()->first();
     }
+
+    /**
+     * Obtiene el resumen estadístico de proveedores
+     */
+    public function getSupplierSummaryStats(): array
+    {
+        // 1. Deuda Total (Status 0 = Pendiente)
+        $totalDebt = Invoice::where('status_payment', 0)
+            ->where('total_usd', '>', 0)
+            ->sum('total_usd');
+
+        // 2. Total de Proveedores Activos (No eliminados)
+        $activeSuppliersCount = Supplier::count();
+
+        // 3. Éxito de Conexiones (Últimas 24 horas)
+        $last24Hours = now()->subDay();
+        $totalConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)->count();
+        $successfulConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)
+            ->where('status', 'completed')
+            ->count();
+
+        $connectionSuccessRate = $totalConnections > 0 
+            ? round(($successfulConnections / $totalConnections) * 100, 1) 
+            : 100;
+
+        return [
+            'total_debt' => (float)$totalDebt,
+            'active_suppliers_count' => $activeSuppliersCount,
+            'connection_success_rate' => $connectionSuccessRate,
+            'successful_connections' => $successfulConnections,
+            'total_connections_24h' => $totalConnections
+        ];
+    }
 }

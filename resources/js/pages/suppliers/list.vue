@@ -1,16 +1,17 @@
 <script setup>
-import SupplierFilters from "@/components/SupplierFilters.vue";
-import SupplierTable from "@/components/SupplierTable.vue";
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
 import SupplierDiscountEditDialog from "@/components/dialogs/SupplierDiscountEditDialog.vue";
 import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
 import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingInvoicesDialog.vue";
+import SupplierFilters from "@/components/SupplierFilters.vue";
+import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
+import SupplierTable from "@/components/SupplierTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from 'vue-router';
 
@@ -23,6 +24,13 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 const searchQuery = ref("");
+
+const stats = ref({
+  total_debt: 0,
+  active_suppliers_count: 0,
+  connection_success_rate: 100,
+});
+const isLoadingStats = ref(false);
 
 const laboratories = ref([]);
 const laboratoryLinks = ref([]);
@@ -45,6 +53,18 @@ const isSupplierDiscountDialogVisible = ref(false);
 const checkingApiSupplierId = ref(null);
 
 const router = useRouter();
+
+const fetchStats = async () => {
+  isLoadingStats.value = true;
+  try {
+    const response = await axios.get("/suppliers/stats");
+    stats.value = response.data;
+  } catch (error) {
+    console.error("Error al cargar estadísticas:", error);
+  } finally {
+    isLoadingStats.value = false;
+  }
+};
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -146,6 +166,7 @@ const fetchSupplierDiscount = async () => {
 };
 
 onMounted(() => {
+  fetchStats();
   fetchSelectOptions();
   fetchSuppliers();
 });
@@ -417,7 +438,9 @@ const updateTableOptions = (options) => {
 </script>
 
 <template>
-  <div>
+  <div class="d-flex flex-column gap-6">
+    <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
+
     <SupplierFilters
       v-model:searchQuery="searchQuery"
       @clear="handleClearFilters"
