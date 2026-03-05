@@ -439,14 +439,14 @@ const updateTableOptions = (options) => {
 
 <template>
   <div class="d-flex flex-column gap-6">
-    <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
-
     <SupplierFilters
       v-model:searchQuery="searchQuery"
       @clear="handleClearFilters"
       @sort="handleSort"
       @add-supplier="handleAddSupplier"
     />
+
+    <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
 
     <SupplierTable
       :suppliers="suppliers"

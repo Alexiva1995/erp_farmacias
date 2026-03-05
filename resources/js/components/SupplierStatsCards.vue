@@ -81,17 +81,17 @@ const statistics = computed(() => [
             <span class="text-caption text-disabled">{{ item.description }}</span>
           </div>
 
-          <div
-            class="rounded-pill pa-2"
-            :class="`bg-lighten-${item.color}`"
-            style="opacity: 0.1;"
+          <VAvatar
+            :color="item.color"
+            variant="tonal"
+            size="48"
+            rounded
           >
             <VIcon
               :icon="item.icon"
-              :color="item.color"
-              size="48"
+              size="28"
             />
-          </div>
+          </VAvatar>
         </VCardText>
       </VCard>
     </VCol>
@@ -99,7 +99,5 @@ const statistics = computed(() => [
 </template>
 
 <style scoped>
-.bg-lighten-error { background-color: rgb(var(--v-theme-error)); }
-.bg-lighten-primary { background-color: rgb(var(--v-theme-primary)); }
-.bg-lighten-success { background-color: rgb(var(--v-theme-success)); }
+/* Estilos eliminados ya que usamos variant="tonal" de Vuetify */
 </style>
