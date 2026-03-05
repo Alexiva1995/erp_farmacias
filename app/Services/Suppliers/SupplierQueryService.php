@@ -479,6 +479,7 @@ class SupplierQueryService
             ->select(
                 "suppliers.name as name",
                 "suppliers.id",
+                "suppliers.public_token",
                 DB::raw(
                     "COALESCE(supplier_connections.last_connection, 'No se ha establecido conexión') as last_connection",
                 ),
