@@ -3,50 +3,43 @@ import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  supplier: { type: Object, default: () => ({}) },
-  errors: { type: Object, default: () => ({}) },
+  supplier:   { type: Object, default: () => ({}) },
+  errors:     { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
-const formData = ref({
-  dispatch_days: [],
-  order_days: {},
-  //supplier_payment_method: null,
-  //supplier_payment_days: null,
-});
+// ─── Estado ────────────────────────────────────────────────────────────────
+const activeTab  = ref(0);
+const formData   = ref({ dispatch_days: [], order_days: {} });
 const formErrors = ref({});
 
 const opciones = [
-  { label: "Bs", value: "Bs" },
+  { label: "Bs",      value: "Bs" },
   { label: "Divisas", value: "Divisas" },
 ];
 
 const dias = [
-  { label: "Lunes", value: "monday" },
-  { label: "Martes", value: "tuesday" },
-  { label: "Miércoles", value: "wednesday" },
-  { label: "Jueves", value: "thursday" },
-  { label: "Viernes", value: "friday" },
-  { label: "Sábado", value: "saturday" },
+  { label: "Lun", value: "monday" },
+  { label: "Mar", value: "tuesday" },
+  { label: "Mié", value: "wednesday" },
+  { label: "Jue", value: "thursday" },
+  { label: "Vie", value: "friday" },
+  { label: "Sáb", value: "saturday" },
 ];
 
-/*const paymentMethodOptions = [
-  { label: "Fecha de vencimiento", value: "due_date" },
-  { label: "Pronto Pago", value: "early_payment" },
-  { label: "Fecha de creación", value: "creation_date" },
-  { label: "Días de crédito", value: "credit_days" },
-];*/
+const diasFull = {
+  monday: "Lunes", tuesday: "Martes", wednesday: "Miércoles",
+  thursday: "Jueves", friday: "Viernes", saturday: "Sábado",
+};
 
 const isNewSupplier = computed(() => !formData.value.id);
 
-// const shouldShowDaysInput = computed(() => {
-//   return formData.value.supplier_payment_method === "credit_days";
-// });
-
+// ─── Métodos ───────────────────────────────────────────────────────────────
 const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
+  activeTab.value  = 0;
   emit("clearErrors");
 };
 
@@ -54,524 +47,384 @@ const submitForm = () => {
   formErrors.value = {};
   emit("clearErrors");
 
-  // if (!formData.value.supplier_payment_method) {
-  //   formErrors.value.supplier_payment_method = [
-  //     "El método de pago es requerido",
-  //   ];
-  //   return;
-  // }
-
-  // if (formData.value.supplier_payment_method === "credit_days") {
-  //   if (
-  //     !formData.value.supplier_payment_days ||
-  //     formData.value.supplier_payment_days <= 0
-  //   ) {
-  //     formErrors.value.supplier_payment_days = [
-  //       "Los días de crédito son requeridos y deben ser mayor a 0",
-  //     ];
-  //     return;
-  //   }
-  // }
-
   const original = props.supplier || {};
-  const current = formData.value;
-
-  const filteredPayload = {};
+  const current  = formData.value;
+  const payload  = {};
 
   Object.entries(current).forEach(([key, value]) => {
     const originalValue = original[key];
+    const hasChanged = typeof value === "object"
+      ? JSON.stringify(value) !== JSON.stringify(originalValue)
+      : value !== originalValue;
 
-    const hasChanged =
-      typeof value === "object"
-        ? JSON.stringify(value) !== JSON.stringify(originalValue)
-        : value !== originalValue;
-
-    if (
-      hasChanged &&
-      (key === "payment_due_type" ||
-        key === "payment_due_reference" ||
-        key === "custom_due_days")
-    ) {
-      filteredPayload[key] = value === undefined ? null : value;
+    if (hasChanged && ["payment_due_type", "payment_due_reference", "custom_due_days"].includes(key)) {
+      payload[key] = value === undefined ? null : value;
       return;
     }
 
     const isFilled = Array.isArray(value)
       ? value.length > 0
       : typeof value === "object" && value !== null
-        ? Object.values(value).some((v) =>
-            Array.isArray(v) ? v.length > 0 : !!v,
-          )
-        : typeof value === "boolean"
-          ? true
-          : value !== null && value !== "" && value !== undefined;
+        ? Object.values(value).some(v => Array.isArray(v) ? v.length > 0 : !!v)
+        : typeof value === "boolean" ? true : value !== null && value !== "" && value !== undefined;
 
-    if (hasChanged && isFilled) {
-      filteredPayload[key] = value;
-    }
+    if (hasChanged && isFilled) payload[key] = value;
   });
 
-  // if (formData.value.supplier_payment_method) {
-  //   filteredPayload.supplier_payment_method =
-  //     formData.value.supplier_payment_method;
-
-  //   if (
-  //     formData.value.supplier_payment_method === "credit_days" &&
-  //     formData.value.supplier_payment_days
-  //   ) {
-  //     filteredPayload.supplier_payment_days =
-  //       formData.value.supplier_payment_days;
-  //   }
-  // }
-
   const currentRef = formData.value.invoice_date_reference;
-  const originalRef = original.invoice_date_reference;
-
   if (formData.value.payment_due_type === "invoice_date") {
-    if (currentRef !== originalRef) {
-      filteredPayload.invoice_date_reference = currentRef;
-    } else if (currentRef !== undefined && currentRef !== null) {
-      filteredPayload.invoice_date_reference = currentRef;
-    }
+    payload.invoice_date_reference = currentRef;
   }
 
   if (
     typeof formData.value.order_days === "object" &&
-    Object.keys(formData.value.order_days).length > 0 &&
-    Object.values(formData.value.order_days).some(
-      (v) => Array.isArray(v) && v.length > 0,
-    )
+    Object.values(formData.value.order_days).some(v => Array.isArray(v) && v.length > 0)
   ) {
-    filteredPayload.order_days = formData.value.order_days;
+    payload.order_days = formData.value.order_days;
   }
 
-  console.log(filteredPayload);
-  emit("save", filteredPayload);
+  emit("save", payload);
 };
 
-const diaDespachoLabel = (value) => {
-  const match = dias.find((d) => d.value === value);
-  return match?.label || value;
-};
-
-watch(
-  () => props.errors,
-  (newErrors) => {
-    formErrors.value = newErrors || {};
-  },
-  { deep: true },
-);
+// ─── Watchers ──────────────────────────────────────────────────────────────
+watch(() => props.errors, (v) => { formErrors.value = v || {}; }, { deep: true });
 
 watch(
   () => props.supplier,
   (newSupplier) => {
     if (newSupplier && Object.keys(newSupplier).length > 0) {
       formData.value = JSON.parse(JSON.stringify(newSupplier));
-
-      //if (newSupplier.payment_date && newSupplier.payment_date.type) {
-      //formData.value.supplier_payment_method = newSupplier.payment_date.type;
-
-      // if (
-      //   newSupplier.payment_date.type === "credit_days" &&
-      //   newSupplier.payment_date.days
-      // ) {
-      //   formData.value.supplier_payment_days = newSupplier.payment_date.days;
-      // }
-      // } else if (
-      //   newSupplier.payment_methods &&
-      //   newSupplier.payment_methods.length > 0
-      // ) {
-      // formData.value.supplier_payment_method =
-      //   newSupplier.payment_methods[0].type;
-
-      // if (
-      //   newSupplier.payment_methods[0].type === "credit_days" &&
-      //   newSupplier.payment_methods[0].days
-      // ) {
-      // formData.value.supplier_payment_days =
-      //   newSupplier.payment_methods[0].days;
-      //   }
-      // } else {
-      //formData.value.supplier_payment_method = null;
-      //formData.value.supplier_payment_days = null;
-      //}
-
       const normalized = {};
       (formData.value.dispatch_days || []).forEach((day) => {
         const old = newSupplier.order_days;
-        if (
-          old &&
-          typeof old === "object" &&
-          !Array.isArray(old) &&
-          Array.isArray(old[day])
-        ) {
-          normalized[day] = [...old[day]];
-        } else {
-          normalized[day] = [];
-        }
+        normalized[day] = (old && !Array.isArray(old) && Array.isArray(old[day])) ? [...old[day]] : [];
       });
       formData.value.order_days = normalized;
     } else {
-      formData.value = {
-        name: "",
-        dispatch_days: [],
-        order_days: {},
-        //supplier_payment_method: null,
-        //supplier_payment_days: null,
-      };
+      formData.value = { name: "", dispatch_days: [], order_days: {} };
     }
     formErrors.value = {};
+    activeTab.value  = 0;
   },
   { deep: true, immediate: true },
 );
 
 watch(
   () => formData.value.dispatch_days,
-  (newDispatchDays) => {
-    newDispatchDays.forEach((dia) => {
-      if (!Array.isArray(formData.value.order_days[dia])) {
-        formData.value.order_days[dia] = [];
-      }
+  (days) => {
+    days.forEach((d) => {
+      if (!Array.isArray(formData.value.order_days[d]))
+        formData.value.order_days[d] = [];
     });
   },
   { immediate: true },
 );
-
-/*watch(
-  () => formData.value.supplier_payment_method,
-  (newMethod) => {
-    if (newMethod !== "credit_days") {
-      formData.value.supplier_payment_days = null;
-      if (formErrors.value.supplier_payment_days) {
-        delete formErrors.value.supplier_payment_days;
-      }
-    }
-  }
-);*/
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="660px"
     persistent
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard v-if="formData" class="d-flex flex-column">
-      <!-- Header Estilizado -->
-      <VCardTitle class="d-flex align-center pa-4 bg-primary text-white">
-        <VIcon
-          icon="tabler-truck-delivery"
-          size="24"
-          color="white"
-          class="me-2"
-        />
-        <span class="text-h5 font-weight-bold">
-          {{ isNewSupplier ? "Añadir Nuevo Proveedor" : "Editar Proveedor" }}
-        </span>
+    <VCard v-if="formData">
 
+      <!-- ── Header ─────────────────────────────────────────────────── -->
+      <div
+        class="d-flex align-center px-5 py-4"
+        style="background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 0.8) 100%);"
+      >
+        <VAvatar color="white" variant="tonal" size="38" rounded class="me-3">
+          <VIcon icon="tabler-truck-delivery" size="20" color="white" />
+        </VAvatar>
+        <div>
+          <p class="text-subtitle-1 font-weight-bold ma-0" style="color: #fff !important; line-height: 1.2;">
+            {{ isNewSupplier ? "Añadir Proveedor" : "Editar Proveedor" }}
+          </p>
+          <p class="text-caption ma-0" style="color: rgba(255, 255, 255, 75%) !important;">
+            {{ isNewSupplier ? "Completa los datos del nuevo proveedor" : formData.name }}
+          </p>
+        </div>
         <VSpacer />
-        <VBtn
-          icon="tabler-x"
-          variant="text"
-          color="white"
-          size="small"
-          @click="closeDialog"
-        />
-      </VCardTitle>
+        <VBtn icon="tabler-x" variant="text" size="small" style="color: #fff;" @click="closeDialog" />
+      </div>
 
+      <!-- ── Tabs ───────────────────────────────────────────────────── -->
+      <VTabs v-model="activeTab" color="primary" density="compact">
+        <VTab :value="0" prepend-icon="tabler-info-circle">
+          <span class="text-caption font-weight-medium">General</span>
+        </VTab>
+        <VTab :value="1" prepend-icon="tabler-truck">
+          <span class="text-caption font-weight-medium">Logística</span>
+        </VTab>
+      </VTabs>
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto;">
-        <VForm @submit.prevent="submitForm">
-          <!-- Información Principal -->
-          <div class="text-overline mb-4 text-primary font-weight-bold">
-            Información Principal
-          </div>
+      <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
+      <VCardText class="pa-5" style="min-block-size: 320px;">
+        <VTabsWindow v-model="activeTab">
 
-          <VRow>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.name"
-                label="Nombre Comercial"
-                placeholder="Ej: Droguería Nena"
-                prepend-inner-icon="tabler-user"
-                :error-messages="formErrors.name"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.social_reason"
-                label="Razón Social"
-                placeholder="Ej: Inversiones Nena C.A."
-                prepend-inner-icon="tabler-building"
-                :error-messages="formErrors.social_reason"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.rif"
-                label="RIF"
-                placeholder="J-12345678-9"
-                prepend-inner-icon="tabler-id"
-                :error-messages="formErrors.rif"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.address"
-                label="Dirección"
-                placeholder="Dirección fiscal completa"
-                prepend-inner-icon="tabler-map-pin"
-                :error-messages="formErrors.address"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
-            Contacto
-          </div>
-
-          <VRow>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.sales_phone"
-                label="Teléfono Ventas"
-                type="tel"
-                placeholder="4121234567"
-                prepend-inner-icon="tabler-phone"
-                :error-messages="formErrors.sales_phone"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model="formData.collections_phone"
-                label="Teléfono Cobranza"
-                type="tel"
-                placeholder="4147654321"
-                prepend-inner-icon="tabler-phone-call"
-                :error-messages="formErrors.collections_phone"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
-            Configuración de Pago
-          </div>
-
-          <VRow>
-            <VCol cols="12" md="6">
-              <AppTextField
-                v-model.number="formData.credit_days"
-                label="Días de Crédito"
-                type="number"
-                placeholder="0"
-                prepend-inner-icon="tabler-calendar-time"
-                :error-messages="formErrors.credit_days"
-              />
-            </VCol>
-            <VCol cols="12" md="6">
-              <VRadioGroup
-                v-model="formData.payment_method"
-                label="Forma de Pago"
-                density="compact"
-                hide-details
-              >
-                <div class="d-flex gap-x-4">
-                  <VRadio
-                    v-for="opcion in opciones"
-                    :key="opcion.value"
-                    :label="opcion.label"
-                    :value="opcion.value"
-                    color="primary"
+          <!-- Tab 1 ─ General ────────────────────────────── -->
+          <VTabsWindowItem :value="0">
+            <VForm @submit.prevent="submitForm">
+              <!-- Fila 1: Nombre + Razón Social -->
+              <VRow dense>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="formData.name"
+                    label="Nombre Comercial *"
+                    placeholder="Droguería Nena"
+                    prepend-inner-icon="tabler-user"
+                    :error-messages="formErrors.name"
                   />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="formData.social_reason"
+                    label="Razón Social"
+                    placeholder="Inversiones Nena C.A."
+                    prepend-inner-icon="tabler-building"
+                    :error-messages="formErrors.social_reason"
+                  />
+                </VCol>
+              </VRow>
+
+              <!-- Fila 2: RIF + Dirección -->
+              <VRow dense class="mt-1">
+                <VCol cols="12" md="4">
+                  <AppTextField
+                    v-model="formData.rif"
+                    label="RIF"
+                    placeholder="J-12345678-9"
+                    prepend-inner-icon="tabler-id"
+                    :error-messages="formErrors.rif"
+                  />
+                </VCol>
+                <VCol cols="12" md="8">
+                  <AppTextField
+                    v-model="formData.address"
+                    label="Dirección"
+                    placeholder="Dirección fiscal"
+                    prepend-inner-icon="tabler-map-pin"
+                    :error-messages="formErrors.address"
+                  />
+                </VCol>
+              </VRow>
+
+              <!-- Fila 3: Teléfonos -->
+              <VRow dense class="mt-1">
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="formData.sales_phone"
+                    label="Tel. Ventas"
+                    type="tel"
+                    placeholder="4121234567"
+                    prepend-inner-icon="tabler-phone"
+                    :error-messages="formErrors.sales_phone"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="formData.collections_phone"
+                    label="Tel. Cobranza"
+                    type="tel"
+                    placeholder="4147654321"
+                    prepend-inner-icon="tabler-phone-call"
+                    :error-messages="formErrors.collections_phone"
+                  />
+                </VCol>
+              </VRow>
+
+              <!-- Separador Pago -->
+              <div class="d-flex align-center gap-2 mt-4 mb-3">
+                <VIcon icon="tabler-credit-card" size="16" color="primary" />
+                <span class="text-caption text-primary font-weight-bold text-uppercase">Pago</span>
+                <VDivider />
+              </div>
+
+              <!-- Fila 4: Días crédito + Forma de pago -->
+              <VRow dense>
+                <VCol cols="12" md="4">
+                  <AppTextField
+                    v-model.number="formData.credit_days"
+                    label="Días de Crédito"
+                    type="number"
+                    placeholder="0"
+                    prepend-inner-icon="tabler-calendar-time"
+                    :error-messages="formErrors.credit_days"
+                  />
+                </VCol>
+                <VCol cols="12" md="4">
+                  <AppSelect
+                    v-model="formData.payment_due_type"
+                    :items="[
+                      { title: 'Fecha de factura', value: 'invoice_date' },
+                      { title: 'Pronto pago',      value: 'early_payment' },
+                      { title: 'Personalizado',    value: 'custom' },
+                    ]"
+                    label="Límite de Pago"
+                    prepend-inner-icon="tabler-calendar-stats"
+                    :error-messages="formErrors.payment_due_type"
+                  />
+                </VCol>
+                <VCol cols="12" md="4">
+                  <!-- Campo condicional según payment_due_type -->
+                  <AppSelect
+                    v-if="formData.payment_due_type === 'invoice_date'"
+                    v-model="formData.invoice_date_reference"
+                    :items="[
+                      { title: 'Fecha Recibo',     value: 'receipt_date' },
+                      { title: 'Fecha Vencimiento',value: 'expiration_date' },
+                      { title: 'Fecha Emisión',    value: 'issue_date' },
+                    ]"
+                    label="Referencia"
+                    prepend-inner-icon="tabler-timeline"
+                    :error-messages="formErrors.invoice_date_reference"
+                  />
+                  <AppTextField
+                    v-else-if="formData.payment_due_type === 'custom'"
+                    v-model.number="formData.custom_due_days"
+                    label="Días personalizados"
+                    type="number"
+                    placeholder="0"
+                    prepend-inner-icon="tabler-numbers"
+                    :error-messages="formErrors.custom_due_days"
+                  />
+                  <AppSelect
+                    v-else-if="formData.payment_due_type === 'early_payment'"
+                    v-model="formData.payment_due_reference"
+                    :items="[
+                      { title: 'Fecha Emisión', value: 'issue_date' },
+                      { title: 'Fecha Recibo',  value: 'receipt_date' },
+                    ]"
+                    label="Contar desde"
+                    prepend-inner-icon="tabler-clock-play"
+                    :error-messages="formErrors.payment_due_reference"
+                  />
+                </VCol>
+              </VRow>
+
+              <!-- Fila 5: Forma de pago (radio) -->
+              <VRow dense class="mt-1">
+                <VCol cols="12">
+                  <div class="d-flex align-center gap-4">
+                    <span class="text-body-2 text-medium-emphasis">Moneda:</span>
+                    <VRadioGroup
+                      v-model="formData.payment_method"
+                      density="compact"
+                      hide-details
+                      inline
+                    >
+                      <VRadio
+                        v-for="op in opciones"
+                        :key="op.value"
+                        :label="op.label"
+                        :value="op.value"
+                        color="primary"
+                      />
+                    </VRadioGroup>
+                  </div>
+                </VCol>
+              </VRow>
+            </VForm>
+          </VTabsWindowItem>
+
+          <!-- Tab 2 ─ Logística ──────────────────────────── -->
+          <VTabsWindowItem :value="1">
+            <!-- Días de despacho -->
+            <div class="d-flex align-center gap-2 mb-3">
+              <VIcon icon="tabler-calendar-check" size="16" color="primary" />
+              <span class="text-caption text-primary font-weight-bold text-uppercase">Días de entrega del proveedor</span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <VChip
+                v-for="dia in dias"
+                :key="dia.value"
+                :color="formData.dispatch_days?.includes(dia.value) ? 'primary' : undefined"
+                :variant="formData.dispatch_days?.includes(dia.value) ? 'flat' : 'outlined'"
+                class="cursor-pointer"
+                size="small"
+                @click="
+                  formData.dispatch_days.includes(dia.value)
+                    ? formData.dispatch_days.splice(formData.dispatch_days.indexOf(dia.value), 1)
+                    : formData.dispatch_days.push(dia.value)
+                "
+              >
+                {{ dia.label }}
+              </VChip>
+            </div>
+
+            <!-- Días de pedido por día de despacho -->
+            <template v-if="formData.dispatch_days?.length">
+              <VDivider class="mb-3" />
+              <div class="d-flex align-center gap-2 mb-3">
+                <VIcon icon="tabler-clock-edit" size="16" color="warning" />
+                <span class="text-caption text-warning font-weight-bold text-uppercase">Días para hacer el pedido</span>
+              </div>
+
+              <div
+                v-for="diaD in formData.dispatch_days"
+                :key="diaD"
+                class="mb-3"
+              >
+                <div class="text-caption font-weight-bold mb-1 text-medium-emphasis">
+                  Para entregar el {{ diasFull[diaD] }}, pedir:
                 </div>
-              </VRadioGroup>
-            </VCol>
-          </VRow>
-
-          <VRow class="mt-4">
-            <VCol cols="12" md="6">
-              <AppSelect
-                v-model="formData.payment_due_type"
-                :items="[
-                  { title: 'Fecha de la factura', value: 'invoice_date' },
-                  { title: 'Pronto pago', value: 'early_payment' },
-                  { title: 'Otro (personalizado)', value: 'custom' },
-                ]"
-                label="Fecha Límite de Pago"
-                prepend-inner-icon="tabler-calendar-stats"
-                :error-messages="formErrors.payment_due_type"
-              />
-            </VCol>
-
-            <VCol
-              cols="12"
-              md="6"
-              v-if="formData.payment_due_type === 'invoice_date'"
-            >
-              <AppSelect
-                v-model="formData.invoice_date_reference"
-                :items="[
-                  { title: 'Fecha de Recibo', value: 'receipt_date' },
-                  { title: 'Fecha de Vencimiento', value: 'expiration_date' },
-                  { title: 'Fecha de emisión', value: 'issue_date' },
-                ]"
-                label="Referencia de Fecha de Factura"
-                prepend-inner-icon="tabler-timeline"
-                :error-messages="formErrors.invoice_date_reference"
-              />
-            </VCol>
-
-            <VCol
-              cols="12"
-              md="6"
-              v-if="formData.payment_due_type === 'custom'"
-            >
-              <AppTextField
-                v-model.number="formData.custom_due_days"
-                label="Días personalizados"
-                type="number"
-                placeholder="0"
-                prepend-inner-icon="tabler-numbers"
-                :error-messages="formErrors.custom_due_days"
-              />
-            </VCol>
-
-            <VCol
-              cols="12"
-              md="6"
-              v-if="
-                formData.payment_due_type !== 'invoice_date' &&
-                formData.payment_due_type
-              "
-            >
-              <AppSelect
-                v-model="formData.payment_due_reference"
-                :items="[
-                  { title: 'Fecha de emisión', value: 'issue_date' },
-                  { title: 'Fecha de recibo', value: 'receipt_date' },
-                ]"
-                label="Contar días desde"
-                prepend-inner-icon="tabler-clock-play"
-                :error-messages="formErrors.payment_due_reference"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="text-overline mt-6 mb-4 text-primary font-weight-bold">
-            Logística y Días de Despacho
-          </div>
-
-          <VRow>
-            <VCol cols="12">
-              <VCard variant="tonal" color="primary" class="pa-5 rounded-lg border">
-                <div class="d-flex align-center mb-4">
-                  <VIcon icon="tabler-truck" color="primary" class="me-2" />
-                  <span class="text-subtitle-1 font-weight-bold">Configuración de Despacho</span>
-                </div>
-                
-                <div class="text-body-2 mb-3 text-medium-emphasis">
-                  Seleccione los días en los que el proveedor realiza entregas:
-                </div>
-
-                <div class="d-flex flex-wrap gap-4">
-                  <VCheckbox
+                <div class="d-flex flex-wrap gap-2">
+                  <VChip
                     v-for="dia in dias"
                     :key="dia.value"
-                    v-model="formData.dispatch_days"
-                    :label="dia.label"
-                    :value="dia.value"
-                    hide-details
-                    density="comfortable"
-                    color="primary"
-                  />
-                </div>
-
-                <div
-                  v-if="formErrors.dispatch_days"
-                  class="text-error text-caption mt-2 d-flex align-center"
-                >
-                  <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
-                  {{ formErrors.dispatch_days[0] }}
-                </div>
-              </VCard>
-            </VCol>
-          </VRow>
-
-          <VRow
-            v-if="formData.dispatch_days && formData.dispatch_days.length"
-            class="mt-4"
-          >
-            <VCol cols="12">
-              <div class="text-subtitle-2 mb-4">
-                Días de Pedido por Despacho:
-              </div>
-              <div
-                v-for="diaDespacho in formData.dispatch_days"
-                :key="diaDespacho"
-                class="mb-6"
-              >
-                <div class="d-flex align-center mb-2">
-                  <VIcon
-                    icon="tabler-arrow-right"
-                    size="18"
-                    color="primary"
-                    class="me-2"
-                  />
-                  <span class="text-body-2 font-weight-bold">
-                    Pedidos requeridos para {{ diaDespachoLabel(diaDespacho) }}:
-                  </span>
-                </div>
-
-                <div class="d-flex flex-wrap gap-x-4 ps-6">
-                  <VCheckbox
-                    v-for="diaPedido in dias"
-                    :key="diaPedido.value"
-                    v-model="formData.order_days[diaDespacho]"
-                    :label="diaPedido.label"
-                    :value="diaPedido.value"
-                    hide-details
-                    density="compact"
-                    color="primary"
-                  />
-                </div>
-
-                <div
-                  v-if="formErrors.order_days?.[diaDespacho]"
-                  class="text-error text-caption mt-1 ps-6"
-                >
-                  {{ formErrors.order_days[diaDespacho][0] }}
+                    :color="formData.order_days[diaD]?.includes(dia.value) ? 'warning' : undefined"
+                    :variant="formData.order_days[diaD]?.includes(dia.value) ? 'flat' : 'outlined'"
+                    class="cursor-pointer"
+                    size="x-small"
+                    @click="
+                      formData.order_days[diaD]?.includes(dia.value)
+                        ? formData.order_days[diaD].splice(formData.order_days[diaD].indexOf(dia.value), 1)
+                        : (formData.order_days[diaD] = [...(formData.order_days[diaD] || []), dia.value])
+                    "
+                  >
+                    {{ dia.label }}
+                  </VChip>
                 </div>
               </div>
-            </VCol>
-          </VRow>
-        </VForm>
+            </template>
+
+            <VAlert
+              v-else
+              type="info"
+              variant="tonal"
+              density="compact"
+              icon="tabler-info-circle"
+              class="mt-2"
+            >
+              Selecciona al menos un día de entrega arriba para configurar los días de pedido.
+            </VAlert>
+          </VTabsWindowItem>
+
+        </VTabsWindow>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 d-flex gap-2">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeDialog"
-          class="flex-grow-1"
-        >
+      <!-- ── Footer ─────────────────────────────────────────────────── -->
+      <VCardActions class="pa-4 gap-3">
+        <VBtn color="secondary" variant="outlined" class="flex-grow-1" @click="closeDialog">
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          @click="submitForm"
           class="flex-grow-1"
           prepend-icon="tabler-device-floppy"
+          @click="submitForm"
         >
-          Guardar
+          {{ isNewSupplier ? "Crear Proveedor" : "Guardar Cambios" }}
         </VBtn>
       </VCardActions>
+
     </VCard>
   </VDialog>
 </template>
