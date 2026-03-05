@@ -12,29 +12,27 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 interface Expenses
 {
+    public function create(CreateExpenseData $data): Expense;
 
+    public function createRecurring(CreateExpenseRecurrenceData $data): Expense;
 
-    public function crearGasto(CreateExpenseData $data): Expense;
+    public function update(array $data): Expense;
 
-    public function crearGastoRecurrente(CreateExpenseRecurrenceData $data): Expense;
+    public function uploadInvoice(array $data): Expense;
 
-    public function editarGasto(array $data): Expense;
+    public function findById(string $id): ?Expense;
 
-    public function cargarFactura(array $data): Expense;
-
-    public function consultById(string $id): ?Expense;
-
-    public function consultAll(): Collection;
+    public function getAll(): Collection;
 
     public function deleteById(string $id): void;
 
-    public function filterWithPaginate(array $filtros, int $perPage = 10): LengthAwarePaginator;
+    public function filterWithPaginate(array $filters, int $perPage = 10): LengthAwarePaginator;
 
-    public function filterWithoutPaginate(array $filtros): Collection;
+    public function filterWithoutPaginate(array $filters): Collection;
 
-    public function changeStatus(int $id, string $status): Expense;
+    public function updateStatus(int $id, string $status): Expense;
 
-    public function exportExcel(array $filtros): ExpenseExport;
+    public function exportToExcel(array $filters): ExpenseExport;
 
-    public function ejecutarGastosRecurrentesDeHoy(): void;
+    public function executeRecurringExpensesOfToday(): void;
 }

@@ -273,7 +273,12 @@ export function useExpenses() {
         toast.error("Error al cargar los gastos");
         return { data: [], total: 0 };
       }
-      return { ...respuestaApi.data.data };
+      
+      // El backend ahora devuelve un recurso paginado estándar
+      return {
+        data: respuestaApi.data.data.data,
+        total: respuestaApi.data.data.meta.total
+      };
     } catch (error) {
       toast.error("Error al cargar los gastos");
       console.error("Error al consultar gastos:", error);

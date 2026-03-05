@@ -183,37 +183,65 @@ class SupplierConnectionService
             $connector = new Connector(['timeout' => 1800]);
             $client = (new Browser($connector))->withTimeout(1800.0);
 
-            $loginResponse = Http::post($connection->host, [
-                "usuario" => $connection->username,
-                "clave" => FtpCrypt::decrypt($connection->password),
-            ]);
+            $token = null;
+            if (!empty($connection->username)) {
+                $loginResponse = Http::post($connection->host, [
+                    "usuario" => $connection->username,
+                    "clave" => FtpCrypt::decrypt($connection->password),
+                ]);
+                $token = $loginResponse->json()["token"] ?? null;
+            }
 
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
+            $url = $payload['url'] ?? $connection->path;
+            
+            $productResponse = $this->fetchFromAPI($token, $payload, $client, $url, $payload['method'] ?? 'post');
+            
+            // Detectar si los productos vienen en una clave específica (ej: 'articulos')
+            $productsRaw = $productResponse;
+            if (isset($productResponse['articulos']) && is_array($productResponse['articulos'])) {
+                $productsRaw = $productResponse['articulos'];
+            }
 
-            $productResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payload, $client, $connection->path);
-            $productCsvString = $this->convertJsonArrayToCsvString($productResponse);
-
+            $productCsvString = $this->convertJsonArrayToCsvString($productsRaw);
             $productData = $this->parseDynamicContent($productCsvString, $connection);
 
             // Facturas (si tiene ruta definida)
+            $invoiceResults = [];
             if (!empty($connection->invoice_path)) {
                 $seenInvoiceNumbers = [];
-                $invoiceResults = [];
-
 
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
-                $invoiceResponse = $this->fetchFromAPI($loginResponse->json()["token"], $payloadInvoice, $client, $connection->invoice_path);
+                $invoiceUrl = $payloadInvoice['url'] ?? $connection->invoice_path;
+                
+                $invoiceResponse = $this->fetchFromAPI($token, $payloadInvoice, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
 
-                foreach ($invoiceResponse as $invoice) {
-                    $cod_invoice = $invoice['InvoiceCode'] ?? null;
+                // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
+                $invoicesRaw = $invoiceResponse;
+                if (isset($invoiceResponse['facturas']) && is_array($invoiceResponse['facturas'])) {
+                    $invoicesRaw = $invoiceResponse['facturas'];
+                }
+
+                foreach ($invoicesRaw as $invoice) {
+                    $cod_invoice = $invoice['InvoiceCode'] ?? $invoice['fact_num'] ?? null;
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
                         continue;
                     }
 
+                    // Si la factura ya trae los artículos, no llamamos a detalle
+                    if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
+                        $parsed = $this->parseNestedInvoice($invoice, $connection);
+                        if (!empty($parsed)) {
+                            $invoiceResults[] = $parsed;
+                            $seenInvoiceNumbers[] = $cod_invoice;
+                        }
+                        continue;
+                    }
+
                     $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
-                    $invoiceDetailsResponse = $this->fetchFromAPI($loginResponse->json()["token"], [], $client, $payloadInvoiceDetails['url'], 'get');
+                    $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
 
                     $flatData = [];
 
@@ -221,14 +249,17 @@ class SupplierConnectionService
                         // Prefijar claves del encabezado
                         $prefixedHeader = [];
                         foreach ($invoice as $key => $value) {
-                            $prefixedHeader["header_$key"] = $value;
+                            if (!is_array($value)) {
+                                $prefixedHeader["header_$key"] = $value;
+                            }
                         }
 
                         // Prefijar claves del detalle
                         $prefixedDetail = [];
-
                         foreach ($detail as $key => $value) {
-                            $prefixedDetail["detail_$key"] = $value;
+                            if (!is_array($value)) {
+                                $prefixedDetail["detail_$key"] = $value;
+                            }
                         }
 
                         // Combinar sin colisión
@@ -250,9 +281,9 @@ class SupplierConnectionService
                 "invoices" => $invoiceResults ?? [],
             ];
         } catch (\Exception $e) {
-            Log::alert("Supplier connection service");
+            Log::alert("Supplier connection service error for supplier {$connection->supplier_id}");
             Log::error($e);
-            throw new \Exception("No se pudo establecer la conexión");
+            throw $e;
         }
     }
 
@@ -292,7 +323,7 @@ class SupplierConnectionService
             }
         }
 
-        $structure_for_parsing = json_decode($connection->parse_using);
+        $structure_for_parsing = json_decode($connection->parse_using ?? '');
 
         if ($has_header && !empty($headerLine)) {
             if (!empty($structure_for_parsing)) {
@@ -813,24 +844,57 @@ class SupplierConnectionService
     public function fetchFromAPI($token, $data, $client, $path, $method = 'post'): array
     {
         $productResponse = [];
+        $headers = [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        ];
+
+        if ($token) {
+            $headers['autorizacion'] = $token;
+        }
+
+        $method = strtolower($method);
 
         $client->{$method}(
             $path,
-            [
-                'autorizacion' => $token,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json'
-            ],
+            $headers,
             $method === 'post' ? json_encode($data) : null
         )->then(function (ResponseInterface $response) use (&$productResponse) {
             $productResponse = json_decode((string) $response->getBody(), true);
         }, function (\Exception $e) {
-            echo 'Error: ' . $e->getMessage() . PHP_EOL;
+            Log::error('API Error: ' . $e->getMessage());
         });
 
         Loop::run();
 
-        return $productResponse;
+        return $productResponse ?? [];
+    }
+
+    private function parseNestedInvoice(array $invoice, SupplierConnection $connection): array
+    {
+        $structure = $connection->invoice_structure;
+        $header = [];
+        foreach ($structure['header'] as $index => $meta) {
+            $header[$meta['field']] = $this->castValue($invoice[$meta['original_field']] ?? null, $meta);
+        }
+
+        $lines = [];
+        foreach ($invoice['articulos'] as $article) {
+            $lineData = [];
+            foreach ($structure['lines'] as $index => $meta) {
+                $lineData[$meta['field']] = $this->castValue($article[$meta['original_field']] ?? null, $meta);
+            }
+            // Cálculos básicos de línea
+            $unitCost = floatval($lineData["unit_cost"] ?? 0);
+            $quantity = intval($lineData["quantity"] ?? 0);
+            $lineData["total_cost"] = number_format($unitCost * $quantity, 2, '.', '');
+            $lines[] = $lineData;
+        }
+
+        return [
+            'header' => $header,
+            'lines' => $lines
+        ];
     }
 
     public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): array
