@@ -733,7 +733,7 @@ const updateProductsWithoutSupplierOptions = (options) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <div class="mb-6">
+      <div class="mb-6">
           <ProductComparisionProductsTable
             :products="products"
             :loading="loadingProducts"
@@ -747,6 +747,7 @@ const updateProductsWithoutSupplierOptions = (options) => {
             @update:search-query="filterSearchQuery = $event"
             :is-strict-search="isStrictSearch"
             @update:is-strict-search="isStrictSearch = $event"
+            :selected-product="selectedProductFromTop"
             @update:options="updateProductsTableOptions"
             @send-product="handleAddItemToAutoOrder"
           />

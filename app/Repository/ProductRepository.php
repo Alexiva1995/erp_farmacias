@@ -454,9 +454,13 @@ class ProductRepository
             $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             // solicitar = demanda - stock - AO
             $columnas[] = DB::raw('((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
+            $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         } else {
             // solicitar = promedio - stock - AO
             $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
+            $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
@@ -727,6 +731,8 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 12';
         }
 
+        // demanda_ponderada = (promedio + ventas) / 2  (antes de restar stock/AO)
+        $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $ventasIndividualDelProducto . ') / 2) AS demanda_ponderada');
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
 

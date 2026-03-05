@@ -13,13 +13,15 @@ const props = defineProps({
   // Props de búsqueda
   searchQuery: { type: String, default: "" },
   isStrictSearch: { type: Boolean, default: false },
+  // Producto seleccionado desde la tabla inferior (para calcular diferencia de precio)
+  selectedProduct: { type: Object, default: null },
 });
 
 const emit = defineEmits([
   "update:options",
   "send-product",
   "update:searchQuery",
-  "update:isStrictSearch", // Emit para el modo estricto
+  "update:isStrictSearch",
 ]);
 
 const localSearch = ref(props.searchQuery);
@@ -54,9 +56,40 @@ const formatUsd = (amount) => {
   );
 };
 
+/**
+ * Calcula el porcentaje de diferencia entre el precio del proveedor
+ * y el costo actual del producto seleccionado.
+ * Retorna: { diff: Number, label: String, color: String } o null si no aplica.
+ */
+const getPriceDiff = (item) => {
+  if (!props.selectedProduct) return null;
+
+  // Tomamos el costo actual del producto seleccionado (en USD)
+  const currentCost = parseFloat(props.selectedProduct.current_unit_cost ?? props.selectedProduct.unit_cost ?? 0);
+  if (!currentCost || currentCost === 0) return null;
+
+  // El precio del proveedor en USD (sin descuento o con descuento según la vista)
+  const supplierCost = parseFloat(
+    props.enableDiscountCol ? item.final_cost_usd : item.unit_cost_usd
+  );
+  if (!supplierCost) return null;
+
+  // diff > 0 = más barato (ahorro), diff < 0 = más caro (sobrepago)
+  const diff = ((currentCost - supplierCost) / currentCost) * 100;
+  const absDiff = Math.abs(diff).toFixed(0);
+
+  if (diff > 0.5) {
+    return { diff, label: `${absDiff}% más barato`, color: "success" };
+  } else if (diff < -0.5) {
+    return { diff, label: `${absDiff}% más caro`, color: "error" };
+  }
+  return { diff: 0, label: "Precio igual", color: "warning" };
+};
+
 const allHeaders = [
   { title: "Proveedor", key: "supplier_name", sortable: false, width: "170px" },
   { title: "Nombre", key: "name", sortable: true, width: "400px" },
+  { title: "Diferencia", key: "price_diff", sortable: false },
   { title: "Usd", key: "unit_cost_usd", sortable: true },
   { title: "Usd %", key: "final_cost_usd", sortable: true },
   { title: "Bs", key: "unit_cost_bs", sortable: true },
@@ -67,6 +100,9 @@ const allHeaders = [
 
 const headers = computed(() =>
   allHeaders.filter((h) => {
+    // La columna de diferencia solo aparece si hay un producto seleccionado
+    if (h.key === "price_diff" && !props.selectedProduct) return false;
+
     // Si Divisas ($) está activo, ocultar columnas de BS, y viceversa
     if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
     if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
@@ -98,6 +134,27 @@ const headers = computed(() =>
 
     <VDivider />
 
+    <!-- Banner de producto en comparación -->
+    <VAlert
+      v-if="selectedProduct"
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mx-4 my-2"
+      :icon="false"
+    >
+      <div class="d-flex align-center gap-2">
+        <VIcon icon="tabler-arrows-exchange" color="info" size="18" />
+        <span class="text-body-2">
+          Comparando precios de:
+          <strong>{{ selectedProduct.name }}</strong>
+          <span v-if="selectedProduct.current_unit_cost" class="ml-2 text-disabled">
+            ( Costo actual: <strong>${{ parseFloat(selectedProduct.current_unit_cost).toFixed(2) }}</strong> )
+          </span>
+        </span>
+      </div>
+    </VAlert>
+
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -122,6 +179,21 @@ const headers = computed(() =>
             </span>
           </div>
         </div>
+      </template>
+
+      <!-- Columna de diferencia de precio vs. producto seleccionado -->
+      <template #item.price_diff="{ item }">
+        <template v-if="getPriceDiff(item)">
+          <VChip
+            :color="getPriceDiff(item).color"
+            size="small"
+            variant="tonal"
+            :prepend-icon="getPriceDiff(item).diff > 0 ? 'tabler-trending-down' : getPriceDiff(item).diff < 0 ? 'tabler-trending-up' : 'tabler-minus'"
+          >
+            {{ getPriceDiff(item).label }}
+          </VChip>
+        </template>
+        <span v-else class="text-disabled text-sm">—</span>
       </template>
 
       <!-- Templates de Monedas -->
@@ -152,7 +224,7 @@ const headers = computed(() =>
             variant="outlined"
             density="compact"
             hide-details="auto"
-            style="width: 80px"
+            style="inline-size: 80px;"
             :error="!!quantityErrors[item.id]"
             :error-messages="quantityErrors[item.id]"
           />
@@ -161,6 +233,7 @@ const headers = computed(() =>
             <template #activator="{ props: tooltipProps }">
               <IconBtn
                 v-bind="tooltipProps"
+                color="primary"
                 @click="
                   $emit('send-product', {
                     id: item.id,
@@ -168,7 +241,7 @@ const headers = computed(() =>
                   })
                 "
               >
-                <VIcon icon="tabler-plus" />
+                <VIcon icon="tabler-shopping-cart-plus" />
               </IconBtn>
             </template>
           </VTooltip>

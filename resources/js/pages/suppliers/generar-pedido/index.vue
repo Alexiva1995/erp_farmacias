@@ -7,6 +7,7 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import Swal from 'sweetalert2';
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -225,6 +226,20 @@ const TOTAL_ORDER= computed(() => {
   return (module.detalleOrder.length>0)?total:0
 })
 
+// KPI: productos de la lista de fallas que SÍ tienen un proveedor asignado para reponer
+const KPIS_ENCONTRADOS = computed(() => {
+  return module.productoFallas?.length || 0;
+})
+
+// KPI: productos que necesitan pedido (solicitar > 0 tras redondeo) pero NO tienen proveedor match
+const KPIS_NO_ENCONTRADOS = computed(() => {
+  if (!module.productosSinReponer?.length) return 0;
+  // Filtramos solo los que realmente necesitan reposición tras el redondeo personalizado
+  return module.productosSinReponer.filter(
+    p => roundIaAnalysis(p.solicitar) > 0
+  ).length;
+})
+
 const LISTA_PORVEEDORES_TOTAL= computed(() => {
   let keyHashIdProveedor={}
   for (let index = 0; index < module.detalleOrder.length; index++) {
@@ -436,8 +451,8 @@ function eliminarItemOrden(payload){
   <div>
     <NavegationIaAutoOrder
       :index-navegacion="indexNavegacion"
-      :encontrados="module.productoFallas?.length || 0"
-      :no-encontrados="module.productosSinReponer?.length || 0"
+      :encontrados="KPIS_ENCONTRADOS"
+      :no-encontrados="KPIS_NO_ENCONTRADOS"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
 
