@@ -12,12 +12,9 @@ const emit = defineEmits([
   "update:options",
   "edit-supplier",
   "delete-supplier",
-  "payment-rule",
-  "supplier-laboratory",
+  "commercial-panel",
   "supplier-pending-invoices",
-  "supplier-discount-rule",
   "check-supplier-api",
-  "supplier-discount",
   "config-connection",
 ]);
 
@@ -202,18 +199,11 @@ const headers = [
                 <VListItemTitle>Sincronizar</VListItemTitle>
               </VListItem>
 
-              <VListItem @click="emit('payment-rule', item)">
+              <VListItem @click="emit('commercial-panel', item)">
                 <template #prepend>
-                  <VIcon icon="tabler-percentage" size="18" class="me-2" />
+                  <VIcon icon="tabler-settings-dollar" size="18" class="me-2" color="primary" />
                 </template>
-                <VListItemTitle>Regla Pronto Pago</VListItemTitle>
-              </VListItem>
-
-              <VListItem @click="emit('supplier-laboratory', item)">
-                <template #prepend>
-                  <VIcon icon="tabler-test-pipe" size="18" class="me-2" />
-                </template>
-                <VListItemTitle>Laboratorios</VListItemTitle>
+                <VListItemTitle>Configuración Comercial</VListItemTitle>
               </VListItem>
 
               <VListItem @click="emit('supplier-pending-invoices', item)">
@@ -221,20 +211,6 @@ const headers = [
                   <VIcon icon="tabler-credit-card-pay" size="18" class="me-2" />
                 </template>
                 <VListItemTitle>Facturas Pendientes</VListItemTitle>
-              </VListItem>
-
-              <VListItem @click="emit('supplier-discount-rule', item)">
-                <template #prepend>
-                  <VIcon icon="tabler-cash" size="18" class="me-2" />
-                </template>
-                <VListItemTitle>Reglas Descuento</VListItemTitle>
-              </VListItem>
-
-              <VListItem @click="emit('supplier-discount', item)">
-                <template #prepend>
-                  <VIcon icon="tabler-discount" size="18" class="me-2" />
-                </template>
-                <VListItemTitle>Descuentos</VListItemTitle>
               </VListItem>
 
               <VDivider />
