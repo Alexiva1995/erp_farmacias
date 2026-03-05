@@ -165,7 +165,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <VContainer fluid class="pa-6">
+  <VContainer fluid class="px-2 py-4">
     <!-- KPIs globales -->
     <VRow class="mb-5" no-gutters>
       <VCol cols="12" sm="4" class="pa-2">

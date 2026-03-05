@@ -59,6 +59,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
+        if ($request->filled("isColombian")) {
+            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+        }
+
         if ($request->filled("lapso_de_tiempo")) {
             $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
@@ -130,6 +134,8 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosFallas["laboratoryId"] = $request->laboratoryId;
         if ($request->filled("groups"))
             $filtrosFallas["groups"] = $request->groups;
+        if ($request->filled("isColombian"))
+            $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
