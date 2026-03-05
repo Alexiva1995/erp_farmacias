@@ -5,14 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\ExchangeRate;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
     use HasFactory;
 
     const PENDING = 'Pending';
-    const ABANDONED = 'Abandoned'; 
-    const RESERVED = 'Reserved';       
+    const ABANDONED = 'Abandoned';
+    const RESERVED = 'Reserved';
     const CLOSED = 'closed';
     const CANCELLED = 'Cancelled';
     const COMPLETED = 'Completed';
@@ -92,22 +93,22 @@ class Order extends Model
 
 
     /**
- * Accesor para limpiar pagos corruptos en tiempo de ejecución
- */
-public function getPaymentMethodsAttribute($value)
-{
-    $data = is_array($value) ? $value : json_decode($value, true);
+     * Accesor para limpiar pagos corruptos en tiempo de ejecución
+     */
+    public function getPaymentMethodsAttribute($value)
+    {
+        $data = is_array($value) ? $value : json_decode($value, true);
 
-    if (empty($data) || !is_array($data)) {
-        return [];
+        if (empty($data) || !is_array($data)) {
+            return [];
+        }
+        return array_values(array_filter($data, function ($payment) {
+            return is_array($payment) &&
+                isset($payment['amount']) &&
+                !is_null($payment['amount']) &&
+                $payment['amount'] > 0;
+        }));
     }
-    return array_values(array_filter($data, function ($payment) {
-        return is_array($payment) && 
-               isset($payment['amount']) && 
-               !is_null($payment['amount']) &&
-               $payment['amount'] > 0;
-    }));
-}
 
 
     public function updateTotals()
@@ -115,7 +116,7 @@ public function getPaymentMethodsAttribute($value)
         // Sumamos todos los price de los detalles vinculados
         $newTotal = $this->details()->sum('price');
         $totalCost = $this->details()->sum(DB::raw('unit_cost * quantity'));
-        
+
         $totalUsd = 0;
         if (strtoupper($this->currency) === 'USD') {
             $totalUsd = $newTotal;
@@ -128,7 +129,7 @@ public function getPaymentMethodsAttribute($value)
                 $totalUsd = $newTotal / $exchangeRate->rate;
             }
         }
-        
+
         $this->update([
             'total_amount' => $newTotal,
             'total_amount_usd' => $totalUsd,
