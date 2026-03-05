@@ -161,10 +161,11 @@ class SuppliersIaOrderAssistantController extends Controller
         $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
         $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
 
-        if ($filtrosFallas["tipo_filtracion"] == "combinado") {
-            foreach ($productosFallas as $producto) {
-                $producto->solicitar = (($producto->promedio_calculado + $producto->total_sold_completed) / 2 - $producto->lote_quantity - $producto->totalQuantityInAutoOrder) * -1;
-            }
+        // Invertir el signo de solicitar para TODOS los productos.
+        // El repositorio devuelve (demanda - stock) positivo para necesidades.
+        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
+        foreach ($productosFallas as $producto) {
+            $producto->solicitar = $producto->solicitar * -1;
         }
 
         // Para productos con ventas 0 y stock 0, deben ser negativos (fallas)

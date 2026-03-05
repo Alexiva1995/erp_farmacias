@@ -25,6 +25,7 @@ const module = reactive({
   productosOportunidadUnica: { data: [], current_page: 1, last_page: 1, total: 0 },
   detalleOrder: [],
   productosSinReponer: [],
+  totalFallas: 0,
   loadingApp: true,
 })
 
@@ -112,6 +113,7 @@ function procesarRespuesta(data) {
     module.productosOportunidadUnica = { data: [], total: 0 };
   }
 
+  module.totalFallas = data.totalFallas || 0;
   module.dataProductos = { ...data.data };
 }
 
@@ -230,11 +232,10 @@ const KPIS_ENCONTRADOS = computed(() => {
   return module.productoFallas?.length || 0;
 })
 
-// KPI: fallas sin proveedor = total fallas - las que sí encontraron proveedor
-// productosSinReponer ya viene filtrado por "fallas" desde el backend
+// KPI: fallas sin proveedor = total fallas real (antes de remover cubiertos por AO) - los que sí encontraron proveedor
 const KPIS_NO_ENCONTRADOS = computed(() => {
-  const totalFallas = module.productosSinReponer?.length || 0;
-  return Math.max(0, totalFallas - KPIS_ENCONTRADOS.value);
+  const totalFallasReal = module.totalFallas || 0;
+  return Math.max(0, totalFallasReal - KPIS_ENCONTRADOS.value);
 })
 
 const LISTA_PORVEEDORES_TOTAL= computed(() => {
