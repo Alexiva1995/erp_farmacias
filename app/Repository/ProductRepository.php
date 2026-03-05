@@ -494,11 +494,13 @@ class ProductRepository
         if (array_key_exists("stock", $filtros)) {
 
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                // Con la nueva fórmula: demanda - stock - AO < 0 = exceso de cobertura
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Incluir productos con fallas O productos con ventas 0 y stock 0
-                $consulta->havingRaw("(solicitar < 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
+                // Con la nueva fórmula: demanda - stock - AO > 0 = necesita pedir
+                // También incluir productos sin ventas ni stock (falla por definición)
+                $consulta->havingRaw("(solicitar > 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
             }
         }
 
@@ -737,11 +739,12 @@ class ProductRepository
         if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
 
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                // Con la nueva fórmula: demanda - stock - AO < 0 = exceso de cobertura
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Incluir productos con fallas O productos con ventas 0 y stock 0
-                $consulta->havingRaw("(solicitar < 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
+                // Con la nueva fórmula: demanda - stock - AO > 0 = necesita pedir
+                $consulta->havingRaw("(solicitar > 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
             }
         }
 
