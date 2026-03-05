@@ -67,11 +67,4 @@ class ChangeStatusExpenseRequest extends FormRequest
         throw new HttpResponseException($response);
     }
 
-    protected function passedValidation()
-    {
-        $this->data = ChangeStatusExpenseData::from([
-            "id"                      =>    $this->id,
-            "status"                  =>    $this->status,
-        ]);
-    }
 }

@@ -204,9 +204,13 @@ class ExpensesController extends Controller
 
     public function changeStatus(ChangeStatusExpenseRequest $request): JsonResponse
     {
+        \Illuminate\Support\Facades\Log::debug("Iniciando changeStatus", ['id' => $request->id, 'status' => $request->status]);
+        
+        $respuestaConsulta = $this->expenses->changeStatus($request->id, $request->status);
+        \Illuminate\Support\Facades\Log::debug("Status cambiado en DB");
 
-        $respuestaConsulta = $this->expenses->changeStatus($request->data->id, $request->data->status);
-        $expense = $this->expenses->consultById($request->data->id);
+        $expense = $this->expenses->consultById($request->id);
+        \Illuminate\Support\Facades\Log::debug("Gasto consultado", ['id' => $expense->id]);
 
         if ($expense->count == "Tarjeta") {
             $expense->count = "CARD";
@@ -222,11 +226,13 @@ class ExpensesController extends Controller
             $expense->count = "PAYPAL";
         }
 
-        if ($request->data->status == Expense::STATUS_APPROVED) {
+        if ($request->status == Expense::STATUS_APPROVED) {
+            \Illuminate\Support\Facades\Log::debug("Creando transacción de salida");
             $transaction = $this->transaction->createTransactionSalida($expense);
+            \Illuminate\Support\Facades\Log::debug("Transacción creada");
         }
 
-
+        \Illuminate\Support\Facades\Log::debug("Retornando respuesta exitosa");
         return ApiResponse::success($respuestaConsulta, "ok", 200);
     }
 

@@ -9,6 +9,7 @@ const props= defineProps({
   total: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  statuModule: { type: Object, required: true },
   // search: { type: String, required: true },
 })
 
@@ -168,9 +169,16 @@ const headers = [
             title="Aprobar Gasto"
             color="success"
             size="small"
+            :disabled="statuModule.loadingItems.has(item.id)"
             @click="() => emit('approve', item.id)"
           >
-            <VIcon icon="tabler-check" size="20" />
+            <VProgressCircular
+              v-if="statuModule.loadingItems.has(item.id)"
+              indeterminate
+              size="20"
+              width="2"
+            />
+            <VIcon v-else icon="tabler-check" size="20" />
           </IconBtn>
         </div>
       </template>

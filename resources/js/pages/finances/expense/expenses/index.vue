@@ -116,6 +116,7 @@ const tabItems = [
       :items="statuModule.items"
       :total="statuModule.total"
       :loading="loading"
+      :statu-module="statuModule"
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
@@ -129,7 +130,8 @@ const tabItems = [
 .border-warning { border: 1px solid rgba(255, 159, 67, 50%) !important; }
 .border-error { border: 1px solid rgba(234, 84, 85, 50%) !important; }
 
-::v-deep .v-tabs {
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+:deep(.v-tabs) {
   border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 </style>

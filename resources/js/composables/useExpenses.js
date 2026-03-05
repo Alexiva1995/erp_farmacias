@@ -26,6 +26,7 @@ export function useExpenses() {
     total: 0,
     categorias: [],
     loadingApp: false,
+    loadingItems: new Set(),
   });
 
   const formulario = reactive({
@@ -514,9 +515,10 @@ export function useExpenses() {
 
   async function cambiarEstadoGasto(id, status) {
     try {
-      statuModule.loadingApp = true;
+      statuModule.loadingItems.add(id);
       const response = await axios.post("/finances/expenses/change-status", {
-        data: { id, status }
+        id,
+        status
       });
       if (response.status === 200) {
         toast.success("Estado actualizado con éxito");
@@ -527,7 +529,7 @@ export function useExpenses() {
       toast.error("Error al actualizar el estado");
       console.error(error);
     } finally {
-      statuModule.loadingApp = false;
+      statuModule.loadingItems.delete(id);
     }
   }
 
