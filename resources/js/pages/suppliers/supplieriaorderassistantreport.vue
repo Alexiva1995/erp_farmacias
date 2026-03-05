@@ -124,6 +124,16 @@ watch([
   lapso_de_tiempo,
   stock,
 ], async () => {
+  // Solo cargar si hay laboratorios seleccionados
+  if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) {
+    statuModule.items = [];
+    statuModule.total = 0;
+    kpiGlobal.necesitan = 0;
+    kpiGlobal.exceso = 0;
+    kpiGlobal.ok = 0;
+    return;
+  }
+
   clearTimeout(filterTimeout);
   filterTimeout = setTimeout(async () => {
     loading.value = true;
@@ -144,6 +154,8 @@ watch([
 
 // Watch para paginación y ordenamiento
 watch([page, itemsPerPage, orderBy, sortBy], async () => {
+  if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) return;
+
   loading.value = true;
   statuModule.data = await consultarDataReport();
   statuModule.total = statuModule.data.data.total;
@@ -244,27 +256,22 @@ async function exportarExcel(formato){
 
 
 onMounted(async () => {
-  loading.value=true
-  productos.value=await consultarProductos()
-
+  loading.value = true;
+  
+  // Cargar catálogos iniciales
   await Promise.all([
-    consultarDataReport().then(res => {
-      statuModule.data = res;
-      statuModule.total = res.data.total;
-      statuModule.items = [...res.data.data];
+    consultarProductos().then(res => {
+      productos.value = res;
+      productosSelect.value = res.map(p => ({
+        name: `${p.id} - ${p.name}`,
+        id: p.id,
+      }));
     }),
-    consultarLaboratorios(),
-    consultarKpisGlobales()
+    consultarLaboratorios()
   ]);
 
-  productosSelect.value=productos.value.map(p => {
-    return {
-      name:`${p.id} - ${p.name}`,
-      id:p.id,
-    }
-  })
-  loading.value=false
-})
+  loading.value = false;
+});
 </script>
 <template>
   <VContainer fluid class="px-0 py-4">

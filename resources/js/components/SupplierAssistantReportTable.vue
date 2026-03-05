@@ -11,22 +11,39 @@ const props = defineProps({
 const emit = defineEmits(["update:options"]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: '70px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '250px' },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false, width: '150px' },
-  { title: "Costos (Min-Max-U)", key: "unit_cost", sortable: false, align: 'center', width: '200px' },
-  { title: "Mejor Oferta", key: "product_suppliers", sortable: false, width: '180px' },
-  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end', width: '100px' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '100px' },
-  { 
-    title: "Promedio", 
-    key: "promedio_calculado", 
-    sortable: true, 
-    align: 'end', 
-    width: '110px' 
+  { title: "id", key: "id", sortable: true },
+  { title: "Producto", key: "name", sortable: true },
+  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
+  { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
+  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
+  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
+  {
+    title: "Prom.",
+    key: "promedio_calculado",
+    sortable: true,
+    align: 'end',
+    value: (item) =>
+      item.promedio_calculado != "" && item.promedio_calculado != null
+        ? parseFloat(item.promedio_calculado).toFixed(2)
+        : 0,
   },
-  { title: "En Pedido", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '110px' },
-  { title: "Análisis (u)", key: "solicitar", sortable: true, align: 'end', width: '120px' },
+  {
+    title: "AO",
+    key: "totalQuantityInAutoOrder",
+    sortable: false,
+    align: 'end',
+  },
+  {
+    title: "Análisis",
+    key: "solicitar",
+    sortable: true,
+    align: 'end',
+    value: (item) =>
+      item.solicitar != "" && item.solicitar != null
+        ? parseFloat(item.solicitar).toFixed(2)
+        : 0,
+  },
 ];
 
 // Determina el color de fondo por fila (Light mode friendly)
@@ -36,10 +53,15 @@ function rowClass(item) {
   if (val < 0) return 'row-excess';
   return '';
 }
+
+const getPriceDiff = (current, offer) => {
+  if (!current || !offer || current <= 0) return 0;
+  return ((current - offer) / current) * 100;
+};
 </script>
 
 <template>
-  <VCard variant="outlined" class="rounded-lg">
+  <VCard>
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -62,51 +84,75 @@ function rowClass(item) {
 
       <!-- Producto -->
       <template #item.name="{ item }">
-        <div class="d-flex flex-column py-1" style="max-inline-size: 250px;">
-          <span
-            class="text-body-2 font-weight-medium text-high-emphasis text-truncate"
-            :class="{ 'text-primary': item.psychotropic == 1 }"
-            :title="item.name"
-          >
-            {{ item.name }}
-          </span>
-          <span class="text-caption text-disabled text-truncate">
-            {{ item.active_ingredient }}
-            <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
-          </span>
+        <div class="d-flex align-center gap-x-4">
+          <div class="d-flex flex-column">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+
+              <span v-if="item.is_colombian_origin == 1" class="text-xs text-secondary"> (COL)</span>
+            </span>
+
+            <span class="text-xs text-disabled">{{
+              item.active_ingredient
+            }}</span>
+          </div>
         </div>
       </template>
 
-      <!-- Costos (Min - Max - Unit) -->
+      <!-- Costo Actual -->
       <template #item.unit_cost="{ item }">
-        <div class="d-flex align-center justify-center gap-1">
-          <VTooltip text="Costo Mínimo">
-            <template #activator="{ props: tp }">
-              <span v-bind="tp" class="text-success text-xs font-weight-medium">${{ Number(item.cost_min || 0).toFixed(1) }}</span>
-            </template>
-          </VTooltip>
-          <span class="text-disabled">/</span>
-          <VTooltip text="Costo Máximo">
-            <template #activator="{ props: tp }">
-              <span v-bind="tp" class="text-error text-xs font-weight-medium">${{ Number(item.cost_max || 0).toFixed(1) }}</span>
-            </template>
-          </VTooltip>
-          <span class="text-disabled">/</span>
-          <VTooltip text="Costo Último">
-            <template #activator="{ props: tp }">
-              <span v-bind="tp" class="text-primary font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
-            </template>
-          </VTooltip>
-        </div>
+        <VTooltip location="top">
+          <template #activator="{ props: tp }">
+            <div v-bind="tp" class="d-flex flex-column align-center cursor-help">
+              <span class="text-primary font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+              <div class="d-flex gap-x-1 mt-n1">
+                <span class="text-success" style="font-size: 0.65rem;">${{ Number(item.cost_min || 0).toFixed(1) }}</span>
+                <span class="text-disabled" style="font-size: 0.65rem;">/</span>
+                <span class="text-error" style="font-size: 0.65rem;">${{ Number(item.cost_max || 0).toFixed(1) }}</span>
+              </div>
+            </div>
+          </template>
+          <div class="text-xs pa-1">
+            <div class="d-flex justify-space-between gap-x-4">
+              <span class="text-disabled">Mínimo Histórico:</span>
+              <span class="text-success font-weight-bold">${{ Number(item.cost_min || 0).toFixed(2) }}</span>
+            </div>
+            <div class="d-flex justify-space-between gap-x-4">
+              <span class="text-disabled">Máximo Histórico:</span>
+              <span class="text-error font-weight-bold">${{ Number(item.cost_max || 0).toFixed(2) }}</span>
+            </div>
+            <div class="d-flex justify-space-between gap-x-4 border-t mt-1 pt-1">
+              <span>Costo en Ficha:</span>
+              <span class="font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+            </div>
+          </div>
+        </VTooltip>
       </template>
 
       <!-- Mejor Oferta -->
       <template #item.product_suppliers="{ item }">
-        <div v-if="item.product_suppliers && item.product_suppliers.length > 0" class="d-flex flex-column">
-          <span class="text-body-2 font-weight-bold text-success">
-            ${{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}
-          </span>
-          <span class="text-xs text-disabled text-truncate" style="max-inline-size: 150px;">
+        <div v-if="item.product_suppliers && item.product_suppliers.length > 0" class="d-flex flex-column align-center">
+          <div class="d-flex align-center gap-x-2">
+            <span class="font-weight-bold text-success">
+              ${{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}
+            </span>
+            
+            <VChip
+              v-if="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount) > 0"
+              size="x-small"
+              color="success"
+              variant="tonal"
+              label
+              class="px-1"
+            >
+              <VIcon start size="10" icon="tabler-trending-down" class="me-0" />
+              {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount).toFixed(0) }}%
+            </VChip>
+          </div>
+          <span class="text-xs text-disabled text-truncate text-center" style="max-inline-size: 130px;">
             {{ item.product_suppliers[0].supplier.name }}
           </span>
         </div>
