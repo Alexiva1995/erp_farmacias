@@ -274,10 +274,15 @@ export function useExpenses() {
         return { data: [], total: 0 };
       }
       
-      // El backend ahora devuelve un recurso paginado estándar envuelto en ApiResponse
+      // El backend devuelve un recurso paginado estándar envuelto en ApiResponse
+      // Formato: respuestaApi.data = { success: true, data: { data: [...items], meta: { total: X }, links: {...} }, message: "ok" }
+      const paginationData = respuestaApi.data.data;
+      const tableData = paginationData?.data || [];
+      const tableTotal = paginationData?.meta?.total || paginationData?.total || tableData.length || 0;
+
       return {
-        data: respuestaApi.data.data,
-        total: respuestaApi.data.meta?.total || respuestaApi.data.data.length
+        data: tableData,
+        total: tableTotal
       };
     } catch (error) {
       toast.error("Error al cargar los gastos");
@@ -314,9 +319,9 @@ export function useExpenses() {
           status: ["Cancelled"], type_of_expense: ["Normal"], itemsPerPage: 1,
         }),
       ]);
-      stats.totalApproved = approved.data?.data?.total ?? 0;
-      stats.totalPending = pending.data?.data?.total ?? 0;
-      stats.totalCancelled = cancelled.data?.data?.total ?? 0;
+      stats.totalApproved = approved.data?.data?.meta?.total || approved.data?.data?.total || 0;
+      stats.totalPending = pending.data?.data?.meta?.total || pending.data?.data?.total || 0;
+      stats.totalCancelled = cancelled.data?.data?.meta?.total || cancelled.data?.data?.total || 0;
     } catch (e) {
       console.error("Error cargando stats:", e);
     } finally {

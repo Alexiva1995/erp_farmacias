@@ -226,19 +226,27 @@ class SupplierConnectionService
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
+                Log::info("Facturas raw recibidas de la API", ['count' => count($invoicesRaw)]);
+
                 foreach ($invoicesRaw as $invoice) {
                     $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? null;
+                    Log::info("Procesando factura individual", ['cod_invoice' => $cod_invoice]);
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
+                        Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
                         continue;
                     }
 
                     // Si la factura ya trae los artículos (caso Cristmedicals y otros)
                     if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
+                        Log::info("Factura con artículos detectada", ['cod_invoice' => $cod_invoice, 'articulos_count' => count($invoice['articulos'] ?? [])]);
                         $parsed = $this->parseNestedInvoice($invoice, $connection);
                         if (!empty($parsed)) {
+                            Log::info("Factura parseada correctamente", ['invoice_number' => $parsed['header']['invoice_number'] ?? 'N/A']);
                             $invoiceResults[] = $parsed;
                             $seenInvoiceNumbers[] = $cod_invoice;
+                        } else {
+                            Log::error("Fallo al parsear factura anidada", ['cod_invoice' => $cod_invoice]);
                         }
                         continue;
                     }
