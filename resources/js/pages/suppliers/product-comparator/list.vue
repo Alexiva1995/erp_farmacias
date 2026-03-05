@@ -340,41 +340,39 @@ const fetchProductsWithoutSupplier = async () => {
   try {
     loadingProductsWithoutSupplier.value = true;
 
-    // Usamos el mismo endpoint POST que el Asistente IA
-    // Las claves deben coincidir con lo que espera el controlador
     const payload = {
       laboratoryId: selectedLaboratory.value,
       groups: selectedGroup.value,
       tipo_vista: tipo_de_vista.value,
-      tipo_filtracion: tipo_de_filtracion.value, // SIN "de_" — nombre exacto esperado por el controlador
+      tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
-      stock: stock.value, // siempre 'fallas'
+      stock: stock.value,
       page: pageProductsWithoutSupplier.value,
       itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
       sortBy: sortByProductsWithoutSupplier.value,
       orderBy: orderByProductsWithoutSupplier.value,
     };
 
-    const resp = await axios.post(
+    const response = await axios.post(
       `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
       payload,
     );
 
-    // ApiResponse::success envuelve en {data: {paginate: ..., tipo_filtracion: ...}}
-    const paginateData = resp.data?.data?.paginate;
-    if (paginateData) {
-      listProductsWithoutSupplier.value = paginateData.data;
-      totalProductsWithoutSupplier.value = paginateData.total;
+    // La respuesta tiene estructura: response.data.data.paginate (LengthAwarePaginator de Laravel)
+    // El paginator tiene: .data (array de items), .total (cantidad total)
+    const paginate = response?.data?.data?.paginate ?? null;
+
+    if (paginate && Array.isArray(paginate.data)) {
+      listProductsWithoutSupplier.value = paginate.data;
+      totalProductsWithoutSupplier.value = paginate.total ?? 0;
     } else {
       listProductsWithoutSupplier.value = [];
       totalProductsWithoutSupplier.value = 0;
+      console.warn('[Comparador] Respuesta inesperada del endpoint:', response?.data);
     }
   } catch (error) {
-    console.error(
-      "Hubo un error al obtener los productos sin proveedor:",
-      error,
-    );
-    toast.error("Error al obtener los productos sin proveedor.");
+    console.error('[Comparador] Error al obtener productos sin proveedor:', error);
+    toast.error('Error al obtener los productos sin proveedor.');
   } finally {
     loadingProductsWithoutSupplier.value = false;
   }
