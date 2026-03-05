@@ -525,58 +525,69 @@ function eliminarItemOrden(payload){
           md="12"
           lg="3"
         >
-          <VCard title="Resumen" class="mb-5">
-            <VContainer v-if="LISTA_PORVEEDORES_TOTAL.length > 0">
-              <VRow
-                v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
-                class="text-lg"
-                align-content="space-between"
-                style=" padding-inline: 24px;"
-              >
-                <VCol class="" style="font-size: 16px;">
-                  <span>{{ totalesProveedores.name }}:</span>
-                </VCol>
-                <VCol
-                  class="text-end"
-                  style=" font-size: 16px;font-weight: bold;"
+          <VCard variant="outlined" class="rounded-lg mb-5 overflow-hidden">
+            <div class="pa-4 bg-light-primary border-b">
+              <span class="text-subtitle-1 font-weight-black text-uppercase d-flex align-center gap-2">
+                <VIcon icon="tabler-list-details" size="20" />
+                Resumen de Orden
+              </span>
+            </div>
+            
+            <VCardText class="pa-0">
+              <VList v-if="LISTA_PORVEEDORES_TOTAL.length > 0" density="compact" lines="one">
+                <VListItem
+                  v-for="totalesProveedores in LISTA_PORVEEDORES_TOTAL"
+                  :key="totalesProveedores.name"
+                  class="px-6 py-2"
                 >
-                  {{ totalesProveedores.total.toFixed(2) }}
-                  <VIcon icon="tabler-currency-dollar" />
-                </VCol>
-              </VRow>
-            </VContainer>
+                  <template #prepend>
+                    <VIcon icon="tabler-building-store" size="18" class="text-disabled" />
+                  </template>
+                  <VListItemTitle class="text-body-2 font-weight-medium">
+                    {{ totalesProveedores.name }}
+                  </VListItemTitle>
+                  <template #append>
+                    <span class="text-body-2 font-weight-black">
+                      ${{ totalesProveedores.total.toFixed(2) }}
+                    </span>
+                  </template>
+                </VListItem>
+              </VList>
 
-            <VDivider />
+              <VDivider />
 
-            <VContainer>
-              <VRow
-                class="text-lg"
-                align-content="space-between"
-                style=" padding-inline: 24px;"
-              >
-                <VCol> <span style="font-size: 16px;">Total:</span> </VCol>
-                <VCol
-                  class="text-end"
-                  style=" font-size: 16px;font-weight: bold;"
-                >
-                  {{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : 0 }}
-                  <VIcon icon="tabler-currency-dollar" />
-                </VCol>
-              </VRow>
-            </VContainer>
+              <div class="pa-6 d-flex align-center justify-space-between bg-light-primary">
+                <span class="text-h6 font-weight-bold">Total General</span>
+                <div class="d-flex align-center gap-1">
+                  <span class="text-h5 font-weight-black text-primary">
+                    ${{ TOTAL_ORDER ? TOTAL_ORDER.toFixed(2) : '0.00' }}
+                  </span>
+                  <VIcon icon="tabler-currency-dollar" color="primary" />
+                </div>
+              </div>
+            </VCardText>
           </VCard>
+
           <VBtn
             color="primary"
-            variant="flat"
-            class="w-100"
+            variant="elevated"
+            size="large"
+            class="w-100 font-weight-black"
             prepend-icon="tabler-shopping-cart-check"
             :disabled="!module.detalleOrder || module.detalleOrder.length === 0"
             @click="confirmarCompra"
           >
-            Confirmar Compra ({{ module.detalleOrder?.length || 0 }} productos)
+            CONFIRMAR COMPRA ({{ module.detalleOrder?.length || 0 }} ítems)
           </VBtn>
         </VCol>
       </VRow>
     </div>
   </div>
 </template>
+
+<style scoped>
+.bg-light-primary {
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+</style>
+

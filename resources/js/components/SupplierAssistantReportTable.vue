@@ -109,9 +109,9 @@ const getPriceDiff = (current, offer) => {
             <div v-bind="tp" class="d-flex flex-column align-center cursor-help">
               <span class="text-primary font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               <div class="d-flex gap-x-1 mt-n1">
-                <span class="text-success" style="font-size: 0.65rem;">${{ Number(item.cost_min || 0).toFixed(1) }}</span>
+                <span class="text-success" style="font-size: 0.65rem;">${{ Number(item.cost_min || 0).toFixed(2) }}</span>
                 <span class="text-disabled" style="font-size: 0.65rem;">/</span>
-                <span class="text-error" style="font-size: 0.65rem;">${{ Number(item.cost_max || 0).toFixed(1) }}</span>
+                <span class="text-error" style="font-size: 0.65rem;">${{ Number(item.cost_max || 0).toFixed(2) }}</span>
               </div>
             </div>
           </template>
