@@ -149,8 +149,10 @@ class ProductRepository
         // Stock efectivo = stock en lotes + cantidad en auto orden (producto pedido pendiente por recibir)
         $subqueryAutoOrder = '(SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0)';
         $stockQuery = $this->subConsultaParaCalcularStockPorLotes;
         $stockEfectivo = '(COALESCE((' . $stockQuery . '), 0) + COALESCE((' . $subqueryAutoOrder . '), 0))';
@@ -512,7 +514,7 @@ class ProductRepository
                       AND 
                       (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
                       AND
-                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND aod.status = 0) = 0
+                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0) = 0
                     )
                 )");
             }
@@ -636,16 +638,20 @@ class ProductRepository
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0
             ) AS totalQuantityInAutoOrder'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto .
                 (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0
                 )' : '') .
                 ') AS solicitar'),
@@ -978,6 +984,12 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("ids_in", $filtros)) {
+            if (count($filtros["ids_in"]) > 0) {
+                $consulta->whereIn("id", $filtros["ids_in"]);
+            }
+        }
+
         if (array_key_exists("laboratoryId", $filtros)) {
             if (count($filtros["laboratoryId"]) > 0) {
                 $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
@@ -1086,8 +1098,10 @@ class ProductRepository
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0
             ) AS totalQuantityInAutoOrder'),
             DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
@@ -1154,6 +1168,12 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("ids_in", $filtros)) {
+            if (count($filtros["ids_in"]) > 0) {
+                $consulta->whereIn("id", $filtros["ids_in"]);
+            }
+        }
+
         if (array_key_exists("laboratoryId", $filtros)) {
             if (count($filtros["laboratoryId"]) > 0) {
                 $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
@@ -1200,7 +1220,7 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
-    public function filtrarIndividualProductForAssistantReportTypeSelesWithoutPaginate($filtros): Collection
+    public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros): Collection
     {
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
 

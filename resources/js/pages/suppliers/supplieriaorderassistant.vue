@@ -165,7 +165,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <VContainer fluid class="px-6 py-4">
+  <VContainer fluid class="px-0 py-4">
     <!-- KPIs globales -->
     <VRow class="mb-5">
       <VCol cols="12" sm="4">
@@ -283,5 +283,16 @@ onMounted(async () => {
 .kpi-ia-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 6%) !important;
   transform: translateY(-2px);
+}
+</style>
+
+<style>
+/* Forzar eliminación de padding del layout boxed solicitado por el usuario */
+.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
+  padding-inline: 0 !important;
+}
+
+#app > div > div > div > div.layout-wrapper.layout-nav-type-vertical.layout-navbar-sticky.layout-footer-static.layout-content-width-boxed.layout-overlay-nav > div.layout-content-wrapper > main > div > div {
+  padding-inline: 0 !important;
 }
 </style>
