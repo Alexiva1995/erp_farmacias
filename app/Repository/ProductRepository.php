@@ -664,7 +664,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto .
+            DB::raw('(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes .
                 (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
