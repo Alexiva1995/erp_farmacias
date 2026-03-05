@@ -147,8 +147,14 @@ class IaAssistantReportService
         $isPaginator = $resultados instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator;
         $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
 
-        $items->transform(function ($item) {
+        $items->transform(function ($item) use ($tipo) {
             $item = $this->productRepository->calcularAOProduct($item);
+            
+            // La demanda ponderada en reportes simples es el valor base (ventas o promedio)
+            $item->demanda_ponderada = ($tipo === 'sales') 
+                ? ($item->total_sold_completed ?? 0) 
+                : ($item->promedio_calculado ?? 0);
+
             // La fórmula regular que venía en el controlador: solicitar = solicitar + AO
             $item->solicitar = $item->solicitar + ($item->totalQuantityInAutoOrder ?? 0);
             return $item;
@@ -202,10 +208,14 @@ class IaAssistantReportService
                 $itemVentas = $this->productRepository->calcularAOProduct($itemVentas);
                 $ventasTotales = $itemVentas->total_sold_completed ?? 0;
                 
+                // Demanda ponderada combinada
+                $item->demanda_ponderada = ($ventasTotales + $promedio) / 2;
+
                 // Fórmula combinada: ((ventas + promedio) / 2) - stock - AO
-                $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
+                $resultado = $item->demanda_ponderada - $stockActual - $autoOrder;
             } else {
                 // Fórmula base si no hay ventas recientes: promedio - stock - AO
+                $item->demanda_ponderada = $promedio;
                 $resultado = $promedio - $stockActual - $autoOrder;
             }
 

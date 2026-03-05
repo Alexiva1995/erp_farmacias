@@ -41,12 +41,14 @@ export default function pdfProductsAssistantReportGenerator(data) {
             { content: 'ID', styles: { fontStyle: 'bold' } },
             { content: 'Producto', styles: { fontStyle: 'bold' } },
             { content: 'Laboratorio', styles: { fontStyle: 'bold' } },
-            { content: 'Costo Min', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Costo Max', styles: { fontStyle: 'bold', halign: 'center' } },
+            { content: 'C. Min', styles: { fontStyle: 'bold', halign: 'center' } },
+            { content: 'C. Max', styles: { fontStyle: 'bold', halign: 'center' } },
             { content: 'Costo', styles: { fontStyle: 'bold', halign: 'center' } },
+            { content: 'Mejor Oferta', styles: { fontStyle: 'bold', halign: 'center' } },
             { content: 'Ventas', styles: { fontStyle: 'bold', halign: 'center' } },
             { content: 'Stock', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Promedio Ventas', styles: { fontStyle: 'bold', halign: 'center' } },
+            { content: 'Promedio', styles: { fontStyle: 'bold', halign: 'center' } },
+            { content: 'Demanda', styles: { fontStyle: 'bold', halign: 'center' } },
             { content: 'Análisis', styles: { fontStyle: 'bold', halign: 'center' } }
         ]
     ];
@@ -68,6 +70,12 @@ export default function pdfProductsAssistantReportGenerator(data) {
             content: product.unit_cost ? parseFloat(product.unit_cost).toFixed(2) : '0.00',
             styles: { halign: 'right' }
         },
+        {
+            content: product.product_suppliers?.length > 0 
+                ? `$${parseFloat(product.product_suppliers[0].unit_cost_usd_with_discount).toFixed(2)}\n(${product.product_suppliers[0].supplier.name})`
+                : '---',
+            styles: { halign: 'center', fontSize: 7 }
+        },
         { 
             content: product.total_sold_completed ? parseInt(product.total_sold_completed) : 0,
             styles: { halign: 'center' }
@@ -77,12 +85,16 @@ export default function pdfProductsAssistantReportGenerator(data) {
             styles: { halign: 'center' }
         },
         { 
-            content: product.promedio_calculado ? parseFloat(product.promedio_calculado).toFixed(2) : '0.00',
+            content: product.promedio_calculado ? parseFloat(product.promedio_calculado).toFixed(1) : '0.0',
             styles: { halign: 'right' }
         },
         { 
-            content: product.solicitar ? parseFloat(product.solicitar).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
+            content: product.demanda_ponderada ? parseFloat(product.demanda_ponderada).toFixed(1) : '0.0',
+            styles: { halign: 'right', fontStyle: 'bold' }
+        },
+        { 
+            content: product.solicitar ? parseFloat(product.solicitar).toFixed(1) : '0.0',
+            styles: { halign: 'right', fontStyle: 'bold' }
         }
     ]);
     
@@ -95,31 +107,34 @@ export default function pdfProductsAssistantReportGenerator(data) {
         headStyles: { 
             fillColor: [41, 128, 185], // Azul corporativo
             textColor: 255,
-            halign: 'center'
+            halign: 'center',
+            fontSize: 8
         },
         alternateRowStyles: {
             fillColor: [245, 245, 245] // Gris claro para filas alternas
         },
         styles: {
-            fontSize: 9, // Puedes aumentar un poco el tamaño ya que hay más espacio
-            cellPadding: 3,
+            fontSize: 8,
+            cellPadding: 2,
             overflow: 'linebreak'
         },
         // Ajustar anchos de columna para aprovechar el espacio horizontal
         columnStyles: {
-            0: { cellWidth: 15, halign: 'center' },  // #
-            1: { cellWidth: 20, halign: 'center' },  // ID
-            2: { cellWidth: 60 },                    // Producto (más ancho)
-            3: { cellWidth: 40 },                    // Laboratorio (más ancho)
-            4: { cellWidth: 25, halign: 'right' },   // Costo Min
-            5: { cellWidth: 25, halign: 'right' },   // Costo Max
-            6: { cellWidth: 25, halign: 'right' },   // Costo
-            7: { cellWidth: 20, halign: 'center' },  // Ventas
-            8: { cellWidth: 20, halign: 'center' },  // Stock
-            9: { cellWidth: 30, halign: 'right' },   // Promedio Ventas
-            10: { cellWidth: 25, halign: 'right' }   // Análisis
+            0: { cellWidth: 10, halign: 'center' },  // #
+            1: { cellWidth: 15, halign: 'center' },  // ID
+            2: { cellWidth: 50 },                    // Producto
+            3: { cellWidth: 35 },                    // Laboratorio
+            4: { cellWidth: 20, halign: 'right' },   // C. Min
+            5: { cellWidth: 20, halign: 'right' },   // C. Max
+            6: { cellWidth: 20, halign: 'right' },   // Costo
+            7: { cellWidth: 35, halign: 'center' },  // Mejor Oferta
+            8: { cellWidth: 15, halign: 'center' },  // Ventas
+            9: { cellWidth: 15, halign: 'center' },  // Stock
+            10: { cellWidth: 20, halign: 'right' },  // Promedio
+            11: { cellWidth: 20, halign: 'right' },  // Demanda
+            12: { cellWidth: 20, halign: 'right' }   // Análisis
         },
-        margin: { left: 14, right: 14 },
+        margin: { left: 10, right: 10 },
         pageBreak: 'auto',
         tableWidth: 'auto'
     });

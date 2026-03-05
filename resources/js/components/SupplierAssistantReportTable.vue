@@ -29,6 +29,16 @@ const headers = [
         : 0,
   },
   {
+    title: "Demanda",
+    key: "demanda_ponderada",
+    sortable: false,
+    align: 'end',
+    value: (item) =>
+      item.demanda_ponderada != "" && item.demanda_ponderada != null
+        ? parseFloat(item.demanda_ponderada).toFixed(1)
+        : 0,
+  },
+  {
     title: "AO",
     key: "totalQuantityInAutoOrder",
     sortable: false,
@@ -41,7 +51,7 @@ const headers = [
     align: 'end',
     value: (item) =>
       item.solicitar != "" && item.solicitar != null
-        ? parseFloat(item.solicitar).toFixed(2)
+        ? parseFloat(item.solicitar).toFixed(1)
         : 0,
   },
 ];
@@ -115,18 +125,21 @@ const getPriceDiff = (current, offer) => {
               </div>
             </div>
           </template>
-          <div class="text-xs pa-1">
+          <div class="text-xs pa-2">
+            <div class="d-flex justify-space-between gap-x-4 mb-1">
+              <span class="text-disabled font-weight-bold">DETALLE DE COSTOS</span>
+            </div>
             <div class="d-flex justify-space-between gap-x-4">
-              <span class="text-disabled">Mínimo Histórico:</span>
+              <span>Mínimo Histórico:</span>
               <span class="text-success font-weight-bold">${{ Number(item.cost_min || 0).toFixed(2) }}</span>
             </div>
             <div class="d-flex justify-space-between gap-x-4">
-              <span class="text-disabled">Máximo Histórico:</span>
+              <span>Máximo Histórico:</span>
               <span class="text-error font-weight-bold">${{ Number(item.cost_max || 0).toFixed(2) }}</span>
             </div>
             <div class="d-flex justify-space-between gap-x-4 border-t mt-1 pt-1">
-              <span>Costo en Ficha:</span>
-              <span class="font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+              <span class="font-weight-medium">Costo en Ficha (Actual):</span>
+              <span class="font-weight-bold text-primary">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
             </div>
           </div>
         </VTooltip>
@@ -136,20 +149,28 @@ const getPriceDiff = (current, offer) => {
       <template #item.product_suppliers="{ item }">
         <div v-if="item.product_suppliers && item.product_suppliers.length > 0" class="d-flex flex-column align-center">
           <div class="d-flex align-center gap-x-2">
-            <span class="font-weight-bold text-success">
+            <span 
+              class="font-weight-bold"
+              :class="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount) >= 0 ? 'text-success' : 'text-error'"
+            >
               ${{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}
             </span>
             
             <VChip
-              v-if="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount) > 0"
+              v-if="Math.abs(getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount)) > 0.5"
               size="x-small"
-              color="success"
+              :color="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount) > 0 ? 'success' : 'error'"
               variant="tonal"
               label
               class="px-1"
             >
-              <VIcon start size="10" icon="tabler-trending-down" class="me-0" />
-              {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount).toFixed(0) }}%
+              <VIcon 
+                start 
+                size="10" 
+                :icon="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount) > 0 ? 'tabler-trending-down' : 'tabler-trending-up'" 
+                class="me-0" 
+              />
+              {{ Math.abs(getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd_with_discount)).toFixed(0) }}%
             </VChip>
           </div>
           <span class="text-xs text-disabled text-truncate text-center" style="max-inline-size: 130px;">
@@ -157,6 +178,17 @@ const getPriceDiff = (current, offer) => {
           </span>
         </div>
         <span v-else class="text-caption text-disabled italic">Sin proveedor</span>
+      </template>
+
+      <!-- Demanda Ponderada -->
+      <template #item.demanda_ponderada="{ item }">
+        <VTooltip text="Promedio + Ventas / 2 (antes de restar stock)">
+          <template #activator="{ props: tp }">
+            <span v-bind="tp" class="font-weight-bold black--text">
+              {{ item.demanda_ponderada ? parseFloat(item.demanda_ponderada).toFixed(1) : '0' }}
+            </span>
+          </template>
+        </VTooltip>
       </template>
 
       <!-- Promedio con Tooltip -->
