@@ -617,6 +617,9 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::get("/", [ExpenseCategoryController::class, "getAll"]);
             });
         });
+
+        // Balance General
+        Route::get("/balance-general", [App\Http\Controllers\Api\Accounting\BalanceController::class, "index"]);
     });
     Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
         Route::get('/value', 'getValue')->name('value');
