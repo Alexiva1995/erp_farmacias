@@ -293,47 +293,39 @@ watch(
 
           <VRow>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.name"
-                label="Nombre"
-                variant="outlined"
-                density="compact"
+                label="Nombre Comercial"
+                placeholder="Ej: Droguería Nena"
                 prepend-inner-icon="tabler-user"
                 :error-messages="formErrors.name"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.social_reason"
                 label="Razón Social"
-                variant="outlined"
-                density="compact"
+                placeholder="Ej: Inversiones Nena C.A."
                 prepend-inner-icon="tabler-building"
                 :error-messages="formErrors.social_reason"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.rif"
                 label="RIF"
-                variant="outlined"
-                density="compact"
+                placeholder="J-12345678-9"
                 prepend-inner-icon="tabler-id"
                 :error-messages="formErrors.rif"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.address"
                 label="Dirección"
-                variant="outlined"
-                density="compact"
+                placeholder="Dirección fiscal completa"
                 prepend-inner-icon="tabler-map-pin"
                 :error-messages="formErrors.address"
-                hide-details="auto"
               />
             </VCol>
           </VRow>
@@ -344,29 +336,23 @@ watch(
 
           <VRow>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.sales_phone"
                 label="Teléfono Ventas"
                 type="tel"
-                prefix="+"
-                variant="outlined"
-                density="compact"
+                placeholder="4121234567"
                 prepend-inner-icon="tabler-phone"
                 :error-messages="formErrors.sales_phone"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model="formData.collections_phone"
                 label="Teléfono Cobranza"
                 type="tel"
-                prefix="+"
-                variant="outlined"
-                density="compact"
+                placeholder="4147654321"
                 prepend-inner-icon="tabler-phone-call"
                 :error-messages="formErrors.collections_phone"
-                hide-details="auto"
               />
             </VCol>
           </VRow>
@@ -377,15 +363,13 @@ watch(
 
           <VRow>
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model.number="formData.credit_days"
                 label="Días de Crédito"
                 type="number"
-                variant="outlined"
-                density="compact"
+                placeholder="0"
                 prepend-inner-icon="tabler-calendar-time"
                 :error-messages="formErrors.credit_days"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" md="6">
@@ -410,7 +394,7 @@ watch(
 
           <VRow class="mt-4">
             <VCol cols="12" md="6">
-              <VSelect
+              <AppSelect
                 v-model="formData.payment_due_type"
                 :items="[
                   { title: 'Fecha de la factura', value: 'invoice_date' },
@@ -418,11 +402,8 @@ watch(
                   { title: 'Otro (personalizado)', value: 'custom' },
                 ]"
                 label="Fecha Límite de Pago"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-calendar-stats"
                 :error-messages="formErrors.payment_due_type"
-                hide-details="auto"
               />
             </VCol>
 
@@ -431,7 +412,7 @@ watch(
               md="6"
               v-if="formData.payment_due_type === 'invoice_date'"
             >
-              <VSelect
+              <AppSelect
                 v-model="formData.invoice_date_reference"
                 :items="[
                   { title: 'Fecha de Recibo', value: 'receipt_date' },
@@ -439,11 +420,8 @@ watch(
                   { title: 'Fecha de emisión', value: 'issue_date' },
                 ]"
                 label="Referencia de Fecha de Factura"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-timeline"
                 :error-messages="formErrors.invoice_date_reference"
-                hide-details="auto"
               />
             </VCol>
 
@@ -452,15 +430,13 @@ watch(
               md="6"
               v-if="formData.payment_due_type === 'custom'"
             >
-              <VTextField
+              <AppTextField
                 v-model.number="formData.custom_due_days"
                 label="Días personalizados"
                 type="number"
-                variant="outlined"
-                density="compact"
+                placeholder="0"
                 prepend-inner-icon="tabler-numbers"
                 :error-messages="formErrors.custom_due_days"
-                hide-details="auto"
               />
             </VCol>
 
@@ -472,18 +448,15 @@ watch(
                 formData.payment_due_type
               "
             >
-              <VSelect
+              <AppSelect
                 v-model="formData.payment_due_reference"
                 :items="[
                   { title: 'Fecha de emisión', value: 'issue_date' },
                   { title: 'Fecha de recibo', value: 'receipt_date' },
                 ]"
                 label="Contar días desde"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-clock-play"
                 :error-messages="formErrors.payment_due_reference"
-                hide-details="auto"
               />
             </VCol>
           </VRow>
@@ -494,11 +467,17 @@ watch(
 
           <VRow>
             <VCol cols="12">
-              <VCard variant="tonal" color="secondary" class="pa-4 rounded-lg">
-                <div class="text-subtitle-2 mb-2">
-                  Seleccione los días de despacho:
+              <VCard variant="tonal" color="primary" class="pa-5 rounded-lg border">
+                <div class="d-flex align-center mb-4">
+                  <VIcon icon="tabler-truck" color="primary" class="me-2" />
+                  <span class="text-subtitle-1 font-weight-bold">Configuración de Despacho</span>
                 </div>
-                <div class="d-flex flex-wrap gap-x-4">
+                
+                <div class="text-body-2 mb-3 text-medium-emphasis">
+                  Seleccione los días en los que el proveedor realiza entregas:
+                </div>
+
+                <div class="d-flex flex-wrap gap-4">
                   <VCheckbox
                     v-for="dia in dias"
                     :key="dia.value"
@@ -506,14 +485,16 @@ watch(
                     :label="dia.label"
                     :value="dia.value"
                     hide-details
-                    density="compact"
+                    density="comfortable"
                     color="primary"
                   />
                 </div>
+
                 <div
                   v-if="formErrors.dispatch_days"
-                  class="text-error text-caption mt-1"
+                  class="text-error text-caption mt-2 d-flex align-center"
                 >
+                  <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
                   {{ formErrors.dispatch_days[0] }}
                 </div>
               </VCard>
