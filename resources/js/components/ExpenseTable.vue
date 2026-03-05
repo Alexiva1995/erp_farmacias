@@ -19,17 +19,13 @@ function verImagne(item){
 }
 
 const headers = [
-  { title: 'ID',             key: 'id',            sortable: true },
-  { title: 'Descripción',     key: 'name',          sortable: true },
-  { title: 'Categoría',       key: 'category.name', sortable: false },
-  { title: 'Monto',           key: 'amount',        sortable: true, align: 'end' },
-  { title: 'Moneda',          key: 'currency',      sortable: true, align: 'center' },
-  { title: 'Cuenta/Método',   key: 'count',         sortable: true },
-  { title: 'Deducible',       key: 'is_deductible', sortable: false, align: 'center' },
-  { title: 'Usuario',         key: 'user.username', sortable: false },
-  { title: 'Estado',          key: 'status',        sortable: false, align: 'center' },
-  { title: 'Fecha',           key: 'created_at',    sortable: true },
-  { title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center' },
+  { title: 'ID',             key: 'id',            sortable: true,  width: '70px' },
+  { title: 'Descripción',     key: 'name',          sortable: true,  width: '250px' },
+  { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
+  { title: 'Monto',           key: 'amount',        sortable: true,  align: 'end', width: '150px' },
+  { title: 'Estado',          key: 'status',        sortable: false, align: 'center', width: '120px' },
+  { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
+  { title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '100px' },
 ];
 </script>
 <template>
@@ -52,13 +48,14 @@ const headers = [
 
       <!-- Nombre / Descripción -->
       <template #item.name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-body-1 font-weight-medium text-high-emphasis">
+        <div class="d-flex flex-column" style="max-inline-size: 250px;">
+          <span class="text-body-2 font-weight-medium text-high-emphasis text-truncate" :title="item.name">
             {{ item.name }} {{ item.last_name || '' }}
           </span>
-          <span v-if="item.description" class="text-caption text-medium-emphasis">
+          <span v-if="item.description" class="text-caption text-medium-emphasis text-truncate" :title="item.description">
             {{ item.description }}
           </span>
+          <span class="text-caption text-disabled">{{ item.user?.username || 'S/U' }} • {{ item.count || 'N/A' }}</span>
         </div>
       </template>
 

@@ -141,8 +141,8 @@ const statsCards = [
     <VTabs
       v-model="activeTab"
       color="primary"
-      class="px-4 pt-1"
-      density="comfortable"
+      class="px-4"
+      align-tabs="start"
     >
       <VTab
         v-for="tab in tabItems"

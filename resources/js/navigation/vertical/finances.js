@@ -70,25 +70,6 @@ export default [
             subject: 'admin',
           },
       {
-        title: 'Gasto',
-        action: 'manage',
-        subject: 'admin',
-        children: [
-          {
-            title: 'Gastos',
-            to: 'finances-expense-expenses',
-          },
-          {
-            title: 'Gastos Pendientes',
-            to: 'finances-expense-pending-expenses',
-          },
-          /*{
-            title: 'Gastos Recurrentes',
-            to: 'finances-expense-recurring-expense',
-          }*/
-        ],
-      },
-      {
         title: 'Gastos',
         to: 'finances-expense-expenses',
         action: 'manage',
