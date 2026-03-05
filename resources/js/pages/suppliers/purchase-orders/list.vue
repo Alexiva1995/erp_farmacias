@@ -4,16 +4,50 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
 const activeTab = ref(null);
 
-const tabItems = [
-  { label: 'Todas',      value: null,    color: 'primary',  icon: 'tabler-list',          totalKey: 'total_orders' },
-  { label: 'Pendientes', value: 0,       color: 'warning',  icon: 'tabler-clock',         totalKey: 'pending_orders' },
-  { label: 'Enviadas',   value: 1,       color: 'info',     icon: 'tabler-send',          totalKey: 'sent_orders' },
-  { label: 'Completadas',value: 2,       color: 'success',  icon: 'tabler-circle-check',   totalKey: 'completed_orders' },
-];
+const currentPurchaseOrder = ref({});
+const purchaseOrders = ref([]);
+const suppliers = ref([]);
+const selectedSupplier = ref(null);
+const loading = ref(false);
+
+const page = ref(1);
+const itemsPerPage = ref(10);
+const totalPurchaseOrders = ref(0);
+const stats = ref({
+  total_orders: 0,
+  total_amount: 0,
+  pending_orders: 0,
+  sent_orders: 0,
+  completed_orders: 0,
+});
+
+const isManagementDialogVisible = ref(false);
+const { isAdmin } = useAuthStore();
+
+const fetchSuppliers = async () => {
+  try {
+    const response = await axios.get("/available-suppliers");
+    suppliers.value = response.data.data;
+  } catch (error) {
+    console.error("Error al obtener proveedores:", error);
+  }
+};
+
+const fetchStats = async () => {
+  try {
+    const params = { selectedSupplier: selectedSupplier.value };
+    const { data } = await axios.get("/suppliers/purchase-orders/stats", { params });
+    stats.value = data.data;
+  } catch (error) {
+    console.error("Error al obtener estadísticas:", error);
+  }
+};
 
 const fetchPurchaseOrders = async () => {
   loading.value = true;
@@ -35,6 +69,37 @@ const fetchPurchaseOrders = async () => {
   }
 };
 
+const handleManage = (purchaseOrder) => {
+  currentPurchaseOrder.value = { ...purchaseOrder };
+  isManagementDialogVisible.value = true;
+};
+
+const handleDeleteOrder = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "No podrás revertir la eliminación de esta orden de compra.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100',
+      cancelButton: 'v-btn v-btn--elevated v-theme--light bg-secondary v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100'
+    }
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/suppliers/purchase-orders/${id}`);
+      toast.success("Orden eliminada correctamente.");
+      fetchPurchaseOrders();
+      fetchStats();
+    } catch (error) {
+      toast.error("Error al eliminar la orden.");
+    }
+  }
+};
+
 onMounted(() => {
   fetchSuppliers();
   fetchPurchaseOrders();
@@ -46,7 +111,14 @@ watch([page, itemsPerPage, selectedSupplier, activeTab], () => {
   fetchStats();
 });
 
-// ... resto de métodos ...
+const updateTableOptions = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+};
+
+const handleClearFilters = () => {
+  selectedSupplier.value = null;
+};
 </script>
 
 <template>
