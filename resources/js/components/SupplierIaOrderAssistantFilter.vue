@@ -9,6 +9,7 @@ const props = defineProps({
   selectedGroup: [Array, String, null],
   laboratories: { type: Array, default: () => [] },
   groups: { type: Array, default: () => [] },
+  isColombian: Boolean,
 });
 
 const emit = defineEmits([
@@ -17,8 +18,10 @@ const emit = defineEmits([
   "update:tipo_de_filtracion",
   "update:lapso_de_tiempo",
   "update:stock",
+  "update:stock",
   "update:selectedLaboratory",
   "update:selectedGroup",
+  "update:isColombian",
   "clear",
   "generarPedido",
 ]);
@@ -103,7 +106,7 @@ const stockOpciones = [
           />
         </VCol>
 
-        <!-- FILA 2: Configuraciones (4 items x 3 columnas = 12) -->
+        <!-- FILA 2: Configuraciones -->
 
         <VCol cols="12" sm="6" md="3">
           <VSelect
@@ -115,17 +118,17 @@ const stockOpciones = [
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.tipo_de_vista"
-            label="Tipo de vista"
+            label="Vista"
             :items="tipoDeVistaOpcion"
             clearable
             @update:model-value="emit('update:tipo_de_vista', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2">
           <VSelect
             :model-value="props.selectConDescuento"
             label="Precio"
@@ -142,6 +145,16 @@ const stockOpciones = [
             :items="stockOpciones"
             clearable
             @update:model-value="emit('update:stock', $event)"
+          />
+        </VCol>
+        
+        <VCol cols="12" sm="6" md="2" class="d-flex align-center">
+          <VSwitch
+            :model-value="props.isColombian"
+            label="Solo COL"
+            color="primary"
+            hide-details
+            @update:model-value="emit('update:isColombian', $event)"
           />
         </VCol>
       </VRow>

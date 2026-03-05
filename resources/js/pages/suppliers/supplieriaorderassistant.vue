@@ -29,6 +29,7 @@ const tipo_de_filtracion = ref("combinado");
 const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
 const con_descuento = ref(true);
+const isColombian = ref(false);
 
 // KPIs globales (todos los productos, no paginados)
 const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
@@ -39,6 +40,7 @@ const handleClearFilters = () => {
   tipo_de_filtracion.value = "combinado";
   lapso_de_tiempo.value = "1 month";
   stock.value = "all";
+  isColombian.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
 };
@@ -54,6 +56,7 @@ async function consultarKpisGlobales() {
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
+      isColombian: isColombian.value,
       page: 1,
       itemsPerPage: 99999, // traer todos para contar
       sortBy: null,
@@ -79,6 +82,7 @@ async function consultarProductosConPaginacion() {
     tipo_filtracion: tipo_de_filtracion.value,
     lapso_de_tiempo: lapso_de_tiempo.value,
     stock: stock.value,
+    isColombian: isColombian.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -110,14 +114,22 @@ const updateTableOptionsTable = (options) => {
 };
 
 // Cuando cambian filtros: recalcular KPIs globales + tabla
-watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock], async () => {
-  page.value = 1;
-  await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
+let filterTimeout = null;
+watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock, isColombian], () => {
+  clearTimeout(filterTimeout);
+  filterTimeout = setTimeout(async () => {
+    page.value = 1;
+    await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
+  }, 400); // 400ms de retraso para evitar peticiones masivas
 });
 
 // Al paginar, solo recargar tabla
-watch([page, itemsPerPage, orderBy, sortBy], async () => {
-  await actualizarTabla();
+let paginationTimeout = null;
+watch([page, itemsPerPage, orderBy, sortBy], () => {
+  clearTimeout(paginationTimeout);
+  paginationTimeout = setTimeout(async () => {
+    await actualizarTabla();
+  }, 200);
 });
 
 function generarPedido() {
@@ -127,6 +139,8 @@ function generarPedido() {
       con_descuento: con_descuento.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
+      stock: stock.value,
+      isColombian: isColombian.value,
       laboratoryId: JSON.stringify(selectedLaboratory.value),
       groups: JSON.stringify(selectedGroup.value),
     }
@@ -223,12 +237,14 @@ onMounted(async () => {
       v-model:tipo_de_filtracion="tipo_de_filtracion"
       v-model:lapso_de_tiempo="lapso_de_tiempo"
       v-model:stock="stock"
+      v-model:isColombian="isColombian"
       :groups="groups"
       :laboratories="laboratories"
       :tipo_de_filtracion="tipo_de_filtracion"
       :tipo_de_vista="tipo_de_vista"
       :lapso_de_tiempo="lapso_de_tiempo"
       :stock="stock"
+      :isColombian="isColombian"
       @clear="handleClearFilters"
       @generarPedido="generarPedido"
     />

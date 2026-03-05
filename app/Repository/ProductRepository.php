@@ -524,6 +524,12 @@ class ProductRepository
             });
         }
 
+        if (array_key_exists("isColombian", $filtros)) {
+            if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
+                $consulta->where("is_colombian_origin", "=", 1);
+            }
+        }
+
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
@@ -776,6 +782,12 @@ class ProductRepository
             $consulta->whereHas("lots", function ($query) use ($filtros) {
                 $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
             });
+        }
+
+        if (array_key_exists("isColombian", $filtros)) {
+            if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
+                $consulta->where("is_colombian_origin", "=", 1);
+            }
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {

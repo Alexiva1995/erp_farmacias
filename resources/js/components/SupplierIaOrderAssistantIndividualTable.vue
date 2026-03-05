@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -31,37 +31,10 @@ function rowClass(item) {
   if (val < 0) return 'row-excess';
   return '';
 }
-
-const totalNecesitan = computed(() => props.products.filter(p => parseFloat(p.solicitar) > 0).length);
-const totalExceso = computed(() => props.products.filter(p => parseFloat(p.solicitar) < 0).length);
-const totalOk = computed(() => props.products.filter(p => parseFloat(p.solicitar) == 0).length);
 </script>
 
 <template>
   <VCard variant="outlined" class="rounded-lg">
-    <!-- Mini resumen de la tabla actual -->
-    <div class="d-flex align-center gap-4 px-4 py-3 flex-wrap">
-      <VChip color="error" variant="tonal" size="small" prepend-icon="tabler-alert-circle">
-        Necesitan reposición: <strong class="ml-1">{{ totalNecesitan }}</strong>
-      </VChip>
-      <VChip color="warning" variant="tonal" size="small" prepend-icon="tabler-package">
-        Exceso: <strong class="ml-1">{{ totalExceso }}</strong>
-      </VChip>
-      <VChip color="success" variant="tonal" size="small" prepend-icon="tabler-circle-check">
-        OK / Cubiertos: <strong class="ml-1">{{ totalOk }}</strong>
-      </VChip>
-
-      <VSpacer />
-
-      <!-- Leyenda -->
-      <div class="d-flex align-center gap-3 text-caption text-disabled">
-        <span class="d-flex align-center gap-1"><span class="legend-dot legend-needs" /> Necesita reposición</span>
-        <span class="d-flex align-center gap-1"><span class="legend-dot legend-excess" /> Exceso de stock</span>
-      </div>
-    </div>
-
-    <VDivider />
-
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
